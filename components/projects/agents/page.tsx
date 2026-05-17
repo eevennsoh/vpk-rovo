@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useRovoChat } from "@/app/contexts";
 import type { WorkItemAttachment, WorkItemData } from "@/app/contexts/context-work-item-modal";
 import {
@@ -17,9 +18,10 @@ import { RfpDemoControls } from "./components/rfp-demo-controls";
 import { RfpReportCanvas } from "./components/rfp-report-canvas";
 import type { ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
+import { SonnerToast, Toaster } from "@/components/ui/sonner";
 import { AVATARS } from "./data/avatars";
 import { BOARD_AGENTS } from "./data/board-agents";
-import { getAgentsWorkItemForCard } from "./data/rfp-work-items";
+import { RFP_101_WORK_ITEM, getAgentsWorkItemForCard } from "./data/rfp-work-items";
 import type { AgentsRfpDemoController } from "./hooks/use-agents-rfp-demo-state";
 import type { AgentsWorkItemPresentationController } from "./hooks/use-agents-work-item-presentation";
 import {
@@ -44,6 +46,7 @@ then use Rovo AI automation as the differentiator. Reuse the standard ITSM
 template and prior JSM pilot notes.`;
 const RFP_REPORT_PROMPT = "Create an offline HTML report from this work item that I can attach back to the RFP.";
 const RFP_REPORT_REFINE_PROMPT = "Make the executive summary more customer-facing and add a stronger risk note for legal and data residency review.";
+const AGENTS_RFP_DEMO_TOASTER_ID = "agents-rfp-demo-notifications";
 const RFP_AGENT_CREATION_PROMPT = `Create an RFP Drafting Agent for the Drafting column on the Enterprise RFP Response board.
 
 The agent should read each RFP work item, inspect attachments and subtasks,
@@ -74,6 +77,7 @@ export default function AgentsView({
 	const [isAgentDetailsOpen, setIsAgentDetailsOpen] = useState(false);
 	const [isStagedTraceVisible, setIsStagedTraceVisible] = useState(false);
 	const [previewAttachment, setPreviewAttachment] = useState<WorkItemAttachment | null>(null);
+	const visibleToastIdsRef = useRef<Set<string>>(new Set());
 	const {
 		closeChat,
 		isOpen: isChatOpen,
@@ -85,6 +89,7 @@ export default function AgentsView({
 		unpinFloating,
 	} = useRovoChat();
 	const { closeModal, state: presentationState, promoteModalToInline } = workItemPresentation;
+	const { dismissToast } = rfpDemo.actions;
 	const isModalOpen = presentationState.mode === "modal";
 	const selectedWorkItem = useMemo(
 		() => applyRfpDemoWorkItemState(presentationState.workItem, rfpDemo.state),
@@ -115,6 +120,48 @@ export default function AgentsView({
 		if (!isModalOpen || chatSurface !== "sidebar" || !isFloatingPinned) return;
 		promoteModalToInline();
 	}, [isModalOpen, chatSurface, isFloatingPinned, promoteModalToInline]);
+
+	useEffect(() => {
+		const nextToastIds = new Set(rfpDemo.state.toasts.map((toastItem) => toastItem.id));
+
+		for (const toastId of visibleToastIdsRef.current) {
+			if (!nextToastIds.has(toastId)) {
+				toast.dismiss(toastId);
+			}
+		}
+
+		for (const demoToast of rfpDemo.state.toasts) {
+			toast.custom(
+				(toastId) => (
+					<SonnerToast
+						appearance="success"
+						dismissible={true}
+						title={demoToast.message}
+						onDismiss={() => {
+							toast.dismiss(toastId);
+							dismissToast(demoToast.id);
+						}}
+					/>
+				),
+				{
+					duration: Infinity,
+					id: demoToast.id,
+					toasterId: AGENTS_RFP_DEMO_TOASTER_ID,
+				},
+			);
+		}
+
+		visibleToastIdsRef.current = nextToastIds;
+	}, [dismissToast, rfpDemo.state.toasts]);
+
+	useEffect(() => (
+		() => {
+			for (const toastId of visibleToastIdsRef.current) {
+				toast.dismiss(toastId);
+			}
+			visibleToastIdsRef.current.clear();
+		}
+	), []);
 
 	useEffect(() => {
 		const handleOpenRfpCanvas = (event: Event) => {
@@ -275,6 +322,11 @@ export default function AgentsView({
 		setIsAgentDetailsOpen(true);
 	};
 
+	const handleAttachReport = (reportPreviewHtml?: string) => {
+		rfpDemo.actions.attachReport(reportPreviewHtml);
+		workItemPresentation.openModal(RFP_101_WORK_ITEM);
+	};
+
 	const handleAttachmentOpen = (attachment: WorkItemAttachment) => {
 		if (attachment.previewKind === "html-report") {
 			rfpDemo.actions.setCanvasView("report");
@@ -335,7 +387,7 @@ export default function AgentsView({
 						onRefineReport={handleRefineReport}
 						onApproveReport={rfpDemo.actions.approveReport}
 						onExportPdf={rfpDemo.actions.exportPdf}
-						onAttachReport={rfpDemo.actions.attachReport}
+						onAttachReport={handleAttachReport}
 						onCreateAgent={handleCreateRfpDraftingAgent}
 						onScheduleAgent={handleScheduleAgent}
 						onOpenAgentDetails={() => setIsAgentDetailsOpen(true)}
@@ -378,6 +430,7 @@ export default function AgentsView({
 				state={rfpDemo.state}
 				actions={rfpDemo.actions}
 				onCreateAgent={handleCreateRfpDraftingAgent}
+				onAttachReport={handleAttachReport}
 				chatContextBar={chatContextBar}
 				chatGreeting={chatGreeting}
 			/>
@@ -394,18 +447,7 @@ export default function AgentsView({
 					}
 				}}
 			/>
-			<div className="pointer-events-none fixed right-4 bottom-4 z-[600] grid gap-2">
-				{rfpDemo.state.toasts.map((toast) => (
-					<button
-						key={toast.id}
-						type="button"
-						className="pointer-events-auto max-w-xs rounded-lg border border-border bg-surface-overlay px-3 py-2 text-left text-sm text-text shadow-lg"
-						onClick={() => rfpDemo.actions.dismissToast(toast.id)}
-					>
-						{toast.message}
-					</button>
-				))}
-			</div>
+			<Toaster id={AGENTS_RFP_DEMO_TOASTER_ID} position="bottom-right" expand={true} />
 		</div>
 	);
 }
@@ -427,6 +469,7 @@ function applyRfpDemoWorkItemState(
 		date: "Now",
 		source: "generated",
 		approved: attachment.approved,
+		previewHtml: attachment.previewHtml,
 		previewKind: attachment.previewKind,
 		thumbnailKind: attachment.previewKind === "pdf-preview" ? "file" : "document",
 		thumbnailTone: attachment.previewKind === "pdf-preview" ? "information" : "success",

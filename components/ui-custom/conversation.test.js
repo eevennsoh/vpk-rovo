@@ -78,12 +78,13 @@ test("Conversation only uses a custom target while target follow mode is active"
 test("Conversation resize follow uses the active follow target while content streams", () => {
 	assert.doesNotMatch(CONVERSATION_SOURCE, /shouldFollowActualBottomRef/);
 	assert.match(CONVERSATION_SOURCE, /resize = "smooth"/);
+	assert.match(CONVERSATION_SOURCE, /resizeTarget = "follow"/);
 	assert.match(
 		CONVERSATION_SOURCE,
 		/lastKnownScrollHeightRef\.current = nextScrollHeight\s+if \(resize === false \|\| !shouldFollowContent\) \{\s+updateIsAtBottom\(\)\s+return\s+\}/,
 	);
 	assert.match(
 		CONVERSATION_SOURCE,
-		/void scrollToBottom\(\{ animation: resize \}\)/,
+		/void scrollToBottom\(\{ animation: resize, target: resizeTarget \}\)/,
 	);
 });

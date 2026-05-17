@@ -22,7 +22,6 @@ function loadTsModule(entryPoint) {
 
 const {
 	collectAssistantThinkingTraceData,
-	getLatestThinkingToolCallId,
 	resolveAssistantThinkingTracePhase,
 	resolveAssistantThinkingTraceVisibility,
 	resolveThinkingToolCallStepOpen,
@@ -158,56 +157,29 @@ test("collectAssistantThinkingTraceData extracts update_todo progress", () => {
 	assert.equal(data.todoProgressItems[0].label, "Unify trace");
 });
 
-test("getLatestThinkingToolCallId returns the newest trace tool call", () => {
-	assert.equal(
-		getLatestThinkingToolCallId([
-			{ id: "call:first", toolName: "jira.read", state: "completed" },
-			{ id: "call:second", toolName: "jira.search", state: "running" },
-		]),
-		"call:second",
-	);
-	assert.equal(getLatestThinkingToolCallId([]), null);
-});
-
-test("resolveThinkingToolCallStepOpen auto-opens only latest unless manually opened", () => {
+test("resolveThinkingToolCallStepOpen keeps steps collapsed unless manually opened", () => {
 	const manuallyOpenedToolCallIds = new Set(["call:manual"]);
-	const manuallyClosedToolCallIds = new Set(["call:latest-closed"]);
 
 	assert.equal(
 		resolveThinkingToolCallStepOpen({
 			toolCallId: "call:previous",
-			autoOpenToolCallId: "call:latest",
 			manuallyOpenedToolCallIds,
-			manuallyClosedToolCallIds,
 		}),
 		false,
 	);
 	assert.equal(
 		resolveThinkingToolCallStepOpen({
 			toolCallId: "call:latest",
-			autoOpenToolCallId: "call:latest",
 			manuallyOpenedToolCallIds,
-			manuallyClosedToolCallIds,
 		}),
-		true,
+		false,
 	);
 	assert.equal(
 		resolveThinkingToolCallStepOpen({
 			toolCallId: "call:manual",
-			autoOpenToolCallId: "call:latest",
 			manuallyOpenedToolCallIds,
-			manuallyClosedToolCallIds,
 		}),
 		true,
-	);
-	assert.equal(
-		resolveThinkingToolCallStepOpen({
-			toolCallId: "call:latest-closed",
-			autoOpenToolCallId: "call:latest-closed",
-			manuallyOpenedToolCallIds,
-			manuallyClosedToolCallIds,
-		}),
-		false,
 	);
 });
 

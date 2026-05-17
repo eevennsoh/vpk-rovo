@@ -70,28 +70,14 @@ interface CollectAssistantThinkingTraceDataOptions {
 
 interface ResolveThinkingToolCallStepOpenOptions {
 	toolCallId: string;
-	autoOpenToolCallId: string | null;
 	manuallyOpenedToolCallIds: ReadonlySet<string>;
-	manuallyClosedToolCallIds: ReadonlySet<string>;
-}
-
-export function getLatestThinkingToolCallId(
-	thinkingToolCalls: ReadonlyArray<ThinkingToolCallSummary>,
-): string | null {
-	return thinkingToolCalls.at(-1)?.id ?? null;
 }
 
 export function resolveThinkingToolCallStepOpen({
 	toolCallId,
-	autoOpenToolCallId,
 	manuallyOpenedToolCallIds,
-	manuallyClosedToolCallIds,
 }: Readonly<ResolveThinkingToolCallStepOpenOptions>): boolean {
-	if (manuallyOpenedToolCallIds.has(toolCallId)) {
-		return true;
-	}
-
-	return toolCallId === autoOpenToolCallId && !manuallyClosedToolCallIds.has(toolCallId);
+	return manuallyOpenedToolCallIds.has(toolCallId);
 }
 
 export function resolveAssistantThinkingTraceVisibility({

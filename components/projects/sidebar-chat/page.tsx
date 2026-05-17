@@ -502,7 +502,15 @@ export default function ChatPanel({
 				</div>
 			)}
 
-			<Conversation className="min-h-0 min-w-0 flex-1" contextRef={conversationContextRef} followMode={scrollFollowMode} initial={false} targetScrollTop={getLatestTurnTargetTop}>
+			<Conversation
+				className="min-h-0 min-w-0 flex-1"
+				contextRef={conversationContextRef}
+				followMode={scrollFollowMode}
+				initial={false}
+				resize={isStreamingLifecycleActive ? "instant" : "smooth"}
+				resizeTarget={isStreamingLifecycleActive ? "bottom" : "follow"}
+				targetScrollTop={getLatestTurnTargetTop}
+			>
 				<ConversationContent
 					className="mx-auto flex min-w-0 max-w-[800px] flex-col gap-4 px-4 py-6 md:gap-6"
 					style={messagesContainerStyle}

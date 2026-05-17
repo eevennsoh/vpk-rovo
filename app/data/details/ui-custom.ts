@@ -1382,7 +1382,7 @@ import {
 				{ name: "ReasoningContent", description: "Collapsible content area that shows timeline entries and renders non-timeline text as raw markdown source inside CodeBlock." },
 			],
 			examples: [
-				{ title: "Preload", description: "Immediate feedback on query submission — bouncy AnimatedRovo with gradient wave shimmer and \"Rovo is cooking...\" label.", demoSlug: "reasoning-demo-preload" },
+				{ title: "Preload", description: "Immediate feedback on query submission — bouncy AnimatedRovo with gradient wave shimmer and \"Rovo is cooking\" label.", demoSlug: "reasoning-demo-preload" },
 				{ title: "Thinking", description: "Active processing state — calm AnimatedRovo with chevron and expanded tool call timeline.", demoSlug: "reasoning-demo-thinking" },
 				{ title: "Completed", description: "Completed state showing duration and static Rovo icon.", demoSlug: "reasoning-demo-completed" },
 			],

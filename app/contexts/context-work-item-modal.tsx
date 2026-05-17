@@ -50,6 +50,7 @@ export interface WorkItemAttachment {
 	ext: string;
 	date: string;
 	displayName?: string;
+	previewHtml?: string;
 	previewSrc?: string;
 	previewAlt?: string;
 	thumbnailKind?: "document" | "file" | "audio" | "image" | "video";

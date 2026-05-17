@@ -41,7 +41,7 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
-		/<RfpReportCanvas[\s\S]*chatContextBar=\{chatContextBar\}[\s\S]*chatGreeting=\{chatGreeting\}/u,
+		/<RfpReportCanvas[\s\S]*onAttachReport=\{handleAttachReport\}[\s\S]*chatContextBar=\{chatContextBar\}[\s\S]*chatGreeting=\{chatGreeting\}/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
@@ -61,15 +61,47 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/id: "report",[\s\S]*label: "Report",[\s\S]*toolbar: "preview",[\s\S]*copyText: getRfpReportHtml\(isRefined\),[\s\S]*content: <RfpRenderedHtmlReport isRefined=\{isRefined\} \/>/u,
+		/useRfpHtmlReportPreview\(state\)/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/<iframe[\s\S]*srcDoc=\{getRfpReportHtml\(isRefined\)\}/u,
+		/RFP_REPORT_PREVIEW_ENDPOINT = "\/api\/agents\/rfp-demo\/vpk-html-report"/u,
+	);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/formatActiveJiraWorkItemContext\(RFP_101_WORK_ITEM\)/u,
+	);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/id: "report",[\s\S]*label: "Report",[\s\S]*toolbar: "preview",[\s\S]*copyText: reportPreview\.html \?\? "vpk-html report preview is loading\.",[\s\S]*<RfpRenderedHtmlReport/u,
+	);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/<iframe[\s\S]*srcDoc=\{html\}/u,
+	);
+	assert.doesNotMatch(
+		RFP_REPORT_CANVAS_SOURCE,
+		/font-family: Inter/u,
 	);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /id: "plan"/u);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /id: "html"/u);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /RovoChatProvider/u);
+});
+
+test("AgentsView attaches generated reports through the RFP-101 modal and Sonner notifications", () => {
+	assert.match(AGENTS_VIEW_SOURCE, /import \{ toast \} from "sonner";/u);
+	assert.match(AGENTS_VIEW_SOURCE, /import \{ SonnerToast, Toaster \} from "@\/components\/ui\/sonner";/u);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/const handleAttachReport = \(reportPreviewHtml\?: string\) => \{[\s\S]*rfpDemo\.actions\.attachReport\(reportPreviewHtml\);[\s\S]*workItemPresentation\.openModal\(RFP_101_WORK_ITEM\);[\s\S]*\};/u,
+	);
+	assert.match(AGENTS_VIEW_SOURCE, /<Toaster id=\{AGENTS_RFP_DEMO_TOASTER_ID\} position="bottom-right" expand=\{true\} \/>/u);
+	assert.match(AGENTS_VIEW_SOURCE, /toast\.custom\([\s\S]*<SonnerToast[\s\S]*dismissible=\{true\}/u);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /pointer-events-none fixed right-4 bottom-4/u);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/onPrimaryAction=\{\(\) => \(onAttachReport \?\? actions\.attachReport\)\(reportPreview\.html \?\? undefined\)\}/u,
+	);
 });
 
 test("AgentsView renders selected work item inline after promotion", () => {

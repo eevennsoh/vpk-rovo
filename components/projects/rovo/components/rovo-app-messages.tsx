@@ -867,7 +867,13 @@ export function RovoAppMessages({
 	}, [scrollFollowMode]);
 
 	return (
-		<Conversation className={cn("relative bg-background", shouldShowEmptyConversationState && "!flex-none overflow-visible")} followMode={scrollFollowMode} targetScrollTop={handleTargetScrollTop}>
+		<Conversation
+			className={cn("relative bg-background", shouldShowEmptyConversationState && "!flex-none overflow-visible")}
+			followMode={scrollFollowMode}
+			resize={isStreaming && scrollAnchorMessageId === latestVisibleUserMessageId ? "instant" : "smooth"}
+			resizeTarget={isStreaming && scrollAnchorMessageId === latestVisibleUserMessageId ? "bottom" : "follow"}
+			targetScrollTop={handleTargetScrollTop}
+		>
 			<RovoAppScrollAnchorSync
 				scrollAnchorMessageId={scrollAnchorMessageId}
 				target={isStreaming && scrollAnchorMessageId === latestVisibleUserMessageId ? "bottom" : "follow"}

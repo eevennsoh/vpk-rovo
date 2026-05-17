@@ -31,6 +31,7 @@ export interface AgentsRfpDemoAttachment {
 	ext: "html" | "pdf" | string;
 	source: "fixture" | "generated";
 	approved?: boolean;
+	previewHtml?: string;
 	previewKind?: "html-report" | "pdf-preview";
 }
 
@@ -461,10 +462,17 @@ export function exportRfpReportPdf(state: AgentsRfpDemoState): AgentsRfpDemoStat
 	);
 }
 
-export function attachRfpReportToWorkItem(state: AgentsRfpDemoState): AgentsRfpDemoState {
+export function attachRfpReportToWorkItem(
+	state: AgentsRfpDemoState,
+	reportPreviewHtml?: string,
+): AgentsRfpDemoState {
 	const exportedState = state.report.stage === "pdf-exported"
 		? state
 		: exportRfpReportPdf(state);
+	const generatedAttachments = GENERATED_REPORT_ATTACHMENTS.map((attachment) => ({
+		...attachment,
+		...(reportPreviewHtml ? { previewHtml: reportPreviewHtml } : {}),
+	}));
 	const attachedState = updateWorkItem(exportedState, "RFP-101", (workItem) => {
 		const generatedIds = new Set(GENERATED_REPORT_ATTACHMENTS.map((attachment) => attachment.id));
 		const preservedAttachments = workItem.attachments.filter((attachment) => !generatedIds.has(attachment.id));
@@ -473,7 +481,7 @@ export function attachRfpReportToWorkItem(state: AgentsRfpDemoState): AgentsRfpD
 			...workItem,
 			attachments: [
 				...preservedAttachments,
-				...GENERATED_REPORT_ATTACHMENTS.map((attachment) => ({ ...attachment })),
+				...generatedAttachments,
 			],
 		};
 	});
@@ -487,7 +495,7 @@ export function attachRfpReportToWorkItem(state: AgentsRfpDemoState): AgentsRfpD
 			},
 			canvas: {
 				...attachedState.canvas,
-				open: true,
+				open: false,
 				activeViewId: "report",
 				mode: "read-only",
 			},

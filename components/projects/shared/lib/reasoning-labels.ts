@@ -1,7 +1,7 @@
 export const REASONING_LABELS = {
 	trigger: {
 		thinking: "Rovo is thinking",
-		preloadShimmer: "Rovo is cooking...",
+		preloadShimmer: "Rovo is cooking",
 		awaitingUserResponse: "Awaiting user response",
 		working: "Working",
 		generatingResults: "Generating results",

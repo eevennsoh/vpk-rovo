@@ -5,12 +5,12 @@ import type { getThinkingToolCallSummaries } from "@/lib/rovo-ui-messages";
 import type { ReasoningPhaseProps } from "@/components/projects/shared/hooks/use-reasoning-phase";
 import { Message } from "@/components/ui-custom/message";
 import {
-	AdsReasoningTrigger,
-	Reasoning,
-	ReasoningContent,
-	ReasoningSection,
-	ReasoningText,
-} from "@/components/ui-custom/reasoning";
+	ChainOfThought,
+	ChainOfThoughtContent,
+	ChainOfThoughtHeader,
+	ChainOfThoughtStep,
+} from "@/components/ui-custom/chain-of-thought";
+import { CodeBlock } from "@/components/ui-custom/code-block";
 import { AssistantThinkingToolsSection } from "@/components/projects/shared/components/assistant-thinking-tools-section";
 import { getReasoningSectionTitle } from "@/components/projects/shared/lib/reasoning-labels";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,16 @@ interface StreamingThinkingIndicatorProps {
 	phaseProps: ReasoningPhaseProps;
 }
 
+function getChainOfThoughtHeaderState(
+	phaseProps: ReasoningPhaseProps,
+): "preload" | "thinking" | "completed" {
+	if (!phaseProps.isStreaming) {
+		return "completed";
+	}
+
+	return phaseProps.animatedDots ? "thinking" : "preload";
+}
+
 export function StreamingThinkingIndicator({
 	reasoningKey,
 	label,
@@ -38,61 +48,59 @@ export function StreamingThinkingIndicator({
 	trimmedReasoningContent,
 	hasThinkingToolCalls,
 	thinkingToolCalls,
-	allowAutoCollapse,
 	lastMessageId,
 	containerClassName,
 	containerStyle,
 	phaseProps,
 }: Readonly<StreamingThinkingIndicatorProps>): ReactNode {
+	const headerState = getChainOfThoughtHeaderState(phaseProps);
+	const stepStatus = phaseProps.isStreaming ? "active" : "complete";
+	const shouldUseDefaultHeaderLabel = headerState === "completed";
+
 	return (
 		<div className={cn(containerClassName)} style={containerStyle}>
 			<Message from="assistant" className="max-w-full">
-				<Reasoning
-					key={reasoningKey}
+				<ChainOfThought
+					key={`${reasoningKey}-${headerState}`}
 					className="mb-0"
-					autoExpandOnDetails
-					hasDetails={hasDetails}
-					isStreaming={phaseProps.isStreaming}
-					streamingWave={phaseProps.streamingWave}
-					streamingWaveGradientColor={
-						phaseProps.streamingWaveGradientColor
-					}
-					animatedDots={phaseProps.animatedDots}
-					duration={phaseProps.duration}
-					defaultOpen={phaseProps.defaultOpen ?? hasDetails}
-					allowAutoCollapse={allowAutoCollapse}
-					toolsRunning={hasThinkingToolCalls}
+					defaultOpen={false}
 				>
-					<AdsReasoningTrigger
-						label={label}
+					<ChainOfThoughtHeader
+						state={headerState}
+						duration={phaseProps.duration}
 						showChevron={hasDetails}
-						streaming={phaseProps.triggerStreaming}
-					/>
+					>
+						{shouldUseDefaultHeaderLabel ? undefined : label}
+					</ChainOfThoughtHeader>
 					{hasDetails ? (
-						<ReasoningContent>
-							<div className="space-y-4">
-								{hasReasoningContent ? (
-									<ReasoningSection title={getReasoningSectionTitle("thinking")}>
-										<ReasoningText
-											maxVisibleTimelineItems={6}
-											text={trimmedReasoningContent}
-											timelineMode="auto"
-										/>
-									</ReasoningSection>
-								) : null}
-								{hasThinkingToolCalls ? (
-									<ReasoningSection title={getReasoningSectionTitle("tools")}>
-										<AssistantThinkingToolsSection
-											defaultOpenMode="running"
-											idPrefix={lastMessageId ?? "stream"}
-											thinkingToolCalls={thinkingToolCalls}
-										/>
-									</ReasoningSection>
-								) : null}
-							</div>
-						</ReasoningContent>
+						<ChainOfThoughtContent>
+							{hasReasoningContent ? (
+								<ChainOfThoughtStep
+									label={getReasoningSectionTitle("thinking")}
+									status={stepStatus}
+								>
+									<CodeBlock
+										className="text-xs"
+										code={trimmedReasoningContent}
+										language="markdown"
+									/>
+								</ChainOfThoughtStep>
+							) : null}
+							{hasThinkingToolCalls ? (
+								<ChainOfThoughtStep
+									label={getReasoningSectionTitle("tools")}
+									status={stepStatus}
+								>
+									<AssistantThinkingToolsSection
+										defaultOpenMode="running"
+										idPrefix={lastMessageId ?? "stream"}
+										thinkingToolCalls={thinkingToolCalls}
+									/>
+								</ChainOfThoughtStep>
+							) : null}
+						</ChainOfThoughtContent>
 					) : null}
-				</Reasoning>
+				</ChainOfThought>
 			</Message>
 		</div>
 	);

@@ -3920,6 +3920,61 @@ async function createAgentsRfpDemoReportArtifact(requestBody) {
 	return artifactDocument;
 }
 
+function buildAgentsRfpDemoReportPreviewFields(variant) {
+	if (variant === "refined") {
+		return {
+			summary: "Enterprise Evaluation Account should receive a customer-facing response that leads with unified ITSM and CMDB outcomes, then positions Rovo and Teamwork Graph as the automation differentiator.",
+			whatChangedText: "The refined report folds the qualification answers into the RFP-101 context: assume a strategic pursuit, position against the incumbent service-management stack, draft for internal deal desk first, and keep legal, data residency, audit, and vulnerability answers review-required.",
+			confidenceText: "Medium confidence because the core ITSM, service desk, portal, knowledge, change, Assets, CMDB, and AI collaboration story is strong, while legal, data residency, audit, vulnerability, HAM/SAM, and final pricing evidence still need owner review.",
+			progressText: "The report can reuse the standard ITSM RFP response template, prior security review context, the Rovo for ITSM demo recording, and named CSM, SE, legal, and deal-desk owners from the active Work Item context.",
+			blockersText: "Customer-facing submission remains blocked on legal, data residency, audit, vulnerability, pricing, and asset-management validation; these should stay explicitly review-required before attachment or status changes.",
+			nextWindowText: "Finish the compliance matrix, route commercial assumptions to deal desk, validate product and legal language, and prepare the executive demo narrative around unified ITSM, CMDB quality, and Rovo-powered knowledge reuse.",
+			milestonesText: "Use the Sep 8, 2025 response deadline as the next delivery gate, with human approval required before final attachment to RFP-101.",
+			informationGaps: [
+				"Approved legal wording for data residency, audit, and vulnerability responses is not recorded in the Work Item context.",
+				"Deal desk pricing approval timing and discount guardrails are not recorded in the Work Item context.",
+			],
+		};
+	}
+
+	return {
+		summary: "RFP-101 is a qualified enterprise service-management pursuit with strong Atlassian coverage across ITSM, CMDB, service operations, knowledge, reporting, AI, and cross-team collaboration.",
+		whatChangedText: "The initial report turns the active RFP-101 Work Item context into a first-pass response strategy without adding facts outside the ticket, attachments, subtasks, and account-memory hints.",
+		confidenceText: "Medium confidence because the Work Item shows a strong platform fit and named owners, but several mandatory response areas still need product, legal, security, deal-desk, or partner validation.",
+		progressText: "RFP-107 win themes are done, RFP-105 compliance work is in progress, the RFP packet and response brief are available, and the response team has owners for sales, proposal management, sales engineering, legal, security, and deal desk.",
+		blockersText: "Open blockers include legal review, data residency, audit, vulnerability response, HAM/SAM positioning, CMDB scale assumptions, security operations framing, and pricing approval.",
+		nextWindowText: "Complete the requirement matrix, assign mandatory response owners, validate high-risk sections, and prepare a concise executive demo agenda before final submission review.",
+		milestonesText: "The active Work Item runs from Aug 12, 2025 to Sep 8, 2025, with the supplier response package due on Sep 8, 2025.",
+		informationGaps: [
+			"Bid/no-bid decision date and approval owner are not specified in the Work Item context.",
+			"Required data residency region is not recorded in the Work Item context.",
+		],
+	};
+}
+
+async function generateAgentsRfpDemoReportPreview(requestBody) {
+	const contextDescription = getNonEmptyString(requestBody?.contextDescription);
+	if (!contextDescription) {
+		throw new Error("contextDescription is required");
+	}
+
+	const variant = getNonEmptyString(requestBody?.variant) === "refined"
+		? "refined"
+		: "initial";
+	const report = await generateWorkItemVpkHtmlReport({
+		contextDescription,
+		generateText: async () => JSON.stringify(buildAgentsRfpDemoReportPreviewFields(variant)),
+		runSkillValidation: false,
+		runVisualVerify: false,
+	});
+
+	return {
+		html: report.html,
+		skill: report.skill,
+		variant,
+	};
+}
+
 function writeAgentsRfpDemoArtifactResult(writer, artifactDocument) {
 	writer.write({
 		type: "data-artifact-result",
@@ -9563,7 +9618,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					// Emit data-thinking-status lazily — only when the LLM
 					// actually starts producing output (text or tool events).
 					// Until then the frontend shows the preload indicator
-					// ("Rovo is cooking...") to distinguish "waiting for LLM"
+					// ("Rovo is cooking") to distinguish "waiting for LLM"
 					// from "LLM is actively working."
 					let hasEmittedThinkingStatus = false;
 					const emitLazyThinkingStatus = () => {
@@ -11832,6 +11887,18 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			return sendGatewayErrorResponse(res, error, "Failed to process chat request");
 		}
 }
+
+app.post("/api/agents/rfp-demo/vpk-html-report", async (req, res) => {
+	try {
+		const report = await generateAgentsRfpDemoReportPreview(req.body || {});
+		return res.status(200).json(report);
+	} catch (error) {
+		console.error("[AGENTS-RFP-DEMO] Failed to generate vpk-html report preview:", error);
+		return res.status(400).json({
+			error: error instanceof Error ? error.message : "Failed to generate vpk-html report preview",
+		});
+	}
+});
 
 app.post("/api/chat-sdk", handleChatSdkRequest);
 
