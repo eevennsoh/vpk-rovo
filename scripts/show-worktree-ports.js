@@ -7,7 +7,8 @@
  *   node scripts/show-worktree-ports.js watch    live dashboard (1s tick, Ctrl+C to exit)
  *
  * Main worktree is always shown. Other worktrees are shown only when they
- * have at least one of .dev-frontend-port / .dev-backend-port / .dev-rovodev-port.
+ * have at least one of .dev-frontend-port / .dev-backend-port / .dev-rovodev-port
+ * or .dev-rovodev-ports.
  */
 
 const fs = require("node:fs");
@@ -46,6 +47,26 @@ function readPortFile(worktreePath, filename) {
 	return null;
 }
 
+function readRovodevPorts(worktreePath) {
+	const poolText = readPortFile(worktreePath, ".dev-rovodev-ports");
+	if (poolText) {
+		try {
+			const parsed = JSON.parse(poolText);
+			if (
+				Array.isArray(parsed) &&
+				parsed.length > 0 &&
+				parsed.every((port) => Number.isInteger(port) && port > 0)
+			) {
+				return parsed.join(", ");
+			}
+		} catch {
+			// Fall back to the legacy single-port file.
+		}
+	}
+
+	return readPortFile(worktreePath, ".dev-rovodev-port");
+}
+
 function loadPortlessRoutes() {
 	try {
 		const file = path.join(os.homedir(), ".portless", "routes.json");
@@ -69,7 +90,7 @@ function collectWorktreeRows(worktrees, routes) {
 	return worktrees.map((wt) => {
 		const runningFrontend = readPortFile(wt.path, ".dev-frontend-port");
 		const runningBackend = readPortFile(wt.path, ".dev-backend-port");
-		const runningRovodev = readPortFile(wt.path, ".dev-rovodev-port");
+		const runningRovodev = readRovodevPorts(wt.path);
 		const isRunning = Boolean(runningFrontend || runningBackend || runningRovodev);
 		return {
 			wt,
