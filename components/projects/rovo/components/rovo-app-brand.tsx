@@ -19,11 +19,11 @@ export function RovoAppBrand() {
 	const [query, setQuery] = useState("");
 	const [selectedAgentIds, setSelectedAgentIds] = useState<readonly string[]>(["rovo-dev"]);
 
-	function toggleAgent(agentId: string) {
+	function selectAgent(agentId: string) {
 		setSelectedAgentIds((currentIds) => (
-			currentIds.includes(agentId)
-				? currentIds.filter((currentId) => currentId !== agentId)
-				: [...currentIds, agentId]
+			currentIds.length === 1 && currentIds[0] === agentId
+				? currentIds
+				: [agentId]
 		));
 	}
 
@@ -79,7 +79,7 @@ export function RovoAppBrand() {
 			>
 				<AgentSelector
 					agents={AGENT_SELECTOR_DEMO_AGENTS}
-					onAgentToggle={toggleAgent}
+					onAgentToggle={selectAgent}
 					onBrowseAgents={closeSelector}
 					onCreateAgent={closeSelector}
 					onQueryChange={setQuery}

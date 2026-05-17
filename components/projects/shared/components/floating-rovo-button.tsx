@@ -106,6 +106,7 @@ function FloatingRovoButtonNudge({
 				boxShadow: token("elevation.shadow.overlay"),
 				transformOrigin: "right center",
 				willChange: "transform, opacity",
+				backfaceVisibility: "hidden",
 			}}
 		>
 			<button
@@ -203,7 +204,7 @@ function FloatingRovoButtonOnboardingPanelInner({
 			tabIndex={-1}
 		>
 			<motion.header
-				className="flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-3"
+				className="flex h-12 shrink-0 items-center justify-between gap-3 py-3 pr-2 pl-4"
 				variants={phaseTwoVariants}
 				initial="hidden"
 				animate="visible"
@@ -406,6 +407,7 @@ function FloatingRovoButtonSurface({
 		boxShadow: token("elevation.shadow.overlay"),
 		transformOrigin: "center",
 		willChange: "transform, opacity",
+		backfaceVisibility: "hidden",
 	};
 	const hoverScale = !onboardingOpen && !shouldReduceMotion ? { scale: 1.1 } : undefined;
 	const tapScale = !onboardingOpen && !shouldReduceMotion ? { scale: 0.98 } : undefined;
@@ -420,15 +422,12 @@ function FloatingRovoButtonSurface({
 					? "w-[295px] max-w-[calc(100vw-32px)]"
 					: "size-12",
 			)}
-			initial={shouldReduceMotion
-				? { opacity: 0, borderRadius: onboardingOpen ? 8 : 16 }
-				: { opacity: 0, scale: 0.6, borderRadius: onboardingOpen ? 8 : 16 }}
+			initial={{ opacity: 0, borderRadius: onboardingOpen ? 8 : 16 }}
 			animate={{
 				opacity: 1,
-				scale: 1,
 				borderRadius: onboardingOpen ? 8 : 16,
 			}}
-			exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
+			exit={{ opacity: 0 }}
 			transition={{
 				default: surfaceTransition,
 				borderRadius: radiusTransition,
