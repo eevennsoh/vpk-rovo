@@ -87,28 +87,11 @@ export const ChainOfThought = memo(
 export type ChainOfThoughtHeaderProps = ComponentProps<
 	typeof CollapsibleTrigger
 > & {
-	byline?: ReactNode;
 	showChevron?: boolean;
 	shimmer?: boolean;
 	state?: "preload" | "thinking" | "completed";
 	duration?: number;
 };
-
-function getDefaultHeaderByline(
-	state: ChainOfThoughtHeaderProps["state"],
-	duration?: number,
-): ReactNode {
-	if (state === "preload") {
-		return "Preparing reasoning trace";
-	}
-	if (state === "thinking") {
-		return "Working through the next step";
-	}
-	if (state === "completed") {
-		return duration === undefined ? "Reasoning trace complete" : "Finished reasoning trace";
-	}
-	return null;
-}
 
 function CyclingByline({ children, cycle }: Readonly<{ children: ReactNode; cycle?: boolean }>) {
 	const key = typeof children === "string" ? children : undefined;
@@ -131,7 +114,6 @@ function CyclingByline({ children, cycle }: Readonly<{ children: ReactNode; cycl
 export const ChainOfThoughtHeader = memo(
 	({
 		className,
-		byline,
 		children,
 		showChevron = true,
 		shimmer = false,
@@ -151,7 +133,10 @@ export const ChainOfThoughtHeader = memo(
 						: "Chain of Thought"
 		);
 		const isCompleted = resolvedState == "completed";
-		const resolvedByline = byline ?? getDefaultHeaderByline(resolvedState, duration);
+		const shouldShimmerLabel =
+			typeof text === "string" &&
+			resolvedState !== "completed" &&
+			(shimmer || resolvedState === "preload" || resolvedState === "thinking");
 
 		return (
 			<CollapsibleTrigger
@@ -176,20 +161,11 @@ export const ChainOfThoughtHeader = memo(
 				)}
 				<span className="grid min-w-0 flex-1 gap-0.5 text-left">
 					<span className="flex min-w-0 items-center gap-1.5">
-						{(shimmer || resolvedState === "preload") && typeof text === "string" ? (
+						{shouldShimmerLabel ? (
 							<Shimmer
 								as="span"
-								wave
-								baseColor="var(--color-muted-foreground)"
-								baseGradientColor={["#1868db", "#bf63f3", "#fca700"]}
 								duration={1.4}
 								spread={2}
-								xDistance={0}
-								yDistance={0}
-								zDistance={0}
-								scaleDistance={1}
-								rotateYDistance={14}
-								transition={{ ease: "easeInOut", repeatDelay: 0.1 }}
 								className="min-w-0 truncate text-left"
 							>
 								{text}
@@ -207,7 +183,6 @@ export const ChainOfThoughtHeader = memo(
 							/>
 						) : null}
 					</span>
-					{resolvedByline ? <CyclingByline cycle={!isOpen}>{resolvedByline}</CyclingByline> : null}
 				</span>
 			</CollapsibleTrigger>
 		);
@@ -252,13 +227,21 @@ function ChainOfThoughtIconSlot({
 	shimmer: boolean;
 }>): ReactNode {
 	return (
-		<span className="relative isolate inline-flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-[3px]">
+		<span
+			data-cot-icon-slot={shimmer ? "active" : undefined}
+			className={cn(
+				"inline-flex size-4 shrink-0 items-center justify-center",
+				shimmer && "relative text-muted-foreground",
+			)}
+		>
 			{children}
 			{shimmer ? (
 				<span
 					aria-hidden="true"
-					className="animate-cot-icon-shimmer pointer-events-none absolute inset-y-[-35%] -left-full w-full rotate-12 bg-[linear-gradient(100deg,transparent_10%,#1868db_32%,#bf63f3_50%,#fca700_68%,transparent_90%)] mix-blend-screen motion-reduce:hidden"
-				/>
+					className="cot-icon-wash pointer-events-none absolute inset-0 inline-flex items-center justify-center motion-safe:animate-cot-icon-shimmer motion-reduce:hidden"
+				>
+					{children}
+				</span>
 			) : null}
 		</span>
 	);

@@ -401,7 +401,7 @@
 	--animate-expect-dot-orbit: expect-dot-orbit 1.5s ease-in-out infinite;
 	--animate-expect-dot-center: expect-dot-center 2.2s ease-in-out 0.5s infinite;
 	--animate-expect-text-shimmer: expect-text-shimmer 4s ease-in-out infinite;
-	--animate-cot-icon-shimmer: cotIconShimmer 1.35s var(--ease-in-out) infinite;
+	--animate-cot-icon-shimmer: cotIconShimmer 1.4s var(--ease-linear) infinite;
 
 	@keyframes spin {
 		to {
@@ -633,19 +633,13 @@
 	}
 
 	@keyframes cotIconShimmer {
-		0%,
-		18% {
-			opacity: 0;
-			transform: translateX(0) rotate(12deg);
+		0% {
+			mask-position: 0 120%;
+			-webkit-mask-position: 0 120%;
 		}
-		35%,
-		58% {
-			opacity: 0.9;
-		}
-		82%,
 		100% {
-			opacity: 0;
-			transform: translateX(250%) rotate(12deg);
+			mask-position: 0 -120%;
+			-webkit-mask-position: 0 -120%;
 		}
 	}
 }
@@ -710,6 +704,38 @@
 		opacity: 1;
 		transform: translateX(0);
 	}
+}
+
+@utility cot-icon-wash {
+	color: color-mix(in srgb, var(--color-muted-foreground) 10%, white);
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0%,
+		transparent 36%,
+		rgb(0 0 0 / 0.55) 42%,
+		black 46%,
+		black 58%,
+		rgb(0 0 0 / 0.55) 62%,
+		transparent 68%,
+		transparent 100%
+	);
+	mask-position: 0 -120%;
+	mask-repeat: no-repeat;
+	mask-size: 100% 220%;
+	-webkit-mask-image: linear-gradient(
+		to bottom,
+		transparent 0%,
+		transparent 36%,
+		rgb(0 0 0 / 0.55) 42%,
+		black 46%,
+		black 58%,
+		rgb(0 0 0 / 0.55) 62%,
+		transparent 68%,
+		transparent 100%
+	);
+	-webkit-mask-position: 0 -120%;
+	-webkit-mask-repeat: no-repeat;
+	-webkit-mask-size: 100% 220%;
 }
 
 @utility hover-elevate {

@@ -65,7 +65,6 @@ export interface AssistantThinkingTraceState {
 	reasoningPhase: ReasoningPhase;
 	shouldShowThinkingSection: boolean;
 	thinkingActive: boolean;
-	triggerByline: string;
 	triggerLabel: string;
 }
 
@@ -117,6 +116,50 @@ function formatToolDisplayName(value: string): string {
 	return value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function toToolText(value: string): string {
+	const text = formatToolDisplayName(value).toLowerCase();
+	return text ? text[0]!.toUpperCase() + text.slice(1) : "Tool";
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	return value !== null && typeof value === "object" && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+function getInputRecords(input: unknown): Record<string, unknown>[] {
+	const root = asRecord(input);
+	if (!root) {
+		return [];
+	}
+
+	const records = [root];
+	for (const key of ["arguments", "args", "input", "params", "parameters"]) {
+		const nested = asRecord(root[key]);
+		if (nested && !records.includes(nested)) {
+			records.push(nested);
+		}
+	}
+	return records;
+}
+
+function getInputString(input: unknown, keys: readonly string[]): string | null {
+	for (const record of getInputRecords(input)) {
+		for (const key of keys) {
+			const value = getNonEmptyString(record[key]);
+			if (value) {
+				return value;
+			}
+		}
+	}
+	return null;
+}
+
+function clipToolDetail(value: string): string {
+	const text = value.replace(/\s+/g, " ").trim();
+	return text.length > 140 ? `${text.slice(0, 137).trimEnd()}...` : text;
+}
+
 function getThinkingToolDisplayName(toolCall: ThinkingToolCallSummary): string {
 	const displayInfo = getToolDisplayInfo(toolCall.toolName, toolCall.input, toolCall.mcpServer);
 	const displayName = getNonEmptyString(displayInfo.displayName) ?? toolCall.toolName;
@@ -124,22 +167,118 @@ function getThinkingToolDisplayName(toolCall: ThinkingToolCallSummary): string {
 	return formatToolDisplayName(displayName);
 }
 
-function getThinkingToolTitle(toolCall: ThinkingToolCallSummary): string {
+function getToolActionLabel(toolCall: ThinkingToolCallSummary): string {
+	const displayInfo = getToolDisplayInfo(toolCall.toolName, toolCall.input, toolCall.mcpServer);
 	const displayName = getThinkingToolDisplayName(toolCall);
+	const normalizedDisplayName = displayName.toLowerCase();
+	const server = displayInfo.server;
 
-	if (toolCall.state === "completed") {
-		return `Used ${displayName}`;
-	}
-	if (toolCall.state === "error") {
-		return `Could not use ${displayName}`;
-	}
 	if (toolCall.state === "awaiting-input") {
-		return `Waiting for ${displayName}`;
+		return "Waiting for input";
 	}
 	if (toolCall.state === "approval-requested") {
-		return `Awaiting approval for ${displayName}`;
+		return "Awaiting approval";
+	}
+	if (toolCall.state === "error") {
+		return `Could not ${normalizedDisplayName}`;
+	}
+	if (server === "forge-knowledge") {
+		return "Searching Forge knowledge";
+	}
+	if (server === "remote-bitbucket-search") {
+		return "Searching Bitbucket";
+	}
+	if (server === "ads-mcp") {
+		return "Checking ADS";
+	}
+	if (server === "chrome-devtools") {
+		return "Inspecting browser";
+	}
+	if (server === "web-search" || normalizedDisplayName.includes("search")) {
+		return "Searching the web";
+	}
+	if (normalizedDisplayName === "rg" || normalizedDisplayName.includes("grep")) {
+		return "Searching code";
+	}
+	if (normalizedDisplayName === "get skill" || normalizedDisplayName.includes("skill")) {
+		return "Applying skills";
+	}
+	if (normalizedDisplayName === "bash" || normalizedDisplayName === "powershell" || normalizedDisplayName.includes("terminal")) {
+		return "Running command";
+	}
+	if (normalizedDisplayName.includes("todo")) {
+		return "Updating steps";
+	}
+	if (normalizedDisplayName.includes("agent")) {
+		return "Coordinating agents";
+	}
+	if (normalizedDisplayName.includes("file") || normalizedDisplayName.includes("folder") || normalizedDisplayName.includes("grep")) {
+		return normalizedDisplayName.includes("create") || normalizedDisplayName.includes("replace") || normalizedDisplayName.includes("delete") || normalizedDisplayName.includes("move")
+			? "Editing files"
+			: "Reading files";
+	}
+	if (normalizedDisplayName.startsWith("create") || normalizedDisplayName.startsWith("generate")) {
+		return toToolText(displayName);
+	}
+	if (normalizedDisplayName.startsWith("update")) {
+		return toToolText(displayName);
+	}
+	if (normalizedDisplayName.startsWith("run")) {
+		return toToolText(displayName);
 	}
 	return `Using ${displayName}`;
+}
+
+function getThinkingToolTitle(toolCall: ThinkingToolCallSummary): string {
+	return getToolActionLabel(toolCall);
+}
+
+function getToolInputDetail(toolCall: ThinkingToolCallSummary): string | null {
+	const displayInfo = getToolDisplayInfo(toolCall.toolName, toolCall.input, toolCall.mcpServer);
+	const displayName = getThinkingToolDisplayName(toolCall);
+	const normalizedDisplayName = displayName.toLowerCase();
+	const searchQuery = getInputString(toolCall.input, ["query", "q", "search", "searchQuery", "search_query", "terms", "text"]);
+	if (
+		searchQuery &&
+		(
+			displayInfo.server === "web-search" ||
+			normalizedDisplayName === "rg" ||
+			normalizedDisplayName.includes("grep") ||
+			normalizedDisplayName.includes("search")
+		)
+	) {
+		return `Searching ${clipToolDetail(searchQuery)}`;
+	}
+
+	const skillName = getInputString(toolCall.input, ["skill", "skillName", "skill_name", "name"]);
+	const skillReason = getInputString(toolCall.input, ["reason", "purpose", "description"]);
+	if (skillName && (normalizedDisplayName === "get skill" || normalizedDisplayName.includes("skill"))) {
+		return skillReason
+			? `Using ${clipToolDetail(skillName)} to ${clipToolDetail(skillReason)}`
+			: `Using ${clipToolDetail(skillName)}`;
+	}
+
+	const command = getInputString(toolCall.input, ["command", "cmd", "script"]);
+	if (command) {
+		return `Running ${clipToolDetail(command)}`;
+	}
+
+	const path = getInputString(toolCall.input, ["path", "file", "filename", "filepath", "directory", "cwd"]);
+	if (path) {
+		return `Inspecting ${clipToolDetail(path)}`;
+	}
+
+	const url = getInputString(toolCall.input, ["url", "href", "link"]);
+	if (url) {
+		return `Opening ${clipToolDetail(url)}`;
+	}
+
+	const prompt = getInputString(toolCall.input, ["prompt", "message", "question", "instructions"]);
+	if (prompt) {
+		return clipToolDetail(prompt);
+	}
+
+	return null;
 }
 
 function getThinkingToolByline(
@@ -159,12 +298,16 @@ function getThinkingToolByline(
 		return null;
 	})();
 	if (latestNarration) {
-		return latestNarration;
+		return clipToolDetail(latestNarration);
 	}
 
 	const displayName = getThinkingToolDisplayName(toolCall);
+	const inputDetail = getToolInputDetail(toolCall);
+	if (inputDetail) {
+		return inputDetail;
+	}
 	if (toolCall.state === "completed") {
-		return "Tool finished";
+		return "Complete";
 	}
 	if (toolCall.state === "error") {
 		return toolCall.errorText ?? "Tool returned an error";
@@ -176,44 +319,6 @@ function getThinkingToolByline(
 		return `Review ${displayName} before it runs`;
 	}
 	return `Running ${displayName}`;
-}
-
-function getActiveThinkingToolCall(toolCalls: readonly ThinkingToolCallSummary[]): ThinkingToolCallSummary | null {
-	return toolCalls.find((toolCall) => toolStateToCoTStatus(toolCall.state) === "active") ?? null;
-}
-
-function getThinkingTraceByline({
-	activeToolCall,
-	data,
-	reasoningPhase,
-}: Readonly<{
-	activeToolCall: ThinkingToolCallSummary | null;
-	data: AssistantThinkingTraceData;
-	reasoningPhase: ReasoningPhase;
-}>): string {
-	const latestStatusContent = getNonEmptyString(data.lastThinkingStatusPart?.data.content);
-	if (latestStatusContent) {
-		return latestStatusContent;
-	}
-
-	if (data.hasAwaitingInputToolCalls) {
-		return "Waiting for your response";
-	}
-
-	if (activeToolCall) {
-		const narration = activeToolCall.toolCallId ? data.thinkingNarrationMap.byToolCallId.get(activeToolCall.toolCallId) : undefined;
-		return getThinkingToolByline(activeToolCall, narration);
-	}
-
-	if (reasoningPhase === "completed") {
-		return "Reasoning trace complete";
-	}
-
-	if (reasoningPhase === "preload") {
-		return "Preparing reasoning trace";
-	}
-
-	return "Working through the next step";
 }
 
 function getAgentExecutionVariant(status: AgentExecutionStatus): ComponentProps<typeof Lozenge>["variant"] {
@@ -466,13 +571,6 @@ export function useAssistantThinkingTraceState({
 				reasoningPhase,
 				duration: reasoningDuration,
 			});
-	const activeToolCall = getActiveThinkingToolCall(data.thinkingToolCalls);
-	const triggerByline = getThinkingTraceByline({
-		activeToolCall,
-		data,
-		reasoningPhase,
-	});
-
 	return {
 		accumulatedThinkingContent,
 		data,
@@ -488,7 +586,6 @@ export function useAssistantThinkingTraceState({
 		reasoningPhase,
 		shouldShowThinkingSection,
 		thinkingActive,
-		triggerByline,
 		triggerLabel,
 	};
 }
@@ -552,7 +649,6 @@ export function AssistantThinkingTrace({
 				state={state.reasoningPhase === "completed" ? "completed" : state.reasoningPhase === "thinking" ? "thinking" : "preload"}
 				duration={state.reasoningPhase === "completed" ? state.reasoningDuration : undefined}
 				showChevron={state.hasThinkingDetails}
-				byline={state.triggerByline}
 			>
 				{state.triggerLabel}
 			</ChainOfThoughtHeader>
