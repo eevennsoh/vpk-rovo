@@ -461,6 +461,11 @@ function applyRfpDemoWorkItemState(
 	}
 
 	const workItemState = state.workItems[workItem.code];
+	const persistedGeneratedAttachment = workItemState?.attachments.find((attachment) => (
+		attachment.source === "generated" &&
+		typeof (attachment as { previewHtml?: unknown }).previewHtml === "string"
+	)) as { previewHtml?: string } | undefined;
+	const generatedReportPreviewHtml = state.report.previewHtml ?? persistedGeneratedAttachment?.previewHtml;
 	const generatedAttachments = getGeneratedRfpAttachments(state, workItem.code).map((attachment): WorkItemAttachment => ({
 		id: attachment.id,
 		name: attachment.displayName.replace(/\.[^.]+$/u, ""),
@@ -469,7 +474,7 @@ function applyRfpDemoWorkItemState(
 		date: "Now",
 		source: "generated",
 		approved: attachment.approved,
-		previewHtml: attachment.previewHtml,
+		previewHtml: generatedReportPreviewHtml,
 		previewKind: attachment.previewKind,
 		thumbnailKind: attachment.previewKind === "pdf-preview" ? "file" : "document",
 		thumbnailTone: attachment.previewKind === "pdf-preview" ? "information" : "success",

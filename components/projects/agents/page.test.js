@@ -97,6 +97,7 @@ test("AgentsView attaches generated reports through the RFP-101 modal and Sonner
 	);
 	assert.match(AGENTS_VIEW_SOURCE, /<Toaster id=\{AGENTS_RFP_DEMO_TOASTER_ID\} position="bottom-right" expand=\{true\} \/>/u);
 	assert.match(AGENTS_VIEW_SOURCE, /toast\.custom\([\s\S]*<SonnerToast[\s\S]*dismissible=\{true\}/u);
+	assert.match(AGENTS_VIEW_SOURCE, /previewHtml: generatedReportPreviewHtml/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /pointer-events-none fixed right-4 bottom-4/u);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
