@@ -18,9 +18,9 @@ const { getAllWorktreePortInfo } = require("./lib/worktree-ports");
 
 const SEPARATOR = "━".repeat(70);
 const WATCH_INTERVAL_MS = 1000;
-const TICK_INTERVAL_MS = 80;
+const TICK_INTERVAL_MS = 120;
 const TICKS_PER_DATA_REFRESH = Math.max(1, Math.round(WATCH_INTERVAL_MS / TICK_INTERVAL_MS));
-const SPINNER_FRAMES = ["⠚", "⠓", "⠋", "⠙"];
+const SPINNER_FRAMES = ["⠴", "⠦", "⠲", "⠖"];
 
 const SNAPSHOT_WORKER_SCRIPT = `
 const { parentPort } = require("node:worker_threads");
