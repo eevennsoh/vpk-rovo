@@ -4,6 +4,7 @@ const projectRoot = process.cwd();
 
 const nextConfig: NextConfig = {
 	devIndicators: false,
+	allowedDevOrigins: ["vpk-rovo.localhost", "*.vpk-rovo.localhost"],
 
 	experimental: {
 		viewTransition: true,

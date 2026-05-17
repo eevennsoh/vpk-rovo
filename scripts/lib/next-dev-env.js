@@ -13,6 +13,11 @@ function getNextDevEnv({ backendPort, env = process.env, port }) {
 	return nextEnv;
 }
 
+function getNextDevHostname({ env = process.env } = {}) {
+	return env.HOST || "localhost";
+}
+
 module.exports = {
 	getNextDevEnv,
+	getNextDevHostname,
 };

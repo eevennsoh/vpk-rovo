@@ -5,6 +5,7 @@
 	"packageManager": "pnpm@11.1.1",
 	"scripts": {
 		"dev": "concurrently --kill-others-on-fail -n backend,frontend -c yellow,green \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
+		"dev:portless": "portless",
 		"build": "next build",
 		"start": "next start",
 		"lint": "eslint",
@@ -17,6 +18,7 @@
 		"rovodev:tmux:start": "./scripts/dev-tmux.sh start",
 		"rovodev:tmux:stop": "./scripts/dev-tmux.sh stop",
 		"rovodev": "node scripts/run-rovodev-stack.js",
+		"rovodev:portless": "portless run --name vpk-rovo node scripts/run-rovodev-stack.js",
 		"ports": "node scripts/show-worktree-ports.js",
 		"qmd:sync-wiki": "node scripts/sync-wiki-qmd.js",
 		"verify:hermes": "node scripts/verify-hermes-control-plane.js",
@@ -26,6 +28,10 @@
 		"dev:stt": ".venv/bin/python scripts/stt-server.py",
 		"dev:stt:install": "python3 -m venv .venv && .venv/bin/pip install -r scripts/stt-requirements.txt",
 		"symphony": "./scripts/symphony.sh"
+	},
+	"portless": {
+		"name": "vpk-rovo",
+		"script": "dev"
 	},
 	"dependencies": {
 		"@ai-sdk/react": "^3.0.174",
@@ -148,6 +154,7 @@
 		"esbuild": "^0.28.0",
 		"eslint": "^10.2.1",
 		"eslint-config-next": "16.2.6",
+		"portless": "^0.13.0",
 		"react-grab": "^0.1.34",
 		"tailwindcss": "^4.2.4",
 		"typescript": "^6.0.3"

@@ -2,7 +2,7 @@ const net = require("node:net");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
-const { getNextDevEnv } = require("./lib/next-dev-env");
+const { getNextDevEnv, getNextDevHostname } = require("./lib/next-dev-env");
 const { getFrontendBasePort } = require("./lib/worktree-ports");
 
 const basePort = getFrontendBasePort();
@@ -181,7 +181,7 @@ const startNext = async (port, attempt = 0, existingPortHint = null) => {
 
 	const child = spawn(
 		process.execPath,
-		[nextBin, "dev", "--turbopack", "--port", String(port), "--hostname", "localhost"],
+		[nextBin, "dev", "--turbopack", "--port", String(port), "--hostname", getNextDevHostname()],
 		{
 			stdio: ["inherit", "inherit", "pipe"],
 			env: getNextDevEnv({ backendPort, port }),

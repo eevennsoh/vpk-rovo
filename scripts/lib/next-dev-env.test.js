@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { getNextDevEnv } = require("./next-dev-env");
+const { getNextDevEnv, getNextDevHostname } = require("./next-dev-env");
 
 test("getNextDevEnv defaults Watchpack to polling for local dev route discovery", () => {
 	const env = getNextDevEnv({
@@ -33,4 +33,12 @@ test("getNextDevEnv forwards the backend port for frontend API calls", () => {
 	});
 
 	assert.equal(env.NEXT_PUBLIC_BACKEND_PORT, "8180");
+});
+
+test("getNextDevHostname defaults to localhost", () => {
+	assert.equal(getNextDevHostname({ env: {} }), "localhost");
+});
+
+test("getNextDevHostname respects HOST from portless", () => {
+	assert.equal(getNextDevHostname({ env: { HOST: "127.0.0.1" } }), "127.0.0.1");
 });
