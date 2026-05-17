@@ -265,9 +265,16 @@ test("agents attachment grid mixes simple file icons with source product logos",
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /srcDoc=\{file\.previewHtml\}/);
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /\{renderAttachmentIcon\(file\)\}/);
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /scrollIntoView\(\{[\s\S]*behavior: "smooth"[\s\S]*block: "center"/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /const ATTACHMENT_GENERATION_DURATION_SECONDS = 2;/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /const \[isGenerationActive, setIsGenerationActive\] = useState\(isHighlighted\);/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /const handleGenerationComplete = useCallback\(\(\) => \{[\s\S]*setIsGenerationActive\(false\);[\s\S]*\}, \[\]\);/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /setIsGenerationActive\(true\);[\s\S]*\}, \[isHighlighted, highlightedAttachmentKey\]\);/);
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /<RovoGeneration\.Root[\s\S]*border=\{true\}[\s\S]*glow=\{true\}/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /duration=\{ATTACHMENT_GENERATION_DURATION_SECONDS\}/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /generating=\{isGenerationActive\}/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /onGenerationComplete=\{handleGenerationComplete\}/);
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /highlightedAttachmentKey=\{meta\.highlightedAttachmentKey\}/);
-	assert.match(ATTACHMENTS_SECTION_SOURCE, /data-highlighted-attachment=\{isHighlighted \? "true" : undefined\}/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /data-highlighted-attachment=\{isGenerationActive \? "true" : undefined\}/);
 	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /animate-attachment-added-glow/);
 	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /icon=\{renderAttachmentIcon\(file\)\}/);
 	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /\/website\/vpk-logo-dark\.svg/);

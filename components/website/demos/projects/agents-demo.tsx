@@ -8,10 +8,14 @@ import AppLayout from "@/components/projects/page";
 import AgentsView from "@/components/projects/agents/page";
 import { RFP_101_WORK_ITEM, resolveAgentsChatScreenContext } from "@/components/projects/agents/data/rfp-work-items";
 import { useAgentsRfpDemoState, type AgentsRfpDemoController } from "@/components/projects/agents/hooks/use-agents-rfp-demo-state";
-import { formatRfpDemoContext, RFP_DRAFTING_AGENT_ID } from "@/components/projects/agents/lib/rfp-demo-state";
+import {
+	formatRfpDemoContext,
+	RFP_DRAFTING_AGENT_AVATAR_SRC,
+	RFP_DRAFTING_AGENT_ID,
+} from "@/components/projects/agents/lib/rfp-demo-state";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
-import type { FloatingRovoButtonSuggestion } from "@/components/projects/shared/components/floating-rovo-button";
+import type { FloatingRovoButtonOnboardingConfig } from "@/components/projects/shared/components/floating-rovo-button";
 import { ROVO_AGENT_RESULT_OPEN_EVENT } from "@/components/projects/sidebar-chat/components/agent-result-card";
 import { useAgentsWorkItemPresentation, type AgentsWorkItemPresentationController } from "@/components/projects/agents/hooks/use-agents-work-item-presentation";
 import { getMessageAgentResult } from "@/lib/rovo-ui-messages";
@@ -20,7 +24,9 @@ import { useProjectDemoEmbedded } from "./use-project-demo-embedded";
 const AGENTS_CHAT_PROMPT_OPTIONS: SendPromptOptions = {
 	backendPreference: "ai-gateway",
 };
-const ROVO_BUTTON_AGENT_SUGGESTION_ID = "agents-rfp-drafting-agent-after-report-attach";
+const ROVO_BUTTON_AGENT_ONBOARDING_ID = "agents-rfp-drafting-agent-after-report-attach";
+const ROVO_BUTTON_AGENT_ONBOARDING_DELAY_MS = 900;
+const RFP_DRAFTING_AGENT_ACCENT_COLOR = "#82B536";
 const RFP_AGENT_CREATION_PROMPT = "Create an RFP Drafting Agent for the Drafting column on the Enterprise RFP Response board.";
 
 interface AgentsDemoContentProps {
@@ -37,7 +43,8 @@ function AgentsDemoContent({
 	agentsChatScreenContext,
 }: Readonly<AgentsDemoContentProps>) {
 	const [isAgentDetailsOpen, setIsAgentDetailsOpen] = useState(false);
-	const [dismissedRovoButtonSuggestionId, setDismissedRovoButtonSuggestionId] = useState<string | null>(null);
+	const [isRovoButtonOnboardingOpen, setIsRovoButtonOnboardingOpen] = useState(false);
+	const [dismissedRovoButtonOnboardingId, setDismissedRovoButtonOnboardingId] = useState<string | null>(null);
 	const appliedAgentResultMessageIdsRef = useRef<Set<string>>(new Set());
 	const { isOpen: isChatOpen, openChat, sendPrompt, uiMessages } = useRovoChat();
 	const { backToBoard, closeModal, promoteModalToInline } = workItemPresentation;
@@ -59,14 +66,15 @@ function AgentsDemoContent({
 		closeModal();
 	}, [closeModal, isWorkItemModalOpen]);
 	const handleCreateRfpDraftingAgent = useCallback(() => {
-		setDismissedRovoButtonSuggestionId(ROVO_BUTTON_AGENT_SUGGESTION_ID);
+		setDismissedRovoButtonOnboardingId(ROVO_BUTTON_AGENT_ONBOARDING_ID);
+		setIsRovoButtonOnboardingOpen(false);
 		backToBoard();
 		openChat("floating");
 		void sendPrompt(RFP_AGENT_CREATION_PROMPT, {
 			creationMode: "agent",
 			contextDescription: [
 				"[Agents RFP Drafting Agent Creation Request]",
-				"Source: /agents Jira board nudge.",
+				"Source: /agents RFP agent onboarding.",
 				"Board: Enterprise RFP Response.",
 				"Column: Drafting.",
 				"Trigger: On event: ticket enters Drafting.",
@@ -86,7 +94,8 @@ function AgentsDemoContent({
 				continue;
 			}
 			appliedAgentResultMessageIdsRef.current.add(message.id);
-			setDismissedRovoButtonSuggestionId(ROVO_BUTTON_AGENT_SUGGESTION_ID);
+			setDismissedRovoButtonOnboardingId(ROVO_BUTTON_AGENT_ONBOARDING_ID);
+			setIsRovoButtonOnboardingOpen(false);
 			applyAgent();
 		}
 	}, [applyAgent, uiMessages]);
@@ -99,7 +108,8 @@ function AgentsDemoContent({
 			}
 
 			applyAgent();
-			setDismissedRovoButtonSuggestionId(ROVO_BUTTON_AGENT_SUGGESTION_ID);
+			setDismissedRovoButtonOnboardingId(ROVO_BUTTON_AGENT_ONBOARDING_ID);
+			setIsRovoButtonOnboardingOpen(false);
 			setIsAgentDetailsOpen(true);
 		};
 
@@ -109,29 +119,73 @@ function AgentsDemoContent({
 
 	useEffect(() => {
 		if (rfpDemo.state.report.stage !== "attached" || rfpDemo.state.agent) {
-			setDismissedRovoButtonSuggestionId(null);
+			setDismissedRovoButtonOnboardingId(null);
+			setIsRovoButtonOnboardingOpen(false);
 		}
 	}, [rfpDemo.state.agent, rfpDemo.state.report.stage]);
 
-	const shouldShowRovoButtonSuggestion = (
+	const shouldOfferRovoButtonOnboarding = (
 		rfpDemo.state.report.stage === "attached" &&
 		!rfpDemo.state.agent &&
 		isRfp101Presented &&
 		!rfpDemo.state.canvas.open &&
 		!isChatOpen &&
-		dismissedRovoButtonSuggestionId !== ROVO_BUTTON_AGENT_SUGGESTION_ID
+		dismissedRovoButtonOnboardingId !== ROVO_BUTTON_AGENT_ONBOARDING_ID
 	);
-	const rovoButtonSuggestion = useMemo<FloatingRovoButtonSuggestion | null>(
-		() => shouldShowRovoButtonSuggestion
+	const handleRovoButtonOnboardingOpenChange = useCallback((open: boolean) => {
+		setIsRovoButtonOnboardingOpen(open);
+		if (!open) {
+			setDismissedRovoButtonOnboardingId(ROVO_BUTTON_AGENT_ONBOARDING_ID);
+		}
+	}, []);
+	const handleDismissRovoButtonOnboarding = useCallback(() => {
+		setDismissedRovoButtonOnboardingId(ROVO_BUTTON_AGENT_ONBOARDING_ID);
+		setIsRovoButtonOnboardingOpen(false);
+	}, []);
+
+	useEffect(() => {
+		if (!shouldOfferRovoButtonOnboarding) {
+			setIsRovoButtonOnboardingOpen(false);
+			return;
+		}
+
+		const onboardingTimer = window.setTimeout(() => {
+			setIsRovoButtonOnboardingOpen(true);
+		}, ROVO_BUTTON_AGENT_ONBOARDING_DELAY_MS);
+
+		return () => window.clearTimeout(onboardingTimer);
+	}, [shouldOfferRovoButtonOnboarding]);
+
+	const rovoButtonOnboarding = useMemo<FloatingRovoButtonOnboardingConfig | null>(
+		() => shouldOfferRovoButtonOnboarding
 			? {
-					id: ROVO_BUTTON_AGENT_SUGGESTION_ID,
-					label: "Create RFP agent to handle similar work items",
-					ariaLabel: "Create RFP agent to handle similar work items",
-					onSelect: handleCreateRfpDraftingAgent,
-					onDismiss: () => setDismissedRovoButtonSuggestionId(ROVO_BUTTON_AGENT_SUGGESTION_ID),
+					id: ROVO_BUTTON_AGENT_ONBOARDING_ID,
+					title: "Create a new agent",
+					agentName: "RFP Drafting Agent",
+					byline: "By you",
+					description: "Handles similar RFP work items by reading attachments, drafting response packages, adding comments, and moving tickets to Review.",
+					prompt: "Create an RFP agent to handle similar work items from this drafting flow.",
+					primaryActionLabel: "Create",
+					secondaryActionLabel: "Not now",
+					avatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,
+					coverSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,
+					coverBackgroundColor: RFP_DRAFTING_AGENT_ACCENT_COLOR,
+					avatarAlt: "",
+					closeLabel: "Dismiss RFP agent onboarding",
+					open: isRovoButtonOnboardingOpen,
+					openOnButtonClick: true,
+					onOpenChange: handleRovoButtonOnboardingOpenChange,
+					onPrimaryAction: handleCreateRfpDraftingAgent,
+					onSecondaryAction: handleDismissRovoButtonOnboarding,
 				}
 			: null,
-		[handleCreateRfpDraftingAgent, shouldShowRovoButtonSuggestion],
+		[
+			handleCreateRfpDraftingAgent,
+			handleDismissRovoButtonOnboarding,
+			handleRovoButtonOnboardingOpenChange,
+			isRovoButtonOnboardingOpen,
+			shouldOfferRovoButtonOnboarding,
+		],
 	);
 
 	return (
@@ -143,7 +197,7 @@ function AgentsDemoContent({
 			onChatSurfaceSwitch={handleChatSurfaceSwitch}
 			chatContextBar={agentsChatScreenContext.chatContextBar}
 			chatGreeting={agentsChatScreenContext.greeting}
-			rovoButtonSuggestion={rovoButtonSuggestion}
+			rovoButtonOnboarding={rovoButtonOnboarding}
 			onArtifactDialogOpen={handleArtifactDialogOpen}
 			preserveFloatingSurfaceOnArtifactDialogOpen={isWorkItemModalOpen}
 		>

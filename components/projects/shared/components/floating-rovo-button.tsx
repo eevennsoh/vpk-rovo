@@ -461,7 +461,7 @@ export default function FloatingRovoButton({
 	product,
 	embedded = false,
 	forceVisible = false,
-	ariaLabel = "Open Rovo",
+	ariaLabel,
 	placement,
 	onButtonClick,
 	suggestion,
@@ -474,6 +474,8 @@ export default function FloatingRovoButton({
 	const onboardingDefaultOpen = onboarding?.defaultOpen ?? false;
 	const onboardingId = onboarding?.id;
 	const onboardingOpen = Boolean(onboarding && (onboarding.open ?? internalOnboardingOpen));
+	const shouldOpenOnboardingFromButton = Boolean(onboarding && (onboarding.openOnButtonClick ?? true));
+	const resolvedAriaLabel = ariaLabel ?? (shouldOpenOnboardingFromButton ? "Open onboarding" : "Open Rovo");
 	const shouldRenderSurface = (shouldShowButton || onboardingOpen) && !(embedded || product === "rovo");
 
 	useEffect(() => {
@@ -499,7 +501,7 @@ export default function FloatingRovoButton({
 			return;
 		}
 
-		if (onboarding && (onboarding.openOnButtonClick ?? true)) {
+		if (shouldOpenOnboardingFromButton) {
 			setOnboardingOpen(true);
 			return;
 		}
@@ -522,7 +524,7 @@ export default function FloatingRovoButton({
 						onboarding={onboarding}
 						onOpenChange={setOnboardingOpen}
 						placement={placement}
-						ariaLabel={ariaLabel}
+						ariaLabel={resolvedAriaLabel}
 						onButtonClick={handleButtonClick}
 						shouldReduceMotion={shouldReduceMotion}
 					/>

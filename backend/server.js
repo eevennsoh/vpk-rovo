@@ -8314,7 +8314,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					writer.write({
 						type: "data-thinking-status",
 						data: {
-							label: "Thinking",
+							label: "Working",
 							activity: "data",
 							source: "backend",
 						},
@@ -9783,7 +9783,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								writer.write({
 									type: "data-thinking-status",
 									data: {
-										label: label || "Thinking",
+										label: label || "Working",
 										content: content.length > 0 ? content : undefined,
 										activity,
 										source,
@@ -9906,7 +9906,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						writer.write({
 							type: "data-thinking-status",
 							data: {
-								label: "Thinking",
+								label: "Working",
 								activity: "results",
 								source: "backend",
 							},

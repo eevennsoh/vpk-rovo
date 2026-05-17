@@ -121,10 +121,45 @@ test("uses a deterministic completed label when phase is completed without durat
 test("keeps the existing label when phase is still thinking", () => {
 	assert.equal(
 		resolveThinkingStatusTriggerLabel({
+			resolvedLabel: "Inspecting files",
+			reasoningPhase: "thinking",
+			duration: undefined,
+		}),
+		"Inspecting files"
+	);
+});
+
+test("normalizes generic thinking labels while preserving specific status labels", () => {
+	assert.equal(
+		resolveThinkingStatusTriggerLabel({
 			resolvedLabel: "Thinking",
 			reasoningPhase: "thinking",
 			duration: undefined,
 		}),
-		"Thinking"
+		"Working"
+	);
+	assert.equal(
+		resolveThinkingStatusTriggerLabel({
+			resolvedLabel: "Rovo is thinking",
+			reasoningPhase: "thinking",
+			duration: undefined,
+		}),
+		"Working"
+	);
+	assert.equal(
+		resolveThinkingStatusTriggerLabel({
+			resolvedLabel: "Rovo is tihking",
+			reasoningPhase: "thinking",
+			duration: undefined,
+		}),
+		"Working"
+	);
+	assert.equal(
+		resolveThinkingStatusTriggerLabel({
+			resolvedLabel: "Generating image",
+			reasoningPhase: "thinking",
+			duration: undefined,
+		}),
+		"Generating image"
 	);
 });

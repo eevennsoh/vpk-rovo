@@ -6,7 +6,10 @@ import { token } from "@/lib/tokens";
 import TopNavigation from "@/components/blocks/top-navigation/page";
 import Sidebar from "@/components/blocks/product-sidebar/page";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
-import type { FloatingRovoButtonSuggestion } from "@/components/projects/shared/components/floating-rovo-button";
+import type {
+	FloatingRovoButtonOnboardingConfig,
+	FloatingRovoButtonSuggestion,
+} from "@/components/projects/shared/components/floating-rovo-button";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
 import type { ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
@@ -29,6 +32,7 @@ interface AppLayoutProps {
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
 	rovoButtonSuggestion?: FloatingRovoButtonSuggestion | null;
+	rovoButtonOnboarding?: FloatingRovoButtonOnboardingConfig | null;
 	onArtifactDialogOpen?: () => void;
 	preserveFloatingSurfaceOnArtifactDialogOpen?: boolean;
 	/**
@@ -126,6 +130,7 @@ export default function AppLayout({
 	chatContextBar,
 	chatGreeting,
 	rovoButtonSuggestion,
+	rovoButtonOnboarding,
 	onArtifactDialogOpen,
 	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 	chatPanelFlush = false,
@@ -257,6 +262,7 @@ export default function AppLayout({
 							product={product}
 							embedded={isEmbedded}
 							suggestion={rovoButtonSuggestion}
+							onboarding={rovoButtonOnboarding}
 						/>
 					) : null}
 				</AnimatePresence>

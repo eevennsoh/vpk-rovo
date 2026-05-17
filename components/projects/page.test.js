@@ -36,7 +36,11 @@ test("hideFloatingRovo suppresses the layout-owned floating chat surface", () =>
 	);
 	assert.match(
 		PROJECT_LAYOUT_SOURCE,
-		/<FloatingRovoButton[\s\S]*key="floating-rovo-button"[\s\S]*product=\{product\}[\s\S]*embedded=\{isEmbedded\}[\s\S]*suggestion=\{rovoButtonSuggestion\}[\s\S]*\/>/u,
+		/rovoButtonOnboarding\?: FloatingRovoButtonOnboardingConfig \| null;/u,
+	);
+	assert.match(
+		PROJECT_LAYOUT_SOURCE,
+		/<FloatingRovoButton[\s\S]*key="floating-rovo-button"[\s\S]*product=\{product\}[\s\S]*embedded=\{isEmbedded\}[\s\S]*suggestion=\{rovoButtonSuggestion\}[\s\S]*onboarding=\{rovoButtonOnboarding\}[\s\S]*\/>/u,
 	);
 });
 
@@ -115,11 +119,11 @@ test("Rovo Canvas main artefact frame uses a border without elevation", () => {
 test("floating Rovo button has an exit transition for canvas handoff", () => {
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/import \{ AnimatePresence, LayoutGroup, motion, useReducedMotion \} from "motion\/react";/u,
+		/import \{ AnimatePresence, motion, useReducedMotion \} from "motion\/react";/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/<motion\.button[\s\S]*exit=\{shouldReduceMotion \? \{ opacity: 0 \} : \{ opacity: 0, scale: 0\.92, y: 8 \}\}[\s\S]*whileHover=\{shouldReduceMotion \? undefined : \{ scale: 1\.1 \}\}/u,
+		/<motion\.button[\s\S]*exit=\{shouldReduceMotion \? \{ opacity: 0 \} : \{ opacity: 0, transition: \{ duration: 0\.08 \} \}\}/u,
 	);
 });
 
@@ -165,19 +169,19 @@ test("floating Rovo button supports demo placement while preserving default chat
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/bottom: var\(--floating-rovo-button-bottom, 24px\);[\s\S]*right: var\(--floating-rovo-button-right, 24px\);/u,
+		/right: resolvedPlacement\.right,[\s\S]*bottom: resolvedPlacement\.bottom,/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/"--floating-rovo-button-right": resolvedPlacement\.right,[\s\S]*"--floating-rovo-button-bottom": resolvedPlacement\.bottom,/u,
+		/const resolvedAriaLabel = ariaLabel \?\? \(shouldOpenOnboardingFromButton \? "Open onboarding" : "Open Rovo"\);/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/if \(onButtonClick\) \{[\s\S]*onButtonClick\(\);[\s\S]*return;[\s\S]*\}[\s\S]*openChat\("floating"\);/u,
+		/if \(onButtonClick\) \{[\s\S]*onButtonClick\(\);[\s\S]*return;[\s\S]*\}[\s\S]*if \(shouldOpenOnboardingFromButton\) \{[\s\S]*setOnboardingOpen\(true\);[\s\S]*return;[\s\S]*\}[\s\S]*openChat\("floating"\);/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/aria-label=\{ariaLabel\}/u,
+		/ariaLabel=\{resolvedAriaLabel\}/u,
 	);
 });
 
@@ -196,11 +200,7 @@ test("floating Rovo button can morph into an onboarding Spotlight panel", () => 
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/layoutId="floating-rovo-button-surface"/u,
-	);
-	assert.match(
-		FLOATING_ROVO_BUTTON_SOURCE,
-		/if \(onboarding && \(onboarding\.openOnButtonClick \?\? true\)\) \{[\s\S]*setOnboardingOpen\(true\);[\s\S]*return;[\s\S]*\}[\s\S]*openChat\("floating"\);/u,
+		/const shouldOpenOnboardingFromButton = Boolean\(onboarding && \(onboarding\.openOnButtonClick \?\? true\)\);/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,

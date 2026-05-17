@@ -65,14 +65,26 @@ test("AgentsDemo closes the work item modal before opening an artifact dialog", 
 	);
 });
 
-test("AgentsDemo shows the collapsed Rovo agent nudge after the report is attached", () => {
+test("AgentsDemo opens Rovo agent onboarding after returning to the attached report work item", () => {
 	assert.match(
 		AGENTS_DEMO_SOURCE,
 		/import \{ RovoChatProvider, useRovoChat \} from "@\/app\/contexts";/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/const ROVO_BUTTON_AGENT_SUGGESTION_ID = "agents-rfp-drafting-agent-after-report-attach";/u,
+		/import type \{ FloatingRovoButtonOnboardingConfig \} from "@\/components\/projects\/shared\/components\/floating-rovo-button";/u,
+	);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/const ROVO_BUTTON_AGENT_ONBOARDING_ID = "agents-rfp-drafting-agent-after-report-attach";/u,
+	);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/const ROVO_BUTTON_AGENT_ONBOARDING_DELAY_MS = 900;/u,
+	);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/const RFP_DRAFTING_AGENT_ACCENT_COLOR = "#82B536";/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
@@ -80,15 +92,23 @@ test("AgentsDemo shows the collapsed Rovo agent nudge after the report is attach
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
+		/useState\(false\);[\s\S]*useState<string \| null>\(null\);/u,
+	);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
 		/const isRfp101Presented = \([\s\S]*workItemPresentation\.state\.mode === "modal" \|\| workItemPresentation\.state\.mode === "inline"[\s\S]*workItemPresentation\.state\.workItem\?\.code === RFP_101_WORK_ITEM\.code[\s\S]*\);/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/const shouldShowRovoButtonSuggestion = \([\s\S]*rfpDemo\.state\.report\.stage === "attached"[\s\S]*!rfpDemo\.state\.agent[\s\S]*isRfp101Presented[\s\S]*!rfpDemo\.state\.canvas\.open[\s\S]*!isChatOpen[\s\S]*dismissedRovoButtonSuggestionId !== ROVO_BUTTON_AGENT_SUGGESTION_ID[\s\S]*\);/u,
+		/const shouldOfferRovoButtonOnboarding = \([\s\S]*rfpDemo\.state\.report\.stage === "attached"[\s\S]*!rfpDemo\.state\.agent[\s\S]*isRfp101Presented[\s\S]*!rfpDemo\.state\.canvas\.open[\s\S]*!isChatOpen[\s\S]*dismissedRovoButtonOnboardingId !== ROVO_BUTTON_AGENT_ONBOARDING_ID[\s\S]*\);/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/label: "Create RFP agent to handle similar work items"[\s\S]*ariaLabel: "Create RFP agent to handle similar work items"[\s\S]*onSelect: handleCreateRfpDraftingAgent/u,
+		/window\.setTimeout\(\(\) => \{[\s\S]*setIsRovoButtonOnboardingOpen\(true\);[\s\S]*\}, ROVO_BUTTON_AGENT_ONBOARDING_DELAY_MS\);[\s\S]*window\.clearTimeout\(onboardingTimer\);/u,
+	);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/const rovoButtonOnboarding = useMemo<FloatingRovoButtonOnboardingConfig \| null>[\s\S]*title: "Create a new agent"[\s\S]*agentName: "RFP Drafting Agent"[\s\S]*primaryActionLabel: "Create"[\s\S]*coverBackgroundColor: RFP_DRAFTING_AGENT_ACCENT_COLOR[\s\S]*onPrimaryAction: handleCreateRfpDraftingAgent/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
@@ -101,13 +121,14 @@ test("AgentsDemo shows the collapsed Rovo agent nudge after the report is attach
 	assert.doesNotMatch(createAgentHandler, /setIsAgentDetailsOpen\(true\)/u);
 	assert.match(createAgentHandler, /sendPrompt/u);
 	assert.match(createAgentHandler, /openChat/u);
+	assert.match(createAgentHandler, /setIsRovoButtonOnboardingOpen\(false\)/u);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
 		/import \{ ROVO_AGENT_RESULT_OPEN_EVENT \} from "@\/components\/projects\/sidebar-chat\/components\/agent-result-card";/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/import \{ formatRfpDemoContext, RFP_DRAFTING_AGENT_ID \} from "@\/components\/projects\/agents\/lib\/rfp-demo-state";/u,
+		/import \{[\s\S]*formatRfpDemoContext,[\s\S]*RFP_DRAFTING_AGENT_AVATAR_SRC,[\s\S]*RFP_DRAFTING_AGENT_ID,[\s\S]*\} from "@\/components\/projects\/agents\/lib\/rfp-demo-state";/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
@@ -123,10 +144,12 @@ test("AgentsDemo shows the collapsed Rovo agent nudge after the report is attach
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/rovoButtonSuggestion=\{rovoButtonSuggestion\}/u,
+		/rovoButtonOnboarding=\{rovoButtonOnboarding\}/u,
 	);
 	assert.match(AGENTS_DEMO_SOURCE, /const RFP_AGENT_CREATION_PROMPT = "Create an RFP Drafting Agent/u);
 	assert.match(AGENTS_DEMO_SOURCE, /creationMode: "agent"/u);
+	assert.doesNotMatch(AGENTS_DEMO_SOURCE, /rovoButtonSuggestion=\{/u);
+	assert.doesNotMatch(AGENTS_DEMO_SOURCE, /FloatingRovoButtonSuggestion/u);
 });
 
 test("project preview demos honor the embedded query contract", () => {

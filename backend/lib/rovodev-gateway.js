@@ -650,14 +650,14 @@ function getThinkingLabelForActivity(activity, phase) {
 		return "Generated results";
 	}
 	if (activity === "data") {
-		if (phase === "start") return "Thinking";
+		if (phase === "start") return "Working";
 		if (phase === "error") return "Information retrieval failed";
-		return "Thinking";
+		return "Working";
 	}
 
-	if (phase === "start") return "Thinking";
+	if (phase === "start") return "Working";
 	if (phase === "error") return "Result generation failed";
-	return "Thinking";
+	return "Working";
 }
 
 function isGenericIntegrationWrapperToolName(toolName) {

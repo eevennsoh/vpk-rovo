@@ -12,6 +12,11 @@ const RFP_HELP_COMPLETION_ACTION_PATTERNS = [
 	/\bfinish\b/i,
 	/\breview\s+and\s+complete\b/i,
 ];
+const RFP_HELP_DIRECT_REQUEST_PATTERNS = [
+	/\bhelp(?:\s+me)?\s+(?:prepare|complete|finish|work\s+on)\s+(?:this|the\s+)?rfp\b/i,
+	/^(?:please\s+)?(?:prepare|complete|finish|draft)\s+(?:this|the\s+)?rfp\b/i,
+	/\b(?:can|could|would)\s+you\s+(?:please\s+)?(?:help(?:\s+me)?\s+)?(?:prepare|complete|finish|draft|work\s+on)\s+(?:this|the\s+)?rfp\b/i,
+];
 const RFP_HELP_ACTION_PATTERNS = [
 	/\bhelp(?:\s+me)?\b/i,
 	/\breview\b/i,
@@ -119,6 +124,10 @@ function isRfpHelpPrompt(prompt) {
 
 	if (!RFP_HELP_OBJECT_PATTERN.test(normalizedPrompt)) {
 		return false;
+	}
+
+	if (RFP_HELP_DIRECT_REQUEST_PATTERNS.some((pattern) => pattern.test(normalizedPrompt))) {
+		return true;
 	}
 
 	const actionScore = countMatchingPatterns(RFP_HELP_ACTION_PATTERNS, normalizedPrompt);

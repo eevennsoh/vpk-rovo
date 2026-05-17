@@ -86,7 +86,7 @@ async function streamLocalModel({ userMessage, conversationHistory, writer }) {
 	writer.write({
 		type: "data-thinking-status",
 		data: {
-			label: "Thinking",
+			label: "Working",
 			activity: "results",
 			source: "backend",
 		},

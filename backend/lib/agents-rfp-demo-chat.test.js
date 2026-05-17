@@ -32,6 +32,7 @@ const RFP_HELP_PROMPT = [
 	"attached documents.",
 ].join("\n");
 const RFP_SHORT_HELP_PROMPT = "help me complete this RFP";
+const RFP_PREPARE_HELP_PROMPT = "help me prepare the RFP";
 const RFP_REVIEW_COMPLETE_PROMPT = "Review and complete this RFP";
 
 const RFP_AGENT_CREATION_CONTEXT = [
@@ -77,6 +78,20 @@ test("detects the short RFP-101 help turn from active context", () => {
 	assert.equal(turn, "qualification-questions");
 });
 
+test("detects the simple RFP-101 preparation help turn from active context", () => {
+	const turn = resolveAgentsRfpDemoChatTurn({
+		contextDescription: RFP_101_CONTEXT,
+		messages: [
+			{
+				role: "user",
+				parts: [{ type: "text", text: RFP_PREPARE_HELP_PROMPT }],
+			},
+		],
+	});
+
+	assert.equal(turn, "qualification-questions");
+});
+
 test("detects the RFP-101 review-and-complete greeting turn from active context", () => {
 	const turn = resolveAgentsRfpDemoChatTurn({
 		contextDescription: RFP_101_CONTEXT,
@@ -92,17 +107,22 @@ test("detects the RFP-101 review-and-complete greeting turn from active context"
 });
 
 test("does not trigger the RFP demo turn for passive RFP questions", () => {
-	const turn = resolveAgentsRfpDemoChatTurn({
-		contextDescription: RFP_101_CONTEXT,
-		messages: [
-			{
-				role: "user",
-				parts: [{ type: "text", text: "Who owns this RFP?" }],
-			},
-		],
-	});
+	for (const prompt of [
+		"Who owns this RFP?",
+		"Who should prepare this RFP?",
+	]) {
+		const turn = resolveAgentsRfpDemoChatTurn({
+			contextDescription: RFP_101_CONTEXT,
+			messages: [
+				{
+					role: "user",
+					parts: [{ type: "text", text: prompt }],
+				},
+			],
+		});
 
-	assert.equal(turn, null);
+		assert.equal(turn, null, prompt);
+	}
 });
 
 test("detects the RFP demo agent creation turn from attached report state", () => {

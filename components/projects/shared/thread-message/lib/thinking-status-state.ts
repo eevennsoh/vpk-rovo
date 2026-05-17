@@ -1,5 +1,6 @@
 import type { ReasoningPhase } from "@/components/projects/shared/hooks/use-reasoning-phase";
 import { getReasoningCompletedLabel } from "../../lib/reasoning-labels";
+import { resolveThinkingLabelForSurface } from "../../lib/thinking-label-policy";
 
 interface ResolveThinkingStatusActiveOptions {
 	hasThinkingStatusPart: boolean;
@@ -85,5 +86,9 @@ export function resolveThinkingStatusTriggerLabel({
 		return getReasoningCompletedLabel(hasCompletedDuration ? duration : 0);
 	}
 
-	return resolvedLabel;
+	return resolveThinkingLabelForSurface({
+		baseLabel: resolvedLabel,
+		surface: "fullscreen",
+		reasoningPhase,
+	});
 }

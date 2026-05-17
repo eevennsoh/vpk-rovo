@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import Image from "next/image";
 
 import { token } from "@/lib/tokens";
@@ -23,6 +23,7 @@ import {
 
 const ATTACHMENT_ICON_CLASS_NAME = "size-3 text-icon-subtlest [&_svg]:size-3";
 const ATTACHMENT_CARD_RADIUS = 6;
+const ATTACHMENT_GENERATION_DURATION_SECONDS = 2;
 const ATTACHMENT_GENERATION_SIZE = 172;
 const ATTACHMENT_SOURCE_LABELS = {
 	confluence: "Confluence",
@@ -166,7 +167,11 @@ function AttachmentCard({
 }: Readonly<AttachmentCardProps>) {
 	const title = getAttachmentTitle(file);
 	const canOpenPreview = Boolean(file.previewKind && onOpen);
-	const showGenerationEffect = isHighlighted;
+	const [isGenerationActive, setIsGenerationActive] = useState(isHighlighted);
+	const handleGenerationComplete = useCallback(() => {
+		setIsGenerationActive(false);
+	}, []);
+	const showGenerationEffect = isHighlighted || isGenerationActive;
 	const containerStyle: CSSProperties = {
 		minWidth: 0,
 		borderRadius: token("radius.medium"),
@@ -186,6 +191,15 @@ function AttachmentCard({
 		height: "auto",
 		boxShadow: token("elevation.shadow.raised"),
 	};
+
+	useEffect(() => {
+		if (!isHighlighted) {
+			setIsGenerationActive(false);
+			return;
+		}
+
+		setIsGenerationActive(true);
+	}, [isHighlighted, highlightedAttachmentKey]);
 
 	const cardContent = (
 		<>
@@ -217,8 +231,10 @@ function AttachmentCard({
 			key={highlightedAttachmentKey ?? "highlighted-attachment"}
 			animated={true}
 			border={true}
-			generating={isHighlighted}
+			duration={ATTACHMENT_GENERATION_DURATION_SECONDS}
+			generating={isGenerationActive}
 			glow={true}
+			onGenerationComplete={handleGenerationComplete}
 			radius={ATTACHMENT_CARD_RADIUS}
 			size={ATTACHMENT_GENERATION_SIZE}
 			className="w-full"
@@ -240,7 +256,7 @@ function AttachmentCard({
 				onClick={() => onOpen?.(file)}
 				className="w-full p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
 				style={rootStyle}
-				data-highlighted-attachment={isHighlighted ? "true" : undefined}
+				data-highlighted-attachment={isGenerationActive ? "true" : undefined}
 			>
 				{visibleContent}
 			</button>
@@ -250,7 +266,7 @@ function AttachmentCard({
 	return (
 		<div
 			style={rootStyle}
-			data-highlighted-attachment={isHighlighted ? "true" : undefined}
+			data-highlighted-attachment={isGenerationActive ? "true" : undefined}
 		>
 			{visibleContent}
 		</div>
