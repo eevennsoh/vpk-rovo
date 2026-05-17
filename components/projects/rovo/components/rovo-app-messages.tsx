@@ -8,6 +8,7 @@ import { Message, MessageActions, MessageContent, MessageCopyAction, MessageEdit
 import { ArtifactCard, type ArtifactKind } from "@/components/ui-custom/artifact";
 import { AdsReasoningTrigger, Reasoning, ReasoningContent } from "@/components/ui-custom/reasoning";
 import { Button } from "@/components/ui/button";
+import { IconTile } from "@/components/ui/icon-tile";
 import { InlineEdit } from "@/components/ui/inline-edit";
 import { getRovoAppInterruptionLabel } from "@/lib/rovo-app-interruptions";
 import { resolveRovoAppMessageArtifactDisplay, resolveRovoAppOrphanArtifactDisplay, type RovoAppPendingArtifactResult } from "@/components/projects/rovo/lib/rovo-app-message-artifacts";
@@ -49,6 +50,7 @@ import { cn } from "@/lib/utils";
 import { BrowserScreenshotPart } from "@/components/projects/rovo/components/rovo-app-browser-screenshot";
 import type { RovoAppDocument } from "@/lib/rovo-app-types";
 import type { RovoAppStreamingArtifact } from "@/components/projects/rovo/lib/rovo-app-streaming-artifact";
+import { isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/rovo/data/agent-profiles";
 import Image from "next/image";
 import { Component, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnswerCard } from "@/components/blocks/answer-card/components/answer-card";
@@ -78,6 +80,7 @@ interface RovoAppMessagesProps {
 	pendingArtifactResult: RovoAppPendingArtifactResult | null;
 	scrollAnchorMessageId: string | null;
 	scrollFollowMode: ConversationFollowMode;
+	selectedAgent?: RovoAgentProfile | null;
 	showEmptyState?: boolean;
 	shouldSuppressLatestAssistantSuggestions?: boolean;
 	streamingArtifact: RovoAppStreamingArtifact | null;
@@ -705,6 +708,54 @@ function RovoAppThinkingIndicator() {
 	return <PreloadThinkingIndicator label={getPreloadShimmerLabel()} />;
 }
 
+function RovoAppCustomAgentEmptyState({
+	agent,
+	onSelectSuggestion,
+}: Readonly<{
+	agent: RovoAgentProfile;
+	onSelectSuggestion: (suggestion: string) => Promise<void>;
+}>) {
+	return (
+		<div className="flex flex-col items-center gap-8 py-6 text-center">
+			<div className="flex max-w-[520px] flex-col items-center gap-3">
+				<Image alt="" aria-hidden className="size-10 object-contain" height={40} loading="eager" src={agent.avatarSrc} width={40} />
+				<div className="flex flex-col items-center gap-2">
+					<Heading size="xlarge">{agent.name}</Heading>
+					{agent.description ? (
+						<p className="max-w-[460px] text-base leading-6 text-text-subtle">{agent.description}</p>
+					) : null}
+				</div>
+			</div>
+			<div className="flex w-full max-w-[720px] flex-col gap-2">
+				{agent.starters.map((starter) => {
+					const IconComponent = starter.icon;
+					const starterPrompt = starter.prompt ?? starter.label;
+
+					return (
+						<button
+							className="flex w-full items-center gap-4 rounded-lg p-2 text-left transition-colors hover:bg-bg-neutral-subtle-hovered"
+							key={starter.id}
+							onClick={() => {
+								void onSelectSuggestion(starterPrompt);
+							}}
+							type="button"
+						>
+							<IconTile
+								aria-hidden={true}
+								className="border border-border bg-surface"
+								icon={IconComponent ? <IconComponent label={starter.label} /> : null}
+								label={starter.label}
+								size="medium"
+							/>
+							<span className="min-w-0 flex-1 text-base font-semibold leading-6 text-text-subtle">{starter.label}</span>
+						</button>
+					);
+				})}
+			</div>
+		</div>
+	);
+}
+
 function StreamingArtifactMessage({
 	documentId,
 	visualIdentity,
@@ -802,6 +853,7 @@ export function RovoAppMessages({
 	pendingArtifactResult,
 	scrollAnchorMessageId,
 	scrollFollowMode,
+	selectedAgent = null,
 	showEmptyState = true,
 	shouldSuppressLatestAssistantSuggestions = false,
 	streamingArtifact,
@@ -853,6 +905,7 @@ export function RovoAppMessages({
 	const shouldShowStreamingArtifactPreview = shouldShowPendingAssistantSurface && Boolean(streamingArtifact?.documentId) && streamingArtifactMessageId === null;
 	const shouldShowPreloader = shouldShowPendingAssistantSurface && !shouldShowStreamingArtifactPreview;
 	const shouldShowEmptyConversationState = showEmptyState && visibleMessages.length === 0;
+	const customAgent = selectedAgent !== null && !isRovoAgentProfile(selectedAgent) ? selectedAgent : null;
 	const emptyState = isMaxMode ? ROVO_APP_EMPTY_STATE.max : ROVO_APP_EMPTY_STATE.default;
 	const emptyStateItemVariants = shouldReduceMotion ? ROVO_APP_EMPTY_STATE_REDUCED_ITEM_VARIANTS : ROVO_APP_EMPTY_STATE_ITEM_VARIANTS;
 	const handleTargetScrollTop = useCallback((defaultTargetTop: number, { scrollElement }: { scrollElement: HTMLElement }) => {
@@ -880,7 +933,9 @@ export function RovoAppMessages({
 				target={isStreaming && scrollAnchorMessageId === latestVisibleUserMessageId ? "bottom" : "follow"}
 			/>
 			{onScrollActiveUserMessageChange ? <RovoAppScrollActiveTracker onActiveChange={onScrollActiveUserMessageChange} /> : null}
-			{shouldShowEmptyConversationState ? (
+			{shouldShowEmptyConversationState && customAgent ? (
+				<RovoAppCustomAgentEmptyState agent={customAgent} onSelectSuggestion={onSelectSuggestion} />
+			) : shouldShowEmptyConversationState ? (
 				<div className="flex flex-col items-center gap-2 py-6">
 					<AnimatePresence mode="wait">
 						<motion.div

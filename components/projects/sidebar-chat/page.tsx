@@ -148,6 +148,7 @@ export default function ChatPanel({
 		setEditingMessageId,
 		chatSurface,
 		activeThreadId,
+		selectedAgent,
 		isHistoryOpen,
 		pinFloating,
 		toggleHistory,
@@ -536,6 +537,7 @@ export default function ChatPanel({
 								illustrationSrc={greeting?.illustrationSrc}
 								illustrationDarkSrc={greeting?.illustrationDarkSrc}
 								isMaxMode={selectedReasoning === "max"}
+								selectedAgent={selectedAgent}
 								showHero={greeting?.showHero}
 								suggestions={greeting?.suggestions}
 								onSuggestionClick={handleGreetingSuggestionClick}

@@ -20,6 +20,7 @@ import ShapesIcon from "@atlaskit/icon/core/shapes";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import { CONTROL_PLANE_HEADER_SURFACES } from "@/components/projects/control-plane/lib/control-plane-data";
 import { RovoAppBrand } from "./rovo-app-brand";
+import { RovoAgentBackButton } from "./rovo-agent-back-button";
 
 interface ArtifactMenuItem {
 	id: string;
@@ -62,6 +63,7 @@ export function RovoAppHeader({
 
 	return (
 		<header className={cn("flex items-center gap-3 px-3 py-3", isArtifactOpen && "border-b border-border")}>
+			<RovoAgentBackButton />
 			<RovoAppBrand />
 
 			<div className="min-h-px min-w-px flex-1" />

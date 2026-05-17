@@ -16,6 +16,7 @@ import {
 	type ChatSurfaceSwitchHandler,
 } from "@/components/projects/shared/components/chat-surface-switcher";
 import { RovoAppBrand } from "@/components/projects/rovo/components/rovo-app-brand";
+import { RovoAgentBackButton } from "@/components/projects/rovo/components/rovo-agent-back-button";
 import { ChatHistoryButton } from "@/components/projects/sidebar-chat/components/chat-history-button";
 
 interface FloatingChatHeaderProps {
@@ -40,6 +41,7 @@ export default function FloatingChatHeader({
 	return (
 		<div className="flex shrink-0 items-center justify-between px-3 py-3">
 			<div className="flex items-center gap-1">
+				<RovoAgentBackButton />
 				<ChatHistoryButton isHistoryOpen={isHistoryOpen} onToggle={onHistoryToggle} />
 				<RovoAppBrand />
 			</div>

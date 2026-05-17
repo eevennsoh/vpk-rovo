@@ -70,6 +70,16 @@ async function loadChatGreetingHarness() {
 			`,
 		],
 		[
+			"@atlaskit/icon/core/comment-add",
+			`
+				import React from "react";
+
+				export default function CommentAddIcon() {
+					return React.createElement("svg", { "data-testid": "comment-add-icon" });
+				}
+			`,
+		],
+		[
 			"@/lib/rovo-suggestions",
 			`
 				export const defaultSuggestions = [];
@@ -83,6 +93,7 @@ async function loadChatGreetingHarness() {
 				import React from "react";
 				import { renderToStaticMarkup } from "react-dom/server";
 				import ChatGreeting from "./components/projects/sidebar-chat/components/chat-greeting.tsx";
+				import { AI_INSIGHTS_AGENT_ID, getRovoAgentProfile } from "./components/projects/rovo/data/agent-profiles.ts";
 
 				export function renderCustomLightGreeting() {
 					return renderToStaticMarkup(React.createElement(ChatGreeting, {
@@ -96,6 +107,12 @@ async function loadChatGreetingHarness() {
 					return renderToStaticMarkup(React.createElement(ChatGreeting, {
 						isMaxMode: true,
 						suggestions: [],
+					}));
+				}
+
+				export function renderCustomAgentGreeting() {
+					return renderToStaticMarkup(React.createElement(ChatGreeting, {
+						selectedAgent: getRovoAgentProfile(AI_INSIGHTS_AGENT_ID),
 					}));
 				}
 			`,
@@ -175,4 +192,16 @@ test("ChatGreeting staggers the illustration before the heading", () => {
 test("ChatGreeting prompt row icons are decorative inside labelled buttons", () => {
 	assert.match(CHAT_GREETING_SOURCE, /<IconTile[\s\S]*aria-hidden=\{true\}/u);
 	assert.match(CHAT_GREETING_SOURCE, /<span className="text-left text-sm text-text-subtle">\{suggestion\.label\}<\/span>/u);
+});
+
+test("ChatGreeting renders selected custom agent profile and three starters", async () => {
+	const harness = await loadChatGreetingHarness();
+	const markup = harness.renderCustomAgentGreeting();
+
+	assert.match(markup, /AI Insights Agent/u);
+	assert.match(markup, /Researches and summarizes latest AI trends, breakthroughs, and industry developments for weekly insights\./u);
+	assert.match(markup, /What are the latest AI trends this week\?/u);
+	assert.match(markup, /Summarize recent AI breakthroughs for me/u);
+	assert.match(markup, /Give me AI industry insights and developments/u);
+	assert.equal((markup.match(/<button/g) ?? []).length, 3);
 });

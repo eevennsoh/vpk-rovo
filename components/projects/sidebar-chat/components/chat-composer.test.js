@@ -154,6 +154,23 @@ test("compact chat submits add-menu files through the shared Rovo thread queue",
 	assert.match(context.slice(sendPromptIndex), /files: promptFiles/u);
 });
 
+test("compact chat merges selected custom agent context before queueing prompts", () => {
+	const context = readProjectFile("app/contexts/context-rovo-chat.tsx");
+	const sendPromptIndex = context.indexOf("const sendPrompt = useCallback(");
+
+	assert.match(context, /selectedAgentId: string;/u);
+	assert.match(context, /selectedAgent: RovoAgentProfile;/u);
+	assert.match(context, /selectAgent: \(agentId: string\) => void;/u);
+	assert.match(context, /resetAgentToRovo: \(\) => void;/u);
+	assert.match(context, /function mergeSelectedAgentPromptOptions/u);
+	assert.match(context, /getRovoAgentPromptContext\(selectedAgent\)/u);
+	assert.ok(sendPromptIndex > -1);
+	assert.match(
+		context.slice(sendPromptIndex),
+		/mergeSendPromptOptions\(\s*defaultPromptOptions,\s*mergeSelectedAgentPromptOptions\(options, selectedAgent\)\s*\)/u,
+	);
+});
+
 test("compact chat resolves pending clarification tools before queueing clarification answers", () => {
 	const context = readProjectFile("app/contexts/context-rovo-chat.tsx");
 	const sendPromptIndex = context.indexOf("const sendPrompt = useCallback(");

@@ -46,6 +46,7 @@ test("compact chat hamburger buttons open the shared history drawer", () => {
 	const historyButton = readProjectFile("components/projects/sidebar-chat/components/chat-history-button.tsx");
 
 	for (const source of [sidebarHeader, floatingHeader]) {
+		assert.match(source, /<RovoAgentBackButton \/>/u);
 		assert.match(source, /<ChatHistoryButton isHistoryOpen=\{isHistoryOpen\} onToggle=\{onHistoryToggle\} \/>/u);
 	}
 

@@ -72,6 +72,8 @@ import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dism
 import { approveSkillDraft, fetchWikiStatus, fetchSkillDraftDetail, fetchSkillDrafts, fetchSkills, rejectSkillDraft } from "@/components/projects/control-plane/lib/control-plane-api";
 import type { HermesSkillDraftDetail, HermesSkillDraftSummary, HermesSkillSummary, WikiStatus } from "@/lib/rovo-runtime-types";
 import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
+import { useRovoSelectedAgent } from "@/app/contexts";
+import { getRovoAgentPromptContext, isRovoAgentProfile } from "@/components/projects/rovo/data/agent-profiles";
 
 interface RovoAppShellProps {
 	embedded?: boolean;
@@ -302,6 +304,9 @@ function resolveRealtimeSessionIdentity(realtime: RealtimeVoiceShellResult, acti
 export function RovoAppShell({ embedded = false, initialThreadId = null }: Readonly<RovoAppShellProps>) {
 	const router = useRouter();
 	const nav = useTopNavigation();
+	const { selectedAgent } = useRovoSelectedAgent();
+	const selectedAgentContextDescription = getRovoAgentPromptContext(selectedAgent);
+	const isCustomAgentSelected = !isRovoAgentProfile(selectedAgent);
 	const [viewportWidthPx, setViewportWidthPx] = useState<number | null>(null);
 	const [shellSize, setShellSize] = useState({ width: 0, height: 0 });
 	const smartGenerationLayout = useMemo(() => {
@@ -447,12 +452,16 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const buildHermesPromptOptions = useCallback(
 		(contextDescription?: string) => {
 			const hermesContext = buildComposerHermesContext(selectedHermesSkillIds);
-			return {
+			const resolvedContextDescription = mergeContextDescriptions(
 				contextDescription,
+				selectedAgentContextDescription,
+			);
+			return {
+				contextDescription: resolvedContextDescription,
 				hermesContext,
 			};
 		},
-		[selectedHermesSkillIds],
+		[selectedHermesSkillIds, selectedAgentContextDescription],
 	);
 
 	// Bridge the global sidebar context (TopNavigation toggle) with the local
@@ -600,6 +609,18 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		setPrefillText(prompt);
 		setPreviewPrompt(null);
 	}, []);
+
+	const handleRovoAppSuggestionSelect = useCallback(
+		async (prompt: string) => {
+			const contextDescription = annotationContextRef.current ?? undefined;
+			await chat.submitPrompt({
+				...buildHermesPromptOptions(contextDescription),
+				files: [],
+				text: prompt,
+			});
+		},
+		[buildHermesPromptOptions, chat],
+	);
 
 	// Question card / clarification support
 	const activeQuestionCard = useMemo(() => getLatestQuestionCardPayload(chat.messages), [chat.messages]);
@@ -2099,13 +2120,14 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					onRegisterArtifactCard={handleRegisterArtifactCard}
 					onRegenerate={chat.regenerateLatest}
 					onScrollActiveUserMessageChange={handleScrollActiveTimelineChange}
-					onSelectSuggestion={chat.suggestedPrompt}
+					onSelectSuggestion={handleRovoAppSuggestionSelect}
 					onSetEditingMessageId={chat.setEditingMessageId}
 					onVote={chat.voteOnMessage}
 					pendingPlanMetadataMessageIds={chat.pendingPlanMetadataMessageIds}
 					pendingArtifactResult={chat.pendingArtifactResult}
 					scrollAnchorMessageId={scrollAnchorMessageId}
 					scrollFollowMode={scrollFollowMode}
+					selectedAgent={selectedAgent}
 					showEmptyState={showHomeState}
 					shouldSuppressLatestAssistantSuggestions={chat.shouldSuppressLatestAssistantSuggestions}
 					streamingArtifact={chat.streamingArtifact}
@@ -2264,7 +2286,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					)}
 				</div>
 
-				{showHomeState ? (
+				{showHomeState && !isCustomAgentSelected ? (
 					<motion.div
 						initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
