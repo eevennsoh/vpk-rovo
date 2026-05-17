@@ -87,7 +87,7 @@ public/
 .cursor/                       # Cursor config (symlinks to .agents/)
 .claude/                       # Claude config (symlinks to .agents/)
 .codex/                        # Codex config (symlinks to .agents/)
-.codelassian/                  # Codelassian config (symlinks to .agents/)
+.rovodev/                      # RovoDev config (symlinks to .agents/)
 ```
 
 ## Environment Variables
