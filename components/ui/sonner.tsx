@@ -29,6 +29,8 @@ interface SonnerToastProps extends Omit<React.ComponentProps<"div">, "title"> {
 	iconLabel?: string;
 }
 
+const SONNER_TOAST_AUTO_DISMISS_MS = 8_000;
+
 const SONNER_TOAST_APPEARANCE_STYLES: Record<SonnerToastAppearance, string> = {
 	neutral: "bg-surface-raised",
 	success: "bg-bg-success-subtler",
@@ -156,6 +158,7 @@ const Toaster = ({ toastOptions, ...props }: ToasterProps) => {
 	return (
 		<Sonner
 			toastOptions={{
+				duration: SONNER_TOAST_AUTO_DISMISS_MS,
 				...toastOptions,
 				unstyled: true,
 			}}
@@ -164,5 +167,5 @@ const Toaster = ({ toastOptions, ...props }: ToasterProps) => {
 	);
 };
 
-export { SonnerToast, Toaster };
+export { SONNER_TOAST_AUTO_DISMISS_MS, SonnerToast, Toaster };
 export type { SonnerToastAction, SonnerToastAppearance, SonnerToastProps };

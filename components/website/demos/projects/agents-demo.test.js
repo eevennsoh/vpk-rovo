@@ -92,8 +92,12 @@ test("AgentsDemo shows the collapsed Rovo agent nudge after the report is attach
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/backToBoard\(\);[\s\S]*createAgent\(\);[\s\S]*setIsAgentDetailsOpen\(true\);[\s\S]*openChat\("floating"\);[\s\S]*sendPrompt\(RFP_AGENT_CREATION_PROMPT,[\s\S]*creationMode: "agent"/u,
+		/backToBoard\(\);[\s\S]*createAgent\(\);[\s\S]*openChat\("floating"\);[\s\S]*sendPrompt\(RFP_AGENT_CREATION_PROMPT,[\s\S]*creationMode: "agent"/u,
 	);
+	const createAgentHandler = AGENTS_DEMO_SOURCE.match(
+		/const handleCreateRfpDraftingAgent = useCallback\(\(\) => \{([\s\S]*?)\n\t\}, \[backToBoard/u,
+	)?.[1] ?? "";
+	assert.doesNotMatch(createAgentHandler, /setIsAgentDetailsOpen\(true\)/u);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
 		/import \{ ROVO_AGENT_RESULT_OPEN_EVENT \} from "@\/components\/projects\/sidebar-chat\/components\/agent-result-card";/u,

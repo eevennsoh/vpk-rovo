@@ -116,12 +116,12 @@ export default function ColumnAgentAssignment({
 										aria-label={triggerLabel}
 										className={cn(
 											"opacity-0 transition-opacity group-hover/board-column:opacity-100 group-focus-within/board-column:opacity-100",
-											hasAssignedAgents ? "h-8 min-w-0 gap-1 px-1.5" : "size-7",
+											hasAssignedAgents ? "h-8 min-w-0 gap-1 px-1.5" : "size-8",
 											(hasAssignedAgents || open) && "opacity-100",
 										)}
 										data-assigned={hasAssignedAgents || undefined}
 										data-open={open || undefined}
-										size={hasAssignedAgents ? "sm" : "icon-sm"}
+										size={hasAssignedAgents ? "sm" : "icon"}
 										variant="ghost"
 									/>
 								}
@@ -133,9 +133,9 @@ export default function ColumnAgentAssignment({
 									</>
 								) : (
 									<Icon
-										className={open ? "text-icon-brand" : "text-icon-subtle"}
+										className="text-icon-subtle"
 										label="Agent"
-										render={<AiAgentIcon label="" size="small" />}
+										render={<AiAgentIcon label="" />}
 									/>
 								)}
 							</DropdownMenuTrigger>

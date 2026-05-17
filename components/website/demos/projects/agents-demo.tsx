@@ -70,7 +70,6 @@ function AgentsDemoContent({
 		setDismissedRovoButtonSuggestionId(ROVO_BUTTON_AGENT_SUGGESTION_ID);
 		backToBoard();
 		createAgent();
-		setIsAgentDetailsOpen(true);
 		openChat("floating");
 		void sendPrompt(RFP_AGENT_CREATION_PROMPT, {
 			contextDescription: rfpDemoContext,

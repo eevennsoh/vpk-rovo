@@ -11,6 +11,7 @@ async function loadRfpDemoStateHarness() {
 				export {
 					AGENTS_RFP_DEMO_STORAGE_KEY,
 					GENERATED_RFP_REPORT_ATTACHMENT_ID,
+					RFP_DRAFTING_AGENT_AVATAR_SRCS,
 					RFP_DRAFTING_AGENT_ID,
 					attachRfpReportToWorkItem,
 					approveRfpReport,
@@ -19,6 +20,7 @@ async function loadRfpDemoStateHarness() {
 					exportRfpReportPdf,
 					generateRfpReport,
 					getGeneratedRfpAttachments,
+					getRfpDemoAgents,
 					getRfpDemoColumnAgentAssignments,
 					moveRfpDemoCard,
 					parseAgentsRfpDemoState,
@@ -137,9 +139,12 @@ test("agent creation is idempotent and assigns Drafting without retroactively as
 	const twice = harness.createRfpDraftingAgent(once);
 
 	assert.equal(twice.agent.name, "RFP Drafting Agent");
+	assert.ok(harness.RFP_DRAFTING_AGENT_AVATAR_SRCS.includes(twice.agent.avatarSrc));
+	assert.notEqual(twice.agent.avatarSrc, "/1p/rovo.svg");
 	assert.deepEqual(harness.getRfpDemoColumnAgentAssignments(twice), {
 		Drafting: [harness.RFP_DRAFTING_AGENT_ID],
 	});
+	assert.equal(harness.getRfpDemoAgents(twice, [])[0].avatarSrc, twice.agent.avatarSrc);
 	assert.deepEqual(twice.workItems["RFP-101"].agentAssignmentIds, []);
 	assert.equal(
 		twice.customAgentActivity.filter((item) => item.type === "agent-created").length,

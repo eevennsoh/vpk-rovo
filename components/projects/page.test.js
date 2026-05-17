@@ -138,7 +138,7 @@ test("floating Rovo button can render a collapsed proactive suggestion nudge", (
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/className="fixed right-\[84px\] bottom-7 z-\[510\] flex w-\[420px\] max-w-\[calc\(100vw-112px\)\] origin-right items-center justify-between overflow-hidden rounded-lg p-1 text-text-inverse"/u,
+		/className="fixed right-\[84px\] bottom-7 z-\[510\] flex w-fit max-w-\[calc\(100vw-112px\)\] origin-right items-center gap-1 overflow-hidden rounded-lg p-1 text-text-inverse"/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,

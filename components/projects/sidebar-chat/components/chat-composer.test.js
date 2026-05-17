@@ -153,3 +153,18 @@ test("compact chat submits add-menu files through the shared Rovo thread queue",
 	assert.match(context.slice(sendChatMessageIndex, sendPromptIndex), /files: promptItem\.files/u);
 	assert.match(context.slice(sendPromptIndex), /files: promptFiles/u);
 });
+
+test("compact chat resolves pending clarification tools before queueing clarification answers", () => {
+	const context = readProjectFile("app/contexts/context-rovo-chat.tsx");
+	const sendPromptIndex = context.indexOf("const sendPrompt = useCallback(");
+
+	assert.match(context, /markClarificationToolResolved/u);
+	assert.match(context, /appendTurnCompleteToLastAssistantMessage/u);
+	assert.match(context, /function isClarificationResolutionPrompt\(options: SendPromptOptions \| undefined\): boolean/u);
+	assert.match(context, /options\?\.messageMetadata\?\.source === "clarification-submit"/u);
+	assert.ok(sendPromptIndex > -1);
+	assert.match(
+		context.slice(sendPromptIndex),
+		/if \(isClarificationResolutionPrompt\(resolvedOptions\)\) \{[\s\S]*setMessages\(\(prev\) =>[\s\S]*markPendingClarificationResolvedInMessages\(prev, resolvedOptions\)/u,
+	);
+});

@@ -35,6 +35,7 @@ interface ResolveAssistantThinkingTracePhaseOptions {
 }
 
 interface ResolveAssistantThinkingTraceOpenOptions {
+	allowAutoOpen?: boolean;
 	hasThinkingToolCalls: boolean;
 	reasoningPhase: ReasoningPhase;
 	userOpenOverride: boolean | null;
@@ -172,12 +173,17 @@ export function resolveThinkingToolCallStepOpen({
 }
 
 export function resolveAssistantThinkingTraceOpen({
+	allowAutoOpen = true,
 	hasThinkingToolCalls,
 	reasoningPhase,
 	userOpenOverride,
 }: Readonly<ResolveAssistantThinkingTraceOpenOptions>): boolean {
 	if (userOpenOverride !== null) {
 		return userOpenOverride;
+	}
+
+	if (!allowAutoOpen) {
+		return false;
 	}
 
 	return (

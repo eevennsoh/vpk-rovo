@@ -559,6 +559,7 @@ export function useAssistantThinkingTraceState({
 		reasoningPhase,
 	});
 	const isOpen = resolveAssistantThinkingTraceOpen({
+		allowAutoOpen: !data.hasAwaitingInputToolCalls && !data.hasAnsweredQuestionToolCalls,
 		hasThinkingToolCalls: data.hasThinkingToolCalls,
 		reasoningPhase,
 		userOpenOverride: shouldCollapseOnPhaseChange ? false : thinkingUserOverride,

@@ -9,6 +9,52 @@ export const AGENTS_RFP_DEMO_VERSION = 1;
 export const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
 export const RFP_DRAFTING_SCHEDULE_ID = "rfp-drafting-weekday-0900";
 export const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
+export const RFP_DRAFTING_AGENT_AVATAR_SRCS = [
+	"/avatar-agent/dev-agents/feature-flag-cleaner.svg",
+	"/avatar-agent/dev-agents/pipeline-troubleshooter.svg",
+	"/avatar-agent/dev-agents/code-reviewer.svg",
+	"/avatar-agent/dev-agents/code-vulnerability-scanner-npm-yarn.svg",
+	"/avatar-agent/dev-agents/unit-test-creator.svg",
+	"/avatar-agent/dev-agents/code-documentation-writer.svg",
+	"/avatar-agent/dev-agents/basic-coding-agent-template.svg",
+	"/avatar-agent/dev-agents/migration-config-changer.svg",
+	"/avatar-agent/dev-agents/deployment-summarizer.svg",
+	"/avatar-agent/dev-agents/code-accessibility-checker.svg",
+	"/avatar-agent/dev-agents/code-planner.svg",
+	"/avatar-agent/dev-agents/code-standardizer.svg",
+	"/avatar-agent/dev-agents/code-observer-signalfx.svg",
+	"/avatar-agent/service-agents/service-request-helper.svg",
+	"/avatar-agent/service-agents/rca-agent.svg",
+	"/avatar-agent/service-agents/service-triage.svg",
+	"/avatar-agent/service-agents/ops-guide.svg",
+	"/avatar-agent/teamwork-agents/brand-guardian.svg",
+	"/avatar-agent/teamwork-agents/okr-generator.svg",
+	"/avatar-agent/teamwork-agents/global-translator.svg",
+	"/avatar-agent/teamwork-agents/social-media-writer.svg",
+	"/avatar-agent/teamwork-agents/user-manual-writer.svg",
+	"/avatar-agent/teamwork-agents/brainstorm-facilitator.svg",
+	"/avatar-agent/teamwork-agents/release-notes-drafter.svg",
+	"/avatar-agent/teamwork-agents/bug-report-assistant.svg",
+	"/avatar-agent/teamwork-agents/meeting-insights-reporter.svg",
+	"/avatar-agent/teamwork-agents/progress-tracker.svg",
+	"/avatar-agent/teamwork-agents/team-recap.svg",
+	"/avatar-agent/teamwork-agents/blocker-checker.svg",
+	"/avatar-agent/teamwork-agents/work-item-planner.svg",
+	"/avatar-agent/teamwork-agents/diagram-creator.svg",
+	"/avatar-agent/teamwork-agents/transcript-insights-reporter.svg",
+	"/avatar-agent/teamwork-agents/teamwork-coach.svg",
+	"/avatar-agent/teamwork-agents/readiness-checker.svg",
+	"/avatar-agent/teamwork-agents/teamwork-trivia-host.svg",
+	"/avatar-agent/teamwork-agents/customer-insights.svg",
+	"/avatar-agent/teamwork-agents/job-listing-assistant.svg",
+	"/avatar-agent/teamwork-agents/product-requirements-guide.svg",
+	"/avatar-agent/teamwork-agents/work-organizer.svg",
+	"/avatar-agent/teamwork-agents/decision-director.svg",
+	"/avatar-agent/teamwork-agents/jira-theme-analyzer.svg",
+	"/avatar-agent/teamwork-agents/workflow-builder.svg",
+	"/avatar-agent/teamwork-agents/whtieboard-agent.svg",
+	"/avatar-agent/product-agents/feedback-analyzer.svg",
+] as const;
 
 export type AgentsRfpDemoReportStage =
 	| "none"
@@ -55,6 +101,7 @@ export interface AgentsRfpDemoAgent {
 	selected: boolean;
 	assignedColumn: "Drafting";
 	createdAt: string;
+	avatarSrc?: string;
 }
 
 export interface AgentsRfpDemoSchedule {
@@ -187,8 +234,21 @@ export const RFP_DRAFTING_AGENT: KanbanBoardAgentData = {
 	id: RFP_DRAFTING_AGENT_ID,
 	name: "RFP Drafting Agent",
 	byline: "Local demo agent by Rovo",
-	avatarSrc: "/1p/rovo.svg",
+	avatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRCS[0],
 };
+
+function getRandomRfpDraftingAgentAvatarSrc(): string {
+	return RFP_DRAFTING_AGENT_AVATAR_SRCS[
+		Math.floor(Math.random() * RFP_DRAFTING_AGENT_AVATAR_SRCS.length)
+	] ?? RFP_DRAFTING_AGENT_AVATAR_SRCS[0];
+}
+
+function getRfpDraftingAgentData(agent: AgentsRfpDemoAgent): KanbanBoardAgentData {
+	return {
+		...RFP_DRAFTING_AGENT,
+		avatarSrc: agent.avatarSrc ?? RFP_DRAFTING_AGENT.avatarSrc,
+	};
+}
 
 function cloneState(state: AgentsRfpDemoState): AgentsRfpDemoState {
 	return JSON.parse(JSON.stringify(state)) as AgentsRfpDemoState;
@@ -528,15 +588,22 @@ export function attachRfpReportToWorkItem(
 }
 
 export function createRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDemoState {
+	const agent: AgentsRfpDemoAgent = state.agent
+		? {
+				...state.agent,
+				avatarSrc: state.agent.avatarSrc ?? getRandomRfpDraftingAgentAvatarSrc(),
+			}
+		: {
+				id: RFP_DRAFTING_AGENT_ID,
+				name: "RFP Drafting Agent",
+				selected: true,
+				assignedColumn: "Drafting",
+				createdAt: "Now",
+				avatarSrc: getRandomRfpDraftingAgentAvatarSrc(),
+			};
 	const createdState: AgentsRfpDemoState = {
 		...state,
-		agent: state.agent ?? {
-			id: RFP_DRAFTING_AGENT_ID,
-			name: "RFP Drafting Agent",
-			selected: true,
-			assignedColumn: "Drafting",
-			createdAt: "Now",
-		},
+		agent,
 		chat: {
 			...state.chat,
 			selectedAgentId: RFP_DRAFTING_AGENT_ID,
@@ -768,7 +835,7 @@ export function getRfpDemoAgents(
 		return [...baseAgents];
 	}
 
-	return [RFP_DRAFTING_AGENT, ...baseAgents];
+	return [getRfpDraftingAgentData(state.agent), ...baseAgents];
 }
 
 export function formatRfpDemoContext(state: AgentsRfpDemoState): string {

@@ -42,6 +42,10 @@ import {
 	buildSuggestedQuestionsRequest,
 } from "@/components/projects/rovo/lib/rovo-app-suggestions";
 import {
+	appendTurnCompleteToLastAssistantMessage,
+	markClarificationToolResolved,
+} from "@/components/projects/rovo/lib/rovo-app-streaming-assistant";
+import {
 	buildExitPlanModeDeferredToolResponse,
 	type ParsedPlanWidgetPayload,
 } from "@/components/projects/shared/lib/plan-widget";
@@ -350,6 +354,28 @@ function sanitizeRovoUiMessages(
 	});
 
 	return hasChanged ? nextMessages : (messages as RovoUIMessage[]);
+}
+
+function isClarificationResolutionPrompt(options: SendPromptOptions | undefined): boolean {
+	return Boolean(options?.clarification) || options?.messageMetadata?.source === "clarification-submit";
+}
+
+function getClarificationResolutionOutput(options: SendPromptOptions | undefined): string {
+	return options?.messageMetadata?.clarificationStatus === "dismissed"
+		? "Question dismissed."
+		: "Answers received.";
+}
+
+function markPendingClarificationResolvedInMessages(
+	messages: ReadonlyArray<RovoUIMessage>,
+	options: SendPromptOptions | undefined
+): RovoUIMessage[] {
+	const resolved = markClarificationToolResolved(
+		sanitizeRovoUiMessages(messages),
+		getClarificationResolutionOutput(options)
+	);
+
+	return appendTurnCompleteToLastAssistantMessage(resolved).messages;
 }
 
 function sanitizeMessagesForTransport(
@@ -1699,6 +1725,11 @@ export function RovoChatProvider({
 					options
 				)
 			);
+			if (isClarificationResolutionPrompt(resolvedOptions)) {
+				setMessages((prev) =>
+					markPendingClarificationResolvedInMessages(prev, resolvedOptions)
+				);
+			}
 
 			const shouldStartSubmitPending =
 				!isSubmitPendingRef.current &&
@@ -1725,7 +1756,7 @@ export function RovoChatProvider({
 				},
 			]);
 		},
-		[defaultPromptOptions, startSubmitPending]
+		[defaultPromptOptions, setMessages, startSubmitPending]
 	);
 
 	const acceptPlanReview = useCallback(

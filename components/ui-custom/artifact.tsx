@@ -230,6 +230,8 @@ export interface ArtifactCardProps {
 	versionNumber?: number;
 	/** Artifact title text. */
 	title: string;
+	/** Optional header description override. Defaults to kind and version metadata. */
+	description?: ReactNode;
 	/** Optional action context. Used for description text. */
 	action?: "create" | "update" | null;
 	/** Whether the artifact is currently streaming. */
@@ -254,6 +256,14 @@ export interface ArtifactCardProps {
 	previewBody?: PreviewBody;
 	/** Callback when the "Open" button is clicked. Receives the card root element. */
 	onOpen?: (element: HTMLDivElement) => void;
+	/** Optional visible label for the open action. */
+	openCtaLabel?: string;
+	/** Optional accessible label for the open action. */
+	openLabel?: string;
+	/** Optional accessible label for the expand action. */
+	expandLabel?: string;
+	/** Optional accessible label for the collapse action. */
+	collapseLabel?: string;
 	/** Callback when a preview-mode card mounts. Receives the card root element. */
 	onRegister?: (element: HTMLDivElement) => void;
 	/** Additional className for the outer wrapper. */
@@ -266,6 +276,7 @@ export function ArtifactCard({
 	kind,
 	versionNumber = 1,
 	title,
+	description,
 	action,
 	isStreaming = false,
 	displayMode = "preview",
@@ -278,6 +289,10 @@ export function ArtifactCard({
 	previewSummary,
 	previewBody,
 	onOpen,
+	openCtaLabel,
+	openLabel,
+	expandLabel,
+	collapseLabel,
 	onRegister,
 	className,
 	children,
@@ -285,16 +300,17 @@ export function ArtifactCard({
 	const cardRef = useRef<HTMLDivElement>(null);
 	const actionLabel = getArtifactActionLabel(action, isStreaming);
 	const kindLabel = ARTIFACT_KIND_LABELS[kind];
+	const cardDescription = description ?? getArtifactDescription({ kind, versionNumber });
 	const resolvedIdentity = resolveArtifactCardIdentity({
 		kind,
 		title,
 		identitySeed,
 		visualIdentity,
 	});
-	const openLabel = actionLabel
+	const resolvedOpenLabel = openLabel ?? (actionLabel
 		? `Open ${actionLabel.toLowerCase()} ${kindLabel.toLowerCase()} ${title}`
-		: `Open ${kindLabel.toLowerCase()} ${title}`;
-	const openCtaLabel = `Open ${kindLabel.toLowerCase()}`;
+		: `Open ${kindLabel.toLowerCase()} ${title}`);
+	const resolvedOpenCtaLabel = openCtaLabel ?? `Open ${kindLabel.toLowerCase()}`;
 	const resolvedPreviewBody = previewBody ?? buildArtifactPreviewBody({
 		content: previewContent,
 		kind,
@@ -341,19 +357,19 @@ export function ArtifactCard({
 					action={
 						displayMode === "chip" && onOpen ? (
 							<Button
-								aria-label={openLabel}
+								aria-label={resolvedOpenLabel}
 								onClick={handleOpen}
 								size="xs"
 								type="button"
 								variant="outline"
 							>
-								{openCtaLabel}
+								{resolvedOpenCtaLabel}
 							</Button>
 						) : null
 					}
-					collapseLabel="Collapse artifact details"
-					description={getArtifactDescription({ kind, versionNumber })}
-					expandLabel="Expand artifact details"
+					collapseLabel={collapseLabel ?? "Collapse artifact details"}
+					description={cardDescription}
+					expandLabel={expandLabel ?? "Expand artifact details"}
 					leading={
 						isStreaming ? (
 							<div className="relative">
@@ -392,13 +408,13 @@ export function ArtifactCard({
 					{onOpen ? (
 						<GenerativeCardFooter>
 							<Button
-								aria-label={openLabel}
+								aria-label={resolvedOpenLabel}
 								className="min-w-0"
 								onClick={handleOpen}
 								type="button"
 								variant="outline"
 							>
-								{openCtaLabel}
+								{resolvedOpenCtaLabel}
 							</Button>
 						</GenerativeCardFooter>
 					) : null}

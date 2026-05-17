@@ -1,9 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
-import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
+import { ArtifactCard, type ArtifactCardProps } from "@/components/ui-custom/artifact";
 import type { RovoDataParts } from "@/lib/rovo-ui-messages";
 import { cn } from "@/lib/utils";
 
@@ -16,8 +14,23 @@ interface AgentResultCardProps {
 	className?: string;
 }
 
+const AGENT_RESULT_VISUAL_IDENTITY = {
+	iconName: "ai-agent",
+	tileVariant: "blue",
+} satisfies NonNullable<ArtifactCardProps["visualIdentity"]>;
+
 function getAgentActionLabel(action: AgentResult["action"]): string {
 	return action === "update" ? "Updated" : "Created";
+}
+
+function getAgentDescription(agent: AgentResult): string {
+	const descriptionParts = [getAgentActionLabel(agent.action)];
+
+	if (agent.assignedColumn) {
+		descriptionParts.push(`Assigned to ${agent.assignedColumn}`);
+	}
+
+	return descriptionParts.join(" \u2022 ");
 }
 
 export function AgentResultCard({
@@ -38,28 +51,20 @@ export function AgentResultCard({
 
 	return (
 		<div className={cn("pb-2", className)} data-testid="rovo-agent-result-card">
-			<section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-				<header className="flex items-start gap-3 border-b border-border bg-surface-raised px-3 py-3">
-					<span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-bg-neutral text-icon-subtle">
-						<Icon render={<AiAgentIcon label="" size="small" />} label="Agent" />
-					</span>
-					<div className="min-w-0 flex-1">
-						<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-							<h3 className="truncate text-sm font-medium text-text">
-								{agent.name}
-							</h3>
-							<span className="rounded-sm bg-bg-selected px-1.5 py-0.5 text-[11px] font-medium leading-4 text-text-selected">
-								{getAgentActionLabel(agent.action)}
-							</span>
-						</div>
-						{agent.assignedColumn ? (
-							<p className="mt-0.5 text-xs text-text-subtle">
-								Assigned to {agent.assignedColumn}
-							</p>
-						) : null}
-					</div>
-				</header>
-				<div className="space-y-3 px-3 py-3">
+			<ArtifactCard
+				action={agent.action}
+				collapseLabel="Collapse agent details"
+				description={getAgentDescription(agent)}
+				displayMode="preview"
+				expandLabel="Expand agent details"
+				kind="text"
+				onOpen={handleOpenAgent}
+				openCtaLabel="Open agent details"
+				openLabel={`Open ${agent.name} details`}
+				title={agent.name}
+				visualIdentity={AGENT_RESULT_VISUAL_IDENTITY}
+			>
+				<div className="space-y-3">
 					<p className="text-sm leading-5 text-text">
 						{agent.summary}
 					</p>
@@ -91,13 +96,8 @@ export function AgentResultCard({
 							))}
 						</div>
 					) : null}
-					<div className="flex justify-end border-t border-border pt-3">
-						<Button size="sm" variant="outline" onClick={handleOpenAgent}>
-							Open agent details
-						</Button>
-					</div>
 				</div>
-			</section>
+			</ArtifactCard>
 		</div>
 	);
 }

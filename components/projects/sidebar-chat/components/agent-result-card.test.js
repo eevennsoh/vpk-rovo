@@ -15,13 +15,16 @@ const MESSAGE_BUBBLE_SOURCE = fs.readFileSync(
 test("AgentResultCard renders the created agent summary with the agent icon", () => {
 	assert.match(
 		AGENT_RESULT_CARD_SOURCE,
-		/import AiAgentIcon from "@atlaskit\/icon\/core\/ai-agent";/u,
+		/import \{ ArtifactCard, type ArtifactCardProps \} from "@\/components\/ui-custom\/artifact";/u,
 	);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /data-testid="rovo-agent-result-card"/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /Assigned to \{agent\.assignedColumn\}/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /iconName: "ai-agent"/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /descriptionParts\.push\(`Assigned to \$\{agent\.assignedColumn\}`\);/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /description=\{getAgentDescription\(agent\)\}/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /displayMode="preview"/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /Open agent details/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /agent\.tools\.filter/u);
-	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /ArtifactCard/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /<ArtifactCard[\s\S]*visualIdentity=\{AGENT_RESULT_VISUAL_IDENTITY\}/u);
 });
 
 test("AgentResultCard dispatches a generic open-agent event", () => {

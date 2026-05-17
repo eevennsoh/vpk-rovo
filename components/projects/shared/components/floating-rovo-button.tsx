@@ -32,7 +32,7 @@ function FloatingRovoButtonNudge({
 	return (
 		<motion.div
 			key={suggestion.id}
-			className="fixed right-[84px] bottom-7 z-[510] flex w-[420px] max-w-[calc(100vw-112px)] origin-right items-center justify-between overflow-hidden rounded-lg p-1 text-text-inverse"
+			className="fixed right-[84px] bottom-7 z-[510] flex w-fit max-w-[calc(100vw-112px)] origin-right items-center gap-1 overflow-hidden rounded-lg p-1 text-text-inverse"
 			initial={{ opacity: 0, scaleX: 0.24, x: 52 }}
 			animate={{ opacity: 1, scaleX: 1, x: 0 }}
 			exit={{ opacity: 0, scaleX: 0.24, x: 52 }}
@@ -50,7 +50,7 @@ function FloatingRovoButtonNudge({
 		>
 			<button
 				aria-label={suggestion.ariaLabel ?? suggestion.label}
-				className="flex min-h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-left text-sm leading-5 font-medium text-text-inverse transition-colors duration-normal ease-out hover:bg-white/10 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none active:bg-white/15"
+				className="flex min-h-8 min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-sm leading-5 font-medium text-text-inverse transition-colors duration-normal ease-out hover:bg-white/10 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none active:bg-white/15"
 				onClick={suggestion.onSelect}
 				type="button"
 			>

@@ -18,7 +18,7 @@ import { RfpDemoControls } from "./components/rfp-demo-controls";
 import { RfpReportCanvas } from "./components/rfp-report-canvas";
 import type { ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
-import { SonnerToast, Toaster } from "@/components/ui/sonner";
+import { SONNER_TOAST_AUTO_DISMISS_MS, SonnerToast, Toaster } from "@/components/ui/sonner";
 import { AVATARS } from "./data/avatars";
 import { BOARD_AGENTS } from "./data/board-agents";
 import { RFP_101_WORK_ITEM, getAgentsWorkItemForCard } from "./data/rfp-work-items";
@@ -145,8 +145,10 @@ export default function AgentsView({
 					/>
 				),
 				{
-					duration: Infinity,
+					duration: SONNER_TOAST_AUTO_DISMISS_MS,
 					id: demoToast.id,
+					onAutoClose: () => dismissToast(demoToast.id),
+					onDismiss: () => dismissToast(demoToast.id),
 					toasterId: AGENTS_RFP_DEMO_TOASTER_ID,
 				},
 			);

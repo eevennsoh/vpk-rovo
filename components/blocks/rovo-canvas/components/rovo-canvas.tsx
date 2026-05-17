@@ -684,7 +684,7 @@ export function RovoCanvas({
 			<DialogContent
 				showCloseButton={false}
 				className={cn(
-					"top-16 right-4 bottom-4 left-4 flex h-auto w-auto !max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl bg-surface-sunken px-4 pt-2 pb-4 sm:!max-w-none",
+					"top-16 right-4 bottom-4 left-4 flex h-auto w-auto !max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl bg-surface-sunken px-4 pt-4 pb-4 sm:!max-w-none",
 					"data-open:zoom-in-100 data-closed:zoom-out-100",
 					className,
 				)}
@@ -693,7 +693,7 @@ export function RovoCanvas({
 					Full-screen Rovo canvas with artefact views and a chat rail.
 				</DialogDescription>
 				<TooltipProvider>
-					<div className="flex size-full min-h-0 flex-col gap-2">
+					<div className="flex size-full min-h-0 flex-col gap-4">
 						<RovoCanvasHeader
 							title={title}
 							primaryActionLabel={primaryActionLabel}

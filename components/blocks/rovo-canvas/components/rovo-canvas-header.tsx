@@ -30,18 +30,18 @@ export function RovoCanvasHeader({
 	onClose,
 }: Readonly<RovoCanvasHeaderProps>): React.ReactElement {
 	return (
-		<header className="flex min-h-10 shrink-0 items-center justify-between gap-4 py-1 pr-3">
+		<header className="flex shrink-0 items-center justify-between gap-4">
 			<RovoAppBrand />
 			<DialogTitle className="sr-only">{title}</DialogTitle>
 
 			<div className="flex shrink-0 items-center gap-2">
-				<Button size="sm" onClick={onPrimaryAction}>
+				<Button onClick={onPrimaryAction}>
 					{primaryActionLabel}
 				</Button>
 				<DropdownMenu>
 					<DropdownMenuTrigger
 						render={
-							<Button aria-label="More canvas actions" size="icon-sm" variant="outline">
+							<Button aria-label="More canvas actions" size="icon" variant="outline">
 								<VpkIcon render={<ShowMoreHorizontalIcon label="" size="small" />} />
 							</Button>
 						}
@@ -59,7 +59,7 @@ export function RovoCanvasHeader({
 						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
-				<Button aria-label="Close canvas" size="icon-sm" variant="outline" onClick={onClose}>
+				<Button aria-label="Close canvas" size="icon" variant="outline" onClick={onClose}>
 					<VpkIcon render={<CrossIcon label="" size="small" />} />
 				</Button>
 			</div>

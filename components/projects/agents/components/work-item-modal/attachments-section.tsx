@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import Image from "next/image";
 
 import { token } from "@/lib/tokens";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Badge } from "@/components/ui/badge";
 import { IconTile } from "@/components/ui/icon-tile";
 import { AtlassianLogo } from "@/components/ui/logo";
+import { RovoGeneration } from "@/components/ui-custom/rovo-generation";
 import { useWorkItemModal, type WorkItemAttachment } from "@/app/contexts/context-work-item-modal";
 import {
 	FileChartColumnIcon,
@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/vpk-icons";
 
 const ATTACHMENT_ICON_CLASS_NAME = "size-3 text-icon-subtlest [&_svg]:size-3";
+const ATTACHMENT_CARD_RADIUS = 6;
+const ATTACHMENT_GENERATION_SIZE = 172;
 const ATTACHMENT_SOURCE_LABELS = {
 	confluence: "Confluence",
 	loom: "Loom",
@@ -54,6 +56,7 @@ const ATTACHMENT_FILES: WorkItemAttachment[] = [
 interface AttachmentCardProps {
 	file: WorkItemAttachment;
 	isHighlighted?: boolean;
+	highlightedAttachmentKey?: number;
 	onOpen?: (file: WorkItemAttachment) => void;
 }
 
@@ -155,11 +158,16 @@ function renderAttachmentPreview(file: WorkItemAttachment, title: string) {
 	return null;
 }
 
-function AttachmentCard({ file, isHighlighted = false, onOpen }: Readonly<AttachmentCardProps>) {
+function AttachmentCard({
+	file,
+	isHighlighted = false,
+	highlightedAttachmentKey,
+	onOpen,
+}: Readonly<AttachmentCardProps>) {
 	const title = getAttachmentTitle(file);
 	const canOpenPreview = Boolean(file.previewKind && onOpen);
-	const cardClassName = cn(isHighlighted ? "motion-safe:animate-attachment-added-glow" : null);
-	const containerStyle = {
+	const showGenerationEffect = isHighlighted;
+	const containerStyle: CSSProperties = {
 		minWidth: 0,
 		borderRadius: token("radius.medium"),
 		overflow: "hidden",
@@ -167,6 +175,18 @@ function AttachmentCard({ file, isHighlighted = false, onOpen }: Readonly<Attach
 		backgroundColor: token("elevation.surface"),
 		cursor: canOpenPreview ? "pointer" : undefined,
 	};
+	const highlightedContainerStyle: CSSProperties = {
+		minWidth: 0,
+		borderRadius: token("radius.medium"),
+		cursor: canOpenPreview ? "pointer" : undefined,
+	};
+	const generationSurfaceStyle: CSSProperties = {
+		minWidth: 0,
+		width: "100%",
+		height: "auto",
+		boxShadow: token("elevation.shadow.raised"),
+	};
+
 	const cardContent = (
 		<>
 			<div
@@ -192,28 +212,47 @@ function AttachmentCard({ file, isHighlighted = false, onOpen }: Readonly<Attach
 			</div>
 		</>
 	);
+	const visibleContent = showGenerationEffect ? (
+		<RovoGeneration.Root
+			key={highlightedAttachmentKey ?? "highlighted-attachment"}
+			animated={true}
+			border={true}
+			generating={isHighlighted}
+			glow={true}
+			radius={ATTACHMENT_CARD_RADIUS}
+			size={ATTACHMENT_GENERATION_SIZE}
+			className="w-full"
+			style={generationSurfaceStyle}
+		>
+			<div className="w-full p-[var(--rovo-generation-border-width)]">
+				<div className="overflow-hidden rounded-[calc(var(--rovo-generation-radius)-var(--rovo-generation-border-width))] bg-surface">
+					{cardContent}
+				</div>
+			</div>
+		</RovoGeneration.Root>
+	) : cardContent;
+	const rootStyle = showGenerationEffect ? highlightedContainerStyle : containerStyle;
 
 	if (canOpenPreview) {
 		return (
 			<button
 				type="button"
 				onClick={() => onOpen?.(file)}
-				className={cn("w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60", cardClassName)}
-				style={containerStyle}
+				className="w-full p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+				style={rootStyle}
 				data-highlighted-attachment={isHighlighted ? "true" : undefined}
 			>
-				{cardContent}
+				{visibleContent}
 			</button>
 		);
 	}
 
 	return (
 		<div
-			className={cardClassName}
-			style={containerStyle}
+			style={rootStyle}
 			data-highlighted-attachment={isHighlighted ? "true" : undefined}
 		>
-			{cardContent}
+			{visibleContent}
 		</div>
 	);
 }
@@ -279,6 +318,7 @@ export function AttachmentsSection() {
 						key={file.id ?? `${file.name}-${i}`}
 						file={file}
 						isHighlighted={file.id === meta.highlightedAttachmentId}
+						highlightedAttachmentKey={meta.highlightedAttachmentKey}
 						onOpen={meta.onAttachmentOpen}
 					/>
 				))}

@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const Module = require("node:module");
 const path = require("node:path");
 const esbuild = require("esbuild");
@@ -250,6 +251,39 @@ test("resolveAssistantThinkingTraceOpen expands by default for active tool-backe
 			userOpenOverride: null,
 		}),
 		false,
+	);
+});
+
+test("resolveAssistantThinkingTraceOpen can suppress auto expansion for question-card waits", () => {
+	assert.equal(
+		resolveAssistantThinkingTraceOpen({
+			allowAutoOpen: false,
+			hasThinkingToolCalls: true,
+			reasoningPhase: "thinking",
+			userOpenOverride: null,
+		}),
+		false,
+	);
+	assert.equal(
+		resolveAssistantThinkingTraceOpen({
+			allowAutoOpen: false,
+			hasThinkingToolCalls: true,
+			reasoningPhase: "thinking",
+			userOpenOverride: true,
+		}),
+		true,
+	);
+});
+
+test("assistant thinking trace suppresses auto-open for question-card tool states", () => {
+	const source = fs.readFileSync(
+		path.join(__dirname, "../components/assistant-thinking-trace.tsx"),
+		"utf8",
+	);
+
+	assert.match(
+		source,
+		/allowAutoOpen: !data\.hasAwaitingInputToolCalls && !data\.hasAnsweredQuestionToolCalls/u,
 	);
 });
 
