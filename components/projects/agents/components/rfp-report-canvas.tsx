@@ -2,14 +2,14 @@
 
 import { useMemo } from "react";
 import { RovoCanvas, type RovoCanvasVersion, type RovoCanvasView } from "@/components/blocks/rovo-canvas/page";
+import ChatPanel, { type ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
+import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import {
 	ChainOfThought,
 	ChainOfThoughtContent,
 	ChainOfThoughtStep,
 } from "@/components/ui-ai/chain-of-thought";
 import { Button } from "@/components/ui/button";
-import { Lozenge } from "@/components/ui/lozenge";
-import { token } from "@/lib/tokens";
 import type { AgentsRfpDemoActions } from "../hooks/use-agents-rfp-demo-state";
 import type { AgentsRfpDemoState } from "../lib/rfp-demo-state";
 
@@ -17,19 +17,13 @@ interface RfpReportCanvasProps {
 	state: AgentsRfpDemoState;
 	actions: AgentsRfpDemoActions;
 	onCreateAgent: () => void;
+	chatContextBar?: ChatContextBarDescriptor | null;
+	chatGreeting?: ChatPanelGreetingProps;
 }
 
-interface RfpReportPreviewProps {
+interface RfpRenderedHtmlReportProps {
 	isRefined: boolean;
 }
-
-const PLAN_ITEMS = [
-	"Read RFP-101, parent RFP-100, status, priority, due date, and subtasks.",
-	"Scan RFP packet, compliance matrix, response brief, supplier portal image, audio briefing, and walkthrough.",
-	"Use fixture-backed Teamwork Graph context for account memory, reusable assets, people, and goals.",
-	"Map ITSM, CMDB, asset management, AI, legal, data residency, audit, and security requirements.",
-	"Generate deterministic offline HTML with vpk-html, then stage PDF export only after approval.",
-];
 
 const ACCOUNT_MEMORY = [
 	"Confluence: Standard ITSM RFP Response Template.",
@@ -43,25 +37,222 @@ function getRfpReportHtml(isRefined: boolean): string {
 	const summary = isRefined
 		? "Enterprise Evaluation Account should receive a customer-facing response that leads with unified ITSM and CMDB outcomes, then uses Rovo and Teamwork Graph as the AI automation differentiator. Legal, data residency, audit, and vulnerability answers stay review-required before any customer submission."
 		: "RFP-101 is a strong qualified pursuit because Atlassian can cover the core ITSM, service desk, portal, knowledge, change, Assets, CMDB, and AI collaboration story while clearly marking legal and security gaps for review.";
+	const statusLabel = isRefined ? "Refined current report" : "Initial generated report";
+	const reusableAssets = ACCOUNT_MEMORY.map((item) => `<li>${item}</li>`).join("\n");
 
-	return [
-		"<article>",
-		"<h1>RFP-101 response strategy</h1>",
-		`<p>${summary}</p>`,
-		"<h2>Requirement coverage</h2>",
-		"<ul>",
-		"<li>Strong fit: ITSM, service desk, portal, knowledge, change, incident, and reporting workflows.</li>",
-		"<li>Differentiator: Assets, CMDB, Rovo, and Teamwork Graph connect service data to account memory.</li>",
-		"<li>Review required: legal, data residency, audit, vulnerability, and GRC responses.</li>",
-		"</ul>",
-		"<h2>Reusable assets</h2>",
-		"<ul>",
-		"<li>Standard ITSM RFP Response Template.</li>",
-		"<li>Prior JSM pilot notes.</li>",
-		"<li>Prior security review and POC tracker.</li>",
-		"</ul>",
-		"</article>",
-	].join("\n");
+	return `<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>RFP-101 response strategy</title>
+	<style>
+		:root {
+			color-scheme: light;
+			--surface: #ffffff;
+			--surface-raised: #f7f8f9;
+			--surface-sunken: #f1f2f4;
+			--text: #172b4d;
+			--text-subtle: #44546f;
+			--text-subtlest: #626f86;
+			--border: #dcdfe4;
+			--brand: #0c66e4;
+			--success: #216e4e;
+			--warning: #a54800;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			background: var(--surface-sunken);
+			color: var(--text);
+			font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+			line-height: 1.5;
+		}
+
+		.report {
+			max-width: 960px;
+			margin: 0 auto;
+			padding: 40px;
+		}
+
+		.paper {
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: 16px;
+			box-shadow: 0 8px 24px rgb(9 30 66 / 12%);
+			overflow: hidden;
+		}
+
+		header {
+			display: flex;
+			justify-content: space-between;
+			gap: 24px;
+			padding: 32px 36px 28px;
+			border-bottom: 1px solid var(--border);
+		}
+
+		.kicker {
+			margin: 0 0 8px;
+			color: var(--text-subtlest);
+			font-size: 12px;
+			font-weight: 700;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+		}
+
+		h1 {
+			margin: 0;
+			font-size: 30px;
+			line-height: 1.15;
+		}
+
+		.badge {
+			align-self: flex-start;
+			white-space: nowrap;
+			border-radius: 999px;
+			background: #e9f2ff;
+			color: #0055cc;
+			font-size: 12px;
+			font-weight: 700;
+			padding: 5px 10px;
+		}
+
+		main {
+			display: grid;
+			gap: 28px;
+			padding: 32px 36px 36px;
+		}
+
+		section {
+			display: grid;
+			gap: 12px;
+		}
+
+		h2 {
+			margin: 0;
+			font-size: 16px;
+			line-height: 1.25;
+		}
+
+		p,
+		ul {
+			margin: 0;
+			color: var(--text-subtle);
+			font-size: 14px;
+		}
+
+		ul {
+			display: grid;
+			gap: 8px;
+			padding-left: 20px;
+		}
+
+		.matrix {
+			width: 100%;
+			border-collapse: collapse;
+			overflow: hidden;
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			font-size: 13px;
+		}
+
+		.matrix th,
+		.matrix td {
+			padding: 11px 12px;
+			border-bottom: 1px solid var(--border);
+			text-align: left;
+			vertical-align: top;
+		}
+
+		.matrix th {
+			background: var(--surface-raised);
+			color: var(--text-subtle);
+			font-weight: 700;
+		}
+
+		.matrix tr:last-child td {
+			border-bottom: 0;
+		}
+
+		.status {
+			color: var(--success);
+			font-weight: 700;
+		}
+
+		.review {
+			color: var(--warning);
+			font-weight: 700;
+		}
+	</style>
+</head>
+<body>
+	<article class="report">
+		<div class="paper">
+			<header>
+				<div>
+					<p class="kicker">RFP-101</p>
+					<h1>Enterprise RFP response strategy</h1>
+				</div>
+				<span class="badge">${statusLabel}</span>
+			</header>
+			<main>
+				<section>
+					<h2>Executive recommendation</h2>
+					<p>${summary}</p>
+				</section>
+				<section>
+					<h2>Requirement coverage matrix</h2>
+					<table class="matrix">
+						<thead>
+							<tr>
+								<th>Area</th>
+								<th>Coverage</th>
+								<th>Review path</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>ITSM and service desk</td>
+								<td><span class="status">Strong fit.</span> Native story across request, incident, change, portal, knowledge, and reporting workflows.</td>
+								<td>Sales engineering demo owner</td>
+							</tr>
+							<tr>
+								<td>Assets and CMDB</td>
+								<td><span class="status">Strong fit.</span> Assets and service context address fragmented operations and mature CMDB needs.</td>
+								<td>Validate scale assumptions</td>
+							</tr>
+							<tr>
+								<td>AI and account memory</td>
+								<td><span class="status">Differentiator.</span> Rovo and Teamwork Graph reuse account context, prior answers, and response assets.</td>
+								<td>Position as response acceleration and knowledge workflow</td>
+							</tr>
+							<tr>
+								<td>Legal, data residency, audit</td>
+								<td><span class="review">Review required.</span> Customer-ready language needs legal, security, audit, and GRC approval.</td>
+								<td>Legal and security owners</td>
+							</tr>
+						</tbody>
+					</table>
+				</section>
+				<section>
+					<h2>Teamwork Graph reusable asset index</h2>
+					<ul>
+						${reusableAssets}
+					</ul>
+				</section>
+				<section>
+					<h2>Open risks and approvals</h2>
+					<p>Legal, data residency, audit, and vulnerability responses remain review-required before attachment or status changes. The staged PDF export is a browser-local preview for this demo.</p>
+				</section>
+			</main>
+		</div>
+	</article>
+</body>
+</html>`;
 }
 
 export function RfpStagedToolTrace(): React.ReactElement {
@@ -98,125 +289,15 @@ export function RfpStagedToolTrace(): React.ReactElement {
 	);
 }
 
-function RfpReportPlan(): React.ReactElement {
-	return (
-		<div className="size-full overflow-auto bg-surface p-6">
-			<div className="mx-auto grid max-w-4xl gap-6">
-				<section className="grid gap-2">
-					<div className="flex items-center gap-2">
-						<h2 className="text-base font-semibold text-text">Generation plan</h2>
-						<Lozenge variant="information">vpk-html</Lozenge>
-					</div>
-					<ol className="grid gap-2 text-sm text-text-subtle">
-						{PLAN_ITEMS.map((item, index) => (
-							<li key={item} className="flex gap-2">
-								<span className="text-text-subtlest">{index + 1}.</span>
-								<span>{item}</span>
-							</li>
-						))}
-					</ol>
-				</section>
-				<section className="grid gap-2">
-					<h2 className="text-base font-semibold text-text">Staged tool trace</h2>
-					<RfpStagedToolTrace />
-				</section>
-				<section className="grid gap-2">
-					<h2 className="text-base font-semibold text-text">Source summary</h2>
-					<ul className="grid gap-1 text-sm text-text-subtle">
-						{ACCOUNT_MEMORY.map((item) => (
-							<li key={item}>{item}</li>
-						))}
-					</ul>
-				</section>
-			</div>
-		</div>
-	);
-}
-
-function RfpReportPreview({ isRefined }: Readonly<RfpReportPreviewProps>): React.ReactElement {
+function RfpRenderedHtmlReport({ isRefined }: Readonly<RfpRenderedHtmlReportProps>): React.ReactElement {
 	return (
 		<div className="size-full overflow-auto bg-surface-sunken p-6">
-			<article
-				className="mx-auto max-w-4xl bg-surface px-8 py-7 text-text shadow-sm"
-				style={{ borderRadius: token("radius.medium") }}
-			>
-				<div className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
-					<div>
-						<p className="text-xs font-semibold uppercase text-text-subtlest">RFP-101</p>
-						<h1 className="mt-1 text-2xl font-semibold text-text">Enterprise RFP response strategy</h1>
-					</div>
-					<Lozenge variant={isRefined ? "success" : "information"}>
-						{isRefined ? "Refined current report" : "Initial generated report"}
-					</Lozenge>
-				</div>
-
-				<section className="grid gap-3">
-					<h2 className="text-base font-semibold text-text">Executive recommendation</h2>
-					<p className="text-sm leading-6 text-text-subtle">
-						{isRefined
-							? "Proceed with a qualified bid. Lead the customer-facing narrative with unified ITSM and CMDB outcomes, then position Rovo and Teamwork Graph as the AI automation layer that helps teams reuse account memory and response assets across the RFP."
-							: "Proceed with a qualified bid. RFP-101 is a strong fit for Atlassian's ITSM, service desk, portal, knowledge, change, Assets, CMDB, and AI collaboration story, with legal and security items marked for review."}
-					</p>
-				</section>
-
-				<section className="mt-6 grid gap-3">
-					<h2 className="text-base font-semibold text-text">Requirement coverage matrix</h2>
-					<div className="overflow-hidden rounded-lg border border-border">
-						<table className="w-full border-collapse text-left text-sm">
-							<thead className="bg-surface-raised text-text-subtle">
-								<tr>
-									<th className="px-3 py-2 font-medium">Area</th>
-									<th className="px-3 py-2 font-medium">Coverage</th>
-									<th className="px-3 py-2 font-medium">Review</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-border">
-								<tr>
-									<td className="px-3 py-2">ITSM and service desk</td>
-									<td className="px-3 py-2">Strong native story across request, incident, change, portal, and knowledge.</td>
-									<td className="px-3 py-2">Sales engineering demo owner</td>
-								</tr>
-								<tr>
-									<td className="px-3 py-2">Assets and CMDB</td>
-									<td className="px-3 py-2">Addresses fragmentation and operational visibility with Assets and service context.</td>
-									<td className="px-3 py-2">Validate scale assumptions</td>
-								</tr>
-								<tr>
-									<td className="px-3 py-2">AI compliance</td>
-									<td className="px-3 py-2">Rovo and Teamwork Graph differentiate reusable response and knowledge workflows.</td>
-									<td className="px-3 py-2">Mark legal, audit, and data residency review-required</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-				</section>
-
-				<section className="mt-6 grid gap-3">
-					<h2 className="text-base font-semibold text-text">TWG-sourced reusable asset index</h2>
-					<ul className="grid gap-2 text-sm text-text-subtle">
-						{ACCOUNT_MEMORY.map((item) => (
-							<li key={item}>{item}</li>
-						))}
-					</ul>
-				</section>
-
-				<section className="mt-6 grid gap-3">
-					<h2 className="text-base font-semibold text-text">Open risks and approvals</h2>
-					<p className="text-sm leading-6 text-text-subtle">
-						Legal, data residency, audit, and vulnerability responses remain review-required before attachment or status changes. The staged PDF export is only a browser-local preview for this demo.
-					</p>
-				</section>
-			</article>
-		</div>
-	);
-}
-
-function RfpReportHtmlView({ isRefined }: Readonly<RfpReportPreviewProps>): React.ReactElement {
-	return (
-		<div className="size-full overflow-auto bg-surface p-6">
-			<pre className="min-h-full overflow-auto rounded-lg border border-border bg-surface-raised p-4 text-xs leading-5 text-text-subtle">
-				<code>{getRfpReportHtml(isRefined)}</code>
-			</pre>
+			<iframe
+				title="RFP-101 response strategy report"
+				className="mx-auto block h-[1100px] min-h-full w-full max-w-5xl rounded-lg border border-border bg-surface shadow-sm"
+				sandbox=""
+				srcDoc={getRfpReportHtml(isRefined)}
+			/>
 		</div>
 	);
 }
@@ -252,6 +333,32 @@ function RfpCanvasFooter({
 	);
 }
 
+function RfpReportCanvasChatRail({
+	chatContextBar,
+	chatGreeting,
+	onClose,
+}: Readonly<{
+	chatContextBar?: ChatContextBarDescriptor | null;
+	chatGreeting?: ChatPanelGreetingProps;
+	onClose: () => void;
+}>): React.ReactElement {
+	return (
+		<ChatPanel
+			onClose={onClose}
+			enableSmartWidgets
+			abortOnUnmount={false}
+			chatContextBar={chatContextBar}
+			greeting={chatGreeting}
+			sendPromptOptions={{
+				smartGeneration: {
+					enabled: true,
+					surface: "sidebar",
+				},
+			}}
+		/>
+	);
+}
+
 function RfpAgentProposalBanner({
 	state,
 	onCreateAgent,
@@ -279,6 +386,8 @@ export function RfpReportCanvas({
 	state,
 	actions,
 	onCreateAgent,
+	chatContextBar,
+	chatGreeting,
 }: Readonly<RfpReportCanvasProps>): React.ReactElement {
 	const isRefined = state.report.versions.some((version) => version.id === "refined-current-report");
 	const versions = useMemo<ReadonlyArray<RovoCanvasVersion>>(
@@ -296,23 +405,11 @@ export function RfpReportCanvas({
 	const views = useMemo<ReadonlyArray<RovoCanvasView>>(
 		() => [
 			{
-				id: "plan",
-				label: "Plan",
-				toolbar: "none",
-				content: <RfpReportPlan />,
-			},
-			{
-				id: "preview",
-				label: "Preview",
+				id: "report",
+				label: "Report",
 				toolbar: "preview",
-				content: <RfpReportPreview isRefined={isRefined} />,
-			},
-			{
-				id: "html",
-				label: "HTML",
-				toolbar: "source",
 				copyText: getRfpReportHtml(isRefined),
-				content: <RfpReportHtmlView isRefined={isRefined} />,
+				content: <RfpRenderedHtmlReport isRefined={isRefined} />,
 			},
 		],
 		[isRefined],
@@ -330,9 +427,16 @@ export function RfpReportCanvas({
 			onPrimaryAction={actions.attachReport}
 			views={views}
 			viewId={state.canvas.activeViewId}
-			onViewChange={(viewId) => actions.setCanvasView(viewId as "plan" | "preview" | "html")}
+			onViewChange={() => actions.setCanvasView("report")}
 			artefactLabel="Rovo Canvas report"
 			versionHistory={versions}
+			rightRail={
+				<RfpReportCanvasChatRail
+					chatContextBar={chatContextBar}
+					chatGreeting={chatGreeting}
+					onClose={() => actions.setCanvasOpen(false)}
+				/>
+			}
 			feedbackBanner={<RfpAgentProposalBanner state={state} onCreateAgent={onCreateAgent} />}
 			footer={<RfpCanvasFooter state={state} actions={actions} />}
 		/>

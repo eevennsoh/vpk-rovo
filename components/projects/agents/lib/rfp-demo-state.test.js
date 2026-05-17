@@ -74,10 +74,12 @@ test("report stages advance through generated, refined, approved, pdf-exported, 
 	const harness = await loadRfpDemoStateHarness();
 	const generated = harness.generateRfpReport(harness.createDefaultAgentsRfpDemoState());
 	assert.equal(generated.report.stage, "generated");
+	assert.equal(generated.canvas.activeViewId, "report");
 	assert.deepEqual(generated.report.versions.map((version) => version.label), ["Initial generated report"]);
 
 	const refined = harness.refineRfpReport(generated);
 	assert.equal(refined.report.stage, "refined");
+	assert.equal(refined.canvas.activeViewId, "report");
 	assert.deepEqual(
 		refined.report.versions.map((version) => version.label),
 		["Initial generated report", "Refined current report"],
@@ -91,6 +93,7 @@ test("report stages advance through generated, refined, approved, pdf-exported, 
 
 	const attached = harness.attachRfpReportToWorkItem(exported);
 	assert.equal(attached.report.stage, "attached");
+	assert.equal(attached.canvas.activeViewId, "report");
 	assert.deepEqual(
 		harness.getGeneratedRfpAttachments(attached, "RFP-101").map((attachment) => attachment.previewKind),
 		["html-report", "pdf-preview"],

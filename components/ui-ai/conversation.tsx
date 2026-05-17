@@ -96,7 +96,7 @@ export function Conversation({
 	contextRef,
 	followMode,
 	initial = "smooth",
-	resize = "instant",
+	resize = "smooth",
 	role = "log",
 	targetScrollTop,
 	...props
@@ -231,22 +231,13 @@ export function Conversation({
 		const handleScroll = () => {
 			const nextIsAtBottom = updateIsAtBottom()
 			const didUserInitiateScroll = hasActiveUserScrollIntent()
-			if (didUserInitiateScroll && nextIsAtBottom) {
-				isFollowPausedRef.current = false
+			if (didUserInitiateScroll) {
+				isFollowPausedRef.current = !nextIsAtBottom
 				return
 			}
 
 			if (isFollowPausedRef.current || !hasInitializedScrollRef.current) {
 				return
-			}
-
-			if (!didUserInitiateScroll) {
-				return
-			}
-
-			const expectedFollowTop = getScrollTargetTop(scrollElement)
-			if (Math.abs(scrollElement.scrollTop - expectedFollowTop) > DEFAULT_SCROLL_THRESHOLD_PX) {
-				isFollowPausedRef.current = true
 			}
 		}
 
@@ -256,7 +247,7 @@ export function Conversation({
 		return () => {
 			scrollElement.removeEventListener("scroll", handleScroll)
 		}
-	}, [getScrollTargetTop, hasActiveUserScrollIntent, updateIsAtBottom])
+	}, [hasActiveUserScrollIntent, updateIsAtBottom])
 
 	useEffect(() => {
 		const scrollElement = scrollRef.current
@@ -311,10 +302,7 @@ export function Conversation({
 				return
 			}
 
-			void scrollToBottom({
-				animation: resize,
-				target: "bottom",
-			})
+			void scrollToBottom({ animation: resize })
 		})
 
 		observer.observe(scrollElement)

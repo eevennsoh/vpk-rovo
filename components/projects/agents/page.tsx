@@ -15,6 +15,8 @@ import { RfpAgentDetailsSheet } from "./components/rfp-agent-details-sheet";
 import { RfpAttachmentPreviewDialog } from "./components/rfp-attachment-preview-dialog";
 import { RfpDemoControls } from "./components/rfp-demo-controls";
 import { RfpReportCanvas } from "./components/rfp-report-canvas";
+import type { ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
+import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import { AVATARS } from "./data/avatars";
 import { BOARD_AGENTS } from "./data/board-agents";
 import { getAgentsWorkItemForCard } from "./data/rfp-work-items";
@@ -58,11 +60,15 @@ interface DraggedCardState {
 interface AgentsViewProps {
 	rfpDemo: AgentsRfpDemoController;
 	workItemPresentation: AgentsWorkItemPresentationController;
+	chatContextBar?: ChatContextBarDescriptor | null;
+	chatGreeting?: ChatPanelGreetingProps;
 }
 
 export default function AgentsView({
 	rfpDemo,
 	workItemPresentation,
+	chatContextBar,
+	chatGreeting,
 }: Readonly<AgentsViewProps>) {
 	const [selectedTab, setSelectedTab] = useState(1);
 	const [isAgentDetailsOpen, setIsAgentDetailsOpen] = useState(false);
@@ -123,7 +129,7 @@ export default function AgentsView({
 				return;
 			}
 
-			rfpDemo.actions.setCanvasView("preview");
+			rfpDemo.actions.setCanvasView("report");
 			rfpDemo.actions.setCanvasOpen(true);
 		};
 
@@ -271,7 +277,7 @@ export default function AgentsView({
 
 	const handleAttachmentOpen = (attachment: WorkItemAttachment) => {
 		if (attachment.previewKind === "html-report") {
-			rfpDemo.actions.setCanvasView("preview");
+			rfpDemo.actions.setCanvasView("report");
 			rfpDemo.actions.setCanvasOpen(true, "read-only");
 			return;
 		}
@@ -372,6 +378,8 @@ export default function AgentsView({
 				state={rfpDemo.state}
 				actions={rfpDemo.actions}
 				onCreateAgent={handleCreateRfpDraftingAgent}
+				chatContextBar={chatContextBar}
+				chatGreeting={chatGreeting}
 			/>
 			<RfpAgentDetailsSheet
 				open={isAgentDetailsOpen}

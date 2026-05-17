@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ClockIcon from "@atlaskit/icon/core/clock";
@@ -38,6 +38,31 @@ import {
 } from "./rovo-canvas-view-switcher";
 
 export type { RovoCanvasToolbarMode, RovoCanvasView, RovoCanvasViewIcon };
+
+const ROVO_CANVAS_OPEN_INSTANCES_KEY = "__vpkRovoCanvasOpenInstances";
+
+interface RovoCanvasGlobalScope {
+	[ROVO_CANVAS_OPEN_INSTANCES_KEY]?: Set<symbol>;
+}
+
+function getActiveRovoCanvasInstances(): Set<symbol> {
+	const globalScope = globalThis as typeof globalThis & RovoCanvasGlobalScope;
+	globalScope[ROVO_CANVAS_OPEN_INSTANCES_KEY] ??= new Set<symbol>();
+	return globalScope[ROVO_CANVAS_OPEN_INSTANCES_KEY];
+}
+
+function syncRovoCanvasOpenAttribute(): void {
+	if (typeof document === "undefined") {
+		return;
+	}
+
+	if (getActiveRovoCanvasInstances().size > 0) {
+		document.documentElement.dataset.rovoCanvasOpen = "true";
+		return;
+	}
+
+	delete document.documentElement.dataset.rovoCanvasOpen;
+}
 
 export type RovoCanvasArtefactKind =
 	| "dashboard"
@@ -548,6 +573,7 @@ export function RovoCanvas({
 	const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
 	const [isSelectMode, setSelectMode] = useState(false);
 	const [isCopied, setCopied] = useState(false);
+	const canvasInstanceIdRef = useRef<symbol | null>(null);
 	const activeView = useMemo(
 		() => resolvedViews.find((view) => view.id === activeViewId) ?? resolvedViews[0],
 		[activeViewId, resolvedViews],
@@ -555,6 +581,30 @@ export function RovoCanvas({
 	const resolvedActiveViewId = activeView?.id ?? resolvedViews[0]?.id ?? defaultViewForKind;
 	const resolvedArtefactLabel = artefactLabel ?? getArtefactLabel(kind);
 	const shouldShowVersionHistory = isVersionHistoryOpen && getToolbarMode(activeView) !== "none";
+
+	if (canvasInstanceIdRef.current === null) {
+		canvasInstanceIdRef.current = Symbol("rovo-canvas");
+	}
+
+	useEffect(() => {
+		const instanceId = canvasInstanceIdRef.current;
+		if (instanceId === null) {
+			return;
+		}
+
+		const activeRovoCanvasInstances = getActiveRovoCanvasInstances();
+		if (isOpen) {
+			activeRovoCanvasInstances.add(instanceId);
+		} else {
+			activeRovoCanvasInstances.delete(instanceId);
+		}
+		syncRovoCanvasOpenAttribute();
+
+		return () => {
+			getActiveRovoCanvasInstances().delete(instanceId);
+			syncRovoCanvasOpenAttribute();
+		};
+	}, [isOpen]);
 
 	useEffect(() => {
 		if (resolvedViews.some((view) => view.id === activeViewId)) {
@@ -618,7 +668,7 @@ export function RovoCanvas({
 			<DialogContent
 				showCloseButton={false}
 				className={cn(
-					"top-4 right-4 bottom-4 left-4 flex h-auto w-auto !max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl bg-surface-sunken p-4 sm:!max-w-none",
+					"top-16 right-4 bottom-4 left-4 flex h-auto w-auto !max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl bg-surface-sunken p-4 sm:!max-w-none",
 					"data-open:zoom-in-100 data-closed:zoom-out-100",
 					className,
 				)}
@@ -639,7 +689,7 @@ export function RovoCanvas({
 						{feedbackBanner !== undefined ? feedbackBanner : null}
 
 						<div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_400px] lg:overflow-hidden">
-							<section className="flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-xl bg-surface shadow-sm lg:min-h-0">
+							<section className="flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm lg:min-h-0">
 								<Tabs
 									value={resolvedActiveViewId}
 									onValueChange={setActiveViewId}
@@ -672,7 +722,11 @@ export function RovoCanvas({
 												</DropdownMenuGroup>
 											</DropdownMenuContent>
 										</DropdownMenu>
-										<RovoCanvasViewSwitcher views={resolvedViews} />
+										{resolvedViews.length > 1 ? (
+											<RovoCanvasViewSwitcher views={resolvedViews} />
+										) : (
+											<div aria-hidden="true" />
+										)}
 										<CanvasToolbar
 											activeView={activeView}
 											isVersionHistoryOpen={shouldShowVersionHistory}
@@ -689,13 +743,13 @@ export function RovoCanvas({
 										<div className="relative min-w-0 flex-1">
 											{resolvedViews.map((view) => (
 												<TabsContent key={view.id} value={view.id} className="size-full">
-											{view.content === undefined ? (
-												<RovoCanvasDefaultView
-													view={view}
-													isSelectMode={isSelectMode}
-													status={status}
-												/>
-											) : view.content}
+													{view.content === undefined ? (
+														<RovoCanvasDefaultView
+															view={view}
+															isSelectMode={isSelectMode}
+															status={status}
+														/>
+													) : view.content}
 												</TabsContent>
 											))}
 											{isWorkingStatus(status) ? <LoadingScreen /> : null}

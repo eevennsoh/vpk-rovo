@@ -5,6 +5,7 @@ import type {
 	ConversationContextValue,
 	ConversationFollowMode,
 	GetTargetScrollTop,
+	ScrollToBottomOptions,
 } from "@/components/ui-ai/conversation";
 import {
 	getLatestUserMessageId,
@@ -13,6 +14,12 @@ import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { resolveRovoAppScrollAnchorLayout } from "@/components/projects/rovo/lib/rovo-app-scroll-anchor";
 
 const LATEST_TURN_SELECTOR = "[data-chat-latest-turn='true']";
+const FAST_TURN_SCROLL_ANIMATION = {
+	damping: 0.72,
+	stiffness: 0.1,
+	mass: 0.9,
+} as const;
+
 interface UseScrollAnchorOptions {
 	uiMessages: RovoUIMessage[];
 	isGenerationActive: boolean;
@@ -33,6 +40,7 @@ export function useScrollAnchor({
 	const scrollSpacerRef = useRef<HTMLDivElement>(null);
 	const hasInitializedScrollRef = useRef(false);
 	const previousLatestUserMessageIdRef = useRef<string | null>(null);
+	const pendingAnchorScrollAnimationRef = useRef<ScrollToBottomOptions["animation"]>("instant");
 	const [scrollAnchorMessageId, setScrollAnchorMessageId] = useState<string | null>(null);
 	const [scrollFollowMode, setScrollFollowMode] = useState<ConversationFollowMode>("bottom");
 
@@ -63,6 +71,9 @@ export function useScrollAnchor({
 			);
 
 		if (shouldActivateTargetFollow) {
+			pendingAnchorScrollAnimationRef.current = hasInitializedScrollRef.current
+				? FAST_TURN_SCROLL_ANIMATION
+				: "instant";
 			setScrollAnchorMessageId(latestUserMessageId);
 			setScrollFollowMode("target");
 		} else if (!isGenerationActive && scrollFollowMode !== "bottom") {
@@ -74,7 +85,6 @@ export function useScrollAnchor({
 			void conversationContextRef.current?.scrollToBottom({
 				animation: "instant",
 				ignoreEscapes: true,
-				target: "bottom",
 			});
 		}
 
@@ -95,9 +105,8 @@ export function useScrollAnchor({
 
 		const frameId = window.requestAnimationFrame(() => {
 			void conversationContextRef.current?.scrollToBottom({
-				animation: "instant",
+				animation: pendingAnchorScrollAnimationRef.current,
 				ignoreEscapes: true,
-				target: "bottom",
 			});
 		});
 

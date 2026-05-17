@@ -18,7 +18,7 @@ export type AgentsRfpDemoReportStage =
 	| "pdf-exported"
 	| "attached";
 
-export type AgentsRfpDemoCanvasViewId = "plan" | "preview" | "html";
+export type AgentsRfpDemoCanvasViewId = "report";
 
 export interface AgentsRfpDemoBoardColumnState {
 	title: string;
@@ -241,7 +241,7 @@ export function createDefaultAgentsRfpDemoState(): AgentsRfpDemoState {
 		customAgentActivity: [],
 		canvas: {
 			open: false,
-			activeViewId: "preview",
+			activeViewId: "report",
 			mode: "editable",
 		},
 		chat: {
@@ -396,7 +396,7 @@ export function generateRfpReport(state: AgentsRfpDemoState): AgentsRfpDemoState
 		},
 		canvas: {
 			open: true,
-			activeViewId: "preview",
+			activeViewId: "report",
 			mode: "editable",
 		},
 	};
@@ -419,7 +419,7 @@ export function refineRfpReport(state: AgentsRfpDemoState): AgentsRfpDemoState {
 		},
 		canvas: {
 			open: true,
-			activeViewId: "preview",
+			activeViewId: "report",
 			mode: "editable",
 		},
 	};
@@ -488,7 +488,7 @@ export function attachRfpReportToWorkItem(state: AgentsRfpDemoState): AgentsRfpD
 			canvas: {
 				...attachedState.canvas,
 				open: true,
-				activeViewId: "preview",
+				activeViewId: "report",
 				mode: "read-only",
 			},
 		},

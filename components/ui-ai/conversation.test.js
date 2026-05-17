@@ -27,8 +27,9 @@ test("Conversation resize follow yields while the user is actively scrolling", (
 	);
 	assert.match(
 		CONVERSATION_SOURCE,
-		/if \(didUserInitiateScroll && nextIsAtBottom\) \{\s+isFollowPausedRef\.current = false\s+return\s+\}/,
+		/if \(didUserInitiateScroll\) \{\s+isFollowPausedRef\.current = !nextIsAtBottom\s+return\s+\}/,
 	);
+	assert.doesNotMatch(CONVERSATION_SOURCE, /const expectedFollowTop = getScrollTargetTop\(scrollElement\)/);
 	assert.match(
 		CONVERSATION_SOURCE,
 		/const shouldYieldToUserScroll =\s*hasInitializedScrollRef\.current && hasActiveUserScrollIntent\(\)/,
@@ -74,15 +75,15 @@ test("Conversation only uses a custom target while target follow mode is active"
 	);
 });
 
-test("Conversation resize follow targets the actual bottom while content streams", () => {
+test("Conversation resize follow uses the active follow target while content streams", () => {
 	assert.doesNotMatch(CONVERSATION_SOURCE, /shouldFollowActualBottomRef/);
-	assert.match(CONVERSATION_SOURCE, /resize = "instant"/);
+	assert.match(CONVERSATION_SOURCE, /resize = "smooth"/);
 	assert.match(
 		CONVERSATION_SOURCE,
 		/lastKnownScrollHeightRef\.current = nextScrollHeight\s+if \(resize === false \|\| !shouldFollowContent\) \{\s+updateIsAtBottom\(\)\s+return\s+\}/,
 	);
 	assert.match(
 		CONVERSATION_SOURCE,
-		/void scrollToBottom\(\{\s+animation: resize,\s+target: "bottom",\s+\}\)/,
+		/void scrollToBottom\(\{ animation: resize \}\)/,
 	);
 });

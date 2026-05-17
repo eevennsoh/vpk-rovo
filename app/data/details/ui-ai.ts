@@ -1730,7 +1730,7 @@ const messages = [
 			{
 				name: "resize",
 				type: 'boolean | ScrollBehavior | "instant" | { damping: number; stiffness: number; mass: number }',
-				default: '"instant"',
+				default: '"smooth"',
 				description:
 					"Follow behavior used when the transcript height changes.",
 			},

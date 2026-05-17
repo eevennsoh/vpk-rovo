@@ -62,13 +62,19 @@ export default function AgentsDemo() {
 					product="jira"
 					embedded={embedded}
 					chatPanelFlush
+					hideRovoAction={rfpDemo.state.canvas.open}
 					onChatSurfaceSwitch={handleChatSurfaceSwitch}
 					chatContextBar={agentsChatScreenContext.chatContextBar}
 					chatGreeting={agentsChatScreenContext.greeting}
 					onArtifactDialogOpen={handleArtifactDialogOpen}
 					preserveFloatingSurfaceOnArtifactDialogOpen={isWorkItemModalOpen}
 				>
-					<AgentsView workItemPresentation={workItemPresentation} rfpDemo={rfpDemo} />
+					<AgentsView
+						workItemPresentation={workItemPresentation}
+						rfpDemo={rfpDemo}
+						chatContextBar={agentsChatScreenContext.chatContextBar}
+						chatGreeting={agentsChatScreenContext.greeting}
+					/>
 				</AppLayout>
 			</RovoChatProvider>
 		</SidebarProvider>

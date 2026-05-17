@@ -22,6 +22,8 @@ export function filterThinkingToolCallsForVisibleWidget({
 	}
 
 	return thinkingToolCalls.filter(
-		(toolCall) => !isRequestUserInputToolName(toolCall.toolName),
+		(toolCall) =>
+			!isRequestUserInputToolName(toolCall.toolName) ||
+			toolCall.state === "awaiting-input",
 	);
 }
