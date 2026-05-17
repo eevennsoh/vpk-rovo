@@ -38,6 +38,7 @@ export interface KanbanBoardCardData {
 	tags: KanbanBoardCardTag[];
 	priority: KanbanBoardPriority;
 	avatarSrc?: string;
+	avatarPulse?: boolean;
 }
 
 export interface KanbanBoardColumnData {
@@ -324,6 +325,7 @@ function BoardColumn({
 }
 
 function KanbanCard({
+	avatarPulse = false,
 	avatarSrc,
 	code,
 	isDragging,
@@ -334,6 +336,7 @@ function KanbanCard({
 	tags,
 	title,
 }: Readonly<{
+	avatarPulse?: boolean;
 	avatarSrc?: string;
 	code: string;
 	isDragging?: boolean;
@@ -395,7 +398,12 @@ function KanbanCard({
 						<div className="flex items-center gap-1.5">
 							<PriorityIcon label={`${priority} priority`} color={priorityColor} />
 							{isMounted ? (
-								<Avatar size="sm">
+								<Avatar
+									className={cn(
+										avatarPulse && "motion-safe:animate-pulse ring-2 ring-border-focused ring-offset-2 ring-offset-surface"
+									)}
+									size="sm"
+								>
 									{avatarSrc ? <AvatarImage src={avatarSrc} alt={code} /> : null}
 									<AvatarFallback>{code?.[0] ?? "U"}</AvatarFallback>
 								</Avatar>
@@ -535,6 +543,7 @@ export function KanbanBoard({
 										tags={card.tags}
 										priority={card.priority}
 										avatarSrc={card.avatarSrc}
+										avatarPulse={card.avatarPulse}
 										isDragging={draggedCardCode === card.code}
 										onClick={() => onCardClick?.(card.title, card.code, card, column.title)}
 										onDragStart={() => onCardDragStart?.(card, column.title)}

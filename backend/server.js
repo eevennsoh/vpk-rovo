@@ -238,6 +238,19 @@ const {
 	resolveAgentsRfpDemoChatTurn,
 } = require("./lib/agents-rfp-demo-chat");
 const {
+	AGENTS_RFP_DEMO_JOB_NAME,
+	AGENTS_RFP_DEMO_JOB_PROMPT,
+	AGENTS_RFP_DEMO_SURFACE,
+	RFP_DRAFTING_AGENT_NAME,
+	RFP_DRAFTING_EVENT_TRIGGER,
+	RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+	advanceRfpDraftingAgentProcessing,
+	createAgentsRfpDemoStateManager,
+	getDemoCreatedThreadIds,
+	moveTicketToColumn,
+	runRfpDraftingAgent,
+} = require("./lib/agents-rfp-demo-state");
+const {
 	buildSmartGenerationGatewayOptions,
 } = require("./lib/smart-generation-gateway-options");
 const {
@@ -991,6 +1004,9 @@ function extractHermesJobLinkMetadata(rawInput) {
 				: null,
 		linkedThreadId,
 		postResultToThread: rawInput.postResultToThread === true,
+		runHistory: Array.isArray(rawInput.runHistory)
+			? rawInput.runHistory
+			: [],
 		surface:
 			typeof rawInput.surface === "string" && rawInput.surface.trim()
 				? rawInput.surface.trim()
@@ -1001,6 +1017,14 @@ function extractHermesJobLinkMetadata(rawInput) {
 				: linkedThreadId
 					? "fixed"
 					: "new-per-run",
+		trigger:
+			rawInput.trigger && typeof rawInput.trigger === "object"
+				? rawInput.trigger
+				: null,
+		triggerLabel:
+			typeof rawInput.triggerLabel === "string" && rawInput.triggerLabel.trim()
+				? rawInput.triggerLabel.trim()
+				: null,
 	};
 }
 
@@ -1071,6 +1095,224 @@ async function syncHermesJobsForRovoThreads(threadId = null) {
 		});
 	} catch (error) {
 		console.warn("[HERMES-JOBS] Failed to sync Hermes job results into Rovo threads:", error instanceof Error ? error.message : String(error));
+	}
+}
+
+function isAgentsRfpDemoJobMetadata(jobOrLink) {
+	return (
+		jobOrLink?.surface === AGENTS_RFP_DEMO_SURFACE &&
+		jobOrLink?.trigger?.type === RFP_DRAFTING_EVENT_TRIGGER.type &&
+		jobOrLink?.trigger?.board === RFP_DRAFTING_EVENT_TRIGGER.board &&
+		jobOrLink?.trigger?.column === RFP_DRAFTING_EVENT_TRIGGER.column
+	);
+}
+
+function buildAgentsRfpDemoJobLinkMetadata(overrides = {}) {
+	return {
+		postResultToThread: false,
+		runHistory: [],
+		surface: AGENTS_RFP_DEMO_SURFACE,
+		threadStrategy: "new-per-run",
+		trigger: RFP_DRAFTING_EVENT_TRIGGER,
+		triggerLabel: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+		...(overrides && typeof overrides === "object" ? overrides : {}),
+	};
+}
+
+async function ensureAgentsRfpDemoHermesJob() {
+	const currentState = await agentsRfpDemoStateManager.readState();
+	const stateJobId = getNonEmptyString(currentState.agent?.jobId);
+	if (stateJobId) {
+		try {
+			const job = await getMergedHermesJob(stateJobId);
+			if (isAgentsRfpDemoJobMetadata(job)) {
+				return job;
+			}
+		} catch (error) {
+			if (error?.code !== "ENOENT") {
+				throw error;
+			}
+		}
+	}
+
+	const jobs = await listMergedHermesJobs();
+	const existingJob = jobs.find(isAgentsRfpDemoJobMetadata);
+	if (existingJob) {
+		await persistHermesJobLink(
+			existingJob.id,
+			buildAgentsRfpDemoJobLinkMetadata({
+				runHistory: existingJob.runHistory,
+			}),
+			{},
+			{ mergeExisting: true },
+		);
+		return getMergedHermesJob(existingJob.id);
+	}
+
+	const job = await hermesJobsProvider.createHermesJob({
+		deliver: "local",
+		name: AGENTS_RFP_DEMO_JOB_NAME,
+		prompt: AGENTS_RFP_DEMO_JOB_PROMPT,
+		schedule: "manual",
+		skills: ["vpk-html"],
+	});
+	const linkMetadata = await persistHermesJobLink(
+		job.id,
+		buildAgentsRfpDemoJobLinkMetadata(),
+	);
+	return {
+		...job,
+		...(linkMetadata ?? {}),
+	};
+}
+
+async function upsertAgentsRfpDemoThread(threadRecord) {
+	const existingThread = await rovoAppThreadManager.getThread(threadRecord.id);
+	if (existingThread) {
+		return rovoAppThreadManager.updateThread(threadRecord.id, {
+			activeDocumentId: threadRecord.activeDocumentId ?? null,
+			messages: threadRecord.messages,
+			modelId: threadRecord.modelId ?? null,
+			provider: threadRecord.provider ?? null,
+			realtimeMessages: threadRecord.realtimeMessages ?? [],
+			title: threadRecord.title,
+			updatedAt: threadRecord.updatedAt,
+			visibility: threadRecord.visibility ?? "private",
+		});
+	}
+
+	return rovoAppThreadManager.createThread(threadRecord);
+}
+
+async function persistAgentsRfpDemoRunResult({ jobId, result }) {
+	await Promise.all(result.threadRecords.map(upsertAgentsRfpDemoThread));
+	const currentLink = await hermesJobLinkManager.getLink(jobId);
+	await persistHermesJobLink(
+		jobId,
+		buildAgentsRfpDemoJobLinkMetadata({
+			...(currentLink ?? {}),
+			runHistory: [
+				result.runSummary,
+				...((currentLink?.runHistory ?? []).filter((run) => run?.id !== result.runSummary.id)),
+			].slice(0, 10),
+		}),
+		{},
+		{ mergeExisting: true },
+	);
+	await agentsRfpDemoStateManager.writeState(result.state);
+}
+
+async function advanceAgentsRfpDemoProcessing() {
+	const currentState = await agentsRfpDemoStateManager.readState();
+	const result = await advanceRfpDraftingAgentProcessing(currentState, {
+		createHtmlReport: async ({ contextDescription, fields }) => {
+			const report = await generateWorkItemVpkHtmlReport({
+				contextDescription,
+				generateText: async () => JSON.stringify(fields),
+				runSkillValidation: false,
+				runVisualVerify: false,
+			});
+			return { html: report.html, skill: report.skill };
+		},
+	});
+	if (!result.changed) {
+		return currentState;
+	}
+
+	await Promise.all(result.threadRecords.map(upsertAgentsRfpDemoThread));
+	const nextState = await agentsRfpDemoStateManager.writeState(result.state);
+	const jobId = getNonEmptyString(nextState.agent?.jobId);
+	if (jobId) {
+		const currentLink = await hermesJobLinkManager.getLink(jobId);
+		await persistHermesJobLink(
+			jobId,
+			buildAgentsRfpDemoJobLinkMetadata({
+				...(currentLink ?? {}),
+				runHistory: nextState.agent?.jobRunSummaries ?? currentLink?.runHistory ?? [],
+			}),
+			{},
+			{ mergeExisting: true },
+		);
+	}
+	return nextState;
+}
+
+async function executeAgentsRfpDemoHermesJob({ context, job, source }) {
+	const link = await hermesJobLinkManager.getLink(job.id);
+	if (!isAgentsRfpDemoJobMetadata(link)) {
+		return null;
+	}
+
+	const currentState = await agentsRfpDemoStateManager.readState();
+	const ticketCodes = Array.isArray(context?.ticketCodes)
+		? context.ticketCodes.filter((ticketCode) => typeof ticketCode === "string" && ticketCode.trim())
+		: undefined;
+	const result = runRfpDraftingAgent(currentState, {
+		jobId: job.id,
+		runId: getNonEmptyString(context?.runId) ?? undefined,
+		source: getNonEmptyString(source) ?? "manual",
+		ticketCodes,
+	});
+	await persistAgentsRfpDemoRunResult({ jobId: job.id, result });
+
+	return {
+		ok: true,
+		text: `${RFP_DRAFTING_AGENT_NAME} ${result.runSummary.summary}`,
+	};
+}
+
+async function runAgentsRfpDemoJob({ source = "manual", ticketCodes } = {}) {
+	const job = await ensureAgentsRfpDemoHermesJob();
+	await hermesJobsProvider.runHermesJob(job.id, source, {
+		ticketCodes: Array.isArray(ticketCodes) ? ticketCodes : undefined,
+	});
+	const [state, mergedJob] = await Promise.all([
+		agentsRfpDemoStateManager.readState(),
+		getMergedHermesJob(job.id),
+	]);
+	return { job: mergedJob, state };
+}
+
+async function deleteAgentsRfpDemoThread(threadId) {
+	const thread = await rovoAppThreadManager.getThread(threadId);
+	const uploadIds = collectRovoAppUploadIdsFromMessages(thread?.messages);
+	if (thread) {
+		await rovoAppGeneratedFilesManager.backfillFromThread(thread);
+		await rovoAppGeneratedFilesManager.deleteLegacyRootFiles(threadId);
+	}
+	await Promise.all(
+		uploadIds.map((uploadId) =>
+			rovoAppUploadManager.deleteUpload(uploadId).catch(() => {})
+		),
+	);
+	await rovoAppVoteManager.deleteVotesForThread(threadId);
+	await rovoAppDocumentManager.deleteDocumentsByThread(threadId);
+	await deleteRovoAppThreadBrowserWorkspace(threadId).catch(() => ({}));
+	await destroyMirrorBrowser(`mirror-${threadId}`);
+	await rovoAppThreadManager.deleteThread(threadId);
+}
+
+async function deleteAgentsRfpDemoHermesJobs(state) {
+	const jobIds = new Set();
+	const stateJobId = getNonEmptyString(state.agent?.jobId);
+	if (stateJobId) {
+		jobIds.add(stateJobId);
+	}
+
+	const jobs = await listMergedHermesJobs().catch(() => []);
+	for (const job of jobs) {
+		if (isAgentsRfpDemoJobMetadata(job)) {
+			jobIds.add(job.id);
+		}
+	}
+
+	for (const jobId of jobIds) {
+		await hermesJobsProvider.deleteHermesJob(jobId).catch((error) => {
+			if (error?.code !== "ENOENT") {
+				throw error;
+			}
+		});
+		await hermesJobLinkManager.removeLink(jobId);
 	}
 }
 
@@ -1720,14 +1962,28 @@ const rovoAppGeneratedFilesManager = createRovoAppGeneratedFilesManager({
 const hermesJobLinkManager = createHermesJobLinkManager({
 	baseDir: path.join(__dirname, "data"),
 });
+const agentsRfpDemoStateManager = createAgentsRfpDemoStateManager({
+	baseDir: path.join(__dirname, "data"),
+});
 const hermesJobsProvider = createHermesJobsProvider({
 	baseDir: path.join(__dirname, "data"),
 	executeTask: async ({
+		context,
 		job,
 		prompt,
 		selectedSkillIds,
-	}) =>
-		executeRovoTask({
+		source,
+	}) => {
+		const rfpJobResult = await executeAgentsRfpDemoHermesJob({
+			context,
+			job,
+			source,
+		});
+		if (rfpJobResult) {
+			return rfpJobResult;
+		}
+
+		return executeRovoTask({
 			prompt,
 			selectedSkillIds,
 			system: [
@@ -1739,7 +1995,8 @@ const hermesJobsProvider = createHermesJobsProvider({
 			]
 				.filter(Boolean)
 				.join("\n"),
-		}),
+		});
+	},
 	logger: console,
 	onJobSettled: async (job) => {
 		const mergedJob = await getMergedHermesJob(job.id);
@@ -14458,8 +14715,99 @@ app.get("/api/status", async (_req, res) => {
 	}
 });
 
+app.get("/api/agents/rfp-demo/state", async (_req, res) => {
+	try {
+		const state = await advanceAgentsRfpDemoProcessing();
+		return res.json({ state });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to load Agents RFP demo state",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/agents/rfp-demo/state", async (req, res) => {
+	try {
+		if (!req.body?.state || typeof req.body.state !== "object") {
+			return res.status(400).json({ error: "state is required." });
+		}
+
+		const state = await agentsRfpDemoStateManager.writeState(req.body.state);
+		return res.json({ state });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to save Agents RFP demo state",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/agents/rfp-demo/reset", async (_req, res) => {
+	try {
+		const currentState = await agentsRfpDemoStateManager.readState();
+		const threadIds = getDemoCreatedThreadIds(currentState);
+		await deleteAgentsRfpDemoHermesJobs(currentState);
+		await Promise.all(threadIds.map((threadId) => deleteAgentsRfpDemoThread(threadId).catch(() => {})));
+		const state = await agentsRfpDemoStateManager.resetState();
+		return res.json({ state });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to reset Agents RFP demo state",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/agents/rfp-demo/agent/apply", async (_req, res) => {
+	try {
+		const { job, state } = await runAgentsRfpDemoJob({
+			source: "agent-apply",
+		});
+		return res.json({ job, state });
+	} catch (error) {
+		return res.status(error?.code === "INVALID_INPUT" ? 400 : 500).json({
+			error: "Failed to apply RFP Drafting Agent",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/agents/rfp-demo/events/ticket-entered-column", async (req, res) => {
+	try {
+		const ticketCode = getNonEmptyString(req.body?.ticketCode ?? req.body?.key);
+		const targetColumn = getNonEmptyString(req.body?.targetColumn ?? req.body?.column);
+		if (!ticketCode || !targetColumn) {
+			return res.status(400).json({ error: "ticketCode and targetColumn are required." });
+		}
+
+		let state = await agentsRfpDemoStateManager.readState();
+		state = moveTicketToColumn(state, ticketCode, targetColumn);
+		await agentsRfpDemoStateManager.writeState(state);
+
+		if (targetColumn !== RFP_DRAFTING_EVENT_TRIGGER.column || !state.agent) {
+			return res.json({
+				state,
+				job: state.agent?.jobId ? await getMergedHermesJob(state.agent.jobId).catch(() => null) : null,
+			});
+		}
+
+		const { job, state: processedState } = await runAgentsRfpDemoJob({
+			source: "jira-column-entered",
+			ticketCodes: [ticketCode],
+		});
+		return res.json({ job, state: processedState });
+	} catch (error) {
+		return res.status(error?.code === "INVALID_INPUT" ? 400 : 500).json({
+			error: "Failed to process Agents RFP demo ticket event",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
 app.get("/api/jobs", async (_req, res) => {
 	try {
+		await advanceAgentsRfpDemoProcessing();
 		const jobs = await listMergedHermesJobs(_req.query);
 		await syncHermesJobResultsToRovoThreads({
 			jobs,
@@ -14505,6 +14853,7 @@ app.post("/api/jobs", async (req, res) => {
 
 app.get("/api/jobs/:id", async (req, res) => {
 	try {
+		await advanceAgentsRfpDemoProcessing();
 		const job = await getMergedHermesJob(req.params.id);
 		return res.json({ job });
 	} catch (error) {
@@ -14518,7 +14867,7 @@ app.patch("/api/jobs/:id", async (req, res) => {
 		const job = Object.keys(hermesJobInput).length > 0
 			? await hermesJobsProvider.updateHermesJob(req.params.id, hermesJobInput)
 			: await hermesJobsProvider.getHermesJob(req.params.id);
-		const linkMetadata = await persistHermesJobLink(req.params.id, req.body);
+		const linkMetadata = await persistHermesJobLink(req.params.id, req.body, {}, { mergeExisting: true });
 		return res.json({
 			job: {
 				...job,
@@ -14542,7 +14891,8 @@ app.delete("/api/jobs/:id", async (req, res) => {
 
 app.post("/api/jobs/:id/run", async (req, res) => {
 	try {
-		const job = await hermesJobsProvider.performHermesJobAction(req.params.id, "run");
+		await hermesJobsProvider.performHermesJobAction(req.params.id, "run");
+		const job = await getMergedHermesJob(req.params.id);
 		return res.json({ job });
 	} catch (error) {
 		return sendHermesUnavailableResponse(res, error, "Failed to run Hermes job");
@@ -14551,7 +14901,8 @@ app.post("/api/jobs/:id/run", async (req, res) => {
 
 app.post("/api/jobs/:id/pause", async (req, res) => {
 	try {
-		const job = await hermesJobsProvider.performHermesJobAction(req.params.id, "pause");
+		await hermesJobsProvider.performHermesJobAction(req.params.id, "pause");
+		const job = await getMergedHermesJob(req.params.id);
 		return res.json({ job });
 	} catch (error) {
 		return sendHermesUnavailableResponse(res, error, "Failed to pause Hermes job");
@@ -14560,7 +14911,8 @@ app.post("/api/jobs/:id/pause", async (req, res) => {
 
 app.post("/api/jobs/:id/resume", async (req, res) => {
 	try {
-		const job = await hermesJobsProvider.performHermesJobAction(req.params.id, "resume");
+		await hermesJobsProvider.performHermesJobAction(req.params.id, "resume");
+		const job = await getMergedHermesJob(req.params.id);
 		return res.json({ job });
 	} catch (error) {
 		return sendHermesUnavailableResponse(res, error, "Failed to resume Hermes job");

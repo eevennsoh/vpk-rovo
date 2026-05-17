@@ -48,6 +48,12 @@ function getBoolean(value: unknown, fallback = false): boolean {
 	return typeof value === "boolean" ? value : fallback;
 }
 
+function getStringArray(value: unknown): string[] {
+	return Array.isArray(value)
+		? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+		: [];
+}
+
 async function parseJsonResponse<T>(response: Response): Promise<T> {
 	if (!response.ok) {
 		let message = `Request failed with status ${response.status}`;
@@ -94,6 +100,11 @@ function normalizeHermesJob(rawJob: unknown): HermesJob {
 	const rawLastRun = job.lastRun && typeof job.lastRun === "object"
 		? job.lastRun as Record<string, unknown>
 		: null;
+	const rawTrigger = job.trigger && typeof job.trigger === "object"
+		? job.trigger as Record<string, unknown>
+		: null;
+	const triggerType = getString(rawTrigger?.type);
+	const rawRunHistory = Array.isArray(job.runHistory) ? job.runHistory : [];
 	return {
 		artifactTarget: getString(job.artifactTarget),
 		description: getString(job.description),
@@ -115,6 +126,43 @@ function normalizeHermesJob(rawJob: unknown): HermesJob {
 			|| deriveJobStatus(job) === "paused"
 			|| job.enabled === false,
 		postResultToThread: job.postResultToThread === true,
+		runHistory: rawRunHistory
+			.map((rawRun) => {
+				const run = rawRun && typeof rawRun === "object"
+					? rawRun as Record<string, unknown>
+					: {};
+				const id = getString(run.id);
+				if (!id) {
+					return null;
+				}
+
+				return {
+					id,
+					jobId: getString(run.jobId),
+					source: getString(run.source),
+					triggerLabel: getString(run.triggerLabel),
+					status: getString(run.status) ?? "completed",
+					startedAt: getString(run.startedAt),
+					finishedAt: getString(run.finishedAt),
+					processedTicketCodes: getStringArray(run.processedTicketCodes),
+					skippedTicketCodes: getStringArray(run.skippedTicketCodes),
+					failedTicketCodes: getStringArray(run.failedTicketCodes),
+					threadLinks: Array.isArray(run.threadLinks)
+						? run.threadLinks
+								.map((rawLink) => {
+									const link = rawLink && typeof rawLink === "object"
+										? rawLink as Record<string, unknown>
+										: {};
+									const ticketCode = getString(link.ticketCode);
+									const threadId = getString(link.threadId);
+									return ticketCode && threadId ? { ticketCode, threadId } : null;
+								})
+								.filter((link): link is { ticketCode: string; threadId: string } => Boolean(link))
+						: [],
+					summary: getString(run.summary),
+				};
+			})
+			.filter((run): run is HermesJob["runHistory"][number] => Boolean(run)),
 		raw: job,
 		schedule:
 			getString(job.schedule)
@@ -125,6 +173,15 @@ function normalizeHermesJob(rawJob: unknown): HermesJob {
 			?? getString(job.cron)
 			?? getString(job.expression),
 		status: deriveJobStatus(job),
+		trigger: triggerType
+			? {
+					type: triggerType,
+					board: getString(rawTrigger?.board) ?? undefined,
+					column: getString(rawTrigger?.column) ?? undefined,
+					label: getString(rawTrigger?.label) ?? undefined,
+				}
+			: null,
+		triggerLabel: getString(job.triggerLabel),
 	};
 }
 

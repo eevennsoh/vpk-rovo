@@ -73,11 +73,7 @@ function resolveRfpReportCanvasStatus(status: RfpHtmlReportStatus): RovoCanvasSt
 		return "error";
 	}
 
-	if (status === "ready") {
-		return "ready";
-	}
-
-	return "executing";
+	return "ready";
 }
 
 function useRfpHtmlReportPreview(state: AgentsRfpDemoState): RfpHtmlReportPreviewState {
@@ -173,11 +169,12 @@ function RfpRenderedHtmlReport({
 
 	if (!html) {
 		return (
-			<div className="flex size-full items-center justify-center bg-surface-sunken p-6">
-				<div className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-text-subtle shadow-sm">
-					Rendering vpk-html report...
-				</div>
-			</div>
+			<div
+				aria-busy="true"
+				aria-label="Report preview loading"
+				className="size-full bg-surface"
+				role="region"
+			/>
 		);
 	}
 

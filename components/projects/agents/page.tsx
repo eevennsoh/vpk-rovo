@@ -25,7 +25,9 @@ import type { AgentsRfpDemoController } from "./hooks/use-agents-rfp-demo-state"
 import type { AgentsWorkItemPresentationController } from "./hooks/use-agents-work-item-presentation";
 import {
 	GENERATED_RFP_REPORT_ATTACHMENT_ID,
+	RFP_DRAFTING_AGENT_AVATAR_SRC,
 	RFP_DRAFTING_AGENT_ID,
+	RFP_DRAFTING_AGENT_NAME,
 	getGeneratedRfpAttachments,
 	getRfpDemoAgents,
 	getRfpDemoColumnAgentAssignments,
@@ -35,6 +37,32 @@ import {
 
 const WORK_ITEM_FLOATING_PIN_REASON = "agents-work-item-modal";
 const AGENTS_RFP_DEMO_TOASTER_ID = "agents-rfp-demo-notifications";
+const RFP_DEMO_HUMAN_ASSIGNEES: Record<string, { avatarUrl: string; role: string }> = {
+	"David Hsieh": {
+		avatarUrl: "/avatar-user/david-hsieh/color/asow-service-yellow.png",
+		role: "Proposal reviewer",
+	},
+	"Florence Garcia": {
+		avatarUrl: "/avatar-user/florence-garcia/color/asow-strategy-orange.png",
+		role: "Sales engineer",
+	},
+	"Jordan Lee": {
+		avatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
+		role: "Account executive",
+	},
+	"Maya Chen": {
+		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
+		role: "Proposal manager",
+	},
+	"Priya Shah": {
+		avatarUrl: "/avatar-user/annie-clare/color/asow-strategy-orange.png",
+		role: "Sales engineer",
+	},
+	"Elena Ruiz": {
+		avatarUrl: "/avatar-user/aoife-burke/color/asow-service-yellow.png",
+		role: "Legal reviewer",
+	},
+};
 
 interface DraggedCardState {
 	card: KanbanBoardCardData;
@@ -186,6 +214,34 @@ export default function AgentsView({
 
 		return mergedAssignments;
 	}, [columnAgentAssignments, rfpColumnAgentAssignments]);
+	const toolbarAvatars = useMemo(() => {
+		const assignedAgentIds = new Set<string>();
+
+		for (const agentIds of Object.values(assignedAgentIdsByColumn)) {
+			for (const agentId of agentIds) {
+				assignedAgentIds.add(agentId);
+			}
+		}
+
+		for (const workItem of Object.values(rfpDemo.state.workItems)) {
+			for (const agentId of workItem.agentAssignmentIds) {
+				assignedAgentIds.add(agentId);
+			}
+		}
+
+		const assignedAgentAvatars = boardAgents
+			.filter((agent) => assignedAgentIds.has(agent.id))
+			.map((agent) => ({
+				src: agent.avatarSrc,
+				name: agent.name,
+				shape: "hexagon" as const,
+			}));
+
+		return [
+			...assignedAgentAvatars,
+			...AVATARS,
+		];
+	}, [assignedAgentIdsByColumn, boardAgents, rfpDemo.state.workItems]);
 
 	const handleCardClick = (_title: string, _code: string, card: KanbanBoardCardData) => {
 		const workItem = applyRfpDemoWorkItemState(getAgentsWorkItemForCard(card), rfpDemo.state);
@@ -295,6 +351,8 @@ export default function AgentsView({
 
 	const handleResetDemo = () => {
 		rfpDemo.actions.reset();
+		workItemPresentation.backToBoard();
+		closeChat();
 		onAgentDetailsOpenChange(false);
 		setAttachmentHighlight(null);
 		setPreviewAttachment(null);
@@ -336,7 +394,7 @@ export default function AgentsView({
 					style={{ flexGrow: 1, display: "flex", flexDirection: "column" }}
 				>
 					{/* Toolbar */}
-					<BoardToolbar avatars={[...AVATARS]} onReset={handleResetDemo} />
+					<BoardToolbar avatars={toolbarAvatars} onReset={handleResetDemo} />
 
 					{/* Board columns */}
 					<KanbanBoard
@@ -399,11 +457,6 @@ function applyRfpDemoWorkItemState(
 	}
 
 	const workItemState = state.workItems[workItem.code];
-	const persistedGeneratedAttachment = workItemState?.attachments.find((attachment) => (
-		attachment.source === "generated" &&
-		typeof (attachment as { previewHtml?: unknown }).previewHtml === "string"
-	)) as { previewHtml?: string } | undefined;
-	const generatedReportPreviewHtml = state.report.previewHtml ?? persistedGeneratedAttachment?.previewHtml;
 	const generatedAttachments = getGeneratedRfpAttachments(state, workItem.code).map((attachment): WorkItemAttachment => ({
 		id: attachment.id,
 		name: attachment.displayName.replace(/\.[^.]+$/u, ""),
@@ -412,19 +465,55 @@ function applyRfpDemoWorkItemState(
 		date: "Now",
 		source: "generated",
 		approved: attachment.approved,
-		previewHtml: generatedReportPreviewHtml,
+		previewHtml: attachment.previewHtml ?? (workItem.code === "RFP-101" ? state.report.previewHtml : undefined),
 		previewKind: attachment.previewKind,
 		thumbnailKind: attachment.previewKind === "pdf-preview" ? "file" : "document",
 		thumbnailTone: attachment.previewKind === "pdf-preview" ? "information" : "success",
 	}));
 	const baseAttachments = (workItem.attachments ?? []).filter((attachment) => attachment.source !== "generated");
+	const agentComment = workItemState?.agentComment
+		? {
+				id: workItemState.agentComment.id,
+				author: {
+					name: workItemState.agentComment.authorName,
+					avatarUrl: workItemState.agentComment.authorAvatarSrc,
+					role: "Agent",
+				},
+				timestamp: workItemState.agentComment.timestampLabel,
+				content: workItemState.agentComment.content,
+			}
+		: null;
+	const baseComments = (workItem.comments ?? []).filter((comment) => comment.id !== agentComment?.id);
+	const assignee = (() => {
+		if (!workItemState?.assignee) {
+			return workItem.assignee;
+		}
+		if (workItemState.assignee === RFP_DRAFTING_AGENT_NAME) {
+			return {
+				name: RFP_DRAFTING_AGENT_NAME,
+				avatarUrl: state.agent?.avatarSrc ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
+				role: workItemState.agentStatus === "completed"
+					? "Completed draft"
+					: workItemState.agentStatus === "failed"
+						? "Retry needed"
+						: "Drafting agent",
+			};
+		}
+		return {
+			name: workItemState.assignee,
+			avatarUrl: RFP_DEMO_HUMAN_ASSIGNEES[workItemState.assignee]?.avatarUrl,
+			role: RFP_DEMO_HUMAN_ASSIGNEES[workItemState.assignee]?.role ?? "Reviewer",
+		};
+	})();
 
 	return {
 		...workItem,
 		status: workItemState?.status ?? workItem.status,
+		assignee,
 		attachments: [
 			...baseAttachments,
 			...generatedAttachments,
 		],
+		comments: agentComment ? [agentComment, ...baseComments] : workItem.comments,
 	};
 }

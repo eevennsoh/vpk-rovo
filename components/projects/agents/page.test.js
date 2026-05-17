@@ -109,6 +109,17 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /RovoChatProvider/u);
 });
 
+test("RFP report canvas keeps first preview fetch visually blank instead of showing preloaders", () => {
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/function resolveRfpReportCanvasStatus\(status: RfpHtmlReportStatus\): RovoCanvasStatus \{[\s\S]*if \(status === "error"\) \{[\s\S]*return "error";[\s\S]*return "ready";[\s\S]*\}/u,
+	);
+	assert.match(RFP_REPORT_CANVAS_SOURCE, /aria-label="Report preview loading"/u);
+	assert.match(RFP_REPORT_CANVAS_SOURCE, /aria-busy="true"/u);
+	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /return "executing";/u);
+	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /Rendering vpk-html report/u);
+});
+
 test("AgentsView attaches generated reports through the RFP-101 modal and Sonner notifications", () => {
 	assert.match(AGENTS_VIEW_SOURCE, /import \{ toast \} from "sonner";/u);
 	assert.match(AGENTS_VIEW_SOURCE, /import \{ SONNER_TOAST_AUTO_DISMISS_MS, SonnerToast, Toaster \} from "@\/components\/ui\/sonner";/u);
@@ -123,7 +134,7 @@ test("AgentsView attaches generated reports through the RFP-101 modal and Sonner
 	);
 	assert.match(AGENTS_VIEW_SOURCE, /<Toaster id=\{AGENTS_RFP_DEMO_TOASTER_ID\} position="bottom-left" expand=\{true\} \/>/u);
 	assert.match(AGENTS_VIEW_SOURCE, /toast\.custom\([\s\S]*<SonnerToast[\s\S]*dismissible=\{true\}/u);
-	assert.match(AGENTS_VIEW_SOURCE, /previewHtml: generatedReportPreviewHtml/u);
+	assert.match(AGENTS_VIEW_SOURCE, /previewHtml: attachment\.previewHtml \?\? \(workItem\.code === "RFP-101" \? state\.report\.previewHtml : undefined\)/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /pointer-events-none fixed right-4 bottom-4/u);
 	assert.match(RFP_REPORT_CANVAS_SOURCE, /primaryActionLabel="Add PDF to RFP-101"/u);
 	assert.match(
@@ -190,6 +201,30 @@ test("AgentsView delegates RFP Drafting agent creation and keeps generic column 
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /RFP_AGENT_CREATION_PROMPT/u);
 });
 
+test("AgentsView maps backend RFP agent output onto cards, assignees, comments, and attachments", () => {
+	assert.match(AGENTS_VIEW_SOURCE, /RFP_DRAFTING_AGENT_NAME/u);
+	assert.match(AGENTS_VIEW_SOURCE, /workItemState\.assignee === RFP_DRAFTING_AGENT_NAME/u);
+	assert.match(AGENTS_VIEW_SOURCE, /RFP_DEMO_HUMAN_ASSIGNEES\[workItemState\.assignee\]/u);
+	assert.match(AGENTS_VIEW_SOURCE, /role: workItemState\.agentStatus === "completed"[\s\S]*"Completed draft"/u);
+	assert.match(AGENTS_VIEW_SOURCE, /generatedAttachments = getGeneratedRfpAttachments\(state, workItem\.code\)/u);
+	assert.match(AGENTS_VIEW_SOURCE, /agentComment = workItemState\?\.agentComment/u);
+	assert.match(AGENTS_VIEW_SOURCE, /comments: agentComment \? \[agentComment, \.\.\.baseComments\] : workItem\.comments/u);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /Weekdays at 9:00 AM/u);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /No schedule/u);
+});
+
+test("AgentsView includes assigned agents in the board toolbar avatar cluster", () => {
+	assert.match(AGENTS_VIEW_SOURCE, /const toolbarAvatars = useMemo\(\(\) => \{/u);
+	assert.match(AGENTS_VIEW_SOURCE, /for \(const agentIds of Object\.values\(assignedAgentIdsByColumn\)\)/u);
+	assert.match(AGENTS_VIEW_SOURCE, /for \(const workItem of Object\.values\(rfpDemo\.state\.workItems\)\)/u);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/const assignedAgentAvatars = boardAgents[\s\S]*\.filter\(\(agent\) => assignedAgentIds\.has\(agent\.id\)\)[\s\S]*src: agent\.avatarSrc,[\s\S]*name: agent\.name,[\s\S]*shape: "hexagon" as const,/u,
+	);
+	assert.match(AGENTS_VIEW_SOURCE, /return \[[\s\S]*\.\.\.assignedAgentAvatars,[\s\S]*\.\.\.AVATARS,[\s\S]*\];/u);
+	assert.match(AGENTS_VIEW_SOURCE, /<BoardToolbar avatars=\{toolbarAvatars\} onReset=\{handleResetDemo\} \/>/u);
+});
+
 test("RFP report canvas marks refined copy from the selected version, not terminal report stage", () => {
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
@@ -205,27 +240,21 @@ test("RFP report canvas marks refined copy from the selected version, not termin
 	);
 });
 
-test("RFP reset confirmation lives in the board toolbar next to grouping", () => {
+test("RFP reset action lives in the board toolbar next to grouping", () => {
 	assert.match(
 		BOARD_TOOLBAR_SOURCE,
-		/const \[isResetDialogOpen, setIsResetDialogOpen\] = useState\(false\);/u,
+		/<Button className="gap-2" variant="outline" onClick=\{onReset\}>[\s\S]*Reset demo[\s\S]*<\/Button>/u,
 	);
+	assert.match(BOARD_TOOLBAR_SOURCE, /shape\?: "circle" \| "hexagon";/u);
+	assert.match(BOARD_TOOLBAR_SOURCE, /<Avatar shape=\{avatar\.shape \?\? "circle"\} size="sm">/u);
 	assert.match(
-		BOARD_TOOLBAR_SOURCE,
-		/<AlertDialog open=\{isResetDialogOpen\} onOpenChange=\{setIsResetDialogOpen\}>/u,
-	);
-	assert.match(
-		BOARD_TOOLBAR_SOURCE,
-		/const handleConfirmReset = \(\) => \{[\s\S]*setIsResetDialogOpen\(false\);[\s\S]*onReset\(\);[\s\S]*\};/u,
-	);
-	assert.match(
-		BOARD_TOOLBAR_SOURCE,
-		/<Button onClick=\{handleConfirmReset\}>Reset demo<\/Button>/u,
+		AGENTS_VIEW_SOURCE,
+		/const handleResetDemo = \(\) => \{[\s\S]*rfpDemo\.actions\.reset\(\);[\s\S]*workItemPresentation\.backToBoard\(\);[\s\S]*closeChat\(\);/u,
 	);
 	assert.match(BOARD_TOOLBAR_SOURCE, /Reset demo[\s\S]*Group: RFP stage/u);
-	assert.match(AGENTS_VIEW_SOURCE, /<BoardToolbar avatars=\{\[\.\.\.AVATARS\]\} onReset=\{handleResetDemo\} \/>/u);
+	assert.match(AGENTS_VIEW_SOURCE, /<BoardToolbar avatars=\{toolbarAvatars\} onReset=\{handleResetDemo\} \/>/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /RfpDemoControls/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /Ask Rovo for RFP help/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /Answer qualification questions/u);
-	assert.doesNotMatch(BOARD_TOOLBAR_SOURCE, /AlertDialogAction/u);
+	assert.doesNotMatch(BOARD_TOOLBAR_SOURCE, /AlertDialog/u);
 });

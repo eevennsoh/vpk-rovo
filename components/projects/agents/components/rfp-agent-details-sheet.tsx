@@ -23,7 +23,7 @@ const TOOL_LABELS = [
 	"Attachment scanner",
 	"Teamwork Graph search",
 	"Report generator",
-	"Staged PDF export",
+	"HTML draft attachment",
 ] as const;
 
 const KNOWLEDGE_LABELS = [
@@ -48,12 +48,27 @@ function DetailsSection({
 	);
 }
 
+function getRunTone(status: string): "neutral" | "success" | "warning" | "danger" {
+	if (status === "completed") {
+		return "success";
+	}
+	if (status === "completed-with-failures") {
+		return "warning";
+	}
+	if (status === "failed") {
+		return "danger";
+	}
+	return "neutral";
+}
+
 export function RfpAgentDetailsSheet({
 	open,
 	state,
 	onOpenChange,
 }: Readonly<RfpAgentDetailsSheetProps>): React.ReactElement {
 	const agent = state.agent;
+	const triggerLabel = agent?.trigger?.label ?? "On event: ticket enters Drafting";
+	const runs = agent?.jobRunSummaries ?? [];
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
@@ -72,12 +87,11 @@ export function RfpAgentDetailsSheet({
 					<div className="grid gap-5">
 						<DetailsSection title="Tasks">
 							<div className="grid gap-2 text-sm text-text-subtle">
-								<p>Trigger: When an RFP ticket enters Drafting.</p>
-								<p>Job: {state.schedule?.name ?? "Drafting column RFP response prep"}</p>
-								<p>Schedule: {state.schedule?.scheduleLabel ?? "Weekdays at 9:00 AM"}</p>
+								<p>Trigger: {triggerLabel}.</p>
+								<p>Job: {agent?.jobId ?? "Created when the agent is applied"}.</p>
 								<p>Scope: Drafting column.</p>
-								<p>Action: Prepare first-pass draft package.</p>
-								<p>Guardrail: Approval required for attachments and status changes.</p>
+								<p>Action: Create a thread, attach a draft, comment, and move successful tickets to Review.</p>
+								<p>Rerun policy: Completed tickets with draft output are skipped; failed tickets retry.</p>
 							</div>
 						</DetailsSection>
 
@@ -85,7 +99,7 @@ export function RfpAgentDetailsSheet({
 
 						<DetailsSection title="Instructions">
 							<p className="text-sm leading-6 text-text-subtle">
-								Read each RFP work item, inspect attachments and subtasks, use Teamwork Graph context to find account memory and reusable response assets, ask missing qualification questions, draft a response strategy, generate an HTML report with vpk-html, stage a PDF export, and wait for human approval before attaching the report or moving the ticket forward.
+								Read each RFP work item, inspect attachments and subtasks, use Teamwork Graph context to find account memory and reusable response assets, draft a deterministic first-pass vpk-html response package, attach the generated HTML artifact, add an agent-authored comment, and move successful tickets to Review.
 							</p>
 						</DetailsSection>
 
@@ -115,6 +129,46 @@ export function RfpAgentDetailsSheet({
 									</Badge>
 								))}
 							</div>
+						</DetailsSection>
+
+						<Separator />
+
+						<DetailsSection title="Run log">
+							{runs.length > 0 ? (
+								<ul className="grid gap-3">
+									{runs.map((run) => (
+										<li key={run.id} className="grid gap-2 rounded-lg border border-border bg-surface-raised p-3">
+											<div className="flex flex-wrap items-center justify-between gap-2">
+												<div className="min-w-0">
+													<p className="text-sm font-medium text-text">{run.summary}</p>
+													<p className="text-xs text-text-subtlest">{run.triggerLabel} · {run.source}</p>
+												</div>
+												<Lozenge variant={getRunTone(run.status)}>{run.status}</Lozenge>
+											</div>
+											<div className="flex flex-wrap gap-2 text-xs text-text-subtle">
+												<Badge variant="secondary">Processed {run.processedTicketCodes.length}</Badge>
+												<Badge variant="secondary">Skipped {run.skippedTicketCodes.length}</Badge>
+												<Badge variant="secondary">Failed {run.failedTicketCodes.length}</Badge>
+											</div>
+											{run.threadLinks.length > 0 ? (
+												<div className="flex flex-wrap gap-2">
+													{run.threadLinks.map((link) => (
+														<a
+															key={`${run.id}-${link.ticketCode}`}
+															className="text-xs font-medium text-link hover:underline"
+															href={`/rovo/${encodeURIComponent(link.threadId)}`}
+														>
+															{link.ticketCode} thread
+														</a>
+													))}
+												</div>
+											) : null}
+										</li>
+									))}
+								</ul>
+							) : (
+								<p className="text-sm text-text-subtle">No event runs yet.</p>
+							)}
 						</DetailsSection>
 
 						<Separator />

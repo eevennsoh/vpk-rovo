@@ -8,7 +8,7 @@ export const REASONING_LABELS = {
 		generatingResults: "Generating results",
 	},
 	section: {
-		thinking: "Rovo is thinking",
+		thinking: "Reasoning",
 		stream: "Response",
 		steps: "Steps",
 		agents: "Agents",

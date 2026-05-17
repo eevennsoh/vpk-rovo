@@ -13,6 +13,7 @@ async function loadRfpDemoStateHarness() {
 					GENERATED_RFP_REPORT_ATTACHMENT_ID,
 					RFP_DRAFTING_AGENT_AVATAR_SRCS,
 					RFP_DRAFTING_AGENT_ID,
+					RFP_DRAFTING_EVENT_TRIGGER_LABEL,
 					attachRfpReportToWorkItem,
 					approveRfpReport,
 					createDefaultAgentsRfpDemoState,
@@ -57,7 +58,7 @@ test("missing and invalid localStorage payloads seed default RFP demo state", as
 	assert.deepEqual(invalid, missing);
 });
 
-test("valid localStorage payload resumes board, report, agent, schedule, and activity", async () => {
+test("valid persisted payload resumes board, report, agent trigger, and activity", async () => {
 	const harness = await loadRfpDemoStateHarness();
 	const state = harness.scheduleRfpDraftingAgent(
 		harness.attachRfpReportToWorkItem(harness.refineRfpReport(harness.createDefaultAgentsRfpDemoState())),
@@ -66,7 +67,8 @@ test("valid localStorage payload resumes board, report, agent, schedule, and act
 
 	assert.equal(resumed.report.stage, "attached");
 	assert.equal(resumed.agent.id, harness.RFP_DRAFTING_AGENT_ID);
-	assert.equal(resumed.schedule.scheduleLabel, "Weekdays at 9:00 AM");
+	assert.equal(resumed.schedule, null);
+	assert.equal(resumed.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
 	assert.equal(resumed.customAgentActivity.length, 3);
 	assert.deepEqual(
 		harness.getGeneratedRfpAttachments(resumed, "RFP-101").map((attachment) => attachment.displayName),
@@ -141,6 +143,7 @@ test("agent creation is idempotent and assigns Drafting without retroactively as
 	assert.equal(twice.agent.name, "RFP Drafting Agent");
 	assert.ok(harness.RFP_DRAFTING_AGENT_AVATAR_SRCS.includes(twice.agent.avatarSrc));
 	assert.notEqual(twice.agent.avatarSrc, "/1p/rovo.svg");
+	assert.equal(twice.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
 	assert.deepEqual(harness.getRfpDemoColumnAgentAssignments(twice), {
 		Drafting: [harness.RFP_DRAFTING_AGENT_ID],
 	});

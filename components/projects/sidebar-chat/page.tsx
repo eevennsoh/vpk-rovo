@@ -12,7 +12,12 @@ import {
 	ConversationScrollButton,
 } from "@/components/ui-custom/conversation";
 import { MessageTurns } from "@/components/projects/shared/message-turns";
-import { isRenderableRovoUIMessage } from "@/lib/rovo-ui-messages";
+import {
+	getMessageAgentResult,
+	getMessageArtifactResult,
+	isRenderableRovoUIMessage,
+	type RovoDataParts,
+} from "@/lib/rovo-ui-messages";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import {
 	buildClarificationMessageMetadata,
@@ -43,7 +48,8 @@ import { ChatHistoryDrawer } from "./components/chat-history-drawer";
 import ChatGreeting from "./components/chat-greeting";
 import ChatComposer from "./components/chat-composer";
 import MessageBubble from "./components/message-bubble";
-import type { ArtifactResult } from "./components/artifact-result-card";
+import { ArtifactResultCard, type ArtifactResult } from "./components/artifact-result-card";
+import { AgentResultCard } from "./components/agent-result-card";
 import { StreamingThinkingIndicator } from "./components/streaming-thinking-indicator";
 import { PreloadThinkingIndicator } from "@/components/projects/shared/components/preload-thinking-indicator";
 import { chatStyles } from "./data/styles";
@@ -57,6 +63,10 @@ import styles from "./chat.module.css";
 interface ChatPanelCardsProps {
 	generativeAnimation?: GenerativeCardAnimationProps;
 }
+
+type GeneratedResult =
+	| { type: "artifact"; result: ArtifactResult }
+	| { type: "agent"; result: RovoDataParts["agent-result"] };
 
 export interface ChatPanelGreetingProps {
 	heading?: string;
@@ -561,10 +571,44 @@ export default function ChatPanel({
 									onWidgetPrimaryAction={handleWidgetPrimaryAction}
 									onBuildPlan={handleBuildPlan}
 									resolvePlanBuildState={resolvePlanBuildState}
-									onArtifactDialogOpen={handleArtifactDialogOpen}
-									onArtifactDialogClose={releaseArtifactDialogFloatingPin}
 								/>
 							)}
+							renderTurnAfter={(turn) => {
+								const generatedResults = turn.flatMap((message): GeneratedResult[] => {
+									const artifactResult = getMessageArtifactResult(message);
+									const agentResult = getMessageAgentResult(message);
+									const results: GeneratedResult[] = [];
+
+									if (artifactResult) {
+										results.push({ type: "artifact", result: artifactResult });
+									}
+									if (agentResult) {
+										results.push({ type: "agent", result: agentResult });
+									}
+
+									return results;
+								});
+
+								return generatedResults.length > 0 ? (
+									<div className="w-full space-y-2" data-testid="rovo-generated-result-group">
+										{generatedResults.map((generatedResult) => (
+											generatedResult.type === "artifact" ? (
+												<ArtifactResultCard
+													key={`artifact-${generatedResult.result.documentId}-${generatedResult.result.action}`}
+													artifact={generatedResult.result}
+													onDialogOpen={handleArtifactDialogOpen}
+													onDialogClose={releaseArtifactDialogFloatingPin}
+												/>
+											) : (
+												<AgentResultCard
+													key={`agent-${generatedResult.result.agentId}-${generatedResult.result.action}`}
+													agent={generatedResult.result}
+												/>
+											)
+										))}
+									</div>
+								) : null;
+							}}
 						/>
 					)}
 					{thinking.shouldShowPreloader ? (

@@ -159,6 +159,32 @@ test("startJobTicker triggers due jobs on an interval", async () => {
 	}
 });
 
+test("runHermesJob executes immediately with event context", async () => {
+	const fixture = await createTempManager();
+	try {
+		const job = await fixture.manager.createHermesJob({
+			name: "RFP Drafting event job",
+			prompt: "process drafting tickets",
+			schedule: "manual",
+		});
+
+		const completedJob = await fixture.manager.runHermesJob(job.id, "jira-column-entered", {
+			ticketCodes: ["RFP-102"],
+		});
+
+		assert.equal(fixture.executorCalls.length, 1);
+		assert.equal(fixture.executorCalls[0].source, "jira-column-entered");
+		assert.deepEqual(fixture.executorCalls[0].context, { ticketCodes: ["RFP-102"] });
+		assert.equal(completedJob.lastRun.trigger, "jira-column-entered");
+		assert.deepEqual(completedJob.lastRun.context, { ticketCodes: ["RFP-102"] });
+		assert.equal(completedJob.lastRun.status, "completed");
+		assert.equal(completedJob.lastResponseText, "Hello from Hermes");
+	} finally {
+		await fixture.manager.stopJobTicker();
+		await fs.rm(fixture.tempDir, { recursive: true, force: true });
+	}
+});
+
 test("createHermesJobsProvider defaults to the local provider", async () => {
 	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-hermes-jobs-provider-"));
 	try {

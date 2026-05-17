@@ -1,0 +1,1291 @@
+"use strict";
+
+const fs = require("node:fs/promises");
+const path = require("node:path");
+
+const AGENTS_RFP_DEMO_VERSION = 1;
+const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
+const RFP_DRAFTING_AGENT_NAME = "RFP Drafting Agent";
+const RFP_DRAFTING_AGENT_AVATAR_SRC = "/avatar-agent/dev-agents/feature-flag-cleaner.svg";
+const RFP_DRAFTING_BOARD_NAME = "Enterprise RFP Response";
+const RFP_DRAFTING_COLUMN_NAME = "Drafting";
+const RFP_REVIEW_COLUMN_NAME = "Review";
+const RFP_DRAFTING_EVENT_TRIGGER_LABEL = "On event: ticket enters Drafting";
+const AGENTS_RFP_DEMO_SURFACE = "agents-rfp-demo";
+const AGENTS_RFP_DEMO_JOB_NAME = "RFP Drafting Agent - Enterprise RFP Response";
+const AGENTS_RFP_DEMO_JOB_PROMPT = [
+	"Process RFP tickets when they enter Drafting on the Enterprise RFP Response board.",
+	"Use deterministic demo outputs, create a visible Rovo thread per ticket, attach the response draft, comment, and move successful tickets to Review.",
+].join(" ");
+const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
+const RFP_TICKET_DRAFT_ATTACHMENT_KIND = "rfp-draft-html";
+const DEMO_RUN_BASE_TIME = Date.parse("2025-09-03T15:00:00.000Z");
+const RFP_DRAFTING_PROCESSING_DELAYS_MS = [15_000, 24_000, 34_000, 19_000, 29_000];
+
+const RFP_DRAFTING_EVENT_TRIGGER = {
+	type: "jira-column-entered",
+	board: RFP_DRAFTING_BOARD_NAME,
+	column: RFP_DRAFTING_COLUMN_NAME,
+	label: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+};
+
+const BOARD_SEED = [
+	{
+		title: "RFP Intake",
+		cardCodes: ["RFP-101", "RFP-102", "RFP-103", "RFP-104", "RFP-105", "RFP-106", "RFP-107"],
+	},
+	{
+		title: RFP_DRAFTING_COLUMN_NAME,
+		cardCodes: ["RFP-141", "RFP-142", "RFP-143"],
+	},
+	{
+		title: RFP_REVIEW_COLUMN_NAME,
+		cardCodes: ["RFP-161", "RFP-162", "RFP-163", "RFP-164"],
+	},
+	{
+		title: "Submitted",
+		cardCodes: ["RFP-181", "RFP-182"],
+	},
+];
+
+const WORK_ITEM_TITLES = {
+	"RFP-101": "Qualify enterprise service-management RFP",
+	"RFP-102": "Parse supplier questionnaire and requested files",
+	"RFP-103": "Build DACI and response-owner matrix",
+	"RFP-104": "Inventory ITSM, asset, portal, and reporting requirements",
+	"RFP-105": "Confirm bid/no-bid risks and mandatory gaps",
+	"RFP-106": "Create RFP timeline with checkpoints and demos",
+	"RFP-107": "Collect customer context, current tools, and success metrics",
+	"RFP-141": "Draft Atlassian System of Work executive narrative",
+	"RFP-142": "Write JSM service desk, portal, and knowledge answers",
+	"RFP-143": "Prepare pricing, implementation, and TCO response",
+	"RFP-161": "Review Assets, CMDB, HAM, and SAM positioning",
+	"RFP-162": "Legal review for data residency, DPA, and terms",
+	"RFP-163": "Security review for Guard, audit, GRC, and vulnerabilities",
+	"RFP-164": "Executive review of win themes and final pitch",
+	"RFP-181": "Submit supplier clarification responses",
+	"RFP-182": "Archive final response, exhibits, and demo deck",
+};
+
+const WORK_ITEM_DESCRIPTIONS = {
+	"RFP-101": "Qualify the enterprise service-management RFP by separating mandatory requirements from differentiators, mapping each requirement area to Atlassian strengths, and identifying responses that need product, legal, security, deal desk, or partner validation.",
+	"RFP-102": "Review the supplier packet, procurement portal exports, and requested file list to identify every response artifact the team must produce. Split requirements into functional answers, legal or security exhibits, pricing files, implementation plans, customer-reference requests, and demo follow-ups.",
+	"RFP-103": "Create a DACI-style ownership map for the RFP response across account leadership, proposal management, sales engineering, product specialists, legal, security, deal desk, support, and partner teams.",
+	"RFP-104": "Inventory the customer requirement areas and translate them into response tracks covering ITSM, incident, problem, change, request, Assets and CMDB, asset management, knowledge, reporting, AI, data residency, legal compliance, implementation services, and pricing.",
+	"RFP-105": "Run the bid/no-bid risk assessment by checking mandatory requirements, certification asks, residency constraints, asset-management depth, migration timelines, pricing guardrails, reference requirements, and executive-demo readiness.",
+	"RFP-106": "Build a response calendar with supplier questions, internal draft checkpoints, demo-story reviews, legal and security approvals, pricing sign-off, final executive review, submission packaging, and post-submission follow-ups.",
+	"RFP-107": "Collect customer context for current tools, known pain points, business outcomes, executive priorities, implementation constraints, success metrics, user populations, regional differences, support model, and competitor strengths.",
+	"RFP-141": "Draft the executive narrative for why Atlassian is the right platform for the customer's enterprise work transformation. Connect Jira Service Management, Jira, Confluence, Assets, Rovo, Teamwork Graph, Guard, analytics, automation, and marketplace extensibility into one coherent system-of-work story.",
+	"RFP-142": "Prepare the functional response for service desk, request management, portals, knowledge, and reporting. Include demo moments, configuration assumptions, known limitations, and reusable answer snippets the proposal team can paste into the formal response matrix.",
+	"RFP-143": "Build the commercial and implementation response covering licensing assumptions, phased rollout options, implementation services, migration support, training, success planning, total cost of ownership, renewal considerations, and discount or approval dependencies.",
+	"RFP-161": "Review the Assets, CMDB, hardware asset, and software asset management positioning before the response goes to final review.",
+	"RFP-162": "Review data residency, DPA, legal terms, procurement conditions, privacy requirements, and contract language for the response.",
+	"RFP-163": "Review security, Guard, audit logging, compliance, GRC, risk, and vulnerability-management answers.",
+	"RFP-164": "Prepare the executive review package for the final pitch.",
+	"RFP-181": "Package and submit the clarification responses that unblock the proposal team.",
+	"RFP-182": "Archive the final response package, exhibits, pricing files, demo deck, approved legal language, security artifacts, and reusable answer snippets.",
+};
+
+const HUMAN_ASSIGNEES_BY_TICKET = {
+	"RFP-101": "Maya Chen",
+	"RFP-102": "Jordan Lee",
+	"RFP-103": "Priya Shah",
+	"RFP-104": "Elena Ruiz",
+	"RFP-105": "Maya Chen",
+	"RFP-106": "Jordan Lee",
+	"RFP-107": "Priya Shah",
+	"RFP-141": "David Hsieh",
+	"RFP-142": "Florence Garcia",
+	"RFP-143": "Jordan Lee",
+};
+
+const TICKET_RESPONSE_FOCUS = {
+	"RFP-101": "qualification strategy and bid posture",
+	"RFP-102": "supplier questionnaire parsing and response artifact planning",
+	"RFP-103": "DACI ownership and review routing",
+	"RFP-104": "requirement inventory and response track staffing",
+	"RFP-105": "bid risk mitigation and leadership decision support",
+	"RFP-106": "response timeline checkpoints and approval buffers",
+	"RFP-107": "customer context and reusable win themes",
+	"RFP-141": "executive System of Work narrative",
+	"RFP-142": "JSM service desk, portal, knowledge, and reporting answers",
+	"RFP-143": "commercial, implementation, and TCO response",
+};
+
+const RFP_101_FIXTURE_ATTACHMENTS = [
+	{
+		id: "fixture-rfp-intake-notes",
+		displayName: "RFP intake notes",
+		ext: "page",
+		source: "fixture",
+	},
+	{
+		id: "fixture-rfp-requirement-compliance-matrix",
+		displayName: "Compliance matrix",
+		ext: "xlsx",
+		source: "fixture",
+	},
+	{
+		id: "fixture-response-brief",
+		displayName: "Response brief",
+		ext: "docx",
+		source: "fixture",
+	},
+	{
+		id: "fixture-enterprise-rfp-requirements",
+		displayName: "Enterprise RFP packet",
+		ext: "pdf",
+		source: "fixture",
+	},
+	{
+		id: "fixture-proposal-audio-briefing",
+		displayName: "proposal-audio-briefing.mp3",
+		ext: "mp3",
+		source: "fixture",
+	},
+	{
+		id: "fixture-supplier-portal-upload",
+		displayName: "Supplier portal upload",
+		ext: "png",
+		source: "fixture",
+	},
+	{
+		id: "fixture-proposal-walkthrough",
+		displayName: "Proposal walkthrough",
+		ext: "mp4",
+		source: "fixture",
+	},
+];
+
+function cloneJson(value) {
+	return JSON.parse(JSON.stringify(value));
+}
+
+function isObject(value) {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getNonEmptyString(value) {
+	return typeof value === "string" && value.trim().length > 0
+		? value.trim()
+		: null;
+}
+
+function normalizeStringArray(value) {
+	return Array.isArray(value)
+		? value.filter((item) => typeof item === "string" && item.trim().length > 0)
+		: [];
+}
+
+function createThreadIdForTicket(ticketCode) {
+	return `agents-rfp-demo-${ticketCode.toLowerCase()}`;
+}
+
+function createRunId() {
+	return `rfp-run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function formatDemoTimestamp(index = 0) {
+	return new Date(DEMO_RUN_BASE_TIME + index * 2 * 60_000).toISOString();
+}
+
+function formatDemoTimestampLabel(index = 0) {
+	return index === 0 ? "Sep 3, 2025, 10:00 AM" : `Sep 3, 2025, 10:${String(index * 2).padStart(2, "0")} AM`;
+}
+
+function createDefaultBoardState() {
+	return {
+		columns: BOARD_SEED.map((column) => ({
+			title: column.title,
+			cardCodes: [...column.cardCodes],
+		})),
+	};
+}
+
+function createDefaultWorkItemState(code, status) {
+	return {
+		status,
+		attachments: code === "RFP-101" ? RFP_101_FIXTURE_ATTACHMENTS.map((attachment) => ({ ...attachment })) : [],
+		agentAssignmentIds: [],
+		assignee: null,
+		previousAssignee: null,
+		agentStatus: "idle",
+		agentStartedAt: null,
+		agentReadyAt: null,
+		agentSessionThreadId: null,
+		agentJobRunId: null,
+		generatedAttachment: null,
+		agentComment: null,
+		completedAt: null,
+		lastError: null,
+	};
+}
+
+function createDefaultWorkItems() {
+	const workItems = {};
+	for (const column of BOARD_SEED) {
+		for (const cardCode of column.cardCodes) {
+			workItems[cardCode] = createDefaultWorkItemState(cardCode, column.title);
+		}
+	}
+	return workItems;
+}
+
+function createDefaultAgentsRfpDemoState() {
+	return {
+		version: AGENTS_RFP_DEMO_VERSION,
+		board: createDefaultBoardState(),
+		workItems: createDefaultWorkItems(),
+		report: {
+			stage: "none",
+			versions: [],
+		},
+		agent: null,
+		schedule: null,
+		customAgentActivity: [],
+		canvas: {
+			open: false,
+			activeViewId: "report",
+			mode: "editable",
+		},
+		chat: {
+			selectedAgentId: "rovo",
+		},
+		toasts: [],
+	};
+}
+
+function normalizeAttachment(rawAttachment) {
+	if (!isObject(rawAttachment)) {
+		return null;
+	}
+
+	const id = getNonEmptyString(rawAttachment.id);
+	const displayName = getNonEmptyString(rawAttachment.displayName);
+	const ext = getNonEmptyString(rawAttachment.ext);
+	const source = rawAttachment.source === "generated" || rawAttachment.source === "fixture"
+		? rawAttachment.source
+		: null;
+	if (!id || !displayName || !ext || !source) {
+		return null;
+	}
+
+	return {
+		id,
+		displayName,
+		ext,
+		source,
+		approved: rawAttachment.approved === true,
+		previewKind:
+			rawAttachment.previewKind === "html-report" || rawAttachment.previewKind === "pdf-preview"
+				? rawAttachment.previewKind
+				: undefined,
+		kind: getNonEmptyString(rawAttachment.kind),
+		previewHtml: getNonEmptyString(rawAttachment.previewHtml),
+	};
+}
+
+function normalizeAgentComment(rawComment) {
+	if (!isObject(rawComment)) {
+		return null;
+	}
+
+	const id = getNonEmptyString(rawComment.id);
+	const content = getNonEmptyString(rawComment.content);
+	if (!id || !content) {
+		return null;
+	}
+
+	return {
+		id,
+		authorName: getNonEmptyString(rawComment.authorName) ?? RFP_DRAFTING_AGENT_NAME,
+		authorAvatarSrc: getNonEmptyString(rawComment.authorAvatarSrc) ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
+		timestampLabel: getNonEmptyString(rawComment.timestampLabel) ?? "Sep 3, 2025, 10:00 AM",
+		content,
+	};
+}
+
+function normalizeWorkItemState(rawWorkItem, code, fallbackStatus) {
+	const base = createDefaultWorkItemState(code, fallbackStatus);
+	if (!isObject(rawWorkItem)) {
+		return base;
+	}
+
+	const agentStatus = ["idle", "queued", "running", "completed", "failed"].includes(rawWorkItem.agentStatus)
+		? rawWorkItem.agentStatus
+		: base.agentStatus;
+	const attachments = Array.isArray(rawWorkItem.attachments)
+		? rawWorkItem.attachments.map(normalizeAttachment).filter(Boolean)
+		: base.attachments;
+
+	return {
+		...base,
+		status: getNonEmptyString(rawWorkItem.status) ?? base.status,
+		attachments,
+		agentAssignmentIds: normalizeStringArray(rawWorkItem.agentAssignmentIds),
+		assignee: getNonEmptyString(rawWorkItem.assignee),
+		previousAssignee: getNonEmptyString(rawWorkItem.previousAssignee),
+		agentStatus,
+		agentStartedAt: getNonEmptyString(rawWorkItem.agentStartedAt),
+		agentReadyAt: getNonEmptyString(rawWorkItem.agentReadyAt),
+		agentSessionThreadId: getNonEmptyString(rawWorkItem.agentSessionThreadId),
+		agentJobRunId: getNonEmptyString(rawWorkItem.agentJobRunId),
+		generatedAttachment: normalizeAttachment(rawWorkItem.generatedAttachment),
+		agentComment: normalizeAgentComment(rawWorkItem.agentComment),
+		completedAt: getNonEmptyString(rawWorkItem.completedAt),
+		lastError: getNonEmptyString(rawWorkItem.lastError),
+	};
+}
+
+function normalizeBoard(rawBoard) {
+	const defaultBoard = createDefaultBoardState();
+	if (!isObject(rawBoard) || !Array.isArray(rawBoard.columns)) {
+		return defaultBoard;
+	}
+
+	const columns = rawBoard.columns
+		.map((column) => {
+			if (!isObject(column)) {
+				return null;
+			}
+			const title = getNonEmptyString(column.title);
+			if (!title) {
+				return null;
+			}
+			return {
+				title,
+				cardCodes: normalizeStringArray(column.cardCodes),
+			};
+		})
+		.filter(Boolean);
+
+	return columns.length > 0 ? { columns } : defaultBoard;
+}
+
+function normalizeTrigger(rawTrigger) {
+	if (!isObject(rawTrigger)) {
+		return { ...RFP_DRAFTING_EVENT_TRIGGER };
+	}
+
+	return {
+		type: getNonEmptyString(rawTrigger.type) ?? RFP_DRAFTING_EVENT_TRIGGER.type,
+		board: getNonEmptyString(rawTrigger.board) ?? RFP_DRAFTING_EVENT_TRIGGER.board,
+		column: getNonEmptyString(rawTrigger.column) ?? RFP_DRAFTING_EVENT_TRIGGER.column,
+		label: getNonEmptyString(rawTrigger.label) ?? RFP_DRAFTING_EVENT_TRIGGER.label,
+	};
+}
+
+function normalizeJobRunSummary(rawRun) {
+	if (!isObject(rawRun)) {
+		return null;
+	}
+
+	const id = getNonEmptyString(rawRun.id);
+	if (!id) {
+		return null;
+	}
+
+	const status = ["completed", "completed-with-failures", "failed", "running", "skipped"].includes(rawRun.status)
+		? rawRun.status
+		: "completed";
+
+	return {
+		id,
+		jobId: getNonEmptyString(rawRun.jobId),
+		source: getNonEmptyString(rawRun.source) ?? "manual",
+		triggerLabel: getNonEmptyString(rawRun.triggerLabel) ?? RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+		status,
+		startedAt: getNonEmptyString(rawRun.startedAt) ?? formatDemoTimestamp(0),
+		finishedAt: getNonEmptyString(rawRun.finishedAt),
+		processedTicketCodes: normalizeStringArray(rawRun.processedTicketCodes),
+		skippedTicketCodes: normalizeStringArray(rawRun.skippedTicketCodes),
+		failedTicketCodes: normalizeStringArray(rawRun.failedTicketCodes),
+		threadLinks: Array.isArray(rawRun.threadLinks)
+			? rawRun.threadLinks
+					.map((link) => {
+						if (!isObject(link)) {
+							return null;
+						}
+						const ticketCode = getNonEmptyString(link.ticketCode);
+						const threadId = getNonEmptyString(link.threadId);
+						if (!ticketCode || !threadId) {
+							return null;
+						}
+						return { ticketCode, threadId };
+					})
+					.filter(Boolean)
+			: [],
+		summary: getNonEmptyString(rawRun.summary) ?? "",
+	};
+}
+
+function normalizeAgent(rawAgent) {
+	if (!isObject(rawAgent)) {
+		return null;
+	}
+
+	return {
+		id: RFP_DRAFTING_AGENT_ID,
+		name: RFP_DRAFTING_AGENT_NAME,
+		selected: rawAgent.selected !== false,
+		assignedColumn: RFP_DRAFTING_COLUMN_NAME,
+		createdAt: getNonEmptyString(rawAgent.createdAt) ?? "Sep 3, 2025, 10:00 AM",
+		avatarSrc: getNonEmptyString(rawAgent.avatarSrc) ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
+		jobId: getNonEmptyString(rawAgent.jobId),
+		trigger: normalizeTrigger(rawAgent.trigger),
+		jobRunSummaries: Array.isArray(rawAgent.jobRunSummaries)
+			? rawAgent.jobRunSummaries.map(normalizeJobRunSummary).filter(Boolean)
+			: [],
+	};
+}
+
+function normalizeAgentsRfpDemoState(rawState) {
+	const defaultState = createDefaultAgentsRfpDemoState();
+	if (!isObject(rawState) || rawState.version !== AGENTS_RFP_DEMO_VERSION) {
+		return defaultState;
+	}
+
+	const board = normalizeBoard(rawState.board);
+	const defaultStatuses = new Map(
+		board.columns.flatMap((column) => column.cardCodes.map((code) => [code, column.title])),
+	);
+	const workItems = {};
+	for (const code of new Set([...Object.keys(defaultState.workItems), ...defaultStatuses.keys(), ...Object.keys(isObject(rawState.workItems) ? rawState.workItems : {})])) {
+		workItems[code] = normalizeWorkItemState(
+			isObject(rawState.workItems) ? rawState.workItems[code] : null,
+			code,
+			defaultStatuses.get(code) ?? defaultState.workItems[code]?.status ?? "RFP Intake",
+		);
+	}
+
+	return {
+		...defaultState,
+		board,
+		workItems,
+		report: isObject(rawState.report)
+			? {
+					...defaultState.report,
+					...rawState.report,
+					stage: getNonEmptyString(rawState.report.stage) ?? defaultState.report.stage,
+					versions: Array.isArray(rawState.report.versions) ? rawState.report.versions : [],
+				}
+			: defaultState.report,
+		agent: normalizeAgent(rawState.agent),
+		schedule: null,
+		customAgentActivity: Array.isArray(rawState.customAgentActivity) ? rawState.customAgentActivity : [],
+		canvas: isObject(rawState.canvas) ? { ...defaultState.canvas, ...rawState.canvas } : defaultState.canvas,
+		chat: isObject(rawState.chat) ? { ...defaultState.chat, ...rawState.chat } : defaultState.chat,
+		toasts: Array.isArray(rawState.toasts) ? rawState.toasts : [],
+	};
+}
+
+function appendUniqueActivity(state, item) {
+	if (state.customAgentActivity.some((activity) => activity.id === item.id)) {
+		return state;
+	}
+
+	return {
+		...state,
+		customAgentActivity: [...state.customAgentActivity, item],
+	};
+}
+
+function appendToast(state, message, id) {
+	return {
+		...state,
+		toasts: [
+			...state.toasts.filter((toast) => toast.id !== id),
+			{ id, message },
+		].slice(-3),
+	};
+}
+
+function ensureRfpDraftingAgent(state, { jobId, createdAtLabel = "Sep 3, 2025, 10:00 AM" } = {}) {
+	const agent = normalizeAgent({
+		...(state.agent ?? {}),
+		id: RFP_DRAFTING_AGENT_ID,
+		name: RFP_DRAFTING_AGENT_NAME,
+		selected: true,
+		assignedColumn: RFP_DRAFTING_COLUMN_NAME,
+		createdAt: state.agent?.createdAt ?? createdAtLabel,
+		avatarSrc: state.agent?.avatarSrc ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
+		jobId: jobId ?? state.agent?.jobId,
+		trigger: RFP_DRAFTING_EVENT_TRIGGER,
+		jobRunSummaries: state.agent?.jobRunSummaries ?? [],
+	});
+	const nextState = {
+		...state,
+		agent,
+		schedule: null,
+		chat: {
+			...state.chat,
+			selectedAgentId: RFP_DRAFTING_AGENT_ID,
+		},
+	};
+
+	return appendUniqueActivity(appendUniqueActivity(nextState, {
+		id: "activity-agent-created",
+		timestampLabel: createdAtLabel,
+		message: "Rovo created RFP Drafting Agent.",
+		type: "agent-created",
+	}), {
+		id: "activity-workflow-assigned",
+		timestampLabel: createdAtLabel,
+		message: "Rovo assigned RFP Drafting Agent to the Drafting column event.",
+		type: "workflow-assigned",
+	});
+}
+
+function findColumnForTicket(state, ticketCode) {
+	return state.board.columns.find((column) => column.cardCodes.includes(ticketCode)) ?? null;
+}
+
+function moveTicketToColumn(state, ticketCode, targetColumnTitle, { append = false } = {}) {
+	const targetColumn = state.board.columns.find((column) => column.title === targetColumnTitle);
+	if (!targetColumn) {
+		return state;
+	}
+
+	const columns = state.board.columns.map((column) => {
+		const filteredCodes = column.cardCodes.filter((code) => code !== ticketCode);
+		if (column.title !== targetColumnTitle) {
+			return {
+				...column,
+				cardCodes: filteredCodes,
+			};
+		}
+
+		return {
+			...column,
+			cardCodes: append
+				? [...filteredCodes, ticketCode]
+				: [ticketCode, ...filteredCodes],
+		};
+	});
+
+	return {
+		...state,
+		board: { columns },
+		workItems: {
+			...state.workItems,
+			[ticketCode]: {
+				...(state.workItems[ticketCode] ?? createDefaultWorkItemState(ticketCode, targetColumnTitle)),
+				status: targetColumnTitle,
+			},
+		},
+	};
+}
+
+function isCompletedByAgent(workItem) {
+	return (
+		workItem?.agentStatus === "completed" &&
+		Boolean(workItem.generatedAttachment) &&
+		Boolean(workItem.agentComment)
+	);
+}
+
+function getCurrentDraftingTicketCodes(state) {
+	return state.board.columns.find((column) => column.title === RFP_DRAFTING_COLUMN_NAME)?.cardCodes ?? [];
+}
+
+function getHumanAssigneeForTicket(ticketCode) {
+	return HUMAN_ASSIGNEES_BY_TICKET[ticketCode] ?? "Maya Chen";
+}
+
+function getProcessingDelayMs(index) {
+	return RFP_DRAFTING_PROCESSING_DELAYS_MS[index % RFP_DRAFTING_PROCESSING_DELAYS_MS.length];
+}
+
+function createGeneratedAttachment(ticketCode, previewHtml) {
+	return {
+		id: `generated-${ticketCode.toLowerCase()}-response-draft-html`,
+		displayName: `${ticketCode} response draft.html`,
+		ext: "html",
+		source: "generated",
+		approved: true,
+		previewKind: "html-report",
+		kind: RFP_TICKET_DRAFT_ATTACHMENT_KIND,
+		previewHtml: getNonEmptyString(previewHtml),
+	};
+}
+
+function createAgentComment(ticketCode, ticketTitle, index) {
+	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
+	const reviewer = getHumanAssigneeForTicket(ticketCode);
+	return {
+		id: `agent-comment-${ticketCode.toLowerCase()}-draft-ready`,
+		authorName: RFP_DRAFTING_AGENT_NAME,
+		authorAvatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,
+		timestampLabel: formatDemoTimestampLabel(index),
+		content: `${RFP_DRAFTING_AGENT_NAME} drafted the first-pass HTML response for ${ticketCode} (${ticketTitle}) with focus on ${focus}, attached the vpk-html artifact, and moved the ticket to Review for ${reviewer}.`,
+	};
+}
+
+function buildActiveJiraWorkItemContextForTicket(ticketCode, status = RFP_DRAFTING_COLUMN_NAME) {
+	const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
+	const assignee = getHumanAssigneeForTicket(ticketCode);
+	const description = WORK_ITEM_DESCRIPTIONS[ticketCode] ?? `Prepare a first-pass RFP response draft for ${ticketCode}.`;
+	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
+
+	return [
+		"[Active Jira Work Item Context]",
+		"Source: /agents Jira work item.",
+		`Key: ${ticketCode}`,
+		`Title: ${ticketTitle}`,
+		`Status: ${status}`,
+		"Priority: High",
+		`Assignee: ${assignee} (Proposal response owner)`,
+		"Reporter: Jordan Lee (Account executive)",
+		"Parent: RFP-100 - Enterprise RFP Response",
+		"Customer: VitaFleet Global Services",
+		"Opportunity: Enterprise service-management transformation",
+		"Procurement stage: Draft response package",
+		"Response due date: Sep 8, 2025",
+		`Description: ${description}`,
+		"Buyer priorities:",
+		"- Reduce tool sprawl across IT, service, and business teams.",
+		"- Improve service delivery visibility for executives.",
+		"- Show a practical migration path with governed AI assistance.",
+		"Win themes:",
+		"- Atlassian System of Work connects service, software, knowledge, and business teams.",
+		"- Teamwork Graph and Rovo make response knowledge reusable and contextual.",
+		"- Jira Service Management, Assets, Confluence, Guard, and automation create a governed operating model.",
+		"Known risks:",
+		"- Legal, security, and deal desk language still needs final human review.",
+		"- Commercial assumptions must not overstate approved pricing or implementation commitments.",
+		"Next actions:",
+		`- Draft ${focus} in a reusable response artifact.`,
+		"- Attach the generated response for proposal review.",
+		"- Move the ticket to Review and assign it back to a human owner.",
+		"Attachments:",
+		"- Enterprise RFP packet.pdf (15 Aug 2025, 11:05 AM)",
+		"- Compliance matrix.xlsx (12 Aug 2025, 09:24 AM)",
+		"Recent activity:",
+		`- Sep 3, 2025, 09:58 AM: ${assignee} - Ready for agent-assisted first-pass drafting.`,
+		"[End Active Jira Work Item Context]",
+	].join("\n");
+}
+
+function buildTicketSpecificReportFields(ticketCode) {
+	const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
+	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
+	const assignee = getHumanAssigneeForTicket(ticketCode);
+
+	return {
+		summary: `${ticketCode} draft response for ${focus}.`,
+		whatChangedText: `${RFP_DRAFTING_AGENT_NAME} converted ${ticketTitle} into a reviewable response draft focused on ${focus}.`,
+		confidenceText: "Medium confidence: the work item has enough context for a first-pass response, while legal, security, commercial, and product commitments remain marked for human review.",
+		progressText: `A vpk-html draft artifact has been prepared for ${assignee} with reusable Atlassian System of Work language and ticket-specific next actions.`,
+		blockersText: "Final approval still depends on human validation of legal language, commercial assumptions, and customer-specific implementation commitments.",
+		nextWindowText: `${assignee} should review the attached HTML draft, tighten any customer-specific claims, and either approve the response text or route gaps to the appropriate specialist.`,
+		milestonesText: "Drafting is complete for agent handoff; Review is the next workflow milestone before final proposal packaging.",
+		informationGaps: [
+			"Final approved pricing and legal exceptions are not recorded in the Work Item context.",
+			"Customer-specific evidence exhibits still need human verification before submission.",
+		],
+	};
+}
+
+function buildFallbackHtmlReport(ticketCode) {
+	const title = `${ticketCode} response draft`;
+	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
+	return [
+		"<!doctype html>",
+		'<html lang="en">',
+		"<head>",
+		'\t<meta charset="utf-8">',
+		'\t<meta name="generator" content="vpk-html">',
+		`\t<title>${title}</title>`,
+		"</head>",
+		"<body>",
+		`\t<h1>${title}</h1>`,
+		`\t<p>Deterministic vpk-html draft focused on ${focus}.</p>`,
+		"</body>",
+		"</html>",
+	].join("\n");
+}
+
+function buildThreadMessagesForTicket({ attachmentName, focus, runId, status = "completed", ticketCode, ticketTitle, timestamp }) {
+	const resultText = status === "running"
+		? [
+				`Started deterministic RFP drafting for ${ticketCode}.`,
+				`Focus: ${focus}.`,
+				"Status: the agent is reading the work item, gathering reusable Teamwork Graph context, and preparing a vpk-html response artifact.",
+			].join("\n")
+		: [
+				`Prepared deterministic RFP draft output for ${ticketCode}.`,
+				`Attachment: ${attachmentName}.`,
+				`Focus: ${focus}.`,
+				"Summary: mapped the ticket to Atlassian System of Work win themes, reusable answer language, review notes, and implementation assumptions.",
+				"Next step: review the generated HTML draft in Jira before final submission.",
+			].join("\n");
+
+	return [
+		{
+			id: `${ticketCode.toLowerCase()}-draft-request`,
+			role: "user",
+			parts: [
+				{
+					type: "text",
+					text: `Event received: ${ticketCode} entered Drafting on the ${RFP_DRAFTING_BOARD_NAME} board. Draft the response package for "${ticketTitle}".`,
+				},
+			],
+			metadata: {
+				source: AGENTS_RFP_DEMO_SURFACE,
+				runId,
+			},
+			createdAt: timestamp,
+		},
+		{
+			id: status === "running" ? `${ticketCode.toLowerCase()}-draft-started` : `${ticketCode.toLowerCase()}-draft-result`,
+			role: "assistant",
+			parts: [
+				{
+					type: "text",
+					text: resultText,
+				},
+			],
+			metadata: {
+				source: AGENTS_RFP_DEMO_SURFACE,
+				runId,
+			},
+			createdAt: timestamp,
+		},
+	];
+}
+
+function buildThreadForTicket({ attachmentName, status = "completed", ticketCode, runId, timestamp }) {
+	const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
+	const threadId = createThreadIdForTicket(ticketCode);
+	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
+
+	return {
+		id: threadId,
+		title: `${ticketCode} RFP draft response`,
+		messages: buildThreadMessagesForTicket({
+			attachmentName: attachmentName ?? `${ticketCode} response draft.html`,
+			focus,
+			status,
+			ticketCode,
+			ticketTitle,
+			runId,
+			timestamp,
+		}),
+		realtimeMessages: [],
+		visibility: "private",
+		modelId: null,
+		provider: "agents-rfp-demo",
+		createdAt: timestamp,
+		updatedAt: timestamp,
+	};
+}
+
+function buildFailureThreadForTicket({ ticketCode, runId, timestamp }) {
+	const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
+	const threadId = createThreadIdForTicket(ticketCode);
+
+	return {
+		id: threadId,
+		title: `${ticketCode} RFP draft response`,
+		messages: [
+			{
+				id: `${ticketCode.toLowerCase()}-draft-request`,
+				role: "user",
+				parts: [
+					{
+						type: "text",
+						text: `Event received: ${ticketCode} entered Drafting on the ${RFP_DRAFTING_BOARD_NAME} board. Draft the response package for "${ticketTitle}".`,
+					},
+				],
+				metadata: {
+					source: AGENTS_RFP_DEMO_SURFACE,
+					runId,
+				},
+				createdAt: timestamp,
+			},
+			{
+				id: `${ticketCode.toLowerCase()}-draft-failed`,
+				role: "assistant",
+				parts: [
+					{
+						type: "text",
+						text: `The deterministic demo run failed while preparing ${ticketCode}. The ticket stayed in Drafting and can be retried by rerunning the event job.`,
+					},
+				],
+				metadata: {
+					source: AGENTS_RFP_DEMO_SURFACE,
+					runId,
+				},
+				createdAt: timestamp,
+			},
+		],
+		realtimeMessages: [],
+		visibility: "private",
+		modelId: null,
+		provider: "agents-rfp-demo",
+		createdAt: timestamp,
+		updatedAt: timestamp,
+	};
+}
+
+function buildRunSummary({
+	failedTicketCodes,
+	finishedAt,
+	jobId,
+	processedTicketCodes,
+	runId,
+	skippedTicketCodes,
+	source,
+	startedAt,
+	status: statusOverride,
+	threadLinks,
+}) {
+	const status = statusOverride ?? (failedTicketCodes.length > 0
+		? processedTicketCodes.length > 0
+			? "completed-with-failures"
+			: "failed"
+		: processedTicketCodes.length > 0
+			? "completed"
+			: "skipped");
+	const action = status === "running" ? "Queued" : "Processed";
+	const summary = [
+		`${action} ${processedTicketCodes.length} ticket${processedTicketCodes.length === 1 ? "" : "s"}`,
+		`skipped ${skippedTicketCodes.length}`,
+		`failed ${failedTicketCodes.length}`,
+	].join(", ");
+
+	return {
+		id: runId,
+		jobId,
+		source,
+		triggerLabel: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+		status,
+		startedAt,
+		finishedAt,
+		processedTicketCodes,
+		skippedTicketCodes,
+		failedTicketCodes,
+		threadLinks,
+		summary: `${summary}.`,
+	};
+}
+
+function runRfpDraftingAgent(state, {
+	failTicketCodes = [],
+	jobId = state.agent?.jobId ?? null,
+	now = Date.now(),
+	runId = createRunId(),
+	source = "manual",
+	ticketCodes,
+} = {}) {
+	let nextState = ensureRfpDraftingAgent(state, { jobId });
+	const failSet = new Set(failTicketCodes);
+	const startedAtIso = new Date(now).toISOString();
+	const requestedTicketCodes = Array.isArray(ticketCodes) && ticketCodes.length > 0
+		? ticketCodes
+		: getCurrentDraftingTicketCodes(nextState);
+	const completedTicketCodes = Object.entries(nextState.workItems)
+		.filter(([, workItem]) => isCompletedByAgent(workItem))
+		.map(([ticketCode]) => ticketCode);
+	const ticketCodesToEvaluate = Array.from(new Set(
+		Array.isArray(ticketCodes) && ticketCodes.length > 0
+			? requestedTicketCodes
+			: [...requestedTicketCodes, ...completedTicketCodes],
+	));
+	const processedTicketCodes = [];
+	const skippedTicketCodes = [];
+	const failedTicketCodes = [];
+	const threadLinks = [];
+	const threadRecords = [];
+	const startedAt = formatDemoTimestamp(0);
+
+	for (const [index, ticketCode] of ticketCodesToEvaluate.entries()) {
+		const currentWorkItem = nextState.workItems[ticketCode] ?? createDefaultWorkItemState(ticketCode, findColumnForTicket(nextState, ticketCode)?.title ?? RFP_DRAFTING_COLUMN_NAME);
+		const isRequested = requestedTicketCodes.includes(ticketCode);
+		if (isCompletedByAgent(currentWorkItem)) {
+			skippedTicketCodes.push(ticketCode);
+			continue;
+		}
+		if (currentWorkItem.agentStatus === "running" || currentWorkItem.agentStatus === "queued") {
+			skippedTicketCodes.push(ticketCode);
+			continue;
+		}
+		if (!isRequested || currentWorkItem.status !== RFP_DRAFTING_COLUMN_NAME) {
+			continue;
+		}
+
+		const threadId = currentWorkItem.agentSessionThreadId ?? createThreadIdForTicket(ticketCode);
+		const runningWorkItem = {
+			...currentWorkItem,
+			previousAssignee: currentWorkItem.previousAssignee ?? currentWorkItem.assignee ?? getHumanAssigneeForTicket(ticketCode),
+			assignee: RFP_DRAFTING_AGENT_NAME,
+			agentAssignmentIds: Array.from(new Set([...currentWorkItem.agentAssignmentIds, RFP_DRAFTING_AGENT_ID])),
+			agentStatus: index === 0 ? "running" : "queued",
+			agentStartedAt: currentWorkItem.agentStartedAt ?? startedAtIso,
+			agentReadyAt: new Date(now + getProcessingDelayMs(index)).toISOString(),
+			agentSessionThreadId: threadId,
+			agentJobRunId: runId,
+			lastError: null,
+		};
+
+		if (failSet.has(ticketCode)) {
+			const failedAt = formatDemoTimestamp(index + 1);
+			nextState = {
+				...nextState,
+				workItems: {
+					...nextState.workItems,
+					[ticketCode]: {
+						...runningWorkItem,
+						agentStatus: "failed",
+						agentReadyAt: null,
+						lastError: `Deterministic demo failure for ${ticketCode}.`,
+					},
+				},
+			};
+			failedTicketCodes.push(ticketCode);
+			threadLinks.push({ ticketCode, threadId });
+			threadRecords.push({
+				...buildFailureThreadForTicket({ ticketCode, runId, timestamp: failedAt }),
+				id: threadId,
+			});
+			continue;
+		}
+
+		nextState = {
+			...nextState,
+			workItems: {
+				...nextState.workItems,
+				[ticketCode]: {
+					...runningWorkItem,
+				},
+			},
+		};
+		processedTicketCodes.push(ticketCode);
+		threadLinks.push({ ticketCode, threadId });
+		threadRecords.push({
+			...buildThreadForTicket({ status: "running", ticketCode, runId, timestamp: startedAtIso }),
+			id: threadId,
+		});
+	}
+
+	const hasRunningTickets = processedTicketCodes.some((ticketCode) => (
+		nextState.workItems[ticketCode]?.agentStatus === "running" ||
+		nextState.workItems[ticketCode]?.agentStatus === "queued"
+	));
+	const finishedAt = hasRunningTickets ? null : formatDemoTimestamp(ticketCodesToEvaluate.length + 1);
+	const runSummary = buildRunSummary({
+		failedTicketCodes,
+		finishedAt,
+		jobId,
+		processedTicketCodes,
+		runId,
+		skippedTicketCodes,
+		source,
+		startedAt,
+		status: hasRunningTickets ? "running" : undefined,
+		threadLinks,
+	});
+	const agent = normalizeAgent({
+		...nextState.agent,
+		jobId,
+		jobRunSummaries: [runSummary, ...(nextState.agent?.jobRunSummaries ?? [])].slice(0, 10),
+	});
+	nextState = appendToast({
+		...nextState,
+		agent,
+	}, runSummary.status === "skipped"
+		? "RFP Drafting Agent found no new Drafting tickets to process."
+		: runSummary.status === "running"
+			? `${RFP_DRAFTING_AGENT_NAME} queued ${processedTicketCodes.length} Drafting ticket${processedTicketCodes.length === 1 ? "" : "s"}.`
+			: `${RFP_DRAFTING_AGENT_NAME} ${runSummary.summary}`,
+	`rfp-agent-run-${runId}`);
+
+	return {
+		state: nextState,
+		runSummary,
+		threadRecords,
+	};
+}
+
+function getDueAgentWorkItems(state, now) {
+	const nowMs = typeof now === "number" ? now : Date.parse(now);
+	if (!Number.isFinite(nowMs)) {
+		return [];
+	}
+
+	return Object.entries(state.workItems ?? {})
+		.filter(([, workItem]) => (
+			(workItem?.agentStatus === "running" || workItem?.agentStatus === "queued") &&
+			getNonEmptyString(workItem.agentReadyAt) &&
+			Date.parse(workItem.agentReadyAt) <= nowMs &&
+			workItem.status === RFP_DRAFTING_COLUMN_NAME
+		))
+		.map(([ticketCode, workItem]) => ({ ticketCode, workItem }));
+}
+
+function refreshRunSummaries(state) {
+	if (!state.agent?.jobRunSummaries?.length) {
+		return state;
+	}
+
+	let changed = false;
+	const jobRunSummaries = state.agent.jobRunSummaries.map((runSummary) => {
+		if (runSummary.status !== "running" || runSummary.processedTicketCodes.length === 0) {
+			return runSummary;
+		}
+
+		const processedWorkItems = runSummary.processedTicketCodes
+			.map((ticketCode) => state.workItems[ticketCode])
+			.filter(Boolean);
+		const allSettled = processedWorkItems.length > 0 && processedWorkItems.every((workItem) => (
+			workItem.agentStatus === "completed" || workItem.agentStatus === "failed"
+		));
+		if (!allSettled) {
+			return runSummary;
+		}
+
+		const failedTicketCodes = Array.from(new Set([
+			...runSummary.failedTicketCodes,
+			...runSummary.processedTicketCodes.filter((ticketCode) => state.workItems[ticketCode]?.agentStatus === "failed"),
+		]));
+		const status = failedTicketCodes.length > 0
+			? runSummary.processedTicketCodes.some((ticketCode) => state.workItems[ticketCode]?.agentStatus === "completed")
+				? "completed-with-failures"
+				: "failed"
+			: "completed";
+		changed = true;
+		return {
+			...runSummary,
+			status,
+			failedTicketCodes,
+			finishedAt: runSummary.finishedAt ?? formatDemoTimestamp(runSummary.processedTicketCodes.length + 1),
+			summary: [
+				`Processed ${runSummary.processedTicketCodes.length} ticket${runSummary.processedTicketCodes.length === 1 ? "" : "s"}`,
+				`skipped ${runSummary.skippedTicketCodes.length}`,
+				`failed ${failedTicketCodes.length}`,
+			].join(", ") + ".",
+		};
+	});
+
+	if (!changed) {
+		return state;
+	}
+
+	return {
+		...state,
+		agent: normalizeAgent({
+			...state.agent,
+			jobRunSummaries,
+		}),
+	};
+}
+
+async function advanceRfpDraftingAgentProcessing(state, {
+	createHtmlReport,
+	now = Date.now(),
+} = {}) {
+	let nextState = normalizeAgentsRfpDemoState(state);
+	const dueItems = getDueAgentWorkItems(nextState, now);
+	const completedTicketCodes = [];
+	const failedTicketCodes = [];
+	const threadRecords = [];
+
+	for (const [index, { ticketCode, workItem }] of dueItems.entries()) {
+		const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
+		const threadId = workItem.agentSessionThreadId ?? createThreadIdForTicket(ticketCode);
+		const completedAt = formatDemoTimestamp(index + 1);
+
+		try {
+			const contextDescription = buildActiveJiraWorkItemContextForTicket(ticketCode, workItem.status);
+			const report = typeof createHtmlReport === "function"
+				? await createHtmlReport({
+						contextDescription,
+						fields: buildTicketSpecificReportFields(ticketCode),
+						ticketCode,
+						ticketTitle,
+					})
+				: { html: buildFallbackHtmlReport(ticketCode) };
+			const generatedAttachment = createGeneratedAttachment(ticketCode, report?.html);
+			const agentComment = createAgentComment(ticketCode, ticketTitle, index + 1);
+			const preservedAttachments = workItem.attachments.filter((attachment) => (
+				attachment.source !== "generated" ||
+				attachment.kind !== RFP_TICKET_DRAFT_ATTACHMENT_KIND
+			));
+			const completedAssignee = workItem.previousAssignee ?? getHumanAssigneeForTicket(ticketCode);
+
+			nextState = {
+				...moveTicketToColumn(nextState, ticketCode, RFP_REVIEW_COLUMN_NAME, { append: true }),
+				workItems: {
+					...nextState.workItems,
+					[ticketCode]: {
+						...workItem,
+						status: RFP_REVIEW_COLUMN_NAME,
+						attachments: [...preservedAttachments, generatedAttachment],
+						assignee: completedAssignee,
+						agentStatus: "completed",
+						agentReadyAt: null,
+						agentSessionThreadId: threadId,
+						generatedAttachment,
+						agentComment,
+						completedAt,
+						lastError: null,
+					},
+				},
+			};
+			completedTicketCodes.push(ticketCode);
+			threadRecords.push({
+				...buildThreadForTicket({
+					attachmentName: generatedAttachment.displayName,
+					ticketCode,
+					runId: workItem.agentJobRunId,
+					timestamp: completedAt,
+				}),
+				id: threadId,
+			});
+		} catch (error) {
+			nextState = {
+				...nextState,
+				workItems: {
+					...nextState.workItems,
+					[ticketCode]: {
+						...workItem,
+						agentStatus: "failed",
+						agentReadyAt: null,
+						lastError: error instanceof Error ? error.message : String(error),
+					},
+				},
+			};
+			failedTicketCodes.push(ticketCode);
+			threadRecords.push({
+				...buildFailureThreadForTicket({ ticketCode, runId: workItem.agentJobRunId, timestamp: completedAt }),
+				id: threadId,
+			});
+		}
+	}
+
+	const withSummaries = refreshRunSummaries(nextState);
+	return {
+		changed: dueItems.length > 0 || withSummaries !== nextState,
+		completedTicketCodes,
+		failedTicketCodes,
+		state: withSummaries,
+		threadRecords,
+	};
+}
+
+function moveTicketEnteredColumn(state, {
+	jobId = state.agent?.jobId ?? null,
+	runId,
+	source = "jira-column-entered",
+	targetColumn,
+	ticketCode,
+} = {}) {
+	const normalizedTicketCode = getNonEmptyString(ticketCode);
+	const normalizedTargetColumn = getNonEmptyString(targetColumn);
+	if (!normalizedTicketCode || !normalizedTargetColumn) {
+		const error = new Error("ticketCode and targetColumn are required.");
+		error.code = "INVALID_INPUT";
+		throw error;
+	}
+
+	let nextState = moveTicketToColumn(state, normalizedTicketCode, normalizedTargetColumn);
+	if (normalizedTargetColumn !== RFP_DRAFTING_COLUMN_NAME || !nextState.agent) {
+		return {
+			state: nextState,
+			runSummary: null,
+			threadRecords: [],
+		};
+	}
+
+	return runRfpDraftingAgent(nextState, {
+		jobId,
+		runId,
+		source,
+		ticketCodes: [normalizedTicketCode],
+	});
+}
+
+function getDemoCreatedThreadIds(state) {
+	const threadIds = new Set();
+	for (const [ticketCode, workItem] of Object.entries(state.workItems ?? {})) {
+		const threadId = getNonEmptyString(workItem?.agentSessionThreadId);
+		if (threadId) {
+			threadIds.add(threadId);
+		}
+		if (ticketCode.startsWith("RFP-")) {
+			threadIds.add(createThreadIdForTicket(ticketCode));
+		}
+	}
+	return [...threadIds];
+}
+
+function createAgentsRfpDemoStateManager({ baseDir }) {
+	const filePath = path.join(baseDir, "agents-rfp-demo", "state.json");
+
+	async function readState() {
+		try {
+			const rawText = await fs.readFile(filePath, "utf8");
+			return normalizeAgentsRfpDemoState(JSON.parse(rawText));
+		} catch (error) {
+			if (error?.code === "ENOENT") {
+				return createDefaultAgentsRfpDemoState();
+			}
+			throw error;
+		}
+	}
+
+	async function writeState(state) {
+		const normalizedState = normalizeAgentsRfpDemoState(state);
+		await fs.mkdir(path.dirname(filePath), { recursive: true });
+		await fs.writeFile(filePath, `${JSON.stringify(normalizedState, null, 2)}\n`, "utf8");
+		return cloneJson(normalizedState);
+	}
+
+	async function resetState() {
+		return writeState(createDefaultAgentsRfpDemoState());
+	}
+
+	async function updateState(updater) {
+		const currentState = await readState();
+		const nextState = await updater(currentState);
+		return writeState(nextState);
+	}
+
+	return {
+		filePath,
+		readState,
+		resetState,
+		updateState,
+		writeState,
+	};
+}
+
+module.exports = {
+	AGENTS_RFP_DEMO_JOB_NAME,
+	AGENTS_RFP_DEMO_JOB_PROMPT,
+	AGENTS_RFP_DEMO_SURFACE,
+	AGENTS_RFP_DEMO_VERSION,
+	GENERATED_RFP_REPORT_ATTACHMENT_ID,
+	RFP_DRAFTING_AGENT_AVATAR_SRC,
+	RFP_DRAFTING_AGENT_ID,
+	RFP_DRAFTING_AGENT_NAME,
+	RFP_DRAFTING_BOARD_NAME,
+	RFP_DRAFTING_COLUMN_NAME,
+	RFP_DRAFTING_EVENT_TRIGGER,
+	RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+	RFP_REVIEW_COLUMN_NAME,
+	advanceRfpDraftingAgentProcessing,
+	buildActiveJiraWorkItemContextForTicket,
+	buildTicketSpecificReportFields,
+	buildThreadForTicket,
+	buildFailureThreadForTicket,
+	createAgentsRfpDemoStateManager,
+	createDefaultAgentsRfpDemoState,
+	createGeneratedAttachment,
+	createThreadIdForTicket,
+	getDemoCreatedThreadIds,
+	moveTicketEnteredColumn,
+	moveTicketToColumn,
+	normalizeAgentsRfpDemoState,
+	runRfpDraftingAgent,
+};
