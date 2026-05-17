@@ -27,6 +27,7 @@ const AGENT_RESULT_VISUAL_IDENTITY = {
 } satisfies NonNullable<ArtifactCardProps["visualIdentity"]>;
 
 const AGENT_RESULT_DESCRIPTION = "Agent \u2022 Version 1";
+const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
 
 const AGENT_CAPABILITIES = [
 	{
@@ -44,7 +45,7 @@ const AGENT_CAPABILITIES = [
 ] as const;
 
 function getAgentLongDescription(agent: AgentResult): string {
-	if (agent.agentId === "rfp-drafting-agent") {
+	if (agent.agentId === RFP_DRAFTING_AGENT_ID) {
 		return "RFP Drafter monitors Drafting tickets, reads Jira context, uses Teamwork Graph knowledge, and creates a vpk-html draft attachment plus comment before returning work to review.";
 	}
 
@@ -52,7 +53,11 @@ function getAgentLongDescription(agent: AgentResult): string {
 }
 
 function getAgentDisplayName(agent: AgentResult): string {
-	return agent.agentId === "rfp-drafting-agent" ? "RFP Drafter" : agent.name;
+	return agent.agentId === RFP_DRAFTING_AGENT_ID ? "RFP Drafter" : agent.name;
+}
+
+function getAgentCapabilities(agent: AgentResult): typeof AGENT_CAPABILITIES | [] {
+	return agent.agentId === RFP_DRAFTING_AGENT_ID ? AGENT_CAPABILITIES : [];
 }
 
 function formatAgentTriggerLabel(trigger: string): string {
@@ -102,6 +107,7 @@ export function AgentResultCard({
 	const tools = Array.isArray(agent.tools)
 		? agent.tools.filter((tool): tool is string => typeof tool === "string" && tool.trim().length > 0)
 		: [];
+	const capabilities = getAgentCapabilities(agent);
 	const handleOpenAgent = () => {
 		window.dispatchEvent(new CustomEvent(ROVO_AGENT_RESULT_OPEN_EVENT, {
 			detail: {
@@ -157,19 +163,21 @@ export function AgentResultCard({
 							</div>
 						</section>
 					) : null}
-					<section className="flex flex-col gap-1.5">
-						<h4 className="text-xs font-semibold leading-4 text-text">Capabilities</h4>
-						<div className="flex flex-col gap-2">
-							{AGENT_CAPABILITIES.map((capability) => (
-								<div key={capability.label} className="flex items-center gap-2 text-sm leading-5 text-text">
-									<span className="flex size-4 shrink-0 items-center justify-center text-icon-subtle">
-										{capability.icon}
-									</span>
-									<span>{capability.label}</span>
-								</div>
-							))}
-						</div>
-					</section>
+					{capabilities.length > 0 ? (
+						<section className="flex flex-col gap-1.5">
+							<h4 className="text-xs font-semibold leading-4 text-text">Capabilities</h4>
+							<div className="flex flex-col gap-2">
+								{capabilities.map((capability) => (
+									<div key={capability.label} className="flex items-center gap-2 text-sm leading-5 text-text">
+										<span className="flex size-4 shrink-0 items-center justify-center text-icon-subtle">
+											{capability.icon}
+										</span>
+										<span>{capability.label}</span>
+									</div>
+								))}
+							</div>
+						</section>
+					) : null}
 				</div>
 			</ArtifactCard>
 		</div>
