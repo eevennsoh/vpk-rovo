@@ -126,11 +126,11 @@ export function AgentSelector({
 					))}
 				</div>
 			) : null}
-			<div className={cn("shrink-0", hasSelectedAgentActions && "pt-3")}>
+			<div className={cn("shrink-0", hasSelectedAgentActions && "pt-4")}>
 				<p className="mb-2 text-xs font-semibold leading-4 text-text-subtlest">{heading}</p>
 				<CommandInput
 					aria-label={searchPlaceholder}
-					inputGroupClassName="has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+					inputGroupClassName="has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0 [&>[data-align=inline-start]]:pl-4 has-[>[data-align=inline-start]]:[&>input]:pl-4"
 					onValueChange={handleQueryChange}
 					placeholder={searchPlaceholder}
 					value={resolvedQuery}

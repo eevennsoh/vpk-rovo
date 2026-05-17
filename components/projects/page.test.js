@@ -115,11 +115,11 @@ test("Rovo Canvas main artefact frame uses a border without elevation", () => {
 test("floating Rovo button has an exit transition for canvas handoff", () => {
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/import \{ AnimatePresence, motion \} from "motion\/react";/u,
+		/import \{ AnimatePresence, LayoutGroup, motion, useReducedMotion \} from "motion\/react";/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/<motion\.button[\s\S]*exit=\{\{ opacity: 0, scale: 0\.92, y: 8 \}\}[\s\S]*whileHover=\{\{ scale: 1\.1 \}\}/u,
+		/<motion\.button[\s\S]*exit=\{shouldReduceMotion \? \{ opacity: 0 \} : \{ opacity: 0, scale: 0\.92, y: 8 \}\}[\s\S]*whileHover=\{shouldReduceMotion \? undefined : \{ scale: 1\.1 \}\}/u,
 	);
 });
 
@@ -138,7 +138,15 @@ test("floating Rovo button can render a collapsed proactive suggestion nudge", (
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/className="fixed right-\[84px\] bottom-7 z-\[510\] flex w-fit max-w-\[calc\(100vw-112px\)\] origin-right items-center gap-1 overflow-hidden rounded-lg p-1 text-text-inverse"/u,
+		/export interface FloatingRovoButtonPlacement \{[\s\S]*right\?: string;[\s\S]*bottom\?: string;/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/placement \? null : "right-\[84px\] bottom-7"/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/right: `calc\(\$\{resolvedPlacement\.right\} \+ 60px\)`[\s\S]*bottom: `calc\(\$\{resolvedPlacement\.bottom\} \+ 4px\)`/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
@@ -146,11 +154,61 @@ test("floating Rovo button can render a collapsed proactive suggestion nudge", (
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/backgroundColor: token\("color\.background\.neutral\.bold"\)[\s\S]*boxShadow: token\("elevation\.shadow\.overlay"\)/u,
+		/\{suggestion && shouldShowButton && !onboardingOpen \? \([\s\S]*<FloatingRovoButtonNudge key=\{suggestion\.id\} placement=\{placement\} suggestion=\{suggestion\} \/>[\s\S]*\) : null\}/u,
+	);
+});
+
+test("floating Rovo button supports demo placement while preserving default chat behavior", () => {
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/ariaLabel\?: string;[\s\S]*placement\?: FloatingRovoButtonPlacement;[\s\S]*onButtonClick\?: \(\) => void;/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/\{suggestion && shouldShowButton \? \([\s\S]*<FloatingRovoButtonNudge key=\{suggestion\.id\} suggestion=\{suggestion\} \/>[\s\S]*\) : null\}/u,
+		/bottom: var\(--floating-rovo-button-bottom, 24px\);[\s\S]*right: var\(--floating-rovo-button-right, 24px\);/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/"--floating-rovo-button-right": resolvedPlacement\.right,[\s\S]*"--floating-rovo-button-bottom": resolvedPlacement\.bottom,/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/if \(onButtonClick\) \{[\s\S]*onButtonClick\(\);[\s\S]*return;[\s\S]*\}[\s\S]*openChat\("floating"\);/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/aria-label=\{ariaLabel\}/u,
+	);
+});
+
+test("floating Rovo button can morph into an onboarding Spotlight panel", () => {
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/export interface FloatingRovoButtonOnboardingConfig \{[\s\S]*title: string;[\s\S]*agentName: string;[\s\S]*primaryActionLabel: string;[\s\S]*openOnButtonClick\?: boolean;[\s\S]*onPrimaryAction\?: \(\) => void;/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/function FloatingRovoButtonOnboardingPanel/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/data-testid="floating-rovo-button-onboarding"/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/layoutId="floating-rovo-button-surface"/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/if \(onboarding && \(onboarding\.openOnButtonClick \?\? true\)\) \{[\s\S]*setOnboardingOpen\(true\);[\s\S]*return;[\s\S]*\}[\s\S]*openChat\("floating"\);/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/aria-label=\{closeLabel\}[\s\S]*autoFocus/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/event\.key === "Escape"[\s\S]*handleClose\(\);/u,
 	);
 });
 

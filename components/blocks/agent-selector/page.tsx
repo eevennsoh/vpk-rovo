@@ -43,6 +43,11 @@ export default function AgentSelectorPage({ variant = "default" }: Readonly<Agen
 		: [];
 
 	function toggleAgent(agentId: string) {
+		if (variant === "selected-agent-actions") {
+			setSelectedAgentIds([agentId]);
+			return;
+		}
+
 		setSelectedAgentIds((currentIds) => (
 			currentIds.includes(agentId)
 				? currentIds.filter((currentId) => currentId !== agentId)
