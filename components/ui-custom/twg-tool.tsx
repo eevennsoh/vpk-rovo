@@ -13,6 +13,7 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { AtlassianLogo, type AtlassianLogoName } from "@/components/ui/logo";
 import { Tile } from "@/components/ui/tile";
+import PatternTile, { type PatternStrokeOptions } from "@/components/website/demos/visual/pattern-tile";
 import { cn } from "@/lib/utils";
 
 export type TwgToolStatus = "active" | "complete" | "pending";
@@ -50,11 +51,13 @@ export type TwgToolSourceStackProps = ComponentProps<"div"> & {
 	maxVisible?: number;
 };
 
-const bannerBackgroundStyle = {
+const bannerGridStroke = {
+	width: 1,
+} satisfies PatternStrokeOptions;
+
+const bannerGridFadeStyle = {
 	backgroundImage:
-		"linear-gradient(90deg, var(--color-surface-raised) 0%, color-mix(in srgb, var(--color-surface-raised) 18%, transparent) 44%), linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)",
-	backgroundPosition: "0 0, 0 0, 0 0",
-	backgroundSize: "auto, 34px 24px, 34px 24px",
+		"linear-gradient(90deg, var(--color-surface-raised) 0%, color-mix(in srgb, var(--color-surface-raised) 18%, transparent) 44%)",
 } satisfies CSSProperties;
 
 const statusTextStyles: Record<TwgToolStatus, string> = {
@@ -79,6 +82,24 @@ function getSourceTileSize(size: TwgToolSourceIconSize): ComponentProps<typeof T
 
 function getSourceImageSize(size: TwgToolSourceIconSize) {
 	return size === "md" ? 24 : 16;
+}
+
+function TwgToolBannerBackground() {
+	return (
+		<div aria-hidden="true" className="pointer-events-none absolute inset-0">
+			<PatternTile
+				className="text-border"
+				patternType="grid"
+				front="currentColor"
+				back="transparent"
+				scale={24}
+				stroke={bannerGridStroke}
+				fill="tile"
+				opacity={0.72}
+			/>
+			<div className="absolute inset-0" style={bannerGridFadeStyle} />
+		</div>
+	);
 }
 
 export function TwgToolSourceIcon({
@@ -224,7 +245,7 @@ export function TwgTool({
 	const hasExpandableContent = children != null && showChevron;
 	const bannerContent = (
 		<>
-			<div className="flex min-w-0 flex-1 flex-col justify-center">
+			<div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center">
 				<div className="flex min-w-0 items-center gap-1.5">
 					<span className="truncate text-sm font-medium leading-5 text-text-subtle">
 						{title}
@@ -253,7 +274,7 @@ export function TwgTool({
 			</div>
 			<TwgToolSourceStack
 				sources={sources}
-				className="max-w-[44%]"
+				className="relative z-10 max-w-[44%]"
 			/>
 		</>
 	);
@@ -283,16 +304,16 @@ export function TwgTool({
 				</div>
 				{hasExpandableContent ? (
 					<CollapsibleTrigger
-						className="flex h-12 min-w-0 flex-1 items-center justify-between gap-3 overflow-hidden rounded-lg bg-surface-sunken px-2 text-left outline-none transition-colors hover:bg-surface-raised-hovered focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3"
-						style={bannerBackgroundStyle}
+						className="relative flex h-12 min-w-0 flex-1 items-center justify-between gap-3 overflow-hidden rounded-lg bg-surface-sunken px-2 text-left outline-none transition-colors hover:bg-surface-raised-hovered focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3"
 					>
+						<TwgToolBannerBackground />
 						{bannerContent}
 					</CollapsibleTrigger>
 				) : (
 					<div
-						className="flex h-12 min-w-0 flex-1 items-center justify-between gap-3 overflow-hidden rounded-lg bg-surface-sunken px-2"
-						style={bannerBackgroundStyle}
+						className="relative flex h-12 min-w-0 flex-1 items-center justify-between gap-3 overflow-hidden rounded-lg bg-surface-sunken px-2"
 					>
+						<TwgToolBannerBackground />
 						{bannerContent}
 					</div>
 				)}
