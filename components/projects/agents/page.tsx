@@ -447,7 +447,7 @@ export default function AgentsView({
 					}
 				}}
 			/>
-			<Toaster id={AGENTS_RFP_DEMO_TOASTER_ID} position="bottom-right" expand={true} />
+			<Toaster id={AGENTS_RFP_DEMO_TOASTER_ID} position="bottom-left" expand={true} />
 		</div>
 	);
 }
