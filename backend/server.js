@@ -1279,6 +1279,8 @@ async function deleteAgentsRfpDemoThread(threadId) {
 	if (thread) {
 		await rovoAppGeneratedFilesManager.backfillFromThread(thread);
 		await rovoAppGeneratedFilesManager.deleteLegacyRootFiles(threadId);
+		await deleteRovoAppThreadBrowserWorkspace(threadId).catch(() => ({}));
+		await destroyMirrorBrowser(`mirror-${threadId}`);
 	}
 	await Promise.all(
 		uploadIds.map((uploadId) =>
@@ -1287,8 +1289,6 @@ async function deleteAgentsRfpDemoThread(threadId) {
 	);
 	await rovoAppVoteManager.deleteVotesForThread(threadId);
 	await rovoAppDocumentManager.deleteDocumentsByThread(threadId);
-	await deleteRovoAppThreadBrowserWorkspace(threadId).catch(() => ({}));
-	await destroyMirrorBrowser(`mirror-${threadId}`);
 	await rovoAppThreadManager.deleteThread(threadId);
 }
 
@@ -14256,6 +14256,8 @@ app.delete("/api/rovo/threads/:threadId", async (req, res) => {
 		if (thread) {
 			await rovoAppGeneratedFilesManager.backfillFromThread(thread);
 			await rovoAppGeneratedFilesManager.deleteLegacyRootFiles(threadId);
+			await deleteRovoAppThreadBrowserWorkspace(threadId).catch(() => ({}));
+			await destroyMirrorBrowser(`mirror-${threadId}`);
 		}
 		await Promise.all(
 			uploadIds.map((uploadId) =>
@@ -14264,8 +14266,6 @@ app.delete("/api/rovo/threads/:threadId", async (req, res) => {
 		);
 		await rovoAppVoteManager.deleteVotesForThread(threadId);
 		await rovoAppDocumentManager.deleteDocumentsByThread(threadId);
-		await deleteRovoAppThreadBrowserWorkspace(threadId).catch(() => ({}));
-		await destroyMirrorBrowser(`mirror-${threadId}`);
 		await rovoAppThreadManager.deleteThread(threadId);
 		return res.status(200).json({ deleted: true });
 	} catch (error) {

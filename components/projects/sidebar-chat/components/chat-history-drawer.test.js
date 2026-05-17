@@ -200,6 +200,15 @@ test("compact chat send lifecycle refreshes thread metadata", () => {
 	);
 });
 
+test("compact chat provider can delete all persisted history", () => {
+	const source = readProjectFile("app/contexts/context-rovo-chat.tsx");
+
+	assert.match(source, /deleteAllRovoAppThreads/u);
+	assert.match(source, /deleteAllThreads: \(\) => Promise<void>;/u);
+	assert.match(source, /const deleteAllThreads = useCallback\(async \(\) => \{[\s\S]*setThreads\(\[\]\);[\s\S]*setThreadsLoaded\(true\);[\s\S]*await deleteAllRovoAppThreads\(\);[\s\S]*await refreshThreads\(\);/u);
+	assert.match(source, /deleteAllThreads,[\s\S]*cancelThreadRun,/u);
+});
+
 test("compact chat fetches Rovo follow-up suggestions after a completed idle turn", () => {
 	const source = readProjectFile("app/contexts/context-rovo-chat.tsx");
 

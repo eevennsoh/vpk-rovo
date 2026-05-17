@@ -29,6 +29,7 @@ import {
 import {
 	cancelRovoAppRun,
 	createRovoAppThread,
+	deleteAllRovoAppThreads,
 	deleteRovoAppThread,
 	detachRovoAppRun,
 	fetchRovoAppAITitle,
@@ -602,6 +603,7 @@ interface RovoChatContextType {
 	refreshThreads: () => Promise<void>;
 	selectThread: (threadId: string) => Promise<void>;
 	deleteThread: (threadId: string) => Promise<void>;
+	deleteAllThreads: () => Promise<void>;
 	cancelThreadRun: (threadId: string) => Promise<void>;
 	openCurrentThreadFullscreen: () => void;
 	currentThreadHasRichState: boolean;
@@ -2068,6 +2070,46 @@ export function RovoChatProvider({
 		[detachCurrentThreadForSwitch, refreshThreads, setMessages]
 	);
 
+	const deleteAllThreads = useCallback(async () => {
+		isCancellingRef.current = true;
+		cancelRetryTimer();
+		clearMediaGenerating();
+		clearSubmitPending();
+		retryCountRef.current = 0;
+		lastPromptRef.current = null;
+		queuedPromptsRef.current = [];
+		activePromptRef.current = null;
+		shouldFinalizeActivePromptRef.current = false;
+		hasTurnCompleteSignalRef.current = false;
+		isDispatchingPromptRef.current = false;
+		setQueuedPrompts([]);
+		setActivePrompt(null);
+		setMessages([]);
+		setSubmissionErrorMessage(null);
+
+		try {
+			await detachCurrentThreadForSwitch();
+			activeThreadIdRef.current = null;
+			setActiveThreadId(null);
+			lastPersistedThreadKeyRef.current = "";
+			setThreads([]);
+			setThreadsLoaded(true);
+			await deleteAllRovoAppThreads();
+			await refreshThreads();
+		} finally {
+			isCancellingRef.current = false;
+			queueTick();
+		}
+	}, [
+		cancelRetryTimer,
+		clearMediaGenerating,
+		clearSubmitPending,
+		detachCurrentThreadForSwitch,
+		queueTick,
+		refreshThreads,
+		setMessages,
+	]);
+
 	const cancelThreadRun = useCallback(
 		async (threadId: string) => {
 			await cancelRovoAppRun(threadId).catch(() => {});
@@ -2191,6 +2233,7 @@ export function RovoChatProvider({
 				refreshThreads,
 				selectThread,
 				deleteThread,
+				deleteAllThreads,
 				cancelThreadRun,
 				openCurrentThreadFullscreen,
 				currentThreadHasRichState,

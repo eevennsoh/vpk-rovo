@@ -95,6 +95,7 @@ export default function AgentsView({
 	const visibleToastIdsRef = useRef<Set<string>>(new Set());
 	const {
 		closeChat,
+		deleteAllThreads,
 		isOpen: isChatOpen,
 		chatSurface,
 		isFloatingPinned,
@@ -349,8 +350,9 @@ export default function AgentsView({
 		closeModal();
 	};
 
-	const handleResetDemo = () => {
-		rfpDemo.actions.reset();
+	const handleResetDemo = async () => {
+		await rfpDemo.actions.reset();
+		await deleteAllThreads();
 		workItemPresentation.backToBoard();
 		closeChat();
 		onAgentDetailsOpenChange(false);

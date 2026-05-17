@@ -243,18 +243,22 @@ test("RFP report canvas marks refined copy from the selected version, not termin
 test("RFP reset action lives in the board toolbar next to grouping", () => {
 	assert.match(
 		BOARD_TOOLBAR_SOURCE,
-		/<Button className="gap-2" variant="outline" onClick=\{onReset\}>[\s\S]*Reset demo[\s\S]*<\/Button>/u,
+		/<AlertDialog open=\{isResetDialogOpen\} onOpenChange=\{handleResetDialogOpenChange\}>[\s\S]*<AlertDialogTrigger render=\{<Button className="gap-2" variant="outline" \/>\}>[\s\S]*Reset demo[\s\S]*<\/AlertDialogTrigger>/u,
 	);
+	assert.match(BOARD_TOOLBAR_SOURCE, /<AlertDialogTitle>Reset demo\?<\/AlertDialogTitle>/u);
+	assert.match(BOARD_TOOLBAR_SOURCE, /permanently deletes all Rovo chat history/u);
+	assert.match(BOARD_TOOLBAR_SOURCE, /role="status" aria-live="polite"[\s\S]*Resetting demo\.\.\./u);
+	assert.match(BOARD_TOOLBAR_SOURCE, /<AlertDialogAction[\s\S]*isLoading=\{isResetting\}[\s\S]*onClick=\{\(\) => void handleConfirmReset\(\)\}[\s\S]*variant="warning"/u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /shape\?: "circle" \| "hexagon";/u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /<Avatar shape=\{avatar\.shape \?\? "circle"\} size="sm">/u);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
-		/const handleResetDemo = \(\) => \{[\s\S]*rfpDemo\.actions\.reset\(\);[\s\S]*workItemPresentation\.backToBoard\(\);[\s\S]*closeChat\(\);/u,
+		/const handleResetDemo = async \(\) => \{[\s\S]*await rfpDemo\.actions\.reset\(\);[\s\S]*await deleteAllThreads\(\);[\s\S]*workItemPresentation\.backToBoard\(\);[\s\S]*closeChat\(\);/u,
 	);
+	assert.match(AGENTS_VIEW_SOURCE, /deleteAllThreads,[\s\S]*\} = useRovoChat\(\);/u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /Reset demo[\s\S]*Group: RFP stage/u);
 	assert.match(AGENTS_VIEW_SOURCE, /<BoardToolbar avatars=\{toolbarAvatars\} onReset=\{handleResetDemo\} \/>/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /RfpDemoControls/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /Ask Rovo for RFP help/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /Answer qualification questions/u);
-	assert.doesNotMatch(BOARD_TOOLBAR_SOURCE, /AlertDialog/u);
 });

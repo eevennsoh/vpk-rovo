@@ -26,6 +26,17 @@ test("Agents RFP demo reset removes the demo Hermes job and demo-created Rovo th
 	assert.match(SERVER_SOURCE, /rovoAppThreadManager\.deleteThread\(threadId\)/u);
 });
 
+test("Agents RFP demo reset only closes browser workspaces for existing Rovo threads", () => {
+	assert.match(
+		SERVER_SOURCE,
+		/if \(thread\) \{[\s\S]*deleteRovoAppThreadBrowserWorkspace\(threadId\)[\s\S]*destroyMirrorBrowser\(`mirror-\$\{threadId\}`\);[\s\S]*\}/u,
+	);
+	assert.doesNotMatch(
+		SERVER_SOURCE,
+		/await rovoAppDocumentManager\.deleteDocumentsByThread\(threadId\);\n\t+await deleteRovoAppThreadBrowserWorkspace\(threadId\)/u,
+	);
+});
+
 test("Hermes run actions return merged job metadata so event jobs keep trigger state", () => {
 	assert.match(SERVER_SOURCE, /persistHermesJobLink\(req\.params\.id, req\.body, \{\}, \{ mergeExisting: true \}\)/u);
 	assert.match(SERVER_SOURCE, /app\.post\("\/api\/jobs\/:id\/run"[\s\S]*await hermesJobsProvider\.performHermesJobAction\(req\.params\.id, "run"\);[\s\S]*const job = await getMergedHermesJob\(req\.params\.id\);/u);

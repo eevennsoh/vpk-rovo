@@ -19,7 +19,7 @@ import {
 } from "../lib/rfp-demo-state";
 
 export interface AgentsRfpDemoActions {
-	reset: () => void;
+	reset: () => Promise<void>;
 	generateReport: () => void;
 	refineReport: () => void;
 	selectReportVersion: (versionId: string) => void;
@@ -145,9 +145,7 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 		});
 	}, [postStateMutation]);
 
-	const reset = useCallback(() => {
-		void postStateMutation(RFP_DEMO_RESET_ENDPOINT);
-	}, [postStateMutation]);
+	const reset = useCallback(() => postStateMutation(RFP_DEMO_RESET_ENDPOINT), [postStateMutation]);
 	const generateReport = useCallback(() => persistStateMutation(generateRfpReport), [persistStateMutation]);
 	const refineReport = useCallback(() => persistStateMutation(refineRfpReport), [persistStateMutation]);
 	const selectReportVersion = useCallback(
