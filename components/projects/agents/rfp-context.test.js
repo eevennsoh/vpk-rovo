@@ -327,7 +327,8 @@ test("Rovo provider merges default context with per-prompt context", () => {
 });
 
 test("Agents view opens the richer active work item through the presentation controller", () => {
-	assert.match(AGENTS_VIEW_SOURCE, /const workItem = getAgentsWorkItemForCard\(card\);/);
+	assert.match(AGENTS_VIEW_SOURCE, /getAgentsWorkItemForCard\(card\)/);
+	assert.match(AGENTS_VIEW_SOURCE, /applyRfpDemoWorkItemState\(getAgentsWorkItemForCard\(card\), rfpDemo\.state\)/);
 	assert.match(AGENTS_VIEW_SOURCE, /workItemPresentation\.openModal\(workItem\)/);
 	assert.match(AGENTS_VIEW_SOURCE, /workItem=\{selectedWorkItem\}/);
 });
@@ -339,6 +340,8 @@ test("Agents demo feeds active work item context into RovoChatProvider defaults"
 	);
 	assert.match(AGENTS_DEMO_SOURCE, /contextDescription: mergeRovoContextDescriptions/);
 	assert.match(AGENTS_DEMO_SOURCE, /agentsChatScreenContext\.contextDescription/);
+	assert.match(AGENTS_DEMO_SOURCE, /formatRfpDemoContext\(rfpDemo\.state\)/);
+	assert.match(AGENTS_DEMO_SOURCE, /rfpDemoContext/);
 	assert.match(AGENTS_DEMO_SOURCE, /<RovoChatProvider defaultPromptOptions=\{chatPromptOptions\}>/);
 	assert.match(AGENTS_DEMO_SOURCE, /chatContextBar=\{agentsChatScreenContext\.chatContextBar\}/);
 	assert.match(AGENTS_DEMO_SOURCE, /chatGreeting=\{agentsChatScreenContext\.greeting\}/);

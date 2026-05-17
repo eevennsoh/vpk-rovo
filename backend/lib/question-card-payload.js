@@ -2,6 +2,7 @@ const { getNonEmptyString, getPositiveInteger } = require("./shared-utils");
 
 const DEFAULT_WIDGET_TYPE = "question-card";
 const DEFAULT_MAX_ROUNDS = Number.MAX_SAFE_INTEGER;
+const DEFAULT_MAX_QUESTIONS = 4;
 const DEFAULT_MAX_PRESET_OPTIONS = 4;
 const DEFAULT_CUSTOM_OPTION_PLACEHOLDER = "Tell Rovo what to do...";
 
@@ -101,6 +102,8 @@ function sanitizeQuestionCardPayload(payload, defaults = {}) {
 		getNonEmptyString(defaults.widgetType) || DEFAULT_WIDGET_TYPE;
 	const maxRounds =
 		getPositiveInteger(defaults.maxRounds) || DEFAULT_MAX_ROUNDS;
+	const maxQuestions =
+		getPositiveInteger(defaults.maxQuestions) || DEFAULT_MAX_QUESTIONS;
 	const maxPresetOptions =
 		getPositiveInteger(defaults.maxPresetOptions) ||
 		DEFAULT_MAX_PRESET_OPTIONS;
@@ -184,7 +187,8 @@ function sanitizeQuestionCardPayload(payload, defaults = {}) {
 					customOptionPlaceholder,
 			};
 		})
-		.filter(Boolean);
+		.filter(Boolean)
+		.slice(0, maxQuestions);
 
 	if (questions.length === 0) {
 		return null;

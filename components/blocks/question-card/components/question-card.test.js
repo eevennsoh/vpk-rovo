@@ -5,6 +5,8 @@ const path = require("node:path");
 
 const QUESTION_CARD_FILE = path.join(__dirname, "question-card.tsx");
 const QUESTION_CARD_SOURCE = fs.readFileSync(QUESTION_CARD_FILE, "utf8");
+const QUESTION_CARD_HOOK_FILE = path.join(__dirname, "..", "hooks", "use-question-card.ts");
+const QUESTION_CARD_HOOK_SOURCE = fs.readFileSync(QUESTION_CARD_HOOK_FILE, "utf8");
 
 function extractSlice(startMarker, endMarker) {
 	const startIndex = QUESTION_CARD_SOURCE.indexOf(startMarker);
@@ -14,6 +16,16 @@ function extractSlice(startMarker, endMarker) {
 	assert.notEqual(endIndex, -1, `Expected to find end marker: ${endMarker}`);
 
 	return QUESTION_CARD_SOURCE.slice(startIndex, endIndex);
+}
+
+function extractHookSlice(startMarker, endMarker) {
+	const startIndex = QUESTION_CARD_HOOK_SOURCE.indexOf(startMarker);
+	assert.notEqual(startIndex, -1, `Expected to find hook start marker: ${startMarker}`);
+
+	const endIndex = QUESTION_CARD_HOOK_SOURCE.indexOf(endMarker, startIndex);
+	assert.notEqual(endIndex, -1, `Expected to find hook end marker: ${endMarker}`);
+
+	return QUESTION_CARD_HOOK_SOURCE.slice(startIndex, endIndex);
 }
 
 test("QuestionCard renders navigation controls above the question heading", () => {
@@ -59,4 +71,29 @@ test("QuestionCard caps card height and scrolls overflowing question content int
 	assert.match(body, /\bflex-1\b/u);
 	assert.match(body, /\boverflow-y-auto\b/u);
 	assert.match(body, /\boverscroll-contain\b/u);
+});
+
+test("QuestionCard keyboard shortcuts toggle multi-select options without submitting", () => {
+	const keyboardSelect = extractHookSlice(
+		"const handleKeyboardOptionSelect = useCallback(",
+		"const handleCustomInputFocus = useCallback(",
+	);
+	const enterKeyHandler = extractHookSlice(
+		"case \"Enter\":",
+		"case \"ArrowLeft\":",
+	);
+
+	assert.match(keyboardSelect, /currentQuestion\.kind === "multi-select"/u);
+	assert.match(keyboardSelect, /setAnswers\(\(previousAnswers\) =>/u);
+	assert.match(keyboardSelect, /const selectedValues = getSelectedValues\(previousAnswers\[currentQuestion\.id\]\)/u);
+	assert.match(keyboardSelect, /\[currentQuestion\.id\]: nextValues/u);
+	assert.match(keyboardSelect, /handleSelectOption\(optionId\)/u);
+	assert.doesNotMatch(keyboardSelect, /onSubmit\(nextAnswers\)/u);
+	assert.doesNotMatch(keyboardSelect, /goToNextQuestion\(\)/u);
+
+	assert.match(enterKeyHandler, /handleKeyboardOptionSelect\(option\.id\)/u);
+	assert.match(
+		QUESTION_CARD_HOOK_SOURCE,
+		/default: \{[\s\S]*const digit = Number\(event\.key\)[\s\S]*handleKeyboardOptionSelect\(option\.id\)/u,
+	);
 });

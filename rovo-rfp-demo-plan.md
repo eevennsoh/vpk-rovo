@@ -101,6 +101,10 @@ Framing:
 
 ### 2. Ask Rovo For RFP Help
 
+The `RFP-101` modal stays open for this step. Maya uses the floating Rovo button
+available over the modal, keeping the work item as the active context surface
+instead of closing the modal to use the board-level demo controls.
+
 Maya prompt:
 
 ```text
@@ -112,6 +116,8 @@ attached documents.
 
 Expected behavior:
 
+- Floating Rovo opens while the `RFP-101` modal remains visible.
+- The chat context chip references `RFP-101`.
 - Submit through AI Gateway with active `RFP-101` context.
 - Show Chain of Thought tool-call UI while the response is being prepared.
 - The staged trace includes Jira, attachment, Teamwork Graph, and response-building steps.

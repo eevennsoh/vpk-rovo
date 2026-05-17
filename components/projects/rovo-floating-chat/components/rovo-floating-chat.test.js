@@ -13,6 +13,18 @@ const CHAT_PANEL_SOURCE = fs.readFileSync(path.join(process.cwd(), "components/p
 async function loadRovoFloatingChatHarness() {
 	const mockModules = new Map([
 		[
+			"react",
+			`
+				import * as ReactActual from "react";
+				export * from "react";
+				export default ReactActual;
+
+				export const ViewTransition = ReactActual.ViewTransition ?? function ViewTransition(props) {
+					return ReactActual.createElement(ReactActual.Fragment, null, props.children);
+				};
+			`,
+		],
+		[
 			"motion/react",
 			`
 				import React from "react";
@@ -167,6 +179,10 @@ async function loadRovoFloatingChatHarness() {
 				name: "rovo-floating-chat-test-mocks",
 				setup(build) {
 					build.onResolve({ filter: /.*/ }, (args) => {
+						if (args.namespace === "rovo-floating-chat-test-mock") {
+							return undefined;
+						}
+
 						if (!mockModules.has(args.path)) {
 							return undefined;
 						}

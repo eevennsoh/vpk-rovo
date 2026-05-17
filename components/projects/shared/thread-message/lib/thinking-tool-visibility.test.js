@@ -22,7 +22,7 @@ test("keeps tool summaries unchanged when no question card is visible", () => {
 	);
 });
 
-test("hides ask_user_questions tool summaries when the question card widget is visible", () => {
+test("keeps awaiting ask_user_questions tool summaries when the question card widget is visible", () => {
 	const toolCalls = [
 		{ id: "tool-1", toolName: "ask_user_questions", state: "awaiting-input" },
 		{ id: "tool-2", toolName: "invoke_subagents", state: "running" },
@@ -33,11 +33,11 @@ test("hides ask_user_questions tool summaries when the question card widget is v
 			thinkingToolCalls: toolCalls,
 			widgetType: "question-card",
 		}),
-		[{ id: "tool-2", toolName: "invoke_subagents", state: "running" }],
+		toolCalls,
 	);
 });
 
-test("also hides request_user_input aliases for the same question card flow", () => {
+test("hides completed request_user_input aliases for the same question card flow", () => {
 	const toolCalls = [
 		{ id: "tool-1", toolName: "functions.request_user_input", state: "completed" },
 		{ id: "tool-2", toolName: "search_docs", state: "completed" },

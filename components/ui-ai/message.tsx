@@ -4,6 +4,7 @@ import type { UIMessage } from "ai";
 import type {
 	ComponentProps,
 	HTMLAttributes,
+	MouseEvent,
 	ReactElement,
 	ReactNode,
 } from "react";
@@ -567,6 +568,7 @@ function MarkdownParagraph({
 }
 
 type MarkdownImageProps = ComponentProps<"img"> & { node?: unknown };
+type MarkdownAnchorProps = ComponentProps<"a"> & { node?: unknown };
 
 type MarkdownInlineCodeProps = ComponentProps<"code"> & { node?: unknown };
 
@@ -747,7 +749,38 @@ function MarkdownImage({
 	);
 }
 
+function MarkdownAnchor({
+	href,
+	onClick,
+	node,
+	...props
+}: Readonly<MarkdownAnchorProps>) {
+	void node;
+	const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+		onClick?.(event);
+		if (event.defaultPrevented || typeof href !== "string") {
+			return;
+		}
+
+		const prefix = "#rovo-canvas-";
+		if (!href.startsWith(prefix)) {
+			return;
+		}
+
+		event.preventDefault();
+		window.dispatchEvent(new CustomEvent("rovo:open-canvas-artifact", {
+			cancelable: true,
+			detail: {
+				documentId: decodeURIComponent(href.slice(prefix.length)),
+			},
+		}));
+	};
+
+	return <a {...props} href={href} onClick={handleClick} />;
+}
+
 const streamdownComponents = {
+	a: MarkdownAnchor,
 	code: MarkdownCodeBlock,
 	inlineCode: MarkdownInlineCode,
 	p: MarkdownParagraph,

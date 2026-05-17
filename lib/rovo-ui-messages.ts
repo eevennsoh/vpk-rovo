@@ -148,6 +148,7 @@ export type RovoDataParts = {
 	kind: "text" | "code" | "html" | "image" | "sheet" | "react" | "excalidraw" | "browser";
 	"artifact-result": {
 		documentId: string;
+		threadId?: string;
 		title: string;
 		kind: "text" | "code" | "html" | "image" | "sheet" | "react" | "excalidraw" | "browser";
 		action: "create" | "update";

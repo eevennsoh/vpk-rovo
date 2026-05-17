@@ -24,6 +24,7 @@ type ScrollAnimation = boolean | ScrollBehavior | "instant" | {
 export interface ScrollToBottomOptions {
 	animation?: ScrollAnimation
 	ignoreEscapes?: boolean
+	target?: "bottom" | "follow"
 }
 
 export interface ConversationScrollTargetOptions {
@@ -136,12 +137,12 @@ export function Conversation({
 			return true
 		}
 
-		const expectedFollowTop = getScrollTargetTop(scrollElement)
-		const distanceFromFollowTarget = Math.abs(scrollElement.scrollTop - expectedFollowTop)
-		const nextIsAtBottom = distanceFromFollowTarget <= DEFAULT_SCROLL_THRESHOLD_PX
+		const actualBottomTop = getDefaultTargetTop(scrollElement)
+		const distanceFromActualBottom = Math.abs(scrollElement.scrollTop - actualBottomTop)
+		const nextIsAtBottom = distanceFromActualBottom <= DEFAULT_SCROLL_THRESHOLD_PX
 		setIsAtBottom(nextIsAtBottom)
 		return nextIsAtBottom
-	}, [getScrollTargetTop])
+	}, [getDefaultTargetTop])
 
 	const scrollToBottom = useCallback(
 		async (options?: ScrollToBottomOptions) => {
@@ -156,7 +157,10 @@ export function Conversation({
 				lastUserScrollIntentAtRef.current = 0
 			}
 
-			const targetTop = getScrollTargetTop(scrollElement)
+			const targetMode = options?.target ?? "follow"
+			const targetTop = targetMode === "bottom"
+				? getDefaultTargetTop(scrollElement)
+				: getScrollTargetTop(scrollElement)
 
 			scrollElement.scrollTo({
 				top: Math.max(0, targetTop),
@@ -164,7 +168,7 @@ export function Conversation({
 			})
 			updateIsAtBottom()
 		},
-		[getScrollTargetTop, updateIsAtBottom]
+		[getDefaultTargetTop, getScrollTargetTop, updateIsAtBottom]
 	)
 
 	const contextValue = useMemo<ConversationContextValue>(
@@ -225,20 +229,15 @@ export function Conversation({
 		}
 
 		const handleScroll = () => {
-			updateIsAtBottom()
+			const nextIsAtBottom = updateIsAtBottom()
+			const didUserInitiateScroll = hasActiveUserScrollIntent()
+			if (didUserInitiateScroll) {
+				isFollowPausedRef.current = !nextIsAtBottom
+				return
+			}
 
 			if (isFollowPausedRef.current || !hasInitializedScrollRef.current) {
 				return
-			}
-
-			const didUserInitiateScroll = hasActiveUserScrollIntent()
-			if (!didUserInitiateScroll) {
-				return
-			}
-
-			const expectedFollowTop = getScrollTargetTop(scrollElement)
-			if (Math.abs(scrollElement.scrollTop - expectedFollowTop) > DEFAULT_SCROLL_THRESHOLD_PX) {
-				isFollowPausedRef.current = true
 			}
 		}
 
@@ -248,7 +247,7 @@ export function Conversation({
 		return () => {
 			scrollElement.removeEventListener("scroll", handleScroll)
 		}
-	}, [getScrollTargetTop, hasActiveUserScrollIntent, updateIsAtBottom])
+	}, [hasActiveUserScrollIntent, updateIsAtBottom])
 
 	useEffect(() => {
 		const scrollElement = scrollRef.current
@@ -297,9 +296,9 @@ export function Conversation({
 				)
 
 			lastKnownScrollHeightRef.current = nextScrollHeight
-			updateIsAtBottom()
 
 			if (resize === false || !shouldFollowContent) {
+				updateIsAtBottom()
 				return
 			}
 
@@ -417,7 +416,7 @@ export function ConversationScrollButton({
 	const { isAtBottom, scrollToBottom } = useConversationContext()
 
 	const handleScrollToBottom = useCallback(() => {
-		void scrollToBottom({ ignoreEscapes: true })
+		void scrollToBottom({ ignoreEscapes: true, target: "bottom" })
 	}, [scrollToBottom])
 
 	return !isAtBottom ? (

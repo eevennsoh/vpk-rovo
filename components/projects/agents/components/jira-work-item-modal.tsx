@@ -24,13 +24,14 @@
  */
 
 import { WorkItemModalProvider } from "@/app/contexts/context-work-item-modal";
-import type { WorkItemData } from "@/app/contexts/context-work-item-modal";
+import type { WorkItemAttachment, WorkItemData } from "@/app/contexts/context-work-item-modal";
 import { getAgentsWorkItemForCard } from "../data/rfp-work-items";
 import WorkItemModal from "./work-item-modal/index";
 
 interface JiraWorkItemModalProps {
 	isOpen: boolean;
 	onClose: () => void;
+	onAttachmentOpen?: (attachment: WorkItemAttachment) => void;
 	workItem?: WorkItemData | null;
 	workItemTitle?: string;
 	workItemCode?: string;
@@ -39,6 +40,7 @@ interface JiraWorkItemModalProps {
 export default function JiraWorkItemModal({
 	isOpen,
 	onClose,
+	onAttachmentOpen,
 	workItem,
 	workItemTitle = "Qualify enterprise service-management RFP",
 	workItemCode = "RFP-101",
@@ -52,6 +54,7 @@ export default function JiraWorkItemModal({
 		<WorkItemModalProvider
 			isOpen={isOpen}
 			onClose={onClose}
+			onAttachmentOpen={onAttachmentOpen}
 			workItem={resolvedWorkItem}
 		>
 			<WorkItemModal.Backdrop />

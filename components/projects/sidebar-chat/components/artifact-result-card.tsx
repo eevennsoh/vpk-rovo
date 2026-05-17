@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import LinkExternalIcon from "@atlaskit/icon/core/link-external";
-import PageIcon from "@atlaskit/icon/core/page";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRovoChat } from "@/app/contexts";
+import { RovoCanvas, type RovoCanvasStatus, type RovoCanvasVersion, type RovoCanvasView } from "@/components/blocks/rovo-canvas/page";
 import { Button } from "@/components/ui/button";
+import { ArtifactCard, ARTIFACT_KIND_LABELS, type ArtifactKind } from "@/components/ui-ai/artifact";
 import {
 	Dialog,
 	DialogContent,
@@ -12,7 +13,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { getRovoAppDocument } from "@/components/projects/rovo/lib/api";
-import { buildArtifactPreviewBody, type PreviewArtifactKind } from "@/components/projects/shared/lib/artifact-preview";
+import { buildArtifactPreviewBody } from "@/components/projects/shared/lib/artifact-preview";
 import { PreviewBodyRenderer } from "@/components/projects/shared/components/preview-body-renderer";
 import type { RovoAppDocument } from "@/lib/rovo-app-types";
 import type { RovoDataParts } from "@/lib/rovo-ui-messages";
@@ -27,17 +28,6 @@ interface ArtifactResultCardProps {
 	onDialogClose?: (artifact: ArtifactResult) => void;
 }
 
-function getArtifactKindLabel(kind: string): string {
-	if (kind === "html") return "HTML report";
-	if (kind === "react") return "App";
-	if (kind === "excalidraw") return "Diagram";
-	if (kind === "sheet") return "Sheet";
-	if (kind === "code") return "Code";
-	if (kind === "image") return "Image";
-	if (kind === "browser") return "Browser";
-	return "Document";
-}
-
 function getLatestDocumentContent(document: RovoAppDocument | null): string {
 	if (!document || document.versions.length === 0) {
 		return "";
@@ -46,7 +36,7 @@ function getLatestDocumentContent(document: RovoAppDocument | null): string {
 	return document.versions[document.versions.length - 1]?.content ?? "";
 }
 
-function normalizePreviewKind(kind: string): PreviewArtifactKind {
+function normalizeArtifactKind(kind: string): ArtifactKind {
 	if (
 		kind === "code" ||
 		kind === "html" ||
@@ -62,6 +52,40 @@ function normalizePreviewKind(kind: string): PreviewArtifactKind {
 	return "text";
 }
 
+function resolveCanvasStatus(isLoading: boolean, errorMessage: string | null): RovoCanvasStatus {
+	if (isLoading) {
+		return "executing";
+	}
+
+	return errorMessage ? "error" : "ready";
+}
+
+function buildCanvasVersionHistory(document: RovoAppDocument | null): ReadonlyArray<RovoCanvasVersion> {
+	if (!document || document.versions.length === 0) {
+		return [
+			{
+				id: "pending",
+				label: "Version 1",
+				summary: "Loading artifact",
+				timestamp: "Now",
+				isCurrent: true,
+			},
+		];
+	}
+
+	return document.versions.map((version, index) => ({
+		id: version.id,
+		label: version.title || `Version ${index + 1}`,
+		summary: version.changeLabel || "Artifact version",
+		timestamp: new Intl.DateTimeFormat("en-US", {
+			dateStyle: "medium",
+			timeStyle: "short",
+		}).format(new Date(version.createdAt)),
+		isCurrent: index === document.versions.length - 1,
+		group: "Artifact history",
+	}));
+}
+
 export function ArtifactResultCard({
 	artifact,
 	className,
@@ -72,9 +96,13 @@ export function ArtifactResultCard({
 	const [document, setDocument] = useState<RovoAppDocument | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
-	const kindLabel = getArtifactKindLabel(artifact.kind);
-	const actionLabel = artifact.action === "update" ? "Updated" : "Created";
-	const handleOpenChange = (open: boolean) => {
+	const { activeThreadId } = useRovoChat();
+	const artifactKind = normalizeArtifactKind(artifact.kind);
+	const kindLabel = ARTIFACT_KIND_LABELS[artifactKind];
+	const shouldOpenInRovoCanvas = artifact.kind === "html";
+	const canvasThreadId = artifact.threadId ?? document?.threadId ?? activeThreadId ?? null;
+	const canvasStatus = resolveCanvasStatus(isLoading, errorMessage);
+	const handleOpenChange = useCallback((open: boolean) => {
 		if (open === isOpen) {
 			return;
 		}
@@ -86,10 +114,50 @@ export function ArtifactResultCard({
 		}
 
 		setIsOpen(open);
+	}, [artifact, isOpen, onDialogClose, onDialogOpen]);
+	const handleOpenArtifact = () => {
+		if (shouldOpenInRovoCanvas) {
+			const openCanvasEvent = new CustomEvent("rovo:open-canvas-artifact", {
+				cancelable: true,
+				detail: {
+					documentId: artifact.documentId,
+					threadId: canvasThreadId,
+					source: "artifact-result-card",
+				},
+			});
+			window.dispatchEvent(openCanvasEvent);
+			if (openCanvasEvent.defaultPrevented) {
+				return;
+			}
+		}
+
+		handleOpenChange(true);
 	};
 
 	useEffect(() => {
-		if (!isOpen) {
+		if (!shouldOpenInRovoCanvas) {
+			return;
+		}
+
+		const handleCanvasLink = (event: Event) => {
+			const { detail } = event as CustomEvent<{ documentId?: string; source?: string }>;
+			if (detail?.documentId !== artifact.documentId || detail.source === "artifact-result-card") {
+				return;
+			}
+
+			window.setTimeout(() => {
+				if (!event.defaultPrevented) {
+					handleOpenChange(true);
+				}
+			}, 0);
+		};
+
+		window.addEventListener("rovo:open-canvas-artifact", handleCanvasLink);
+		return () => window.removeEventListener("rovo:open-canvas-artifact", handleCanvasLink);
+	}, [artifact.documentId, handleOpenChange, shouldOpenInRovoCanvas]);
+
+	useEffect(() => {
+		if (!isOpen && !shouldOpenInRovoCanvas) {
 			return;
 		}
 
@@ -116,7 +184,7 @@ export function ArtifactResultCard({
 		return () => {
 			ignore = true;
 		};
-	}, [artifact.documentId, isOpen]);
+	}, [artifact.documentId, isOpen, shouldOpenInRovoCanvas]);
 
 	const latestContent = getLatestDocumentContent(document);
 	const previewBody = useMemo(() => {
@@ -126,83 +194,139 @@ export function ArtifactResultCard({
 
 		return buildArtifactPreviewBody({
 			content: latestContent,
-			kind: normalizePreviewKind(document?.kind ?? artifact.kind),
+			kind: normalizeArtifactKind(document?.kind ?? artifact.kind),
 			summary: document?.previewSummary,
 		});
 	}, [artifact.kind, document, latestContent]);
-
-	return (
-		<div className={cn("pb-2", className)}>
-			<Dialog open={isOpen} onOpenChange={handleOpenChange}>
-				<button
-					type="button"
-					className="group flex w-full items-center gap-3 rounded-md border border-border bg-surface-raised p-3 text-left shadow-sm transition-colors hover:bg-surface-raised-hovered focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					onClick={() => handleOpenChange(true)}
-					data-testid="rovo-artifact-result-card"
-				>
-					<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-accent-blue-subtle text-icon">
-						<PageIcon label="" />
-					</span>
-					<span className="min-w-0 flex-1">
-						<span className="block text-xs font-medium uppercase tracking-wide text-text-subtle">
-							{actionLabel} {kindLabel}
-						</span>
-						<span className="block truncate text-sm font-medium text-text">
-							{artifact.title}
-						</span>
-					</span>
-					<span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link group-hover:text-link-pressed">
-						Open
-						<LinkExternalIcon label="" />
-					</span>
-				</button>
-				<DialogContent
-					className="max-h-[92vh] gap-0 overflow-hidden p-0 sm:max-w-6xl [grid-template-rows:auto_minmax(0,1fr)]"
-					size="xl"
-				>
-					<DialogHeader className="mx-0 mt-0 px-4 py-4 sm:px-6">
-						<DialogTitle className="pr-10">
-							{artifact.title}
-						</DialogTitle>
-						<DialogDescription>
-							{kindLabel} artifact
-						</DialogDescription>
-					</DialogHeader>
-					<div className="min-h-0 overflow-hidden p-4 sm:p-6">
+	const canvasViews = useMemo<ReadonlyArray<RovoCanvasView>>(
+		() => [
+			{
+				id: "preview",
+				label: "Preview",
+				toolbar: "preview",
+				content: (
+					<div className="size-full overflow-hidden bg-surface-sunken p-4">
 						{isLoading ? (
-							<div className="flex h-[60vh] items-center justify-center rounded-md border border-border bg-surface text-sm text-text-subtle">
+							<div className="flex size-full items-center justify-center rounded-lg border border-border bg-surface text-sm text-text-subtle">
 								Loading report...
 							</div>
 						) : errorMessage ? (
-							<div className="rounded-md border border-border bg-surface p-4 text-sm text-text">
+							<div className="rounded-lg border border-border bg-surface p-4 text-sm text-text">
 								{errorMessage}
 							</div>
 						) : previewBody ? (
-							<div className="h-[72vh] min-h-[420px]">
-								<PreviewBodyRenderer
-									body={previewBody}
-									surface="dialog"
-									title={artifact.title}
-									summary={document?.previewSummary}
-								/>
-							</div>
+							<PreviewBodyRenderer
+								body={previewBody}
+								surface="dialog"
+								title={artifact.title}
+								summary={document?.previewSummary}
+							/>
 						) : (
-							<div className="rounded-md border border-border bg-surface p-4 text-sm text-text-subtle">
+							<div className="rounded-lg border border-border bg-surface p-4 text-sm text-text-subtle">
 								Open the artifact after generation finishes.
 							</div>
 						)}
 					</div>
-					<div className="border-t border-border px-4 py-3 sm:px-6">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => handleOpenChange(false)}
-						>
-							Close
-						</Button>
+				),
+			},
+			{
+				id: "html",
+				label: "HTML",
+				toolbar: "source",
+				copyText: latestContent,
+				content: (
+					<div className="size-full overflow-auto bg-surface p-6">
+						<pre className="min-h-full overflow-auto rounded-lg border border-border bg-surface-raised p-4 text-xs leading-5 text-text-subtle">
+							<code>{latestContent || "Report source is loading..."}</code>
+						</pre>
 					</div>
-				</DialogContent>
-			</Dialog>
+				),
+			},
+		],
+		[artifact.title, document?.previewSummary, errorMessage, isLoading, latestContent, previewBody],
+	);
+	const canvasVersionHistory = useMemo(
+		() => buildCanvasVersionHistory(document),
+		[document],
+	);
+
+	return (
+		<div className={cn("pb-2", className)} data-testid="rovo-artifact-result-card">
+			<ArtifactCard
+				action={artifact.action}
+				displayMode="preview"
+				kind={artifactKind}
+				onOpen={handleOpenArtifact}
+				previewContent={latestContent}
+				previewSummary={document?.previewSummary ?? undefined}
+				title={artifact.title}
+				versionNumber={document?.versions.length ?? 1}
+			/>
+			{shouldOpenInRovoCanvas ? (
+				<RovoCanvas
+					open={isOpen}
+					onOpenChange={handleOpenChange}
+					kind="report"
+					status={canvasStatus}
+					title={artifact.title}
+					lozengeLabel={`Version ${document?.versions.length ?? 1}`}
+					primaryActionLabel="Done"
+					onPrimaryAction={() => handleOpenChange(false)}
+					views={canvasViews}
+					defaultViewId="preview"
+					artefactLabel={kindLabel}
+					versionHistory={canvasVersionHistory}
+				/>
+			) : (
+				<Dialog open={isOpen} onOpenChange={handleOpenChange}>
+					<DialogContent
+						className="max-h-[92vh] gap-0 overflow-hidden p-0 sm:max-w-6xl [grid-template-rows:auto_minmax(0,1fr)]"
+						size="xl"
+					>
+						<DialogHeader className="mx-0 mt-0 px-4 py-4 sm:px-6">
+							<DialogTitle className="pr-10">
+								{artifact.title}
+							</DialogTitle>
+							<DialogDescription>
+								{kindLabel} artifact
+							</DialogDescription>
+						</DialogHeader>
+						<div className="min-h-0 overflow-hidden p-4 sm:p-6">
+							{isLoading ? (
+								<div className="flex h-[60vh] items-center justify-center rounded-md border border-border bg-surface text-sm text-text-subtle">
+									Loading report...
+								</div>
+							) : errorMessage ? (
+								<div className="rounded-md border border-border bg-surface p-4 text-sm text-text">
+									{errorMessage}
+								</div>
+							) : previewBody ? (
+								<div className="h-[72vh] min-h-[420px]">
+									<PreviewBodyRenderer
+										body={previewBody}
+										surface="dialog"
+										title={artifact.title}
+										summary={document?.previewSummary}
+									/>
+								</div>
+							) : (
+								<div className="rounded-md border border-border bg-surface p-4 text-sm text-text-subtle">
+									Open the artifact after generation finishes.
+								</div>
+							)}
+						</div>
+						<div className="border-t border-border px-4 py-3 sm:px-6">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => handleOpenChange(false)}
+							>
+								Close
+							</Button>
+						</div>
+					</DialogContent>
+				</Dialog>
+			)}
 		</div>
 	);
 }

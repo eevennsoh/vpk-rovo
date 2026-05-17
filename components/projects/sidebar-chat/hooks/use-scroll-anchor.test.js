@@ -23,6 +23,18 @@ test("compact chat scroll anchor uses the Rovo bottom/target follow lifecycle", 
 	);
 	assert.match(
 		USE_SCROLL_ANCHOR_SOURCE,
+		/const pendingAnchorScrollAnimationRef = useRef<ScrollToBottomOptions\["animation"\]>\("instant"\)/,
+	);
+	assert.match(
+		USE_SCROLL_ANCHOR_SOURCE,
+		/pendingAnchorScrollAnimationRef\.current = hasInitializedScrollRef\.current\s+\? FAST_TURN_SCROLL_ANIMATION\s+\: "instant"/,
+	);
+	assert.match(
+		USE_SCROLL_ANCHOR_SOURCE,
 		/conversationContextRef\.current\?\.scrollToBottom\(\{\s+animation: pendingAnchorScrollAnimationRef\.current,\s+ignoreEscapes: true,/,
+	);
+	assert.doesNotMatch(
+		USE_SCROLL_ANCHOR_SOURCE,
+		/target: "bottom"/,
 	);
 });

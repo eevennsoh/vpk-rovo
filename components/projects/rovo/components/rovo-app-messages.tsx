@@ -262,8 +262,10 @@ function computeRovoAppAnchorScrollTop(defaultTargetTop: number, scrollElement: 
 
 function RovoAppScrollAnchorSync({
 	scrollAnchorMessageId,
+	target = "follow",
 }: Readonly<{
 	scrollAnchorMessageId: string | null;
+	target?: "bottom" | "follow";
 }>) {
 	const { scrollToBottom } = useConversationContext();
 	const shouldReduceMotion = useReducedMotion();
@@ -274,10 +276,11 @@ function RovoAppScrollAnchorSync({
 		}
 
 		void scrollToBottom({
-			animation: shouldReduceMotion ? "instant" : "smooth",
+			animation: target === "bottom" || shouldReduceMotion ? "instant" : "smooth",
 			ignoreEscapes: true,
+			target,
 		});
-	}, [scrollAnchorMessageId, scrollToBottom, shouldReduceMotion]);
+	}, [scrollAnchorMessageId, scrollToBottom, shouldReduceMotion, target]);
 
 	return null;
 }
@@ -810,6 +813,15 @@ export function RovoAppMessages({
 		() => messages.filter((message) => (message.role === "user" || message.role === "assistant") && message.metadata?.visibility !== "hidden" && !isHermesContextTranscriptMessage(message)),
 		[messages],
 	);
+	const latestVisibleUserMessageId = useMemo(() => {
+		for (let i = visibleMessages.length - 1; i >= 0; i--) {
+			const message = visibleMessages[i];
+			if (message.role === "user") {
+				return message.id;
+			}
+		}
+		return null;
+	}, [visibleMessages]);
 	const lastAssistantMessageId = useMemo(() => {
 		return [...visibleMessages].reverse().find((message) => message.role === "assistant")?.id ?? null;
 	}, [visibleMessages]);
@@ -856,7 +868,10 @@ export function RovoAppMessages({
 
 	return (
 		<Conversation className={cn("relative bg-background", shouldShowEmptyConversationState && "!flex-none overflow-visible")} followMode={scrollFollowMode} targetScrollTop={handleTargetScrollTop}>
-			<RovoAppScrollAnchorSync scrollAnchorMessageId={scrollAnchorMessageId} />
+			<RovoAppScrollAnchorSync
+				scrollAnchorMessageId={scrollAnchorMessageId}
+				target={isStreaming && scrollAnchorMessageId === latestVisibleUserMessageId ? "bottom" : "follow"}
+			/>
 			{onScrollActiveUserMessageChange ? <RovoAppScrollActiveTracker onActiveChange={onScrollActiveUserMessageChange} /> : null}
 			{shouldShowEmptyConversationState ? (
 				<div className="flex flex-col items-center gap-2 py-6">

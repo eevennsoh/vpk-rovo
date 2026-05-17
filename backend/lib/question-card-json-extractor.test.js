@@ -130,6 +130,30 @@ test("also matches a generic ```json fence as a fallback", () => {
 	assert.equal(result.payload.questions[0].id, "q");
 });
 
+test("caps fenced question-card payloads to four questions", () => {
+	const questions = Array.from({ length: 6 }, (_, index) => ({
+		id: `q-${index + 1}`,
+		label: `Question ${index + 1}?`,
+		kind: "single-select",
+		options: [
+			{ id: "yes", label: "Yes" },
+			{ id: "no", label: "No" },
+		],
+	}));
+	const text = [
+		"```question-card",
+		JSON.stringify({ questions }),
+		"```",
+	].join("\n");
+
+	const result = extractQuestionCardJsonFromAssistantText(text);
+	assert.ok(result);
+	assert.deepEqual(
+		result.payload.questions.map((question) => question.id),
+		["q-1", "q-2", "q-3", "q-4"],
+	);
+});
+
 test("text kind has no options and is accepted", () => {
 	const text = [
 		"```question-card",

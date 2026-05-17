@@ -24,21 +24,21 @@
 		},
 		"browser-workspace": {
 			"args": [
-				"/Users/esoh/Documents/Labs/vpk-rovo/scripts/browser-workspace-mcp.js"
+				"/Users/esoh/.codex/worktrees/145a/vpk-rovo/scripts/browser-workspace-mcp.js"
 			],
 			"command": "node",
 			"env": {
-				"REPO_ROOT": "/Users/esoh/Documents/Labs/vpk-rovo"
+				"REPO_ROOT": "/Users/esoh/.codex/worktrees/145a/vpk-rovo"
 			},
 			"type": "stdio"
 		},
 		"wiki-capture": {
 			"args": [
-				"/Users/esoh/Documents/Labs/vpk-rovo/scripts/wiki-capture-mcp.js"
+				"/Users/esoh/.codex/worktrees/145a/vpk-rovo/scripts/wiki-capture-mcp.js"
 			],
 			"command": "node",
 			"env": {
-				"REPO_ROOT": "/Users/esoh/Documents/Labs/vpk-rovo"
+				"REPO_ROOT": "/Users/esoh/.codex/worktrees/145a/vpk-rovo"
 			},
 			"type": "stdio"
 		},

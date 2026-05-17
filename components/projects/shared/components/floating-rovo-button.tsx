@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { motion } from "motion/react";
 import { useRovoChat } from "@/app/contexts";
 import { token } from "@/lib/tokens";
 
@@ -43,14 +44,9 @@ export default function FloatingRovoButton({
             transform-origin: center;
             will-change: transform;
             transition:
-              transform var(--duration-medium) var(--ease-out),
               background-color var(--duration-medium) var(--ease-out);
             z-index: 510;
             box-shadow: ${token("elevation.shadow.overlay")};
-          }
-
-          .floating-rovo-button:hover {
-            transform: scale(1.125);
           }
 
           .floating-rovo-button img {
@@ -62,14 +58,20 @@ export default function FloatingRovoButton({
 				}}
 			/>
 
-			<button
+			<motion.button
 				className="floating-rovo-button"
 				type="button"
+				initial={{ opacity: 0, scale: 0.92, y: 8 }}
+				animate={{ opacity: 1, scale: 1, y: 0 }}
+				exit={{ opacity: 0, scale: 0.92, y: 8 }}
+				whileHover={{ scale: 1.1 }}
+				whileTap={{ scale: 0.98 }}
+				transition={{ duration: 0.18, ease: [0, 0.4, 0, 1] }}
 				onClick={() => openChat("floating")}
 				aria-label="Open Rovo"
 			>
 				<Image src="/1p/rovo.svg" alt="" width={24} height={24} aria-hidden />
-			</button>
+			</motion.button>
 		</>
 	);
 }

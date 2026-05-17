@@ -88,6 +88,32 @@ function useIsEmbedded(explicit: boolean): boolean {
 	return explicit || auto;
 }
 
+function useIsRovoCanvasOpen(): boolean {
+	const [isRovoCanvasOpen, setIsRovoCanvasOpen] = useState(false);
+
+	useEffect(() => {
+		const updateRovoCanvasOpen = () => {
+			setIsRovoCanvasOpen(document.documentElement.dataset.rovoCanvasOpen === "true");
+		};
+
+		updateRovoCanvasOpen();
+
+		if (typeof MutationObserver !== "function") {
+			return;
+		}
+
+		const observer = new MutationObserver(updateRovoCanvasOpen);
+		observer.observe(document.documentElement, {
+			attributeFilter: ["data-rovo-canvas-open"],
+			attributes: true,
+		});
+
+		return () => observer.disconnect();
+	}, []);
+
+	return isRovoCanvasOpen;
+}
+
 export default function AppLayout({
 	product,
 	children,
@@ -102,6 +128,7 @@ export default function AppLayout({
 	chatPanelFlush = false,
 }: Readonly<AppLayoutProps>) {
 	const isEmbedded = useIsEmbedded(embedded);
+	const isRovoCanvasOpen = useIsRovoCanvasOpen();
 	const { isVisible } = useSidebar();
 	const { chatSurface, toggleChat } = useRovoChat();
 	const chatResize = useSidebarResize({
@@ -111,10 +138,12 @@ export default function AppLayout({
 		direction: "rtl",
 	});
 	const chatPanelWidth = chatResize.sidebarWidth;
+	const shouldHideRovoAction = hideRovoAction || isRovoCanvasOpen;
 	const isSidebarChatActive = chatSurface === "sidebar";
 	const isFloatingChatActive = chatSurface === "floating";
-	const showChatPanel = !isEmbedded && !hideRovoAction && isSidebarChatActive;
-	const showFloatingChat = !isEmbedded && !hideFloatingRovo && !hideRovoAction && isFloatingChatActive;
+	const showChatPanel = !isEmbedded && !shouldHideRovoAction && isSidebarChatActive;
+	const showFloatingChat = !isEmbedded && !hideFloatingRovo && !shouldHideRovoAction && isFloatingChatActive;
+	const showFloatingRovoButton = !isEmbedded && !hideFloatingRovo && !shouldHideRovoAction;
 	const sidebarWidth = isEmbedded || !isVisible ? "0px" : "230px";
 	const shellViewportHeight = isEmbedded ? "100dvh" : "100vh";
 	const shellContentHeight = isEmbedded ? "100dvh" : "calc(100vh - 48px)";
@@ -130,7 +159,7 @@ export default function AppLayout({
 	return (
 		<div style={shellStyle}>
 			<div data-shell-chrome="">
-				{!isEmbedded ? <TopNavigation product={product} hideRovoAction={hideRovoAction} /> : null}
+				{!isEmbedded ? <TopNavigation product={product} hideRovoAction={shouldHideRovoAction} /> : null}
 			</div>
 
 			<div style={{ display: "flex", height: shellContentHeight, position: "relative" }}>
@@ -154,7 +183,7 @@ export default function AppLayout({
 				</div>
 
 				{/* In-situ Rovo Chat Panel */}
-				{!isEmbedded && !hideRovoAction ? (
+				{!isEmbedded && !shouldHideRovoAction ? (
 					<div
 						data-shell-chrome=""
 						aria-hidden={!isSidebarChatActive}
@@ -175,6 +204,7 @@ export default function AppLayout({
 					>
 						<ChatPanel
 							onClose={toggleChat}
+							abortOnUnmount={false}
 							onSurfaceSwitch={onChatSurfaceSwitch}
 							chatContextBar={chatContextBar}
 							greeting={chatGreeting}
@@ -217,7 +247,9 @@ export default function AppLayout({
 
 			{/* Floating Rovo Button */}
 			<div data-shell-chrome="">
-				{!isEmbedded && !hideFloatingRovo && !hideRovoAction ? <FloatingRovoButton product={product} embedded={isEmbedded} /> : null}
+				<AnimatePresence>
+					{showFloatingRovoButton ? <FloatingRovoButton key="floating-rovo-button" product={product} embedded={isEmbedded} /> : null}
+				</AnimatePresence>
 			</div>
 		</div>
 	);

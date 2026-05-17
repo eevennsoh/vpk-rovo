@@ -31,7 +31,14 @@ test("AgentsDemo promotes the open modal before switching floating chat to the s
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/<AgentsView workItemPresentation=\{workItemPresentation\} \/>/u,
+		/<AgentsView[\s\S]*workItemPresentation=\{workItemPresentation\}[\s\S]*rfpDemo=\{rfpDemo\}[\s\S]*chatContextBar=\{agentsChatScreenContext\.chatContextBar\}[\s\S]*chatGreeting=\{agentsChatScreenContext\.greeting\}/u,
+	);
+});
+
+test("AgentsDemo hides the layout-owned Rovo surfaces while the report canvas is open", () => {
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/hideRovoAction=\{rfpDemo\.state\.canvas\.open\}/u,
 	);
 });
 
@@ -59,13 +66,14 @@ test("AgentsDemo closes the work item modal before opening an artifact dialog", 
 });
 
 test("project preview demos honor the embedded query contract", () => {
-	assert.match(
+	assert.doesNotMatch(
 		PROJECT_DEMO_EMBEDDED_HOOK_SOURCE,
-		/import \{ usePathname, useSearchParams \} from "next\/navigation";/u,
+		/next\/navigation/u,
 	);
-	assert.match(PROJECT_DEMO_EMBEDDED_HOOK_SOURCE, /const searchParams = useSearchParams\(\);/u);
+	assert.match(PROJECT_DEMO_EMBEDDED_HOOK_SOURCE, /window\.location\.pathname/u);
+	assert.match(PROJECT_DEMO_EMBEDDED_HOOK_SOURCE, /window\.location\.search/u);
 	assert.match(
 		PROJECT_DEMO_EMBEDDED_HOOK_SOURCE,
-		/return pathname\.startsWith\("\/components\/"\) \|\| searchParams\.get\("embedded"\) === "1";/u,
+		/pathname\.startsWith\("\/components\/"\) \|\| searchParams\.get\("embedded"\) === "1";/u,
 	);
 });

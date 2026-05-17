@@ -126,6 +126,29 @@ test("request_user_input conversion keeps multi-select questions", () => {
 	assert.equal(payload.questions[0].options.length, 2);
 });
 
+test("request_user_input conversion caps each question round at four questions", () => {
+	const payload = buildQuestionCardPayloadFromRequestUserInput(
+		{
+			title: "Many questions",
+			questions: Array.from({ length: 6 }, (_, index) => ({
+				id: `q-${index + 1}`,
+				question: `Question ${index + 1}?`,
+				options: ["A", "B"],
+			})),
+		},
+		{
+			sessionId: "request-user-input-four-question-cap",
+			createSessionId: () => "request-user-input-four-question-cap",
+		}
+	);
+
+	assert.ok(payload);
+	assert.deepEqual(
+		payload.questions.map((question) => question.id),
+		["q-1", "q-2", "q-3", "q-4"],
+	);
+});
+
 test("request_user_input conversion accepts choices alias for options", () => {
 	const payload = buildQuestionCardPayloadFromRequestUserInput(
 		{

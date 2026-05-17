@@ -45,6 +45,7 @@ export interface WorkItemChildItem {
 }
 
 export interface WorkItemAttachment {
+	id?: string;
 	name: string;
 	ext: string;
 	date: string;
@@ -56,6 +57,9 @@ export interface WorkItemAttachment {
 	thumbnailTone?: "success" | "warning" | "discovery" | "information" | "neutral";
 	sourceLabel?: string;
 	sourceProduct?: "confluence" | "loom";
+	source?: "fixture" | "generated";
+	approved?: boolean;
+	previewKind?: "html-report" | "pdf-preview";
 }
 
 export interface WorkItemComment {
@@ -126,6 +130,7 @@ export interface WorkItemData {
 export interface WorkItemModalMeta {
 	isOpen: boolean;
 	onClose: () => void;
+	onAttachmentOpen?: (attachment: WorkItemAttachment) => void;
 	workItem: WorkItemData;
 }
 
@@ -144,6 +149,7 @@ interface WorkItemModalProviderProps {
 	children: ReactNode;
 	isOpen: boolean;
 	onClose: () => void;
+	onAttachmentOpen?: (attachment: WorkItemAttachment) => void;
 	workItem: WorkItemData;
 	/** Initial state for accordions */
 	initialDetailsOpen?: boolean;
@@ -183,6 +189,7 @@ export function WorkItemModalProvider({
 	children,
 	isOpen,
 	onClose,
+	onAttachmentOpen,
 	workItem,
 	initialDetailsOpen = true,
 	initialMoreFieldsOpen = false,
@@ -210,6 +217,7 @@ export function WorkItemModalProvider({
 	const meta: WorkItemModalMeta = {
 		isOpen,
 		onClose,
+		onAttachmentOpen,
 		workItem,
 	};
 

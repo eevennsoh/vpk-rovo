@@ -38,6 +38,18 @@ test("compact rovo chat starts managed runs on AI Gateway without a RovoDev gate
 	assert.doesNotMatch(proxySource, /createRovoDevUnavailableError|resolveRovoAppPortAvailability|enqueueRun/u);
 });
 
+test("RFP demo floating-chat turns stream before creating a managed run", () => {
+	const proxySource = getFunctionSource("proxyRovoAppChatRequest");
+	const demoBranchIndex = proxySource.indexOf("const agentsRfpDemoTurn = !existingRun");
+	const streamIndex = proxySource.indexOf("streamAgentsRfpDemoChatTurn(res, agentsRfpDemoTurn);", demoBranchIndex);
+	const createRunIndex = proxySource.indexOf("rovoAppRunManager.createRun", demoBranchIndex);
+
+	assert.notEqual(demoBranchIndex, -1);
+	assert.notEqual(streamIndex, -1);
+	assert.notEqual(createRunIndex, -1);
+	assert.ok(streamIndex < createRunIndex);
+});
+
 test("managed rovo chat persists the resolved backend before streaming", () => {
 	const executeSource = getFunctionSource("executeRovoAppManagedRun");
 
