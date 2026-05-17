@@ -310,6 +310,9 @@ const UI_AI_DEMO: Record<string, ComponentType> = {
     ssr: false,
   }),
   tool: dynamic(() => import("./demos/ui-ai/tool-demo"), { ssr: false }),
+  "twg-tool": dynamic(() => import("./demos/ui-ai/twg-tool-demo"), {
+    ssr: false,
+  }),
   toolbar: dynamic(() => import("./demos/ui-ai/toolbar-demo"), { ssr: false }),
   transcription: dynamic(() => import("./demos/ui-ai/transcription-demo"), {
     ssr: false,
@@ -6523,6 +6526,27 @@ const UI_AI_VARIANT_DEMOS: Record<string, ComponentType> = {
     () =>
       import("./demos/ui-ai/tool-demo").then((mod) => ({
         default: mod.ToolDemoApproval,
+      })),
+    { ssr: false },
+  ),
+  "twg-tool-demo-single-source": dynamic(
+    () =>
+      import("./demos/ui-ai/twg-tool-demo").then((mod) => ({
+        default: mod.TwgToolDemoSingleSource,
+      })),
+    { ssr: false },
+  ),
+  "twg-tool-demo-multiple-sources": dynamic(
+    () =>
+      import("./demos/ui-ai/twg-tool-demo").then((mod) => ({
+        default: mod.TwgToolDemoMultipleSources,
+      })),
+    { ssr: false },
+  ),
+  "twg-tool-demo-completed": dynamic(
+    () =>
+      import("./demos/ui-ai/twg-tool-demo").then((mod) => ({
+        default: mod.TwgToolDemoCompleted,
       })),
     { ssr: false },
   ),
