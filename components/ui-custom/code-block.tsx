@@ -107,10 +107,18 @@ const LineSpan = ({
 );
 
 // Types
+export type CodeBlockSize = "default" | "sm";
+
+const CODE_BLOCK_TEXT_SIZE_CLASSES: Record<CodeBlockSize, string> = {
+  default: "text-sm",
+  sm: "text-xs",
+};
+
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;
   language: BundledLanguage;
   showLineNumbers?: boolean;
+  size?: CodeBlockSize;
 };
 
 interface TokenizedCode {
@@ -122,11 +130,13 @@ interface TokenizedCode {
 interface CodeBlockContextType {
   code: string;
   language?: BundledLanguage;
+  size: CodeBlockSize;
 }
 
 // Context
 const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
+  size: "default",
 });
 
 // Highlighter cache (singleton per language)
@@ -263,10 +273,12 @@ const CodeBlockBody = memo(
   ({
     tokenized,
     showLineNumbers,
+    size,
     className,
   }: {
     tokenized: TokenizedCode;
     showLineNumbers: boolean;
+    size: CodeBlockSize;
     className?: string;
   }) => {
     const preStyle = useMemo(
@@ -281,22 +293,31 @@ const CodeBlockBody = memo(
       () => addKeysToTokens(tokenized.tokens),
       [tokenized.tokens]
     );
+    const paddingClass = showLineNumbers
+      ? size === "sm"
+        ? "py-3 pr-3 pl-0"
+        : "py-4 pr-4 pl-0"
+      : size === "sm"
+        ? "p-3"
+        : "p-4";
 
     return (
       <pre
         className={cn(
-          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0 text-sm",
-          showLineNumbers ? "py-4 pr-4 pl-0" : "p-4",
+          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0",
+          CODE_BLOCK_TEXT_SIZE_CLASSES[size],
+          paddingClass,
           className
         )}
         style={preStyle}
       >
         <code
           className={cn(
-            "font-mono text-sm",
+            "font-mono",
+            CODE_BLOCK_TEXT_SIZE_CLASSES[size],
             showLineNumbers
               ? "[counter-increment:line_0] [counter-reset:line]"
-              : "block px-4"
+              : "block"
           )}
         >
           {keyedLines.map((keyedLine) => (
@@ -313,6 +334,7 @@ const CodeBlockBody = memo(
   (prevProps, nextProps) =>
     prevProps.tokenized === nextProps.tokenized &&
     prevProps.showLineNumbers === nextProps.showLineNumbers &&
+    prevProps.size === nextProps.size &&
     prevProps.className === nextProps.className
 );
 
@@ -321,9 +343,10 @@ CodeBlockBody.displayName = "CodeBlockBody";
 export function CodeBlockContainer({
   className,
   language,
+  size = "default",
   style,
   ...props
-}: Readonly<HTMLAttributes<HTMLDivElement> & { language: string }>) {
+}: Readonly<HTMLAttributes<HTMLDivElement> & { language: string; size?: CodeBlockSize }>) {
   return (
     <div
       className={cn(
@@ -331,6 +354,7 @@ export function CodeBlockContainer({
         className
       )}
       data-language={language}
+      data-size={size}
       style={{
         containIntrinsicSize: "auto 200px",
         contentVisibility: "auto",
@@ -349,7 +373,7 @@ export function CodeBlockHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between border-border border-b bg-bg-neutral px-3 py-2 text-text-subtle text-xs",
+        "flex items-center justify-between border-border border-b bg-bg-neutral px-3 py-2 text-text-subtle text-xs group-data-[size=sm]:py-1",
         className
       )}
       {...props}
@@ -402,10 +426,12 @@ export function CodeBlockContent({
   code,
   language,
   showLineNumbers = false,
+  size = "default",
 }: Readonly<{
   code: string;
   language: BundledLanguage;
   showLineNumbers?: boolean;
+  size?: CodeBlockSize;
 }>) {
   const rawTokens = useMemo(() => createRawTokens(code), [code]);
   const cacheKey = useMemo(
@@ -450,7 +476,11 @@ export function CodeBlockContent({
       tabIndex={0}
       title={`${language} code example`}
     >
-      <CodeBlockBody showLineNumbers={showLineNumbers} tokenized={tokenized} />
+      <CodeBlockBody
+        showLineNumbers={showLineNumbers}
+        size={size}
+        tokenized={tokenized}
+      />
     </div>
   );
 }
@@ -459,19 +489,21 @@ export function CodeBlock({
   code,
   language,
   showLineNumbers = false,
+  size = "default",
   className,
   children,
   ...props
 }: Readonly<CodeBlockProps>) {
-  const contextValue = useMemo(() => ({ code, language }), [code, language]);
+  const contextValue = useMemo(() => ({ code, language, size }), [code, language, size]);
 
   return (
     <CodeBlockContext value={contextValue}>
-      <CodeBlockContainer className={className} language={language} {...props}>
+      <CodeBlockContainer className={className} language={language} size={size} {...props}>
         {children}
         <CodeBlockContent
           code={code}
           language={language}
+          size={size}
           showLineNumbers={showLineNumbers}
         />
       </CodeBlockContainer>
@@ -527,7 +559,7 @@ export function CodeBlockDownloadButton({
   className,
   ...props
 }: Readonly<CodeBlockDownloadButtonProps>) {
-  const { code, language } = use(CodeBlockContext);
+  const { code, language, size: codeBlockSize } = use(CodeBlockContext);
 
   const downloadCode = useCallback(() => {
     if (typeof window === "undefined") {
@@ -555,7 +587,7 @@ export function CodeBlockDownloadButton({
     <Button
       className={cn("shrink-0 text-text-subtle hover:text-text", className)}
       onClick={downloadCode}
-      size="icon"
+      size={codeBlockSize === "sm" ? "icon-xs" : "icon"}
       variant="ghost"
       aria-label="Download code"
       {...props}
@@ -575,7 +607,7 @@ export function CodeBlockCopyButton({
 }: Readonly<CodeBlockCopyButtonProps>) {
   const [isCopied, setIsCopied] = useState(false);
   const timeoutRef = useRef<number>(0);
-  const { code } = use(CodeBlockContext);
+  const { code, size: codeBlockSize } = use(CodeBlockContext);
 
   const copyToClipboard = useCallback(async () => {
     if (typeof window === "undefined" || !navigator?.clipboard?.writeText) {
@@ -611,7 +643,7 @@ export function CodeBlockCopyButton({
     <Button
       className={cn("shrink-0 text-text-subtle hover:text-text", className)}
       onClick={copyToClipboard}
-      size="icon"
+      size={codeBlockSize === "sm" ? "icon-xs" : "icon"}
       variant="ghost"
       aria-label="Copy code"
       {...props}

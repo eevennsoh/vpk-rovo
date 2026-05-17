@@ -5780,6 +5780,13 @@ const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
+  "code-block-demo-ads-small": dynamic(
+    () =>
+      import("./demos/ui-custom/code-block-demo").then((mod) => ({
+        default: mod.CodeBlockDemoAdsSmall,
+      })),
+    { ssr: false },
+  ),
   "code-block-demo-ads-line-numbers": dynamic(
     () =>
       import("./demos/ui-custom/code-block-demo").then((mod) => ({

@@ -732,7 +732,7 @@ export function AssistantThinkingTrace({
 				<ChainOfThoughtContent>
 					{state.shouldShowThinkingSection ? (
 						<ChainOfThoughtStep icon={StepThinkingIcon} label={getReasoningSectionTitle("thinking")} status={state.isThinkingStreaming ? "active" : "complete"}>
-							<CodeBlock className="text-xs" code={state.accumulatedThinkingContent} language="markdown" />
+							<CodeBlock code={state.accumulatedThinkingContent} language="markdown" size="sm" />
 						</ChainOfThoughtStep>
 					) : null}
 					{state.data.hasTodoProgressItems ? (

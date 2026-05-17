@@ -80,9 +80,9 @@ export function StreamingThinkingIndicator({
 									status={stepStatus}
 								>
 									<CodeBlock
-										className="text-xs"
 										code={trimmedReasoningContent}
 										language="markdown"
+										size="sm"
 									/>
 								</ChainOfThoughtStep>
 							) : null}
