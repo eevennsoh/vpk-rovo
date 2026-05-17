@@ -4,11 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { RovoCanvas, type RovoCanvasStatus, type RovoCanvasVersion, type RovoCanvasView } from "@/components/blocks/rovo-canvas/page";
 import ChatPanel, { type ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
-import {
-	ChainOfThought,
-	ChainOfThoughtContent,
-	ChainOfThoughtStep,
-} from "@/components/ui-custom/chain-of-thought";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import { RFP_101_WORK_ITEM, formatActiveJiraWorkItemContext } from "../data/rfp-work-items";
 import type { AgentsRfpDemoActions } from "../hooks/use-agents-rfp-demo-state";
@@ -158,40 +153,6 @@ function useRfpHtmlReportPreview(state: AgentsRfpDemoState): RfpHtmlReportPrevie
 		...previewState,
 		reload: () => setReloadKey((currentKey) => currentKey + 1),
 	};
-}
-
-export function RfpStagedToolTrace(): React.ReactElement {
-	return (
-		<ChainOfThought defaultOpen className="rounded-lg border border-border bg-surface p-3">
-			<ChainOfThoughtContent className="mt-0 space-y-3">
-				<ChainOfThoughtStep
-					label="jira.read_work_item"
-					description="Read RFP-101, parent RFP-100, status, priority, due date, and subtasks."
-					status="complete"
-				/>
-				<ChainOfThoughtStep
-					label="jira.scan_attachments"
-					description="Scanned RFP packet, compliance matrix, response brief, supplier portal upload, audio briefing, and walkthrough."
-					status="complete"
-				/>
-				<ChainOfThoughtStep
-					label="teamwork_graph.search"
-					description="Returned fixture-backed account memory, people, goals, and reusable response assets."
-					status="complete"
-				/>
-				<ChainOfThoughtStep
-					label="rfp.map_requirements"
-					description="Mapped ITSM, CMDB, asset management, AI, legal, data residency, security, and audit requirements."
-					status="complete"
-				/>
-				<ChainOfThoughtStep
-					label="rfp.check_unfinished_work"
-					description="Flagged RFP-106 and RFP-108 as validation gaps for demo ownership and legal/security exhibits."
-					status="complete"
-				/>
-			</ChainOfThoughtContent>
-		</ChainOfThought>
-	);
 }
 
 function RfpRenderedHtmlReport({

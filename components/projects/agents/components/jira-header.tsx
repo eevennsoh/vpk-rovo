@@ -31,18 +31,18 @@ export default function JiraHeader({ selectedTab, onTabChange }: Readonly<JiraHe
 								Spaces
 							</span>
 							<div className="flex items-center gap-2">
-									<Image
-										src="/avatar-project/rocket.svg"
-										alt="Project avatar"
-										width={20}
-										height={20}
-										style={{ width: "20px", height: "20px", borderRadius: token("radius.xsmall") }}
-									/>
+								<Image
+									src="/avatar-project/rocket.svg"
+									alt="Project avatar"
+									width={24}
+									height={24}
+									style={{ width: "24px", height: "24px", borderRadius: token("radius.xsmall") }}
+								/>
 								<Heading size="medium">Enterprise RFP Response</Heading>
-								<Button aria-label="Teams" size="icon-sm" variant="ghost">
+								<Button aria-label="Teams" size="icon-xs" variant="ghost">
 									<TeamsIcon label="" size="small" />
 								</Button>
-								<Button aria-label="More options" size="icon-sm" variant="ghost">
+								<Button aria-label="More options" size="icon-xs" variant="ghost">
 									<ShowMoreHorizontalIcon label="" size="small" />
 								</Button>
 							</div>

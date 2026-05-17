@@ -8,8 +8,8 @@ const RFP_REPORT_CANVAS_SOURCE = fs.readFileSync(
 	path.join(__dirname, "components/rfp-report-canvas.tsx"),
 	"utf8",
 );
-const RFP_DEMO_CONTROLS_SOURCE = fs.readFileSync(
-	path.join(__dirname, "components/rfp-demo-controls.tsx"),
+const BOARD_TOOLBAR_SOURCE = fs.readFileSync(
+	path.join(__dirname, "components/board-toolbar.tsx"),
 	"utf8",
 );
 
@@ -111,7 +111,7 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 
 test("AgentsView attaches generated reports through the RFP-101 modal and Sonner notifications", () => {
 	assert.match(AGENTS_VIEW_SOURCE, /import \{ toast \} from "sonner";/u);
-	assert.match(AGENTS_VIEW_SOURCE, /import \{ SonnerToast, Toaster \} from "@\/components\/ui\/sonner";/u);
+	assert.match(AGENTS_VIEW_SOURCE, /import \{ SONNER_TOAST_AUTO_DISMISS_MS, SonnerToast, Toaster \} from "@\/components\/ui\/sonner";/u);
 	assert.match(AGENTS_VIEW_SOURCE, /GENERATED_RFP_REPORT_ATTACHMENT_ID/u);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
@@ -177,14 +177,6 @@ test("AgentsView delegates RFP Drafting agent creation and keeps generic column 
 	);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
-		/onCreateAgent=\{onCreateRfpDraftingAgent\}/u,
-	);
-	assert.match(
-		AGENTS_VIEW_SOURCE,
-		/onOpenAgentDetails=\{\(\) => onAgentDetailsOpenChange\(true\)\}/u,
-	);
-	assert.match(
-		AGENTS_VIEW_SOURCE,
 		/<RfpAgentDetailsSheet[\s\S]*open=\{isAgentDetailsOpen\}[\s\S]*onOpenChange=\{onAgentDetailsOpenChange\}/u,
 	);
 	assert.match(
@@ -213,22 +205,27 @@ test("RFP report canvas marks refined copy from the selected version, not termin
 	);
 });
 
-test("RFP reset confirmation closes after resetting demo state", () => {
+test("RFP reset confirmation lives in the board toolbar next to grouping", () => {
 	assert.match(
-		RFP_DEMO_CONTROLS_SOURCE,
+		BOARD_TOOLBAR_SOURCE,
 		/const \[isResetDialogOpen, setIsResetDialogOpen\] = useState\(false\);/u,
 	);
 	assert.match(
-		RFP_DEMO_CONTROLS_SOURCE,
+		BOARD_TOOLBAR_SOURCE,
 		/<AlertDialog open=\{isResetDialogOpen\} onOpenChange=\{setIsResetDialogOpen\}>/u,
 	);
 	assert.match(
-		RFP_DEMO_CONTROLS_SOURCE,
+		BOARD_TOOLBAR_SOURCE,
 		/const handleConfirmReset = \(\) => \{[\s\S]*setIsResetDialogOpen\(false\);[\s\S]*onReset\(\);[\s\S]*\};/u,
 	);
 	assert.match(
-		RFP_DEMO_CONTROLS_SOURCE,
+		BOARD_TOOLBAR_SOURCE,
 		/<Button onClick=\{handleConfirmReset\}>Reset demo<\/Button>/u,
 	);
-	assert.doesNotMatch(RFP_DEMO_CONTROLS_SOURCE, /AlertDialogAction/u);
+	assert.match(BOARD_TOOLBAR_SOURCE, /Reset demo[\s\S]*Group: RFP stage/u);
+	assert.match(AGENTS_VIEW_SOURCE, /<BoardToolbar avatars=\{\[\.\.\.AVATARS\]\} onReset=\{handleResetDemo\} \/>/u);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /RfpDemoControls/u);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /Ask Rovo for RFP help/u);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /Answer qualification questions/u);
+	assert.doesNotMatch(BOARD_TOOLBAR_SOURCE, /AlertDialogAction/u);
 });

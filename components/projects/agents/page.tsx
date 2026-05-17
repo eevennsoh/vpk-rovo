@@ -14,7 +14,6 @@ import JiraWorkItemModal from "./components/jira-work-item-modal";
 import { AgentsWorkItemInlinePage } from "./components/agents-work-item-inline-page";
 import { RfpAgentDetailsSheet } from "./components/rfp-agent-details-sheet";
 import { RfpAttachmentPreviewDialog } from "./components/rfp-attachment-preview-dialog";
-import { RfpDemoControls } from "./components/rfp-demo-controls";
 import { RfpReportCanvas } from "./components/rfp-report-canvas";
 import type { ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
@@ -27,7 +26,6 @@ import type { AgentsWorkItemPresentationController } from "./hooks/use-agents-wo
 import {
 	GENERATED_RFP_REPORT_ATTACHMENT_ID,
 	RFP_DRAFTING_AGENT_ID,
-	formatRfpDemoContext,
 	getGeneratedRfpAttachments,
 	getRfpDemoAgents,
 	getRfpDemoColumnAgentAssignments,
@@ -36,17 +34,6 @@ import {
 } from "./lib/rfp-demo-state";
 
 const WORK_ITEM_FLOATING_PIN_REASON = "agents-work-item-modal";
-const RFP_HELP_PROMPT = `Help me complete this RFP. Give me a bid/no-bid recommendation first,
-then draft a first-pass response strategy covering ITSM, CMDB, asset
-management, and AI compliance. Use everything in this ticket and the
-attached documents.`;
-const RFP_QUALIFICATION_ANSWER = `Assume $2.4M ARR, ServiceNow incumbent, internal deal desk first.
-Use standard approved language but mark legal, data residency, audit, and
-vulnerability responses as review-required. Lead with unified ITSM and CMDB,
-then use Rovo AI automation as the differentiator. Reuse the standard ITSM
-template and prior JSM pilot notes.`;
-const RFP_REPORT_PROMPT = "Create an offline HTML report from this work item that I can attach back to the RFP.";
-const RFP_REPORT_REFINE_PROMPT = "Make the executive summary more customer-facing and add a stronger risk note for legal and data residency review.";
 const AGENTS_RFP_DEMO_TOASTER_ID = "agents-rfp-demo-notifications";
 
 interface DraggedCardState {
@@ -74,7 +61,6 @@ export default function AgentsView({
 	chatGreeting,
 }: Readonly<AgentsViewProps>) {
 	const [selectedTab, setSelectedTab] = useState(1);
-	const [isStagedTraceVisible, setIsStagedTraceVisible] = useState(false);
 	const [attachmentHighlight, setAttachmentHighlight] = useState<{ id: string; key: number } | null>(null);
 	const [previewAttachment, setPreviewAttachment] = useState<WorkItemAttachment | null>(null);
 	const nextAttachmentHighlightKeyRef = useRef(0);
@@ -173,7 +159,6 @@ export default function AgentsView({
 				closeModal();
 			}
 			closeChat();
-			setIsStagedTraceVisible(true);
 			if (rfpDemo.state.report.stage === "none") {
 				rfpDemo.actions.generateReport();
 				return;
@@ -281,40 +266,6 @@ export default function AgentsView({
 		);
 	};
 
-	const buildDemoPromptOptions = () => ({
-		contextDescription: formatRfpDemoContext(rfpDemo.state),
-	});
-
-	const handleAskRfpHelp = () => {
-		setIsStagedTraceVisible(true);
-		openChat("floating");
-		void sendPrompt(RFP_HELP_PROMPT, buildDemoPromptOptions());
-	};
-
-	const handleSubmitQualificationAnswer = () => {
-		rfpDemo.actions.setAnswerSummary(RFP_QUALIFICATION_ANSWER);
-		openChat("floating");
-		void sendPrompt(RFP_QUALIFICATION_ANSWER, buildDemoPromptOptions());
-	};
-
-	const handleCreateReport = () => {
-		setIsStagedTraceVisible(true);
-		rfpDemo.actions.generateReport();
-		openChat("floating");
-		void sendPrompt(RFP_REPORT_PROMPT, buildDemoPromptOptions());
-	};
-
-	const handleRefineReport = () => {
-		rfpDemo.actions.refineReport();
-		openChat("floating");
-		void sendPrompt(RFP_REPORT_REFINE_PROMPT, buildDemoPromptOptions());
-	};
-
-	const handleScheduleAgent = () => {
-		rfpDemo.actions.scheduleAgent();
-		onAgentDetailsOpenChange(true);
-	};
-
 	const handleAttachReport = (reportPreviewHtml?: string) => {
 		rfpDemo.actions.attachReport(reportPreviewHtml);
 		closeChat();
@@ -340,6 +291,13 @@ export default function AgentsView({
 
 	const handleModalClose = () => {
 		closeModal();
+	};
+
+	const handleResetDemo = () => {
+		rfpDemo.actions.reset();
+		onAgentDetailsOpenChange(false);
+		setAttachmentHighlight(null);
+		setPreviewAttachment(null);
 	};
 
 	if (presentationState.mode === "inline" && selectedWorkItem) {
@@ -378,30 +336,7 @@ export default function AgentsView({
 					style={{ flexGrow: 1, display: "flex", flexDirection: "column" }}
 				>
 					{/* Toolbar */}
-					<BoardToolbar avatars={[...AVATARS]} />
-					<RfpDemoControls
-						state={rfpDemo.state}
-						showStagedTrace={isStagedTraceVisible}
-						onAskRfpHelp={handleAskRfpHelp}
-						onSubmitQualificationAnswer={handleSubmitQualificationAnswer}
-						onCreateReport={handleCreateReport}
-						onRefineReport={handleRefineReport}
-						onApproveReport={rfpDemo.actions.approveReport}
-						onExportPdf={rfpDemo.actions.exportPdf}
-						onAttachReport={handleAttachReport}
-						onCreateAgent={onCreateRfpDraftingAgent}
-						onScheduleAgent={handleScheduleAgent}
-						onOpenAgentDetails={() => onAgentDetailsOpenChange(true)}
-						onMoveRfp101ToReview={() => rfpDemo.actions.moveCard("RFP-101", "Review")}
-						onMoveRfp102ToDrafting={() => rfpDemo.actions.moveCard("RFP-102", "Drafting")}
-						onReset={() => {
-							rfpDemo.actions.reset();
-							setIsStagedTraceVisible(false);
-							onAgentDetailsOpenChange(false);
-							setAttachmentHighlight(null);
-							setPreviewAttachment(null);
-						}}
-					/>
+					<BoardToolbar avatars={[...AVATARS]} onReset={handleResetDemo} />
 
 					{/* Board columns */}
 					<KanbanBoard
