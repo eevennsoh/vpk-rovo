@@ -230,6 +230,7 @@ const {
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
 	buildAgentsRfpDemoReportConfirmationText,
+	getAgentsRfpDemoPreloadDelayMs,
 	getAgentsRfpDemoToolCallDelayMs,
 	resolveAgentsRfpDemoChatTurn,
 } = require("./lib/agents-rfp-demo-chat");
@@ -3961,6 +3962,11 @@ function streamAgentsRfpDemoChatTurn(res, turn, requestBody) {
 				);
 				writeAgentsRfpDemoTurnComplete(writer, "artifact_create");
 				return;
+			}
+
+			const preloadDelayMs = getAgentsRfpDemoPreloadDelayMs(turn);
+			if (preloadDelayMs > 0) {
+				await waitForAgentsRfpDemoTraceDelay(preloadDelayMs);
 			}
 
 			const questionCardPayload = buildAgentsRfpDemoQuestionCardPayload();
@@ -9557,7 +9563,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					// Emit data-thinking-status lazily — only when the LLM
 					// actually starts producing output (text or tool events).
 					// Until then the frontend shows the preload indicator
-					// ("Rovo is cooking") to distinguish "waiting for LLM"
+					// ("Rovo is cooking...") to distinguish "waiting for LLM"
 					// from "LLM is actively working."
 					let hasEmittedThinkingStatus = false;
 					const emitLazyThinkingStatus = () => {

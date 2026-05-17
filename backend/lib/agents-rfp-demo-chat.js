@@ -9,6 +9,7 @@ const RFP_DEMO_QUESTION_SESSION_ID = "agents-rfp-demo-rfp-101-qualification";
 const RFP_DEMO_QUESTION_TOOL_CALL_ID = "ai-gateway-ask_user_questions-agents-rfp-demo-rfp-101";
 const RFP_DEMO_TOOL_CALL_DELAY_MIN_MS = 1000;
 const RFP_DEMO_TOOL_CALL_DELAY_MAX_MS = 3000;
+const RFP_DEMO_QUALIFICATION_PRELOAD_DELAY_MS = 2000;
 const RFP_DEMO_REPORT_TITLE = "RFP-101 response strategy report";
 const RFP_DEMO_REPORT_PREVIEW_SUMMARY = "Offline vpk-html report for RFP-101 with bid/no-bid recommendation, response strategy, reusable assets, and review gates.";
 
@@ -99,6 +100,12 @@ function getAgentsRfpDemoToolCallDelayMs(random = Math.random) {
 			boundedValue *
 				(RFP_DEMO_TOOL_CALL_DELAY_MAX_MS - RFP_DEMO_TOOL_CALL_DELAY_MIN_MS),
 	);
+}
+
+function getAgentsRfpDemoPreloadDelayMs(turn) {
+	return turn === "qualification-questions"
+		? RFP_DEMO_QUALIFICATION_PRELOAD_DELAY_MS
+		: 0;
 }
 
 function buildAgentsRfpDemoQuestionCardPayload() {
@@ -304,6 +311,7 @@ module.exports = {
 	buildAgentsRfpDemoQuestionCardPayload,
 	buildAgentsRfpDemoReportConfirmationText,
 	buildAgentsRfpDemoAnswerTrace,
+	getAgentsRfpDemoPreloadDelayMs,
 	getAgentsRfpDemoToolCallDelayMs,
 	getLatestUserMessageText,
 	resolveAgentsRfpDemoChatTurn,

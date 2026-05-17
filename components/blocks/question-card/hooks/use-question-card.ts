@@ -8,6 +8,7 @@ import { shouldAutoFocusCustomInputForQuestion } from "../lib/focus-policy";
 import { getQuestionCardPrimaryAction } from "../lib/footer-actions";
 import {
 	getCustomInputValue,
+	getSelectedValues,
 	isQuestionAnswered,
 } from "../lib/question-helpers";
 import { QUESTION_CARD_SKIPPED_VALUE } from "../lib/skipped-answer";
@@ -190,6 +191,28 @@ export function useQuestionCard({
 		[isSubmitting, currentQuestion, canGoToNextQuestion, goToNextQuestion, answers, questions, onSubmit],
 	);
 
+	const handleKeyboardOptionSelect = useCallback(
+		(optionId: string) => {
+			if (currentQuestion.kind === "multi-select") {
+				setAnswers((previousAnswers) => {
+					const selectedValues = getSelectedValues(previousAnswers[currentQuestion.id]);
+					const nextValues = selectedValues.includes(optionId)
+						? selectedValues.filter((value) => value !== optionId)
+						: [...selectedValues, optionId];
+
+					return {
+						...previousAnswers,
+						[currentQuestion.id]: nextValues,
+					};
+				});
+				return;
+			}
+
+			handleSelectOption(optionId);
+		},
+		[currentQuestion, handleSelectOption],
+	);
+
 	const handleCustomInputFocus = useCallback(() => {
 		setFocusedIndex(-1);
 	}, []);
@@ -295,7 +318,7 @@ export function useQuestionCard({
 					if (focusedIndex < visibleOptionCount) {
 						const option = currentQuestion.options[focusedIndex];
 						if (option) {
-							handleSelectOption(option.id);
+							handleKeyboardOptionSelect(option.id);
 						}
 					}
 					break;
@@ -334,7 +357,7 @@ export function useQuestionCard({
 							event.preventDefault();
 							const option = currentQuestion.options[index];
 							if (option) {
-								handleSelectOption(option.id);
+								handleKeyboardOptionSelect(option.id);
 							}
 						} else if (showCustomInput && index === customOptionIndex) {
 							event.preventDefault();
@@ -357,7 +380,7 @@ export function useQuestionCard({
 			canGoToNextQuestion,
 			goToPreviousQuestion,
 			goToNextQuestion,
-			handleSelectOption,
+			handleKeyboardOptionSelect,
 			handleCustomInputSubmit,
 			handleSkip,
 		],

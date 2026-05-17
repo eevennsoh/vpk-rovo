@@ -69,6 +69,7 @@ export default function AgentsView({
 	const [isStagedTraceVisible, setIsStagedTraceVisible] = useState(false);
 	const [previewAttachment, setPreviewAttachment] = useState<WorkItemAttachment | null>(null);
 	const {
+		closeChat,
 		isOpen: isChatOpen,
 		chatSurface,
 		isFloatingPinned,
@@ -77,7 +78,7 @@ export default function AgentsView({
 		sendPrompt,
 		unpinFloating,
 	} = useRovoChat();
-	const { state: presentationState, promoteModalToInline } = workItemPresentation;
+	const { closeModal, state: presentationState, promoteModalToInline } = workItemPresentation;
 	const isModalOpen = presentationState.mode === "modal";
 	const selectedWorkItem = useMemo(
 		() => applyRfpDemoWorkItemState(presentationState.workItem, rfpDemo.state),
@@ -112,6 +113,10 @@ export default function AgentsView({
 	useEffect(() => {
 		const handleOpenRfpCanvas = (event: Event) => {
 			event.preventDefault();
+			if (isModalOpen) {
+				closeModal();
+			}
+			closeChat();
 			setIsStagedTraceVisible(true);
 			if (rfpDemo.state.report.stage === "none") {
 				rfpDemo.actions.generateReport();
@@ -124,7 +129,7 @@ export default function AgentsView({
 
 		window.addEventListener("rovo:open-canvas-artifact", handleOpenRfpCanvas);
 		return () => window.removeEventListener("rovo:open-canvas-artifact", handleOpenRfpCanvas);
-	}, [rfpDemo.actions, rfpDemo.state.report.stage]);
+	}, [closeChat, closeModal, isModalOpen, rfpDemo.actions, rfpDemo.state.report.stage]);
 
 	const [columnAgentAssignments, setColumnAgentAssignments] = useState<Record<string, string[]>>({});
 	const [draggedCard, setDraggedCard] = useState<DraggedCardState | null>(null);
@@ -277,7 +282,7 @@ export default function AgentsView({
 	};
 
 	const handleModalClose = () => {
-		workItemPresentation.closeModal();
+		closeModal();
 	};
 
 	if (presentationState.mode === "inline" && selectedWorkItem) {

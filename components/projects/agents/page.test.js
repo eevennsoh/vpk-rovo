@@ -26,6 +26,21 @@ test("AgentsView promotes the modal to inline when pinned floating chat switches
 	assert.match(AGENTS_VIEW_SOURCE, promoteEffectPattern);
 });
 
+test("AgentsView opens generated reports in Rovo Canvas and embeds the active chat there", () => {
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/window\.addEventListener\("rovo:open-canvas-artifact", handleOpenRfpCanvas\);/u,
+	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/event\.preventDefault\(\);[\s\S]*if \(isModalOpen\) \{[\s\S]*closeModal\(\);[\s\S]*\}[\s\S]*closeChat\(\);/u,
+	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/rfpDemo\.actions\.setCanvasView\("preview"\);[\s\S]*rfpDemo\.actions\.setCanvasOpen\(true\);/u,
+	);
+});
+
 test("AgentsView renders selected work item inline after promotion", () => {
 	assert.match(
 		AGENTS_VIEW_SOURCE,

@@ -10,6 +10,7 @@ const {
 	buildAgentsRfpDemoQuestionCardPayload,
 	buildAgentsRfpDemoReportConfirmationText,
 	getAgentsRfpDemoToolCallDelayMs,
+	getAgentsRfpDemoPreloadDelayMs,
 	getLatestUserMessageText,
 	resolveAgentsRfpDemoChatTurn,
 } = require("./agents-rfp-demo-chat");
@@ -101,6 +102,12 @@ test("RFP demo tool-call delay varies between one and three seconds", () => {
 	assert.equal(getAgentsRfpDemoToolCallDelayMs(() => 0), 1000);
 	assert.equal(getAgentsRfpDemoToolCallDelayMs(() => 0.5), 2000);
 	assert.equal(getAgentsRfpDemoToolCallDelayMs(() => 1), 3000);
+});
+
+test("RFP demo qualification turn preloads before the trace starts", () => {
+	assert.equal(getAgentsRfpDemoPreloadDelayMs("qualification-questions"), 2000);
+	assert.equal(getAgentsRfpDemoPreloadDelayMs("qualification-answer"), 0);
+	assert.equal(getAgentsRfpDemoPreloadDelayMs(null), 0);
 });
 
 test("qualification trace leaves ask_user_questions awaiting a question card", () => {

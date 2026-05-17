@@ -27,3 +27,15 @@ test("Rovo app empty state switches greeting and illustrations for Max mode", ()
 	assert.match(MESSAGES_SOURCE, /<motion\.div className=\{cn\(emptyState\.illustrationClassName, "relative"\)[\s\S]*<motion\.div style=\{\{ willChange: "transform, opacity" \}\} variants=\{emptyStateItemVariants\}>[\s\S]*<Heading size="xlarge">/u);
 	assert.match(SHELL_SOURCE, /isMaxMode=\{chat\.isPlanMode\}/u);
 });
+
+test("Rovo app streaming anchor follows the real bottom", () => {
+	assert.match(MESSAGES_SOURCE, /target\?: "bottom" \| "follow";/u);
+	assert.match(
+		MESSAGES_SOURCE,
+		/target=\{isStreaming && scrollAnchorMessageId === latestVisibleUserMessageId \? "bottom" : "follow"\}/u,
+	);
+	assert.match(
+		MESSAGES_SOURCE,
+		/scrollToBottom\(\{\s+animation: target === "bottom" \|\| shouldReduceMotion \? "instant" : "smooth",\s+ignoreEscapes: true,\s+target,\s+\}\)/u,
+	);
+});
