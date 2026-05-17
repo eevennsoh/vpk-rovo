@@ -366,7 +366,7 @@ function FloatingRovoButtonInner({
 		<motion.button
 			key="floating-rovo-button-icon"
 			aria-label={ariaLabel}
-			className="flex h-full w-full items-center justify-center"
+			className="flex h-full w-full items-center justify-center bg-bg-neutral-bold"
 			onClick={onClick}
 			type="button"
 			initial={shouldReduceMotion
@@ -379,7 +379,11 @@ function FloatingRovoButtonInner({
 			transition={shouldReduceMotion
 				? { duration: 0 }
 				: { duration: 0.2, delay: 0.24, ease: [0, 0.4, 0, 1] as const }}
-			style={{ willChange: "opacity, filter" }}
+			style={{
+				borderRadius: "inherit",
+				boxShadow: token("elevation.shadow.overlay"),
+				willChange: "opacity, filter",
+			}}
 		>
 			<Image src="/1p/rovo.svg" alt="" width={24} height={24} aria-hidden />
 		</motion.button>
@@ -413,7 +417,7 @@ function FloatingRovoButtonSurface({
 	const surfaceStyle: CSSProperties = {
 		right: resolvedPlacement.right,
 		bottom: resolvedPlacement.bottom,
-		boxShadow: token("elevation.shadow.overlay"),
+		boxShadow: onboardingOpen ? token("elevation.shadow.overlay") : undefined,
 		transformOrigin: "center",
 		willChange: "transform, opacity",
 		backfaceVisibility: "hidden",
@@ -426,9 +430,9 @@ function FloatingRovoButtonSurface({
 			key="floating-rovo-button-surface"
 			layout
 			className={cn(
-				"fixed z-[510] overflow-hidden bg-bg-neutral-bold",
+				"fixed z-[510] bg-bg-neutral-bold",
 				onboardingOpen
-					? "w-[295px] max-w-[calc(100vw-32px)]"
+					? "w-[295px] max-w-[calc(100vw-32px)] overflow-hidden"
 					: "size-12",
 			)}
 			initial={{ opacity: 0, borderRadius: onboardingOpen ? 8 : 16 }}

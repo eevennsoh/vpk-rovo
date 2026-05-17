@@ -212,6 +212,7 @@ test("AgentsView delegates RFP Drafting agent creation and keeps generic column 
 test("AgentsView maps backend RFP agent output onto cards, assignees, comments, and attachments", () => {
 	assert.match(AGENTS_VIEW_SOURCE, /RFP_DRAFTING_AGENT_NAME/u);
 	assert.match(AGENTS_VIEW_SOURCE, /workItemState\.assignee === RFP_DRAFTING_AGENT_NAME/u);
+	assert.match(AGENTS_VIEW_SOURCE, /workItemState\?\.agentStatus === "completed" && workItemState\.status === "Review" && !workItemState\.assignee/u);
 	assert.match(AGENTS_VIEW_SOURCE, /RFP_DEMO_HUMAN_ASSIGNEES\[workItemState\.assignee\]/u);
 	assert.match(AGENTS_VIEW_SOURCE, /role: workItemState\.agentStatus === "completed"[\s\S]*"Completed draft"/u);
 	assert.match(AGENTS_VIEW_SOURCE, /generatedAttachments = getGeneratedRfpAttachments\(state, workItem\.code\)/u);

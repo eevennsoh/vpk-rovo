@@ -15,7 +15,7 @@ const AGENTS_RFP_DEMO_SURFACE = "agents-rfp-demo";
 const AGENTS_RFP_DEMO_JOB_NAME = "RFP Drafting Agent - Enterprise RFP Response";
 const AGENTS_RFP_DEMO_JOB_PROMPT = [
 	"Process RFP tickets when they enter Drafting on the Enterprise RFP Response board.",
-	"Use deterministic demo outputs, create a visible Rovo thread per ticket, attach the response draft, comment, and move successful tickets to Review.",
+	"Use deterministic demo outputs, create a visible Rovo thread per ticket, attach the response draft, comment with completion status, move successful tickets to Review, and leave them unassigned.",
 ].join(" ");
 const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
 const RFP_TICKET_DRAFT_ATTACHMENT_KIND = "rfp-draft-html";
@@ -611,13 +611,12 @@ function createGeneratedAttachment(ticketCode, previewHtml) {
 
 function createAgentComment(ticketCode, ticketTitle, index) {
 	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
-	const reviewer = getHumanAssigneeForTicket(ticketCode);
 	return {
 		id: `agent-comment-${ticketCode.toLowerCase()}-draft-ready`,
 		authorName: RFP_DRAFTING_AGENT_NAME,
 		authorAvatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,
 		timestampLabel: formatDemoTimestampLabel(index),
-		content: `${RFP_DRAFTING_AGENT_NAME} drafted the first-pass HTML response for ${ticketCode} (${ticketTitle}) with focus on ${focus}, attached the vpk-html artifact, and moved the ticket to Review for ${reviewer}.`,
+		content: `${RFP_DRAFTING_AGENT_NAME} finished the first-pass HTML response for ${ticketCode} (${ticketTitle}). Status: draft complete. I focused on ${focus}, attached the vpk-html artifact, moved the ticket to Review, and left it unassigned for the response team to pick up.`,
 	};
 }
 
@@ -656,7 +655,7 @@ function buildActiveJiraWorkItemContextForTicket(ticketCode, status = RFP_DRAFTI
 		"Next actions:",
 		`- Draft ${focus} in a reusable response artifact.`,
 		"- Attach the generated response for proposal review.",
-		"- Move the ticket to Review and assign it back to a human owner.",
+		"- Move the ticket to Review and leave it unassigned for a human reviewer to pick up.",
 		"Attachments:",
 		"- Enterprise RFP packet.pdf (15 Aug 2025, 11:05 AM)",
 		"- Compliance matrix.xlsx (12 Aug 2025, 09:24 AM)",
@@ -669,15 +668,14 @@ function buildActiveJiraWorkItemContextForTicket(ticketCode, status = RFP_DRAFTI
 function buildTicketSpecificReportFields(ticketCode) {
 	const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
 	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
-	const assignee = getHumanAssigneeForTicket(ticketCode);
 
 	return {
 		summary: `${ticketCode} draft response for ${focus}.`,
 		whatChangedText: `${RFP_DRAFTING_AGENT_NAME} converted ${ticketTitle} into a reviewable response draft focused on ${focus}.`,
 		confidenceText: "Medium confidence: the work item has enough context for a first-pass response, while legal, security, commercial, and product commitments remain marked for human review.",
-		progressText: `A vpk-html draft artifact has been prepared for ${assignee} with reusable Atlassian System of Work language and ticket-specific next actions.`,
+		progressText: "A vpk-html draft artifact has been prepared for the response team with reusable Atlassian System of Work language and ticket-specific next actions.",
 		blockersText: "Final approval still depends on human validation of legal language, commercial assumptions, and customer-specific implementation commitments.",
-		nextWindowText: `${assignee} should review the attached HTML draft, tighten any customer-specific claims, and either approve the response text or route gaps to the appropriate specialist.`,
+		nextWindowText: "The response team should pick up the unassigned Review ticket, inspect the attached HTML draft, tighten any customer-specific claims, and either approve the response text or route gaps to the appropriate specialist.",
 		milestonesText: "Drafting is complete for agent handoff; Review is the next workflow milestone before final proposal packaging.",
 		informationGaps: [
 			"Final approved pricing and legal exceptions are not recorded in the Work Item context.",
@@ -1111,7 +1109,6 @@ async function advanceRfpDraftingAgentProcessing(state, {
 				attachment.source !== "generated" ||
 				attachment.kind !== RFP_TICKET_DRAFT_ATTACHMENT_KIND
 			));
-			const completedAssignee = workItem.previousAssignee ?? getHumanAssigneeForTicket(ticketCode);
 
 			nextState = {
 				...moveTicketToColumn(nextState, ticketCode, RFP_REVIEW_COLUMN_NAME, { append: true }),
@@ -1121,7 +1118,7 @@ async function advanceRfpDraftingAgentProcessing(state, {
 						...workItem,
 						status: RFP_REVIEW_COLUMN_NAME,
 						attachments: [...preservedAttachments, generatedAttachment],
-						assignee: completedAssignee,
+						assignee: null,
 						agentStatus: "completed",
 						agentReadyAt: null,
 						agentSessionThreadId: threadId,

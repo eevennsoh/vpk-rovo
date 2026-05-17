@@ -186,3 +186,37 @@ test("dragging RFP-102 to Drafting after agent creation assigns the agent and st
 	);
 	assert.match(state.toasts[0].message, /Preparing first-pass response package/);
 });
+
+test("completed Review tickets left unassigned do not inherit the seed human avatar", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const state = harness.createDefaultAgentsRfpDemoState();
+	state.board.columns = state.board.columns.map((column) => {
+		if (column.title === "Drafting") {
+			return {
+				...column,
+				cardCodes: column.cardCodes.filter((cardCode) => cardCode !== "RFP-141"),
+			};
+		}
+		if (column.title === "Review") {
+			return {
+				...column,
+				cardCodes: ["RFP-141", ...column.cardCodes],
+			};
+		}
+		return column;
+	});
+	state.workItems["RFP-141"] = {
+		...state.workItems["RFP-141"],
+		agentAssignmentIds: [harness.RFP_DRAFTING_AGENT_ID],
+		agentStatus: "completed",
+		assignee: null,
+		status: "Review",
+	};
+
+	const reviewColumn = harness.resolveRfpDemoBoardColumns(state).find((column) => column.title === "Review");
+	const completedCard = reviewColumn.cards.find((card) => card.code === "RFP-141");
+
+	assert.equal(completedCard.avatarSrc, undefined);
+	assert.equal(completedCard.avatarPulse, false);
+	assert.ok(completedCard.tags.some((tag) => tag.text === "draft ready"));
+});

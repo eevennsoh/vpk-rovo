@@ -142,6 +142,21 @@ test("floating Rovo button has an exit transition for canvas handoff", () => {
 	);
 });
 
+test("floating Rovo button applies collapsed elevation to the button surface", () => {
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/<motion\.button[\s\S]*className="flex h-full w-full items-center justify-center bg-bg-neutral-bold"[\s\S]*boxShadow: token\("elevation\.shadow\.overlay"\)/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/boxShadow: onboardingOpen \? token\("elevation\.shadow\.overlay"\) : undefined/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/onboardingOpen\s*\?\s*"w-\[295px\] max-w-\[calc\(100vw-32px\)\] overflow-hidden"\s*:\s*"size-12"/u,
+	);
+});
+
 test("floating Rovo button can render a collapsed proactive suggestion nudge", () => {
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,

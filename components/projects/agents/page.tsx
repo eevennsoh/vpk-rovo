@@ -487,6 +487,9 @@ function applyRfpDemoWorkItemState(
 		: null;
 	const baseComments = (workItem.comments ?? []).filter((comment) => comment.id !== agentComment?.id);
 	const assignee = (() => {
+		if (workItemState?.agentStatus === "completed" && workItemState.status === "Review" && !workItemState.assignee) {
+			return undefined;
+		}
 		if (!workItemState?.assignee) {
 			return workItem.assignee;
 		}

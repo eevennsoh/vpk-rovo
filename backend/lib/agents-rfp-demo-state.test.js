@@ -91,13 +91,15 @@ test("advancing due tickets completes them at staggered speeds with unique HTML"
 	for (const ticketCode of ["RFP-141", "RFP-142", "RFP-143"]) {
 		const workItem = finalAdvance.state.workItems[ticketCode];
 		assert.equal(workItem.status, RFP_REVIEW_COLUMN_NAME);
-		assert.notEqual(workItem.assignee, RFP_DRAFTING_AGENT_NAME);
+		assert.equal(workItem.assignee, null);
 		assert.equal(workItem.agentStatus, "completed");
 		assert.equal(workItem.generatedAttachment.displayName, `${ticketCode} response draft.html`);
 		assert.equal(workItem.generatedAttachment.previewKind, "html-report");
 		assert.match(workItem.generatedAttachment.previewHtml, /<!doctype html>/iu);
 		assert.match(workItem.generatedAttachment.previewHtml, new RegExp(ticketCode, "u"));
 		assert.equal(workItem.agentComment.authorName, RFP_DRAFTING_AGENT_NAME);
+		assert.match(workItem.agentComment.content, /Status: draft complete\./u);
+		assert.match(workItem.agentComment.content, /left it unassigned for the response team to pick up/u);
 	}
 	assert.notEqual(
 		finalAdvance.state.workItems["RFP-141"].generatedAttachment.previewHtml,
@@ -147,6 +149,8 @@ test("a later ticket entering Drafting processes only that ticket", async () => 
 	assert.deepEqual(eventRun.runSummary.failedTicketCodes, []);
 	assert.equal(eventRun.state.workItems["RFP-102"].status, RFP_DRAFTING_COLUMN_NAME);
 	assert.equal(eventCompletion.state.workItems["RFP-102"].status, RFP_REVIEW_COLUMN_NAME);
+	assert.equal(eventCompletion.state.workItems["RFP-102"].assignee, null);
+	assert.equal(eventCompletion.state.workItems["RFP-102"].agentComment.authorName, RFP_DRAFTING_AGENT_NAME);
 	assert.equal(eventCompletion.state.workItems["RFP-141"].status, RFP_REVIEW_COLUMN_NAME);
 	assert.equal(eventRun.threadRecords.length, 1);
 });
