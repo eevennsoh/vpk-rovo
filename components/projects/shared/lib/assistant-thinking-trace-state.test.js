@@ -22,9 +22,11 @@ function loadTsModule(entryPoint) {
 
 const {
 	collectAssistantThinkingTraceData,
+	resolveAssistantThinkingTraceOpen,
 	resolveAssistantThinkingTracePhase,
 	resolveAssistantThinkingTraceVisibility,
 	resolveThinkingToolCallStepOpen,
+	shouldCollapseAssistantThinkingTraceOnPhaseChange,
 } = loadTsModule(path.join(__dirname, "assistant-thinking-trace-state.ts"));
 
 test("collectAssistantThinkingTraceData detects event-only traces", () => {
@@ -135,6 +137,39 @@ test("collectAssistantThinkingTraceData accepts filtered thinking tool calls", (
 	assert.deepEqual(data.thinkingToolCalls, []);
 });
 
+test("collectAssistantThinkingTraceData marks answered question tools complete", () => {
+	const data = collectAssistantThinkingTraceData(
+		{
+			parts: [
+				{
+					type: "data-thinking-event",
+					data: {
+						eventId: "event-1",
+						phase: "start",
+						toolName: "ask_user_questions",
+						toolCallId: "tool-1",
+						timestamp: "2026-03-22T00:00:00.000Z",
+					},
+				},
+				{
+					type: "data-turn-complete",
+					data: {
+						timestamp: "2026-03-22T00:01:00.000Z",
+					},
+				},
+			],
+		},
+		{
+			treatQuestionToolCallsAsAnswered: true,
+		},
+	);
+
+	assert.equal(data.hasAnsweredQuestionToolCalls, true);
+	assert.equal(data.hasAwaitingInputToolCalls, false);
+	assert.equal(data.thinkingToolCalls[0].state, "completed");
+	assert.equal(data.thinkingToolCalls[0].outputPreview, "Questions answered.");
+});
+
 test("collectAssistantThinkingTraceData extracts update_todo progress", () => {
 	const data = collectAssistantThinkingTraceData({
 		parts: [
@@ -180,6 +215,84 @@ test("resolveThinkingToolCallStepOpen keeps steps collapsed unless manually open
 			manuallyOpenedToolCallIds,
 		}),
 		true,
+	);
+});
+
+test("resolveAssistantThinkingTraceOpen expands by default for active tool-backed thinking", () => {
+	assert.equal(
+		resolveAssistantThinkingTraceOpen({
+			hasThinkingToolCalls: true,
+			reasoningPhase: "thinking",
+			userOpenOverride: null,
+		}),
+		true,
+	);
+	assert.equal(
+		resolveAssistantThinkingTraceOpen({
+			hasThinkingToolCalls: true,
+			reasoningPhase: "preload",
+			userOpenOverride: null,
+		}),
+		true,
+	);
+	assert.equal(
+		resolveAssistantThinkingTraceOpen({
+			hasThinkingToolCalls: true,
+			reasoningPhase: "completed",
+			userOpenOverride: null,
+		}),
+		false,
+	);
+	assert.equal(
+		resolveAssistantThinkingTraceOpen({
+			hasThinkingToolCalls: false,
+			reasoningPhase: "thinking",
+			userOpenOverride: null,
+		}),
+		false,
+	);
+});
+
+test("resolveAssistantThinkingTraceOpen respects manual user toggles", () => {
+	assert.equal(
+		resolveAssistantThinkingTraceOpen({
+			hasThinkingToolCalls: true,
+			reasoningPhase: "thinking",
+			userOpenOverride: false,
+		}),
+		false,
+	);
+	assert.equal(
+		resolveAssistantThinkingTraceOpen({
+			hasThinkingToolCalls: true,
+			reasoningPhase: "completed",
+			userOpenOverride: true,
+		}),
+		true,
+	);
+});
+
+test("shouldCollapseAssistantThinkingTraceOnPhaseChange collapses when thinking completes", () => {
+	assert.equal(
+		shouldCollapseAssistantThinkingTraceOnPhaseChange({
+			previousReasoningPhase: "thinking",
+			reasoningPhase: "completed",
+		}),
+		true,
+	);
+	assert.equal(
+		shouldCollapseAssistantThinkingTraceOnPhaseChange({
+			previousReasoningPhase: "completed",
+			reasoningPhase: "completed",
+		}),
+		false,
+	);
+	assert.equal(
+		shouldCollapseAssistantThinkingTraceOnPhaseChange({
+			previousReasoningPhase: "thinking",
+			reasoningPhase: "thinking",
+		}),
+		false,
 	);
 });
 

@@ -33,6 +33,7 @@ interface ChatHeaderProps {
 	onStop?: () => void;
 	onHistoryToggle?: () => void;
 	isHistoryOpen?: boolean;
+	variant?: "default" | "minimal";
 }
 
 export default function ChatHeader({
@@ -43,18 +44,22 @@ export default function ChatHeader({
 	onStop,
 	onHistoryToggle,
 	isHistoryOpen = false,
+	variant = "default",
 }: Readonly<ChatHeaderProps>) {
 	const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
 	// No-op handlers for visual-only buttons
 	const noop = () => {};
+	const showControls = variant === "default";
 
 	return (
 		<div className="py-3 px-3">
 			<div className="flex justify-between items-center">
 				{/* Left side: Menu icon and Title */}
 				<div className="flex items-center gap-1">
-					<ChatHistoryButton isHistoryOpen={isHistoryOpen} onToggle={onHistoryToggle} />
+					{showControls ? (
+						<ChatHistoryButton isHistoryOpen={isHistoryOpen} onToggle={onHistoryToggle} />
+					) : null}
 					<div className="flex items-center gap-2">
 						<Image src="/1p/rovo.svg" alt="" width={16} height={16} aria-hidden />
 						<span className="text-sm font-semibold text-text">Rovo</span>
@@ -62,65 +67,67 @@ export default function ChatHeader({
 				</div>
 
 				{/* Right side: Chat actions */}
-				<div className="flex items-center gap-1">
-					<Button aria-label="New chat" size="icon" variant="ghost" onClick={onNewChat ?? noop}>
-						<EditIcon label="" />
-					</Button>
-					<DropdownMenu open={isMoreMenuOpen} onOpenChange={setIsMoreMenuOpen}>
-						<DropdownMenuTrigger
-							render={
-								<Button
-									aria-label="More"
-									size="icon"
-									variant={isMoreMenuOpen ? "secondary" : "ghost"}
-								/>
-							}
-						>
-							<ShowMoreHorizontalIcon label="" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" sideOffset={4} positionerClassName="z-[600]">
-							<ChatSurfaceSwitcherItems currentSurface="sidebar" onSurfaceSwitch={onSurfaceSwitch} />
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								{isStreaming ? (
-									<DropdownMenuItem
-										elemBefore={<span aria-hidden className="size-3 rounded-[2px] bg-current" />}
-										onClick={onStop}
-									>
-										Cancel
+				{showControls ? (
+					<div className="flex items-center gap-1">
+						<Button aria-label="New chat" size="icon" variant="ghost" onClick={onNewChat ?? noop}>
+							<EditIcon label="" />
+						</Button>
+						<DropdownMenu open={isMoreMenuOpen} onOpenChange={setIsMoreMenuOpen}>
+							<DropdownMenuTrigger
+								render={
+									<Button
+										aria-label="More"
+										size="icon"
+										variant={isMoreMenuOpen ? "secondary" : "ghost"}
+									/>
+								}
+							>
+								<ShowMoreHorizontalIcon label="" />
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" sideOffset={4} positionerClassName="z-[600]">
+								<ChatSurfaceSwitcherItems currentSurface="sidebar" onSurfaceSwitch={onSurfaceSwitch} />
+								<DropdownMenuSeparator />
+								<DropdownMenuGroup>
+									{isStreaming ? (
+										<DropdownMenuItem
+											elemBefore={<span aria-hidden className="size-3 rounded-[2px] bg-current" />}
+											onClick={onStop}
+										>
+											Cancel
+										</DropdownMenuItem>
+									) : null}
+									<DropdownMenuItem elemBefore={<EditIcon label="" />}>
+										Rename
 									</DropdownMenuItem>
-								) : null}
-								<DropdownMenuItem elemBefore={<EditIcon label="" />}>
-									Rename
-								</DropdownMenuItem>
-								<DropdownMenuItem variant="destructive" elemBefore={<DeleteIcon label="" />}>
-									Delete
-								</DropdownMenuItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuItem elemBefore={<AppIcon label="" />}>
-									Chrome extension
-								</DropdownMenuItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuItem elemBefore={<FeedbackIcon label="" />}>
-									Feedback
-								</DropdownMenuItem>
-								<DropdownMenuItem elemBefore={<BugIcon label="" />}>
-									Debug
-								</DropdownMenuItem>
-								<DropdownMenuItem elemBefore={<QuestionCircleIcon label="" />}>
-									Get help
-								</DropdownMenuItem>
-							</DropdownMenuGroup>
-						</DropdownMenuContent>
-					</DropdownMenu>
-					<Button aria-label="Close" size="icon" variant="ghost" onClick={onClose ?? noop}>
-						<CrossIcon label="" />
-					</Button>
-				</div>
+									<DropdownMenuItem variant="destructive" elemBefore={<DeleteIcon label="" />}>
+										Delete
+									</DropdownMenuItem>
+								</DropdownMenuGroup>
+								<DropdownMenuSeparator />
+								<DropdownMenuGroup>
+									<DropdownMenuItem elemBefore={<AppIcon label="" />}>
+										Chrome extension
+									</DropdownMenuItem>
+								</DropdownMenuGroup>
+								<DropdownMenuSeparator />
+								<DropdownMenuGroup>
+									<DropdownMenuItem elemBefore={<FeedbackIcon label="" />}>
+										Feedback
+									</DropdownMenuItem>
+									<DropdownMenuItem elemBefore={<BugIcon label="" />}>
+										Debug
+									</DropdownMenuItem>
+									<DropdownMenuItem elemBefore={<QuestionCircleIcon label="" />}>
+										Get help
+									</DropdownMenuItem>
+								</DropdownMenuGroup>
+							</DropdownMenuContent>
+						</DropdownMenu>
+						<Button aria-label="Close" size="icon" variant="ghost" onClick={onClose ?? noop}>
+							<CrossIcon label="" />
+						</Button>
+					</div>
+				) : null}
 			</div>
 		</div>
 	);

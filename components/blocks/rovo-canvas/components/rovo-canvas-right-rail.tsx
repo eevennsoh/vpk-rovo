@@ -12,6 +12,7 @@ export function RovoCanvasRightRail({
 	return (
 		<ChatPanel
 			onClose={onClose}
+			headerVariant="minimal"
 			enableSmartWidgets
 			abortOnUnmount={false}
 			sendPromptOptions={{

@@ -217,53 +217,12 @@ function RfpRenderedHtmlReport({
 	}
 
 	return (
-		<div className="size-full overflow-auto bg-surface-sunken p-6">
-			<iframe
-				title="RFP-101 response strategy report"
-				className="mx-auto block h-[1100px] min-h-full w-full max-w-5xl rounded-lg border border-border bg-surface shadow-sm"
-				sandbox=""
-				srcDoc={html}
-			/>
-		</div>
-	);
-}
-
-function RfpCanvasFooter({
-	state,
-	actions,
-	onAttachReport,
-	reportPreviewHtml,
-}: Readonly<{
-	state: AgentsRfpDemoState;
-	actions: AgentsRfpDemoActions;
-	onAttachReport?: (reportPreviewHtml?: string) => void;
-	reportPreviewHtml?: string;
-}>): React.ReactElement {
-	const canApprove = state.report.stage === "generated" || state.report.stage === "refined";
-	const canExport = state.report.stage === "approved";
-	const canAttach = state.report.stage === "pdf-exported";
-
-	return (
-		<div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface px-4 py-3">
-			<p className="text-xs text-text-subtle">
-				Human approval is required before attachment or status changes.
-			</p>
-			<div className="flex flex-wrap items-center gap-2">
-				<Button size="sm" variant="outline" onClick={actions.approveReport} disabled={!canApprove}>
-					Approve report
-				</Button>
-				<Button size="sm" variant="outline" onClick={actions.exportPdf} disabled={!canExport}>
-					Export PDF
-				</Button>
-				<Button
-					size="sm"
-					onClick={() => (onAttachReport ?? actions.attachReport)(reportPreviewHtml)}
-					disabled={!canAttach}
-				>
-					Attach to RFP-101
-				</Button>
-			</div>
-		</div>
+		<iframe
+			title="RFP-101 response strategy report"
+			className="block size-full border-0 bg-surface"
+			sandbox=""
+			srcDoc={html}
+		/>
 	);
 }
 
@@ -279,6 +238,7 @@ function RfpReportCanvasChatRail({
 	return (
 		<ChatPanel
 			onClose={onClose}
+			headerVariant="minimal"
 			enableSmartWidgets
 			abortOnUnmount={false}
 			chatContextBar={chatContextBar}
@@ -363,7 +323,6 @@ export function RfpReportCanvas({
 			kind="report"
 			status={resolveRfpReportCanvasStatus(reportPreview.status)}
 			title="RFP-101 response strategy"
-			lozengeLabel={state.canvas.mode === "read-only" ? "Read-only" : "Draft"}
 			primaryActionLabel="Attach to RFP-101"
 			onPrimaryAction={() => (onAttachReport ?? actions.attachReport)(reportPreview.html ?? undefined)}
 			views={views}
@@ -380,14 +339,7 @@ export function RfpReportCanvas({
 				/>
 			}
 			feedbackBanner={<RfpAgentProposalBanner state={state} onCreateAgent={onCreateAgent} />}
-			footer={(
-				<RfpCanvasFooter
-					state={state}
-					actions={actions}
-					onAttachReport={onAttachReport}
-					reportPreviewHtml={reportPreview.html ?? undefined}
-				/>
-			)}
+			footer={null}
 		/>
 	);
 }

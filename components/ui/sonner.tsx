@@ -82,6 +82,8 @@ function SonnerToast({
 	style,
 	...props
 }: Readonly<SonnerToastProps>) {
+	const hasStackedContent = Boolean(description || action || secondaryAction);
+
 	return (
 		<div
 			data-slot="sonner-toast"
@@ -92,16 +94,16 @@ function SonnerToast({
 			)}
 			style={style}
 			{...props}
-			>
-				<div className="flex items-start gap-3">
-					<div className={cn("mt-0.5 shrink-0", SONNER_TOAST_ICON_STYLES[appearance])}>
-						{icon ?? (
-							<Icon
-								label={iconLabel ?? SONNER_TOAST_ICON_LABELS[appearance]}
-								render={getSonnerIcon(appearance)}
-							/>
-						)}
-					</div>
+		>
+			<div className={cn("flex gap-3", hasStackedContent ? "items-start" : "items-center")}>
+				<div className={cn("shrink-0", hasStackedContent ? "mt-0.5" : null, SONNER_TOAST_ICON_STYLES[appearance])}>
+					{icon ?? (
+						<Icon
+							label={iconLabel ?? SONNER_TOAST_ICON_LABELS[appearance]}
+							render={getSonnerIcon(appearance)}
+						/>
+					)}
+				</div>
 				<div className="min-w-0 flex-1">
 					<div className="text-sm/5 font-semibold text-text">{title}</div>
 					{description ? (

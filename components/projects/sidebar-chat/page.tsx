@@ -73,6 +73,7 @@ interface ChatPanelProps {
 	cards?: ChatPanelCardsProps;
 	greeting?: ChatPanelGreetingProps;
 	hideHeader?: boolean;
+	headerVariant?: "default" | "minimal";
 	abortOnUnmount?: boolean;
 	containerClassName?: string;
 	containerStyle?: CSSProperties;
@@ -117,6 +118,7 @@ export default function ChatPanel({
 	cards,
 	greeting,
 	hideHeader = false,
+	headerVariant = "default",
 	abortOnUnmount = true,
 	containerClassName,
 	containerStyle,
@@ -486,13 +488,15 @@ export default function ChatPanel({
 		flex: hasMessages || shouldHugEmptyGreeting ? "0 0 auto" : chatStyles.messagesContainer.flex,
 		minHeight: shouldHugEmptyGreeting ? "auto" : "100%",
 	};
+	const isHeaderHistoryEnabled = !hideHeader && headerVariant === "default";
 
 	return (
 		<div ref={panelRef} className={cn("relative overflow-hidden", containerClassName)} style={{ ...chatStyles.chatPanel, ...resolvedContainerStyle }}>
-			<ChatHistoryDrawer active={!hideHeader && chatSurface === "sidebar"} />
+			<ChatHistoryDrawer active={isHeaderHistoryEnabled && chatSurface === "sidebar"} />
 			{!hideHeader && (
 				<div className="shrink-0">
 					<ChatHeader
+						variant={headerVariant}
 						isHistoryOpen={isHistoryOpen}
 						onClose={onClose}
 						onHistoryToggle={toggleHistory}

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import AiGenerativeTextSummaryIcon from "@atlaskit/icon/core/ai-generative-text-summary";
@@ -24,13 +24,16 @@ import { useReasoningPhase, type ReasoningPhase } from "@/components/projects/sh
 import {
 	getAwaitingUserResponseLabel,
 	getDefaultThinkingLabel,
+	getQuestionsAnsweredLabel,
 	getReasoningSectionTitle,
 } from "@/components/projects/shared/lib/reasoning-labels";
 import {
 	collectAssistantThinkingTraceData,
+	resolveAssistantThinkingTraceOpen,
 	resolveAssistantThinkingTracePhase,
 	resolveAssistantThinkingTraceVisibility,
 	resolveThinkingToolCallStepOpen,
+	shouldCollapseAssistantThinkingTraceOnPhaseChange,
 	type AssistantThinkingTraceData,
 } from "@/components/projects/shared/lib/assistant-thinking-trace-state";
 import {
@@ -40,6 +43,7 @@ import {
 import {
 	getMessageReasoningTimestamps,
 	hasTurnCompleteSignal,
+	isRequestUserInputToolName,
 	type AgentExecutionStatus,
 	type AgentExecutionSummary,
 	type RovoUIMessage,
@@ -73,10 +77,12 @@ interface UseAssistantThinkingTraceStateOptions {
 	message: RovoUIMessage;
 	isThinkingLifecycleStreaming: boolean;
 	isResponseInFlight: boolean;
+	answeredQuestionToolCallIds?: readonly string[];
 	isPostToolsGeneration?: boolean;
 	hasWidgetOutput?: boolean;
 	isRetryThinkingStatus?: boolean;
 	thinkingToolCalls?: ThinkingToolCallSummary[];
+	treatQuestionToolCallsAsAnswered?: boolean;
 	planNarrationText?: string;
 	planNarrationStreaming?: boolean;
 }
@@ -174,6 +180,9 @@ function getToolActionLabel(toolCall: ThinkingToolCallSummary): string {
 	const normalizedDisplayName = displayName.toLowerCase();
 	const server = displayInfo.server;
 
+	if (toolCall.state === "completed" && isRequestUserInputToolName(toolCall.toolName)) {
+		return getQuestionsAnsweredLabel();
+	}
 	if (toolCall.state === "awaiting-input") {
 		return "Waiting for input";
 	}
@@ -458,16 +467,27 @@ export function useAssistantThinkingTraceState({
 	message,
 	isThinkingLifecycleStreaming,
 	isResponseInFlight,
+	answeredQuestionToolCallIds,
 	isPostToolsGeneration = false,
 	hasWidgetOutput = false,
 	isRetryThinkingStatus = false,
 	thinkingToolCalls,
+	treatQuestionToolCallsAsAnswered = false,
 	planNarrationText = "",
 	planNarrationStreaming = false,
 }: Readonly<UseAssistantThinkingTraceStateOptions>): AssistantThinkingTraceState {
 	const data = useMemo(
-		() => collectAssistantThinkingTraceData(message, { thinkingToolCalls }),
-		[message, thinkingToolCalls],
+		() => collectAssistantThinkingTraceData(message, {
+			answeredQuestionToolCallIds,
+			thinkingToolCalls,
+			treatQuestionToolCallsAsAnswered,
+		}),
+		[
+			answeredQuestionToolCallIds,
+			message,
+			thinkingToolCalls,
+			treatQuestionToolCallsAsAnswered,
+		],
 	);
 	const hasTurnComplete = hasTurnCompleteSignal(message);
 	const rawThinkingActive = checkThinkingStatusActive({
@@ -514,7 +534,6 @@ export function useAssistantThinkingTraceState({
 		data.hasThinkingToolCalls ||
 		hasPlanNarrationText;
 	const [thinkingUserOverride, setThinkingUserOverride] = useState<boolean | null>(null);
-	const isOpen = thinkingUserOverride ?? false;
 	const thinkingTimestamps = getMessageReasoningTimestamps(message);
 	const { phase: lifecyclePhase, duration: reasoningDuration } = useReasoningPhase({
 		isStreaming: isThinkingStreaming,
@@ -534,6 +553,29 @@ export function useAssistantThinkingTraceState({
 		hasWidgetOutput,
 		lifecyclePhase,
 	});
+	const previousReasoningPhaseRef = useRef(reasoningPhase);
+	const shouldCollapseOnPhaseChange = shouldCollapseAssistantThinkingTraceOnPhaseChange({
+		previousReasoningPhase: previousReasoningPhaseRef.current,
+		reasoningPhase,
+	});
+	const isOpen = resolveAssistantThinkingTraceOpen({
+		hasThinkingToolCalls: data.hasThinkingToolCalls,
+		reasoningPhase,
+		userOpenOverride: shouldCollapseOnPhaseChange ? false : thinkingUserOverride,
+	});
+
+	useEffect(() => {
+		setThinkingUserOverride(null);
+	}, [message.id]);
+
+	useEffect(() => {
+		previousReasoningPhaseRef.current = reasoningPhase;
+
+		if (shouldCollapseOnPhaseChange) {
+			setThinkingUserOverride(false);
+		}
+	}, [reasoningPhase, shouldCollapseOnPhaseChange]);
+
 	const thinkingUpdateSignal = [
 		message.id,
 		`status-count:${data.thinkingStatusParts.length}`,
@@ -548,7 +590,9 @@ export function useAssistantThinkingTraceState({
 		updateSignal: thinkingUpdateSignal,
 		fallbackLabel: getDefaultThinkingLabel(),
 	});
-	const triggerLabel = data.hasAwaitingInputToolCalls
+	const triggerLabel = data.hasAnsweredQuestionToolCalls
+		? getQuestionsAnsweredLabel()
+		: data.hasAwaitingInputToolCalls
 		? getAwaitingUserResponseLabel()
 		: resolveThinkingStatusTriggerLabel({
 				resolvedLabel: dynamicThinkingLabel,

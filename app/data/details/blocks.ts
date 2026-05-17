@@ -298,12 +298,6 @@ const rows: AnswerCardRow[] = [
 				description: "Title rendered in the canvas header.",
 			},
 			{
-				name: "lozengeLabel",
-				type: "string",
-				default: '"Draft"',
-				description: "Status lozenge text shown next to the title.",
-			},
-			{
 				name: "primaryActionLabel",
 				type: "string",
 				default: '"Save"',

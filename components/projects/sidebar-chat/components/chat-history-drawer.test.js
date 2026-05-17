@@ -31,7 +31,9 @@ test("active compact chat surfaces own one contained history drawer", () => {
 	const floatingSource = readProjectFile("components/projects/rovo-floating-chat/components/rovo-floating-chat.tsx");
 
 	assert.doesNotMatch(appLayoutSource, /ChatHistoryDrawer/u);
-	assert.match(chatPanelSource, /<ChatHistoryDrawer active=\{!hideHeader && chatSurface === "sidebar"\} \/>/u);
+	assert.match(chatPanelSource, /const isHeaderHistoryEnabled = !hideHeader && headerVariant === "default";/u);
+	assert.match(chatPanelSource, /<ChatHistoryDrawer active=\{isHeaderHistoryEnabled && chatSurface === "sidebar"\} \/>/u);
+	assert.match(chatPanelSource, /variant=\{headerVariant\}/u);
 	assert.match(floatingSource, /<ChatHistoryDrawer \/>/u);
 	assert.match(chatPanelSource, /onHistoryToggle=\{toggleHistory\}/u);
 	assert.doesNotMatch(chatPanelSource, /currentThreadHasRichState/u);
@@ -51,6 +53,19 @@ test("compact chat hamburger buttons open the shared history drawer", () => {
 	assert.match(historyButton, /aria-expanded=\{isHistoryOpen\}/u);
 	assert.match(historyButton, /aria-controls="rovo-chat-history-drawer"/u);
 	assert.match(historyButton, /onClick=\{onToggle \?\? noop\}/u);
+});
+
+test("minimal compact chat header suppresses history and action controls", () => {
+	const chatPanelSource = readProjectFile("components/projects/sidebar-chat/page.tsx");
+	const sidebarHeader = readProjectFile("components/projects/sidebar-chat/components/chat-header.tsx");
+	const rovoCanvasRail = readProjectFile("components/blocks/rovo-canvas/components/rovo-canvas-right-rail.tsx");
+
+	assert.match(chatPanelSource, /headerVariant\?: "default" \| "minimal";/u);
+	assert.match(chatPanelSource, /headerVariant = "default"/u);
+	assert.match(sidebarHeader, /const showControls = variant === "default";/u);
+	assert.match(sidebarHeader, /\{showControls \? \([\s\S]*<ChatHistoryButton/u);
+	assert.match(sidebarHeader, /\{showControls \? \([\s\S]*aria-label="New chat"[\s\S]*aria-label="More"[\s\S]*aria-label="Close"/u);
+	assert.match(rovoCanvasRail, /headerVariant="minimal"/u);
 });
 
 test("rovo app sidebar renders the shared chat history panel inline", () => {

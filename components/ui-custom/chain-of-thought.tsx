@@ -142,9 +142,10 @@ export const ChainOfThoughtHeader = memo(
 			typeof text === "string" &&
 			resolvedState !== "completed" &&
 			(shimmer || resolvedState === "preload" || resolvedState === "thinking");
-		const shouldShowThinkingDots = resolvedState === "thinking";
+		const shouldShowAnimatedDots =
+			resolvedState === "preload" || resolvedState === "thinking";
 		const renderedText =
-			shouldShowThinkingDots && typeof text === "string"
+			shouldShowAnimatedDots && typeof text === "string"
 				? stripTrailingDots(text)
 				: text;
 
@@ -184,7 +185,7 @@ export const ChainOfThoughtHeader = memo(
 							) : (
 								<span className="min-w-0 truncate text-left">{renderedText}</span>
 							)}
-							{shouldShowThinkingDots ? <AnimatedDots /> : null}
+							{shouldShowAnimatedDots ? <AnimatedDots /> : null}
 						</span>
 						{showChevron ? (
 							<Icon

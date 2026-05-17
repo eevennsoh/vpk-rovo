@@ -3,6 +3,7 @@ export const REASONING_LABELS = {
 		thinking: "Rovo is thinking",
 		preloadShimmer: "Rovo is cooking",
 		awaitingUserResponse: "Awaiting user response",
+		questionsAnswered: "Questions answered",
 		working: "Working",
 		generatingResults: "Generating results",
 	},
@@ -28,6 +29,10 @@ export function getPreloadShimmerLabel(): string {
 
 export function getAwaitingUserResponseLabel(): string {
 	return REASONING_LABELS.trigger.awaitingUserResponse;
+}
+
+export function getQuestionsAnsweredLabel(): string {
+	return REASONING_LABELS.trigger.questionsAnswered;
 }
 
 export function getReasoningSectionTitle(

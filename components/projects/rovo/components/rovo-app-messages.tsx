@@ -537,6 +537,7 @@ function AssistantMessage({
 		message,
 		isThinkingLifecycleStreaming,
 		isResponseInFlight,
+		treatQuestionToolCallsAsAnswered: isQuestionCardResolved,
 		planNarrationText: shouldRenderPlanWidget ? text : "",
 		planNarrationStreaming: isMessageTextStreaming(message),
 	});

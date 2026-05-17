@@ -53,7 +53,7 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/<ChatPanel[\s\S]*enableSmartWidgets[\s\S]*abortOnUnmount=\{false\}[\s\S]*chatContextBar=\{chatContextBar\}[\s\S]*greeting=\{chatGreeting\}/u,
+		/<ChatPanel[\s\S]*headerVariant="minimal"[\s\S]*enableSmartWidgets[\s\S]*abortOnUnmount=\{false\}[\s\S]*chatContextBar=\{chatContextBar\}[\s\S]*greeting=\{chatGreeting\}/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,

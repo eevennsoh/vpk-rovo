@@ -12,13 +12,11 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Lozenge } from "@/components/ui/lozenge";
 import { DialogTitle } from "@/components/ui/dialog";
 import { Icon as VpkIcon } from "@/components/ui/icon";
 
 interface RovoCanvasHeaderProps {
 	title: string;
-	lozengeLabel: string;
 	primaryActionLabel: string;
 	onPrimaryAction?: () => void;
 	onClose: () => void;
@@ -26,7 +24,6 @@ interface RovoCanvasHeaderProps {
 
 export function RovoCanvasHeader({
 	title,
-	lozengeLabel,
 	primaryActionLabel,
 	onPrimaryAction,
 	onClose,
@@ -37,9 +34,6 @@ export function RovoCanvasHeader({
 				<DialogTitle className="truncate text-sm leading-5 font-bold text-text">
 					{title}
 				</DialogTitle>
-				<Lozenge variant="neutral" isBold>
-					{lozengeLabel}
-				</Lozenge>
 			</div>
 
 			<div className="flex shrink-0 items-center gap-2">

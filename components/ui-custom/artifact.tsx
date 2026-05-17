@@ -242,6 +242,12 @@ export interface ArtifactCardProps {
 	isStreaming?: boolean;
 	/** Display mode. "preview" shows expanded card. "chip" shows compact inline card. @default "preview" */
 	displayMode?: "preview" | "chip";
+	/** Initial expanded state when uncontrolled. Defaults to preview cards expanded and chips collapsed. */
+	defaultExpanded?: boolean;
+	/** Controlled expanded state for callers that need to collapse the preview after a handoff. */
+	expanded?: boolean;
+	/** Controlled expansion callback. */
+	onExpandedChange?: (expanded: boolean) => void;
 	/** Optional visual identity override used in the tile instead of the kind-based icon. */
 	visualIdentity?: VisualIdentity;
 	/** Optional stable seed used to keep the tile color consistent across renders. */
@@ -269,6 +275,9 @@ export function ArtifactCard({
 	action,
 	isStreaming = false,
 	displayMode = "preview",
+	defaultExpanded,
+	expanded,
+	onExpandedChange,
 	visualIdentity,
 	identitySeed,
 	previewContent = "",
@@ -329,7 +338,9 @@ export function ArtifactCard({
 						? "w-full"
 						: "w-fit max-w-full",
 				)}
-				defaultExpanded={displayMode === "preview"}
+				defaultExpanded={defaultExpanded ?? displayMode === "preview"}
+				expanded={expanded}
+				onExpandedChange={onExpandedChange}
 				size={displayMode === "chip" ? "sm" : "default"}
 			>
 				<GenerativeCardHeader

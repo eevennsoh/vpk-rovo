@@ -5,6 +5,7 @@ import {
 	getAllDataParts,
 	getLatestTodoQueue,
 	getThinkingToolCallSummaries,
+	isRequestUserInputToolName,
 	type AgentExecutionSummary,
 	type RovoDataPart,
 	type RovoUIMessage,
@@ -33,6 +34,17 @@ interface ResolveAssistantThinkingTracePhaseOptions {
 	lifecyclePhase: ReasoningPhase;
 }
 
+interface ResolveAssistantThinkingTraceOpenOptions {
+	hasThinkingToolCalls: boolean;
+	reasoningPhase: ReasoningPhase;
+	userOpenOverride: boolean | null;
+}
+
+interface ShouldCollapseAssistantThinkingTraceOptions {
+	previousReasoningPhase: ReasoningPhase;
+	reasoningPhase: ReasoningPhase;
+}
+
 interface ResolveAssistantThinkingTraceVisibilityResult {
 	effectiveIsThinkingActive: boolean;
 	nextLatched: boolean;
@@ -41,6 +53,7 @@ interface ResolveAssistantThinkingTraceVisibilityResult {
 export interface AssistantThinkingTraceData {
 	agentExecutions: AgentExecutionSummary[];
 	hasAgentExecutions: boolean;
+	hasAnsweredQuestionToolCalls: boolean;
 	hasAwaitingInputToolCalls: boolean;
 	hasBackendThinkingActivity: boolean;
 	hasLegacyTodoQueueItems: boolean;
@@ -65,6 +78,8 @@ export interface AssistantThinkingTraceData {
 }
 
 interface CollectAssistantThinkingTraceDataOptions {
+	answeredQuestionToolCallIds?: ReadonlySet<string> | readonly string[];
+	treatQuestionToolCallsAsAnswered?: boolean;
 	thinkingToolCalls?: ThinkingToolCallSummary[];
 }
 
@@ -73,11 +88,109 @@ interface ResolveThinkingToolCallStepOpenOptions {
 	manuallyOpenedToolCallIds: ReadonlySet<string>;
 }
 
+const QUESTIONS_ANSWERED_OUTPUT = "Questions answered.";
+
+function getAnsweredQuestionToolCallIdSet(
+	value: ReadonlySet<string> | readonly string[] | undefined,
+): ReadonlySet<string> {
+	if (!value) {
+		return new Set();
+	}
+
+	return value instanceof Set ? value : new Set(value);
+}
+
+function isAnsweredQuestionToolCall(
+	toolCall: ThinkingToolCallSummary,
+	answeredToolCallIds: ReadonlySet<string>,
+	treatQuestionToolCallsAsAnswered: boolean,
+): boolean {
+	if (!isRequestUserInputToolName(toolCall.toolName)) {
+		return false;
+	}
+
+	if (treatQuestionToolCallsAsAnswered) {
+		return true;
+	}
+
+	if (answeredToolCallIds.has(toolCall.id)) {
+		return true;
+	}
+
+	return toolCall.toolCallId ? answeredToolCallIds.has(toolCall.toolCallId) : false;
+}
+
+function resolveAnsweredQuestionToolCalls(
+	thinkingToolCalls: readonly ThinkingToolCallSummary[],
+	options: Readonly<CollectAssistantThinkingTraceDataOptions>,
+): {
+	hasAnsweredQuestionToolCalls: boolean;
+	thinkingToolCalls: ThinkingToolCallSummary[];
+} {
+	const answeredToolCallIds = getAnsweredQuestionToolCallIdSet(
+		options.answeredQuestionToolCallIds,
+	);
+	const treatQuestionToolCallsAsAnswered =
+		options.treatQuestionToolCallsAsAnswered === true;
+	let hasAnsweredQuestionToolCalls = false;
+
+	const resolvedThinkingToolCalls = thinkingToolCalls.map((toolCall) => {
+		const isAnswered = isAnsweredQuestionToolCall(
+			toolCall,
+			answeredToolCallIds,
+			treatQuestionToolCallsAsAnswered,
+		);
+		if (!isAnswered) {
+			return toolCall;
+		}
+
+		hasAnsweredQuestionToolCalls = true;
+		if (toolCall.state !== "awaiting-input") {
+			return toolCall;
+		}
+
+		return {
+			...toolCall,
+			state: "completed" as const,
+			output: QUESTIONS_ANSWERED_OUTPUT,
+			outputPreview: QUESTIONS_ANSWERED_OUTPUT,
+			errorText: undefined,
+		};
+	});
+
+	return {
+		hasAnsweredQuestionToolCalls,
+		thinkingToolCalls: resolvedThinkingToolCalls,
+	};
+}
+
 export function resolveThinkingToolCallStepOpen({
 	toolCallId,
 	manuallyOpenedToolCallIds,
 }: Readonly<ResolveThinkingToolCallStepOpenOptions>): boolean {
 	return manuallyOpenedToolCallIds.has(toolCallId);
+}
+
+export function resolveAssistantThinkingTraceOpen({
+	hasThinkingToolCalls,
+	reasoningPhase,
+	userOpenOverride,
+}: Readonly<ResolveAssistantThinkingTraceOpenOptions>): boolean {
+	if (userOpenOverride !== null) {
+		return userOpenOverride;
+	}
+
+	return (
+		hasThinkingToolCalls &&
+		(reasoningPhase === "preload" || reasoningPhase === "thinking")
+	);
+}
+
+export function shouldCollapseAssistantThinkingTraceOnPhaseChange({
+	previousReasoningPhase,
+	reasoningPhase,
+}: Readonly<ShouldCollapseAssistantThinkingTraceOptions>): boolean {
+	return previousReasoningPhase !== "completed" && reasoningPhase === "completed";
 }
 
 export function resolveAssistantThinkingTraceVisibility({
@@ -137,8 +250,12 @@ export function collectAssistantThinkingTraceData(
 ): AssistantThinkingTraceData {
 	const thinkingStatusParts = getAllDataParts(message, "data-thinking-status");
 	const thinkingEventParts = getAllDataParts(message, "data-thinking-event");
-	const thinkingToolCalls =
+	const rawThinkingToolCalls =
 		options.thinkingToolCalls ?? getThinkingToolCallSummaries(message);
+	const {
+		hasAnsweredQuestionToolCalls,
+		thinkingToolCalls,
+	} = resolveAnsweredQuestionToolCalls(rawThinkingToolCalls, options);
 	const thinkingNarrationMap = buildThinkingNarrationMap(message);
 	const latestTodoProgress = getLatestRovoAppTodoProgress(thinkingToolCalls);
 	const todoProgressItems = latestTodoProgress?.items ?? [];
@@ -174,6 +291,7 @@ export function collectAssistantThinkingTraceData(
 	return {
 		agentExecutions,
 		hasAgentExecutions,
+		hasAnsweredQuestionToolCalls,
 		hasAwaitingInputToolCalls,
 		hasBackendThinkingActivity,
 		hasLegacyTodoQueueItems,

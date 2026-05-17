@@ -59,7 +59,7 @@ test("ArtifactResultCard opens HTML reports in an embedded Rovo Canvas dialog", 
 	);
 	assert.match(
 		ARTIFACT_RESULT_CARD_SOURCE,
-		/window\.setTimeout\(\(\) => \{\s*if \(!event\.defaultPrevented\) \{\s*handleOpenChange\(true\);/u,
+		/window\.setTimeout\(\(\) => \{\s*setIsCardExpanded\(false\);\s*if \(event\.defaultPrevented\) \{\s*return;\s*\}\s*handleOpenChange\(true\);/u,
 	);
 	assert.match(
 		ARTIFACT_RESULT_CARD_SOURCE,
@@ -84,5 +84,24 @@ test("ArtifactResultCard opens HTML reports in an embedded Rovo Canvas dialog", 
 	assert.doesNotMatch(
 		ARTIFACT_RESULT_CARD_SOURCE,
 		/Open in Canvas/u,
+	);
+});
+
+test("ArtifactResultCard collapses the source card after moving an HTML report to canvas", () => {
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/const \[isCardExpanded, setIsCardExpanded\] = useState\(true\);/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/window\.dispatchEvent\(openCanvasEvent\);\s*setIsCardExpanded\(false\);\s*if \(openCanvasEvent\.defaultPrevented\) \{/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/window\.setTimeout\(\(\) => \{\s*setIsCardExpanded\(false\);\s*if \(event\.defaultPrevented\) \{\s*return;\s*\}\s*handleOpenChange\(true\);/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/<ArtifactCard[\s\S]*displayMode="preview"[\s\S]*expanded=\{isCardExpanded\}[\s\S]*onExpandedChange=\{setIsCardExpanded\}/u,
 	);
 });

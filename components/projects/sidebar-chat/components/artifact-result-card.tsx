@@ -93,6 +93,7 @@ export function ArtifactResultCard({
 	onDialogClose,
 }: Readonly<ArtifactResultCardProps>): ReactNode {
 	const [isOpen, setIsOpen] = useState(false);
+	const [isCardExpanded, setIsCardExpanded] = useState(true);
 	const [document, setDocument] = useState<RovoAppDocument | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -126,6 +127,7 @@ export function ArtifactResultCard({
 				},
 			});
 			window.dispatchEvent(openCanvasEvent);
+			setIsCardExpanded(false);
 			if (openCanvasEvent.defaultPrevented) {
 				return;
 			}
@@ -146,9 +148,12 @@ export function ArtifactResultCard({
 			}
 
 			window.setTimeout(() => {
-				if (!event.defaultPrevented) {
-					handleOpenChange(true);
+				setIsCardExpanded(false);
+				if (event.defaultPrevented) {
+					return;
 				}
+
+				handleOpenChange(true);
 			}, 0);
 		};
 
@@ -255,7 +260,9 @@ export function ArtifactResultCard({
 			<ArtifactCard
 				action={artifact.action}
 				displayMode="preview"
+				expanded={isCardExpanded}
 				kind={artifactKind}
+				onExpandedChange={setIsCardExpanded}
 				onOpen={handleOpenArtifact}
 				previewContent={latestContent}
 				previewSummary={document?.previewSummary ?? undefined}
@@ -269,7 +276,6 @@ export function ArtifactResultCard({
 					kind="report"
 					status={canvasStatus}
 					title={artifact.title}
-					lozengeLabel={`Version ${document?.versions.length ?? 1}`}
 					primaryActionLabel="Done"
 					onPrimaryAction={() => handleOpenChange(false)}
 					views={canvasViews}

@@ -100,7 +100,6 @@ export interface RovoCanvasProps {
 	kind?: RovoCanvasArtefactKind;
 	status?: RovoCanvasStatus;
 	title?: string;
-	lozengeLabel?: string;
 	primaryActionLabel?: string;
 	onPrimaryAction?: () => void;
 	views?: ReadonlyArray<RovoCanvasView>;
@@ -545,7 +544,6 @@ export function RovoCanvas({
 	kind = "dashboard",
 	status = "ready",
 	title = "Canvas draft",
-	lozengeLabel = "Draft",
 	primaryActionLabel = "Save",
 	onPrimaryAction,
 	views,
@@ -680,7 +678,6 @@ export function RovoCanvas({
 					<div className="flex size-full min-h-0 flex-col gap-2">
 						<RovoCanvasHeader
 							title={title}
-							lozengeLabel={lozengeLabel}
 							primaryActionLabel={primaryActionLabel}
 							onPrimaryAction={onPrimaryAction}
 							onClose={() => setOpen(false)}
