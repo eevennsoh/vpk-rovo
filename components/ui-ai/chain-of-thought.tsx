@@ -11,6 +11,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Shimmer } from "@/components/ui-ai/shimmer";
+import { AnimatedDots } from "@/components/ui-ai/animated-dots";
 import { MorphingRovo } from "@/components/ui-ai/morphing-rovo";
 import RovoIconGlyph from "@atlaskit/icon-lab/core/rovo";
 import { Icon } from "@/components/ui/icon";
@@ -93,6 +94,24 @@ export type ChainOfThoughtHeaderProps = ComponentProps<
 	duration?: number;
 };
 
+function CyclingByline({ children, cycle }: Readonly<{ children: ReactNode; cycle?: boolean }>) {
+	const key = typeof children === "string" ? children : undefined;
+
+	return (
+		<span className="block min-h-4 overflow-hidden text-xs leading-4 text-text-subtle">
+			<span
+				key={key}
+				className={cn(
+					"block truncate",
+					cycle && "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-medium",
+				)}
+			>
+				{children}
+			</span>
+		</span>
+	);
+}
+
 export const ChainOfThoughtHeader = memo(
 	({
 		className,
@@ -115,11 +134,16 @@ export const ChainOfThoughtHeader = memo(
 						: "Chain of Thought"
 		);
 		const isCompleted = resolvedState == "completed";
+		const shouldShimmerLabel =
+			typeof text === "string" &&
+			resolvedState !== "completed" &&
+			(shimmer || resolvedState === "preload" || resolvedState === "thinking");
+		const shouldShowThinkingDots = resolvedState === "thinking";
 
 		return (
 			<CollapsibleTrigger
 				className={cn(
-					"flex w-full items-center gap-2 text-sm text-text-subtle transition-colors",
+					"flex w-full items-start gap-2 text-sm text-text-subtle transition-colors",
 					showChevron && "hover:text-text",
 					className
 				)}
@@ -127,7 +151,7 @@ export const ChainOfThoughtHeader = memo(
 				{...props}
 			>
 				{isCompleted ? (
-					<span className="inline-flex size-4 shrink-0 items-center justify-center">
+					<span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center">
 						<RovoIconGlyph
 							color={token("color.icon.subtlest")}
 							label=""
@@ -135,38 +159,36 @@ export const ChainOfThoughtHeader = memo(
 						/>
 					</span>
 				) : (
-					<MorphingRovo.Shape size={16} duration={0.8} blur={1.25} className="shrink-0" />
+					<MorphingRovo.Shape size={16} duration={0.8} blur={1.25} className="mt-0.5 shrink-0" />
 				)}
-				{(shimmer || resolvedState === "preload") && typeof text === "string" ? (
-					<Shimmer
-						as="span"
-						wave
-						baseColor="var(--color-muted-foreground)"
-						baseGradientColor={["#1868db", "#bf63f3", "#fca700"]}
-						duration={1.4}
-						spread={2}
-						xDistance={0}
-						yDistance={0}
-						zDistance={0}
-						scaleDistance={1}
-						rotateYDistance={14}
-						transition={{ ease: "easeInOut", repeatDelay: 0.1 }}
-						className="text-left"
-					>
-						{text}
-					</Shimmer>
-				) : (
-					<span className="text-left">{text}</span>
-				)}
-				{showChevron ? (
-					<Icon
-						render={<ChevronDownIcon label="" size="small" spacing="none" />}
-						className={cn(
-							"size-4 shrink-0 transition-transform",
-							isOpen ? "rotate-0" : "-rotate-90"
-						)}
-					/>
-				) : null}
+				<span className="grid min-w-0 flex-1 gap-0.5 text-left">
+					<span className="flex min-w-0 items-center gap-1.5">
+						<span className="inline-flex min-w-0 items-baseline">
+							{shouldShimmerLabel ? (
+								<Shimmer
+									as="span"
+									duration={1.4}
+									spread={2}
+									className="min-w-0 truncate text-left"
+								>
+									{text}
+								</Shimmer>
+							) : (
+								<span className="min-w-0 truncate text-left">{text}</span>
+							)}
+							{shouldShowThinkingDots ? <AnimatedDots /> : null}
+						</span>
+						{showChevron ? (
+							<Icon
+								render={<ChevronDownIcon label="" size="small" spacing="none" />}
+								className={cn(
+									"size-4 shrink-0 transition-transform",
+									isOpen ? "rotate-0" : "-rotate-90"
+								)}
+							/>
+						) : null}
+					</span>
+				</span>
 			</CollapsibleTrigger>
 		);
 	}
@@ -190,6 +212,46 @@ const stepStatusStyles = {
 	pending: "text-text-subtlest",
 };
 
+function getDefaultStepDescription(
+	status: NonNullable<ChainOfThoughtStepProps["status"]>,
+): ReactNode {
+	if (status === "active") {
+		return "In progress";
+	}
+	if (status === "pending") {
+		return "Queued";
+	}
+	return "Complete";
+}
+
+function ChainOfThoughtIconSlot({
+	children,
+	shimmer,
+}: Readonly<{
+	children: ReactNode;
+	shimmer: boolean;
+}>): ReactNode {
+	return (
+		<span
+			data-cot-icon-slot={shimmer ? "active" : undefined}
+			className={cn(
+				"inline-flex size-4 shrink-0 items-center justify-center",
+				shimmer && "relative text-muted-foreground",
+			)}
+		>
+			{children}
+			{shimmer ? (
+				<span
+					aria-hidden="true"
+					className="cot-icon-wash pointer-events-none absolute inset-0 inline-flex items-center justify-center motion-safe:animate-cot-icon-shimmer motion-reduce:hidden"
+				>
+					{children}
+				</span>
+			) : null}
+		</span>
+	);
+}
+
 export const ChainOfThoughtStep = memo(
 	({
 		className,
@@ -209,6 +271,8 @@ export const ChainOfThoughtStep = memo(
 		const isControlled = open !== undefined;
 		const isOpen = isControlled ? open : uncontrolledOpen;
 		const hasExpandableContent = collapsible && children != null;
+		const resolvedDescription = description ?? getDefaultStepDescription(status);
+		const iconNode = iconRender ?? <Icon render={<IconComponent label="" size="small" spacing="none" />} className="size-4" />;
 
 		const handleOpenChange = (nextOpen: boolean) => {
 			if (!isControlled) {
@@ -229,19 +293,25 @@ export const ChainOfThoughtStep = memo(
 				className="group/step flex w-full items-start text-left transition-colors hover:text-text"
 				onClick={() => handleOpenChange(!isOpen)}
 			>
-				<span className="inline-flex items-start gap-1.5">
-					<span>{label}</span>
-					<Icon
-						render={<ChevronDownIcon label="" size="small" spacing="none" />}
-						className={cn(
-							"mt-0.5 size-4 shrink-0 transition-[transform,opacity] duration-200 ease-out opacity-0 group-hover/step:opacity-100 group-focus-visible/step:opacity-100",
-							isOpen ? "rotate-0" : "-rotate-90"
-						)}
-					/>
+				<span className="grid min-w-0 flex-1 gap-0.5">
+					<span className="inline-flex min-w-0 items-start gap-1.5">
+						<span className="min-w-0 truncate">{label}</span>
+						<Icon
+							render={<ChevronDownIcon label="" size="small" spacing="none" />}
+							className={cn(
+								"mt-0.5 size-4 shrink-0 transition-[transform,opacity] duration-200 ease-out opacity-0 group-hover/step:opacity-100 group-focus-visible/step:opacity-100",
+								isOpen ? "rotate-0" : "-rotate-90"
+							)}
+						/>
+					</span>
+					<CyclingByline>{resolvedDescription}</CyclingByline>
 				</span>
 			</button>
 		) : (
-			<div>{label}</div>
+			<div className="grid min-w-0 gap-0.5">
+				<span className="min-w-0 truncate">{label}</span>
+				<CyclingByline>{resolvedDescription}</CyclingByline>
+			</div>
 		);
 
 		return (
@@ -255,7 +325,9 @@ export const ChainOfThoughtStep = memo(
 				{...props}
 			>
 				<div className="relative mt-0.5">
-					{iconRender ?? <Icon render={<IconComponent label="" size="small" spacing="none" />} className="size-4" />}
+					<ChainOfThoughtIconSlot shimmer={status === "active"}>
+						{iconNode}
+					</ChainOfThoughtIconSlot>
 					<div
 						className={cn(
 							"absolute top-5 left-1/2 -mx-px w-px bg-border",
@@ -267,9 +339,6 @@ export const ChainOfThoughtStep = memo(
 				</div>
 				<div className="flex-1 space-y-2 overflow-hidden">
 					{stepHeader}
-					{description ? (
-						<div className="text-text-subtle text-xs">{description}</div>
-					) : null}
 					{hasExpandableContent ? (
 						<Collapsible onOpenChange={handleOpenChange} open={isOpen}>
 							<CollapsibleContent

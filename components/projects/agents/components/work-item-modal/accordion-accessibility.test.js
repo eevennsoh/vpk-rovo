@@ -105,11 +105,13 @@ test("work item modal exposes the agent panel under child work items", () => {
 	assert.match(panelSource, /className="flex items-center justify-center gap-2"/);
 	assert.match(panelSource, /data-slot="icon-tile"[\s\S]*aria-label="Agent"/);
 	assert.match(panelSource, /className="relative inline-flex size-6 shrink-0 items-center justify-center"/);
-	assert.match(panelSource, /"pointer-events-none absolute -left-3 -top-3 z-10 text-text motion-safe:transition-opacity motion-safe:duration-150"/);
+	assert.match(panelSource, /"pointer-events-none absolute -left-3 -top-3 z-10 text-text motion-safe:transition-opacity motion-safe:duration-normal"/);
 	assert.match(panelSource, /isSparkleVisible \? "opacity-100" : "opacity-0"/);
 	assert.match(panelSource, /className="flex size-6 items-center justify-center rounded-full text-text"/);
-	assert.match(panelSource, /"motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out"/);
-	assert.match(panelSource, /isSparkleVisible \? "rotate-45" : "rotate-0"/);
+	assert.match(panelSource, /const AGENT_ICON_ROTATION_VARIANTS = \{[\s\S]*hovered: \{[\s\S]*transform: "rotate\(45deg\)"/);
+	assert.match(panelSource, /const AGENT_ICON_ROTATION_REDUCED_VARIANTS = \{[\s\S]*hovered: \{[\s\S]*transform: "rotate\(0deg\)"/);
+	assert.match(panelSource, /const AGENT_ICON_ROTATION_TRANSITION = \{[\s\S]*duration: 0\.42,[\s\S]*ease: \[0, 0\.4, 0, 1\]/);
+	assert.match(panelSource, /<motion\.svg[\s\S]*animate=\{isSparkleVisible \? "hovered" : "rest"\}[\s\S]*transition=\{AGENT_ICON_ROTATION_TRANSITION\}[\s\S]*variants=\{shouldReduceMotion \? AGENT_ICON_ROTATION_REDUCED_VARIANTS : AGENT_ICON_ROTATION_VARIANTS\}/);
 	assert.match(panelSource, /<AgentPanelIllustration[\s\S]*isSparkleVisible=\{isAgentPanelHovered\}[\s\S]*\/>/);
 	assert.match(panelSource, /viewBox="0 0 15 15"/);
 	assert.match(panelSource, /viewBox="0 0 13 13"/);

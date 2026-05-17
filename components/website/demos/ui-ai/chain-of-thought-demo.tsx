@@ -88,7 +88,8 @@ export function ChainOfThoughtDemoPreload() {
 			<ChainOfThoughtContent>
 				<ChainOfThoughtStep
 					icon={SearchIcon}
-					label="Searching public profiles for Hayden Bleasel"
+					label="Searching the web"
+					description="Searching public profiles for Hayden Bleasel"
 					status="pending"
 				/>
 			</ChainOfThoughtContent>
@@ -103,7 +104,8 @@ export function ChainOfThoughtDemoThinking() {
 			<ChainOfThoughtContent>
 				<ChainOfThoughtStep
 					icon={SearchIcon}
-					label="Searching public profiles for Hayden Bleasel"
+					label="Searching the web"
+					description="Searching public profiles for Hayden Bleasel"
 					status="complete"
 					collapsible
 				>
@@ -118,7 +120,8 @@ export function ChainOfThoughtDemoThinking() {
 
 				<ChainOfThoughtStep
 					icon={ImageIcon}
-					label="Found a likely profile image from the source set"
+					label="Selecting profile image"
+					description="Found a likely profile image from the source set"
 					status="complete"
 					collapsible
 				>
@@ -135,13 +138,15 @@ export function ChainOfThoughtDemoThinking() {
 
 				<ChainOfThoughtStep
 					icon={AiSparkleIcon}
-					label="Synthesizing a short profile summary from validated signals"
+					label="Synthesizing summary"
+					description="Synthesizing a short profile summary from validated signals"
 					status="complete"
 				/>
 
 				<ChainOfThoughtStep
 					icon={SearchIcon}
-					label="Checking for recent work updates..."
+					label="Checking work updates"
+					description="Searching GitHub and Dribbble for recent work updates"
 					status="active"
 					collapsible
 				>
@@ -165,7 +170,8 @@ export function ChainOfThoughtDemoCompleted() {
 			<ChainOfThoughtContent>
 				<ChainOfThoughtStep
 					icon={SearchIcon}
-					label="Searching public profiles for Hayden Bleasel"
+					label="Searching the web"
+					description="Searching public profiles for Hayden Bleasel"
 					status="complete"
 					collapsible
 				>
@@ -180,7 +186,8 @@ export function ChainOfThoughtDemoCompleted() {
 
 				<ChainOfThoughtStep
 					icon={ImageIcon}
-					label="Found a likely profile image from the source set"
+					label="Selecting profile image"
+					description="Found a likely profile image from the source set"
 					status="complete"
 					collapsible
 				>
@@ -197,13 +204,15 @@ export function ChainOfThoughtDemoCompleted() {
 
 				<ChainOfThoughtStep
 					icon={AiSparkleIcon}
-					label="Synthesizing a short profile summary from validated signals"
+					label="Synthesizing summary"
+					description="Synthesizing a short profile summary from validated signals"
 					status="complete"
 				/>
 
 				<ChainOfThoughtStep
 					icon={SearchIcon}
-					label="Checked recent work updates"
+					label="Checking work updates"
+					description="Checked recent work updates across matched sources"
 					status="complete"
 					collapsible
 				>
@@ -219,6 +228,7 @@ export function ChainOfThoughtDemoCompleted() {
 				<ChainOfThoughtStep
 					icon={CheckCircleIcon}
 					label="Done"
+					description="Reasoning trace complete"
 					status="complete"
 				/>
 			</ChainOfThoughtContent>
@@ -231,9 +241,9 @@ export function ChainOfThoughtDemoStatusVariants() {
 		<ChainOfThought defaultOpen className="w-full max-w-xl">
 			<ChainOfThoughtHeader>Status progression</ChainOfThoughtHeader>
 			<ChainOfThoughtContent>
-				<ChainOfThoughtStep label="Collected source pages" status="complete" />
-				<ChainOfThoughtStep label="Cross-checking publication dates" status="active" />
-				<ChainOfThoughtStep label="Drafting the final answer" status="pending" />
+				<ChainOfThoughtStep label="Collecting sources" description="Collected source pages" status="complete" />
+				<ChainOfThoughtStep label="Cross-checking dates" description="Cross-checking publication dates" status="active" />
+				<ChainOfThoughtStep label="Drafting answer" description="Drafting the final answer" status="pending" />
 			</ChainOfThoughtContent>
 		</ChainOfThought>
 	);
@@ -246,7 +256,8 @@ export function ChainOfThoughtDemoSearchResults() {
 			<ChainOfThoughtContent>
 				<ChainOfThoughtStep
 					icon={SearchIcon}
-					label="Evaluating sources by recency and authority"
+					label="Evaluating sources"
+					description="Ranking sources by recency and authority"
 					status="active"
 					collapsible
 				>
@@ -275,7 +286,8 @@ export function ChainOfThoughtDemoImageStep() {
 			<ChainOfThoughtContent>
 				<ChainOfThoughtStep
 					icon={ImageIcon}
-					label="Attached visual evidence for reasoning context"
+					label="Attaching image evidence"
+					description="Attached visual evidence for reasoning context"
 					status="complete"
 					collapsible
 				>
