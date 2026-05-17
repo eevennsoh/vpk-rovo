@@ -1,4 +1,4 @@
-import { Suggestion, Suggestions } from "@/components/ui-ai/suggestion";
+import { Suggestion, Suggestions } from "@/components/ui-custom/suggestion";
 import { cn } from "@/lib/utils";
 import AiChatIcon from "@atlaskit/icon/core/ai-chat";
 

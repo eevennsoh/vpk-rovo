@@ -1,13 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Message } from "@/components/ui-ai/message";
+import { Message } from "@/components/ui-custom/message";
 import {
 	ChainOfThought,
 	ChainOfThoughtContent,
 	ChainOfThoughtHeader,
 	ChainOfThoughtStep,
-} from "@/components/ui-ai/chain-of-thought";
+} from "@/components/ui-custom/chain-of-thought";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { getPreloadShimmerLabel } from "@/components/projects/shared/lib/reasoning-labels";
 

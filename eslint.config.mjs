@@ -18,7 +18,7 @@ const eslintConfig = defineConfig([
 		"next-env.d.ts",
 		// Generated runtime assets; linting bundled vendor code is noisy and not actionable.
 		"public/vad/**",
-		"components/ui-ai/**",
+		"components/ui-custom/**",
 		"components/blocks/login/**",
 	]),
 	{

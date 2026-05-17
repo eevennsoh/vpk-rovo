@@ -15,7 +15,7 @@ import TextIcon from "@atlaskit/icon/core/text";
 import TimelineIcon from "@atlaskit/icon/core/timeline";
 import TranslateIcon from "@atlaskit/icon/core/translate";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
-import { Terminal, TerminalHeader, TerminalContent } from "@/components/ui-ai/terminal";
+import { Terminal, TerminalHeader, TerminalContent } from "@/components/ui-custom/terminal";
 
 type ViewMode = "chat" | "terminal";
 

@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
-import { Message, MessageContent } from "@/components/ui-ai/message";
+import { Message, MessageContent } from "@/components/ui-custom/message";
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { cn } from "@/lib/utils";
 import {

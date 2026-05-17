@@ -54,7 +54,7 @@ Gather the ADS component's visual specs and identify the target shadcn component
 4. **Library docs** — Use `resolve-library-id` + `query-docs` (context7) for latest library docs if needed.
 5. **VPK source** — Read the existing VPK component:
   - UI: `components/ui/[slug].tsx`
-  - AI: `components/ui-ai/[slug].tsx`
+  - Custom: `components/ui-custom/[slug].tsx`
 6. **Visual specs (mandatory)** — Extract exact computed styles from the ADS component using `/agent-browser` on the live `atlassian.design` examples page. Navigate to the page, then use `npx agent-browser eval` to run `getComputedStyle()`. **Never guess values from token name lookups** — token names like `radius.small` do not reliably map to computed pixel values. See `references/visual-spec-extraction.md` for the full methodology (computed styles, inner layout extraction, typography parity). For container/layout components (ButtonGroup, FieldGroup, etc.), also extract parent-level properties: `gap`, `display`, `flexDirection`, `alignItems`.
 7. **Identity gate (required)** — Confirm which shadcn component maps to the ADS component:
   - ADS Toggle (`@atlaskit/toggle`) maps to VPK `Switch` (`components/ui/switch.tsx`)
@@ -345,8 +345,8 @@ Create demo files demonstrating each key variant/feature.
 
 **Two demo types exist:**
 
-- **Overview demo** — Single file `components/website/demos/ui/[slug]-demo.tsx`, registered in `UI_DEMO` / `UI_AI_DEMO`. Shows the component's primary use case. Should already exist.
-- **Variant demos** — Per-variant files in `components/website/demos/ui/[slug]/[slug]-demo-*.tsx`, registered in `UI_VARIANT_DEMOS` / `UI_AI_VARIANT_DEMOS`. Show individual variants and features.
+- **Overview demo** — Single file `components/website/demos/ui/[slug]-demo.tsx`, registered in `UI_DEMO` / `UI_CUSTOM_DEMO`. Shows the component's primary use case. Should already exist.
+- **Variant demos** — Per-variant files in `components/website/demos/ui/[slug]/[slug]-demo-*.tsx`, registered in `UI_VARIANT_DEMOS` / `UI_CUSTOM_VARIANT_DEMOS`. Show individual variants and features.
 
 This skill creates **variant demos**.
 
@@ -482,10 +482,10 @@ See `references/common-mappings.md` for pre-built mapping tables covering Button
 | File                                  | Role                                             |
 | ------------------------------------- | ------------------------------------------------ |
 | `components/ui/[slug].tsx`            | VPK UI component source                          |
-| `components/ui-ai/[slug].tsx`         | VPK AI component source                          |
+| `components/ui-custom/[slug].tsx`         | VPK custom component source                      |
 | `components/website/registry.ts`      | Register variant demos                           |
 | `app/data/details/ui.ts`              | UI component detail entries                      |
-| `app/data/details/ai.ts`              | AI component detail entries                      |
+| `app/data/details/ui-custom.ts`       | UI custom component detail entries               |
 | `app/data/component-detail-types.ts`  | `ExampleDefinition` type                         |
 | `app/data/ads-equivalents.ts`         | ADS package mapping + `getAdsDisplayInfo` helper |
 | `components/website/demos/ui/button/` | Gold standard demo pattern                       |

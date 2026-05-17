@@ -71,7 +71,7 @@ test("shared UI surfaces do not reintroduce the old translucent overlay contract
 		readRepoFile("components", "website", "registry.ts"),
 		readRepoFile("components", "website", "demos", "ui", "dropdown-menu-demo.tsx"),
 		...collectFiles(path.join(REPO_ROOT, "components", "ui"), new Set([".ts", ".tsx"])).map((file) => fs.readFileSync(file, "utf8")),
-		...collectFiles(path.join(REPO_ROOT, "components", "ui-ai"), new Set([".ts", ".tsx"])).map((file) => fs.readFileSync(file, "utf8")),
+		...collectFiles(path.join(REPO_ROOT, "components", "ui-custom"), new Set([".ts", ".tsx"])).map((file) => fs.readFileSync(file, "utf8")),
 		...collectFiles(path.join(REPO_ROOT, "components", "ui-audio"), new Set([".ts", ".tsx"])).map((file) => fs.readFileSync(file, "utf8")),
 		...collectFiles(path.join(REPO_ROOT, "components", "blocks"), new Set([".ts", ".tsx"])).map((file) => fs.readFileSync(file, "utf8")),
 	].join("\n");

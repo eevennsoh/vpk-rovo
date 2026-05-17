@@ -12,11 +12,11 @@ import {
 	ChainOfThoughtContent,
 	ChainOfThoughtHeader,
 	ChainOfThoughtStep,
-} from "@/components/ui-ai/chain-of-thought";
-import { CodeBlock } from "@/components/ui-ai/code-block";
-import { MessageContent, MessageResponse } from "@/components/ui-ai/message";
-import { isTimelineOnlyContent } from "@/components/ui-ai/reasoning";
-import { ToolInput, ToolOutput } from "@/components/ui-ai/tool";
+} from "@/components/ui-custom/chain-of-thought";
+import { CodeBlock } from "@/components/ui-custom/code-block";
+import { MessageContent, MessageResponse } from "@/components/ui-custom/message";
+import { isTimelineOnlyContent } from "@/components/ui-custom/reasoning";
+import { ToolInput, ToolOutput } from "@/components/ui-custom/tool";
 import { Icon } from "@/components/ui/icon";
 import { Lozenge } from "@/components/ui/lozenge";
 import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";

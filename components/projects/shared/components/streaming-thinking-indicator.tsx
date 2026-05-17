@@ -3,14 +3,14 @@
 import type { ReactNode } from "react";
 import type { getThinkingToolCallSummaries } from "@/lib/rovo-ui-messages";
 import type { ReasoningPhaseProps } from "@/components/projects/shared/hooks/use-reasoning-phase";
-import { Message } from "@/components/ui-ai/message";
+import { Message } from "@/components/ui-custom/message";
 import {
 	AdsReasoningTrigger,
 	Reasoning,
 	ReasoningContent,
 	ReasoningSection,
 	ReasoningText,
-} from "@/components/ui-ai/reasoning";
+} from "@/components/ui-custom/reasoning";
 import { AssistantThinkingToolsSection } from "@/components/projects/shared/components/assistant-thinking-tools-section";
 import { getReasoningSectionTitle } from "@/components/projects/shared/lib/reasoning-labels";
 import { cn } from "@/lib/utils";

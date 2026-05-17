@@ -551,8 +551,8 @@ import { Avatar as AvatarRoot, AvatarImage, AvatarFallback } from "@/components/
 import { Lozenge, type LozengeProps } from "@/components/ui/lozenge";
 import { Tag as TagPrimitive, TagGroup } from "@/components/ui/tag";
 import { Spinner } from "@/components/ui/spinner";
-import { CodeBlock as AiCodeBlock } from "@/components/ui-ai/code-block";
-import { MessageResponse } from "@/components/ui-ai/message";
+import { CodeBlock as CustomCodeBlock } from "@/components/ui-custom/code-block";
+import { MessageResponse } from "@/components/ui-custom/message";
 import { Kbd } from "@/components/ui/kbd";
 import { Comment } from "@/components/ui/comment";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
@@ -576,7 +576,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
 import { TimePicker as TimePickerPrimitive } from "@/components/ui/time-picker";
 import { DateTimePicker as DateTimePickerPrimitive } from "@/components/ui/date-time-picker";
-import { FileTree as FileTreeRoot, FileTreeFile as FileTreeFileRoot, FileTreeFolder as FileTreeFolderRoot } from "@/components/ui-ai/file-tree";
+import { FileTree as FileTreeRoot, FileTreeFile as FileTreeFileRoot, FileTreeFolder as FileTreeFolderRoot } from "@/components/ui-custom/file-tree";
 
 // ── Atlaskit icons ────────────────────────────────────────────
 import ChartTrendUpIcon from "@atlaskit/icon/core/chart-trend-up";
@@ -1055,7 +1055,7 @@ export const { registry } = defineRegistry(catalog, {
 						</a>
 					) : null}
 					{code ? (
-						<AiCodeBlock
+						<CustomCodeBlock
 							code={code}
 							language={codeLanguage as BundledLanguage}
 						/>
@@ -1680,7 +1680,7 @@ export const { registry } = defineRegistry(catalog, {
 			}
 
 			return (
-				<AiCodeBlock
+				<CustomCodeBlock
 					code={code}
 					language={(language ?? "text") as BundledLanguage}
 				/>

@@ -1,6 +1,6 @@
 import type { ComponentDetail } from "./component-detail-types";
 import { UI_AUDIO_DETAILS } from "./details/ui-audio";
-import { UI_AI_DETAILS } from "./details/ui-ai";
+import { UI_CUSTOM_DETAILS } from "./details/ui-custom";
 import { BLOCK_DETAILS } from "./details/blocks";
 import { PROJECT_DETAILS } from "./details/projects";
 import { ART_DETAILS } from "./details/arts";
@@ -13,7 +13,7 @@ export interface ComponentEntry {
 	name: string;
 	slug: string;
 	importPath: string;
-	category: "ui-audio" | "ui-ai" | "ui" | "blocks" | "projects" | "arts" | "utility" | "visual";
+	category: "ui-audio" | "ui-custom" | "ui" | "blocks" | "projects" | "arts" | "utility" | "visual";
 	detail?: ComponentDetail;
 }
 
@@ -28,13 +28,13 @@ function toTitleCase(slug: string): string {
 		.join(" ");
 }
 
-function aiComponent(slug: string, name?: string): ComponentEntry {
+function customComponent(slug: string, name?: string): ComponentEntry {
 	return {
 		name: name ?? toTitleCase(slug),
 		slug,
-		importPath: `@/components/ui-ai/${slug}`,
-		category: "ui-ai",
-		detail: UI_AI_DETAILS[slug],
+		importPath: `@/components/ui-custom/${slug}`,
+		category: "ui-custom",
+		detail: UI_CUSTOM_DETAILS[slug],
 	};
 }
 
@@ -108,59 +108,59 @@ function visualComponent(slug: string, name: string, importPath: string): Compon
 	};
 }
 
-export const AI_COMPONENTS: ComponentEntry[] = sortEntriesByName([
-	aiComponent("agent"),
-	aiComponent("animated-dots", "Animated Dots"),
-	aiComponent("animated-rovo", "Animated Rovo"),
-	aiComponent("artifact"),
-	aiComponent("attachments"),
-	aiComponent("audio-player", "Audio Player"),
-	aiComponent("canvas"),
-	aiComponent("chain-of-thought", "Chain of Thought"),
-	aiComponent("checkpoint"),
-	aiComponent("code-block", "Code Block"),
-	aiComponent("commit"),
-	aiComponent("confirmation"),
-	aiComponent("connection"),
-	aiComponent("context"),
-	aiComponent("controls"),
-	aiComponent("conversation"),
-	aiComponent("edge"),
-	aiComponent("environment-variables", "Environment Variables"),
-	aiComponent("file-tree", "File Tree"),
-	aiComponent("image"),
-	aiComponent("inline-citation", "Inline Citation"),
-	aiComponent("jsx-preview", "JSX Preview"),
-	aiComponent("message"),
-	aiComponent("mic-selector", "Mic Selector"),
-	aiComponent("model-selector", "Model Selector"),
-	aiComponent("morphing-rovo", "Morphing Rovo"),
-	aiComponent("node"),
-	aiComponent("open-in-chat", "Open in Chat"),
-	aiComponent("package-info", "Package Info"),
-	aiComponent("panel"),
-	aiComponent("persona"),
-	aiComponent("plan"),
-	aiComponent("prompt-input", "Prompt Input"),
-	aiComponent("queue"),
-	aiComponent("reasoning"),
-	aiComponent("sandbox"),
-	aiComponent("schema-display", "Schema Display"),
-	aiComponent("shimmer"),
-	aiComponent("snippet"),
-	aiComponent("sources"),
-	aiComponent("speech-input", "Speech Input"),
-	aiComponent("stack-trace", "Stack Trace"),
-	aiComponent("suggestion"),
-	aiComponent("task"),
-	aiComponent("terminal"),
-	aiComponent("test-results", "Test Results"),
-	aiComponent("tool"),
-	aiComponent("twg-tool", "TWG Tool"),
-	aiComponent("toolbar"),
-	aiComponent("transcription"),
-	aiComponent("voice-selector", "Voice Selector"),
-	aiComponent("web-preview", "Web Preview"),
+export const CUSTOM_COMPONENTS: ComponentEntry[] = sortEntriesByName([
+	customComponent("agent"),
+	customComponent("animated-dots", "Animated Dots"),
+	customComponent("animated-rovo", "Animated Rovo"),
+	customComponent("artifact"),
+	customComponent("attachments"),
+	customComponent("audio-player", "Audio Player"),
+	customComponent("canvas"),
+	customComponent("chain-of-thought", "Chain of Thought"),
+	customComponent("checkpoint"),
+	customComponent("code-block", "Code Block"),
+	customComponent("commit"),
+	customComponent("confirmation"),
+	customComponent("connection"),
+	customComponent("context"),
+	customComponent("controls"),
+	customComponent("conversation"),
+	customComponent("edge"),
+	customComponent("environment-variables", "Environment Variables"),
+	customComponent("file-tree", "File Tree"),
+	customComponent("image"),
+	customComponent("inline-citation", "Inline Citation"),
+	customComponent("jsx-preview", "JSX Preview"),
+	customComponent("message"),
+	customComponent("mic-selector", "Mic Selector"),
+	customComponent("model-selector", "Model Selector"),
+	customComponent("morphing-rovo", "Morphing Rovo"),
+	customComponent("node"),
+	customComponent("open-in-chat", "Open in Chat"),
+	customComponent("package-info", "Package Info"),
+	customComponent("panel"),
+	customComponent("persona"),
+	customComponent("plan"),
+	customComponent("prompt-input", "Prompt Input"),
+	customComponent("queue"),
+	customComponent("reasoning"),
+	customComponent("sandbox"),
+	customComponent("schema-display", "Schema Display"),
+	customComponent("shimmer"),
+	customComponent("snippet"),
+	customComponent("sources"),
+	customComponent("speech-input", "Speech Input"),
+	customComponent("stack-trace", "Stack Trace"),
+	customComponent("suggestion"),
+	customComponent("task"),
+	customComponent("terminal"),
+	customComponent("test-results", "Test Results"),
+	customComponent("tool"),
+	customComponent("twg-tool", "TWG Tool"),
+	customComponent("toolbar"),
+	customComponent("transcription"),
+	customComponent("voice-selector", "Voice Selector"),
+	customComponent("web-preview", "Web Preview"),
 ]);
 
 export const AUDIO_COMPONENTS: ComponentEntry[] = sortEntriesByName([
@@ -424,7 +424,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("chromatic-aberration-v2", "Chromatic Aberration v2", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	]);
 
-const ALL_COMPONENTS = [...AUDIO_COMPONENTS, ...AI_COMPONENTS, ...UI_COMPONENTS, ...BLOCK_COMPONENTS, ...PROJECT_COMPONENTS, ...ART_COMPONENTS, ...UTILITY_COMPONENTS, ...VISUAL_COMPONENTS];
+const ALL_COMPONENTS = [...AUDIO_COMPONENTS, ...CUSTOM_COMPONENTS, ...UI_COMPONENTS, ...BLOCK_COMPONENTS, ...PROJECT_COMPONENTS, ...ART_COMPONENTS, ...UTILITY_COMPONENTS, ...VISUAL_COMPONENTS];
 
 export function findComponent(category: string, slug: string): ComponentEntry | undefined {
 	return ALL_COMPONENTS.find((c) => c.category === category && c.slug === slug);

@@ -1,8 +1,8 @@
-# ui-ai Quick API Reference
+# ui-custom Quick API Reference
 
-> Sub-component listings and key props for all ui-ai compound components.
+> Sub-component listings and key props for all ui-custom compound components.
 
-## Message (`components/ui-ai/message.tsx`)
+## Message (`components/ui-custom/message.tsx`)
 
 | Sub-component | Purpose |
 |---|---|
@@ -21,7 +21,7 @@
 
 Key props: `from`, `className`, `children`
 
-## Conversation (`components/ui-ai/conversation.tsx`)
+## Conversation (`components/ui-custom/conversation.tsx`)
 
 | Sub-component | Purpose |
 |---|---|
@@ -33,7 +33,7 @@ Key props: `from`, `className`, `children`
 
 Key props: `className`, `children`
 
-## PromptInput (`components/ui-ai/prompt-input.tsx`)
+## PromptInput (`components/ui-custom/prompt-input.tsx`)
 
 | Sub-component | Purpose |
 |---|---|
@@ -68,7 +68,7 @@ Key props: `className`, `children`
 
 Key props: `onSubmit`, `className`, `children`
 
-## Suggestion (`components/ui-ai/suggestion.tsx`)
+## Suggestion (`components/ui-custom/suggestion.tsx`)
 
 | Sub-component | Purpose |
 |---|---|
@@ -77,7 +77,7 @@ Key props: `onSubmit`, `className`, `children`
 
 Key props: `suggestion` (string, required), `onClick` (`(suggestion: string) => void`), `children` (optional, falls back to `suggestion` text)
 
-## CodeBlock (`components/ui-ai/code-block.tsx`)
+## CodeBlock (`components/ui-custom/code-block.tsx`)
 
 | Sub-component | Purpose |
 |---|---|
@@ -94,8 +94,8 @@ Key props: `code`, `language`, `className`
 
 | Component File | Purpose |
 |---|---|
-| `components/ui-ai/reasoning.tsx` | Reasoning/thinking expandable display |
-| `components/ui-ai/shimmer.tsx` | Loading shimmer/skeleton animation |
-| `components/ui-ai/model-selector.tsx` | AI model picker dropdown |
+| `components/ui-custom/reasoning.tsx` | Reasoning/thinking expandable display |
+| `components/ui-custom/shimmer.tsx` | Loading shimmer/skeleton animation |
+| `components/ui-custom/model-selector.tsx` | AI model picker dropdown |
 
-For the full categorized list of all 47 ui-ai modules, see `references/migration-catalog.md`.
+For the full categorized list of all 47 ui-custom modules, see `references/migration-catalog.md`.

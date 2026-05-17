@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useMemo } from "react";
-import type { ConversationContextValue } from "@/components/ui-ai/conversation";
+import type { ConversationContextValue } from "@/components/ui-custom/conversation";
 import { getLatestUserMessageId } from "@/lib/rovo-ui-messages";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 

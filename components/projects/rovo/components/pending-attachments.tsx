@@ -6,8 +6,8 @@ import {
 	AttachmentPreview,
 	AttachmentRemove,
 	Attachments,
-} from "@/components/ui-ai/attachments";
-import { usePromptInputAttachments } from "@/components/ui-ai/prompt-input";
+} from "@/components/ui-custom/attachments";
+import { usePromptInputAttachments } from "@/components/ui-custom/prompt-input";
 
 export function PendingAttachments() {
 	const attachments = usePromptInputAttachments();

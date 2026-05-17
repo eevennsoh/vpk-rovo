@@ -5,12 +5,12 @@ import Image from "next/image";
 import { JsonRenderView } from "@/lib/json-render/renderer";
 import { useProgressiveSpec } from "@/lib/json-render/use-progressive-spec";
 import { cn } from "@/lib/utils";
-import { MessageResponse } from "@/components/ui-ai/message";
-import { CodeBlock } from "@/components/ui-ai/code-block";
+import { MessageResponse } from "@/components/ui-custom/message";
+import { CodeBlock } from "@/components/ui-custom/code-block";
 import {
 	Transcription,
 	TranscriptionSegment,
-} from "@/components/ui-ai/transcription";
+} from "@/components/ui-custom/transcription";
 import { VideoPreviewBody } from "@/components/projects/shared/components/video-preview-body";
 import { ExcalidrawPreview } from "@/components/projects/shared/components/excalidraw-preview";
 import type {

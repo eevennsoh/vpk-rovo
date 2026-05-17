@@ -1,6 +1,6 @@
 # Common Migration Patterns
 
-> Before/after examples for migrating custom AI components to ui-ai compound components.
+> Before/after examples for migrating custom AI components to ui-custom compound components.
 
 ## Message Bubble → Message
 
@@ -17,8 +17,8 @@ function MessageBubble({ message }) {
   );
 }
 
-// AFTER: ui-ai Message
-import { Message, MessageContent, MessageResponse } from "@/components/ui-ai/message";
+// AFTER: ui-custom Message
+import { Message, MessageContent, MessageResponse } from "@/components/ui-custom/message";
 
 function ChatMessage({ message }) {
   return (
@@ -48,12 +48,12 @@ function ChatScroll({ children }) {
   return <div ref={ref} className="overflow-y-auto h-full">{children}</div>;
 }
 
-// AFTER: ui-ai Conversation
+// AFTER: ui-custom Conversation
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from "@/components/ui-ai/conversation";
+} from "@/components/ui-custom/conversation";
 
 function ChatContainer({ children }) {
   return (
@@ -82,8 +82,8 @@ function SuggestionBar({ items, onSelect }) {
   );
 }
 
-// AFTER: ui-ai Suggestions
-import { Suggestions, Suggestion } from "@/components/ui-ai/suggestion";
+// AFTER: ui-custom Suggestions
+import { Suggestions, Suggestion } from "@/components/ui-custom/suggestion";
 
 function SuggestionBar({ items, onSelect }) {
   return (
@@ -109,8 +109,8 @@ function ActionBar({ onCopy, onRetry }) {
   );
 }
 
-// AFTER: ui-ai MessageActions
-import { MessageActions, MessageAction } from "@/components/ui-ai/message";
+// AFTER: ui-custom MessageActions
+import { MessageActions, MessageAction } from "@/components/ui-custom/message";
 
 // Inside a <Message> compound:
 <MessageActions>
@@ -135,7 +135,7 @@ function CustomCode({ code, language }) {
   );
 }
 
-// AFTER: ui-ai CodeBlock
+// AFTER: ui-custom CodeBlock
 import {
   CodeBlock,
   CodeBlockHeader,
@@ -143,7 +143,7 @@ import {
   CodeBlockActions,
   CodeBlockCopyButton,
   CodeBlockFilename,
-} from "@/components/ui-ai/code-block";
+} from "@/components/ui-custom/code-block";
 
 function CodeDisplay({ code, language, filename }) {
   return (

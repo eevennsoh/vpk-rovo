@@ -1,6 +1,6 @@
 ---
 name: vpk-component-ext
-description: Translate custom or third-party AI, voice, and adjacent component libraries into VPK-standardized primitives. Use when the user asks to "migrate to ui-ai", "replace custom chat", "use ui-ai message", "standardize AI components", "replace message bubble", "use conversation component", "migrate prompt input", "use code-block component", "replace custom suggestions", "switch to ui-ai", "adopt ai-elements", "elements.ai-sdk.dev", "port ElevenLabs UI", "use ui-audio", "voice picker", "waveform", "transcript viewer", "audio player", "speech input", "port this third-party component", "translate this library into VPK", or references an existing ui/ui-ai/ui-audio component and wants to migrate code to it.
+description: Translate custom or third-party AI, voice, and adjacent component libraries into VPK-standardized primitives. Use when the user asks to "migrate to ui-custom", "replace custom chat", "use ui-custom message", "standardize AI components", "replace message bubble", "use conversation component", "migrate prompt input", "use code-block component", "replace custom suggestions", "switch to ui-custom", "adopt ai-elements", "elements.ai-sdk.dev", "port ElevenLabs UI", "use ui-audio", "voice picker", "waveform", "transcript viewer", "audio player", "speech input", "port this third-party component", "translate this library into VPK", or references an existing ui/ui-custom/ui-audio component and wants to migrate code to it.
 ---
 
 # VPK Component External Translation
@@ -17,7 +17,7 @@ This skill covers four source types:
 ## Non-negotiable Defaults
 
 - Prefer existing VPK primitives over importing upstream component packages directly
-- Target `components/ui-ai/*` for chat, assistant, reasoning, prompt-composer, and AI-SDK-centric UI
+- Target `components/ui-custom/*` for chat, assistant, reasoning, prompt-composer, and AI-SDK-centric UI
 - Target `components/ui-audio/*` for voice, waveform, transcript, playback, microphone, and voice-picker UI
 - Target `components/ui/*` for generic reusable UI that is not specifically AI/voice oriented
 - Use ADS MCP as the normalization layer for generic UI and shared interaction patterns: `ads_plan` first, then topic-specific a11y guidance before final polish
@@ -27,10 +27,10 @@ This skill covers four source types:
 
 ## Context
 
-- `components/ui-ai/` is the VPK family for AI chat, assistant messaging, prompt input, reasoning, code blocks, and related AI surfaces
+- `components/ui-custom/` is the VPK family for AI chat, assistant messaging, prompt input, reasoning, code blocks, and related AI surfaces
 - `components/ui-audio/` is the VPK family for voice playback, waveform rendering, transcript playback, microphone selection, and voice action UI
 - `components/ui/` is the VPK family for generic reusable UI primitives
-- `components/ui-ai/**` is excluded from TypeScript checking; call-site types must be validated manually
+- `components/ui-custom/**` is excluded from TypeScript checking; call-site types must be validated manually
 - `components/ui-audio/**` and `components/ui/**` are type-checked normally
 
 ## Quick Start
@@ -57,7 +57,7 @@ This skill covers four source types:
 3. **Resolve the target family** using the Family Resolver below.
 4. **Read local VPK source**:
    - `components/ui/*` for generic UI targets
-   - `components/ui-ai/*` for assistant/chat targets
+   - `components/ui-custom/*` for assistant/chat targets
    - `components/ui-audio/*` for voice/audio targets
 5. **ADS alignment for reusable UI** — When the surface is generic UI or clearly matches an Atlassian interaction pattern, run `ads_plan` before implementation. Provide at least 2 likely search terms for every populated field (`components`, `icons`, `tokens`) and set `exactName: true` when the ADS component name is explicit. Use `ads_get_components` only for exhaustive candidate sweeps when `ads_plan` is still ambiguous, and escalate to `ads_get_all_tokens` / `ads_get_all_icons` only when you still need exhaustive token or icon lookup coverage.
 6. **Read upstream reference when needed**:
@@ -73,10 +73,10 @@ Use this table before doing any mapping work:
 
 | Source pattern | Prefer | Why |
 |---|---|---|
-| Chat thread, assistant messages, prompt composer, reasoning, suggestions, code blocks | `components/ui-ai/*` | This family is aligned to AI SDK message flows and chat surfaces |
+| Chat thread, assistant messages, prompt composer, reasoning, suggestions, code blocks | `components/ui-custom/*` | This family is aligned to AI SDK message flows and chat surfaces |
 | Audio player, waveform, transcript playback, voice-picker, microphone device selection, standalone speech capture | `components/ui-audio/*` | This family is aligned to voice and audio interaction patterns |
 | General presentational component with no AI/voice behavior | `components/ui/*` | Default VPK primitive family for generic reusable UI |
-| ai-elements component page from `elements.ai-sdk.dev/components` | Usually `components/ui-ai/*` | ai-elements is primarily message/composer/chat oriented in VPK |
+| ai-elements component page from `elements.ai-sdk.dev/components` | Usually `components/ui-custom/*` | ai-elements is primarily message/composer/chat oriented in VPK |
 | ElevenLabs component page from `ui.elevenlabs.io/docs/components` | Usually `components/ui-audio/*` | ElevenLabs components map to VPK's voice/audio namespace |
 | Unknown third-party component library | Choose by behavior first, then by nearest VPK family | The target family is determined by where the component belongs in VPK, not where it came from |
 
@@ -86,20 +86,20 @@ Some names exist in multiple VPK families. Choose by behavior, not by name alone
 
 | If you need... | Use |
 |---|---|
-| AI/chat message rendering with `MessageResponse`, actions, or branching | `@/components/ui-ai/message` |
+| AI/chat message rendering with `MessageResponse`, actions, or branching | `@/components/ui-custom/message` |
 | Lightweight voice/transcript message shells | `@/components/ui-audio/message` |
-| AI thread container for assistant chat | `@/components/ui-ai/conversation` |
+| AI thread container for assistant chat | `@/components/ui-custom/conversation` |
 | Transcript/history container with download/export | `@/components/ui-audio/conversation` |
-| AI SDK speech result playback in assistant widgets | `@/components/ui-ai/audio-player` |
+| AI SDK speech result playback in assistant widgets | `@/components/ui-custom/audio-player` |
 | Generic track preview, voice picker preview, or transcript tooling playback | `@/components/ui-audio/audio-player` |
-| Inline composer voice affordance inside prompt input | `PromptInputMicrophone` or `@/components/ui-ai/speech-input` |
+| Inline composer voice affordance inside prompt input | `PromptInputMicrophone` or `@/components/ui-custom/speech-input` |
 | Standalone voice capture/transcription control | `@/components/ui-audio/speech-input` |
-| Microphone selector embedded in AI composer flows | `@/components/ui-ai/mic-selector` |
+| Microphone selector embedded in AI composer flows | `@/components/ui-custom/mic-selector` |
 | Generic microphone device selector for voice/audio tools | `@/components/ui-audio/mic-selector` |
 
 ## Detection Checklist
 
-### A. `ui-ai`-oriented patterns
+### A. `ui-custom`-oriented patterns
 
 | # | Pattern | Look For | Target |
 |---|---|---|---|
@@ -112,7 +112,7 @@ Some names exist in multiple VPK families. Choose by behavior, not by name alone
 | 7 | Empty state | “No messages” / welcome screen | `ConversationEmptyState` |
 | 8 | Text input area | `<textarea>` for message composition | `PromptInput` + `PromptInputTextarea` |
 | 9 | Submit button | Send/submit trigger | `PromptInputSubmit` |
-| 10 | Composer microphone | Inline dictation toggle | `PromptInputMicrophone` or `ui-ai/speech-input` |
+| 10 | Composer microphone | Inline dictation toggle | `PromptInputMicrophone` or `ui-custom/speech-input` |
 | 11 | File attachments | Upload UI, attachment pills | `Attachments` + `Attachment` |
 | 12 | Suggestion chips | Prompt suggestions | `Suggestions` + `Suggestion` |
 | 13 | Code blocks | Syntax highlighting, copy button | `CodeBlock` + header/copy helpers |
@@ -142,7 +142,7 @@ Some names exist in multiple VPK families. Choose by behavior, not by name alone
 |---|---|---|---|
 | 28 | Generic buttons / inputs / menus / cards | Presentational UI with no AI or voice behavior | `components/ui/*` |
 | 29 | Thin upstream wrapper | Vendored component with mostly styling differences | Replace with existing VPK primitive or keep a thin adapter |
-| 30 | No direct VPK equivalent | New behavior not covered by ui/ui-ai/ui-audio | Create the smallest VPK-native wrapper and wire docs/examples immediately |
+| 30 | No direct VPK equivalent | New behavior not covered by ui/ui-custom/ui-audio | Create the smallest VPK-native wrapper and wire docs/examples immediately |
 
 ### Phase 2 — Map
 
@@ -152,7 +152,7 @@ Produce mapping tables that leave no ambiguity for the implementation.
 
 | Source Component | Source Type | VPK Family | Why |
 |---|---|---|---|
-| `elements Message` | ai-elements | `ui-ai` | Message rendering and markdown belong to AI chat surfaces |
+| `elements Message` | ai-elements | `ui-custom` | Message rendering and markdown belong to AI chat surfaces |
 | `voice-picker` | ElevenLabs | `ui-audio` | Voice preview and selection belong to audio tooling |
 | `vendor button` | generic third-party | `ui` | Generic controls should land in VPK's base UI family |
 
@@ -160,7 +160,7 @@ Produce mapping tables that leave no ambiguity for the implementation.
 
 | Source Component | VPK Component | Match | Notes |
 |---|---|---|---|
-| `MessageBubble` | `ui-ai/Message` + `MessageContent` | Exact | Keep role styling via `from` |
+| `MessageBubble` | `ui-custom/Message` + `MessageContent` | Exact | Keep role styling via `from` |
 | `voice-picker` | `ui-audio/VoicePicker` | Exact | Map previews and selected voice state |
 | `custom waveform` | `ui-audio/Waveform` | Approximate | May need wrapper layout or scrub state |
 | `third-party button` | `ui/Button` or adapter | Exact / Approximate | Choose native VPK primitive if it already exists |
@@ -175,7 +175,7 @@ Match quality:
 
 | Source Prop | Target Prop | Notes |
 |---|---|---|
-| `message.role` | `from` | `ui-ai` and `ui-audio` message roots both use `from`-style semantics |
+| `message.role` | `from` | `ui-custom` and `ui-audio` message roots both use `from`-style semantics |
 | `message.content` | children / `MessageResponse` | Choose plain content vs markdown response intentionally |
 | `voiceId` | `value` | `VoicePicker` is controlled by selected id |
 | `onVoiceChange` | `onValueChange` | Normalize to VPK controlled-input naming |
@@ -186,7 +186,7 @@ Match quality:
 
 | Missing Feature | Coverage | Resolution |
 |---|---|---|
-| Custom widget rendering in assistant message | Gap | Compose inside `ui-ai/MessageContent` |
+| Custom widget rendering in assistant message | Gap | Compose inside `ui-custom/MessageContent` |
 | ElevenLabs upstream writes to `components/ui/*` | Gap | Translate into `components/ui-audio/*` instead |
 | Upstream visual language conflicts with VPK tokens | Gap | Rewrite classes to VPK semantic tokens and primitives |
 | Specialized transcript segment logic | Approximate | Keep local hook if `ui-audio/use-transcript-viewer` is insufficient |
@@ -204,12 +204,12 @@ import {
   Message,
   MessageContent,
   MessageResponse,
-} from "@/components/ui-ai/message";
+} from "@/components/ui-custom/message";
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from "@/components/ui-ai/conversation";
+} from "@/components/ui-custom/conversation";
 ```
 
 ```tsx
@@ -236,7 +236,7 @@ import { Card } from "@/components/ui/card";
 2. **Prefer composition over reimplementation** — if a local primitive exists, wrap it instead of recreating it.
 3. **Choose the target family by behavior** — not by the source library’s folder structure.
 4. **Choose markdown handling intentionally**:
-   - Assistant/chat rich text -> `ui-ai/MessageResponse`
+   - Assistant/chat rich text -> `ui-custom/MessageResponse`
    - Plain transcript or voice labels -> plain children or `ui-audio/Response`
 5. **Preserve callbacks and controlled state** — wire existing events into VPK props instead of introducing new shapes.
 6. **Compose for gaps** — keep thin local wrappers only when VPK does not cover the behavior directly.
@@ -305,14 +305,14 @@ Create docs artifacts in the correct family.
 
 1. **Pick the correct demo folder**:
    - `components/website/demos/ui/`
-   - `components/website/demos/ui-ai/`
+   - `components/website/demos/ui-custom/`
    - `components/website/demos/ui-audio/`
 2. **Register demos in `components/website/registry.ts`**:
    - default preview registry for the category
    - category-specific variant registry entries
 3. **Add detail metadata**:
    - `app/data/details/ui.ts`
-   - `app/data/details/ui-ai.ts`
+   - `app/data/details/ui-custom.ts`
    - `app/data/details/ui-audio.ts`
 4. **Keep slug wiring consistent**:
    - named demo export
@@ -363,7 +363,7 @@ When the source library is neither ai-elements nor ElevenLabs:
 1. Identify the component’s actual behavior.
 2. Choose the nearest VPK family:
    - `ui`
-   - `ui-ai`
+   - `ui-custom`
    - `ui-audio`
 3. Map upstream props into VPK naming only when you are creating a thin adapter.
 4. If VPK already has a direct primitive, migrate consumers to the VPK primitive instead of vendoring the source library.
@@ -374,9 +374,9 @@ When the source library is neither ai-elements nor ElevenLabs:
 
 ## TypeScript Notes
 
-### `ui-ai`
+### `ui-custom`
 
-`components/ui-ai/**` is excluded from TypeScript checking in `tsconfig.json`.
+`components/ui-custom/**` is excluded from TypeScript checking in `tsconfig.json`.
 
 - Read source files directly before using them
 - Validate call-site props manually
@@ -396,7 +396,7 @@ When the source library is neither ai-elements nor ElevenLabs:
 `Message`, `Conversation`, `SpeechInput`, and `AudioPlayer` can collide across families.
 
 ```tsx
-import { Message as UiAiMessage } from "@/components/ui-ai/message";
+import { Message as UiCustomMessage } from "@/components/ui-custom/message";
 import { Message as UiAudioMessage } from "@/components/ui-audio/message";
 ```
 
@@ -417,7 +417,7 @@ The upstream generator expects different `components.json` conventions and write
 When adding or modifying family components, update the canonical demo in the matching docs folder first:
 
 - `components/website/demos/ui/`
-- `components/website/demos/ui-ai/`
+- `components/website/demos/ui-custom/`
 - `components/website/demos/ui-audio/`
 
 Feature surfaces should copy the canonical pattern, not invent their own divergent version.
@@ -434,7 +434,7 @@ Feature surfaces should copy the canonical pattern, not invent their own diverge
 
 - [ ] Target file, folder, or URL inspected
 - [ ] Source type identified (local / ai-elements / ElevenLabs / generic external)
-- [ ] Target family resolved (`ui`, `ui-ai`, or `ui-audio`)
+- [ ] Target family resolved (`ui`, `ui-custom`, or `ui-audio`)
 - [ ] Relevant local target source files read
 - [ ] Upstream docs/reference consulted when needed
 - [ ] Data flow traced through providers/callbacks
@@ -476,12 +476,12 @@ Feature surfaces should copy the canonical pattern, not invent their own diverge
 
 | File | Role |
 |---|---|
-| `components/ui-ai/message.tsx` | AI/chat message compound component |
-| `components/ui-ai/conversation.tsx` | AI/chat conversation container |
-| `components/ui-ai/prompt-input.tsx` | AI/chat composer primitive |
-| `components/ui-ai/code-block.tsx` | AI code display |
-| `components/ui-ai/reasoning.tsx` | AI reasoning display |
-| `components/ui-ai/shimmer.tsx` | AI loading shimmer |
+| `components/ui-custom/message.tsx` | AI/chat message compound component |
+| `components/ui-custom/conversation.tsx` | AI/chat conversation container |
+| `components/ui-custom/prompt-input.tsx` | AI/chat composer primitive |
+| `components/ui-custom/code-block.tsx` | AI code display |
+| `components/ui-custom/reasoning.tsx` | AI reasoning display |
+| `components/ui-custom/shimmer.tsx` | AI loading shimmer |
 | `components/ui-audio/audio-player.tsx` | Audio playback primitives |
 | `components/ui-audio/voice-picker.tsx` | Voice selection with preview playback |
 | `components/ui-audio/speech-input.tsx` | Standalone voice capture/transcription |
@@ -491,15 +491,15 @@ Feature surfaces should copy the canonical pattern, not invent their own diverge
 | `components/ui-audio/mic-selector.tsx` | Microphone device picker |
 | `components/website/registry.ts` | Demo registry for all docs categories |
 | `app/data/details/ui.ts` | generic UI detail metadata |
-| `app/data/details/ui-ai.ts` | ui-ai detail metadata |
+| `app/data/details/ui-custom.ts` | ui-custom detail metadata |
 | `app/data/details/ui-audio.ts` | ui-audio detail metadata |
 | `~/.agents/skills/ai-elements/references/` | ai-elements reference docs |
 
 ## References
 
-- **`references/api-reference.md`** — ui-ai compound API reference
-- **`references/migration-examples.md`** — common ui-ai migration examples
-- **`references/migration-catalog.md`** — ui-ai migration catalog
+- **`references/api-reference.md`** — ui-custom compound API reference
+- **`references/migration-examples.md`** — common ui-custom migration examples
+- **`references/migration-catalog.md`** — ui-custom migration catalog
 - **`https://elements.ai-sdk.dev/components`** — ai-elements component source docs
 - **`https://ui.elevenlabs.io/docs/components`** — ElevenLabs UI source docs
 

@@ -2,7 +2,7 @@ import { getAdsDisplayInfo } from "@/app/data/ads-equivalents";
 
 const ADS_UI_DISCOVERY_SLUGS = new Set(["skill-card", "sidebar-nav-item"]);
 
-const ADS_AI_SLUGS = new Set([
+const ADS_CUSTOM_SLUGS = new Set([
 	"animated-dots",
 	"animated-rovo",
 	"artifact",
@@ -52,8 +52,8 @@ export function resolveUiAdsTagVariant(slug: string): "discovery" | undefined {
 	return ADS_UI_DISCOVERY_SLUGS.has(slug) ? "discovery" : undefined;
 }
 
-export function resolveAiAdsPackage(slug: string) {
-	return ADS_AI_SLUGS.has(slug) ? "Atlassian Design System" : undefined;
+export function resolveCustomAdsPackage(slug: string) {
+	return ADS_CUSTOM_SLUGS.has(slug) ? "Atlassian Design System" : undefined;
 }
 
 export function resolveBlockAdsPackage(slug: string) {

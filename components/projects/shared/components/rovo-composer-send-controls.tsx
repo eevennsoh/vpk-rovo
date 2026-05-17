@@ -9,7 +9,7 @@ import {
 	PromptInputAutoButton,
 	PromptInputButton,
 	PromptInputSubmit,
-} from "@/components/ui-ai/prompt-input";
+} from "@/components/ui-custom/prompt-input";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { LiveWaveform } from "@/components/ui-audio/live-waveform";
 import { resolveRovoAppComposerIdleAction } from "@/components/projects/rovo/lib/rovo-app-composer-idle-action";

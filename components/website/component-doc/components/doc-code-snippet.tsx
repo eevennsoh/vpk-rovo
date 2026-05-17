@@ -7,7 +7,7 @@ import {
 	CodeBlockActions,
 	CodeBlockCopyButton,
 	CodeBlockDownloadButton,
-} from "@/components/ui-ai/code-block";
+} from "@/components/ui-custom/code-block";
 import type { BundledLanguage } from "shiki";
 
 interface DocCodeSnippetProps {

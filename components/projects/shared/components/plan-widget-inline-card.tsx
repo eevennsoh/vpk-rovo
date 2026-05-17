@@ -11,7 +11,7 @@ import {
 	PlanHeader,
 	PlanTitle,
 	type PlanTask,
-} from "@/components/ui-ai/plan";
+} from "@/components/ui-custom/plan";
 import {
 	resolvePlanDisplayTitle,
 	resolvePlanVisualIdentity,
@@ -22,7 +22,7 @@ import { PlanTabContent } from "@/components/projects/shared/lib/plan-card-utils
 import { VisualIdentityTile } from "@/components/projects/shared/components/visual-identity-tile";
 import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { Button } from "@/components/ui/button";
-import { Shimmer } from "@/components/ui-ai/shimmer";
+import { Shimmer } from "@/components/ui-custom/shimmer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 

@@ -18,7 +18,7 @@ import {
 } from "@/lib/rovo-ui-messages";
 import {
 	Message as UiMessage,
-} from "@/components/ui-ai/message";
+} from "@/components/ui-custom/message";
 import {
 	extractPlanRenderableText,
 	removeActionItemsSection,

@@ -16,7 +16,7 @@ import {
 	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputFooter,
-} from "@/components/ui-ai/prompt-input";
+} from "@/components/ui-custom/prompt-input";
 import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import GlobeIcon from "@atlaskit/icon/core/globe";
 import { Footer } from "@/components/ui/footer";

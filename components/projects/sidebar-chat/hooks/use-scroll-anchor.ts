@@ -6,7 +6,7 @@ import type {
 	ConversationFollowMode,
 	GetTargetScrollTop,
 	ScrollToBottomOptions,
-} from "@/components/ui-ai/conversation";
+} from "@/components/ui-custom/conversation";
 import {
 	getLatestUserMessageId,
 } from "@/lib/rovo-ui-messages";

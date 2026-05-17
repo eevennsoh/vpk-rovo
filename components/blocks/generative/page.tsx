@@ -16,7 +16,7 @@ import {
 	ArtifactContent,
 	ArtifactHeader,
 	ArtifactTitle,
-} from "@/components/ui-ai/artifact"
+} from "@/components/ui-custom/artifact"
 import {
 	CodeBlock,
 	CodeBlockCopyButton,
@@ -24,7 +24,7 @@ import {
 	CodeBlockTitle,
 	CodeBlockFilename,
 	CodeBlockActions,
-} from "@/components/ui-ai/code-block"
+} from "@/components/ui-custom/code-block"
 import {
 	PromptInput,
 	PromptInputFooter,
@@ -32,7 +32,7 @@ import {
 	PromptInputTextarea,
 	PromptInputTools,
 	PromptInputButton,
-} from "@/components/ui-ai/prompt-input"
+} from "@/components/ui-custom/prompt-input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MOCK_GENERATED_CODE, MOCK_PREVIEW_HTML } from "./data/mock-data"
 

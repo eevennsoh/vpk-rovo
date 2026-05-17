@@ -9,7 +9,7 @@ interface PageProps {
 	params: Promise<{ category: string }>;
 }
 
-const VALID_CATEGORIES = ["ui", "ui-audio", "ui-ai", "blocks", "projects", "arts", "utility", "visual"] as const;
+const VALID_CATEGORIES = ["ui", "ui-audio", "ui-custom", "blocks", "projects", "arts", "utility", "visual"] as const;
 type ValidCategory = (typeof VALID_CATEGORIES)[number];
 
 function isValidCategory(value: string): value is ValidCategory {

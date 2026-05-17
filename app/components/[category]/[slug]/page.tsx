@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { AUDIO_COMPONENTS, AI_COMPONENTS, UI_COMPONENTS, BLOCK_COMPONENTS, PROJECT_COMPONENTS, ART_COMPONENTS, UTILITY_COMPONENTS, VISUAL_COMPONENTS, findComponent } from "@/app/data/components";
+import { AUDIO_COMPONENTS, CUSTOM_COMPONENTS, UI_COMPONENTS, BLOCK_COMPONENTS, PROJECT_COMPONENTS, ART_COMPONENTS, UTILITY_COMPONENTS, VISUAL_COMPONENTS, findComponent } from "@/app/data/components";
 import { ComponentDoc } from "@/components/website/component-doc/page";
 import { getComponentPageTitle } from "@/lib/project-page-title";
 
@@ -25,8 +25,8 @@ export function generateStaticParams() {
 		params.push({ category: "ui-audio", slug: comp.slug });
 	}
 
-	for (const comp of AI_COMPONENTS) {
-		params.push({ category: "ui-ai", slug: comp.slug });
+	for (const comp of CUSTOM_COMPONENTS) {
+		params.push({ category: "ui-custom", slug: comp.slug });
 	}
 
 	for (const comp of UI_COMPONENTS) {
@@ -59,7 +59,7 @@ export function generateStaticParams() {
 export default async function ComponentDetailPage({ params }: PageProps) {
 	const { category, slug } = await params;
 
-	if (category !== "ui-audio" && category !== "ui-ai" && category !== "ui" && category !== "blocks" && category !== "projects" && category !== "arts" && category !== "utility" && category !== "visual") {
+	if (category !== "ui-audio" && category !== "ui-custom" && category !== "ui" && category !== "blocks" && category !== "projects" && category !== "arts" && category !== "utility" && category !== "visual") {
 		notFound();
 	}
 

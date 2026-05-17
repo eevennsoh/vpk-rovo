@@ -4,22 +4,22 @@ import {
 	Checkpoint,
 	CheckpointIcon,
 	CheckpointTrigger,
-} from "@/components/ui-ai/checkpoint"
-import { CodeBlock } from "@/components/ui-ai/code-block"
+} from "@/components/ui-custom/checkpoint"
+import { CodeBlock } from "@/components/ui-custom/code-block"
 import {
 	Conversation,
 	ConversationContent,
-} from "@/components/ui-ai/conversation"
+} from "@/components/ui-custom/conversation"
 import {
 	FileTree,
 	FileTreeFile,
 	FileTreeFolder,
-} from "@/components/ui-ai/file-tree"
+} from "@/components/ui-custom/file-tree"
 import {
 	Message,
 	MessageContent,
 	MessageResponse,
-} from "@/components/ui-ai/message"
+} from "@/components/ui-custom/message"
 import {
 	Plan,
 	PlanAvatar,
@@ -27,14 +27,14 @@ import {
 	PlanDescription,
 	PlanHeader,
 	PlanTitle,
-} from "@/components/ui-ai/plan"
-import type { PromptInputMessage } from "@/components/ui-ai/prompt-input"
+} from "@/components/ui-custom/plan"
+import type { PromptInputMessage } from "@/components/ui-custom/prompt-input"
 import {
 	PromptInput,
 	PromptInputFooter,
 	PromptInputSubmit,
 	PromptInputTextarea,
-} from "@/components/ui-ai/prompt-input"
+} from "@/components/ui-custom/prompt-input"
 import {
 	Queue,
 	QueueItem,
@@ -45,14 +45,14 @@ import {
 	QueueSectionContent,
 	QueueSectionLabel,
 	QueueSectionTrigger,
-} from "@/components/ui-ai/queue"
+} from "@/components/ui-custom/queue"
 import {
 	Task,
 	TaskContent,
 	TaskItemFile,
 	TaskTrigger,
-} from "@/components/ui-ai/task"
-import { Terminal, TerminalContent } from "@/components/ui-ai/terminal"
+} from "@/components/ui-custom/task"
+import { Terminal, TerminalContent } from "@/components/ui-custom/terminal"
 import { cn } from "@/lib/utils"
 import {
 	CheckCircle2Icon,

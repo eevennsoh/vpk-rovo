@@ -22,7 +22,7 @@ app/
   hooks/                       # App-level hooks
   preview/                     # Component preview routes (blocks, projects)
   providers.tsx                # Client-side provider composition
-  [category]/page.tsx          # Category landing routes (ui, ui-ai, blocks, projects)
+  [category]/page.tsx          # Category landing routes (ui, ui-custom, blocks, projects)
   [page routes]/               # plan/, make/, confluence/, fullscreen-chat/, jira/, search/, sidebar-chat/
   layout.tsx                   # Root layout (server component)
 
@@ -56,7 +56,7 @@ components/
     sidebar-chat/              # Chat with sidebar
     work-items/                # Work items management
     shared/                    # Shared project utilities (ThreadMessage compound component, message processing)
-  ui-ai/                       # AI element components (TS excluded)
+  ui-custom/                       # AI element components (TS excluded)
   blocks/                      # Block features
     chat/                      # ADS-themed chat block
     chat-composer/             # ADS-themed chat composer block
@@ -126,7 +126,7 @@ Optional environment variables:
 | Design       | `/vpk-design`       | Workflow | Figma to VPK implementation with validation           |
 | Tidy         | `/vpk-tidy`         | Utility  | Refactor React components for reusability             |
 | Component    | `/vpk-component`    | Utility  | Map ADS components to VPK equivalents                 |
-| Component Ext | `/vpk-component-ext` | Utility  | Migrate custom AI components to ui-ai                 |
+| Component Ext | `/vpk-component-ext` | Utility  | Migrate custom AI components to ui-custom                 |
 | Agent Creator | `/agent-creator`   | Workflow | Create or update repo-local Markdown agents           |
 
 Symphony worker skills:

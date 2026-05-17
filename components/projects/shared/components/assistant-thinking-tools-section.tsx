@@ -1,11 +1,11 @@
-import type { ToolPart } from "@/components/ui-ai/tool";
+import type { ToolPart } from "@/components/ui-custom/tool";
 import {
 	Tool,
 	ToolContent,
 	ToolHeader,
 	ToolInput,
 	ToolOutput,
-} from "@/components/ui-ai/tool";
+} from "@/components/ui-custom/tool";
 import { Spinner } from "@/components/ui/spinner";
 import type { ThinkingToolCallSummary } from "@/lib/rovo-ui-messages";
 import { cn } from "@/lib/utils";

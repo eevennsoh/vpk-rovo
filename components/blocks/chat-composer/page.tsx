@@ -17,7 +17,7 @@ import {
 	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputTools,
-} from "@/components/ui-ai/prompt-input";
+} from "@/components/ui-custom/prompt-input";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";

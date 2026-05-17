@@ -1,5 +1,5 @@
 import type { RovoSourcePart } from "@/lib/rovo-ui-messages";
-import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ui-ai/sources";
+import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ui-custom/sources";
 
 interface AssistantSourcesSectionProps {
 	messageId: string;

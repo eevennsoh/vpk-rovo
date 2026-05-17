@@ -17,7 +17,7 @@ const FLOATING_CHAT_SOURCE = fs.readFileSync(
 	"utf8",
 );
 const MESSAGE_SOURCE = fs.readFileSync(
-	path.join(process.cwd(), "components/ui-ai/message.tsx"),
+	path.join(process.cwd(), "components/ui-custom/message.tsx"),
 	"utf8",
 );
 const AGENTS_VIEW_SOURCE = fs.readFileSync(

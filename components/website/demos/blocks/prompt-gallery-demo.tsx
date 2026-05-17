@@ -16,10 +16,10 @@ import {
 	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputTools,
-} from "@/components/ui-ai/prompt-input";
+} from "@/components/ui-custom/prompt-input";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { composerUpwardShadow, composerPromptInputClassName, composerTextareaClassName, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
-import { SpeechInput } from "@/components/ui-ai/speech-input";
+import { SpeechInput } from "@/components/ui-custom/speech-input";
 import { Footer } from "@/components/ui/footer";
 import Heading from "@/components/blocks/shared-ui/heading";
 import Image from "next/image";

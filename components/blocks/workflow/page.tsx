@@ -12,7 +12,7 @@ import {
 	AgentContent,
 	AgentHeader,
 	AgentInstructions,
-} from "@/components/ui-ai/agent"
+} from "@/components/ui-custom/agent"
 import {
 	Plan,
 	PlanAvatar,
@@ -20,37 +20,37 @@ import {
 	PlanDescription,
 	PlanHeader,
 	PlanTitle,
-} from "@/components/ui-ai/plan"
+} from "@/components/ui-custom/plan"
 import {
 	Tool,
 	ToolContent,
 	ToolHeader,
 	ToolInput,
 	ToolOutput,
-} from "@/components/ui-ai/tool"
+} from "@/components/ui-custom/tool"
 import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity"
 import {
 	Conversation,
 	ConversationContent,
-} from "@/components/ui-ai/conversation"
+} from "@/components/ui-custom/conversation"
 import {
 	Message,
 	MessageContent,
 	MessageResponse,
-} from "@/components/ui-ai/message"
+} from "@/components/ui-custom/message"
 import {
 	Confirmation,
 	ConfirmationAction,
 	ConfirmationActions,
 	ConfirmationRequest,
 	ConfirmationTitle,
-} from "@/components/ui-ai/confirmation"
+} from "@/components/ui-custom/confirmation"
 import {
 	PromptInput,
 	PromptInputFooter,
 	PromptInputSubmit,
 	PromptInputTextarea,
-} from "@/components/ui-ai/prompt-input"
+} from "@/components/ui-custom/prompt-input"
 import { Badge } from "@/components/ui/badge"
 import { MOCK_AGENT_CONFIG, MOCK_PLAN_STEPS, MOCK_WORKFLOW_MESSAGES } from "./data/mock-data"
 

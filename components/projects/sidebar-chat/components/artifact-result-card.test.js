@@ -42,7 +42,7 @@ test("ArtifactResultCard reports dialog lifecycle around generated artifact prev
 test("ArtifactResultCard opens HTML reports in an embedded Rovo Canvas dialog", () => {
 	assert.match(
 		ARTIFACT_RESULT_CARD_SOURCE,
-		/import \{ ArtifactCard, ARTIFACT_KIND_LABELS, type ArtifactKind \} from "@\/components\/ui-ai\/artifact";/u,
+		/import \{ ArtifactCard, ARTIFACT_KIND_LABELS, type ArtifactKind \} from "@\/components\/ui-custom\/artifact";/u,
 	);
 	assert.match(
 		ARTIFACT_RESULT_CARD_SOURCE,

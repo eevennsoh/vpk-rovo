@@ -10,7 +10,7 @@ import {
 	Conversation,
 	ConversationContent,
 	ConversationScrollButton,
-} from "@/components/ui-ai/conversation";
+} from "@/components/ui-custom/conversation";
 import { MessageTurns } from "@/components/projects/shared/message-turns";
 import { isRenderableRovoUIMessage } from "@/lib/rovo-ui-messages";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";

@@ -6,12 +6,12 @@ import {
 	Conversation,
 	ConversationContent,
 	type ConversationContextValue,
-} from "@/components/ui-ai/conversation";
-import { Message } from "@/components/ui-ai/message";
+} from "@/components/ui-custom/conversation";
+import { Message } from "@/components/ui-custom/message";
 import {
 	AdsReasoningTrigger,
 	Reasoning,
-} from "@/components/ui-ai/reasoning";
+} from "@/components/ui-custom/reasoning";
 import { cn } from "@/lib/utils";
 import { MessageTurns } from "@/components/projects/shared/message-turns";
 import { ThreadMessage } from "@/components/projects/shared/thread-message";

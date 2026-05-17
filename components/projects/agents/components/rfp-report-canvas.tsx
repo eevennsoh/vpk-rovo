@@ -8,7 +8,7 @@ import {
 	ChainOfThought,
 	ChainOfThoughtContent,
 	ChainOfThoughtStep,
-} from "@/components/ui-ai/chain-of-thought";
+} from "@/components/ui-custom/chain-of-thought";
 import { Button } from "@/components/ui/button";
 import type { AgentsRfpDemoActions } from "../hooks/use-agents-rfp-demo-state";
 import type { AgentsRfpDemoState } from "../lib/rfp-demo-state";

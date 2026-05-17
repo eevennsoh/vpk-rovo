@@ -12,14 +12,14 @@ import {
 import {
 	Conversation,
 	ConversationContent,
-} from "@/components/ui-ai/conversation"
+} from "@/components/ui-custom/conversation"
 import {
 	Message,
 	MessageAction,
 	MessageActions,
 	MessageContent,
 	MessageResponse,
-} from "@/components/ui-ai/message"
+} from "@/components/ui-custom/message"
 import {
 	PromptInput,
 	PromptInputFooter,
@@ -27,13 +27,13 @@ import {
 	PromptInputTextarea,
 	PromptInputTools,
 	PromptInputButton,
-} from "@/components/ui-ai/prompt-input"
+} from "@/components/ui-custom/prompt-input"
 import {
 	Reasoning,
 	ReasoningContent,
 	ReasoningTrigger,
-} from "@/components/ui-ai/reasoning"
-import { Suggestion, Suggestions } from "@/components/ui-ai/suggestion"
+} from "@/components/ui-custom/reasoning"
+import { Suggestion, Suggestions } from "@/components/ui-custom/suggestion"
 import {
 	ModelSelector,
 	ModelSelectorContent,
@@ -46,7 +46,7 @@ import {
 	ModelSelectorLogoGroup,
 	ModelSelectorName,
 	ModelSelectorTrigger,
-} from "@/components/ui-ai/model-selector"
+} from "@/components/ui-custom/model-selector"
 import { Button } from "@/components/ui/button"
 import { MOCK_MESSAGES, MOCK_SUGGESTIONS } from "./data/mock-messages"
 

@@ -2,11 +2,11 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ErrorInfo, ReactNode, RefObject } from "react";
-import { Attachment, AttachmentPreview, Attachments } from "@/components/ui-ai/attachments";
-import { Conversation, ConversationContent, ConversationScrollButton, type ConversationFollowMode, useConversationContext } from "@/components/ui-ai/conversation";
-import { Message, MessageActions, MessageContent, MessageCopyAction, MessageEditAction, MessageRegenerateAction, MessageResponse, MessageVoteActions } from "@/components/ui-ai/message";
-import { ArtifactCard, type ArtifactKind } from "@/components/ui-ai/artifact";
-import { AdsReasoningTrigger, Reasoning, ReasoningContent } from "@/components/ui-ai/reasoning";
+import { Attachment, AttachmentPreview, Attachments } from "@/components/ui-custom/attachments";
+import { Conversation, ConversationContent, ConversationScrollButton, type ConversationFollowMode, useConversationContext } from "@/components/ui-custom/conversation";
+import { Message, MessageActions, MessageContent, MessageCopyAction, MessageEditAction, MessageRegenerateAction, MessageResponse, MessageVoteActions } from "@/components/ui-custom/message";
+import { ArtifactCard, type ArtifactKind } from "@/components/ui-custom/artifact";
+import { AdsReasoningTrigger, Reasoning, ReasoningContent } from "@/components/ui-custom/reasoning";
 import { Button } from "@/components/ui/button";
 import { InlineEdit } from "@/components/ui/inline-edit";
 import { getRovoAppInterruptionLabel } from "@/lib/rovo-app-interruptions";

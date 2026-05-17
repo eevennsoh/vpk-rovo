@@ -1,0 +1,124 @@
+"use client";
+
+import { tool } from "ai";
+import { z } from "zod";
+import {
+	Agent,
+	AgentContent,
+	AgentHeader,
+	AgentInstructions,
+	AgentOutput,
+	AgentTool,
+	AgentTools,
+} from "@/components/ui-custom/agent";
+
+const webSearch = tool({
+	description: "Search the web for information",
+	inputSchema: z.object({
+		query: z.string().describe("The search query"),
+	}),
+});
+
+const readUrl = tool({
+	description: "Read and parse content from a URL",
+	inputSchema: z.object({
+		url: z.string().describe("The URL to read"),
+	}),
+});
+
+const executeCode = tool({
+	description: "Execute a code snippet in a sandboxed environment",
+	inputSchema: z.object({
+		code: z.string().describe("The code to execute"),
+		language: z
+			.enum(["javascript", "python", "typescript"])
+			.describe("The programming language"),
+	}),
+});
+
+const queryDatabase = tool({
+	description: "Run a read-only SQL query against the database",
+	inputSchema: z.object({
+		query: z.string().describe("The SQL query to execute"),
+		database: z.string().describe("Target database name"),
+	}),
+});
+
+const outputSchema = `z.object({
+  sentiment: z.enum(['positive', 'negative', 'neutral']),
+  score: z.number(),
+  summary: z.string(),
+})`;
+
+export function AgentDemoFull() {
+	return (
+		<Agent className="w-full">
+			<AgentHeader
+				name="Sentiment Analyzer"
+				model="anthropic/claude-sonnet-4-5"
+			/>
+			<AgentContent>
+				<AgentInstructions>
+					Analyze the sentiment of the provided text and return a structured
+					analysis with sentiment classification, confidence score, and summary.
+				</AgentInstructions>
+				<AgentTools multiple>
+					<AgentTool tool={webSearch} value="web_search" />
+					<AgentTool tool={readUrl} value="read_url" />
+				</AgentTools>
+				<AgentOutput schema={outputSchema} />
+			</AgentContent>
+		</Agent>
+	);
+}
+
+export function AgentDemoWithTools() {
+	return (
+		<Agent className="w-full">
+			<AgentHeader
+				name="Code Assistant"
+				model="anthropic/claude-sonnet-4-5"
+			/>
+			<AgentContent>
+				<AgentTools multiple>
+					<AgentTool tool={executeCode} value="execute_code" />
+					<AgentTool tool={queryDatabase} value="query_database" />
+					<AgentTool tool={webSearch} value="web_search" />
+				</AgentTools>
+			</AgentContent>
+		</Agent>
+	);
+}
+
+export function AgentDemoWithOutput() {
+	return (
+		<Agent className="w-full">
+			<AgentHeader
+				name="Data Classifier"
+				model="anthropic/claude-haiku-3-5"
+			/>
+			<AgentContent>
+				<AgentInstructions>
+					Classify incoming data records into predefined categories and return
+					structured results with confidence scores.
+				</AgentInstructions>
+				<AgentOutput schema={outputSchema} />
+			</AgentContent>
+		</Agent>
+	);
+}
+
+export function AgentDemoMinimal() {
+	return (
+		<Agent className="w-full">
+			<AgentHeader
+				name="Research Assistant"
+				model="anthropic/claude-opus-4"
+			/>
+		</Agent>
+	);
+}
+
+export default function AgentDemo() {
+	return <AgentDemoFull />;
+}

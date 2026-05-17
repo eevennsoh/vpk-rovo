@@ -5,12 +5,12 @@ import {
 	MessageCopyAction,
 	MessageEditAction,
 	MessageResponse,
-} from "@/components/ui-ai/message";
+} from "@/components/ui-custom/message";
 import {
 	Attachment,
 	AttachmentPreview,
 	Attachments,
-} from "@/components/ui-ai/attachments";
+} from "@/components/ui-custom/attachments";
 import { AnswerCard } from "@/components/blocks/answer-card/components/answer-card";
 import { Button } from "@/components/ui/button";
 import { InlineEdit } from "@/components/ui/inline-edit";

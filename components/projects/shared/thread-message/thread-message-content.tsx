@@ -8,7 +8,7 @@ import {
 import {
 	MessageContent,
 	MessageResponse,
-} from "@/components/ui-ai/message";
+} from "@/components/ui-custom/message";
 import { ThreadMessageContext } from "./thread-message-context";
 
 export function ThreadMessageContent(): ReactNode {

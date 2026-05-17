@@ -4,7 +4,7 @@ import {
 	PromptInputActionAddAttachments,
 	PromptInputActionAddScreenshot,
 	PromptInputActionMenuItem,
-} from "@/components/ui-ai/prompt-input";
+} from "@/components/ui-custom/prompt-input";
 import AddIcon from "@atlaskit/icon/core/add";
 import LinkIcon from "@atlaskit/icon/core/link";
 import MentionIcon from "@atlaskit/icon/core/mention";

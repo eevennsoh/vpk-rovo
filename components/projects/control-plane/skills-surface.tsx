@@ -16,7 +16,7 @@ import {
 	FileTreeFolder,
 	FileTreeIcon,
 	FileTreeName,
-} from "@/components/ui-ai/file-tree";
+} from "@/components/ui-custom/file-tree";
 import type {
 	HermesHubInspectResult,
 	HermesHubSkill,

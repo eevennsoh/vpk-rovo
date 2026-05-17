@@ -1,3 +1,3 @@
 "use client";
 
-export { PlanTabContent, type PlanTabContentProps } from "@/components/ui-ai/plan";
+export { PlanTabContent, type PlanTabContentProps } from "@/components/ui-custom/plan";

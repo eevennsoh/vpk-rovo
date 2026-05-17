@@ -207,126 +207,126 @@ const UI_AUDIO_DEMO: Record<string, ComponentType> = {
   }),
 };
 
-const UI_AI_DEMO: Record<string, ComponentType> = {
-  agent: dynamic(() => import("./demos/ui-ai/agent-demo"), { ssr: false }),
-  "animated-dots": dynamic(() => import("./demos/ui-ai/animated-dots-demo"), {
+const UI_CUSTOM_DEMO: Record<string, ComponentType> = {
+  agent: dynamic(() => import("./demos/ui-custom/agent-demo"), { ssr: false }),
+  "animated-dots": dynamic(() => import("./demos/ui-custom/animated-dots-demo"), {
     ssr: false,
   }),
-  artifact: dynamic(() => import("./demos/ui-ai/artifact-demo"), {
+  artifact: dynamic(() => import("./demos/ui-custom/artifact-demo"), {
     ssr: false,
   }),
-  attachments: dynamic(() => import("./demos/ui-ai/attachments-demo"), {
+  attachments: dynamic(() => import("./demos/ui-custom/attachments-demo"), {
     ssr: false,
   }),
-  "audio-player": dynamic(() => import("./demos/ui-ai/audio-player-demo"), {
+  "audio-player": dynamic(() => import("./demos/ui-custom/audio-player-demo"), {
     ssr: false,
   }),
-  canvas: dynamic(() => import("./demos/ui-ai/canvas-demo"), { ssr: false }),
+  canvas: dynamic(() => import("./demos/ui-custom/canvas-demo"), { ssr: false }),
   "chain-of-thought": dynamic(
-    () => import("./demos/ui-ai/chain-of-thought-demo"),
+    () => import("./demos/ui-custom/chain-of-thought-demo"),
     { ssr: false },
   ),
-  checkpoint: dynamic(() => import("./demos/ui-ai/checkpoint-demo"), {
+  checkpoint: dynamic(() => import("./demos/ui-custom/checkpoint-demo"), {
     ssr: false,
   }),
-  "code-block": dynamic(() => import("./demos/ui-ai/code-block-demo"), {
+  "code-block": dynamic(() => import("./demos/ui-custom/code-block-demo"), {
     ssr: false,
   }),
-  commit: dynamic(() => import("./demos/ui-ai/commit-demo"), { ssr: false }),
-  confirmation: dynamic(() => import("./demos/ui-ai/confirmation-demo"), {
+  commit: dynamic(() => import("./demos/ui-custom/commit-demo"), { ssr: false }),
+  confirmation: dynamic(() => import("./demos/ui-custom/confirmation-demo"), {
     ssr: false,
   }),
-  connection: dynamic(() => import("./demos/ui-ai/connection-demo"), {
+  connection: dynamic(() => import("./demos/ui-custom/connection-demo"), {
     ssr: false,
   }),
-  context: dynamic(() => import("./demos/ui-ai/context-demo"), { ssr: false }),
-  controls: dynamic(() => import("./demos/ui-ai/controls-demo"), {
+  context: dynamic(() => import("./demos/ui-custom/context-demo"), { ssr: false }),
+  controls: dynamic(() => import("./demos/ui-custom/controls-demo"), {
     ssr: false,
   }),
-  conversation: dynamic(() => import("./demos/ui-ai/conversation-demo"), {
+  conversation: dynamic(() => import("./demos/ui-custom/conversation-demo"), {
     ssr: false,
   }),
-  edge: dynamic(() => import("./demos/ui-ai/edge-demo"), { ssr: false }),
+  edge: dynamic(() => import("./demos/ui-custom/edge-demo"), { ssr: false }),
   "environment-variables": dynamic(
-    () => import("./demos/ui-ai/environment-variables-demo"),
+    () => import("./demos/ui-custom/environment-variables-demo"),
     { ssr: false },
   ),
-  "file-tree": dynamic(() => import("./demos/ui-ai/file-tree-demo"), {
+  "file-tree": dynamic(() => import("./demos/ui-custom/file-tree-demo"), {
     ssr: false,
   }),
-  image: dynamic(() => import("./demos/ui-ai/image-demo"), { ssr: false }),
+  image: dynamic(() => import("./demos/ui-custom/image-demo"), { ssr: false }),
   "inline-citation": dynamic(
-    () => import("./demos/ui-ai/inline-citation-demo"),
+    () => import("./demos/ui-custom/inline-citation-demo"),
     { ssr: false },
   ),
-  "jsx-preview": dynamic(() => import("./demos/ui-ai/jsx-preview-demo"), {
+  "jsx-preview": dynamic(() => import("./demos/ui-custom/jsx-preview-demo"), {
     ssr: false,
   }),
-  message: dynamic(() => import("./demos/ui-ai/message-demo"), { ssr: false }),
-  "mic-selector": dynamic(() => import("./demos/ui-ai/mic-selector-demo"), {
+  message: dynamic(() => import("./demos/ui-custom/message-demo"), { ssr: false }),
+  "mic-selector": dynamic(() => import("./demos/ui-custom/mic-selector-demo"), {
     ssr: false,
   }),
-  "model-selector": dynamic(() => import("./demos/ui-ai/model-selector-demo"), {
+  "model-selector": dynamic(() => import("./demos/ui-custom/model-selector-demo"), {
     ssr: false,
   }),
-  node: dynamic(() => import("./demos/ui-ai/node-demo"), { ssr: false }),
-  "open-in-chat": dynamic(() => import("./demos/ui-ai/open-in-chat-demo"), {
+  node: dynamic(() => import("./demos/ui-custom/node-demo"), { ssr: false }),
+  "open-in-chat": dynamic(() => import("./demos/ui-custom/open-in-chat-demo"), {
     ssr: false,
   }),
-  "package-info": dynamic(() => import("./demos/ui-ai/package-info-demo"), {
+  "package-info": dynamic(() => import("./demos/ui-custom/package-info-demo"), {
     ssr: false,
   }),
-  panel: dynamic(() => import("./demos/ui-ai/panel-demo"), { ssr: false }),
-  persona: dynamic(() => import("./demos/ui-ai/persona-demo"), { ssr: false }),
-  plan: dynamic(() => import("./demos/ui-ai/plan-demo"), { ssr: false }),
-  "prompt-input": dynamic(() => import("./demos/ui-ai/prompt-input-demo"), {
+  panel: dynamic(() => import("./demos/ui-custom/panel-demo"), { ssr: false }),
+  persona: dynamic(() => import("./demos/ui-custom/persona-demo"), { ssr: false }),
+  plan: dynamic(() => import("./demos/ui-custom/plan-demo"), { ssr: false }),
+  "prompt-input": dynamic(() => import("./demos/ui-custom/prompt-input-demo"), {
     ssr: false,
   }),
-  queue: dynamic(() => import("./demos/ui-ai/queue-demo"), { ssr: false }),
-  reasoning: dynamic(() => import("./demos/ui-ai/reasoning-demo"), {
+  queue: dynamic(() => import("./demos/ui-custom/queue-demo"), { ssr: false }),
+  reasoning: dynamic(() => import("./demos/ui-custom/reasoning-demo"), {
     ssr: false,
   }),
-  sandbox: dynamic(() => import("./demos/ui-ai/sandbox-demo"), { ssr: false }),
-  "schema-display": dynamic(() => import("./demos/ui-ai/schema-display-demo"), {
+  sandbox: dynamic(() => import("./demos/ui-custom/sandbox-demo"), { ssr: false }),
+  "schema-display": dynamic(() => import("./demos/ui-custom/schema-display-demo"), {
     ssr: false,
   }),
-  shimmer: dynamic(() => import("./demos/ui-ai/shimmer-demo"), { ssr: false }),
-  snippet: dynamic(() => import("./demos/ui-ai/snippet-demo"), { ssr: false }),
-  sources: dynamic(() => import("./demos/ui-ai/sources-demo"), { ssr: false }),
-  "speech-input": dynamic(() => import("./demos/ui-ai/speech-input-demo"), {
+  shimmer: dynamic(() => import("./demos/ui-custom/shimmer-demo"), { ssr: false }),
+  snippet: dynamic(() => import("./demos/ui-custom/snippet-demo"), { ssr: false }),
+  sources: dynamic(() => import("./demos/ui-custom/sources-demo"), { ssr: false }),
+  "speech-input": dynamic(() => import("./demos/ui-custom/speech-input-demo"), {
     ssr: false,
   }),
-  "stack-trace": dynamic(() => import("./demos/ui-ai/stack-trace-demo"), {
+  "stack-trace": dynamic(() => import("./demos/ui-custom/stack-trace-demo"), {
     ssr: false,
   }),
-  suggestion: dynamic(() => import("./demos/ui-ai/suggestion-demo"), {
+  suggestion: dynamic(() => import("./demos/ui-custom/suggestion-demo"), {
     ssr: false,
   }),
-  task: dynamic(() => import("./demos/ui-ai/task-demo"), { ssr: false }),
-  terminal: dynamic(() => import("./demos/ui-ai/terminal-demo"), {
+  task: dynamic(() => import("./demos/ui-custom/task-demo"), { ssr: false }),
+  terminal: dynamic(() => import("./demos/ui-custom/terminal-demo"), {
     ssr: false,
   }),
-  "test-results": dynamic(() => import("./demos/ui-ai/test-results-demo"), {
+  "test-results": dynamic(() => import("./demos/ui-custom/test-results-demo"), {
     ssr: false,
   }),
-  tool: dynamic(() => import("./demos/ui-ai/tool-demo"), { ssr: false }),
-  "twg-tool": dynamic(() => import("./demos/ui-ai/twg-tool-demo"), {
+  tool: dynamic(() => import("./demos/ui-custom/tool-demo"), { ssr: false }),
+  "twg-tool": dynamic(() => import("./demos/ui-custom/twg-tool-demo"), {
     ssr: false,
   }),
-  toolbar: dynamic(() => import("./demos/ui-ai/toolbar-demo"), { ssr: false }),
-  transcription: dynamic(() => import("./demos/ui-ai/transcription-demo"), {
+  toolbar: dynamic(() => import("./demos/ui-custom/toolbar-demo"), { ssr: false }),
+  transcription: dynamic(() => import("./demos/ui-custom/transcription-demo"), {
     ssr: false,
   }),
-  "voice-selector": dynamic(() => import("./demos/ui-ai/voice-selector-demo"), {
+  "voice-selector": dynamic(() => import("./demos/ui-custom/voice-selector-demo"), {
     ssr: false,
   }),
-  "web-preview": dynamic(() => import("./demos/ui-ai/web-preview-demo"), {
+  "web-preview": dynamic(() => import("./demos/ui-custom/web-preview-demo"), {
     ssr: false,
   }),
-  "animated-rovo": dynamic(() => import("./demos/ui-ai/animated-rovo-demo"), {
+  "animated-rovo": dynamic(() => import("./demos/ui-custom/animated-rovo-demo"), {
     ssr: false,
   }),
-  "morphing-rovo": dynamic(() => import("./demos/ui-ai/morphing-rovo-demo"), {
+  "morphing-rovo": dynamic(() => import("./demos/ui-custom/morphing-rovo-demo"), {
     ssr: false,
   }),
 };
@@ -5397,1225 +5397,1225 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
   ),
 };
 
-const UI_AI_VARIANT_DEMOS: Record<string, ComponentType> = {
+const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
   "audio-player-demo-full": dynamic(
     () =>
-      import("./demos/ui-ai/audio-player-demo").then((mod) => ({
+      import("./demos/ui-custom/audio-player-demo").then((mod) => ({
         default: mod.AudioPlayerDemoFull,
       })),
     { ssr: false },
   ),
   "audio-player-demo-compact": dynamic(
     () =>
-      import("./demos/ui-ai/audio-player-demo").then((mod) => ({
+      import("./demos/ui-custom/audio-player-demo").then((mod) => ({
         default: mod.AudioPlayerDemoCompact,
       })),
     { ssr: false },
   ),
   "audio-player-demo-with-volume": dynamic(
     () =>
-      import("./demos/ui-ai/audio-player-demo").then((mod) => ({
+      import("./demos/ui-custom/audio-player-demo").then((mod) => ({
         default: mod.AudioPlayerDemoWithVolume,
       })),
     { ssr: false },
   ),
   "agent-demo-full": dynamic(
     () =>
-      import("./demos/ui-ai/agent-demo").then((mod) => ({
+      import("./demos/ui-custom/agent-demo").then((mod) => ({
         default: mod.AgentDemoFull,
       })),
     { ssr: false },
   ),
   "agent-demo-with-tools": dynamic(
     () =>
-      import("./demos/ui-ai/agent-demo").then((mod) => ({
+      import("./demos/ui-custom/agent-demo").then((mod) => ({
         default: mod.AgentDemoWithTools,
       })),
     { ssr: false },
   ),
   "agent-demo-with-output": dynamic(
     () =>
-      import("./demos/ui-ai/agent-demo").then((mod) => ({
+      import("./demos/ui-custom/agent-demo").then((mod) => ({
         default: mod.AgentDemoWithOutput,
       })),
     { ssr: false },
   ),
   "agent-demo-minimal": dynamic(
     () =>
-      import("./demos/ui-ai/agent-demo").then((mod) => ({
+      import("./demos/ui-custom/agent-demo").then((mod) => ({
         default: mod.AgentDemoMinimal,
       })),
     { ssr: false },
   ),
   "animated-dots-demo-custom-colors": dynamic(
     () =>
-      import("./demos/ui-ai/animated-dots-demo").then((mod) => ({
+      import("./demos/ui-custom/animated-dots-demo").then((mod) => ({
         default: mod.AnimatedDotsDemoCustomColors,
       })),
     { ssr: false },
   ),
   "animated-dots-demo-timing": dynamic(
     () =>
-      import("./demos/ui-ai/animated-dots-demo").then((mod) => ({
+      import("./demos/ui-custom/animated-dots-demo").then((mod) => ({
         default: mod.AnimatedDotsDemoTiming,
       })),
     { ssr: false },
   ),
   "animated-dots-demo-sizes": dynamic(
     () =>
-      import("./demos/ui-ai/animated-dots-demo").then((mod) => ({
+      import("./demos/ui-custom/animated-dots-demo").then((mod) => ({
         default: mod.AnimatedDotsDemoSizes,
       })),
     { ssr: false },
   ),
   "animated-rovo-demo": dynamic(
-    () => import("./demos/ui-ai/animated-rovo-demo"),
+    () => import("./demos/ui-custom/animated-rovo-demo"),
     { ssr: false },
   ),
   "attachments-demo-grid": dynamic(
     () =>
-      import("./demos/ui-ai/attachments-demo").then((mod) => ({
+      import("./demos/ui-custom/attachments-demo").then((mod) => ({
         default: mod.AttachmentsDemoGrid,
       })),
     { ssr: false },
   ),
   "attachments-demo-inline": dynamic(
     () =>
-      import("./demos/ui-ai/attachments-demo").then((mod) => ({
+      import("./demos/ui-custom/attachments-demo").then((mod) => ({
         default: mod.AttachmentsDemoInline,
       })),
     { ssr: false },
   ),
   "attachments-demo-list": dynamic(
     () =>
-      import("./demos/ui-ai/attachments-demo").then((mod) => ({
+      import("./demos/ui-custom/attachments-demo").then((mod) => ({
         default: mod.AttachmentsDemoList,
       })),
     { ssr: false },
   ),
   "attachments-demo-hover-card": dynamic(
     () =>
-      import("./demos/ui-ai/attachments-demo").then((mod) => ({
+      import("./demos/ui-custom/attachments-demo").then((mod) => ({
         default: mod.AttachmentsDemoHoverCard,
       })),
     { ssr: false },
   ),
   "attachments-demo-read-only": dynamic(
     () =>
-      import("./demos/ui-ai/attachments-demo").then((mod) => ({
+      import("./demos/ui-custom/attachments-demo").then((mod) => ({
         default: mod.AttachmentsDemoReadOnly,
       })),
     { ssr: false },
   ),
   "attachments-demo-empty": dynamic(
     () =>
-      import("./demos/ui-ai/attachments-demo").then((mod) => ({
+      import("./demos/ui-custom/attachments-demo").then((mod) => ({
         default: mod.AttachmentsDemoEmpty,
       })),
     { ssr: false },
   ),
   "artifact-demo-code-preview": dynamic(
     () =>
-      import("./demos/ui-ai/artifact-demo").then((mod) => ({
+      import("./demos/ui-custom/artifact-demo").then((mod) => ({
         default: mod.ArtifactDemoCodePreview,
       })),
     { ssr: false },
   ),
   "artifact-demo-image-preview": dynamic(
     () =>
-      import("./demos/ui-ai/artifact-demo").then((mod) => ({
+      import("./demos/ui-custom/artifact-demo").then((mod) => ({
         default: mod.ArtifactDemoImagePreview,
       })),
     { ssr: false },
   ),
   "artifact-demo-streaming": dynamic(
     () =>
-      import("./demos/ui-ai/artifact-demo").then((mod) => ({
+      import("./demos/ui-custom/artifact-demo").then((mod) => ({
         default: mod.ArtifactDemoStreaming,
       })),
     { ssr: false },
   ),
   "artifact-demo-chip": dynamic(
     () =>
-      import("./demos/ui-ai/artifact-demo").then((mod) => ({
+      import("./demos/ui-custom/artifact-demo").then((mod) => ({
         default: mod.ArtifactDemoChip,
       })),
     { ssr: false },
   ),
   "artifact-demo-compound": dynamic(
     () =>
-      import("./demos/ui-ai/artifact-demo").then((mod) => ({
+      import("./demos/ui-custom/artifact-demo").then((mod) => ({
         default: mod.ArtifactDemoCompound,
       })),
     { ssr: false },
   ),
   "checkpoint-demo-conversation": dynamic(
     () =>
-      import("./demos/ui-ai/checkpoint-demo").then((mod) => ({
+      import("./demos/ui-custom/checkpoint-demo").then((mod) => ({
         default: mod.CheckpointDemoConversation,
       })),
     { ssr: false },
   ),
   "checkpoint-demo-basic": dynamic(
     () =>
-      import("./demos/ui-ai/checkpoint-demo").then((mod) => ({
+      import("./demos/ui-custom/checkpoint-demo").then((mod) => ({
         default: mod.CheckpointDemoBasic,
       })),
     { ssr: false },
   ),
   "checkpoint-demo-with-tooltip": dynamic(
     () =>
-      import("./demos/ui-ai/checkpoint-demo").then((mod) => ({
+      import("./demos/ui-custom/checkpoint-demo").then((mod) => ({
         default: mod.CheckpointDemoWithTooltip,
       })),
     { ssr: false },
   ),
   "checkpoint-demo-custom-icon": dynamic(
     () =>
-      import("./demos/ui-ai/checkpoint-demo").then((mod) => ({
+      import("./demos/ui-custom/checkpoint-demo").then((mod) => ({
         default: mod.CheckpointDemoCustomIcon,
       })),
     { ssr: false },
   ),
   "commit-demo-full": dynamic(
     () =>
-      import("./demos/ui-ai/commit-demo").then((mod) => ({
+      import("./demos/ui-custom/commit-demo").then((mod) => ({
         default: mod.CommitDemoFull,
       })),
     { ssr: false },
   ),
   "commit-demo-with-files": dynamic(
     () =>
-      import("./demos/ui-ai/commit-demo").then((mod) => ({
+      import("./demos/ui-custom/commit-demo").then((mod) => ({
         default: mod.CommitDemoWithFiles,
       })),
     { ssr: false },
   ),
   "commit-demo-minimal": dynamic(
     () =>
-      import("./demos/ui-ai/commit-demo").then((mod) => ({
+      import("./demos/ui-custom/commit-demo").then((mod) => ({
         default: mod.CommitDemoMinimal,
       })),
     { ssr: false },
   ),
   "commit-demo-multiple": dynamic(
     () =>
-      import("./demos/ui-ai/commit-demo").then((mod) => ({
+      import("./demos/ui-custom/commit-demo").then((mod) => ({
         default: mod.CommitDemoMultiple,
       })),
     { ssr: false },
   ),
   "confirmation-demo-request": dynamic(
     () =>
-      import("./demos/ui-ai/confirmation-demo").then((mod) => ({
+      import("./demos/ui-custom/confirmation-demo").then((mod) => ({
         default: mod.ConfirmationDemoRequest,
       })),
     { ssr: false },
   ),
   "confirmation-demo-accepted": dynamic(
     () =>
-      import("./demos/ui-ai/confirmation-demo").then((mod) => ({
+      import("./demos/ui-custom/confirmation-demo").then((mod) => ({
         default: mod.ConfirmationDemoAccepted,
       })),
     { ssr: false },
   ),
   "confirmation-demo-rejected": dynamic(
     () =>
-      import("./demos/ui-ai/confirmation-demo").then((mod) => ({
+      import("./demos/ui-custom/confirmation-demo").then((mod) => ({
         default: mod.ConfirmationDemoRejected,
       })),
     { ssr: false },
   ),
   "confirmation-demo-interactive": dynamic(
     () =>
-      import("./demos/ui-ai/confirmation-demo").then((mod) => ({
+      import("./demos/ui-custom/confirmation-demo").then((mod) => ({
         default: mod.ConfirmationDemoInteractive,
       })),
     { ssr: false },
   ),
   "confirmation-demo-variants": dynamic(
     () =>
-      import("./demos/ui-ai/confirmation-demo").then((mod) => ({
+      import("./demos/ui-custom/confirmation-demo").then((mod) => ({
         default: mod.ConfirmationDemoVariants,
       })),
     { ssr: false },
   ),
   "context-demo-with-cost": dynamic(
     () =>
-      import("./demos/ui-ai/context-demo").then((mod) => ({
+      import("./demos/ui-custom/context-demo").then((mod) => ({
         default: mod.ContextDemoWithCost,
       })),
     { ssr: false },
   ),
   "context-demo-minimal": dynamic(
     () =>
-      import("./demos/ui-ai/context-demo").then((mod) => ({
+      import("./demos/ui-custom/context-demo").then((mod) => ({
         default: mod.ContextDemoMinimal,
       })),
     { ssr: false },
   ),
   "context-demo-high-usage": dynamic(
     () =>
-      import("./demos/ui-ai/context-demo").then((mod) => ({
+      import("./demos/ui-custom/context-demo").then((mod) => ({
         default: mod.ContextDemoHighUsage,
       })),
     { ssr: false },
   ),
   "context-demo-custom-trigger": dynamic(
     () =>
-      import("./demos/ui-ai/context-demo").then((mod) => ({
+      import("./demos/ui-custom/context-demo").then((mod) => ({
         default: mod.ContextDemoCustomTrigger,
       })),
     { ssr: false },
   ),
   "environment-variables-demo-with-copy": dynamic(
     () =>
-      import("./demos/ui-ai/environment-variables-demo").then((mod) => ({
+      import("./demos/ui-custom/environment-variables-demo").then((mod) => ({
         default: mod.EnvironmentVariablesDemoWithCopy,
       })),
     { ssr: false },
   ),
   "environment-variables-demo-with-required": dynamic(
     () =>
-      import("./demos/ui-ai/environment-variables-demo").then((mod) => ({
+      import("./demos/ui-custom/environment-variables-demo").then((mod) => ({
         default: mod.EnvironmentVariablesDemoWithRequired,
       })),
     { ssr: false },
   ),
   "environment-variables-demo-revealed": dynamic(
     () =>
-      import("./demos/ui-ai/environment-variables-demo").then((mod) => ({
+      import("./demos/ui-custom/environment-variables-demo").then((mod) => ({
         default: mod.EnvironmentVariablesDemoRevealed,
       })),
     { ssr: false },
   ),
   "environment-variables-demo-minimal": dynamic(
     () =>
-      import("./demos/ui-ai/environment-variables-demo").then((mod) => ({
+      import("./demos/ui-custom/environment-variables-demo").then((mod) => ({
         default: mod.EnvironmentVariablesDemoMinimal,
       })),
     { ssr: false },
   ),
   "controls-demo-default": dynamic(
     () =>
-      import("./demos/ui-ai/controls-demo").then((mod) => ({
+      import("./demos/ui-custom/controls-demo").then((mod) => ({
         default: mod.ControlsDemoDefault,
       })),
     { ssr: false },
   ),
   "controls-demo-position": dynamic(
     () =>
-      import("./demos/ui-ai/controls-demo").then((mod) => ({
+      import("./demos/ui-custom/controls-demo").then((mod) => ({
         default: mod.ControlsDemoPosition,
       })),
     { ssr: false },
   ),
   "controls-demo-zoom-only": dynamic(
     () =>
-      import("./demos/ui-ai/controls-demo").then((mod) => ({
+      import("./demos/ui-custom/controls-demo").then((mod) => ({
         default: mod.ControlsDemoZoomOnly,
       })),
     { ssr: false },
   ),
   "controls-demo-fit-only": dynamic(
     () =>
-      import("./demos/ui-ai/controls-demo").then((mod) => ({
+      import("./demos/ui-custom/controls-demo").then((mod) => ({
         default: mod.ControlsDemoFitOnly,
       })),
     { ssr: false },
   ),
   "edge-demo-animated": dynamic(
     () =>
-      import("./demos/ui-ai/edge-demo").then((mod) => ({
+      import("./demos/ui-custom/edge-demo").then((mod) => ({
         default: mod.EdgeDemoAnimated,
       })),
     { ssr: false },
   ),
   "edge-demo-temporary": dynamic(
     () =>
-      import("./demos/ui-ai/edge-demo").then((mod) => ({
+      import("./demos/ui-custom/edge-demo").then((mod) => ({
         default: mod.EdgeDemoTemporary,
       })),
     { ssr: false },
   ),
   "edge-demo-mixed": dynamic(
     () =>
-      import("./demos/ui-ai/edge-demo").then((mod) => ({
+      import("./demos/ui-custom/edge-demo").then((mod) => ({
         default: mod.EdgeDemoMixed,
       })),
     { ssr: false },
   ),
   "file-tree-demo-project": dynamic(
     () =>
-      import("./demos/ui-ai/file-tree-demo").then((mod) => ({
+      import("./demos/ui-custom/file-tree-demo").then((mod) => ({
         default: mod.FileTreeDemoProject,
       })),
     { ssr: false },
   ),
   "file-tree-demo-with-selection": dynamic(
     () =>
-      import("./demos/ui-ai/file-tree-demo").then((mod) => ({
+      import("./demos/ui-custom/file-tree-demo").then((mod) => ({
         default: mod.FileTreeDemoWithSelection,
       })),
     { ssr: false },
   ),
   "file-tree-demo-custom-icons": dynamic(
     () =>
-      import("./demos/ui-ai/file-tree-demo").then((mod) => ({
+      import("./demos/ui-custom/file-tree-demo").then((mod) => ({
         default: mod.FileTreeDemoCustomIcons,
       })),
     { ssr: false },
   ),
   "file-tree-demo-with-actions": dynamic(
     () =>
-      import("./demos/ui-ai/file-tree-demo").then((mod) => ({
+      import("./demos/ui-custom/file-tree-demo").then((mod) => ({
         default: mod.FileTreeDemoWithActions,
       })),
     { ssr: false },
   ),
   "code-block-demo-ads-basic": dynamic(
     () =>
-      import("./demos/ui-ai/code-block-demo").then((mod) => ({
+      import("./demos/ui-custom/code-block-demo").then((mod) => ({
         default: mod.CodeBlockDemoAdsBasic,
       })),
     { ssr: false },
   ),
   "code-block-demo-ads-line-numbers": dynamic(
     () =>
-      import("./demos/ui-ai/code-block-demo").then((mod) => ({
+      import("./demos/ui-custom/code-block-demo").then((mod) => ({
         default: mod.CodeBlockDemoAdsLineNumbers,
       })),
     { ssr: false },
   ),
   "code-block-demo-ads-shell": dynamic(
     () =>
-      import("./demos/ui-ai/code-block-demo").then((mod) => ({
+      import("./demos/ui-custom/code-block-demo").then((mod) => ({
         default: mod.CodeBlockDemoAdsShell,
       })),
     { ssr: false },
   ),
   "code-block-demo-ads-language-selector": dynamic(
     () =>
-      import("./demos/ui-ai/code-block-demo").then((mod) => ({
+      import("./demos/ui-custom/code-block-demo").then((mod) => ({
         default: mod.CodeBlockDemoAdsLanguageSelector,
       })),
     { ssr: false },
   ),
   "chain-of-thought-demo-preload": dynamic(
     () =>
-      import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
+      import("./demos/ui-custom/chain-of-thought-demo").then((mod) => ({
         default: mod.ChainOfThoughtDemoPreload,
       })),
     { ssr: false },
   ),
   "chain-of-thought-demo-thinking": dynamic(
     () =>
-      import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
+      import("./demos/ui-custom/chain-of-thought-demo").then((mod) => ({
         default: mod.ChainOfThoughtDemoThinking,
       })),
     { ssr: false },
   ),
   "chain-of-thought-demo-completed": dynamic(
     () =>
-      import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
+      import("./demos/ui-custom/chain-of-thought-demo").then((mod) => ({
         default: mod.ChainOfThoughtDemoCompleted,
       })),
     { ssr: false },
   ),
   "chain-of-thought-demo-status-variants": dynamic(
     () =>
-      import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
+      import("./demos/ui-custom/chain-of-thought-demo").then((mod) => ({
         default: mod.ChainOfThoughtDemoStatusVariants,
       })),
     { ssr: false },
   ),
   "chain-of-thought-demo-search-results": dynamic(
     () =>
-      import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
+      import("./demos/ui-custom/chain-of-thought-demo").then((mod) => ({
         default: mod.ChainOfThoughtDemoSearchResults,
       })),
     { ssr: false },
   ),
   "chain-of-thought-demo-image-step": dynamic(
     () =>
-      import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
+      import("./demos/ui-custom/chain-of-thought-demo").then((mod) => ({
         default: mod.ChainOfThoughtDemoImageStep,
       })),
     { ssr: false },
   ),
   "chain-of-thought-demo-tool-icon-table": dynamic(
     () =>
-      import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
+      import("./demos/ui-custom/chain-of-thought-demo").then((mod) => ({
         default: mod.ChainOfThoughtDemoToolIconTable,
       })),
     { ssr: false },
   ),
   "canvas-demo-workflow": dynamic(
     () =>
-      import("./demos/ui-ai/canvas-demo").then((mod) => ({
+      import("./demos/ui-custom/canvas-demo").then((mod) => ({
         default: mod.CanvasDemoWorkflow,
       })),
     { ssr: false },
   ),
   "canvas-demo-minimal": dynamic(
     () =>
-      import("./demos/ui-ai/canvas-demo").then((mod) => ({
+      import("./demos/ui-custom/canvas-demo").then((mod) => ({
         default: mod.CanvasDemoMinimal,
       })),
     { ssr: false },
   ),
   "canvas-demo-with-controls": dynamic(
     () =>
-      import("./demos/ui-ai/canvas-demo").then((mod) => ({
+      import("./demos/ui-custom/canvas-demo").then((mod) => ({
         default: mod.CanvasDemoWithControls,
       })),
     { ssr: false },
   ),
   "canvas-demo-with-panel": dynamic(
     () =>
-      import("./demos/ui-ai/canvas-demo").then((mod) => ({
+      import("./demos/ui-custom/canvas-demo").then((mod) => ({
         default: mod.CanvasDemoWithPanel,
       })),
     { ssr: false },
   ),
   "canvas-demo-with-toolbar": dynamic(
     () =>
-      import("./demos/ui-ai/canvas-demo").then((mod) => ({
+      import("./demos/ui-custom/canvas-demo").then((mod) => ({
         default: mod.CanvasDemoWithToolbar,
       })),
     { ssr: false },
   ),
   "toolbar-demo-with-nodes": dynamic(
     () =>
-      import("./demos/ui-ai/toolbar-demo").then((mod) => ({
+      import("./demos/ui-custom/toolbar-demo").then((mod) => ({
         default: mod.ToolbarDemoWithNodes,
       })),
     { ssr: false },
   ),
   "image-demo-custom-styling": dynamic(
     () =>
-      import("./demos/ui-ai/image-demo").then((mod) => ({
+      import("./demos/ui-custom/image-demo").then((mod) => ({
         default: mod.ImageDemoCustomStyling,
       })),
     { ssr: false },
   ),
   "image-demo-gallery": dynamic(
     () =>
-      import("./demos/ui-ai/image-demo").then((mod) => ({
+      import("./demos/ui-custom/image-demo").then((mod) => ({
         default: mod.ImageDemoGallery,
       })),
     { ssr: false },
   ),
   "image-demo-in-message": dynamic(
     () =>
-      import("./demos/ui-ai/image-demo").then((mod) => ({
+      import("./demos/ui-custom/image-demo").then((mod) => ({
         default: mod.ImageDemoInMessage,
       })),
     { ssr: false },
   ),
   "jsx-preview-demo-basic": dynamic(
     () =>
-      import("./demos/ui-ai/jsx-preview-demo").then((mod) => ({
+      import("./demos/ui-custom/jsx-preview-demo").then((mod) => ({
         default: mod.JsxPreviewDemoBasic,
       })),
     { ssr: false },
   ),
   "jsx-preview-demo-streaming": dynamic(
     () =>
-      import("./demos/ui-ai/jsx-preview-demo").then((mod) => ({
+      import("./demos/ui-custom/jsx-preview-demo").then((mod) => ({
         default: mod.JsxPreviewDemoStreaming,
       })),
     { ssr: false },
   ),
   "jsx-preview-demo-with-components": dynamic(
     () =>
-      import("./demos/ui-ai/jsx-preview-demo").then((mod) => ({
+      import("./demos/ui-custom/jsx-preview-demo").then((mod) => ({
         default: mod.JsxPreviewDemoWithComponents,
       })),
     { ssr: false },
   ),
   "jsx-preview-demo-with-error": dynamic(
     () =>
-      import("./demos/ui-ai/jsx-preview-demo").then((mod) => ({
+      import("./demos/ui-custom/jsx-preview-demo").then((mod) => ({
         default: mod.JsxPreviewDemoWithError,
       })),
     { ssr: false },
   ),
   "jsx-preview-demo-custom-error": dynamic(
     () =>
-      import("./demos/ui-ai/jsx-preview-demo").then((mod) => ({
+      import("./demos/ui-custom/jsx-preview-demo").then((mod) => ({
         default: mod.JsxPreviewDemoCustomError,
       })),
     { ssr: false },
   ),
   "prompt-input-demo-chat-composer": dynamic(
     () =>
-      import("./demos/ui-ai/prompt-input-demo").then((mod) => ({
+      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
         default: mod.PromptInputDemoChatComposer,
       })),
     { ssr: false },
   ),
   "prompt-input-demo-cursor-style": dynamic(
     () =>
-      import("./demos/ui-ai/prompt-input-demo").then((mod) => ({
+      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
         default: mod.PromptInputDemoCursorStyle,
       })),
     { ssr: false },
   ),
   "prompt-input-demo-button-tooltips": dynamic(
     () =>
-      import("./demos/ui-ai/prompt-input-demo").then((mod) => ({
+      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
         default: mod.PromptInputDemoButtonTooltips,
       })),
     { ssr: false },
   ),
   "prompt-input-demo-action-menu": dynamic(
     () =>
-      import("./demos/ui-ai/prompt-input-demo").then((mod) => ({
+      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
         default: mod.PromptInputDemoActionMenu,
       })),
     { ssr: false },
   ),
   "prompt-input-demo-submit-status": dynamic(
     () =>
-      import("./demos/ui-ai/prompt-input-demo").then((mod) => ({
+      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
         default: mod.PromptInputDemoSubmitStatus,
       })),
     { ssr: false },
   ),
   "prompt-input-demo-model-select": dynamic(
     () =>
-      import("./demos/ui-ai/prompt-input-demo").then((mod) => ({
+      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
         default: mod.PromptInputDemoModelSelect,
       })),
     { ssr: false },
   ),
   "prompt-input-demo-provider-controlled": dynamic(
     () =>
-      import("./demos/ui-ai/prompt-input-demo").then((mod) => ({
+      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
         default: mod.PromptInputDemoProviderControlled,
       })),
     { ssr: false },
   ),
   "prompt-input-demo-floating-bar": dynamic(
     () =>
-      import("./demos/ui-ai/prompt-input-demo").then((mod) => ({
+      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
         default: mod.PromptInputDemoFloatingBar,
       })),
     { ssr: false },
   ),
   "queue-demo-prompt-queue": dynamic(
     () =>
-      import("./demos/ui-ai/queue-demo").then((mod) => ({
+      import("./demos/ui-custom/queue-demo").then((mod) => ({
         default: mod.QueueDemoPromptQueue,
       })),
     { ssr: false },
   ),
   "queue-demo-with-actions": dynamic(
     () =>
-      import("./demos/ui-ai/queue-demo").then((mod) => ({
+      import("./demos/ui-custom/queue-demo").then((mod) => ({
         default: mod.QueueDemoWithActions,
       })),
     { ssr: false },
   ),
   "queue-demo-with-attachments": dynamic(
     () =>
-      import("./demos/ui-ai/queue-demo").then((mod) => ({
+      import("./demos/ui-custom/queue-demo").then((mod) => ({
         default: mod.QueueDemoWithAttachments,
       })),
     { ssr: false },
   ),
   "queue-demo-minimal": dynamic(
     () =>
-      import("./demos/ui-ai/queue-demo").then((mod) => ({
+      import("./demos/ui-custom/queue-demo").then((mod) => ({
         default: mod.QueueDemoMinimal,
       })),
     { ssr: false },
   ),
   "reasoning-demo-preload": dynamic(
     () =>
-      import("./demos/ui-ai/reasoning-demo").then((mod) => ({
+      import("./demos/ui-custom/reasoning-demo").then((mod) => ({
         default: mod.ReasoningDemoPreload,
       })),
     { ssr: false },
   ),
   "reasoning-demo-thinking": dynamic(
     () =>
-      import("./demos/ui-ai/reasoning-demo").then((mod) => ({
+      import("./demos/ui-custom/reasoning-demo").then((mod) => ({
         default: mod.ReasoningDemoThinking,
       })),
     { ssr: false },
   ),
   "reasoning-demo-completed": dynamic(
     () =>
-      import("./demos/ui-ai/reasoning-demo").then((mod) => ({
+      import("./demos/ui-custom/reasoning-demo").then((mod) => ({
         default: mod.ReasoningDemoCompleted,
       })),
     { ssr: false },
   ),
   "sandbox-demo-running": dynamic(
     () =>
-      import("./demos/ui-ai/sandbox-demo").then((mod) => ({
+      import("./demos/ui-custom/sandbox-demo").then((mod) => ({
         default: mod.SandboxDemoRunning,
       })),
     { ssr: false },
   ),
   "sandbox-demo-error": dynamic(
     () =>
-      import("./demos/ui-ai/sandbox-demo").then((mod) => ({
+      import("./demos/ui-custom/sandbox-demo").then((mod) => ({
         default: mod.SandboxDemoError,
       })),
     { ssr: false },
   ),
   "sandbox-demo-collapsed": dynamic(
     () =>
-      import("./demos/ui-ai/sandbox-demo").then((mod) => ({
+      import("./demos/ui-custom/sandbox-demo").then((mod) => ({
         default: mod.SandboxDemoCollapsed,
       })),
     { ssr: false },
   ),
   "inline-citation-demo-with-carousel": dynamic(
     () =>
-      import("./demos/ui-ai/inline-citation-demo").then((mod) => ({
+      import("./demos/ui-custom/inline-citation-demo").then((mod) => ({
         default: mod.InlineCitationDemoWithCarousel,
       })),
     { ssr: false },
   ),
   "inline-citation-demo-basic": dynamic(
     () =>
-      import("./demos/ui-ai/inline-citation-demo").then((mod) => ({
+      import("./demos/ui-custom/inline-citation-demo").then((mod) => ({
         default: mod.InlineCitationDemoBasic,
       })),
     { ssr: false },
   ),
   "inline-citation-demo-multiple": dynamic(
     () =>
-      import("./demos/ui-ai/inline-citation-demo").then((mod) => ({
+      import("./demos/ui-custom/inline-citation-demo").then((mod) => ({
         default: mod.InlineCitationDemoMultiple,
       })),
     { ssr: false },
   ),
   "inline-citation-demo-single-source": dynamic(
     () =>
-      import("./demos/ui-ai/inline-citation-demo").then((mod) => ({
+      import("./demos/ui-custom/inline-citation-demo").then((mod) => ({
         default: mod.InlineCitationDemoSingleSource,
       })),
     { ssr: false },
   ),
   "mic-selector-demo-controlled": dynamic(
     () =>
-      import("./demos/ui-ai/mic-selector-demo").then((mod) => ({
+      import("./demos/ui-custom/mic-selector-demo").then((mod) => ({
         default: mod.MicSelectorDemoControlled,
       })),
     { ssr: false },
   ),
   "mic-selector-demo-with-checkmark": dynamic(
     () =>
-      import("./demos/ui-ai/mic-selector-demo").then((mod) => ({
+      import("./demos/ui-custom/mic-selector-demo").then((mod) => ({
         default: mod.MicSelectorDemoWithCheckmark,
       })),
     { ssr: false },
   ),
   "mic-selector-demo-compact": dynamic(
     () =>
-      import("./demos/ui-ai/mic-selector-demo").then((mod) => ({
+      import("./demos/ui-custom/mic-selector-demo").then((mod) => ({
         default: mod.MicSelectorDemoCompact,
       })),
     { ssr: false },
   ),
   "model-selector-demo-with-search": dynamic(
     () =>
-      import("./demos/ui-ai/model-selector-demo").then((mod) => ({
+      import("./demos/ui-custom/model-selector-demo").then((mod) => ({
         default: mod.ModelSelectorDemoWithSearch,
       })),
     { ssr: false },
   ),
   "model-selector-demo-with-logos": dynamic(
     () =>
-      import("./demos/ui-ai/model-selector-demo").then((mod) => ({
+      import("./demos/ui-custom/model-selector-demo").then((mod) => ({
         default: mod.ModelSelectorDemoWithLogos,
       })),
     { ssr: false },
   ),
   "model-selector-demo-multi-provider": dynamic(
     () =>
-      import("./demos/ui-ai/model-selector-demo").then((mod) => ({
+      import("./demos/ui-custom/model-selector-demo").then((mod) => ({
         default: mod.ModelSelectorDemoMultiProvider,
       })),
     { ssr: false },
   ),
   "node-demo-full": dynamic(
     () =>
-      import("./demos/ui-ai/node-demo").then((mod) => ({
+      import("./demos/ui-custom/node-demo").then((mod) => ({
         default: mod.NodeDemoFull,
       })),
     { ssr: false },
   ),
   "node-demo-header-only": dynamic(
     () =>
-      import("./demos/ui-ai/node-demo").then((mod) => ({
+      import("./demos/ui-custom/node-demo").then((mod) => ({
         default: mod.NodeDemoHeaderOnly,
       })),
     { ssr: false },
   ),
   "node-demo-with-action": dynamic(
     () =>
-      import("./demos/ui-ai/node-demo").then((mod) => ({
+      import("./demos/ui-custom/node-demo").then((mod) => ({
         default: mod.NodeDemoWithAction,
       })),
     { ssr: false },
   ),
   "node-demo-with-badge": dynamic(
     () =>
-      import("./demos/ui-ai/node-demo").then((mod) => ({
+      import("./demos/ui-custom/node-demo").then((mod) => ({
         default: mod.NodeDemoWithBadge,
       })),
     { ssr: false },
   ),
   "open-in-chat-demo-all-providers": dynamic(
     () =>
-      import("./demos/ui-ai/open-in-chat-demo").then((mod) => ({
+      import("./demos/ui-custom/open-in-chat-demo").then((mod) => ({
         default: mod.OpenInChatDemoAllProviders,
       })),
     { ssr: false },
   ),
   "open-in-chat-demo-minimal": dynamic(
     () =>
-      import("./demos/ui-ai/open-in-chat-demo").then((mod) => ({
+      import("./demos/ui-custom/open-in-chat-demo").then((mod) => ({
         default: mod.OpenInChatDemoMinimal,
       })),
     { ssr: false },
   ),
   "open-in-chat-demo-custom-trigger": dynamic(
     () =>
-      import("./demos/ui-ai/open-in-chat-demo").then((mod) => ({
+      import("./demos/ui-custom/open-in-chat-demo").then((mod) => ({
         default: mod.OpenInChatDemoCustomTrigger,
       })),
     { ssr: false },
   ),
   "open-in-chat-demo-grouped": dynamic(
     () =>
-      import("./demos/ui-ai/open-in-chat-demo").then((mod) => ({
+      import("./demos/ui-custom/open-in-chat-demo").then((mod) => ({
         default: mod.OpenInChatDemoGrouped,
       })),
     { ssr: false },
   ),
   "package-info-demo-full": dynamic(
     () =>
-      import("./demos/ui-ai/package-info-demo").then((mod) => ({
+      import("./demos/ui-custom/package-info-demo").then((mod) => ({
         default: mod.PackageInfoDemoFull,
       })),
     { ssr: false },
   ),
   "package-info-demo-change-types": dynamic(
     () =>
-      import("./demos/ui-ai/package-info-demo").then((mod) => ({
+      import("./demos/ui-custom/package-info-demo").then((mod) => ({
         default: mod.PackageInfoDemoChangeTypes,
       })),
     { ssr: false },
   ),
   "package-info-demo-with-dependencies": dynamic(
     () =>
-      import("./demos/ui-ai/package-info-demo").then((mod) => ({
+      import("./demos/ui-custom/package-info-demo").then((mod) => ({
         default: mod.PackageInfoDemoWithDependencies,
       })),
     { ssr: false },
   ),
   "package-info-demo-minimal": dynamic(
     () =>
-      import("./demos/ui-ai/package-info-demo").then((mod) => ({
+      import("./demos/ui-custom/package-info-demo").then((mod) => ({
         default: mod.PackageInfoDemoMinimal,
       })),
     { ssr: false },
   ),
   "panel-demo-status-badge": dynamic(
     () =>
-      import("./demos/ui-ai/panel-demo").then((mod) => ({
+      import("./demos/ui-custom/panel-demo").then((mod) => ({
         default: mod.PanelDemoStatusBadge,
       })),
     { ssr: false },
   ),
   "panel-demo-positions": dynamic(
     () =>
-      import("./demos/ui-ai/panel-demo").then((mod) => ({
+      import("./demos/ui-custom/panel-demo").then((mod) => ({
         default: mod.PanelDemoPositions,
       })),
     { ssr: false },
   ),
   "persona-demo-states": dynamic(
     () =>
-      import("./demos/ui-ai/persona-demo").then((mod) => ({
+      import("./demos/ui-custom/persona-demo").then((mod) => ({
         default: mod.PersonaDemoStates,
       })),
     { ssr: false },
   ),
   "persona-demo-variants": dynamic(
     () =>
-      import("./demos/ui-ai/persona-demo").then((mod) => ({
+      import("./demos/ui-custom/persona-demo").then((mod) => ({
         default: mod.PersonaDemoVariants,
       })),
     { ssr: false },
   ),
   "persona-demo-custom-styling": dynamic(
     () =>
-      import("./demos/ui-ai/persona-demo").then((mod) => ({
+      import("./demos/ui-custom/persona-demo").then((mod) => ({
         default: mod.PersonaDemoCustomStyling,
       })),
     { ssr: false },
   ),
   "schema-display-demo-with-params": dynamic(
     () =>
-      import("./demos/ui-ai/schema-display-demo").then((mod) => ({
+      import("./demos/ui-custom/schema-display-demo").then((mod) => ({
         default: mod.SchemaDisplayDemoWithParams,
       })),
     { ssr: false },
   ),
   "schema-display-demo-with-body": dynamic(
     () =>
-      import("./demos/ui-ai/schema-display-demo").then((mod) => ({
+      import("./demos/ui-custom/schema-display-demo").then((mod) => ({
         default: mod.SchemaDisplayDemoWithBody,
       })),
     { ssr: false },
   ),
   "schema-display-demo-nested": dynamic(
     () =>
-      import("./demos/ui-ai/schema-display-demo").then((mod) => ({
+      import("./demos/ui-custom/schema-display-demo").then((mod) => ({
         default: mod.SchemaDisplayDemoNested,
       })),
     { ssr: false },
   ),
   "schema-display-demo-methods": dynamic(
     () =>
-      import("./demos/ui-ai/schema-display-demo").then((mod) => ({
+      import("./demos/ui-custom/schema-display-demo").then((mod) => ({
         default: mod.SchemaDisplayDemoMethods,
       })),
     { ssr: false },
   ),
   "schema-display-demo-custom-composition": dynamic(
     () =>
-      import("./demos/ui-ai/schema-display-demo").then((mod) => ({
+      import("./demos/ui-custom/schema-display-demo").then((mod) => ({
         default: mod.SchemaDisplayDemoCustomComposition,
       })),
     { ssr: false },
   ),
   "shimmer-demo-custom-duration": dynamic(
     () =>
-      import("./demos/ui-ai/shimmer-demo").then((mod) => ({
+      import("./demos/ui-custom/shimmer-demo").then((mod) => ({
         default: mod.ShimmerDemoCustomDuration,
       })),
     { ssr: false },
   ),
   "shimmer-demo-custom-spread": dynamic(
     () =>
-      import("./demos/ui-ai/shimmer-demo").then((mod) => ({
+      import("./demos/ui-custom/shimmer-demo").then((mod) => ({
         default: mod.ShimmerDemoCustomSpread,
       })),
     { ssr: false },
   ),
   "shimmer-demo-wave": dynamic(
     () =>
-      import("./demos/ui-ai/shimmer-demo").then((mod) => ({
+      import("./demos/ui-custom/shimmer-demo").then((mod) => ({
         default: mod.ShimmerDemoWave,
       })),
     { ssr: false },
   ),
   "shimmer-demo-wave-colors": dynamic(
     () =>
-      import("./demos/ui-ai/shimmer-demo").then((mod) => ({
+      import("./demos/ui-custom/shimmer-demo").then((mod) => ({
         default: mod.ShimmerDemoWaveColors,
       })),
     { ssr: false },
   ),
   "shimmer-demo-wave-geometry": dynamic(
     () =>
-      import("./demos/ui-ai/shimmer-demo").then((mod) => ({
+      import("./demos/ui-custom/shimmer-demo").then((mod) => ({
         default: mod.ShimmerDemoWaveGeometry,
       })),
     { ssr: false },
   ),
   "shimmer-demo-wave-depth": dynamic(
     () =>
-      import("./demos/ui-ai/shimmer-demo").then((mod) => ({
+      import("./demos/ui-custom/shimmer-demo").then((mod) => ({
         default: mod.ShimmerDemoWaveDepth,
       })),
     { ssr: false },
   ),
   "shimmer-demo-wave-timing-spread": dynamic(
     () =>
-      import("./demos/ui-ai/shimmer-demo").then((mod) => ({
+      import("./demos/ui-custom/shimmer-demo").then((mod) => ({
         default: mod.ShimmerDemoWaveTimingSpread,
       })),
     { ssr: false },
   ),
   "shimmer-demo-wave-full-config": dynamic(
     () =>
-      import("./demos/ui-ai/shimmer-demo").then((mod) => ({
+      import("./demos/ui-custom/shimmer-demo").then((mod) => ({
         default: mod.ShimmerDemoWaveFullConfig,
       })),
     { ssr: false },
   ),
   "shimmer-demo-heading": dynamic(
     () =>
-      import("./demos/ui-ai/shimmer-demo").then((mod) => ({
+      import("./demos/ui-custom/shimmer-demo").then((mod) => ({
         default: mod.ShimmerDemoHeading,
       })),
     { ssr: false },
   ),
   "snippet-demo-plain": dynamic(
     () =>
-      import("./demos/ui-ai/snippet-demo").then((mod) => ({
+      import("./demos/ui-custom/snippet-demo").then((mod) => ({
         default: mod.SnippetDemoPlain,
       })),
     { ssr: false },
   ),
   "snippet-demo-multiple": dynamic(
     () =>
-      import("./demos/ui-ai/snippet-demo").then((mod) => ({
+      import("./demos/ui-custom/snippet-demo").then((mod) => ({
         default: mod.SnippetDemoMultiple,
       })),
     { ssr: false },
   ),
   "snippet-demo-callbacks": dynamic(
     () =>
-      import("./demos/ui-ai/snippet-demo").then((mod) => ({
+      import("./demos/ui-custom/snippet-demo").then((mod) => ({
         default: mod.SnippetDemoCallbacks,
       })),
     { ssr: false },
   ),
   "sources-demo-custom-rendering": dynamic(
     () =>
-      import("./demos/ui-ai/sources-demo").then((mod) => ({
+      import("./demos/ui-custom/sources-demo").then((mod) => ({
         default: mod.SourcesDemoCustomRendering,
       })),
     { ssr: false },
   ),
   "speech-input-demo-with-transcript": dynamic(
     () =>
-      import("./demos/ui-ai/speech-input-demo").then((mod) => ({
+      import("./demos/ui-custom/speech-input-demo").then((mod) => ({
         default: mod.SpeechInputDemoWithTranscript,
       })),
     { ssr: false },
   ),
   "speech-input-demo-sizes": dynamic(
     () =>
-      import("./demos/ui-ai/speech-input-demo").then((mod) => ({
+      import("./demos/ui-custom/speech-input-demo").then((mod) => ({
         default: mod.SpeechInputDemoSizes,
       })),
     { ssr: false },
   ),
   "speech-input-demo-disabled": dynamic(
     () =>
-      import("./demos/ui-ai/speech-input-demo").then((mod) => ({
+      import("./demos/ui-custom/speech-input-demo").then((mod) => ({
         default: mod.SpeechInputDemoDisabled,
       })),
     { ssr: false },
   ),
   "terminal-demo-streaming": dynamic(
     () =>
-      import("./demos/ui-ai/terminal-demo").then((mod) => ({
+      import("./demos/ui-custom/terminal-demo").then((mod) => ({
         default: mod.TerminalDemoStreaming,
       })),
     { ssr: false },
   ),
   "terminal-demo-clearable": dynamic(
     () =>
-      import("./demos/ui-ai/terminal-demo").then((mod) => ({
+      import("./demos/ui-custom/terminal-demo").then((mod) => ({
         default: mod.TerminalDemoClearable,
       })),
     { ssr: false },
   ),
   "terminal-demo-composed": dynamic(
     () =>
-      import("./demos/ui-ai/terminal-demo").then((mod) => ({
+      import("./demos/ui-custom/terminal-demo").then((mod) => ({
         default: mod.TerminalDemoComposed,
       })),
     { ssr: false },
   ),
   "terminal-demo-ansi": dynamic(
     () =>
-      import("./demos/ui-ai/terminal-demo").then((mod) => ({
+      import("./demos/ui-custom/terminal-demo").then((mod) => ({
         default: mod.TerminalDemoAnsi,
       })),
     { ssr: false },
   ),
   "test-results-demo-with-progress": dynamic(
     () =>
-      import("./demos/ui-ai/test-results-demo").then((mod) => ({
+      import("./demos/ui-custom/test-results-demo").then((mod) => ({
         default: mod.TestResultsDemoWithProgress,
       })),
     { ssr: false },
   ),
   "test-results-demo-with-errors": dynamic(
     () =>
-      import("./demos/ui-ai/test-results-demo").then((mod) => ({
+      import("./demos/ui-custom/test-results-demo").then((mod) => ({
         default: mod.TestResultsDemoWithErrors,
       })),
     { ssr: false },
   ),
   "test-results-demo-running": dynamic(
     () =>
-      import("./demos/ui-ai/test-results-demo").then((mod) => ({
+      import("./demos/ui-custom/test-results-demo").then((mod) => ({
         default: mod.TestResultsDemoRunning,
       })),
     { ssr: false },
   ),
   "stack-trace-demo-open": dynamic(
     () =>
-      import("./demos/ui-ai/stack-trace-demo").then((mod) => ({
+      import("./demos/ui-custom/stack-trace-demo").then((mod) => ({
         default: mod.StackTraceDemoOpen,
       })),
     { ssr: false },
   ),
   "stack-trace-demo-filter-internals": dynamic(
     () =>
-      import("./demos/ui-ai/stack-trace-demo").then((mod) => ({
+      import("./demos/ui-custom/stack-trace-demo").then((mod) => ({
         default: mod.StackTraceDemoFilterInternals,
       })),
     { ssr: false },
   ),
   "stack-trace-demo-clickable": dynamic(
     () =>
-      import("./demos/ui-ai/stack-trace-demo").then((mod) => ({
+      import("./demos/ui-custom/stack-trace-demo").then((mod) => ({
         default: mod.StackTraceDemoClickable,
       })),
     { ssr: false },
   ),
   "suggestion-demo-vertical": dynamic(
     () =>
-      import("./demos/ui-ai/suggestion-demo").then((mod) => ({
+      import("./demos/ui-custom/suggestion-demo").then((mod) => ({
         default: mod.SuggestionDemoVertical,
       })),
     { ssr: false },
   ),
   "suggestion-demo-with-icons": dynamic(
     () =>
-      import("./demos/ui-ai/suggestion-demo").then((mod) => ({
+      import("./demos/ui-custom/suggestion-demo").then((mod) => ({
         default: mod.SuggestionDemoWithIcons,
       })),
     { ssr: false },
   ),
   "tool-demo-running": dynamic(
     () =>
-      import("./demos/ui-ai/tool-demo").then((mod) => ({
+      import("./demos/ui-custom/tool-demo").then((mod) => ({
         default: mod.ToolDemoRunning,
       })),
     { ssr: false },
   ),
   "tool-demo-error": dynamic(
     () =>
-      import("./demos/ui-ai/tool-demo").then((mod) => ({
+      import("./demos/ui-custom/tool-demo").then((mod) => ({
         default: mod.ToolDemoError,
       })),
     { ssr: false },
   ),
   "tool-demo-collapsed": dynamic(
     () =>
-      import("./demos/ui-ai/tool-demo").then((mod) => ({
+      import("./demos/ui-custom/tool-demo").then((mod) => ({
         default: mod.ToolDemoCollapsed,
       })),
     { ssr: false },
   ),
   "tool-demo-pending": dynamic(
     () =>
-      import("./demos/ui-ai/tool-demo").then((mod) => ({
+      import("./demos/ui-custom/tool-demo").then((mod) => ({
         default: mod.ToolDemoPending,
       })),
     { ssr: false },
   ),
   "tool-demo-approval": dynamic(
     () =>
-      import("./demos/ui-ai/tool-demo").then((mod) => ({
+      import("./demos/ui-custom/tool-demo").then((mod) => ({
         default: mod.ToolDemoApproval,
       })),
     { ssr: false },
   ),
   "twg-tool-demo-single-source": dynamic(
     () =>
-      import("./demos/ui-ai/twg-tool-demo").then((mod) => ({
+      import("./demos/ui-custom/twg-tool-demo").then((mod) => ({
         default: mod.TwgToolDemoSingleSource,
       })),
     { ssr: false },
   ),
   "twg-tool-demo-multiple-sources": dynamic(
     () =>
-      import("./demos/ui-ai/twg-tool-demo").then((mod) => ({
+      import("./demos/ui-custom/twg-tool-demo").then((mod) => ({
         default: mod.TwgToolDemoMultipleSources,
       })),
     { ssr: false },
   ),
   "twg-tool-demo-completed": dynamic(
     () =>
-      import("./demos/ui-ai/twg-tool-demo").then((mod) => ({
+      import("./demos/ui-custom/twg-tool-demo").then((mod) => ({
         default: mod.TwgToolDemoCompleted,
       })),
     { ssr: false },
   ),
   "transcription-demo-static": dynamic(
     () =>
-      import("./demos/ui-ai/transcription-demo").then((mod) => ({
+      import("./demos/ui-custom/transcription-demo").then((mod) => ({
         default: mod.TranscriptionDemoStatic,
       })),
     { ssr: false },
   ),
   "transcription-demo-with-seek": dynamic(
     () =>
-      import("./demos/ui-ai/transcription-demo").then((mod) => ({
+      import("./demos/ui-custom/transcription-demo").then((mod) => ({
         default: mod.TranscriptionDemoWithSeek,
       })),
     { ssr: false },
   ),
   "voice-selector-demo-with-attributes": dynamic(
     () =>
-      import("./demos/ui-ai/voice-selector-demo").then((mod) => ({
+      import("./demos/ui-custom/voice-selector-demo").then((mod) => ({
         default: mod.VoiceSelectorDemoWithAttributes,
       })),
     { ssr: false },
   ),
   "voice-selector-demo-multi-provider": dynamic(
     () =>
-      import("./demos/ui-ai/voice-selector-demo").then((mod) => ({
+      import("./demos/ui-custom/voice-selector-demo").then((mod) => ({
         default: mod.VoiceSelectorDemoMultiProvider,
       })),
     { ssr: false },
   ),
   "voice-selector-demo-with-preview": dynamic(
     () =>
-      import("./demos/ui-ai/voice-selector-demo").then((mod) => ({
+      import("./demos/ui-custom/voice-selector-demo").then((mod) => ({
         default: mod.VoiceSelectorDemoWithPreview,
       })),
     { ssr: false },
   ),
   "web-preview-demo-basic": dynamic(
     () =>
-      import("./demos/ui-ai/web-preview-demo").then((mod) => ({
+      import("./demos/ui-custom/web-preview-demo").then((mod) => ({
         default: mod.WebPreviewDemoBasic,
       })),
     { ssr: false },
   ),
   "web-preview-demo-with-console": dynamic(
     () =>
-      import("./demos/ui-ai/web-preview-demo").then((mod) => ({
+      import("./demos/ui-custom/web-preview-demo").then((mod) => ({
         default: mod.WebPreviewDemoWithConsole,
       })),
     { ssr: false },
   ),
   "web-preview-demo-fullscreen": dynamic(
     () =>
-      import("./demos/ui-ai/web-preview-demo").then((mod) => ({
+      import("./demos/ui-custom/web-preview-demo").then((mod) => ({
         default: mod.WebPreviewDemoFullscreen,
       })),
     { ssr: false },
   ),
   "web-preview-demo-url-change": dynamic(
     () =>
-      import("./demos/ui-ai/web-preview-demo").then((mod) => ({
+      import("./demos/ui-custom/web-preview-demo").then((mod) => ({
         default: mod.WebPreviewDemoUrlChange,
       })),
     { ssr: false },
   ),
   "web-preview-demo-proxy": dynamic(
     () =>
-      import("./demos/ui-ai/web-preview-demo").then((mod) => ({
+      import("./demos/ui-custom/web-preview-demo").then((mod) => ({
         default: mod.WebPreviewDemoProxy,
       })),
     { ssr: false },
@@ -7783,7 +7783,7 @@ const CATEGORY_REGISTRIES: Record<string, Record<string, ComponentType>> = {
   arts: ARTS_DEMOS,
   blocks: BLOCK_DEMOS,
   "ui-audio": UI_AUDIO_DEMO,
-  "ui-ai": UI_AI_DEMO,
+  "ui-custom": UI_CUSTOM_DEMO,
   ui: UI_DEMO,
 };
 
@@ -7791,7 +7791,7 @@ export function getDemoComponent(
   slug: string,
   category:
     | "ui-audio"
-    | "ui-ai"
+    | "ui-custom"
     | "ui"
     | "blocks"
     | "projects"
@@ -7946,7 +7946,7 @@ const VARIANT_REGISTRIES: Record<string, Record<string, ComponentType>> = {
       { ssr: false },
     ),
   },
-  "ui-ai": UI_AI_VARIANT_DEMOS,
+  "ui-custom": UI_CUSTOM_VARIANT_DEMOS,
   blocks: BLOCK_VARIANT_DEMOS,
   ui: UI_VARIANT_DEMOS,
 };
@@ -7955,7 +7955,7 @@ export function getVariantDemoComponent(
   slug: string,
   category:
     | "ui-audio"
-    | "ui-ai"
+    | "ui-custom"
     | "ui"
     | "blocks"
     | "projects"

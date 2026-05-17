@@ -89,7 +89,7 @@ Keep implementation route-local:
 
 - Update the work item data
 - Render in `components/projects/agents/components/work-item-modal/attachments-section.tsx`
-- Do not change shared `components/ui-ai/attachments`
+- Do not change shared `components/ui-custom/attachments`
 
 ## Review Gate
 

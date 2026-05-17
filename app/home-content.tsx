@@ -8,7 +8,7 @@ import { CategoryTabs } from "@/components/website/category-tabs";
 import { CATEGORY_TAB_OPTIONS, type WebsiteCategoryTab } from "@/app/data/category-tabs";
 import {
 	AUDIO_COMPONENTS,
-	AI_COMPONENTS,
+	CUSTOM_COMPONENTS,
 	UI_COMPONENTS,
 	BLOCK_COMPONENTS,
 	UTILITY_COMPONENTS,
@@ -70,17 +70,17 @@ export function HomeContent({ category, lastUpdatedAt, projectComponents, artCom
 						</>
 					)}
 
-					{category === "ui-ai" && (
+					{category === "ui-custom" && (
 						<>
 							<HomeSectionHeading
-								id="ai-elements"
-								title="UI — AI"
-								count={AI_COMPONENTS.length}
+								id="custom-elements"
+								title="UI — Custom"
+								count={CUSTOM_COMPONENTS.length}
 							/>
 							<WebsiteGrid>
-								{AI_COMPONENTS.map((comp) => (
-									<WebsiteCard key={comp.slug} name={comp.name} href={`/components/ui-ai/${comp.slug}`}>
-										<WebsitePreview slug={comp.slug} name={comp.name} importPath={comp.importPath} category="ui-ai" />
+								{CUSTOM_COMPONENTS.map((comp) => (
+									<WebsiteCard key={comp.slug} name={comp.name} href={`/components/ui-custom/${comp.slug}`}>
+										<WebsitePreview slug={comp.slug} name={comp.name} importPath={comp.importPath} category="ui-custom" />
 									</WebsiteCard>
 								))}
 							</WebsiteGrid>

@@ -1,8 +1,8 @@
 "use client";
 
-import { MessageResponse } from "@/components/ui-ai/message";
+import { MessageResponse } from "@/components/ui-custom/message";
 import { Button } from "@/components/ui/button";
-import { renderLinkSafetyModal } from "@/components/ui-ai/link-safety-dialog";
+import { renderLinkSafetyModal } from "@/components/ui-custom/link-safety-dialog";
 import { cn } from "@/lib/utils";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";

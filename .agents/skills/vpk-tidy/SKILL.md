@@ -70,7 +70,7 @@ already uses variant styling or the component genuinely needs variants.
 ## Wrapper Migration Gates
 
 Use these gates whenever replacing local wrappers with direct
-`components/ui/*`, `components/ui-ai/*`, or `components/ui-audio/*` usage.
+`components/ui/*`, `components/ui-custom/*`, or `components/ui-audio/*` usage.
 
 ### 1. Inventory every reference
 

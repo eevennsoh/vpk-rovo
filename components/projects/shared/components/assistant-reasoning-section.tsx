@@ -4,7 +4,7 @@ import {
 	Reasoning,
 	AdsReasoningTrigger,
 	ReasoningContent,
-} from "@/components/ui-ai/reasoning";
+} from "@/components/ui-custom/reasoning";
 
 interface AssistantReasoningSectionProps {
 	reasoning: { text: string; isStreaming: boolean };

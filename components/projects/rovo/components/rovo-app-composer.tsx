@@ -14,7 +14,7 @@ import {
 	PromptInputTextarea,
 	PromptInputTools,
 	usePromptInputController,
-} from "@/components/ui-ai/prompt-input";
+} from "@/components/ui-custom/prompt-input";
 import {
 	Queue,
 	QueueItem,
@@ -22,7 +22,7 @@ import {
 	QueueItemContent,
 	QueueItemIndicator,
 	QueueList,
-} from "@/components/ui-ai/queue";
+} from "@/components/ui-custom/queue";
 import { composerPromptInputClassName, composerTextareaClassName, composerUpwardShadow, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
 import CustomizeMenu from "@/components/blocks/shared-ui/customize-menu";
 import { Alert } from "@/components/ui/alert";

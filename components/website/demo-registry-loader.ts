@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 
 export type DemoCategory =
 	| "ui-audio"
-	| "ui-ai"
+	| "ui-custom"
 	| "ui"
 	| "blocks"
 	| "projects"

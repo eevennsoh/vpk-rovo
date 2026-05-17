@@ -17,10 +17,10 @@ import {
 	PromptInputTools,
 	type PromptInputMessage,
 	usePromptInputAttachments,
-} from "@/components/ui-ai/prompt-input";
+} from "@/components/ui-custom/prompt-input";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { composerUpwardShadow, composerPromptInputClassName, composerTextareaClassName, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
-import { Queue, QueueItem, QueueItemActions, QueueItemContent, QueueItemIndicator, QueueList } from "@/components/ui-ai/queue";
+import { Queue, QueueItem, QueueItemActions, QueueItemContent, QueueItemIndicator, QueueList } from "@/components/ui-custom/queue";
 import { Button } from "@/components/ui/button";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import { Footer } from "@/components/ui/footer";
