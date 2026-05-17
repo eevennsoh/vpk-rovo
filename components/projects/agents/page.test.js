@@ -109,13 +109,21 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /RovoChatProvider/u);
 });
 
-test("RFP report canvas keeps first preview fetch visually blank instead of showing preloaders", () => {
+test("RFP report canvas centers a large spinner while the HTML preview is loading", () => {
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
 		/function resolveRfpReportCanvasStatus\(status: RfpHtmlReportStatus\): RovoCanvasStatus \{[\s\S]*if \(status === "error"\) \{[\s\S]*return "error";[\s\S]*return "ready";[\s\S]*\}/u,
 	);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/import \{ Spinner \} from "@\/components\/ui\/spinner";/u,
+	);
 	assert.match(RFP_REPORT_CANVAS_SOURCE, /aria-label="Report preview loading"/u);
 	assert.match(RFP_REPORT_CANVAS_SOURCE, /aria-busy="true"/u);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/className="grid size-full place-items-center bg-surface"[\s\S]*<Spinner[\s\S]*className="size-12 text-icon-subtle"[\s\S]*label="Report preview loading"/u,
+	);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /return "executing";/u);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /Rendering vpk-html report/u);
 });

@@ -63,6 +63,7 @@ interface FloatingRovoButtonProps {
 
 const DEFAULT_BUTTON_RIGHT = "24px";
 const DEFAULT_BUTTON_BOTTOM = "24px";
+const AGENT_AVATAR_HEXAGON_PATH = "M19.01 0.922148C20.24 0.212148 21.76 0.212148 23 0.922148L40 10.6921C41.24 11.4021 42.01 12.7321 42.01 14.1621V33.6721C42.01 35.1021 41.24 36.4221 40 37.1421L23 46.9121C21.77 47.6221 20.25 47.6221 19.01 46.9121L2.01 37.1321C0.77 36.4221 0 35.0921 0 33.6621V14.1621C0 12.7321 0.77 11.4121 2.01 10.6921L19.01 0.922148Z";
 
 function resolveFloatingRovoButtonPlacement(placement?: FloatingRovoButtonPlacement): Required<FloatingRovoButtonPlacement> {
 	return {
@@ -288,6 +289,14 @@ function FloatingRovoButtonOnboardingPanelInner({
 							src={avatarSrc}
 							width={42}
 						/>
+						<svg
+							aria-hidden="true"
+							className="pointer-events-none absolute top-0 left-0 h-12 w-[42px] overflow-visible"
+							focusable="false"
+							viewBox="0 0 43 48"
+						>
+							<path d={AGENT_AVATAR_HEXAGON_PATH} fill="none" stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+						</svg>
 					</motion.div>
 				</div>
 				<motion.div

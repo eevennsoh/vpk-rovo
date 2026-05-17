@@ -49,6 +49,20 @@ function renderLogoTileChild(
 	);
 }
 
+function renderAvatarTileChild(identity: Extract<ResolvedCardIdentity, { kind: "avatar" }>) {
+	return (
+		<span className="inline-flex size-full items-center justify-center overflow-hidden rounded-tile">
+			<Image
+				src={identity.avatarSrc}
+				alt=""
+				width={32}
+				height={32}
+				className="size-full object-contain"
+			/>
+		</span>
+	);
+}
+
 export function CardIdentityTile({
 	identity,
 	label,
@@ -70,6 +84,22 @@ export function CardIdentityTile({
 				}}
 				{...props}
 			/>
+		);
+	}
+
+	if (identity.kind === "avatar") {
+		return (
+			<Tile
+				aria-hidden={decorative ? true : undefined}
+				className={cn("bg-transparent", className)}
+				isInset={false}
+				label={label}
+				size={size}
+				variant="transparent"
+				{...props}
+			>
+				{renderAvatarTileChild(identity)}
+			</Tile>
 		);
 	}
 

@@ -24,7 +24,7 @@ import {
 } from "@/components/projects/shared/lib/reasoning-display-phase";
 
 interface UseThinkingStatusOptions {
-	messages: RovoRenderableUIMessage[];
+	messages: ReadonlyArray<RovoRenderableUIMessage>;
 	isRequestInFlight: boolean;
 	activeRequestStartedAt?: number | null;
 }

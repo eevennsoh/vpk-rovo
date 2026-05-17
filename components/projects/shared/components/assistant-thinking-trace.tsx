@@ -16,6 +16,7 @@ import {
 import { CodeBlock } from "@/components/ui-custom/code-block";
 import { MessageContent, MessageResponse } from "@/components/ui-custom/message";
 import { isTimelineOnlyContent } from "@/components/ui-custom/reasoning";
+import { Shimmer } from "@/components/ui-custom/shimmer";
 import { ToolInput, ToolOutput } from "@/components/ui-custom/tool";
 import { Icon } from "@/components/ui/icon";
 import { Lozenge } from "@/components/ui/lozenge";
@@ -31,6 +32,7 @@ import {
 	collectAssistantThinkingTraceData,
 	resolveAssistantThinkingTraceOpen,
 	resolveAssistantThinkingTracePhase,
+	resolveAssistantThinkingTraceResponseGenerationStep,
 	resolveAssistantThinkingTraceVisibility,
 	resolveThinkingToolCallStepOpen,
 	shouldCollapseAssistantThinkingTraceOnPhaseChange,
@@ -68,6 +70,7 @@ export interface AssistantThinkingTraceState {
 	planNarrationText: string;
 	reasoningDuration: number | undefined;
 	reasoningPhase: ReasoningPhase;
+	shouldShowResponseGenerationStep: boolean;
 	shouldShowThinkingSection: boolean;
 	thinkingActive: boolean;
 	triggerLabel: string;
@@ -528,12 +531,20 @@ export function useAssistantThinkingTraceState({
 		hasThinkingText &&
 		!(isTimelineOnlyContent(accumulatedThinkingContent) && data.hasThinkingToolCalls);
 	const hasPlanNarrationText = Boolean(planNarrationText);
+	const shouldShowResponseGenerationStep = resolveAssistantThinkingTraceResponseGenerationStep({
+		hasAwaitingInputToolCalls: data.hasAwaitingInputToolCalls,
+		hasThinkingToolCalls: data.hasThinkingToolCalls,
+		hasWidgetOutput,
+		isPostToolsGeneration,
+		isPostToolsResultPending,
+	});
 	const hasThinkingDetails =
 		shouldShowThinkingSection ||
 		data.hasTodoProgressItems ||
 		data.hasLegacyTodoQueueItems ||
 		data.hasAgentExecutions ||
 		data.hasThinkingToolCalls ||
+		shouldShowResponseGenerationStep ||
 		hasPlanNarrationText;
 	const [thinkingUserOverride, setThinkingUserOverride] = useState<boolean | null>(null);
 	const thinkingTimestamps = getMessageReasoningTimestamps(message);
@@ -616,6 +627,7 @@ export function useAssistantThinkingTraceState({
 		planNarrationText,
 		reasoningDuration,
 		reasoningPhase,
+		shouldShowResponseGenerationStep,
 		shouldShowThinkingSection,
 		thinkingActive,
 		triggerLabel,
@@ -777,6 +789,18 @@ export function AssistantThinkingTrace({
 							/>
 						);
 					})}
+					{state.shouldShowResponseGenerationStep ? (
+						<ChainOfThoughtStep
+							icon={StepStreamIcon}
+							label={
+								<Shimmer as="span" duration={1.4} spread={2} className="min-w-0 truncate text-left">
+									Generating response
+								</Shimmer>
+							}
+							description={null}
+							status="active"
+						/>
+					) : null}
 					{state.hasPlanNarrationText ? (
 						<ChainOfThoughtStep icon={StepStreamIcon} label={getReasoningSectionTitle("stream")} status={state.planNarrationStreaming ? "active" : "complete"}>
 							<div className="whitespace-pre-wrap text-xs text-text-subtle leading-5">{state.planNarrationText}</div>

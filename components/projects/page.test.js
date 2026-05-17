@@ -12,6 +12,10 @@ const ROVO_CANVAS_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../blocks/rovo-canvas/components/rovo-canvas.tsx"),
 	"utf8",
 );
+const ROVO_CANVAS_HEADER_SOURCE = fs.readFileSync(
+	path.join(__dirname, "../blocks/rovo-canvas/components/rovo-canvas-header.tsx"),
+	"utf8",
+);
 
 test("hideFloatingRovo suppresses the layout-owned floating chat surface", () => {
 	assert.match(
@@ -87,6 +91,17 @@ test("Rovo Canvas renders artefact identity text instead of an artefact dropdown
 	assert.doesNotMatch(ROVO_CANVAS_SOURCE, /className="grid h-12 shrink-0/u);
 	assert.doesNotMatch(ROVO_CANVAS_SOURCE, /aria-label="Choose artefact surface"/u);
 	assert.doesNotMatch(ROVO_CANVAS_SOURCE, /DropdownMenuTrigger[\s\S]*resolvedArtefactLabel/u);
+});
+
+test("Rovo Canvas header keeps Rovo as static text without the agent selector", () => {
+	assert.match(ROVO_CANVAS_HEADER_SOURCE, /function RovoCanvasBrand\(\): React\.ReactElement/u);
+	assert.match(ROVO_CANVAS_HEADER_SOURCE, /src="\/1p\/rovo\.svg"/u);
+	assert.match(ROVO_CANVAS_HEADER_SOURCE, /<span className="font-semibold">Rovo<\/span>/u);
+	assert.match(ROVO_CANVAS_HEADER_SOURCE, /<RovoCanvasBrand \/>/u);
+	assert.doesNotMatch(ROVO_CANVAS_HEADER_SOURCE, /RovoAppBrand/u);
+	assert.doesNotMatch(ROVO_CANVAS_HEADER_SOURCE, /Select Rovo agent/u);
+	assert.doesNotMatch(ROVO_CANVAS_HEADER_SOURCE, /ChevronDownIcon/u);
+	assert.doesNotMatch(ROVO_CANVAS_HEADER_SOURCE, /AgentSelector/u);
 });
 
 test("Rovo Canvas version history entries expose selected state and selection callbacks", () => {
@@ -205,6 +220,14 @@ test("floating Rovo button can morph into an onboarding Spotlight panel", () => 
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
 		/aria-label=\{closeLabel\}[\s\S]*autoFocus/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/const AGENT_AVATAR_HEXAGON_PATH = "M19\.01 0\.922148/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/<path d=\{AGENT_AVATAR_HEXAGON_PATH\} fill="none" stroke="white" strokeWidth=\{2\} vectorEffect="non-scaling-stroke" \/>/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,

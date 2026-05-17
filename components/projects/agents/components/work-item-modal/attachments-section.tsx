@@ -171,7 +171,7 @@ function AttachmentCard({
 	const handleGenerationComplete = useCallback(() => {
 		setIsGenerationActive(false);
 	}, []);
-	const showGenerationEffect = isHighlighted || isGenerationActive;
+	const showGenerationEffect = isGenerationActive;
 	const containerStyle: CSSProperties = {
 		minWidth: 0,
 		borderRadius: token("radius.medium"),

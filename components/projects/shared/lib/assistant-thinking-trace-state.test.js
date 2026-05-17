@@ -25,6 +25,7 @@ const {
 	collectAssistantThinkingTraceData,
 	resolveAssistantThinkingTraceOpen,
 	resolveAssistantThinkingTracePhase,
+	resolveAssistantThinkingTraceResponseGenerationStep,
 	resolveAssistantThinkingTraceVisibility,
 	resolveThinkingToolCallStepOpen,
 	shouldCollapseAssistantThinkingTraceOnPhaseChange,
@@ -440,6 +441,56 @@ test("resolveAssistantThinkingTracePhase keeps shimmer active while post-tool re
 			lifecyclePhase: "completed",
 		}),
 		"thinking"
+	);
+});
+
+test("resolveAssistantThinkingTraceResponseGenerationStep shows a final active step after tools finish", () => {
+	assert.equal(
+		resolveAssistantThinkingTraceResponseGenerationStep({
+			hasAwaitingInputToolCalls: false,
+			hasThinkingToolCalls: true,
+			isPostToolsResultPending: true,
+		}),
+		true
+	);
+
+	assert.equal(
+		resolveAssistantThinkingTraceResponseGenerationStep({
+			hasAwaitingInputToolCalls: false,
+			hasThinkingToolCalls: true,
+			isPostToolsGeneration: true,
+		}),
+		true
+	);
+});
+
+test("resolveAssistantThinkingTraceResponseGenerationStep stays hidden outside post-tool response work", () => {
+	assert.equal(
+		resolveAssistantThinkingTraceResponseGenerationStep({
+			hasAwaitingInputToolCalls: false,
+			hasThinkingToolCalls: false,
+			isPostToolsResultPending: true,
+		}),
+		false
+	);
+
+	assert.equal(
+		resolveAssistantThinkingTraceResponseGenerationStep({
+			hasAwaitingInputToolCalls: true,
+			hasThinkingToolCalls: true,
+			isPostToolsResultPending: true,
+		}),
+		false
+	);
+
+	assert.equal(
+		resolveAssistantThinkingTraceResponseGenerationStep({
+			hasAwaitingInputToolCalls: false,
+			hasThinkingToolCalls: true,
+			hasWidgetOutput: true,
+			isPostToolsGeneration: true,
+		}),
+		false
 	);
 });
 

@@ -57,6 +57,7 @@ import { cn } from "@/lib/utils";
 import { useChatSubmit } from "./hooks/use-chat-submit";
 import { useScrollAnchor } from "./hooks/use-scroll-anchor";
 import { useThinkingStatus } from "./hooks/use-thinking-status";
+import { appendOptimisticCompactUserMessage } from "./lib/optimistic-user-message";
 import { type DelegationRequest, useRealtimeVoice } from "@/components/projects/rovo/hooks/use-realtime-voice";
 import styles from "./chat.module.css";
 
@@ -148,6 +149,7 @@ export default function ChatPanel({
 		setEditingMessageId,
 		chatSurface,
 		activeThreadId,
+		activePrompt,
 		isHistoryOpen,
 		pinFloating,
 		toggleHistory,
@@ -291,7 +293,12 @@ export default function ChatPanel({
 	const isRequestInFlight = hasInFlightTurn;
 	const hasPendingChatWork = isRequestInFlight || queuedPrompts.length > 0;
 
-	const messages = useMemo(() => uiMessages.filter(isRenderableRovoUIMessage), [uiMessages]);
+	const rawMessages = useMemo(() => uiMessages.filter(isRenderableRovoUIMessage), [uiMessages]);
+	const optimisticPrompt = activePrompt ?? (isSubmitPending ? queuedPrompts[0] ?? null : null);
+	const messages = useMemo(
+		() => appendOptimisticCompactUserMessage(rawMessages, optimisticPrompt),
+		[optimisticPrompt, rawMessages]
+	);
 	const lastAssistantMessageId = useMemo(() => {
 		for (let i = messages.length - 1; i >= 0; i--) {
 			if (messages[i].role === "assistant") {
@@ -345,7 +352,7 @@ export default function ChatPanel({
 
 	const { conversationContextRef, scrollSpacerRef, getLatestTurnTargetTop, scrollFollowMode } = useScrollAnchor({
 		isGenerationActive: isStreamingLifecycleActive,
-		uiMessages,
+		uiMessages: messages,
 	});
 
 	const thinking = useThinkingStatus({

@@ -25,7 +25,7 @@ const AGENTS_CHAT_PROMPT_OPTIONS: SendPromptOptions = {
 	backendPreference: "ai-gateway",
 };
 const ROVO_BUTTON_AGENT_ONBOARDING_ID = "agents-rfp-drafting-agent-after-report-attach";
-const ROVO_BUTTON_AGENT_ONBOARDING_DELAY_MS = 900;
+const ROVO_BUTTON_AGENT_ONBOARDING_DELAY_MS = 5000;
 const RFP_DRAFTING_AGENT_ACCENT_COLOR = "#82B536";
 const RFP_AGENT_CREATION_PROMPT = "Create an RFP Drafting Agent for the Drafting column on the Enterprise RFP Response board.";
 

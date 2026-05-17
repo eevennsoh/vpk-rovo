@@ -7,6 +7,7 @@ import BoardIcon from "@atlaskit/icon/core/board";
 import CommentIcon from "@atlaskit/icon/core/comment";
 import DataFlowIcon from "@atlaskit/icon/core/data-flow";
 import PageIcon from "@atlaskit/icon/core/page";
+import { RFP_DRAFTING_AGENT_AVATAR_SRC } from "@/components/projects/agents/lib/rfp-demo-state";
 import { ArtifactCard, type ArtifactCardProps } from "@/components/ui-custom/artifact";
 import { SkillTag, SkillTagGroup, type SkillTagColor } from "@/components/ui/skill-tag";
 import type { RovoDataParts } from "@/lib/rovo-ui-messages";
@@ -60,6 +61,10 @@ function getAgentCapabilities(agent: AgentResult): typeof AGENT_CAPABILITIES | [
 	return agent.agentId === RFP_DRAFTING_AGENT_ID ? AGENT_CAPABILITIES : [];
 }
 
+function getAgentIdentityAvatarSrc(agent: AgentResult): string | undefined {
+	return agent.agentId === RFP_DRAFTING_AGENT_ID ? RFP_DRAFTING_AGENT_AVATAR_SRC : undefined;
+}
+
 function formatAgentTriggerLabel(trigger: string): string {
 	return trigger
 		.replace(/\bticket\b/giu, "work item")
@@ -108,6 +113,7 @@ export function AgentResultCard({
 		? agent.tools.filter((tool): tool is string => typeof tool === "string" && tool.trim().length > 0)
 		: [];
 	const capabilities = getAgentCapabilities(agent);
+	const identityAvatarSrc = getAgentIdentityAvatarSrc(agent);
 	const handleOpenAgent = () => {
 		window.dispatchEvent(new CustomEvent(ROVO_AGENT_RESULT_OPEN_EVENT, {
 			detail: {
@@ -125,12 +131,13 @@ export function AgentResultCard({
 				description={AGENT_RESULT_DESCRIPTION}
 				displayMode="preview"
 				expandLabel="Expand agent details"
+				identityAvatarSrc={identityAvatarSrc}
 				kind="text"
 				onOpen={handleOpenAgent}
 				openCtaLabel="Open agent details"
 				openLabel={`Open ${displayName} details`}
 				title={displayName}
-				visualIdentity={AGENT_RESULT_VISUAL_IDENTITY}
+				visualIdentity={identityAvatarSrc ? undefined : AGENT_RESULT_VISUAL_IDENTITY}
 			>
 				<div className="flex flex-col gap-4">
 					<section className="flex flex-col gap-1.5">

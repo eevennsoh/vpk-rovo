@@ -121,3 +121,26 @@ test("ArtifactResultCard collapses the source card after moving an HTML report t
 		/<ArtifactCard[\s\S]*displayMode="preview"[\s\S]*expanded=\{isCardExpanded\}[\s\S]*onExpandedChange=\{setIsCardExpanded\}/u,
 	);
 });
+
+test("ArtifactResultCard shows a text skeleton while the HTML report summary is loading", () => {
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/import \{ Skeleton \} from "@\/components\/ui\/skeleton";/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/function ArtifactResultCardPreviewSkeleton\(\): ReactNode/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/aria-label="Artifact preview loading"[\s\S]*<Skeleton className="h-4 w-full" \/>[\s\S]*<Skeleton className="h-4 w-full" \/>[\s\S]*<Skeleton className="h-4 w-3\/4" \/>/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/const isPreviewSummaryPending = shouldOpenInRovoCanvas && !document && !errorMessage;/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/<ArtifactCard[\s\S]*previewSummary=\{document\?\.previewSummary \?\? undefined\}[\s\S]*\{isPreviewSummaryPending \? <ArtifactResultCardPreviewSkeleton \/> : null\}[\s\S]*<\/ArtifactCard>/u,
+	);
+});

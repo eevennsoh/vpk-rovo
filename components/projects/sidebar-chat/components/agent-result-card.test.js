@@ -27,6 +27,10 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	);
 	assert.match(
 		AGENT_RESULT_CARD_SOURCE,
+		/import \{ RFP_DRAFTING_AGENT_AVATAR_SRC \} from "@\/components\/projects\/agents\/lib\/rfp-demo-state";/u,
+	);
+	assert.match(
+		AGENT_RESULT_CARD_SOURCE,
 		/import \{ SkillTag, SkillTagGroup, type SkillTagColor \} from "@\/components\/ui\/skill-tag";/u,
 	);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /data-testid="rovo-agent-result-card"/u);
@@ -41,6 +45,9 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	assert.match(AGENT_RESULT_CARD_SOURCE, /const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /agent\.agentId === RFP_DRAFTING_AGENT_ID \? "RFP Drafter" : agent\.name/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /title=\{displayName\}/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /function getAgentIdentityAvatarSrc\(agent: AgentResult\): string \| undefined/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /agent\.agentId === RFP_DRAFTING_AGENT_ID \? RFP_DRAFTING_AGENT_AVATAR_SRC : undefined/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /const identityAvatarSrc = getAgentIdentityAvatarSrc\(agent\);/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /function getAgentLongDescription\(agent: AgentResult\): string/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /RFP Drafter monitors Drafting tickets, reads Jira context/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, />Description<\/h4>[\s\S]*getAgentLongDescription\(agent\)/u);
@@ -67,7 +74,10 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /divide-y/u);
 	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /sm:grid-cols-2/u);
 	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, />Guardrail</u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /<ArtifactCard[\s\S]*visualIdentity=\{AGENT_RESULT_VISUAL_IDENTITY\}/u);
+	assert.match(
+		AGENT_RESULT_CARD_SOURCE,
+		/<ArtifactCard[\s\S]*identityAvatarSrc=\{identityAvatarSrc\}[\s\S]*visualIdentity=\{identityAvatarSrc \? undefined : AGENT_RESULT_VISUAL_IDENTITY\}/u,
+	);
 });
 
 test("AgentResultCard dispatches a generic open-agent event", () => {
