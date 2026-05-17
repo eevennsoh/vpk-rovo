@@ -19,8 +19,10 @@ Browser -> Express (:8080) -> static export + /api/* -> RovoDev Serve
 
 The `rovodev` script starts all three processes concurrently (single-instance by
 default; use `pnpm run rovodev -- 6` for full pool). The `dev` script starts
-only backend + frontend. The backend auto-detects RovoDev Serve via
-`.dev-rovodev-port` (single) or `.dev-rovodev-ports` (pool) files. Chat SDK
+only backend + frontend. Use `portless run` or
+`portless run --script rovodev` when you explicitly want Portless URLs such as
+`https://<branch.>vpk-rovo.localhost`. The backend auto-detects RovoDev Serve
+via `.dev-rovodev-port` (single) or `.dev-rovodev-ports` (pool) files. Chat SDK
 requests default to AI Gateway unless a caller selects RovoDev. `/api/rovo/chat`
 starts managed runs on AI Gateway, then delegates artifact, plan, or tool-heavy
 turns to RovoDev when available and otherwise falls back to AI Gateway.

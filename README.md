@@ -50,7 +50,20 @@ cp .env.local.example .env.local
 pnpm run dev
 ```
 
-**Option 2: Separate terminals**
+Open the frontend port printed by the command or recorded in
+`.dev-frontend-port`.
+
+**Option 2: Explicit Portless**
+
+```bash
+portless run
+```
+
+Open [https://vpk-rovo.localhost](https://vpk-rovo.localhost) in the main worktree.
+Linked git worktrees get a branch-prefixed URL such as
+`https://my-branch.vpk-rovo.localhost`.
+
+**Option 3: Separate terminals**
 
 ```bash
 # Terminal 1: Backend
@@ -59,8 +72,6 @@ pnpm run dev:backend
 # Terminal 2: Frontend
 pnpm run dev:frontend
 ```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Verify Setup
 
@@ -74,9 +85,13 @@ Should show `"authMethod": "ASAP"` and all env vars as `"SET"`.
 
 ```bash
 # Development
-pnpm run dev              # Start frontend (:3000) + backend (:8080)
+pnpm run dev              # Start frontend + backend on direct localhost ports
+portless run              # Start frontend + backend through explicit Portless routing
 pnpm run dev:frontend     # Frontend only (Next.js with Turbopack)
 pnpm run dev:backend      # Backend only (Express)
+pnpm run rovodev          # Start RovoDev Serve + backend + frontend on direct localhost ports
+portless run --script rovodev
+                          # Start RovoDev Serve + backend + frontend through explicit Portless routing
 
 # Building
 pnpm run build            # Next.js build

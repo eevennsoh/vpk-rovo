@@ -5,7 +5,6 @@
 	"packageManager": "pnpm@11.1.1",
 	"scripts": {
 		"dev": "concurrently --kill-others-on-fail -n backend,frontend -c yellow,green \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
-		"dev:portless": "portless",
 		"build": "next build",
 		"start": "next start",
 		"lint": "eslint",
@@ -18,7 +17,6 @@
 		"rovodev:tmux:start": "./scripts/dev-tmux.sh start",
 		"rovodev:tmux:stop": "./scripts/dev-tmux.sh stop",
 		"rovodev": "node scripts/run-rovodev-stack.js",
-		"rovodev:portless": "portless run --name vpk-rovo node scripts/run-rovodev-stack.js",
 		"ports": "node scripts/show-worktree-ports.js",
 		"qmd:sync-wiki": "node scripts/sync-wiki-qmd.js",
 		"verify:hermes": "node scripts/verify-hermes-control-plane.js",
