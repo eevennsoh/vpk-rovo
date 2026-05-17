@@ -1,10 +1,33 @@
 const RFP_101_CONTEXT_PATTERN = /\[Active Jira Work Item Context\][\s\S]*\bKey:\s*RFP-101\b[\s\S]*\[End Active Jira Work Item Context\]/;
 const RFP_DEMO_AGENT_CREATION_CONTEXT_PATTERN = /\[Agents RFP Demo Local State\][\s\S]*Report stage:\s*attached\.[\s\S]*Custom agent:\s*not created\.[\s\S]*(?:Trigger:\s*none\.[\s\S]*)?\[End Agents RFP Demo Local State\]/;
-const RFP_HELP_MARKERS = [
+const RFP_HELP_DETAILED_MARKERS = [
 	/\bcomplete this rfp\b/i,
 	/\bbid\/no-bid\b/i,
 	/\bfirst-pass response strategy\b/i,
 	/\battached documents\b/i,
+];
+const RFP_HELP_OBJECT_PATTERN = /\b(?:this\s+)?rfp\b/i;
+const RFP_HELP_COMPLETION_ACTION_PATTERNS = [
+	/\bcomplete\b/i,
+	/\bfinish\b/i,
+	/\breview\s+and\s+complete\b/i,
+];
+const RFP_HELP_ACTION_PATTERNS = [
+	/\bhelp(?:\s+me)?\b/i,
+	/\breview\b/i,
+	/\bcomplete\b/i,
+	/\bfinish\b/i,
+	/\bwork\s+on\b/i,
+	/\bdraft\b/i,
+	/\bprepare\b/i,
+];
+const RFP_HELP_OUTPUT_PATTERNS = [
+	/\bbid\/no-bid\b/i,
+	/\bfirst-pass response strategy\b/i,
+	/\bresponse strategy\b/i,
+	/\battached documents?\b/i,
+	/\bthis ticket\b/i,
+	/\bwork item\b/i,
 ];
 const RFP_AGENT_CREATION_MARKERS = [
 	/\brfp drafting agent\b/i,
@@ -77,12 +100,32 @@ function hasRfpDemoAgentCreationContext(requestBody) {
 	);
 }
 
+function countMatchingPatterns(patterns, prompt) {
+	return patterns.reduce(
+		(count, pattern) => count + (pattern.test(prompt) ? 1 : 0),
+		0,
+	);
+}
+
 function isRfpHelpPrompt(prompt) {
-	if (!getNonEmptyString(prompt)) {
+	const normalizedPrompt = getNonEmptyString(prompt);
+	if (!normalizedPrompt) {
 		return false;
 	}
 
-	return RFP_HELP_MARKERS.every((pattern) => pattern.test(prompt));
+	if (RFP_HELP_DETAILED_MARKERS.every((pattern) => pattern.test(normalizedPrompt))) {
+		return true;
+	}
+
+	if (!RFP_HELP_OBJECT_PATTERN.test(normalizedPrompt)) {
+		return false;
+	}
+
+	const actionScore = countMatchingPatterns(RFP_HELP_ACTION_PATTERNS, normalizedPrompt);
+	const outputScore = countMatchingPatterns(RFP_HELP_OUTPUT_PATTERNS, normalizedPrompt);
+	const hasCompletionAction = RFP_HELP_COMPLETION_ACTION_PATTERNS.some((pattern) => pattern.test(normalizedPrompt));
+
+	return hasCompletionAction || (actionScore > 0 && outputScore > 0);
 }
 
 function isRfpAgentCreationPrompt(prompt, requestBody) {
@@ -346,17 +389,33 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 		{
 			toolName: "agent.configure_tools",
 			toolCallId: "agents-rfp-demo-agent-configure-tools",
-			label: "Configuring tools",
-			content: "Giving the agent deterministic demo access to Jira work items, attachments, Teamwork Graph account memory, vpk-html report generation, and PDF draft attachment output.",
-			input: { tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "vpk_html.render_template", "pdf_draft.attach"] },
-			outputPreview: "Tool set matches the completed RFP-101 report flow and produces deterministic draft package state.",
+			label: "Adding tools and skills",
+			content: "Giving the agent deterministic demo access to Jira work items, attachments, Teamwork Graph account memory, the repo-local /vpk-html skill, and HTML draft attachment output.",
+			input: { skills: ["vpk-html"], tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "vpk_html.render_template", "jira.attach_html"] },
+			outputPreview: "Tool set matches the completed RFP-101 report flow and produces ticket-specific vpk-html draft artifacts.",
+		},
+		{
+			toolName: "agent.write_instructions",
+			toolCallId: "agents-rfp-demo-agent-instructions",
+			label: "Writing agent instructions",
+			content: "Adding instructions to read each ticket context, generate a contextual HTML draft, comment with the ticket-specific handoff, and return work to a human reviewer.",
+			input: { output: "html-report", reviewColumn: "Review", assigneePolicy: "return-to-human-owner" },
+			outputPreview: "Instructions keep the flow event-triggered, backend-persisted, and bounded to the Enterprise RFP Response board.",
+		},
+		{
+			toolName: "teamwork_graph.link_knowledge",
+			toolCallId: "agents-rfp-demo-agent-knowledge",
+			label: "Linking Teamwork Graph knowledge",
+			content: "Connecting proposal memory, prior RFP language, Jira work-item context, and account-team ownership signals for the drafting flow.",
+			input: { sources: ["proposal memory", "prior RFP language", "Jira work items", "account-team ownership"] },
+			outputPreview: "Knowledge scope is limited to deterministic demo context so the agent can produce stable per-ticket drafts.",
 		},
 		{
 			toolName: "agent.define_rerun_policy",
 			toolCallId: "agents-rfp-demo-agent-rerun-policy",
 			label: "Setting rerun policy",
 			content: "Skipping tickets that already have agent-generated draft output and retrying failed Drafting tickets on later event runs.",
-			input: { skipWhen: ["generated-pdf", "agent-comment"], retryWhen: ["agentStatus=failed"] },
+			input: { skipWhen: ["generated-html", "agent-comment"], retryWhen: ["agentStatus=failed"] },
 			outputPreview: "Completed tickets are idempotent on rerun, and failed tickets remain retryable without blocking other tickets.",
 		},
 		{
@@ -381,7 +440,7 @@ function buildAgentsRfpDemoAgentResultPayload() {
 			"Jira work items",
 			"Teamwork Graph",
 			"vpk-html reports",
-			"PDF draft attachment",
+			"HTML draft attachment",
 		],
 		guardrail: "Skips completed tickets on rerun and retries failed tickets later.",
 		action: "create",
@@ -389,7 +448,7 @@ function buildAgentsRfpDemoAgentResultPayload() {
 }
 
 function buildAgentsRfpDemoAgentCreationConfirmationText({ name = RFP_DEMO_AGENT_NAME } = {}) {
-	return `Created **${name}** for the Drafting workflow. It runs when a ticket enters Drafting, creates a visible Rovo thread, attaches the deterministic draft PDF, comments in Jira, and moves successful tickets to Review.`;
+	return `Created **${name}** and added it to the Enterprise RFP Response project. It runs when a ticket enters Drafting, creates a visible Rovo thread, generates a contextual vpk-html draft, attaches the HTML artifact, comments in Jira, and returns successful tickets to Review for a human owner.`;
 }
 
 function buildAgentsRfpDemoQualificationIntro() {

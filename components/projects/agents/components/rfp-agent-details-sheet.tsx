@@ -23,7 +23,7 @@ const TOOL_LABELS = [
 	"Attachment scanner",
 	"Teamwork Graph search",
 	"Report generator",
-	"PDF draft attachment",
+	"HTML draft attachment",
 ] as const;
 
 const KNOWLEDGE_LABELS = [
@@ -99,7 +99,7 @@ export function RfpAgentDetailsSheet({
 
 						<DetailsSection title="Instructions">
 							<p className="text-sm leading-6 text-text-subtle">
-								Read each RFP work item, inspect attachments and subtasks, use Teamwork Graph context to find account memory and reusable response assets, draft a deterministic first-pass response package, attach the generated PDF, add an agent-authored comment, and move successful tickets to Review.
+								Read each RFP work item, inspect attachments and subtasks, use Teamwork Graph context to find account memory and reusable response assets, draft a deterministic first-pass vpk-html response package, attach the generated HTML artifact, add an agent-authored comment, and move successful tickets to Review.
 							</p>
 						</DetailsSection>
 

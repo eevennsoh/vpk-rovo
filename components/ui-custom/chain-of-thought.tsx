@@ -281,6 +281,7 @@ export const ChainOfThoughtStep = memo(
 		const isOpen = isControlled ? open : uncontrolledOpen;
 		const hasExpandableContent = collapsible && children != null;
 		const shouldShowDescription = description !== null;
+		const shouldShowHeaderDescription = shouldShowDescription && (!hasExpandableContent || !isOpen);
 		const resolvedDescription =
 			description === undefined ? getDefaultStepDescription(status) : description;
 		const iconNode = iconRender ?? <Icon render={<IconComponent label="" size="small" spacing="none" />} className="size-4" />;
@@ -315,7 +316,7 @@ export const ChainOfThoughtStep = memo(
 							)}
 						/>
 					</span>
-					{shouldShowDescription ? <CyclingByline>{resolvedDescription}</CyclingByline> : null}
+					{shouldShowHeaderDescription ? <CyclingByline>{resolvedDescription}</CyclingByline> : null}
 				</span>
 			</button>
 		) : (

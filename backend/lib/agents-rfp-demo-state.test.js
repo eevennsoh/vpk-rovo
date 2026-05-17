@@ -10,11 +10,20 @@ const {
 	RFP_DRAFTING_EVENT_TRIGGER,
 	RFP_DRAFTING_EVENT_TRIGGER_LABEL,
 	RFP_REVIEW_COLUMN_NAME,
+	advanceRfpDraftingAgentProcessing,
 	createAgentsRfpDemoStateManager,
 	createDefaultAgentsRfpDemoState,
 	moveTicketToColumn,
 	runRfpDraftingAgent,
 } = require("./agents-rfp-demo-state");
+
+const RUN_NOW = Date.parse("2026-01-01T00:00:00.000Z");
+
+async function advanceAll(state, now = RUN_NOW + 40_000) {
+	return advanceRfpDraftingAgentProcessing(state, {
+		now,
+	});
+}
 
 test("default RFP demo backend state seeds the current board", () => {
 	const state = createDefaultAgentsRfpDemoState();
@@ -32,9 +41,10 @@ test("default RFP demo backend state seeds the current board", () => {
 	assert.equal(state.schedule, null);
 });
 
-test("applying the RFP Drafting Agent processes all current Drafting tickets", () => {
+test("applying the RFP Drafting Agent queues all current Drafting tickets", () => {
 	const result = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
 		jobId: "job-rfp-drafting",
+		now: RUN_NOW,
 		runId: "run-initial",
 		source: "agent-apply",
 	});
@@ -46,26 +56,65 @@ test("applying the RFP Drafting Agent processes all current Drafting tickets", (
 	assert.deepEqual(result.runSummary.processedTicketCodes, ["RFP-141", "RFP-142", "RFP-143"]);
 	assert.deepEqual(result.runSummary.skippedTicketCodes, []);
 	assert.deepEqual(result.runSummary.failedTicketCodes, []);
+	assert.equal(result.runSummary.status, "running");
 	assert.equal(result.threadRecords.length, 3);
 
 	for (const ticketCode of result.runSummary.processedTicketCodes) {
 		const workItem = result.state.workItems[ticketCode];
-		assert.equal(workItem.status, RFP_REVIEW_COLUMN_NAME);
+		assert.equal(workItem.status, RFP_DRAFTING_COLUMN_NAME);
 		assert.equal(workItem.assignee, RFP_DRAFTING_AGENT_NAME);
-		assert.equal(workItem.agentStatus, "completed");
-		assert.equal(workItem.generatedAttachment.displayName, `${ticketCode} response draft.pdf`);
-		assert.equal(workItem.agentComment.authorName, RFP_DRAFTING_AGENT_NAME);
+		assert.ok(["queued", "running"].includes(workItem.agentStatus));
+		assert.match(workItem.agentReadyAt, /^2026-01-01T00:00:/u);
+		assert.equal(workItem.generatedAttachment, null);
 		assert.match(workItem.agentSessionThreadId, /^agents-rfp-demo-rfp-/u);
 	}
 });
 
-test("rerunning skips completed tickets with generated draft output", () => {
+test("advancing due tickets completes them at staggered speeds with unique HTML", async () => {
 	const initial = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
 		jobId: "job-rfp-drafting",
+		now: RUN_NOW,
 		runId: "run-initial",
 	});
-	const rerun = runRfpDraftingAgent(initial.state, {
+	const firstAdvance = await advanceRfpDraftingAgentProcessing(initial.state, {
+		now: RUN_NOW + 16_000,
+	});
+
+	assert.deepEqual(firstAdvance.completedTicketCodes, ["RFP-141"]);
+	assert.equal(firstAdvance.state.workItems["RFP-141"].status, RFP_REVIEW_COLUMN_NAME);
+	assert.equal(firstAdvance.state.workItems["RFP-142"].status, RFP_DRAFTING_COLUMN_NAME);
+	assert.equal(firstAdvance.state.agent.jobRunSummaries[0].status, "running");
+
+	const finalAdvance = await advanceAll(firstAdvance.state);
+	assert.deepEqual(finalAdvance.completedTicketCodes, ["RFP-142", "RFP-143"]);
+	assert.equal(finalAdvance.state.agent.jobRunSummaries[0].status, "completed");
+	for (const ticketCode of ["RFP-141", "RFP-142", "RFP-143"]) {
+		const workItem = finalAdvance.state.workItems[ticketCode];
+		assert.equal(workItem.status, RFP_REVIEW_COLUMN_NAME);
+		assert.notEqual(workItem.assignee, RFP_DRAFTING_AGENT_NAME);
+		assert.equal(workItem.agentStatus, "completed");
+		assert.equal(workItem.generatedAttachment.displayName, `${ticketCode} response draft.html`);
+		assert.equal(workItem.generatedAttachment.previewKind, "html-report");
+		assert.match(workItem.generatedAttachment.previewHtml, /<!doctype html>/iu);
+		assert.match(workItem.generatedAttachment.previewHtml, new RegExp(ticketCode, "u"));
+		assert.equal(workItem.agentComment.authorName, RFP_DRAFTING_AGENT_NAME);
+	}
+	assert.notEqual(
+		finalAdvance.state.workItems["RFP-141"].generatedAttachment.previewHtml,
+		finalAdvance.state.workItems["RFP-142"].generatedAttachment.previewHtml,
+	);
+});
+
+test("rerunning skips completed tickets with generated draft output", async () => {
+	const initial = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
 		jobId: "job-rfp-drafting",
+		now: RUN_NOW,
+		runId: "run-initial",
+	});
+	const completed = await advanceAll(initial.state);
+	const rerun = runRfpDraftingAgent(completed.state, {
+		jobId: "job-rfp-drafting",
+		now: RUN_NOW + 20_000,
 		runId: "run-rerun",
 	});
 
@@ -76,49 +125,59 @@ test("rerunning skips completed tickets with generated draft output", () => {
 	assert.equal(rerun.threadRecords.length, 0);
 });
 
-test("a later ticket entering Drafting processes only that ticket", () => {
+test("a later ticket entering Drafting processes only that ticket", async () => {
 	const initial = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
 		jobId: "job-rfp-drafting",
+		now: RUN_NOW,
 		runId: "run-initial",
 	});
-	const movedState = moveTicketToColumn(initial.state, "RFP-102", RFP_DRAFTING_COLUMN_NAME);
+	const completed = await advanceAll(initial.state);
+	const movedState = moveTicketToColumn(completed.state, "RFP-102", RFP_DRAFTING_COLUMN_NAME);
 	const eventRun = runRfpDraftingAgent(movedState, {
 		jobId: "job-rfp-drafting",
+		now: RUN_NOW + 20_000,
 		runId: "run-rfp-102",
 		source: "jira-column-entered",
 		ticketCodes: ["RFP-102"],
 	});
+	const eventCompletion = await advanceAll(eventRun.state, RUN_NOW + 37_000);
 
 	assert.deepEqual(eventRun.runSummary.processedTicketCodes, ["RFP-102"]);
 	assert.deepEqual(eventRun.runSummary.skippedTicketCodes, []);
 	assert.deepEqual(eventRun.runSummary.failedTicketCodes, []);
-	assert.equal(eventRun.state.workItems["RFP-102"].status, RFP_REVIEW_COLUMN_NAME);
-	assert.equal(eventRun.state.workItems["RFP-141"].status, RFP_REVIEW_COLUMN_NAME);
+	assert.equal(eventRun.state.workItems["RFP-102"].status, RFP_DRAFTING_COLUMN_NAME);
+	assert.equal(eventCompletion.state.workItems["RFP-102"].status, RFP_REVIEW_COLUMN_NAME);
+	assert.equal(eventCompletion.state.workItems["RFP-141"].status, RFP_REVIEW_COLUMN_NAME);
 	assert.equal(eventRun.threadRecords.length, 1);
 });
 
-test("failed tickets do not block other tickets and retry on a later run", () => {
+test("failed tickets do not block other tickets and retry on a later run", async () => {
 	const withExtraTicket = moveTicketToColumn(createDefaultAgentsRfpDemoState(), "RFP-102", RFP_DRAFTING_COLUMN_NAME);
 	const failedRun = runRfpDraftingAgent(withExtraTicket, {
 		failTicketCodes: ["RFP-142"],
 		jobId: "job-rfp-drafting",
+		now: RUN_NOW,
 		runId: "run-with-failure",
 	});
+	const advancedFailedRun = await advanceAll(failedRun.state);
 
 	assert.deepEqual(failedRun.runSummary.failedTicketCodes, ["RFP-142"]);
 	assert.deepEqual(failedRun.runSummary.processedTicketCodes, ["RFP-102", "RFP-141", "RFP-143"]);
 	assert.equal(failedRun.state.workItems["RFP-142"].status, RFP_DRAFTING_COLUMN_NAME);
 	assert.equal(failedRun.state.workItems["RFP-142"].agentStatus, "failed");
-	assert.equal(failedRun.state.workItems["RFP-141"].status, RFP_REVIEW_COLUMN_NAME);
-	assert.equal(failedRun.state.workItems["RFP-143"].status, RFP_REVIEW_COLUMN_NAME);
+	assert.equal(advancedFailedRun.state.workItems["RFP-141"].status, RFP_REVIEW_COLUMN_NAME);
+	assert.equal(advancedFailedRun.state.workItems["RFP-143"].status, RFP_REVIEW_COLUMN_NAME);
+	assert.equal(advancedFailedRun.state.agent.jobRunSummaries[0].status, "completed-with-failures");
 
-	const retryRun = runRfpDraftingAgent(failedRun.state, {
+	const retryRun = runRfpDraftingAgent(advancedFailedRun.state, {
 		jobId: "job-rfp-drafting",
+		now: RUN_NOW + 20_000,
 		runId: "run-retry",
 	});
+	const retryCompletion = await advanceAll(retryRun.state, RUN_NOW + 37_000);
 	assert.deepEqual(retryRun.runSummary.processedTicketCodes, ["RFP-142"]);
-	assert.equal(retryRun.state.workItems["RFP-142"].agentStatus, "completed");
-	assert.equal(retryRun.state.workItems["RFP-142"].status, RFP_REVIEW_COLUMN_NAME);
+	assert.equal(retryCompletion.state.workItems["RFP-142"].agentStatus, "completed");
+	assert.equal(retryCompletion.state.workItems["RFP-142"].status, RFP_REVIEW_COLUMN_NAME);
 });
 
 test("state manager persists normalized demo state and reset clears agent output", async (t) => {
@@ -127,10 +186,12 @@ test("state manager persists normalized demo state and reset clears agent output
 	const manager = createAgentsRfpDemoStateManager({ baseDir: tempDir });
 	const result = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
 		jobId: "job-rfp-drafting",
+		now: RUN_NOW,
 		runId: "run-initial",
 	});
+	const completed = await advanceAll(result.state);
 
-	await manager.writeState(result.state);
+	await manager.writeState(completed.state);
 	const persisted = await manager.readState();
 	assert.equal(persisted.agent.jobId, "job-rfp-drafting");
 	assert.equal(persisted.workItems["RFP-141"].agentStatus, "completed");

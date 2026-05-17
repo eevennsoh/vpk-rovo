@@ -30,6 +30,7 @@ interface ResolveAssistantThinkingTracePhaseOptions {
 	hasBackendThinkingActivity: boolean;
 	hasAwaitingInputToolCalls: boolean;
 	isPostToolsGeneration?: boolean;
+	isPostToolsResultPending?: boolean;
 	hasWidgetOutput?: boolean;
 	lifecyclePhase: ReasoningPhase;
 }
@@ -220,6 +221,7 @@ export function resolveAssistantThinkingTracePhase({
 	hasBackendThinkingActivity,
 	hasAwaitingInputToolCalls,
 	isPostToolsGeneration = false,
+	isPostToolsResultPending = false,
 	hasWidgetOutput = false,
 	lifecyclePhase,
 }: Readonly<ResolveAssistantThinkingTracePhaseOptions>): ReasoningPhase {
@@ -240,6 +242,10 @@ export function resolveAssistantThinkingTracePhase({
 	}
 
 	if (isPostToolsGeneration) {
+		return "thinking";
+	}
+
+	if (isPostToolsResultPending) {
 		return "thinking";
 	}
 

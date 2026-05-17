@@ -18,8 +18,9 @@ const AGENTS_RFP_DEMO_JOB_PROMPT = [
 	"Use deterministic demo outputs, create a visible Rovo thread per ticket, attach the response draft, comment, and move successful tickets to Review.",
 ].join(" ");
 const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
-const RFP_TICKET_DRAFT_ATTACHMENT_KIND = "rfp-draft-pdf";
+const RFP_TICKET_DRAFT_ATTACHMENT_KIND = "rfp-draft-html";
 const DEMO_RUN_BASE_TIME = Date.parse("2025-09-03T15:00:00.000Z");
+const RFP_DRAFTING_PROCESSING_DELAYS_MS = [15_000, 24_000, 34_000, 19_000, 29_000];
 
 const RFP_DRAFTING_EVENT_TRIGGER = {
 	type: "jira-column-entered",
@@ -64,6 +65,51 @@ const WORK_ITEM_TITLES = {
 	"RFP-164": "Executive review of win themes and final pitch",
 	"RFP-181": "Submit supplier clarification responses",
 	"RFP-182": "Archive final response, exhibits, and demo deck",
+};
+
+const WORK_ITEM_DESCRIPTIONS = {
+	"RFP-101": "Qualify the enterprise service-management RFP by separating mandatory requirements from differentiators, mapping each requirement area to Atlassian strengths, and identifying responses that need product, legal, security, deal desk, or partner validation.",
+	"RFP-102": "Review the supplier packet, procurement portal exports, and requested file list to identify every response artifact the team must produce. Split requirements into functional answers, legal or security exhibits, pricing files, implementation plans, customer-reference requests, and demo follow-ups.",
+	"RFP-103": "Create a DACI-style ownership map for the RFP response across account leadership, proposal management, sales engineering, product specialists, legal, security, deal desk, support, and partner teams.",
+	"RFP-104": "Inventory the customer requirement areas and translate them into response tracks covering ITSM, incident, problem, change, request, Assets and CMDB, asset management, knowledge, reporting, AI, data residency, legal compliance, implementation services, and pricing.",
+	"RFP-105": "Run the bid/no-bid risk assessment by checking mandatory requirements, certification asks, residency constraints, asset-management depth, migration timelines, pricing guardrails, reference requirements, and executive-demo readiness.",
+	"RFP-106": "Build a response calendar with supplier questions, internal draft checkpoints, demo-story reviews, legal and security approvals, pricing sign-off, final executive review, submission packaging, and post-submission follow-ups.",
+	"RFP-107": "Collect customer context for current tools, known pain points, business outcomes, executive priorities, implementation constraints, success metrics, user populations, regional differences, support model, and competitor strengths.",
+	"RFP-141": "Draft the executive narrative for why Atlassian is the right platform for the customer's enterprise work transformation. Connect Jira Service Management, Jira, Confluence, Assets, Rovo, Teamwork Graph, Guard, analytics, automation, and marketplace extensibility into one coherent system-of-work story.",
+	"RFP-142": "Prepare the functional response for service desk, request management, portals, knowledge, and reporting. Include demo moments, configuration assumptions, known limitations, and reusable answer snippets the proposal team can paste into the formal response matrix.",
+	"RFP-143": "Build the commercial and implementation response covering licensing assumptions, phased rollout options, implementation services, migration support, training, success planning, total cost of ownership, renewal considerations, and discount or approval dependencies.",
+	"RFP-161": "Review the Assets, CMDB, hardware asset, and software asset management positioning before the response goes to final review.",
+	"RFP-162": "Review data residency, DPA, legal terms, procurement conditions, privacy requirements, and contract language for the response.",
+	"RFP-163": "Review security, Guard, audit logging, compliance, GRC, risk, and vulnerability-management answers.",
+	"RFP-164": "Prepare the executive review package for the final pitch.",
+	"RFP-181": "Package and submit the clarification responses that unblock the proposal team.",
+	"RFP-182": "Archive the final response package, exhibits, pricing files, demo deck, approved legal language, security artifacts, and reusable answer snippets.",
+};
+
+const HUMAN_ASSIGNEES_BY_TICKET = {
+	"RFP-101": "Maya Chen",
+	"RFP-102": "Jordan Lee",
+	"RFP-103": "Priya Shah",
+	"RFP-104": "Elena Ruiz",
+	"RFP-105": "Maya Chen",
+	"RFP-106": "Jordan Lee",
+	"RFP-107": "Priya Shah",
+	"RFP-141": "David Hsieh",
+	"RFP-142": "Florence Garcia",
+	"RFP-143": "Jordan Lee",
+};
+
+const TICKET_RESPONSE_FOCUS = {
+	"RFP-101": "qualification strategy and bid posture",
+	"RFP-102": "supplier questionnaire parsing and response artifact planning",
+	"RFP-103": "DACI ownership and review routing",
+	"RFP-104": "requirement inventory and response track staffing",
+	"RFP-105": "bid risk mitigation and leadership decision support",
+	"RFP-106": "response timeline checkpoints and approval buffers",
+	"RFP-107": "customer context and reusable win themes",
+	"RFP-141": "executive System of Work narrative",
+	"RFP-142": "JSM service desk, portal, knowledge, and reporting answers",
+	"RFP-143": "commercial, implementation, and TCO response",
 };
 
 const RFP_101_FIXTURE_ATTACHMENTS = [
@@ -164,6 +210,8 @@ function createDefaultWorkItemState(code, status) {
 		assignee: null,
 		previousAssignee: null,
 		agentStatus: "idle",
+		agentStartedAt: null,
+		agentReadyAt: null,
 		agentSessionThreadId: null,
 		agentJobRunId: null,
 		generatedAttachment: null,
@@ -233,6 +281,7 @@ function normalizeAttachment(rawAttachment) {
 				? rawAttachment.previewKind
 				: undefined,
 		kind: getNonEmptyString(rawAttachment.kind),
+		previewHtml: getNonEmptyString(rawAttachment.previewHtml),
 	};
 }
 
@@ -277,6 +326,8 @@ function normalizeWorkItemState(rawWorkItem, code, fallbackStatus) {
 		assignee: getNonEmptyString(rawWorkItem.assignee),
 		previousAssignee: getNonEmptyString(rawWorkItem.previousAssignee),
 		agentStatus,
+		agentStartedAt: getNonEmptyString(rawWorkItem.agentStartedAt),
+		agentReadyAt: getNonEmptyString(rawWorkItem.agentReadyAt),
 		agentSessionThreadId: getNonEmptyString(rawWorkItem.agentSessionThreadId),
 		agentJobRunId: getNonEmptyString(rawWorkItem.agentJobRunId),
 		generatedAttachment: normalizeAttachment(rawWorkItem.generatedAttachment),
@@ -537,29 +588,138 @@ function getCurrentDraftingTicketCodes(state) {
 	return state.board.columns.find((column) => column.title === RFP_DRAFTING_COLUMN_NAME)?.cardCodes ?? [];
 }
 
-function createGeneratedAttachment(ticketCode) {
+function getHumanAssigneeForTicket(ticketCode) {
+	return HUMAN_ASSIGNEES_BY_TICKET[ticketCode] ?? "Maya Chen";
+}
+
+function getProcessingDelayMs(index) {
+	return RFP_DRAFTING_PROCESSING_DELAYS_MS[index % RFP_DRAFTING_PROCESSING_DELAYS_MS.length];
+}
+
+function createGeneratedAttachment(ticketCode, previewHtml) {
 	return {
-		id: `generated-${ticketCode.toLowerCase()}-response-draft-pdf`,
-		displayName: `${ticketCode} response draft.pdf`,
-		ext: "pdf",
+		id: `generated-${ticketCode.toLowerCase()}-response-draft-html`,
+		displayName: `${ticketCode} response draft.html`,
+		ext: "html",
 		source: "generated",
 		approved: true,
-		previewKind: "pdf-preview",
+		previewKind: "html-report",
 		kind: RFP_TICKET_DRAFT_ATTACHMENT_KIND,
+		previewHtml: getNonEmptyString(previewHtml),
 	};
 }
 
 function createAgentComment(ticketCode, ticketTitle, index) {
+	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
+	const reviewer = getHumanAssigneeForTicket(ticketCode);
 	return {
 		id: `agent-comment-${ticketCode.toLowerCase()}-draft-ready`,
 		authorName: RFP_DRAFTING_AGENT_NAME,
 		authorAvatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,
 		timestampLabel: formatDemoTimestampLabel(index),
-		content: `${RFP_DRAFTING_AGENT_NAME} drafted the first-pass response for ${ticketCode} (${ticketTitle}), attached the deterministic PDF package, and moved the ticket to Review for human review.`,
+		content: `${RFP_DRAFTING_AGENT_NAME} drafted the first-pass HTML response for ${ticketCode} (${ticketTitle}) with focus on ${focus}, attached the vpk-html artifact, and moved the ticket to Review for ${reviewer}.`,
 	};
 }
 
-function buildThreadMessagesForTicket({ ticketCode, ticketTitle, attachmentName, runId, timestamp }) {
+function buildActiveJiraWorkItemContextForTicket(ticketCode, status = RFP_DRAFTING_COLUMN_NAME) {
+	const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
+	const assignee = getHumanAssigneeForTicket(ticketCode);
+	const description = WORK_ITEM_DESCRIPTIONS[ticketCode] ?? `Prepare a first-pass RFP response draft for ${ticketCode}.`;
+	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
+
+	return [
+		"[Active Jira Work Item Context]",
+		"Source: /agents Jira work item.",
+		`Key: ${ticketCode}`,
+		`Title: ${ticketTitle}`,
+		`Status: ${status}`,
+		"Priority: High",
+		`Assignee: ${assignee} (Proposal response owner)`,
+		"Reporter: Jordan Lee (Account executive)",
+		"Parent: RFP-100 - Enterprise RFP Response",
+		"Customer: VitaFleet Global Services",
+		"Opportunity: Enterprise service-management transformation",
+		"Procurement stage: Draft response package",
+		"Response due date: Sep 8, 2025",
+		`Description: ${description}`,
+		"Buyer priorities:",
+		"- Reduce tool sprawl across IT, service, and business teams.",
+		"- Improve service delivery visibility for executives.",
+		"- Show a practical migration path with governed AI assistance.",
+		"Win themes:",
+		"- Atlassian System of Work connects service, software, knowledge, and business teams.",
+		"- Teamwork Graph and Rovo make response knowledge reusable and contextual.",
+		"- Jira Service Management, Assets, Confluence, Guard, and automation create a governed operating model.",
+		"Known risks:",
+		"- Legal, security, and deal desk language still needs final human review.",
+		"- Commercial assumptions must not overstate approved pricing or implementation commitments.",
+		"Next actions:",
+		`- Draft ${focus} in a reusable response artifact.`,
+		"- Attach the generated response for proposal review.",
+		"- Move the ticket to Review and assign it back to a human owner.",
+		"Attachments:",
+		"- Enterprise RFP packet.pdf (15 Aug 2025, 11:05 AM)",
+		"- Compliance matrix.xlsx (12 Aug 2025, 09:24 AM)",
+		"Recent activity:",
+		`- Sep 3, 2025, 09:58 AM: ${assignee} - Ready for agent-assisted first-pass drafting.`,
+		"[End Active Jira Work Item Context]",
+	].join("\n");
+}
+
+function buildTicketSpecificReportFields(ticketCode) {
+	const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
+	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
+	const assignee = getHumanAssigneeForTicket(ticketCode);
+
+	return {
+		summary: `${ticketCode} draft response for ${focus}.`,
+		whatChangedText: `${RFP_DRAFTING_AGENT_NAME} converted ${ticketTitle} into a reviewable response draft focused on ${focus}.`,
+		confidenceText: "Medium confidence: the work item has enough context for a first-pass response, while legal, security, commercial, and product commitments remain marked for human review.",
+		progressText: `A vpk-html draft artifact has been prepared for ${assignee} with reusable Atlassian System of Work language and ticket-specific next actions.`,
+		blockersText: "Final approval still depends on human validation of legal language, commercial assumptions, and customer-specific implementation commitments.",
+		nextWindowText: `${assignee} should review the attached HTML draft, tighten any customer-specific claims, and either approve the response text or route gaps to the appropriate specialist.`,
+		milestonesText: "Drafting is complete for agent handoff; Review is the next workflow milestone before final proposal packaging.",
+		informationGaps: [
+			"Final approved pricing and legal exceptions are not recorded in the Work Item context.",
+			"Customer-specific evidence exhibits still need human verification before submission.",
+		],
+	};
+}
+
+function buildFallbackHtmlReport(ticketCode) {
+	const title = `${ticketCode} response draft`;
+	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
+	return [
+		"<!doctype html>",
+		'<html lang="en">',
+		"<head>",
+		'\t<meta charset="utf-8">',
+		'\t<meta name="generator" content="vpk-html">',
+		`\t<title>${title}</title>`,
+		"</head>",
+		"<body>",
+		`\t<h1>${title}</h1>`,
+		`\t<p>Deterministic vpk-html draft focused on ${focus}.</p>`,
+		"</body>",
+		"</html>",
+	].join("\n");
+}
+
+function buildThreadMessagesForTicket({ attachmentName, focus, runId, status = "completed", ticketCode, ticketTitle, timestamp }) {
+	const resultText = status === "running"
+		? [
+				`Started deterministic RFP drafting for ${ticketCode}.`,
+				`Focus: ${focus}.`,
+				"Status: the agent is reading the work item, gathering reusable Teamwork Graph context, and preparing a vpk-html response artifact.",
+			].join("\n")
+		: [
+				`Prepared deterministic RFP draft output for ${ticketCode}.`,
+				`Attachment: ${attachmentName}.`,
+				`Focus: ${focus}.`,
+				"Summary: mapped the ticket to Atlassian System of Work win themes, reusable answer language, review notes, and implementation assumptions.",
+				"Next step: review the generated HTML draft in Jira before final submission.",
+			].join("\n");
+
 	return [
 		{
 			id: `${ticketCode.toLowerCase()}-draft-request`,
@@ -577,17 +737,12 @@ function buildThreadMessagesForTicket({ ticketCode, ticketTitle, attachmentName,
 			createdAt: timestamp,
 		},
 		{
-			id: `${ticketCode.toLowerCase()}-draft-result`,
+			id: status === "running" ? `${ticketCode.toLowerCase()}-draft-started` : `${ticketCode.toLowerCase()}-draft-result`,
 			role: "assistant",
 			parts: [
 				{
 					type: "text",
-					text: [
-						`Prepared deterministic RFP draft output for ${ticketCode}.`,
-						`Attachment: ${attachmentName}.`,
-						"Summary: mapped the ticket to Atlassian System of Work win themes, reusable ITSM answer language, legal/security review notes, and implementation assumptions.",
-						"Next step: review the generated draft in Jira before final submission.",
-					].join("\n"),
+					text: resultText,
 				},
 			],
 			metadata: {
@@ -599,18 +754,20 @@ function buildThreadMessagesForTicket({ ticketCode, ticketTitle, attachmentName,
 	];
 }
 
-function buildThreadForTicket({ ticketCode, runId, timestamp }) {
+function buildThreadForTicket({ attachmentName, status = "completed", ticketCode, runId, timestamp }) {
 	const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
 	const threadId = createThreadIdForTicket(ticketCode);
-	const attachment = createGeneratedAttachment(ticketCode);
+	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
 
 	return {
 		id: threadId,
 		title: `${ticketCode} RFP draft response`,
 		messages: buildThreadMessagesForTicket({
+			attachmentName: attachmentName ?? `${ticketCode} response draft.html`,
+			focus,
+			status,
 			ticketCode,
 			ticketTitle,
-			attachmentName: attachment.displayName,
 			runId,
 			timestamp,
 		}),
@@ -680,17 +837,19 @@ function buildRunSummary({
 	skippedTicketCodes,
 	source,
 	startedAt,
+	status: statusOverride,
 	threadLinks,
 }) {
-	const status = failedTicketCodes.length > 0
+	const status = statusOverride ?? (failedTicketCodes.length > 0
 		? processedTicketCodes.length > 0
 			? "completed-with-failures"
 			: "failed"
 		: processedTicketCodes.length > 0
 			? "completed"
-			: "skipped";
+			: "skipped");
+	const action = status === "running" ? "Queued" : "Processed";
 	const summary = [
-		`Processed ${processedTicketCodes.length} ticket${processedTicketCodes.length === 1 ? "" : "s"}`,
+		`${action} ${processedTicketCodes.length} ticket${processedTicketCodes.length === 1 ? "" : "s"}`,
 		`skipped ${skippedTicketCodes.length}`,
 		`failed ${failedTicketCodes.length}`,
 	].join(", ");
@@ -714,12 +873,14 @@ function buildRunSummary({
 function runRfpDraftingAgent(state, {
 	failTicketCodes = [],
 	jobId = state.agent?.jobId ?? null,
+	now = Date.now(),
 	runId = createRunId(),
 	source = "manual",
 	ticketCodes,
 } = {}) {
 	let nextState = ensureRfpDraftingAgent(state, { jobId });
 	const failSet = new Set(failTicketCodes);
+	const startedAtIso = new Date(now).toISOString();
 	const requestedTicketCodes = Array.isArray(ticketCodes) && ticketCodes.length > 0
 		? ticketCodes
 		: getCurrentDraftingTicketCodes(nextState);
@@ -745,6 +906,10 @@ function runRfpDraftingAgent(state, {
 			skippedTicketCodes.push(ticketCode);
 			continue;
 		}
+		if (currentWorkItem.agentStatus === "running" || currentWorkItem.agentStatus === "queued") {
+			skippedTicketCodes.push(ticketCode);
+			continue;
+		}
 		if (!isRequested || currentWorkItem.status !== RFP_DRAFTING_COLUMN_NAME) {
 			continue;
 		}
@@ -752,10 +917,12 @@ function runRfpDraftingAgent(state, {
 		const threadId = currentWorkItem.agentSessionThreadId ?? createThreadIdForTicket(ticketCode);
 		const runningWorkItem = {
 			...currentWorkItem,
-			previousAssignee: currentWorkItem.previousAssignee ?? currentWorkItem.assignee,
+			previousAssignee: currentWorkItem.previousAssignee ?? currentWorkItem.assignee ?? getHumanAssigneeForTicket(ticketCode),
 			assignee: RFP_DRAFTING_AGENT_NAME,
 			agentAssignmentIds: Array.from(new Set([...currentWorkItem.agentAssignmentIds, RFP_DRAFTING_AGENT_ID])),
-			agentStatus: "running",
+			agentStatus: index === 0 ? "running" : "queued",
+			agentStartedAt: currentWorkItem.agentStartedAt ?? startedAtIso,
+			agentReadyAt: new Date(now + getProcessingDelayMs(index)).toISOString(),
 			agentSessionThreadId: threadId,
 			agentJobRunId: runId,
 			lastError: null,
@@ -770,6 +937,7 @@ function runRfpDraftingAgent(state, {
 					[ticketCode]: {
 						...runningWorkItem,
 						agentStatus: "failed",
+						agentReadyAt: null,
 						lastError: `Deterministic demo failure for ${ticketCode}.`,
 					},
 				},
@@ -783,42 +951,28 @@ function runRfpDraftingAgent(state, {
 			continue;
 		}
 
-		const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
-		const completedAt = formatDemoTimestamp(index + 1);
-		const generatedAttachment = createGeneratedAttachment(ticketCode);
-		const agentComment = createAgentComment(ticketCode, ticketTitle, index + 1);
-		const preservedAttachments = runningWorkItem.attachments.filter((attachment) => (
-			attachment.source !== "generated" ||
-			attachment.kind !== RFP_TICKET_DRAFT_ATTACHMENT_KIND
-		));
-
 		nextState = {
-			...moveTicketToColumn(nextState, ticketCode, RFP_REVIEW_COLUMN_NAME, { append: true }),
+			...nextState,
 			workItems: {
 				...nextState.workItems,
 				[ticketCode]: {
 					...runningWorkItem,
-					status: RFP_REVIEW_COLUMN_NAME,
-					attachments: [...preservedAttachments, generatedAttachment],
-					agentStatus: "completed",
-					agentSessionThreadId: threadId,
-					agentJobRunId: runId,
-					generatedAttachment,
-					agentComment,
-					completedAt,
-					lastError: null,
 				},
 			},
 		};
 		processedTicketCodes.push(ticketCode);
 		threadLinks.push({ ticketCode, threadId });
 		threadRecords.push({
-			...buildThreadForTicket({ ticketCode, runId, timestamp: completedAt }),
+			...buildThreadForTicket({ status: "running", ticketCode, runId, timestamp: startedAtIso }),
 			id: threadId,
 		});
 	}
 
-	const finishedAt = formatDemoTimestamp(ticketCodesToEvaluate.length + 1);
+	const hasRunningTickets = processedTicketCodes.some((ticketCode) => (
+		nextState.workItems[ticketCode]?.agentStatus === "running" ||
+		nextState.workItems[ticketCode]?.agentStatus === "queued"
+	));
+	const finishedAt = hasRunningTickets ? null : formatDemoTimestamp(ticketCodesToEvaluate.length + 1);
 	const runSummary = buildRunSummary({
 		failedTicketCodes,
 		finishedAt,
@@ -828,6 +982,7 @@ function runRfpDraftingAgent(state, {
 		skippedTicketCodes,
 		source,
 		startedAt,
+		status: hasRunningTickets ? "running" : undefined,
 		threadLinks,
 	});
 	const agent = normalizeAgent({
@@ -840,12 +995,180 @@ function runRfpDraftingAgent(state, {
 		agent,
 	}, runSummary.status === "skipped"
 		? "RFP Drafting Agent found no new Drafting tickets to process."
-		: `${RFP_DRAFTING_AGENT_NAME} ${runSummary.summary}`,
+		: runSummary.status === "running"
+			? `${RFP_DRAFTING_AGENT_NAME} queued ${processedTicketCodes.length} Drafting ticket${processedTicketCodes.length === 1 ? "" : "s"}.`
+			: `${RFP_DRAFTING_AGENT_NAME} ${runSummary.summary}`,
 	`rfp-agent-run-${runId}`);
 
 	return {
 		state: nextState,
 		runSummary,
+		threadRecords,
+	};
+}
+
+function getDueAgentWorkItems(state, now) {
+	const nowMs = typeof now === "number" ? now : Date.parse(now);
+	if (!Number.isFinite(nowMs)) {
+		return [];
+	}
+
+	return Object.entries(state.workItems ?? {})
+		.filter(([, workItem]) => (
+			(workItem?.agentStatus === "running" || workItem?.agentStatus === "queued") &&
+			getNonEmptyString(workItem.agentReadyAt) &&
+			Date.parse(workItem.agentReadyAt) <= nowMs &&
+			workItem.status === RFP_DRAFTING_COLUMN_NAME
+		))
+		.map(([ticketCode, workItem]) => ({ ticketCode, workItem }));
+}
+
+function refreshRunSummaries(state) {
+	if (!state.agent?.jobRunSummaries?.length) {
+		return state;
+	}
+
+	let changed = false;
+	const jobRunSummaries = state.agent.jobRunSummaries.map((runSummary) => {
+		if (runSummary.status !== "running" || runSummary.processedTicketCodes.length === 0) {
+			return runSummary;
+		}
+
+		const processedWorkItems = runSummary.processedTicketCodes
+			.map((ticketCode) => state.workItems[ticketCode])
+			.filter(Boolean);
+		const allSettled = processedWorkItems.length > 0 && processedWorkItems.every((workItem) => (
+			workItem.agentStatus === "completed" || workItem.agentStatus === "failed"
+		));
+		if (!allSettled) {
+			return runSummary;
+		}
+
+		const failedTicketCodes = Array.from(new Set([
+			...runSummary.failedTicketCodes,
+			...runSummary.processedTicketCodes.filter((ticketCode) => state.workItems[ticketCode]?.agentStatus === "failed"),
+		]));
+		const status = failedTicketCodes.length > 0
+			? runSummary.processedTicketCodes.some((ticketCode) => state.workItems[ticketCode]?.agentStatus === "completed")
+				? "completed-with-failures"
+				: "failed"
+			: "completed";
+		changed = true;
+		return {
+			...runSummary,
+			status,
+			failedTicketCodes,
+			finishedAt: runSummary.finishedAt ?? formatDemoTimestamp(runSummary.processedTicketCodes.length + 1),
+			summary: [
+				`Processed ${runSummary.processedTicketCodes.length} ticket${runSummary.processedTicketCodes.length === 1 ? "" : "s"}`,
+				`skipped ${runSummary.skippedTicketCodes.length}`,
+				`failed ${failedTicketCodes.length}`,
+			].join(", ") + ".",
+		};
+	});
+
+	if (!changed) {
+		return state;
+	}
+
+	return {
+		...state,
+		agent: normalizeAgent({
+			...state.agent,
+			jobRunSummaries,
+		}),
+	};
+}
+
+async function advanceRfpDraftingAgentProcessing(state, {
+	createHtmlReport,
+	now = Date.now(),
+} = {}) {
+	let nextState = normalizeAgentsRfpDemoState(state);
+	const dueItems = getDueAgentWorkItems(nextState, now);
+	const completedTicketCodes = [];
+	const failedTicketCodes = [];
+	const threadRecords = [];
+
+	for (const [index, { ticketCode, workItem }] of dueItems.entries()) {
+		const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
+		const threadId = workItem.agentSessionThreadId ?? createThreadIdForTicket(ticketCode);
+		const completedAt = formatDemoTimestamp(index + 1);
+
+		try {
+			const contextDescription = buildActiveJiraWorkItemContextForTicket(ticketCode, workItem.status);
+			const report = typeof createHtmlReport === "function"
+				? await createHtmlReport({
+						contextDescription,
+						fields: buildTicketSpecificReportFields(ticketCode),
+						ticketCode,
+						ticketTitle,
+					})
+				: { html: buildFallbackHtmlReport(ticketCode) };
+			const generatedAttachment = createGeneratedAttachment(ticketCode, report?.html);
+			const agentComment = createAgentComment(ticketCode, ticketTitle, index + 1);
+			const preservedAttachments = workItem.attachments.filter((attachment) => (
+				attachment.source !== "generated" ||
+				attachment.kind !== RFP_TICKET_DRAFT_ATTACHMENT_KIND
+			));
+			const completedAssignee = workItem.previousAssignee ?? getHumanAssigneeForTicket(ticketCode);
+
+			nextState = {
+				...moveTicketToColumn(nextState, ticketCode, RFP_REVIEW_COLUMN_NAME, { append: true }),
+				workItems: {
+					...nextState.workItems,
+					[ticketCode]: {
+						...workItem,
+						status: RFP_REVIEW_COLUMN_NAME,
+						attachments: [...preservedAttachments, generatedAttachment],
+						assignee: completedAssignee,
+						agentStatus: "completed",
+						agentReadyAt: null,
+						agentSessionThreadId: threadId,
+						generatedAttachment,
+						agentComment,
+						completedAt,
+						lastError: null,
+					},
+				},
+			};
+			completedTicketCodes.push(ticketCode);
+			threadRecords.push({
+				...buildThreadForTicket({
+					attachmentName: generatedAttachment.displayName,
+					ticketCode,
+					runId: workItem.agentJobRunId,
+					timestamp: completedAt,
+				}),
+				id: threadId,
+			});
+		} catch (error) {
+			nextState = {
+				...nextState,
+				workItems: {
+					...nextState.workItems,
+					[ticketCode]: {
+						...workItem,
+						agentStatus: "failed",
+						agentReadyAt: null,
+						lastError: error instanceof Error ? error.message : String(error),
+					},
+				},
+			};
+			failedTicketCodes.push(ticketCode);
+			threadRecords.push({
+				...buildFailureThreadForTicket({ ticketCode, runId: workItem.agentJobRunId, timestamp: completedAt }),
+				id: threadId,
+			});
+		}
+	}
+
+	const withSummaries = refreshRunSummaries(nextState);
+	return {
+		changed: dueItems.length > 0 || withSummaries !== nextState,
+		completedTicketCodes,
+		failedTicketCodes,
+		state: withSummaries,
 		threadRecords,
 	};
 }
@@ -951,6 +1274,9 @@ module.exports = {
 	RFP_DRAFTING_EVENT_TRIGGER,
 	RFP_DRAFTING_EVENT_TRIGGER_LABEL,
 	RFP_REVIEW_COLUMN_NAME,
+	advanceRfpDraftingAgentProcessing,
+	buildActiveJiraWorkItemContextForTicket,
+	buildTicketSpecificReportFields,
 	buildThreadForTicket,
 	buildFailureThreadForTicket,
 	createAgentsRfpDemoStateManager,

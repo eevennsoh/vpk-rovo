@@ -244,6 +244,7 @@ const {
 	RFP_DRAFTING_AGENT_NAME,
 	RFP_DRAFTING_EVENT_TRIGGER,
 	RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+	advanceRfpDraftingAgentProcessing,
 	createAgentsRfpDemoStateManager,
 	getDemoCreatedThreadIds,
 	moveTicketToColumn,
@@ -1199,6 +1200,41 @@ async function persistAgentsRfpDemoRunResult({ jobId, result }) {
 		{ mergeExisting: true },
 	);
 	await agentsRfpDemoStateManager.writeState(result.state);
+}
+
+async function advanceAgentsRfpDemoProcessing() {
+	const currentState = await agentsRfpDemoStateManager.readState();
+	const result = await advanceRfpDraftingAgentProcessing(currentState, {
+		createHtmlReport: async ({ contextDescription, fields }) => {
+			const report = await generateWorkItemVpkHtmlReport({
+				contextDescription,
+				generateText: async () => JSON.stringify(fields),
+				runSkillValidation: false,
+				runVisualVerify: false,
+			});
+			return { html: report.html, skill: report.skill };
+		},
+	});
+	if (!result.changed) {
+		return currentState;
+	}
+
+	await Promise.all(result.threadRecords.map(upsertAgentsRfpDemoThread));
+	const nextState = await agentsRfpDemoStateManager.writeState(result.state);
+	const jobId = getNonEmptyString(nextState.agent?.jobId);
+	if (jobId) {
+		const currentLink = await hermesJobLinkManager.getLink(jobId);
+		await persistHermesJobLink(
+			jobId,
+			buildAgentsRfpDemoJobLinkMetadata({
+				...(currentLink ?? {}),
+				runHistory: nextState.agent?.jobRunSummaries ?? currentLink?.runHistory ?? [],
+			}),
+			{},
+			{ mergeExisting: true },
+		);
+	}
+	return nextState;
 }
 
 async function executeAgentsRfpDemoHermesJob({ context, job, source }) {
@@ -14681,7 +14717,7 @@ app.get("/api/status", async (_req, res) => {
 
 app.get("/api/agents/rfp-demo/state", async (_req, res) => {
 	try {
-		const state = await agentsRfpDemoStateManager.readState();
+		const state = await advanceAgentsRfpDemoProcessing();
 		return res.json({ state });
 	} catch (error) {
 		return res.status(500).json({
@@ -14771,6 +14807,7 @@ app.post("/api/agents/rfp-demo/events/ticket-entered-column", async (req, res) =
 
 app.get("/api/jobs", async (_req, res) => {
 	try {
+		await advanceAgentsRfpDemoProcessing();
 		const jobs = await listMergedHermesJobs(_req.query);
 		await syncHermesJobResultsToRovoThreads({
 			jobs,
@@ -14816,6 +14853,7 @@ app.post("/api/jobs", async (req, res) => {
 
 app.get("/api/jobs/:id", async (req, res) => {
 	try {
+		await advanceAgentsRfpDemoProcessing();
 		const job = await getMergedHermesJob(req.params.id);
 		return res.json({ job });
 	} catch (error) {

@@ -1,7 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
+import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
+import AutomationIcon from "@atlaskit/icon/core/automation";
+import BoardIcon from "@atlaskit/icon/core/board";
+import CommentIcon from "@atlaskit/icon/core/comment";
+import DataFlowIcon from "@atlaskit/icon/core/data-flow";
+import PageIcon from "@atlaskit/icon/core/page";
 import { ArtifactCard, type ArtifactCardProps } from "@/components/ui-custom/artifact";
+import { SkillTag, SkillTagGroup, type SkillTagColor } from "@/components/ui/skill-tag";
 import type { RovoDataParts } from "@/lib/rovo-ui-messages";
 import { cn } from "@/lib/utils";
 
@@ -19,24 +26,79 @@ const AGENT_RESULT_VISUAL_IDENTITY = {
 	tileVariant: "blue",
 } satisfies NonNullable<ArtifactCardProps["visualIdentity"]>;
 
-function getAgentActionLabel(action: AgentResult["action"]): string {
-	return action === "update" ? "Updated" : "Created";
-}
+const AGENT_RESULT_DESCRIPTION = "Agent \u2022 Version 1";
 
-function getAgentDescription(agent: AgentResult): string {
-	const descriptionParts = [getAgentActionLabel(agent.action)];
+const AGENT_CAPABILITIES = [
+	{
+		label: "Monitor tickets entering Drafting",
+		icon: <BoardIcon label="" size="small" />,
+	},
+	{
+		label: "Generate vpk-html draft attachments",
+		icon: <PageIcon label="" size="small" />,
+	},
+	{
+		label: "Comment and return work to Review",
+		icon: <CommentIcon label="" size="small" />,
+	},
+] as const;
 
-	if (agent.assignedColumn) {
-		descriptionParts.push(`Assigned to ${agent.assignedColumn}`);
+function getAgentLongDescription(agent: AgentResult): string {
+	if (agent.agentId === "rfp-drafting-agent") {
+		return "RFP Drafter monitors Drafting tickets, reads Jira context, uses Teamwork Graph knowledge, and creates a vpk-html draft attachment plus comment before returning work to review.";
 	}
 
-	return descriptionParts.join(" \u2022 ");
+	return agent.summary;
+}
+
+function getAgentDisplayName(agent: AgentResult): string {
+	return agent.agentId === "rfp-drafting-agent" ? "RFP Drafter" : agent.name;
+}
+
+function formatAgentTriggerLabel(trigger: string): string {
+	return trigger
+		.replace(/\bticket\b/giu, "work item")
+		.replace(/\.$/u, "");
+}
+
+function getSkillTagIcon(tool: string): ReactNode {
+	const normalizedTool = tool.toLowerCase();
+	if (normalizedTool.includes("jira") || normalizedTool.includes("work item")) {
+		return <BoardIcon label="" size="small" />;
+	}
+	if (normalizedTool.includes("teamwork") || normalizedTool.includes("graph")) {
+		return <DataFlowIcon label="" size="small" />;
+	}
+	if (normalizedTool.includes("html") || normalizedTool.includes("report")) {
+		return <PageIcon label="" size="small" />;
+	}
+	if (normalizedTool.includes("agent")) {
+		return <AiAgentIcon label="" size="small" />;
+	}
+
+	return <AutomationIcon label="" size="small" />;
+}
+
+function getSkillTagColor(tool: string): SkillTagColor {
+	const normalizedTool = tool.toLowerCase();
+	if (normalizedTool.includes("jira") || normalizedTool.includes("work item")) {
+		return "2p3p";
+	}
+	if (normalizedTool.includes("teamwork") || normalizedTool.includes("graph")) {
+		return "teamwork";
+	}
+	if (normalizedTool.includes("html") || normalizedTool.includes("report")) {
+		return "product";
+	}
+
+	return "software";
 }
 
 export function AgentResultCard({
 	agent,
 	className,
 }: Readonly<AgentResultCardProps>): ReactNode {
+	const displayName = getAgentDisplayName(agent);
 	const tools = Array.isArray(agent.tools)
 		? agent.tools.filter((tool): tool is string => typeof tool === "string" && tool.trim().length > 0)
 		: [];
@@ -54,48 +116,60 @@ export function AgentResultCard({
 			<ArtifactCard
 				action={agent.action}
 				collapseLabel="Collapse agent details"
-				description={getAgentDescription(agent)}
+				description={AGENT_RESULT_DESCRIPTION}
 				displayMode="preview"
 				expandLabel="Expand agent details"
 				kind="text"
 				onOpen={handleOpenAgent}
 				openCtaLabel="Open agent details"
-				openLabel={`Open ${agent.name} details`}
-				title={agent.name}
+				openLabel={`Open ${displayName} details`}
+				title={displayName}
 				visualIdentity={AGENT_RESULT_VISUAL_IDENTITY}
 			>
-				<div className="space-y-3">
-					<p className="text-sm leading-5 text-text">
-						{agent.summary}
-					</p>
-					{agent.trigger || agent.guardrail ? (
-						<dl className="grid gap-2 text-xs leading-5 text-text-subtle sm:grid-cols-2">
-							{agent.trigger ? (
-								<div>
-									<dt className="font-medium text-text">Trigger</dt>
-									<dd>{agent.trigger}</dd>
-								</div>
-							) : null}
-							{agent.guardrail ? (
-								<div>
-									<dt className="font-medium text-text">Guardrail</dt>
-									<dd>{agent.guardrail}</dd>
-								</div>
-							) : null}
-						</dl>
-					) : null}
-					{tools.length > 0 ? (
-						<div className="flex flex-wrap gap-1.5">
-							{tools.map((tool) => (
-								<span
-									key={tool}
-									className="rounded-sm bg-bg-neutral px-1.5 py-0.5 text-[11px] font-medium leading-4 text-text-subtle"
-								>
-									{tool}
+				<div className="flex flex-col gap-4">
+					<section className="flex flex-col gap-1.5">
+						<h4 className="text-xs font-semibold leading-4 text-text">Description</h4>
+						<p className="text-sm leading-5 text-text-subtle">
+							{getAgentLongDescription(agent)}
+						</p>
+						{tools.length > 0 ? (
+							<SkillTagGroup>
+								{tools.map((tool) => (
+									<SkillTag
+										key={tool}
+										color={getSkillTagColor(tool)}
+										icon={getSkillTagIcon(tool)}
+									>
+										{tool}
+									</SkillTag>
+								))}
+							</SkillTagGroup>
+						) : null}
+					</section>
+					{agent.trigger ? (
+						<section className="flex flex-col gap-1.5">
+							<h4 className="text-xs font-semibold leading-4 text-text">Trigger</h4>
+							<div className="flex items-center gap-2 text-sm leading-5 text-text">
+								<span className="flex size-4 shrink-0 items-center justify-center text-icon-subtle">
+									<AutomationIcon label="" size="small" />
 								</span>
+								<span>{formatAgentTriggerLabel(agent.trigger)}</span>
+							</div>
+						</section>
+					) : null}
+					<section className="flex flex-col gap-1.5">
+						<h4 className="text-xs font-semibold leading-4 text-text">Capabilities</h4>
+						<div className="flex flex-col gap-2">
+							{AGENT_CAPABILITIES.map((capability) => (
+								<div key={capability.label} className="flex items-center gap-2 text-sm leading-5 text-text">
+									<span className="flex size-4 shrink-0 items-center justify-center text-icon-subtle">
+										{capability.icon}
+									</span>
+									<span>{capability.label}</span>
+								</div>
 							))}
 						</div>
-					) : null}
+					</section>
 				</div>
 			</ArtifactCard>
 		</div>

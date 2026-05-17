@@ -76,7 +76,7 @@ test("AgentsDemo shows the collapsed Rovo agent nudge after the report is attach
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/const \{ isOpen: isChatOpen \} = useRovoChat\(\);/u,
+		/const \{ isOpen: isChatOpen, openChat, sendPrompt, uiMessages \} = useRovoChat\(\);/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
@@ -92,14 +92,15 @@ test("AgentsDemo shows the collapsed Rovo agent nudge after the report is attach
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/backToBoard\(\);[\s\S]*applyAgent\(\);[\s\S]*setIsAgentDetailsOpen\(true\);/u,
+		/backToBoard\(\);[\s\S]*openChat\("floating"\);[\s\S]*sendPrompt\(RFP_AGENT_CREATION_PROMPT,\s*\{[\s\S]*creationMode: "agent"/u,
 	);
 	const createAgentHandler = AGENTS_DEMO_SOURCE.match(
 		/const handleCreateRfpDraftingAgent = useCallback\(\(\) => \{([\s\S]*?)\n\t\}, \[[^\]]*backToBoard/u,
 	)?.[1] ?? "";
-	assert.match(createAgentHandler, /setIsAgentDetailsOpen\(true\)/u);
-	assert.doesNotMatch(createAgentHandler, /sendPrompt/u);
-	assert.doesNotMatch(createAgentHandler, /openChat/u);
+	assert.doesNotMatch(createAgentHandler, /applyAgent/u);
+	assert.doesNotMatch(createAgentHandler, /setIsAgentDetailsOpen\(true\)/u);
+	assert.match(createAgentHandler, /sendPrompt/u);
+	assert.match(createAgentHandler, /openChat/u);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
 		/import \{ ROVO_AGENT_RESULT_OPEN_EVENT \} from "@\/components\/projects\/sidebar-chat\/components\/agent-result-card";/u,
@@ -118,10 +119,14 @@ test("AgentsDemo shows the collapsed Rovo agent nudge after the report is attach
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
+		/getMessageAgentResult\(message\)[\s\S]*agentResult\?\.agentId !== RFP_DRAFTING_AGENT_ID[\s\S]*appliedAgentResultMessageIdsRef\.current\.add\(message\.id\)[\s\S]*applyAgent\(\);/u,
+	);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
 		/rovoButtonSuggestion=\{rovoButtonSuggestion\}/u,
 	);
-	assert.doesNotMatch(AGENTS_DEMO_SOURCE, /RFP_AGENT_CREATION_PROMPT/u);
-	assert.doesNotMatch(AGENTS_DEMO_SOURCE, /creationMode: "agent"/u);
+	assert.match(AGENTS_DEMO_SOURCE, /const RFP_AGENT_CREATION_PROMPT = "Create an RFP Drafting Agent/u);
+	assert.match(AGENTS_DEMO_SOURCE, /creationMode: "agent"/u);
 });
 
 test("project preview demos honor the embedded query contract", () => {

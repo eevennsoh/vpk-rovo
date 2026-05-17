@@ -79,6 +79,7 @@ interface UseAssistantThinkingTraceStateOptions {
 	isResponseInFlight: boolean;
 	answeredQuestionToolCallIds?: readonly string[];
 	isPostToolsGeneration?: boolean;
+	isPostToolsResultPending?: boolean;
 	hasWidgetOutput?: boolean;
 	isRetryThinkingStatus?: boolean;
 	thinkingToolCalls?: ThinkingToolCallSummary[];
@@ -469,6 +470,7 @@ export function useAssistantThinkingTraceState({
 	isResponseInFlight,
 	answeredQuestionToolCallIds,
 	isPostToolsGeneration = false,
+	isPostToolsResultPending = false,
 	hasWidgetOutput = false,
 	isRetryThinkingStatus = false,
 	thinkingToolCalls,
@@ -550,6 +552,7 @@ export function useAssistantThinkingTraceState({
 		hasBackendThinkingActivity: data.hasBackendThinkingActivity,
 		hasAwaitingInputToolCalls: data.hasAwaitingInputToolCalls,
 		isPostToolsGeneration,
+		isPostToolsResultPending,
 		hasWidgetOutput,
 		lifecyclePhase,
 	});

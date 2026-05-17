@@ -58,8 +58,10 @@ function getAvatarFallback(name: string): string {
 }
 
 function CommentAvatar({ comment }: Readonly<CommentProps>) {
+	const isAgentAuthor = comment.author.role === "Agent";
+
 	return (
-		<Avatar>
+		<Avatar shape={isAgentAuthor ? "hexagon" : "circle"}>
 			{comment.author.avatarUrl ? (
 				<AvatarImage src={comment.author.avatarUrl} alt={comment.author.name} />
 			) : null}

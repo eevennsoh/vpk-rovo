@@ -175,6 +175,8 @@ function useThreadMessageDerived(
 			toolCall.state === "running" ||
 			toolCall.state === "approval-requested"
 	);
+	const hasArtifactResult = Boolean(getLatestDataPart(message, "data-artifact-result"));
+	const hasAgentResult = Boolean(getLatestDataPart(message, "data-agent-result"));
 	const isPostToolsGenuiGeneration = resolvePostToolsGenuiGeneration({
 		widgetType,
 		isWidgetLoading,
@@ -182,6 +184,13 @@ function useThreadMessageDerived(
 		hasRunningToolCalls: hasRunningThinkingToolCalls,
 	});
 	const isResponseInFlight = isStreaming || isThinkingLifecycleStreaming || isWidgetLoading;
+	const isPostToolsResultPending = (
+		isResponseInFlight &&
+		hasAnyThinkingToolCalls &&
+		!hasRunningThinkingToolCalls &&
+		!hasArtifactResult &&
+		!hasAgentResult
+	);
 	const isRetryThinkingStatus =
 		getLatestDataPart(message, "data-thinking-status")?.data.label?.includes("Retrying") ?? false;
 	const thinkingToolCallsForStatus =
@@ -191,6 +200,7 @@ function useThreadMessageDerived(
 		isThinkingLifecycleStreaming,
 		isResponseInFlight,
 		isPostToolsGeneration: isPostToolsGenuiGeneration,
+		isPostToolsResultPending,
 		hasWidgetOutput,
 		isRetryThinkingStatus,
 		thinkingToolCalls: thinkingToolCallsForStatus,

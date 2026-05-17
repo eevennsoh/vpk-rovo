@@ -83,6 +83,7 @@ export interface AgentsRfpDemoAttachment {
 	approved?: boolean;
 	previewKind?: "html-report" | "pdf-preview";
 	kind?: string | null;
+	previewHtml?: string | null;
 }
 
 export type AgentsRfpDemoAgentStatus = "idle" | "queued" | "running" | "completed" | "failed";
@@ -102,6 +103,8 @@ export interface AgentsRfpDemoWorkItemState {
 	assignee?: string | null;
 	previousAssignee?: string | null;
 	agentStatus?: AgentsRfpDemoAgentStatus;
+	agentStartedAt?: string | null;
+	agentReadyAt?: string | null;
 	agentSessionThreadId?: string | null;
 	agentJobRunId?: string | null;
 	generatedAttachment?: AgentsRfpDemoAttachment | null;
@@ -890,6 +893,7 @@ export function resolveRfpDemoBoardColumns(
 					return {
 						...resolvedCard,
 						avatarSrc: state.agent?.avatarSrc ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
+						avatarPulse: workItem.agentStatus === "running" || workItem.agentStatus === "queued",
 					};
 				}
 

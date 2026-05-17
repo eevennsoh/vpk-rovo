@@ -29,6 +29,13 @@ const {
 	resolveThinkingToolCallStepOpen,
 	shouldCollapseAssistantThinkingTraceOnPhaseChange,
 } = loadTsModule(path.join(__dirname, "assistant-thinking-trace-state.ts"));
+const { getReasoningSectionTitle } = loadTsModule(
+	path.join(__dirname, "../lib/reasoning-labels.ts"),
+);
+
+test("thinking trace uses distinct copy for the expanded reasoning section", () => {
+	assert.equal(getReasoningSectionTitle("thinking"), "Reasoning");
+});
 
 test("collectAssistantThinkingTraceData detects event-only traces", () => {
 	const data = collectAssistantThinkingTraceData({
@@ -421,6 +428,21 @@ test("resolveAssistantThinkingTracePhase keeps shimmer active while post-tool wi
 	);
 });
 
+test("resolveAssistantThinkingTracePhase keeps shimmer active while post-tool result cards are pending", () => {
+	assert.equal(
+		resolveAssistantThinkingTracePhase({
+			isThinkingActive: true,
+			hasTurnComplete: false,
+			isThinkingLifecycleStreaming: false,
+			hasBackendThinkingActivity: true,
+			hasAwaitingInputToolCalls: false,
+			isPostToolsResultPending: true,
+			lifecyclePhase: "completed",
+		}),
+		"thinking"
+	);
+});
+
 test("completed thinking tool calls suppress the collapsed byline", () => {
 	const chainOfThoughtSource = fs.readFileSync(
 		path.join(__dirname, "../../../ui-custom/chain-of-thought.tsx"),
@@ -434,6 +456,14 @@ test("completed thinking tool calls suppress the collapsed byline", () => {
 	assert.match(
 		chainOfThoughtSource,
 		/const shouldShowDescription = description !== null;/u,
+	);
+	assert.match(
+		chainOfThoughtSource,
+		/const shouldShowHeaderDescription = shouldShowDescription && \(!hasExpandableContent \|\| !isOpen\);/u,
+	);
+	assert.match(
+		chainOfThoughtSource,
+		/\{shouldShowHeaderDescription \? <CyclingByline>\{resolvedDescription\}<\/CyclingByline> : null\}/u,
 	);
 	assert.match(
 		assistantTraceSource,

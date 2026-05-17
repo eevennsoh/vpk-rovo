@@ -71,6 +71,9 @@ async function readJsonStateResponse(response: Response): Promise<AgentsRfpDemoS
 
 export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 	const [state, setState] = useState<AgentsRfpDemoState>(() => createDefaultAgentsRfpDemoState());
+	const hasPendingAgentWork = Object.values(state.workItems).some((workItem) => (
+		workItem.agentStatus === "queued" || workItem.agentStatus === "running"
+	));
 
 	useEffect(() => {
 		let cancelled = false;
@@ -92,6 +95,32 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 			cancelled = true;
 		};
 	}, []);
+
+	useEffect(() => {
+		if (!hasPendingAgentWork) {
+			return;
+		}
+
+		let cancelled = false;
+		const pollState = async () => {
+			try {
+				const nextState = await readJsonStateResponse(await fetch(RFP_DEMO_STATE_ENDPOINT));
+				if (!cancelled) {
+					setState(nextState);
+				}
+			} catch (error) {
+				console.error("[AgentsRfpDemo] Failed to poll backend state:", error);
+			}
+		};
+		const intervalId = window.setInterval(() => {
+			void pollState();
+		}, 1_000);
+
+		return () => {
+			cancelled = true;
+			window.clearInterval(intervalId);
+		};
+	}, [hasPendingAgentWork]);
 
 	const postStateMutation = useCallback(async (endpoint: string, body: Record<string, unknown> = {}) => {
 		try {

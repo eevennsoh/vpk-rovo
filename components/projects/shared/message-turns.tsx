@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactElement, ReactNode } from "react";
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -44,6 +44,11 @@ interface MessageTurnsProps<MESSAGE extends ThreadMessage> {
 		turnIndex: number,
 		turns: ReadonlyArray<ReadonlyArray<MESSAGE>>
 	) => CSSProperties | undefined;
+	renderTurnAfter?: (
+		turn: ReadonlyArray<MESSAGE>,
+		turnIndex: number,
+		turns: ReadonlyArray<ReadonlyArray<MESSAGE>>
+	) => ReactNode;
 	getMessageContainerClassName?: (
 		message: MESSAGE,
 		messageIndex: number,
@@ -59,6 +64,11 @@ interface MessageTurnsProps<MESSAGE extends ThreadMessage> {
 		messageIndex: number,
 		turn: ReadonlyArray<MESSAGE>
 	) => ReactNode;
+	renderMessageAfter?: (
+		message: MESSAGE,
+		messageIndex: number,
+		turn: ReadonlyArray<MESSAGE>
+	) => ReactNode;
 }
 
 export function MessageTurns<MESSAGE extends ThreadMessage>({
@@ -68,9 +78,11 @@ export function MessageTurns<MESSAGE extends ThreadMessage>({
 	latestTurnDataAttribute,
 	getTurnContainerClassName,
 	getTurnContainerStyle,
+	renderTurnAfter,
 	getMessageContainerClassName,
 	getMessageContainerStyle,
 	renderMessage,
+	renderMessageAfter,
 }: Readonly<MessageTurnsProps<MESSAGE>>): ReactElement {
 	const turns = useMemo(
 		() => groupMessagesByTurn(messages, isUserMessage),
@@ -85,40 +97,62 @@ export function MessageTurns<MESSAGE extends ThreadMessage>({
 					isLatestTurn && latestTurnDataAttribute
 						? ({ [latestTurnDataAttribute]: "true" } as Record<string, string>)
 						: {};
+				const renderedTurnAfter = renderTurnAfter?.(turn, turnIndex, turns);
+				const hasRenderedTurnAfter = !(
+					renderedTurnAfter === null ||
+					renderedTurnAfter === undefined ||
+					renderedTurnAfter === false
+				);
 
 				return (
-					<div
-						key={`turn-${turnIndex}-${turn[0]?.id ?? "empty"}`}
-						className={cn(
-							isLatestTurn ? latestTurnClassName : undefined,
-							getTurnContainerClassName?.(turn, turnIndex, turns)
-						)}
-						style={getTurnContainerStyle?.(turn, turnIndex, turns)}
-						{...latestTurnProps}
-					>
-						{turn.map((message, messageIndex) => {
-							const renderedMessage = renderMessage(message, messageIndex, turn);
-							if (
-								renderedMessage === null ||
-								renderedMessage === undefined ||
-								renderedMessage === false
-							) {
-								return null;
-							}
+					<Fragment key={`turn-${turnIndex}-${turn[0]?.id ?? "empty"}`}>
+						<div
+							className={cn(
+								isLatestTurn ? latestTurnClassName : undefined,
+								getTurnContainerClassName?.(turn, turnIndex, turns)
+							)}
+							style={getTurnContainerStyle?.(turn, turnIndex, turns)}
+							{...latestTurnProps}
+						>
+							{turn.map((message, messageIndex) => {
+								const renderedMessage = renderMessage(message, messageIndex, turn);
+								const renderedMessageAfter = renderMessageAfter?.(message, messageIndex, turn);
+								const hasRenderedMessage = !(
+									renderedMessage === null ||
+									renderedMessage === undefined ||
+									renderedMessage === false
+								);
+								const hasRenderedMessageAfter = !(
+									renderedMessageAfter === null ||
+									renderedMessageAfter === undefined ||
+									renderedMessageAfter === false
+								);
+								if (
+									!hasRenderedMessage &&
+									!hasRenderedMessageAfter
+								) {
+									return null;
+								}
 
-							return (
-								<div
-									key={`turn-${turnIndex}-message-${messageIndex}-${message.id}`}
-									className={cn(
-										getMessageContainerClassName?.(message, messageIndex, turn)
-									)}
-									style={getMessageContainerStyle?.(message, messageIndex, turn)}
-								>
-									{renderedMessage}
-								</div>
-							);
-						})}
-					</div>
+								return (
+									<Fragment key={`turn-${turnIndex}-message-${messageIndex}-${message.id}`}>
+										{hasRenderedMessage ? (
+											<div
+												className={cn(
+													getMessageContainerClassName?.(message, messageIndex, turn)
+												)}
+												style={getMessageContainerStyle?.(message, messageIndex, turn)}
+											>
+												{renderedMessage}
+											</div>
+										) : null}
+										{hasRenderedMessageAfter ? renderedMessageAfter : null}
+									</Fragment>
+								);
+							})}
+						</div>
+						{hasRenderedTurnAfter ? renderedTurnAfter : null}
+					</Fragment>
 				);
 			})}
 		</>

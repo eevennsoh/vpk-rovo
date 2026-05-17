@@ -2,8 +2,6 @@
 
 import type { ReactNode } from "react";
 import {
-	getMessageAgentResult,
-	getMessageArtifactResult,
 	type RovoRenderableUIMessage,
 } from "@/lib/rovo-ui-messages";
 import { ThreadMessage } from "@/components/projects/shared/thread-message";
@@ -15,8 +13,6 @@ import {
 	parsePlanWidgetPayload,
 	type ParsedPlanWidgetPayload,
 } from "@/components/projects/shared/lib/plan-widget";
-import { ArtifactResultCard, type ArtifactResult } from "./artifact-result-card";
-import { AgentResultCard } from "./agent-result-card";
 
 interface PlanBuildState {
 	isBuildDisabled?: boolean;
@@ -42,8 +38,6 @@ interface MessageBubbleProps {
 		planWidget: ParsedPlanWidgetPayload,
 		message: RovoRenderableUIMessage
 	) => PlanBuildState;
-	onArtifactDialogOpen?: (artifact: ArtifactResult) => void;
-	onArtifactDialogClose?: (artifact: ArtifactResult) => void;
 }
 
 export default function MessageBubble({
@@ -60,11 +54,7 @@ export default function MessageBubble({
 	onWidgetPrimaryAction,
 	onBuildPlan,
 	resolvePlanBuildState,
-	onArtifactDialogOpen,
-	onArtifactDialogClose,
 }: Readonly<MessageBubbleProps>): ReactNode {
-	const artifactResult = getMessageArtifactResult(message);
-	const agentResult = getMessageAgentResult(message);
 	const hasPlanWidget = message.parts.some(
 		(part) =>
 			part.type === "data-widget-data" &&
@@ -132,16 +122,6 @@ export default function MessageBubble({
 			{showThinkingStatusSection ? <ThreadMessage.ThinkingStatus /> : null}
 			<ThreadMessage.Widget position="before-content" />
 			<ThreadMessage.Content />
-			{artifactResult ? (
-				<ArtifactResultCard
-					artifact={artifactResult}
-					onDialogOpen={onArtifactDialogOpen}
-					onDialogClose={onArtifactDialogClose}
-				/>
-			) : null}
-			{agentResult ? (
-				<AgentResultCard agent={agentResult} />
-			) : null}
 			<ThreadMessage.Feedback />
 			<ThreadMessage.Tools />
 			<ThreadMessage.ToolFirstWarning />
