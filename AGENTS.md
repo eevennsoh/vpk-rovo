@@ -185,7 +185,7 @@ static export used by deployment.
 
 ## Gotchas
 
-- Worktree ports are deterministic; check with `pnpm ports`.
+- Worktree ports are deterministic; check with `pnpm ports` or keep a live dashboard open with `pnpm ports watch`.
 - Runtime port files: `.dev-rovodev-port`, `.dev-rovodev-ports`, `.dev-frontend-port`, `.dev-backend-port`
 - Dev API calls traverse Next.js proxy then Express; debug both layers.
 - No directories are excluded from TypeScript type-checking (only `node_modules`). All errors are visible and trackable.
