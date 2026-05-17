@@ -83,6 +83,15 @@ Detailed ownership and phase guidance is in `## Appendix -> Agent Team Workflow 
 - Before completion, perform a staff-level quality gate: root-cause fixes, clean architecture, no band-aids.
 - When fixing a bug, add a regression test that reproduces the original failure.
 
+## Skill Validation
+
+- When editing `.agents/skills/**/scripts/*`, run the narrow script test or
+  smoke path before handoff. For Python tests named `test_*.py`, run them
+  directly with `python3 path/to/test_*.py`; for helper scripts without tests,
+  run the documented smoke command or explain the blocker.
+- For `SKILL.md` or reference-only edits, `git diff --check` is enough unless
+  the doc changes command behavior, validation expectations, or script names.
+
 ## Local Overrides
 
 You can add gitignored local overrides:
