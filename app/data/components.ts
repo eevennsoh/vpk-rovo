@@ -156,6 +156,7 @@ export const AI_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	aiComponent("terminal"),
 	aiComponent("test-results", "Test Results"),
 	aiComponent("tool"),
+	aiComponent("twg-tool", "TWG Tool"),
 	aiComponent("toolbar"),
 	aiComponent("transcription"),
 	aiComponent("voice-selector", "Voice Selector"),

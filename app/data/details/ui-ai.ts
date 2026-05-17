@@ -2978,6 +2978,103 @@ const edgeTypes = {
 		],
 	},
 
+	"twg-tool": {
+		description:
+			"A compact Teamwork Graph thinking trace row for showing search progress, source context, and source icon stacks inside AI reasoning surfaces.",
+		usage: `import {
+  TwgTool,
+  TwgToolSourceIcon,
+  type TwgToolSource,
+} from "@/components/ui-ai/twg-tool";
+
+const sources: TwgToolSource[] = [
+  { id: "twg", label: "Teamwork Graph", provider: "twg" },
+  { id: "confluence", label: "Confluence", provider: "confluence" },
+  { id: "google-drive", label: "Google Drive", provider: "google-drive" },
+];
+
+<TwgTool
+  defaultOpen
+  description={
+    <span className="inline-flex items-center gap-1">
+      Looking into
+      <TwgToolSourceIcon source={sources[0]} size="sm" />
+      <span className="italic">Upper arm strain repair</span>
+    </span>
+  }
+  sources={sources}
+>
+  <div className="rounded-md border border-border bg-surface px-3 py-2">
+    Source details render here.
+  </div>
+</TwgTool>`,
+		demoLayout: {
+			previewContentWidth: "full",
+			examplesContentWidth: "full",
+		},
+		props: [
+			{
+				name: "title",
+				type: "ReactNode",
+				default: '"Searching Teamwork Graph"',
+				description: "Title rendered in the first line of the trace banner.",
+			},
+			{
+				name: "status",
+				type: '"active" | "complete" | "pending"',
+				default: '"active"',
+				description: "Visual status for the trace row.",
+			},
+			{
+				name: "description",
+				type: "ReactNode",
+				description: "Second-line status text. Can include inline TwgToolSourceIcon elements.",
+			},
+			{
+				name: "sources",
+				type: "ReadonlyArray<TwgToolSource>",
+				default: "[]",
+				description: "Sources shown as the overlapping right-side icon stack.",
+			},
+			{
+				name: "showChevron",
+				type: "boolean",
+				default: "true",
+				description: "Shows the chevron affordance and enables collapsible content when children are provided.",
+			},
+			{
+				name: "open",
+				type: "boolean",
+				description: "Controlled open state passed to the underlying Collapsible root.",
+			},
+			{
+				name: "defaultOpen",
+				type: "boolean",
+				description: "Initial open state when the component is uncontrolled.",
+			},
+			{
+				name: "onOpenChange",
+				type: "CollapsibleRootProps[\"onOpenChange\"]",
+				description: "Callback fired when the collapsible trace content opens or closes.",
+			},
+			{
+				name: "className",
+				type: "string",
+				description: "Additional classes applied to the root container.",
+			},
+		],
+		subComponents: [
+			{ name: "TwgTool", description: "Root trace row with rail icon, banner, source stack, and optional collapsible content." },
+			{ name: "TwgToolSourceIcon", description: "Single 16px or 24px provider icon using Teamwork Graph, Atlassian product logos, or local third-party assets." },
+			{ name: "TwgToolSourceStack", description: "Right-aligned overlapping source icon stack with overflow count support." },
+		],
+		examples: [
+			{ title: "Single source", description: "Searching Teamwork Graph with one source in the icon stack.", demoSlug: "twg-tool-demo-single-source" },
+			{ title: "Multiple sources", description: "Progress row with Teamwork Graph, Confluence, Google Drive, and Jira sources.", demoSlug: "twg-tool-demo-multiple-sources" },
+			{ title: "Completed", description: "Completed state after reading six sources.", demoSlug: "twg-tool-demo-completed" },
+		],
+	},
+
 	"test-results": {
 		description:
 			"A compound component for displaying test suite results with summary statistics, progress visualization, collapsible suites, individual test status indicators with duration, and error details with stack traces. Supports passed, failed, skipped, and running states with color-coded indicators.",
