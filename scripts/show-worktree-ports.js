@@ -1,13 +1,22 @@
 #!/usr/bin/env node
 /**
- * Show port assignments for all git worktrees
+ * Show active port assignments + Portless URLs for git worktrees.
  *
- * Usage: node scripts/show-worktree-ports.js
+ * Usage:
+ *   node scripts/show-worktree-ports.js          one-shot snapshot
+ *   node scripts/show-worktree-ports.js watch    live dashboard (1s tick, Ctrl+C to exit)
+ *
+ * Main worktree is always shown. Other worktrees are shown only when they
+ * have at least one of .dev-frontend-port / .dev-backend-port / .dev-rovodev-port.
  */
 
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { getAllWorktreePortInfo } = require("./lib/worktree-ports");
+
+const SEPARATOR = "━".repeat(70);
+const WATCH_INTERVAL_MS = 1000;
 
 function readPortFile(worktreePath, filename) {
 	try {
@@ -21,51 +30,149 @@ function readPortFile(worktreePath, filename) {
 	return null;
 }
 
-function main() {
-	console.log("\n📍 VPK Worktree Port Assignments\n");
-	console.log("━".repeat(70));
-
-	let worktrees;
+function loadPortlessRoutes() {
 	try {
-		worktrees = getAllWorktreePortInfo();
-	} catch (error) {
-		console.error(`Failed to calculate worktree slots: ${error.message}`);
-		process.exit(1);
+		const file = path.join(os.homedir(), ".portless", "routes.json");
+		if (!fs.existsSync(file)) return [];
+		const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
 	}
+}
 
-	if (worktrees.length === 0) {
-		console.log("No git worktrees found.");
-		return;
-	}
+function findPortlessUrl(routes, frontendPort) {
+	if (!frontendPort) return null;
+	const port = Number(frontendPort);
+	if (!Number.isFinite(port)) return null;
+	const route = routes.find((r) => r && r.port === port);
+	return route?.hostname ? `https://${route.hostname}` : null;
+}
 
-	for (const wt of worktrees) {
-		const name = path.basename(wt.path);
-
-		// Check actual running ports
+function collectWorktreeRows(worktrees, routes) {
+	return worktrees.map((wt) => {
 		const runningFrontend = readPortFile(wt.path, ".dev-frontend-port");
 		const runningBackend = readPortFile(wt.path, ".dev-backend-port");
 		const runningRovodev = readPortFile(wt.path, ".dev-rovodev-port");
+		const isRunning = Boolean(runningFrontend || runningBackend || runningRovodev);
+		return {
+			wt,
+			name: path.basename(wt.path),
+			isMain: Boolean(wt.isMain),
+			isRunning,
+			runningFrontend,
+			runningBackend,
+			runningRovodev,
+			portlessUrl: findPortlessUrl(routes, runningFrontend),
+		};
+	});
+}
 
-		const status = runningFrontend || runningBackend || runningRovodev ? "🟢 RUNNING" : "⚪ stopped";
-		const branchLabel = wt.isMain ? "(main)" : `(${wt.branch || wt.identifier})`;
+function filterRowsForDisplay(rows) {
+	return rows.filter((row) => row.isMain || row.isRunning);
+}
 
-		console.log(`\n${wt.isMain ? "📁" : "🌿"} ${name} ${branchLabel}`);
-		console.log(`   Path: ${wt.path}`);
-		console.log(`   Status: ${status}`);
-		console.log(
-			`   Reserved ports: frontend=${wt.frontendBase}, backend=${wt.backendBase}, rovodev=${wt.rovodevBase}`
-		);
+function renderRows(rows, { headerSuffix, footer } = {}) {
+	const header = headerSuffix
+		? `📍 VPK Worktree Port Assignments  ${headerSuffix}`
+		: "📍 VPK Worktree Port Assignments";
+	console.log(`\n${header}\n`);
+	console.log(SEPARATOR);
 
-		if (runningFrontend || runningBackend || runningRovodev) {
+	if (rows.length === 0) {
+		console.log("\nNo git worktrees found.");
+	}
+
+	for (const row of rows) {
+		const {
+			wt,
+			name,
+			isMain,
+			isRunning,
+			runningFrontend,
+			runningBackend,
+			runningRovodev,
+			portlessUrl,
+		} = row;
+		const branchLabel = isMain ? "(main)" : `(${wt.branch || wt.identifier})`;
+		const emoji = isMain ? "🌳" : "🪾";
+
+		console.log(`\n${emoji} ${name} ${branchLabel}`);
+		console.log(`   📂 ${wt.path}`);
+		if (isRunning) {
 			console.log(
-				`   Active ports:   frontend=${runningFrontend || "—"}, backend=${runningBackend || "—"}, rovodev=${runningRovodev || "—"}`
+				`   🔌 frontend=${runningFrontend || "—"}  backend=${runningBackend || "—"}  rovodev=${runningRovodev || "—"}`
 			);
+		} else {
+			console.log("   🔌 (no active ports)");
+		}
+		if (portlessUrl) {
+			console.log(`   🌐 ${portlessUrl}`);
 		}
 	}
 
-	console.log("\n" + "━".repeat(70));
-	console.log("\n💡 Each active worktree gets a dedicated 20-port slot per service family.");
-	console.log("   That leaves room for auto-increment and 6-port RovoDev pools without overlap.\n");
+	if (footer) {
+		console.log(`\n${SEPARATOR}`);
+		console.log(footer);
+	} else {
+		console.log(`\n${SEPARATOR}\n`);
+	}
 }
 
-main();
+function snapshot() {
+	const worktrees = getAllWorktreePortInfo();
+	const routes = loadPortlessRoutes();
+	const rows = collectWorktreeRows(worktrees, routes);
+	return filterRowsForDisplay(rows);
+}
+
+function main() {
+	let rows;
+	try {
+		rows = snapshot();
+	} catch (error) {
+		console.error(`Failed to enumerate worktrees: ${error.message}`);
+		process.exit(1);
+	}
+	renderRows(rows);
+}
+
+function runWatch() {
+	function tick() {
+		let rows;
+		try {
+			rows = snapshot();
+		} catch (error) {
+			process.stdout.write("\x1b[2J\x1b[H");
+			console.error(`Failed to enumerate worktrees: ${error.message}`);
+			return;
+		}
+		const now = new Date().toLocaleTimeString("en-US", { hour12: false });
+		process.stdout.write("\x1b[2J\x1b[H");
+		renderRows(rows, {
+			headerSuffix: "·  watching (1s)",
+			footer: `Last updated ${now} · Ctrl+C to exit`,
+		});
+	}
+
+	tick();
+	const interval = setInterval(tick, WATCH_INTERVAL_MS);
+
+	process.on("SIGINT", () => {
+		clearInterval(interval);
+		process.stdout.write("\n");
+		process.exit(0);
+	});
+}
+
+const subcommand = process.argv[2];
+if (subcommand === "watch") {
+	runWatch();
+} else if (subcommand && subcommand !== "once") {
+	console.error(
+		`Unknown subcommand: ${subcommand}. Use \`pnpm ports\` or \`pnpm ports watch\`.`
+	);
+	process.exit(2);
+} else {
+	main();
+}
