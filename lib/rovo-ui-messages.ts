@@ -53,6 +53,7 @@ export interface ThinkingEventUpdate {
 	eventId: string;
 	phase: ThinkingEventPhase;
 	toolName: string;
+	label?: string;
 	toolCallId?: string;
 	input?: unknown;
 	output?: unknown;
@@ -76,6 +77,7 @@ export type ThinkingToolState =
 export interface ThinkingToolCallSummary {
 	id: string;
 	toolName: string;
+	label?: string;
 	toolCallId?: string;
 	state: ThinkingToolState;
 	input?: unknown;
@@ -703,6 +705,10 @@ export function getThinkingToolCallSummaries(
 			typeof event.toolName === "string" && event.toolName.trim()
 				? event.toolName.trim()
 				: "Tool";
+		const label =
+			typeof event.label === "string" && event.label.trim()
+				? event.label.trim()
+				: undefined;
 		const timestamp =
 			typeof event.timestamp === "string" && event.timestamp.trim()
 				? event.timestamp.trim()
@@ -723,7 +729,7 @@ export function getThinkingToolCallSummaries(
 		const eventSuppressedRawOutput = event.suppressedRawOutput === true;
 
 		if (summaryIndex === undefined) {
-			summaries.push({
+			const summary: ThinkingToolCallSummary = {
 				id: key,
 				toolName,
 				toolCallId,
@@ -749,7 +755,11 @@ export function getThinkingToolCallSummaries(
 				timestamp,
 				mcpServer: typeof event.mcpServer === "string" && event.mcpServer.trim() ? event.mcpServer.trim() : undefined,
 				permissionScenario: typeof event.permissionScenario === "string" && event.permissionScenario.trim() ? event.permissionScenario.trim() : undefined,
-			});
+			};
+			if (label) {
+				summary.label = label;
+			}
+			summaries.push(summary);
 			summaryIndexByKey.set(key, summaries.length - 1);
 			continue;
 		}
@@ -757,6 +767,9 @@ export function getThinkingToolCallSummaries(
 		const summary = summaries[summaryIndex];
 		summary.toolName = toolName;
 		summary.toolCallId = toolCallId;
+		if (label) {
+			summary.label = label;
+		}
 		if (timestamp) {
 			summary.timestamp = timestamp;
 		}

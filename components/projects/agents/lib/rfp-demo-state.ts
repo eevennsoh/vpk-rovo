@@ -273,7 +273,7 @@ const RFP_101_FIXTURE_ATTACHMENTS: readonly AgentsRfpDemoAttachment[] = [
 const GENERATED_REPORT_ATTACHMENTS: readonly AgentsRfpDemoAttachment[] = [
 	{
 		id: GENERATED_RFP_REPORT_ATTACHMENT_ID,
-		displayName: "RFP response strategy.pdf",
+		displayName: "Acmecorp RFP qualification DACI.pdf",
 		ext: "pdf",
 		source: "generated",
 		approved: true,
@@ -284,7 +284,7 @@ const GENERATED_REPORT_ATTACHMENTS: readonly AgentsRfpDemoAttachment[] = [
 const INITIAL_REPORT_VERSION: AgentsRfpDemoReportVersion = {
 	id: "initial-generated-report",
 	label: "Initial generated report",
-	summary: "First offline HTML response package from RFP-101 context.",
+	summary: "First offline HTML qualification DACI from RFP-101 context.",
 	createdBy: "Rovo",
 	timestampLabel: "Now",
 };
@@ -292,7 +292,7 @@ const INITIAL_REPORT_VERSION: AgentsRfpDemoReportVersion = {
 const REFINED_REPORT_VERSION: AgentsRfpDemoReportVersion = {
 	id: "refined-current-report",
 	label: "Refined current report",
-	summary: "Customer-facing summary with stronger legal and data residency review note.",
+	summary: "Qualification DACI with stronger budget, stakeholder, and review-risk notes.",
 	createdBy: "Maya",
 	timestampLabel: "Now",
 };

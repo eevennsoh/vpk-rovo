@@ -9,20 +9,28 @@ import RoadmapIcon from "@atlaskit/icon/core/roadmap";
 import TaskToDoIcon from "@atlaskit/icon/core/task-to-do";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import SearchIcon from "@atlaskit/icon/core/search";
+import AttachmentIcon from "@atlaskit/icon/core/attachment";
+import CheckCircleIcon from "@atlaskit/icon/core/check-circle";
 import FolderOpenIcon from "@atlaskit/icon/core/folder-open";
 import FileIcon from "@atlaskit/icon/core/file";
+import FlagIcon from "@atlaskit/icon/core/flag";
+import ListChecklistIcon from "@atlaskit/icon/core/list-checklist";
 import ClipboardIcon from "@atlaskit/icon/core/clipboard";
 import ChangesIcon from "@atlaskit/icon/core/changes";
 import AngleBracketsIcon from "@atlaskit/icon/core/angle-brackets";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import ShieldIcon from "@atlaskit/icon/core/shield";
+import TargetIcon from "@atlaskit/icon/core/target";
 import GlobeIcon from "@atlaskit/icon/core/globe";
+import WorkItemIcon from "@atlaskit/icon/core/work-item";
+import WorkItemsIcon from "@atlaskit/icon/core/work-items";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import DiagramSymbolFrontendIcon from "@atlaskit/icon-lab/core/diagram-symbol-frontend";
 import TerminalIcon from "@atlaskit/icon-lab/core/terminal";
 import AiComputeIcon from "@atlaskit/icon-lab/core/ai-compute";
 import WrenchIcon from "@atlaskit/icon-lab/core/wrench";
 import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
+import TemplateIcon from "@atlaskit/icon-lab/core/template";
 import Image from "next/image";
 
 export type { AtlassianLogoName };
@@ -57,6 +65,10 @@ const NATIVE_TOOL_ICONS = new Map<string, (props: NewCoreIconProps) => ReactNode
 	[normalizeToken("update_todo")!, TaskToDoIcon],
 	[normalizeToken("invoke_subagents")!, AiAgentIcon],
 	[normalizeToken("get_skill")!, SkillIcon],
+	[normalizeToken("web_search")!, SearchIcon],
+	[normalizeToken("search_web")!, SearchIcon],
+	[normalizeToken("web.search")!, SearchIcon],
+	[normalizeToken("search")!, SearchIcon],
 	[normalizeToken("open_files")!, FolderOpenIcon],
 	[normalizeToken("expand_code_chunks")!, DiagramSymbolFrontendIcon],
 	[normalizeToken("grep")!, AngleBracketsIcon],
@@ -70,6 +82,34 @@ const NATIVE_TOOL_ICONS = new Map<string, (props: NewCoreIconProps) => ReactNode
 	[normalizeToken("powershell")!, AiComputeIcon],
 	[normalizeToken("update_allowed_external_paths")!, ShieldIcon],
 	[normalizeToken("parallel")!, ClipboardIcon],
+	[normalizeToken("jira.read")!, WorkItemIcon],
+	[normalizeToken("jira.read_work_item")!, WorkItemIcon],
+	[normalizeToken("jira.scan")!, AttachmentIcon],
+	[normalizeToken("jira.scan_attachments")!, AttachmentIcon],
+	[normalizeToken("jira.inspect")!, WorkItemsIcon],
+	[normalizeToken("jira.inspect_board_column")!, WorkItemsIcon],
+	[normalizeToken("teamwork_graph.search")!, TeamworkGraphIcon],
+	[normalizeToken("teamwork_graph.link_knowledge")!, TeamworkGraphIcon],
+	[normalizeToken("rfp.map")!, ListChecklistIcon],
+	[normalizeToken("rfp.map_requirements")!, ListChecklistIcon],
+	[normalizeToken("rfp.check")!, TaskToDoIcon],
+	[normalizeToken("rfp.check_unfinished_work")!, TaskToDoIcon],
+	[normalizeToken("rfp.apply")!, QuestionCircleIcon],
+	[normalizeToken("rfp.apply_qualification_answers")!, QuestionCircleIcon],
+	[normalizeToken("rfp.build")!, RoadmapIcon],
+	[normalizeToken("rfp.build_bid_recommendation")!, RoadmapIcon],
+	[normalizeToken("rfp.flag")!, FlagIcon],
+	[normalizeToken("rfp.flag_reviews")!, FlagIcon],
+	[normalizeToken("agent_skill")!, SkillIcon],
+	[normalizeToken("agent_skill.load")!, SkillIcon],
+	[normalizeToken("agent.define_trigger")!, TargetIcon],
+	[normalizeToken("agent.configure_tools")!, WrenchIcon],
+	[normalizeToken("agent.write_instructions")!, ClipboardIcon],
+	[normalizeToken("agent.define_rerun_policy")!, RoadmapIcon],
+	[normalizeToken("agent.persist_definition")!, AiAgentIcon],
+	[normalizeToken("vpk_html.distill_fields")!, ListChecklistIcon],
+	[normalizeToken("vpk_html.render_template")!, TemplateIcon],
+	[normalizeToken("vpk_html.validate_artifact")!, CheckCircleIcon],
 ]);
 
 const MCP_SERVER_ICON_OVERRIDES = new Map<string, (props: NewCoreIconProps) => ReactNode>([
@@ -161,14 +201,34 @@ function normalizeToken(value: string | null | undefined): string | null {
 function splitCandidates(...values: Array<string | null | undefined>): string[] {
 	const tokens = new Set<string>();
 	for (const value of values) {
-		const normalized = normalizeToken(value);
+		const rawValue = value?.trim();
+		if (!rawValue) continue;
+		const normalized = normalizeToken(rawValue);
 		if (!normalized) continue;
 		tokens.add(normalized);
+		const segments = rawValue
+			.toLowerCase()
+			.split(/[.:\/]+/u)
+			.map((segment) => normalizeToken(segment))
+			.filter((segment): segment is string => Boolean(segment));
+		for (const segment of segments) {
+			tokens.add(segment);
+		}
 		for (const part of normalized.split("-")) {
 			if (part) tokens.add(part);
 		}
 	}
 	return [...tokens];
+}
+
+function resolveIconOverride(candidates: string[]): ((props: NewCoreIconProps) => ReactNode) | undefined {
+	for (const candidate of candidates) {
+		const icon = NATIVE_TOOL_ICONS.get(candidate) ?? MCP_SERVER_ICON_OVERRIDES.get(candidate);
+		if (icon) {
+			return icon;
+		}
+	}
+	return undefined;
 }
 
 function resolveVpkProvider(candidates: string[]): AtlassianLogoName | null {
@@ -216,8 +276,13 @@ function renderVpkLogo(
 export function normalizeToolName(toolName: string | null | undefined): string | null {
 	const normalized = normalizeToken(toolName);
 	if (!normalized) return null;
-	const parts = normalized.split(".");
-	return parts[parts.length - 1] ?? normalized;
+	const rawSegments = toolName
+		?.trim()
+		.toLowerCase()
+		.split(/[.:\/]+/u)
+		.map((segment) => normalizeToken(segment))
+		.filter((segment): segment is string => Boolean(segment));
+	return rawSegments && rawSegments.length > 0 ? rawSegments[rawSegments.length - 1]! : normalized;
 }
 
 export function getToolDisplayInfo(
@@ -265,6 +330,11 @@ export function resolveToolIcon(options: {
 		options.mcpServer ?? options.provider,
 	);
 	const normalizedToolName = normalizeToolName(displayInfo.displayName);
+	const toolCandidates = splitCandidates(
+		displayInfo.displayName,
+		options.toolName,
+		options.title,
+	);
 	const providerCandidates = splitCandidates(
 		displayInfo.server,
 		options.provider,
@@ -274,7 +344,7 @@ export function resolveToolIcon(options: {
 	);
 	const toolLabel = options.title ?? displayInfo.displayName ?? options.toolName ?? "Tool";
 
-	const nativeIcon = normalizedToolName ? NATIVE_TOOL_ICONS.get(normalizedToolName) : undefined;
+	const nativeIcon = resolveIconOverride(toolCandidates);
 	if (nativeIcon) {
 		return {
 			kind: "vpk-icon",
@@ -296,7 +366,7 @@ export function resolveToolIcon(options: {
 		};
 	}
 
-	const serverIconOverride = displayInfo.server ? MCP_SERVER_ICON_OVERRIDES.get(displayInfo.server) : undefined;
+	const serverIconOverride = resolveIconOverride(providerCandidates);
 	if (serverIconOverride) {
 		return {
 			kind: "vpk-icon",

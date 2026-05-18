@@ -11,6 +11,9 @@ function loadTsModule(entryPoint) {
 		bundle: true,
 		platform: "node",
 		format: "cjs",
+		loader: {
+			".css": "empty",
+		},
 		write: false,
 		logLevel: "silent",
 	});
@@ -33,6 +36,12 @@ const {
 const { getReasoningSectionTitle } = loadTsModule(
 	path.join(__dirname, "../lib/reasoning-labels.ts"),
 );
+const {
+	getThinkingToolTitle,
+} = loadTsModule(path.join(__dirname, "thinking-tool-display.ts"));
+const {
+	resolveToolIcon,
+} = loadTsModule(path.join(__dirname, "tool-icon-resolver.tsx"));
 
 test("thinking trace uses distinct copy for the expanded reasoning section", () => {
 	assert.equal(getReasoningSectionTitle("thinking"), "Reasoning");
@@ -58,6 +67,171 @@ test("collectAssistantThinkingTraceData detects event-only traces", () => {
 	assert.equal(data.hasTraceDataSignals, true);
 	assert.equal(data.hasBackendThinkingActivity, true);
 	assert.equal(data.thinkingToolCalls[0].state, "running");
+});
+
+test("thinking tool titles prefer plain English labels and useful fallbacks", () => {
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-1",
+			toolName: "jira.read_work_item",
+			label: "Reading RFP-101",
+			state: "running",
+			input: { key: "RFP-101" },
+		}),
+		"Reading RFP-101",
+	);
+
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-2",
+			toolName: "rfp.check_unfinished_work",
+			state: "running",
+		}),
+		"Checking open work",
+	);
+
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-3",
+			toolName: "agent_skill.load",
+			state: "running",
+			input: { skill: "create-agent" },
+		}),
+		"Using create-agent skill",
+	);
+
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-4",
+			toolName: "agent_skill.load",
+			state: "running",
+			input: { skill: "create-automation" },
+		}),
+		"Using create-automation skill",
+	);
+
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-5",
+			toolName: "jira.read_work_item",
+			state: "running",
+			input: { key: "RFP-101" },
+		}),
+		"Reading RFP-101",
+	);
+
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-4",
+			toolName: "jira.read",
+			state: "running",
+			input: { key: "RFP-101" },
+		}),
+		"Reading RFP-101",
+	);
+
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-5",
+			toolName: "jira.scan",
+			state: "running",
+		}),
+		"Scanning attachments",
+	);
+
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-6",
+			toolName: "rfp.map",
+			state: "running",
+		}),
+		"Mapping requirements",
+	);
+
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-7",
+			toolName: "rfp.check",
+			state: "running",
+		}),
+		"Checking open work",
+	);
+});
+
+test("thinking tool titles replace persisted raw tool fallback labels", () => {
+	const titles = [
+		getThinkingToolTitle({
+			id: "tool-1",
+			toolName: "jira.read_work_item",
+			label: "Using jira.read work item",
+			state: "running",
+			input: { key: "RFP-101" },
+		}),
+		getThinkingToolTitle({
+			id: "tool-2",
+			toolName: "jira.scan_attachments",
+			label: "Using jira.scan attachments",
+			state: "running",
+		}),
+		getThinkingToolTitle({
+			id: "tool-3",
+			toolName: "rfp.map_requirements",
+			label: "Using rfp.map requirements",
+			state: "running",
+		}),
+		getThinkingToolTitle({
+			id: "tool-4",
+			toolName: "rfp.check_unfinished_work",
+			label: "Using rfp.check unfinished work",
+			state: "running",
+		}),
+		getThinkingToolTitle({
+			id: "tool-5",
+			toolName: "system.encrypt_result",
+			label: "Using system.encrypt result",
+			state: "running",
+		}),
+	];
+
+	assert.deepEqual(titles, [
+		"Reading RFP-101",
+		"Scanning attachments",
+		"Mapping requirements",
+		"Checking open work",
+		"Running tool",
+	]);
+
+	for (const title of titles) {
+		assert.doesNotMatch(title, /\b(?:jira|rfp|system)\./u);
+		assert.doesNotMatch(title, /^Using\b/u);
+	}
+});
+
+test("tool icon resolver maps agents thinking tools to specific icons", () => {
+	assert.match(
+		resolveToolIcon({ toolName: "mcp__web_search__search", mcpServer: "web-search" }).iconComponent?.name,
+		/^SearchIcon/u
+	);
+	assert.match(
+		resolveToolIcon({ toolName: "jira.scan_attachments" }).iconComponent?.name,
+		/^AttachmentIcon/u
+	);
+	assert.match(
+		resolveToolIcon({ toolName: "teamwork_graph.search" }).iconComponent?.name,
+		/^TeamworkGraphIcon/u
+	);
+	assert.match(
+		resolveToolIcon({ toolName: "rfp.map_requirements" }).iconComponent?.name,
+		/^ListChecklistIcon/u
+	);
+	assert.match(
+		resolveToolIcon({ toolName: "jira.read" }).iconComponent?.name,
+		/^WorkItemIcon/u
+	);
+	assert.match(
+		resolveToolIcon({ toolName: "rfp.check" }).iconComponent?.name,
+		/^TaskToDoIcon/u
+	);
 });
 
 test("collectAssistantThinkingTraceData preserves status content", () => {
@@ -293,6 +467,17 @@ test("assistant thinking trace suppresses auto-open for question-card tool state
 		source,
 		/allowAutoOpen: !data\.hasAwaitingInputToolCalls && !data\.hasAnsweredQuestionToolCalls/u,
 	);
+});
+
+test("assistant thinking trace uses a pencil icon for response generation", () => {
+	const source = fs.readFileSync(
+		path.join(__dirname, "../components/assistant-thinking-trace.tsx"),
+		"utf8",
+	);
+
+	assert.match(source, /import PencilIcon from "@atlaskit\/icon-lab\/core\/pencil";/u);
+	assert.match(source, /const StepPencilIcon = /u);
+	assert.match(source, /icon=\{StepPencilIcon\}\s+label=\{\s*<Shimmer[\s\S]*Generating response/u);
 });
 
 test("resolveAssistantThinkingTraceOpen respects manual user toggles", () => {

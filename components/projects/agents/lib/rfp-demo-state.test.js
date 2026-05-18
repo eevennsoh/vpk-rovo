@@ -77,7 +77,7 @@ test("valid persisted payload resumes board, report, agent trigger, and activity
 	assert.equal(resumed.customAgentActivity.length, 3);
 	assert.deepEqual(
 		harness.getGeneratedRfpAttachments(resumed, "RFP-101").map((attachment) => attachment.displayName),
-		["RFP response strategy.pdf"],
+		["Acmecorp RFP qualification DACI.pdf"],
 	);
 });
 

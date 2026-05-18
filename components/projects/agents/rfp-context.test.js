@@ -60,7 +60,7 @@ async function loadRfpContextHarness() {
 	const result = await esbuild.build({
 		stdin: {
 			contents: `
-				export { BOARD_COLUMNS } from "./components/projects/agents/data/board-data";
+				export { BOARD_COLUMNS, RFP_CLIENT_NAMES_BY_CODE } from "./components/projects/agents/data/board-data";
 				export {
 					AGENTS_BOARD_CONTEXT_LABEL,
 					RFP_101_WORK_ITEM,
@@ -117,12 +117,13 @@ test("RFP-101 active work item formats a bounded hidden Jira context block", asy
 
 	assert.match(context, /^\[Active Jira Work Item Context\]/);
 	assert.match(context, /\[End Active Jira Work Item Context\]$/);
-	assert.match(context, /Enterprise Evaluation Account/);
-	assert.match(context, /Description: A large enterprise customer is evaluating Atlassian/);
-	assert.match(context, /Due date: Sep 8, 2025/);
-	assert.match(context, /Labels: qualification, enterprise/);
+	assert.match(context, /Acmecorp/);
+	assert.match(context, /Description: Acmecorp is evaluating Atlassian/);
+	assert.match(context, /Due date: Jun 8, 2026/);
+	assert.match(context, /Labels: Acmecorp, qualification, enterprise/);
 	assert.doesNotMatch(context, /competitive-replacement/);
 	assert.match(context, /multi-thousand users/);
+	assert.match(context, /Deal size: multi-thousand users; budget qualification pending/);
 	assert.match(context, /incumbent service-management, CMDB/);
 	assert.match(context, /Response team needs:/);
 	assert.match(context, /RFP-105: Build requirement matrix/);
@@ -173,7 +174,7 @@ test("board fallback formats bounded visible /agents context", async () => {
 	assert.match(context, /\[End Agents Board Context\]$/);
 	assert.match(context, /Enterprise RFP Response/);
 	assert.match(context, /RFP Intake: 7 work items/);
-	assert.match(context, /RFP-101: Qualify enterprise service-management RFP/);
+	assert.match(context, /RFP-101: Acmecorp: Prepare for bid recommendation for ESM RFP/);
 	assert.ok(context.length < 1_500);
 });
 
@@ -181,20 +182,27 @@ test("non-RFP-101 work items format a lightweight active work item context", asy
 	const harness = await loadRfpContextHarness();
 	const workItem = harness.getAgentsWorkItemForCard({
 		code: "RFP-102",
-		title: "Parse supplier questionnaire and requested files",
+		title: "Northstar Bank: Parse supplier questionnaire and requested files",
 	});
 
 	assert.equal(workItem.code, "RFP-102");
-	assert.equal(workItem.title, "Parse supplier questionnaire and requested files");
-	assert.match(workItem.description, /Review the supplier packet/);
+	assert.equal(workItem.title, "Northstar Bank: Parse supplier questionnaire and requested files");
+	assert.equal(workItem.account, "Northstar Bank");
+	assert.match(workItem.description, /Review the Northstar Bank supplier packet/);
 	assert.ok(workItem.description.length > 250);
 
 	const context = harness.formatActiveJiraWorkItemContext(workItem);
 	assert.match(context, /^\[Active Jira Work Item Context\]/);
 	assert.match(context, /Key: RFP-102/);
-	assert.match(context, /Title: Parse supplier questionnaire and requested files/);
-	assert.match(context, /Description: Review the supplier packet/);
+	assert.match(context, /Title: Northstar Bank: Parse supplier questionnaire and requested files/);
+	assert.match(context, /Labels: Northstar Bank, requirements, attachments/);
+	assert.match(context, /Description: Review the Northstar Bank supplier packet/);
 	assert.match(context, /customer-reference requests/);
+	assert.match(context, /Child work items:/);
+	assert.match(context, /Northstar Bank .*owner:/);
+	assert.match(context, /Attachments:/);
+	assert.match(context, /northstar-bank-/);
+	assert.match(context, /Recent activity:/);
 	assert.match(context, /\[End Active Jira Work Item Context\]$/);
 	assert.equal(harness.formatActiveJiraWorkItemContext(null), undefined);
 });
@@ -211,6 +219,66 @@ test("every visible agents board card resolves to a substantial work item descri
 		assert.equal(workItem.title, card.title);
 		assert.equal(typeof workItem.description, "string", `${card.code} is missing a description`);
 		assert.ok(workItem.description.length > 220, `${card.code} description is too short`);
+	}
+});
+
+test("every visible RFP board card has one unique client tag", async () => {
+	const harness = await loadRfpContextHarness();
+	const cards = harness.BOARD_COLUMNS.flatMap((column) => column.cards);
+	const clientNames = Object.values(harness.RFP_CLIENT_NAMES_BY_CODE);
+
+	assert.equal(new Set(clientNames).size, cards.length);
+	assert.equal(harness.RFP_CLIENT_NAMES_BY_CODE["RFP-101"], "Acmecorp");
+
+	for (const card of cards) {
+		const expectedClient = harness.RFP_CLIENT_NAMES_BY_CODE[card.code];
+		const clientTags = card.tags.filter((tag) => clientNames.includes(tag.text));
+		assert.match(card.title, new RegExp(`^${expectedClient}:`, "u"));
+		assert.equal(clientTags.length, 1, `${card.code} should have exactly one client tag`);
+		assert.equal(clientTags[0].text, expectedClient);
+		if (card.code === "RFP-101") {
+			assert.equal(clientTags[0].text, "Acmecorp");
+		} else {
+			assert.notEqual(clientTags[0].text, "Acmecorp", `${card.code} should not use Acmecorp`);
+		}
+	}
+});
+
+test("non-RFP-101 work items have varied comments, attachments, subtasks, and statuses", async () => {
+	const harness = await loadRfpContextHarness();
+	const cards = harness.BOARD_COLUMNS.flatMap((column) => column.cards)
+		.filter((card) => card.code !== "RFP-101");
+	const workItems = cards.map((card) => harness.getAgentsWorkItemForCard(card));
+	const attachmentCounts = new Set(workItems.map((workItem) => workItem.attachments?.length ?? 0));
+	const childItemCounts = new Set(workItems.map((workItem) => workItem.childItems?.length ?? 0));
+	const commentCounts = new Set(workItems.map((workItem) => workItem.comments?.length ?? 0));
+	const childStatuses = new Set(workItems.flatMap((workItem) => (
+		workItem.childItems ?? []
+	).map((childItem) => childItem.status)));
+
+	assert.ok(attachmentCounts.size > 1, "attachment counts should vary across fake clients");
+	assert.ok(childItemCounts.size > 1, "subtask counts should vary across fake clients");
+	assert.ok(commentCounts.size > 1, "comment counts should vary across fake clients");
+	assert.deepEqual([...childStatuses].sort(), ["done", "inprogress", "todo"]);
+
+	for (const workItem of workItems) {
+		const clientName = harness.RFP_CLIENT_NAMES_BY_CODE[workItem.code];
+		assert.ok(clientName);
+		assert.ok((workItem.attachments?.length ?? 0) >= 1, `${workItem.code} should have attachments`);
+		assert.ok((workItem.childItems?.length ?? 0) >= 2, `${workItem.code} should have subtasks`);
+		assert.ok((workItem.comments?.length ?? 0) >= 1, `${workItem.code} should have comments`);
+		assert.ok(
+			workItem.attachments.some((attachment) => attachment.displayName.includes(clientName)),
+			`${workItem.code} should have client-specific attachment names`,
+		);
+		assert.ok(
+			workItem.childItems.some((childItem) => childItem.summary.includes(clientName)),
+			`${workItem.code} should have client-specific subtask names`,
+		);
+		assert.ok(
+			workItem.comments.some((comment) => comment.content.includes(clientName)),
+			`${workItem.code} should have client-specific Jira comments`,
+		);
 	}
 });
 
@@ -303,7 +371,7 @@ test("agents chat screen resolver switches from board fallback to active work it
 
 	const workItemContext = harness.resolveAgentsChatScreenContext(harness.RFP_101_WORK_ITEM);
 	assert.deepEqual(workItemContext.chatContextBar, {
-		label: "RFP-101: Qualify enterprise service-management RFP",
+		label: "RFP-101: Acmecorp: Prepare for bid recommendation for ESM RFP",
 		iconName: "work-item",
 		signature: "agents-work-item:RFP-101",
 	});
@@ -312,8 +380,8 @@ test("agents chat screen resolver switches from board fallback to active work it
 	const translatedPrompt = workItemContext.greeting.suggestions.find(
 		(suggestion) => suggestion.id === "translate-text",
 	);
-	assert.equal(translatedPrompt.label, "Review and complete this RFP");
-	assert.equal(translatedPrompt.prompt, "Review and complete this RFP");
+	assert.equal(translatedPrompt.label, "Should we respond to this RFP?");
+	assert.equal(translatedPrompt.prompt, "Should we respond to this RFP?");
 });
 
 test("Rovo context merging preserves active work item context and suggestion context", async () => {

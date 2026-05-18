@@ -26,7 +26,7 @@ const AGENTS_RFP_DEMO_JOB_PROMPT = [
 ].join(" ");
 const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
 const RFP_TICKET_DRAFT_ATTACHMENT_KIND = "rfp-draft-html";
-const DEMO_RUN_BASE_TIME = Date.parse("2025-09-03T15:00:00.000Z");
+const DEMO_RUN_BASE_TIME = Date.parse("2026-06-03T15:00:00.000Z");
 const RFP_DRAFTING_PROCESSING_DELAYS_MS = [15_000, 24_000, 34_000, 19_000, 29_000];
 const RFP_DRAFTING_NO_WORK_TOAST_MESSAGE = `${RFP_DRAFTING_AGENT_NAME} found no new Drafting tickets to process.`;
 
@@ -56,42 +56,61 @@ const BOARD_SEED = [
 	},
 ];
 
+const CLIENT_NAMES_BY_TICKET = {
+	"RFP-101": "Acmecorp",
+	"RFP-102": "Northstar Bank",
+	"RFP-103": "Meridian Health",
+	"RFP-104": "HelioWorks Energy",
+	"RFP-105": "BluePeak Telecom",
+	"RFP-106": "Redwood Retail Group",
+	"RFP-107": "Summit Grove Insurance",
+	"RFP-141": "Orion Motors",
+	"RFP-142": "NimbusCare",
+	"RFP-143": "Copperline Logistics",
+	"RFP-161": "VertexRail",
+	"RFP-162": "Greenfield BioSystems",
+	"RFP-163": "HarborPoint Finance",
+	"RFP-164": "Silverline Manufacturing",
+	"RFP-181": "TidalWorks Utilities",
+	"RFP-182": "Novacore University",
+};
+
 const WORK_ITEM_TITLES = {
-	"RFP-101": "Qualify enterprise service-management RFP",
-	"RFP-102": "Parse supplier questionnaire and requested files",
-	"RFP-103": "Build DACI and response-owner matrix",
-	"RFP-104": "Inventory ITSM, asset, portal, and reporting requirements",
-	"RFP-105": "Confirm bid/no-bid risks and mandatory gaps",
-	"RFP-106": "Create RFP timeline with checkpoints and demos",
-	"RFP-107": "Collect customer context, current tools, and success metrics",
-	"RFP-141": "Draft Atlassian System of Work executive narrative",
-	"RFP-142": "Write JSM service desk, portal, and knowledge answers",
-	"RFP-143": "Prepare pricing, implementation, and TCO response",
-	"RFP-161": "Review Assets, CMDB, HAM, and SAM positioning",
-	"RFP-162": "Legal review for data residency, DPA, and terms",
-	"RFP-163": "Security review for Guard, audit, GRC, and vulnerabilities",
-	"RFP-164": "Executive review of win themes and final pitch",
-	"RFP-181": "Submit supplier clarification responses",
-	"RFP-182": "Archive final response, exhibits, and demo deck",
+	"RFP-101": `${CLIENT_NAMES_BY_TICKET["RFP-101"]}: Prepare for bid recommendation for ESM RFP`,
+	"RFP-102": `${CLIENT_NAMES_BY_TICKET["RFP-102"]}: Parse supplier questionnaire and requested files`,
+	"RFP-103": `${CLIENT_NAMES_BY_TICKET["RFP-103"]}: Build DACI and response-owner matrix`,
+	"RFP-104": `${CLIENT_NAMES_BY_TICKET["RFP-104"]}: Inventory ITSM, asset, portal, and reporting requirements`,
+	"RFP-105": `${CLIENT_NAMES_BY_TICKET["RFP-105"]}: Confirm bid/no-bid risks and mandatory gaps`,
+	"RFP-106": `${CLIENT_NAMES_BY_TICKET["RFP-106"]}: Create RFP timeline with checkpoints and demos`,
+	"RFP-107": `${CLIENT_NAMES_BY_TICKET["RFP-107"]}: Collect customer context, current tools, and success metrics`,
+	"RFP-141": `${CLIENT_NAMES_BY_TICKET["RFP-141"]}: Draft Atlassian System of Work executive narrative`,
+	"RFP-142": `${CLIENT_NAMES_BY_TICKET["RFP-142"]}: Write JSM service desk, portal, and knowledge answers`,
+	"RFP-143": `${CLIENT_NAMES_BY_TICKET["RFP-143"]}: Prepare pricing, implementation, and TCO response`,
+	"RFP-161": `${CLIENT_NAMES_BY_TICKET["RFP-161"]}: Review Assets, CMDB, HAM, and SAM positioning`,
+	"RFP-162": `${CLIENT_NAMES_BY_TICKET["RFP-162"]}: Legal review for data residency, DPA, and terms`,
+	"RFP-163": `${CLIENT_NAMES_BY_TICKET["RFP-163"]}: Security review for Guard, audit, GRC, and vulnerabilities`,
+	"RFP-164": `${CLIENT_NAMES_BY_TICKET["RFP-164"]}: Executive review of win themes and final pitch`,
+	"RFP-181": `${CLIENT_NAMES_BY_TICKET["RFP-181"]}: Submit supplier clarification responses`,
+	"RFP-182": `${CLIENT_NAMES_BY_TICKET["RFP-182"]}: Archive final response, exhibits, and demo deck`,
 };
 
 const WORK_ITEM_DESCRIPTIONS = {
-	"RFP-101": "Qualify the enterprise service-management RFP by separating mandatory requirements from differentiators, mapping each requirement area to Atlassian strengths, and identifying responses that need product, legal, security, deal desk, or partner validation.",
-	"RFP-102": "Review the supplier packet, procurement portal exports, and requested file list to identify every response artifact the team must produce. Split requirements into functional answers, legal or security exhibits, pricing files, implementation plans, customer-reference requests, and demo follow-ups.",
-	"RFP-103": "Create a DACI-style ownership map for the RFP response across account leadership, proposal management, sales engineering, product specialists, legal, security, deal desk, support, and partner teams.",
-	"RFP-104": "Inventory the customer requirement areas and translate them into response tracks covering ITSM, incident, problem, change, request, Assets and CMDB, asset management, knowledge, reporting, AI, data residency, legal compliance, implementation services, and pricing.",
-	"RFP-105": "Run the bid/no-bid risk assessment by checking mandatory requirements, certification asks, residency constraints, asset-management depth, migration timelines, pricing guardrails, reference requirements, and executive-demo readiness.",
-	"RFP-106": "Build a response calendar with supplier questions, internal draft checkpoints, demo-story reviews, legal and security approvals, pricing sign-off, final executive review, submission packaging, and post-submission follow-ups.",
-	"RFP-107": "Collect customer context for current tools, known pain points, business outcomes, executive priorities, implementation constraints, success metrics, user populations, regional differences, support model, and competitor strengths.",
-	"RFP-141": "Draft the executive narrative for why Atlassian is the right platform for the customer's enterprise work transformation. Connect Jira Service Management, Jira, Confluence, Assets, Rovo, Teamwork Graph, Guard, analytics, automation, and marketplace extensibility into one coherent system-of-work story.",
-	"RFP-142": "Prepare the functional response for service desk, request management, portals, knowledge, and reporting. Include demo moments, configuration assumptions, known limitations, and reusable answer snippets the proposal team can paste into the formal response matrix.",
-	"RFP-143": "Build the commercial and implementation response covering licensing assumptions, phased rollout options, implementation services, migration support, training, success planning, total cost of ownership, renewal considerations, and discount or approval dependencies.",
-	"RFP-161": "Review the Assets, CMDB, hardware asset, and software asset management positioning before the response goes to final review.",
-	"RFP-162": "Review data residency, DPA, legal terms, procurement conditions, privacy requirements, and contract language for the response.",
-	"RFP-163": "Review security, Guard, audit logging, compliance, GRC, risk, and vulnerability-management answers.",
-	"RFP-164": "Prepare the executive review package for the final pitch.",
-	"RFP-181": "Package and submit the clarification responses that unblock the proposal team.",
-	"RFP-182": "Archive the final response package, exhibits, pricing files, demo deck, approved legal language, security artifacts, and reusable answer snippets.",
+	"RFP-101": "Qualify the Acmecorp enterprise service-management RFP by separating mandatory requirements from differentiators, mapping each requirement area to Atlassian strengths, and identifying responses that need product, legal, security, deal desk, or partner validation.",
+	"RFP-102": "Review the Northstar Bank supplier packet, procurement portal exports, and requested file list to identify every response artifact the team must produce if the opportunity qualifies. Split requirements into functional answers, legal or security exhibits, pricing files, implementation plans, customer-reference requests, and demo follow-ups.",
+	"RFP-103": "Create a DACI-style ownership map for the Meridian Health RFP qualification and possible response across account leadership, proposal management, sales engineering, product specialists, legal, security, deal desk, support, and partner teams.",
+	"RFP-104": "Inventory HelioWorks Energy requirement areas and translate them into response tracks covering ITSM, incident, problem, change, request, Assets and CMDB, asset management, knowledge, reporting, AI, data residency, legal compliance, implementation services, and pricing.",
+	"RFP-105": "Run the BluePeak Telecom bid/no-bid risk assessment by checking mandatory requirements, certification asks, residency constraints, asset-management depth, migration timelines, pricing guardrails, reference requirements, and executive-demo readiness.",
+	"RFP-106": "Build a Redwood Retail Group response calendar with supplier questions, internal draft checkpoints, qualification reviews, legal and security approvals, pricing sign-off, final executive review, submission packaging, and post-submission follow-ups.",
+	"RFP-107": "Collect Summit Grove Insurance context for current tools, known pain points, business outcomes, executive priorities, implementation constraints, success metrics, user populations, regional differences, support model, and competitor strengths.",
+	"RFP-141": "Draft the executive narrative for why Atlassian is the right platform for Orion Motors' enterprise work transformation if the RFP clears qualification. Connect Jira Service Management, Jira, Confluence, Assets, Rovo, Teamwork Graph, Guard, analytics, automation, and marketplace extensibility into one coherent system-of-work story.",
+	"RFP-142": "Prepare the NimbusCare functional response for service desk, request management, portals, knowledge, and reporting. Include demo moments, configuration assumptions, known limitations, and reusable answer snippets the proposal team can paste into the formal response matrix.",
+	"RFP-143": "Build the Copperline Logistics commercial and implementation response covering licensing assumptions, phased rollout options, implementation services, migration support, training, success planning, total cost of ownership, renewal considerations, and discount or approval dependencies.",
+	"RFP-161": "Review the VertexRail Assets, CMDB, hardware asset, and software asset management positioning before the response goes to final review.",
+	"RFP-162": "Review Greenfield BioSystems data residency, DPA, legal terms, procurement conditions, privacy requirements, and contract language for the response.",
+	"RFP-163": "Review HarborPoint Finance security, Guard, audit logging, compliance, GRC, risk, and vulnerability-management answers.",
+	"RFP-164": "Prepare the Silverline Manufacturing executive review package for the final pitch.",
+	"RFP-181": "Package and submit the TidalWorks Utilities clarification responses that unblock the proposal team.",
+	"RFP-182": "Archive the Novacore University final response package, exhibits, pricing files, demo deck, approved legal language, security artifacts, and reusable answer snippets.",
 };
 
 const HUMAN_ASSIGNEES_BY_TICKET = {
@@ -205,7 +224,7 @@ function formatDemoTimestamp(index = 0) {
 }
 
 function formatDemoTimestampLabel(index = 0) {
-	return index === 0 ? "Sep 3, 2025, 10:00 AM" : `Sep 3, 2025, 10:${String(index * 2).padStart(2, "0")} AM`;
+	return index === 0 ? "Jun 3, 2026, 10:00 AM" : `Jun 3, 2026, 10:${String(index * 2).padStart(2, "0")} AM`;
 }
 
 function createDefaultBoardState() {
@@ -315,7 +334,7 @@ function normalizeAgentComment(rawComment) {
 		id,
 		authorName: getNonEmptyString(rawComment.authorName) ?? RFP_DRAFTING_AGENT_NAME,
 		authorAvatarSrc: getNonEmptyString(rawComment.authorAvatarSrc) ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
-		timestampLabel: getNonEmptyString(rawComment.timestampLabel) ?? "Sep 3, 2025, 10:00 AM",
+		timestampLabel: getNonEmptyString(rawComment.timestampLabel) ?? "Jun 3, 2026, 10:00 AM",
 		content,
 	};
 }
@@ -446,7 +465,7 @@ function normalizeAgent(rawAgent) {
 		conversationStarters: normalizeConversationStarters(rawAgent.conversationStarters),
 		selected: rawAgent.selected !== false,
 		assignedColumn: RFP_DRAFTING_COLUMN_NAME,
-		createdAt: getNonEmptyString(rawAgent.createdAt) ?? "Sep 3, 2025, 10:00 AM",
+		createdAt: getNonEmptyString(rawAgent.createdAt) ?? "Jun 3, 2026, 10:00 AM",
 		avatarSrc: getNonEmptyString(rawAgent.avatarSrc) ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
 		jobId: getNonEmptyString(rawAgent.jobId),
 		trigger: normalizeTrigger(rawAgent.trigger),
@@ -539,7 +558,7 @@ function appendToast(state, message, id) {
 	};
 }
 
-function ensureRfpDraftingAgent(state, { jobId, createdAtLabel = "Sep 3, 2025, 10:00 AM" } = {}) {
+function ensureRfpDraftingAgent(state, { jobId, createdAtLabel = "Jun 3, 2026, 10:00 AM" } = {}) {
 	const agent = normalizeAgent({
 		...(state.agent ?? {}),
 		id: RFP_DRAFTING_AGENT_ID,
@@ -631,6 +650,10 @@ function getHumanAssigneeForTicket(ticketCode) {
 	return HUMAN_ASSIGNEES_BY_TICKET[ticketCode] ?? "Maya Chen";
 }
 
+function getClientNameForTicket(ticketCode) {
+	return CLIENT_NAMES_BY_TICKET[ticketCode] ?? "the client";
+}
+
 function getProcessingDelayMs(index) {
 	return RFP_DRAFTING_PROCESSING_DELAYS_MS[index % RFP_DRAFTING_PROCESSING_DELAYS_MS.length];
 }
@@ -662,6 +685,7 @@ function createAgentComment(ticketCode, ticketTitle, index) {
 function buildActiveJiraWorkItemContextForTicket(ticketCode, status = RFP_DRAFTING_COLUMN_NAME) {
 	const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
 	const assignee = getHumanAssigneeForTicket(ticketCode);
+	const clientName = getClientNameForTicket(ticketCode);
 	const description = WORK_ITEM_DESCRIPTIONS[ticketCode] ?? `Prepare a first-pass RFP response draft for ${ticketCode}.`;
 	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
 
@@ -675,56 +699,59 @@ function buildActiveJiraWorkItemContextForTicket(ticketCode, status = RFP_DRAFTI
 		`Assignee: ${assignee} (Proposal response owner)`,
 		"Reporter: Jordan Lee (Account executive)",
 		"Parent: RFP-100 - Enterprise RFP Response",
-		"Customer: VitaFleet Global Services",
-		"Opportunity: Enterprise service-management transformation",
-		"Procurement stage: Draft response package",
-		"Response due date: Sep 8, 2025",
+		`Customer: ${clientName}`,
+		`Opportunity: ${clientName} enterprise service-management transformation`,
+		"Procurement stage: RFP qualification and draft response package",
+		"Response due date: Jun 8, 2026",
+		"Deal size: multi-thousand users; budget qualification pending",
 		`Description: ${description}`,
 		"Buyer priorities:",
-		"- Reduce tool sprawl across IT, service, and business teams.",
-		"- Improve service delivery visibility for executives.",
-		"- Show a practical migration path with governed AI assistance.",
+		`- ${clientName} wants to reduce tool sprawl across IT, service, and business teams.`,
+		`- ${clientName} wants better service delivery visibility for executives.`,
+		`- ${clientName} needs a practical migration path with governed AI assistance.`,
 		"Win themes:",
 		"- Atlassian System of Work connects service, software, knowledge, and business teams.",
 		"- Teamwork Graph and Rovo make response knowledge reusable and contextual.",
 		"- Jira Service Management, Assets, Confluence, Guard, and automation create a governed operating model.",
 		"Known risks:",
-		"- Legal, security, and deal desk language still needs final human review.",
-		"- Commercial assumptions must not overstate approved pricing or implementation commitments.",
+		`- ${clientName} legal, security, and deal desk language still needs final human review.`,
+		`- ${clientName} commercial assumptions must not overstate approved pricing or implementation commitments.`,
 		"Next actions:",
-		`- Draft ${focus} in a reusable response artifact.`,
-		"- Attach the generated response for proposal review.",
+		`- Draft ${focus} for the ${clientName} qualification and response handoff.`,
+		`- Attach the generated ${clientName} response for proposal review.`,
 		"- Move the ticket to Review and leave it unassigned for a human reviewer to pick up.",
 		"Attachments:",
-		"- Enterprise RFP packet.pdf (15 Aug 2025, 11:05 AM)",
-		"- Compliance matrix.xlsx (12 Aug 2025, 09:24 AM)",
+		`- ${clientName} Enterprise RFP packet.pdf (15 May 2026, 11:05 AM)`,
+		"- Compliance matrix.xlsx (12 May 2026, 09:24 AM)",
 		"Recent activity:",
-		`- Sep 3, 2025, 09:58 AM: ${assignee} - Ready for agent-assisted first-pass drafting.`,
+		`- Jun 3, 2026, 09:58 AM: ${assignee} - Ready for agent-assisted ${clientName} first-pass drafting.`,
 		"[End Active Jira Work Item Context]",
 	].join("\n");
 }
 
 function buildTicketSpecificReportFields(ticketCode) {
 	const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
+	const clientName = getClientNameForTicket(ticketCode);
 	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
 
 	return {
-		summary: `${ticketCode} draft response for ${focus}.`,
-		whatChangedText: `${RFP_DRAFTING_AGENT_NAME} converted ${ticketTitle} into a reviewable response draft focused on ${focus}.`,
+		summary: `${ticketCode} ${clientName} draft response for ${focus}.`,
+		whatChangedText: `${RFP_DRAFTING_AGENT_NAME} converted ${ticketTitle} into a reviewable ${clientName} response draft focused on ${focus}.`,
 		confidenceText: "Medium confidence: the work item has enough context for a first-pass response, while legal, security, commercial, and product commitments remain marked for human review.",
-		progressText: "A vpk-html draft artifact has been prepared for the response team with reusable Atlassian System of Work language and ticket-specific next actions.",
-		blockersText: "Final approval still depends on human validation of legal language, commercial assumptions, and customer-specific implementation commitments.",
-		nextWindowText: "The response team should pick up the unassigned Review ticket, inspect the attached HTML draft, tighten any customer-specific claims, and either approve the response text or route gaps to the appropriate specialist.",
+		progressText: `A vpk-html draft artifact has been prepared for the ${clientName} response team with reusable Atlassian System of Work language and ticket-specific next actions.`,
+		blockersText: `Final approval still depends on human validation of legal language, commercial assumptions, and ${clientName}-specific implementation commitments.`,
+		nextWindowText: `The response team should pick up the unassigned Review ticket, inspect the attached HTML draft, tighten any ${clientName}-specific claims, and either approve the response text or route gaps to the appropriate specialist.`,
 		milestonesText: "Drafting is complete for agent handoff; Review is the next workflow milestone before final proposal packaging.",
 		informationGaps: [
 			"Final approved pricing and legal exceptions are not recorded in the Work Item context.",
-			"Customer-specific evidence exhibits still need human verification before submission.",
+			`${clientName}-specific evidence exhibits still need human verification before submission.`,
 		],
 	};
 }
 
 function buildFallbackHtmlReport(ticketCode) {
 	const title = `${ticketCode} response draft`;
+	const clientName = getClientNameForTicket(ticketCode);
 	const focus = TICKET_RESPONSE_FOCUS[ticketCode] ?? "RFP response drafting";
 	return [
 		"<!doctype html>",
@@ -736,7 +763,7 @@ function buildFallbackHtmlReport(ticketCode) {
 		"</head>",
 		"<body>",
 		`\t<h1>${title}</h1>`,
-		`\t<p>Deterministic vpk-html draft focused on ${focus}.</p>`,
+		`\t<p>Deterministic vpk-html draft for ${clientName}, focused on ${focus}.</p>`,
 		"</body>",
 		"</html>",
 	].join("\n");

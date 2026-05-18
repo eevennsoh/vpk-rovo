@@ -4077,6 +4077,7 @@ function createAgentsRfpDemoThinkingEventPart(step, phase) {
 			eventId: `${step.toolCallId}-${phase}`,
 			phase,
 			toolName: step.toolName,
+			label: step.label,
 			toolCallId: step.toolCallId,
 			timestamp,
 		},
@@ -4097,7 +4098,10 @@ function createAgentsRfpDemoThinkingEventPart(step, phase) {
 
 async function writeAgentsRfpDemoTrace(writer, steps) {
 	for (const step of steps) {
-		const toolCallDelayMs = getAgentsRfpDemoToolCallDelayMs();
+		const toolCallDelayMs =
+			typeof step.delayMs === "number" && Number.isFinite(step.delayMs) && step.delayMs > 0
+				? step.delayMs
+				: getAgentsRfpDemoToolCallDelayMs();
 		const hasResult = step.output !== undefined || step.outputPreview;
 		const resultDelayMs = hasResult
 			? Math.round(toolCallDelayMs * 0.7)
@@ -4183,30 +4187,54 @@ async function createAgentsRfpDemoReportArtifact(requestBody) {
 function buildAgentsRfpDemoReportPreviewFields(variant) {
 	if (variant === "refined") {
 		return {
-			summary: "Enterprise Evaluation Account should receive a customer-facing response that leads with unified ITSM and CMDB outcomes, then positions Rovo and Teamwork Graph as the automation differentiator.",
-			whatChangedText: "The refined report folds the qualification answers into the RFP-101 context: assume a strategic pursuit, position against the incumbent service-management stack, draft for internal deal desk first, and keep legal, data residency, audit, and vulnerability answers review-required.",
-			confidenceText: "Medium confidence because the core ITSM, service desk, portal, knowledge, change, Assets, CMDB, and AI collaboration story is strong, while legal, data residency, audit, vulnerability, HAM/SAM, and final pricing evidence still need owner review.",
-			progressText: "The report can reuse the standard ITSM RFP response template, prior security review context, the Rovo for ITSM demo recording, and named CSM, SE, legal, and deal-desk owners from the active Work Item context.",
-			blockersText: "Customer-facing submission remains blocked on legal, data residency, audit, vulnerability, pricing, and asset-management validation; these should stay explicitly review-required before attachment or status changes.",
-			nextWindowText: "Finish the compliance matrix, route commercial assumptions to deal desk, validate product and legal language, and prepare the executive demo narrative around unified ITSM, CMDB quality, and Rovo-powered knowledge reuse.",
-			milestonesText: "Use the Sep 8, 2025 response deadline as the next delivery gate, with human approval required before final attachment to RFP-101.",
-			informationGaps: [
-				"Approved legal wording for data residency, audit, and vulnerability responses is not recorded in the Work Item context.",
-				"Deal desk pricing approval timing and discount guardrails are not recorded in the Work Item context.",
+			recommendationText: "Provisional recommendation: respond to the Acmecorp RFP only if budget, stakeholder access, and review owners are confirmed before the team commits to a full response package.",
+			driverText: "Driver: Maya Chen, proposal manager.",
+			approverText: "Approver: Darius Pavri for deal desk and Elena Ruiz for security/legal posture.",
+			contributorsText: "Contributors: Jordan Lee, Priya Shah, product specialists, and partner coverage owners.",
+			informedText: "Informed: executive sponsor, support leadership, and partner teams after the bid/no-bid decision is recorded.",
+			relationshipText: "Relationship is workable but not complete: the account team has working-level Acmecorp context, while executive sponsor access and champion strength still need confirmation.",
+			budgetText: "Budget is not fully qualified; treat the multi-thousand-user scale as a pursuit signal, not proof that Acmecorp has approved spend.",
+			campaignFitText: "Acmecorp is a strong fit for the enterprise service-management campaign because the RFP centers on ITSM, CMDB maturity, knowledge, reporting, governed AI, and cross-team service delivery.",
+			competitiveAdvantages: [
+				"Atlassian can connect service, software, knowledge, and business teams through one system of work.",
+				"Jira Service Management plus Assets supports the Acmecorp ITSM, portal, incident, change, and CMDB story.",
+				"Rovo and Teamwork Graph give the response a credible AI and knowledge-reuse differentiator.",
+			],
+			decisionRisks: [
+				"Budget qualification and discount guardrails are not confirmed.",
+				"Legal, data residency, audit, vulnerability, and pricing answers need owner approval.",
+				"HAM/SAM and partner coverage need careful positioning before customer-facing commitments.",
+			],
+			openGaps: [
+				"Executive sponsor and champion strength are not recorded in the Work Item context.",
+				"Approved legal wording for data residency, audit, and vulnerability responses is not recorded.",
+				"Deal desk pricing approval timing and discount guardrails are not recorded.",
 			],
 		};
 	}
 
 	return {
-		summary: "RFP-101 is a qualified enterprise service-management pursuit with strong Atlassian coverage across ITSM, CMDB, service operations, knowledge, reporting, AI, and cross-team collaboration.",
-		whatChangedText: "The initial report turns the active RFP-101 Work Item context into a first-pass response strategy without adding facts outside the ticket, attachments, subtasks, and account-memory hints.",
-		confidenceText: "Medium confidence because the Work Item shows a strong platform fit and named owners, but several mandatory response areas still need product, legal, security, deal-desk, or partner validation.",
-		progressText: "RFP-107 win themes are done, RFP-105 compliance work is in progress, the RFP packet and response brief are available, and the response team has owners for sales, proposal management, sales engineering, legal, security, and deal desk.",
-		blockersText: "Open blockers include legal review, data residency, audit, vulnerability response, HAM/SAM positioning, CMDB scale assumptions, security operations framing, and pricing approval.",
-		nextWindowText: "Complete the requirement matrix, assign mandatory response owners, validate high-risk sections, and prepare a concise executive demo agenda before final submission review.",
-		milestonesText: "The active Work Item runs from Aug 12, 2025 to Sep 8, 2025, with the supplier response package due on Sep 8, 2025.",
-		informationGaps: [
-			"Bid/no-bid decision date and approval owner are not specified in the Work Item context.",
+		recommendationText: "Initial recommendation: qualify Acmecorp before responding; the platform fit is strong, but budget, stakeholder relationship, and review ownership need confirmation.",
+		driverText: "Driver: Maya Chen, proposal manager.",
+		approverText: "Approver: Darius Pavri for deal desk and Elena Ruiz for security/legal posture.",
+		contributorsText: "Contributors: Jordan Lee for account strategy, Priya Shah for sales engineering, and product specialists for risky sections.",
+		informedText: "Informed: executive stakeholders, support leadership, and partner teams once the bid/no-bid recommendation is recorded.",
+		relationshipText: "The Work Item shows active account and proposal ownership for Acmecorp, but it does not prove executive sponsor access or champion strength.",
+		budgetText: "Acmecorp scale is recorded as multi-thousand users; budget qualification is still pending and should remain a decision gate.",
+		campaignFitText: "Acmecorp fits the enterprise service-management campaign through tool consolidation, ITSM workflows, CMDB maturity, knowledge, reporting, AI readiness, and governed compliance requirements.",
+		competitiveAdvantages: [
+			"Atlassian System of Work maps well to Acmecorp's fragmented service and work-management environment.",
+			"Jira Service Management, Assets, Confluence, Guard, and automation cover the core operating model.",
+			"Rovo and Teamwork Graph add a differentiated AI and knowledge-reuse story.",
+		],
+		decisionRisks: [
+			"Budget qualification is not confirmed.",
+			"Legal, data residency, audit, vulnerability, HAM/SAM, and pricing responses need owner review.",
+			"CMDB scale and asset-management assumptions need credible evidence before final response drafting.",
+		],
+		openGaps: [
+			"Bid/no-bid decision date and final approval owner are not specified.",
+			"Stakeholder relationship strength is not confirmed.",
 			"Required data residency region is not recorded in the Work Item context.",
 		],
 	};
@@ -9896,9 +9924,8 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					});
 					// Emit data-thinking-status lazily — only when the LLM
 					// actually starts producing output (text or tool events).
-					// Until then the frontend shows the preload indicator
-					// ("Rovo is cooking") to distinguish "waiting for LLM"
-					// from "LLM is actively working."
+					// Until then the frontend shows the preload indicator to
+					// distinguish "waiting for LLM" from "LLM is actively working."
 					let hasEmittedThinkingStatus = false;
 					const emitLazyThinkingStatus = () => {
 						if (hasEmittedThinkingStatus) return;

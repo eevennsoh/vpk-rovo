@@ -152,14 +152,14 @@ async function loadChatContextBarHarness() {
 test("ChatContextBar renders a non-dismissible truncated context chip", async () => {
 	const harness = await loadChatContextBarHarness();
 	const markup = harness.renderContextBar({
-		label: "RFP-101: Qualify enterprise service-management RFP",
+		label: "RFP-101: Prepare for bid recommendation for ESM RFP",
 		iconName: "work-item",
 		signature: "agents-work-item:RFP-101",
 	});
 
 	assert.match(markup, /data-chat-context-bar="true"/);
 	assert.match(markup, /Context:/);
-	assert.match(markup, /RFP-101: Qualify enterprise service-management RFP/);
+	assert.match(markup, /RFP-101: Prepare for bid recommendation for ESM RFP/);
 	assert.match(markup, /data-icon="location"/);
 	assert.match(markup, /data-icon="work-item"/);
 	assert.match(markup, /data-color="blue"/);
@@ -168,7 +168,7 @@ test("ChatContextBar renders a non-dismissible truncated context chip", async ()
 	assert.match(markup, /data-class="[^"]*max-w-full[^"]*"/);
 	assert.match(markup, /data-class="[^"]*shrink[^"]*"/);
 	assert.match(markup, /data-class="[^"]*overflow-hidden[^"]*"/);
-	assert.match(markup, /data-title="RFP-101: Qualify enterprise service-management RFP"/);
+	assert.match(markup, /data-title="RFP-101: Prepare for bid recommendation for ESM RFP"/);
 	assert.doesNotMatch(markup, /data-class="[^"]*flex-1[^"]*"/);
 	assert.doesNotMatch(markup, /max-w-\[12rem\]/);
 	assert.match(markup, /data-icon="cross"/);
@@ -180,15 +180,15 @@ test("ChatContextBar renders a non-dismissible truncated context chip", async ()
 test("ChatContextBar renders artifact edit context with an active dismiss affordance", async () => {
 	const harness = await loadChatContextBarHarness();
 	const markup = harness.renderContextBar({
-		label: "RFP-101 response strategy report",
+		label: "Acmecorp RFP qualification DACI",
 		iconName: "artifact",
-		signature: "rovo-artifact:RFP-101 response strategy report",
+		signature: "rovo-artifact:Acmecorp RFP qualification DACI",
 		variant: "edit",
 	}, true);
 
 	assert.match(markup, /data-chat-context-bar="true"/);
 	assert.match(markup, /Edit:/);
-	assert.match(markup, /RFP-101 response strategy report/);
+	assert.match(markup, /Acmecorp RFP qualification DACI/);
 	assert.match(markup, /data-icon="edit"/);
 	assert.match(markup, /data-icon="page"/);
 	assert.match(markup, /aria-label="Close edit context"/);

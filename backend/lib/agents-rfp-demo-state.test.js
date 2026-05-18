@@ -106,6 +106,12 @@ test("advancing due tickets completes them at staggered speeds with unique HTML"
 		assert.match(workItem.agentComment.content, /Status: draft complete\./u);
 		assert.match(workItem.agentComment.content, /left it unassigned for the response team to pick up/u);
 	}
+	assert.match(finalAdvance.state.workItems["RFP-141"].generatedAttachment.previewHtml, /Orion Motors/u);
+	assert.match(finalAdvance.state.workItems["RFP-142"].generatedAttachment.previewHtml, /NimbusCare/u);
+	assert.match(finalAdvance.state.workItems["RFP-143"].generatedAttachment.previewHtml, /Copperline Logistics/u);
+	assert.doesNotMatch(finalAdvance.state.workItems["RFP-141"].generatedAttachment.previewHtml, /Acmecorp/u);
+	assert.doesNotMatch(finalAdvance.state.workItems["RFP-142"].generatedAttachment.previewHtml, /Acmecorp/u);
+	assert.doesNotMatch(finalAdvance.state.workItems["RFP-143"].generatedAttachment.previewHtml, /Acmecorp/u);
 	assert.notEqual(
 		finalAdvance.state.workItems["RFP-141"].generatedAttachment.previewHtml,
 		finalAdvance.state.workItems["RFP-142"].generatedAttachment.previewHtml,
@@ -182,6 +188,8 @@ test("a later ticket entering Drafting processes only that ticket", async () => 
 	assert.equal(eventCompletion.state.workItems["RFP-102"].status, RFP_REVIEW_COLUMN_NAME);
 	assert.equal(eventCompletion.state.workItems["RFP-102"].assignee, null);
 	assert.equal(eventCompletion.state.workItems["RFP-102"].agentComment.authorName, RFP_DRAFTING_AGENT_NAME);
+	assert.match(eventCompletion.state.workItems["RFP-102"].generatedAttachment.previewHtml, /Northstar Bank/u);
+	assert.doesNotMatch(eventCompletion.state.workItems["RFP-102"].generatedAttachment.previewHtml, /Acmecorp/u);
 	assert.equal(eventCompletion.state.workItems["RFP-141"].status, RFP_REVIEW_COLUMN_NAME);
 	assert.equal(eventRun.threadRecords.length, 1);
 });

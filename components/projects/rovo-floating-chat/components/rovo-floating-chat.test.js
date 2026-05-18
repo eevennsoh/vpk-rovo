@@ -140,7 +140,7 @@ async function loadRovoFloatingChatHarness() {
 				export function renderFloatingChatWithContext() {
 					return renderToStaticMarkup(React.createElement(RovoFloatingChat, {
 						chatContextBar: {
-							label: "RFP-101: Qualify enterprise service-management RFP",
+							label: "RFP-101: Prepare for bid recommendation for ESM RFP",
 							iconName: "work-item",
 							signature: "agents-work-item:RFP-101",
 						},
@@ -161,7 +161,7 @@ async function loadRovoFloatingChatHarness() {
 							suggestions: [
 								{
 									id: "translate-text",
-									label: "Review and complete this RFP",
+									label: "Should we respond to this RFP?",
 									type: "skill",
 								},
 							],
@@ -246,7 +246,7 @@ test("RovoFloatingChat forwards context bar descriptor to the shared chat panel"
 	const harness = await loadRovoFloatingChatHarness();
 	const markup = harness.renderFloatingChatWithContext();
 
-	assert.match(markup, /data-context-label="RFP-101: Qualify enterprise service-management RFP"/);
+	assert.match(markup, /data-context-label="RFP-101: Prepare for bid recommendation for ESM RFP"/);
 	assert.match(markup, /data-context-icon="work-item"/);
 });
 
@@ -271,7 +271,7 @@ test("RovoFloatingChat forwards custom suggestions while keeping compact greetin
 	const harness = await loadRovoFloatingChatHarness();
 	const markup = harness.renderFloatingChatWithGreeting();
 
-	assert.match(markup, /data-greeting-labels="Review and complete this RFP"/);
+	assert.match(markup, /data-greeting-labels="Should we respond to this RFP\?"/);
 	assert.match(markup, /data-greeting-hero="false"/);
 });
 
@@ -335,8 +335,8 @@ test("Floating chat thinking status uses ChainOfThought dots without literal ell
 		/const shouldShowAnimatedDots =\s*resolvedState === "preload" \|\| resolvedState === "thinking";/
 	);
 	assert.match(CHAIN_OF_THOUGHT_SOURCE, /shouldShowAnimatedDots && typeof text === "string"[\s\S]*stripTrailingDots\(text\)/);
-	assert.match(REASONING_LABELS_SOURCE, /preloadShimmer: "Rovo is cooking"/);
-	assert.doesNotMatch(REASONING_LABELS_SOURCE, /Rovo is cooking\.\.\./);
+	assert.match(REASONING_LABELS_SOURCE, /preloadShimmer: "Working"/);
+	assert.doesNotMatch(REASONING_LABELS_SOURCE, /Rovo is cooking/);
 });
 
 test("Floating chat compact empty greeting does not force a full-height message area", () => {
