@@ -223,7 +223,7 @@ function resolveWorkItemReportPromptOptions(
 	prompt: string,
 	options?: SendPromptOptions
 ): SendPromptOptions | undefined {
-	if (options?.creationMode === "agent" || options?.creationMode === "skill") {
+	if (options?.creationMode === "agent") {
 		return options;
 	}
 

@@ -150,6 +150,8 @@ test("generateWorkItemVpkHtmlReport fills the real one-pager template for RFP qu
 	assert.doesNotMatch(report.html, /url\(\s*["']?https?:\/\//iu);
 	assertVpkHtmlReportContract(report.html);
 	assert.equal(report.validation.results.length, 2);
+	assert.equal(report.validation.results[1].scriptPath, "scripts/check-html.mjs");
+	assert.match(report.validation.results[1].stdout, /ok .*report\.html/u);
 });
 
 test("generateWorkItemVpkHtmlReport keeps generic work items on the status-report template", async () => {

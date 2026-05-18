@@ -32,7 +32,19 @@ test("shared chat prompt path auto-routes Work Item vpk-html artifact intents fo
 	);
 	assert.match(
 		ROVO_CHAT_CONTEXT_SOURCE,
-		/options\?\.creationMode === "agent" \|\| options\?\.creationMode === "skill"[\s\S]*return options;/u,
+		/if \(options\?\.creationMode === "agent"\) \{[\s\S]*return options;/u,
+	);
+	assert.doesNotMatch(
+		ROVO_CHAT_CONTEXT_SOURCE,
+		/options\?\.creationMode === "agent" \|\| options\?\.creationMode === "skill"/u,
+	);
+	assert.match(
+		ROVO_CHAT_CONTEXT_SOURCE,
+		/buildWorkItemReportRequestContext\(\{[\s\S]*skillId: VPK_HTML_SKILL_ID/u,
+	);
+	assert.match(
+		ROVO_CHAT_CONTEXT_SOURCE,
+		/selectedSkillIds: mergeHermesSkillIds\([\s\S]*VPK_HTML_SKILL_ID/u,
 	);
 	assert.match(
 		SIDEBAR_SUBMIT_SOURCE,
@@ -51,6 +63,10 @@ test("backend Work Item artifact route uses the vpk-html runner and emits an htm
 		/const \{\s*generateWorkItemVpkHtmlReport,\s*\} = require\("\.\/lib\/work-item-vpk-html-report-generator"\);/u,
 	);
 	assert.match(SERVER_SOURCE, /generateWorkItemVpkHtmlReport\(\{/u);
+	assert.match(SERVER_SOURCE, /function shouldUseWorkItemVpkHtmlReportGenerator\(\{/u);
+	assert.match(SERVER_SOURCE, /hasActiveWorkItemContext\(contextDescription\)/u);
+	assert.match(SERVER_SOURCE, /contextDescription\.includes\(WORK_ITEM_REPORT_REQUEST_START\) \|\|[\s\S]*isWorkItemReportIntent\(latestUserMessage\)/u);
+	assert.doesNotMatch(SERVER_SOURCE, /artifactBackendPreference === "ai-gateway" &&[\s\S]*contextDescription\.includes\(WORK_ITEM_REPORT_REQUEST_START\)/u);
 	assert.match(SERVER_SOURCE, /backendPreference:\s*"ai-gateway"/u);
 	assert.match(SERVER_SOURCE, /futureArtifactKind:\s*"html"/u);
 	assert.match(SERVER_SOURCE, /type:\s*"data-artifact-result"/u);

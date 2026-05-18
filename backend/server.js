@@ -141,6 +141,8 @@ const {
 const {
 	WORK_ITEM_REPORT_REQUEST_START,
 	buildWorkItemReportRequestContext,
+	hasActiveWorkItemContext,
+	isWorkItemReportIntent,
 	mergeHermesSkillIds,
 	resolveWorkItemReportRequest,
 } = require("../lib/work-item-report-intent");
@@ -2535,6 +2537,22 @@ function deriveRovoAppArtifactDeltaType(kind) {
 	return normalizeArtifactKind(kind) === "code" ? "data-codeDelta" : "data-textDelta";
 }
 
+function shouldUseWorkItemVpkHtmlReportGenerator({
+	artifactKind,
+	contextDescription,
+	latestUserMessage,
+}) {
+	return (
+		artifactKind === "html" &&
+		typeof contextDescription === "string" &&
+		hasActiveWorkItemContext(contextDescription) &&
+		(
+			contextDescription.includes(WORK_ITEM_REPORT_REQUEST_START) ||
+			isWorkItemReportIntent(latestUserMessage)
+		)
+	);
+}
+
 async function generateRovoAppArtifactTitleFromContent({
 	content,
 	provider,
@@ -2722,11 +2740,11 @@ function streamRovoAppArtifactToolResponse({
 				fallbackTitle: artifactDocument.title,
 				latestUserMessage,
 				generateArtifactText: async ({ onTextDelta }) => {
-					const shouldUseWorkItemVpkHtmlSkill =
-						artifactDocument.kind === "html" &&
-						artifactBackendPreference === "ai-gateway" &&
-						typeof contextDescription === "string" &&
-						contextDescription.includes(WORK_ITEM_REPORT_REQUEST_START);
+					const shouldUseWorkItemVpkHtmlSkill = shouldUseWorkItemVpkHtmlReportGenerator({
+						artifactKind: artifactDocument.kind,
+						contextDescription,
+						latestUserMessage,
+					});
 					if (shouldUseWorkItemVpkHtmlSkill) {
 						const report = await generateWorkItemVpkHtmlReport({
 							contextDescription,
