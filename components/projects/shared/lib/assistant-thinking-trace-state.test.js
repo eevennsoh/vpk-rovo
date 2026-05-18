@@ -139,7 +139,7 @@ test("thinking tool titles prefer plain English labels and useful fallbacks", ()
 			state: "running",
 			input: { skill: "vpk-html" },
 		}),
-		"Using vpk-html",
+		"Using generate-pdf",
 	);
 
 	assert.equal(
