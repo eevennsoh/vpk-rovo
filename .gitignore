@@ -86,6 +86,7 @@ cmux.json
 .dev-rovodev-token
 .api-routes-backup
 .rovodev/config.generated.yml
+.rovodev/config.generated.yml.lock
 .rovodev/mcp.generated.json
 
 # vercel
