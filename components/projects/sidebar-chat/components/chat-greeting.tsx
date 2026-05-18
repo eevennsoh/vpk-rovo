@@ -6,6 +6,7 @@ import { token } from "@/lib/tokens";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { IconTile } from "@/components/ui/icon-tile";
 import { defaultSuggestions, type RovoSuggestion } from "@/lib/rovo-suggestions";
+import { isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/rovo/data/agent-profiles";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_ILLUSTRATION_SRC = "/illustration-ai/chat/light.svg";
@@ -69,6 +70,7 @@ const CHAT_GREETING_REDUCED_ITEM_VARIANTS = {
 		transition: CHAT_GREETING_REDUCED_TRANSITION,
 	},
 } as const;
+type ChatGreetingItemVariants = typeof CHAT_GREETING_ITEM_VARIANTS | typeof CHAT_GREETING_REDUCED_ITEM_VARIANTS;
 
 interface ChatGreetingProps {
 	/** Optional custom heading text */
@@ -87,6 +89,8 @@ interface ChatGreetingProps {
 	isMaxMode?: boolean;
 	/** Optional custom suggestions list */
 	suggestions?: ReadonlyArray<RovoSuggestion>;
+	/** Optional selected agent profile for custom-agent empty states. */
+	selectedAgent?: RovoAgentProfile | null;
 	/** Callback when a suggestion is clicked */
 	onSuggestionClick?: (suggestion: RovoSuggestion) => void;
 }
@@ -143,16 +147,87 @@ function SkillListItem({
 	);
 }
 
+function CustomAgentStarterItem({
+	suggestion,
+	onClick,
+}: Readonly<SkillListItemProps>) {
+	const IconComponent = suggestion.icon;
+
+	return (
+		<button
+			className="flex w-full items-center gap-4 rounded-lg p-[var(--ds-space-075)] text-left transition-colors hover:bg-bg-neutral-subtle-hovered"
+			onClick={onClick}
+			type="button"
+		>
+			<IconTile
+				aria-hidden={true}
+				className="border border-border bg-surface"
+				icon={IconComponent ? <IconComponent label={suggestion.label} color={token("color.icon.subtle")} /> : null}
+				label={suggestion.label}
+				size="medium"
+			/>
+			<span className="min-w-0 flex-1 text-sm font-semibold leading-5 text-text-subtle">{suggestion.label}</span>
+		</button>
+	);
+}
+
+function CustomAgentGreeting({
+	agent,
+	itemVariants,
+	onSuggestionClick,
+}: Readonly<{
+	agent: RovoAgentProfile;
+	itemVariants: ChatGreetingItemVariants;
+	onSuggestionClick?: (suggestion: RovoSuggestion) => void;
+}>) {
+	return (
+		<motion.div
+			animate="visible"
+			className="flex w-full flex-col items-center gap-8 text-center"
+			exit="exit"
+			initial="hidden"
+			key={agent.id}
+			variants={CHAT_GREETING_CONTAINER_VARIANTS}
+		>
+			<div className="flex max-w-[360px] flex-col items-center gap-3">
+				<motion.div variants={itemVariants}>
+					<Image alt="" aria-hidden className="size-10 object-contain" height={40} loading="eager" src={agent.avatarSrc} width={40} />
+				</motion.div>
+				<motion.div className="flex flex-col items-center gap-2" variants={itemVariants}>
+					<Heading size="large" className="text-center">{agent.name}</Heading>
+					{agent.description ? (
+						<p className="text-sm leading-6 text-text-subtle">{agent.description}</p>
+					) : null}
+				</motion.div>
+			</div>
+			<motion.div className="w-full" variants={CHAT_GREETING_CONTAINER_VARIANTS}>
+				<div className="flex flex-col gap-1">
+					{agent.starters.map((suggestion) => (
+						<motion.div key={suggestion.id} variants={itemVariants}>
+							<CustomAgentStarterItem
+								suggestion={suggestion}
+								onClick={() => onSuggestionClick?.(suggestion)}
+							/>
+						</motion.div>
+					))}
+				</div>
+			</motion.div>
+		</motion.div>
+	);
+}
+
 export default function ChatGreeting({
 	heading = "How can I help?",
 	illustrationSrc = DEFAULT_ILLUSTRATION_SRC,
 	illustrationDarkSrc,
 	isMaxMode = false,
+	selectedAgent = null,
 	showHero = true,
 	suggestions,
 	onSuggestionClick,
 }: Readonly<ChatGreetingProps>) {
 	const shouldReduceMotion = useReducedMotion();
+	const customAgent = selectedAgent !== null && !isRovoAgentProfile(selectedAgent) ? selectedAgent : null;
 	const greetingSuggestions = suggestions ?? defaultSuggestions;
 	const resolvedHeading = isMaxMode ? MAX_MODE_HEADING : heading;
 	const resolvedIllustrationSrc = isMaxMode ? MAX_MODE_ILLUSTRATION_SRC : illustrationSrc;
@@ -164,53 +239,66 @@ export default function ChatGreeting({
 
 	return (
 		<div className="w-full">
-			<div className="flex flex-col gap-6">
-				{showHero ? (
-					<AnimatePresence mode="wait">
-						<motion.div
-							animate="visible"
-							className="flex flex-col items-center gap-2"
-							exit="exit"
-							initial="hidden"
-							key={heroKey}
-							variants={CHAT_GREETING_CONTAINER_VARIANTS}
-						>
-							<motion.div className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "relative")} style={{ willChange: "transform, opacity" }} variants={itemVariants}>
-								<Image
-									src={resolvedIllustrationSrc}
-									alt=""
-									width={74}
-									height={67}
-									loading="eager"
-									className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "object-contain dark:hidden [[data-color-mode=dark]_&]:hidden")}
-								/>
-								<Image
-									src={resolvedIllustrationDarkSrc}
-									alt=""
-									width={74}
-									height={67}
-									loading="eager"
-									className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "hidden object-contain dark:block [[data-color-mode=dark]_&]:block")}
-								/>
+			<AnimatePresence mode="wait">
+				{customAgent ? (
+					<CustomAgentGreeting
+						agent={customAgent}
+						itemVariants={itemVariants}
+						key={`agent-${customAgent.id}`}
+						onSuggestionClick={onSuggestionClick}
+					/>
+				) : (
+					<motion.div
+						animate="visible"
+						className="flex flex-col gap-6"
+						exit="exit"
+						initial="hidden"
+						key={`rovo-${heroKey}`}
+						variants={CHAT_GREETING_CONTAINER_VARIANTS}
+					>
+						{showHero ? (
+							<motion.div
+								className="flex flex-col items-center gap-2"
+								variants={CHAT_GREETING_CONTAINER_VARIANTS}
+							>
+								<motion.div className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "relative")} style={{ willChange: "transform, opacity" }} variants={itemVariants}>
+									<Image
+										src={resolvedIllustrationSrc}
+										alt=""
+										width={74}
+										height={67}
+										loading="eager"
+										className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "object-contain dark:hidden [[data-color-mode=dark]_&]:hidden")}
+									/>
+									<Image
+										src={resolvedIllustrationDarkSrc}
+										alt=""
+										width={74}
+										height={67}
+										loading="eager"
+										className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "hidden object-contain dark:block [[data-color-mode=dark]_&]:block")}
+									/>
+								</motion.div>
+								<motion.div style={{ willChange: "transform, opacity" }} variants={itemVariants}>
+									<Heading size="large" className="text-center">{resolvedHeading}</Heading>
+								</motion.div>
 							</motion.div>
-							<motion.div style={{ willChange: "transform, opacity" }} variants={itemVariants}>
-								<Heading size="large" className="text-center">{resolvedHeading}</Heading>
-							</motion.div>
+						) : null}
+						<motion.div className="w-full" variants={CHAT_GREETING_CONTAINER_VARIANTS}>
+							<div className="flex flex-col gap-1">
+								{greetingSuggestions.map((suggestion) => (
+									<motion.div key={suggestion.id} variants={itemVariants}>
+										<SkillListItem
+											suggestion={suggestion}
+											onClick={() => onSuggestionClick?.(suggestion)}
+										/>
+									</motion.div>
+								))}
+							</div>
 						</motion.div>
-					</AnimatePresence>
-				) : null}
-				<div className="w-full">
-					<div className="flex flex-col gap-1">
-						{greetingSuggestions.map((suggestion) => (
-							<SkillListItem
-								key={suggestion.id}
-								suggestion={suggestion}
-								onClick={() => onSuggestionClick?.(suggestion)}
-							/>
-						))}
-					</div>
-				</div>
-			</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</div>
 	);
 }

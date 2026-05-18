@@ -15,6 +15,7 @@ import {
 	type ChatSurfaceSwitchHandler,
 } from "@/components/projects/shared/components/chat-surface-switcher";
 import { RovoAppBrand } from "@/components/projects/rovo/components/rovo-app-brand";
+import { RovoAgentBackButton } from "@/components/projects/rovo/components/rovo-agent-back-button";
 import { ChatHistoryButton } from "./chat-history-button";
 import AppIcon from "@atlaskit/icon/core/app";
 import BugIcon from "@atlaskit/icon/core/bug";
@@ -57,6 +58,7 @@ export default function ChatHeader({
 			<div className="flex justify-between items-center">
 				{/* Left side: Menu icon and Title */}
 				<div className="flex items-center gap-1">
+					<RovoAgentBackButton />
 					{showControls ? (
 						<ChatHistoryButton isHistoryOpen={isHistoryOpen} onToggle={onHistoryToggle} />
 					) : null}

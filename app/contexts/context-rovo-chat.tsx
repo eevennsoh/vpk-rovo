@@ -27,6 +27,13 @@ import {
 	type RovoAppThread,
 } from "@/lib/rovo-app-types";
 import {
+	getRovoAgentProfile,
+	getRovoAgentPromptContext,
+	isRovoAgentProfile,
+	ROVO_AGENT_ID,
+	type RovoAgentProfile,
+} from "@/components/projects/rovo/data/agent-profiles";
+import {
 	cancelRovoAppRun,
 	createRovoAppThread,
 	deleteAllRovoAppThreads,
@@ -277,6 +284,24 @@ function mergeSendPromptOptions(
 		hermesContext: mergeHermesContext(
 			defaultOptions.hermesContext,
 			options.hermesContext
+		),
+	};
+}
+
+function mergeSelectedAgentPromptOptions(
+	options: SendPromptOptions | undefined,
+	selectedAgent: RovoAgentProfile
+): SendPromptOptions | undefined {
+	const selectedAgentContext = getRovoAgentPromptContext(selectedAgent);
+	if (!selectedAgentContext) {
+		return options;
+	}
+
+	return {
+		...(options ?? {}),
+		contextDescription: mergeRovoContextDescriptions(
+			options?.contextDescription,
+			selectedAgentContext
 		),
 	};
 }
@@ -557,6 +582,11 @@ function createAssistantThinkingStatusMessage(
 export type ChatSurface = "floating" | "sidebar";
 
 interface RovoChatContextType {
+	selectedAgentId: string;
+	selectedAgent: RovoAgentProfile;
+	isCustomAgentSelected: boolean;
+	selectAgent: (agentId: string) => void;
+	resetAgentToRovo: () => void;
 	chatSurface: ChatSurface | null;
 	openChat: (surface: ChatSurface) => void;
 	switchSurface: (surface: ChatSurface) => void;
@@ -681,6 +711,7 @@ export function RovoChatProvider({
 	defaultPromptOptions,
 	portIndex,
 }: Readonly<RovoChatProviderProps>) {
+	const [selectedAgentId, setSelectedAgentId] = useState(ROVO_AGENT_ID);
 	const [chatSurface, setChatSurface] = useState<ChatSurface | null>(null);
 	const isOpen = chatSurface !== null;
 	const [isSubmitPending, setIsSubmitPending] = useState(false);
@@ -728,6 +759,16 @@ export function RovoChatProvider({
 	const isMediaGeneratingRef = useRef(false);
 	const mediaGenerationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const suggestionsAbortControllerRef = useRef<AbortController | null>(null);
+	const selectedAgent = useMemo(() => getRovoAgentProfile(selectedAgentId), [selectedAgentId]);
+	const isCustomAgentSelected = !isRovoAgentProfile(selectedAgent);
+
+	const selectAgent = useCallback((agentId: string) => {
+		setSelectedAgentId(getRovoAgentProfile(agentId).id);
+	}, []);
+
+	const resetAgentToRovo = useCallback(() => {
+		setSelectedAgentId(ROVO_AGENT_ID);
+	}, []);
 	const requestedSuggestionMessageIdsRef = useRef<Set<string>>(new Set());
 	const [isMediaGenerating, setIsMediaGenerating] = useState(false);
 	const maybeFinalizeAndProcessRef = useRef<() => void>(() => {});
@@ -1724,7 +1765,7 @@ export function RovoChatProvider({
 				trimmedPrompt,
 				mergeSendPromptOptions(
 					defaultPromptOptions,
-					options
+					mergeSelectedAgentPromptOptions(options, selectedAgent)
 				)
 			);
 			if (isClarificationResolutionPrompt(resolvedOptions)) {
@@ -1758,7 +1799,7 @@ export function RovoChatProvider({
 				},
 			]);
 		},
-		[defaultPromptOptions, setMessages, startSubmitPending]
+		[defaultPromptOptions, selectedAgent, setMessages, startSubmitPending]
 	);
 
 	const acceptPlanReview = useCallback(
@@ -1838,7 +1879,10 @@ export function RovoChatProvider({
 
 			const resolvedOptions = resolveWorkItemReportPromptOptions(
 				trimmedText,
-				mergeSendPromptOptions(defaultPromptOptions, options)
+				mergeSendPromptOptions(
+					defaultPromptOptions,
+					mergeSelectedAgentPromptOptions(options, selectedAgent)
+				)
 			);
 
 			setEditingMessageId(null);
@@ -1910,6 +1954,7 @@ export function RovoChatProvider({
 			rawUiMessages,
 			refreshThreads,
 			sendMessage,
+			selectedAgent,
 			setMessages,
 			startSubmitPending,
 			stop,
@@ -2203,6 +2248,11 @@ export function RovoChatProvider({
 	return (
 		<RovoChatContext
 			value={{
+				selectedAgentId,
+				selectedAgent,
+				isCustomAgentSelected,
+				selectAgent,
+				resetAgentToRovo,
 				chatSurface,
 				openChat,
 				switchSurface,
@@ -2263,4 +2313,22 @@ export function useRovoChat() {
 		throw new Error("useRovoChat must be used within a RovoChatProvider");
 	}
 	return context;
+}
+
+export function useRovoSelectedAgent() {
+	const {
+		selectedAgentId,
+		selectedAgent,
+		isCustomAgentSelected,
+		selectAgent,
+		resetAgentToRovo,
+	} = useRovoChat();
+
+	return {
+		selectedAgentId,
+		selectedAgent,
+		isCustomAgentSelected,
+		selectAgent,
+		resetAgentToRovo,
+	};
 }

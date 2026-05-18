@@ -28,6 +28,34 @@ test("Rovo app empty state switches greeting and illustrations for Max mode", ()
 	assert.match(SHELL_SOURCE, /isMaxMode=\{chat\.isPlanMode\}/u);
 });
 
+test("Rovo app empty state renders selected custom agent profile and starters", () => {
+	assert.match(MESSAGES_SOURCE, /selectedAgent\?: RovoAgentProfile \| null;/u);
+	assert.match(MESSAGES_SOURCE, /function RovoAppCustomAgentEmptyState/u);
+	assert.match(MESSAGES_SOURCE, /itemVariants: RovoAppEmptyStateItemVariants;/u);
+	assert.match(MESSAGES_SOURCE, /agent\.description/u);
+	assert.match(MESSAGES_SOURCE, /agent\.starters\.map/u);
+	assert.match(MESSAGES_SOURCE, /<motion\.div key=\{starter\.id\} variants=\{itemVariants\}>/u);
+	assert.match(MESSAGES_SOURCE, /onSelectSuggestion\(starterPrompt\)/u);
+	assert.match(MESSAGES_SOURCE, /selectedAgent = null/u);
+	assert.match(MESSAGES_SOURCE, /const customAgent = selectedAgent !== null && !isRovoAgentProfile\(selectedAgent\) \? selectedAgent : null;/u);
+	assert.match(MESSAGES_SOURCE, /shouldShowEmptyConversationState \? \([\s\S]*<AnimatePresence mode="wait">[\s\S]*customAgent \? \(/u);
+	assert.match(MESSAGES_SOURCE, /itemVariants=\{emptyStateItemVariants\}/u);
+	assert.match(SHELL_SOURCE, /const \{ selectedAgent \} = useRovoSelectedAgent\(\);/u);
+	assert.match(SHELL_SOURCE, /selectedAgent=\{selectedAgent\}/u);
+	assert.match(SHELL_SOURCE, /showHomeState && !isCustomAgentSelected \? \(/u);
+});
+
+test("Rovo app selected custom agent context is merged into fullscreen submissions", () => {
+	assert.match(SHELL_SOURCE, /const selectedAgentContextDescription = getRovoAgentPromptContext\(selectedAgent\);/u);
+	assert.match(SHELL_SOURCE, /const resolvedContextDescription = mergeContextDescriptions\(\s*contextDescription,\s*selectedAgentContextDescription,\s*\);/u);
+	assert.match(SHELL_SOURCE, /contextDescription: resolvedContextDescription/u);
+	assert.match(SHELL_SOURCE, /function mergeContextDescriptions/u);
+	assert.match(SHELL_SOURCE, /const handleRovoAppSuggestionSelect = useCallback/u);
+	assert.match(SHELL_SOURCE, /try \{[\s\S]*await chat\.submitPrompt\(\{[\s\S]*buildHermesPromptOptions\(contextDescription\)[\s\S]*files: \[\],[\s\S]*text: prompt/u);
+	assert.match(SHELL_SOURCE, /catch \{[\s\S]*submitPrompt already sets a user-visible error state\./u);
+	assert.match(SHELL_SOURCE, /onSelectSuggestion=\{handleRovoAppSuggestionSelect\}/u);
+});
+
 test("Rovo app streaming anchor follows the real bottom", () => {
 	assert.match(MESSAGES_SOURCE, /target\?: "bottom" \| "follow";/u);
 	assert.match(
