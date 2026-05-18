@@ -23,7 +23,7 @@ function isAgentsReferer(request: NextRequest): boolean {
 
 	try {
 		const pathname = new URL(referer).pathname;
-		return pathname === "/agents" || pathname.startsWith("/agents/");
+		return pathname === "/agents" || pathname.startsWith("/agents/") || pathname === "/agents2" || pathname.startsWith("/agents2/");
 	} catch {
 		return false;
 	}

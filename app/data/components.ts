@@ -337,6 +337,7 @@ export const BLOCK_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 
 export const PROJECT_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	projectComponent("agents", "Agents"),
+	projectComponent("agents2", "Agents2"),
 	projectComponent("admin", "Admin"),
 	projectComponent("confluence", "Confluence"),
 	projectComponent("jira", "Jira"),

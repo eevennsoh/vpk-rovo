@@ -99,3 +99,32 @@ test("POST /api/chat-sdk defaults /agents requests to AI Gateway", async (t) => 
 	assert.equal(requests.length, 1);
 	assert.equal(JSON.parse(requests[0].body).backendPreference, "ai-gateway");
 });
+
+test("POST /api/chat-sdk defaults /agents2 requests to AI Gateway", async (t) => {
+	const { POST } = await loadBundledRoute(t);
+	const requests = mockBackendFetch(t, () => new Response(
+		JSON.stringify({ ok: true }),
+		{ headers: { "Content-Type": "application/json" }, status: 200 },
+	));
+
+	const response = await POST(new Request("http://localhost/api/chat-sdk", {
+		body: JSON.stringify({
+			messages: [
+				{
+					id: "user-1",
+					role: "user",
+					parts: [{ type: "text", text: "hi" }],
+				},
+			],
+		}),
+		headers: {
+			"Content-Type": "application/json",
+			Referer: "http://localhost:3000/agents2",
+		},
+		method: "POST",
+	}));
+
+	assert.equal(response.status, 200);
+	assert.equal(requests.length, 1);
+	assert.equal(JSON.parse(requests[0].body).backendPreference, "ai-gateway");
+});
