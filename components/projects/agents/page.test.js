@@ -251,7 +251,8 @@ test("AgentsView maps backend RFP agent output onto cards, assignees, comments, 
 test("RFP agent chat tab details expose trigger and activity content without a sheet", () => {
 	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /export function RfpAgentTriggerDetails/u);
 	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /export function RfpAgentActivityDetails/u);
-	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Tasks">/u);
+	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Triggers">/u);
+	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Agent Instructions">/u);
 	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
 	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /RfpAgentDetailsSheet/u);
 	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /SheetContent/u);

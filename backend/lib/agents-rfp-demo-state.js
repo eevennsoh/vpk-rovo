@@ -35,6 +35,7 @@ const RFP_DRAFTING_EVENT_TRIGGER = {
 	board: RFP_DRAFTING_BOARD_NAME,
 	column: RFP_DRAFTING_COLUMN_NAME,
 	label: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+	prompt: null,
 };
 
 const BOARD_SEED = [
@@ -377,9 +378,19 @@ function normalizeBoard(rawBoard) {
 	return columns.length > 0 ? { columns } : defaultBoard;
 }
 
+function createRfpDraftingEventTrigger(prompt = null) {
+	return {
+		...RFP_DRAFTING_EVENT_TRIGGER,
+		prompt: getNonEmptyString(prompt),
+	};
+}
+
 function normalizeTrigger(rawTrigger) {
+	if (rawTrigger === null) {
+		return null;
+	}
 	if (!isObject(rawTrigger)) {
-		return { ...RFP_DRAFTING_EVENT_TRIGGER };
+		return createRfpDraftingEventTrigger();
 	}
 
 	return {
@@ -387,6 +398,7 @@ function normalizeTrigger(rawTrigger) {
 		board: getNonEmptyString(rawTrigger.board) ?? RFP_DRAFTING_EVENT_TRIGGER.board,
 		column: getNonEmptyString(rawTrigger.column) ?? RFP_DRAFTING_EVENT_TRIGGER.column,
 		label: getNonEmptyString(rawTrigger.label) ?? RFP_DRAFTING_EVENT_TRIGGER.label,
+		prompt: getNonEmptyString(rawTrigger.prompt),
 	};
 }
 
@@ -549,7 +561,7 @@ function ensureRfpDraftingAgent(state, { jobId, createdAtLabel = "Sep 3, 2025, 1
 		createdAt: state.agent?.createdAt ?? createdAtLabel,
 		avatarSrc: state.agent?.avatarSrc ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
 		jobId: jobId ?? state.agent?.jobId,
-		trigger: RFP_DRAFTING_EVENT_TRIGGER,
+		trigger: createRfpDraftingEventTrigger(state.agent?.trigger?.prompt),
 		jobRunSummaries: state.agent?.jobRunSummaries ?? [],
 	});
 	const nextState = {
@@ -1227,7 +1239,7 @@ function moveTicketEnteredColumn(state, {
 	}
 
 	let nextState = moveTicketToColumn(state, normalizedTicketCode, normalizedTargetColumn);
-	if (normalizedTargetColumn !== RFP_DRAFTING_COLUMN_NAME || !nextState.agent) {
+	if (normalizedTargetColumn !== RFP_DRAFTING_COLUMN_NAME || !nextState.agent?.trigger) {
 		return {
 			state: nextState,
 			runSummary: null,

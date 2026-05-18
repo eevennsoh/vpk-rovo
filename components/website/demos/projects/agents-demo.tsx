@@ -286,11 +286,17 @@ function AgentsDemoContent({
 	const customAgentTabs = useMemo<ChatPanelCustomAgentTabs | undefined>(
 		() => rfpDemo.state.agent
 			? {
-					trigger: <RfpAgentTriggerDetails state={rfpDemo.state} />,
+					trigger: (
+						<RfpAgentTriggerDetails
+							state={rfpDemo.state}
+							onClearTrigger={rfpDemo.actions.clearAgentTrigger}
+							onSetTrigger={rfpDemo.actions.setAgentTrigger}
+						/>
+					),
 					activity: <RfpAgentActivityDetails state={rfpDemo.state} />,
 				}
 			: undefined,
-		[rfpDemo.state],
+		[rfpDemo.actions.clearAgentTrigger, rfpDemo.actions.setAgentTrigger, rfpDemo.state],
 	);
 
 	return (

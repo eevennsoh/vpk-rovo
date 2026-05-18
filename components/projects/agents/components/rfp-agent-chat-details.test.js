@@ -5,10 +5,22 @@ const test = require("node:test");
 
 const DETAILS_SOURCE = fs.readFileSync(path.join(__dirname, "rfp-agent-chat-details.tsx"), "utf8");
 
-test("RFP agent chat details show event trigger, rerun policy, run logs, and Rovo thread links", () => {
-	assert.match(DETAILS_SOURCE, /Trigger: \{triggerLabel\}\./u);
-	assert.match(DETAILS_SOURCE, /Job: \{agent\?\.jobId \?\? "Created when the agent is applied"\}\./u);
-	assert.match(DETAILS_SOURCE, /Rerun policy: Completed tickets with draft output are skipped; failed tickets retry\./u);
+test("RFP agent chat details render trigger editor states and run log links", () => {
+	assert.match(DETAILS_SOURCE, /<DetailsSection title="Triggers">/u);
+	assert.match(DETAILS_SOURCE, /aria-label="Add trigger condition"/u);
+	assert.match(DETAILS_SOURCE, /Search triggers\.\.\./u);
+	assert.match(DETAILS_SOURCE, /Ticket enters column/u);
+	assert.match(DETAILS_SOURCE, /Status changed to/u);
+	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_COLUMN_NAME\}<\/TriggerChip>/u);
+	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_BOARD_NAME\}<\/TriggerChip>/u);
+	assert.match(DETAILS_SOURCE, /aria-label="Delete trigger"/u);
+	assert.match(DETAILS_SOURCE, /group-hover\/trigger-row:opacity-100/u);
+	assert.match(DETAILS_SOURCE, /<DetailsSection title="Agent Instructions">/u);
+	assert.match(DETAILS_SOURCE, /placeholder="Type @ to mention tools or MCP servers, \/ for skills\.\.\."/u);
+	assert.match(DETAILS_SOURCE, /disabled=\{!canSaveTrigger\}/u);
+	assert.match(DETAILS_SOURCE, />\s*Save\s*<\/Button>/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Tasks">/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /Rerun policy: Completed tickets with draft output are skipped; failed tickets retry\./u);
 	assert.match(DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
 	assert.match(DETAILS_SOURCE, /Processed \{run\.processedTicketCodes\.length\}/u);
 	assert.match(DETAILS_SOURCE, /Skipped \{run\.skippedTicketCodes\.length\}/u);
