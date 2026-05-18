@@ -31,6 +31,7 @@ export interface AgentsRfpDemoActions {
 	applyAgent: () => void;
 	scheduleAgent: () => void;
 	moveCard: (cardCode: string, targetColumnTitle: string) => void;
+	moveCards: (cardCodes: readonly string[], targetColumnTitle: string) => void;
 	setAnswerSummary: (answerSummary: string) => void;
 	setCanvasOpen: (open: boolean, mode?: "editable" | "read-only") => void;
 	setCanvasView: (viewId: AgentsRfpDemoCanvasViewId) => void;
@@ -179,6 +180,24 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 		},
 		[postStateMutation],
 	);
+	const moveCards = useCallback(
+		(cardCodes: readonly string[], targetColumnTitle: string) => {
+			if (cardCodes.length === 0) {
+				return;
+			}
+			setState((currentState) => cardCodes.reduce(
+				(accState, cardCode) => moveRfpDemoCard(accState, cardCode, targetColumnTitle),
+				currentState,
+			));
+			for (const cardCode of cardCodes) {
+				void postStateMutation(RFP_DEMO_TICKET_EVENT_ENDPOINT, {
+					ticketCode: cardCode,
+					targetColumn: targetColumnTitle,
+				});
+			}
+		},
+		[postStateMutation],
+	);
 	const setAnswerSummary = useCallback(
 		(answerSummary: string) => persistStateMutation((currentState) => setRfp101AnswerSummary(currentState, answerSummary)),
 		[persistStateMutation],
@@ -210,6 +229,7 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 		applyAgent,
 		scheduleAgent,
 		moveCard,
+		moveCards,
 		setAnswerSummary,
 		setCanvasOpen,
 		setCanvasView,

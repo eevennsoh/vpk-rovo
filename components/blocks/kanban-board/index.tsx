@@ -64,6 +64,11 @@ export interface KanbanBoardAgentData {
 	avatarSrc: string;
 }
 
+export interface KanbanBoardCardSelectModifiers {
+	shiftKey: boolean;
+	metaOrCtrlKey: boolean;
+}
+
 export interface KanbanBoardProps {
 	boardColumns: readonly KanbanBoardColumnData[];
 	agents?: readonly KanbanBoardAgentData[];
@@ -71,7 +76,15 @@ export interface KanbanBoardProps {
 	ariaLabel?: string;
 	columnHeaderPaddingBlock?: CSSProperties["paddingBlock"];
 	draggedCardCode?: string | null;
+	draggedCardCount?: number;
+	selectedCardCodes?: ReadonlySet<string>;
 	onCardClick?: (title: string, code: string, card: KanbanBoardCardData, columnTitle: string) => void;
+	onCardSelect?: (
+		code: string,
+		columnTitle: string,
+		indexInColumn: number,
+		modifiers: KanbanBoardCardSelectModifiers,
+	) => void;
 	onCardDragStart?: (card: KanbanBoardCardData, sourceColumnTitle: string) => void;
 	onCardDrop?: (targetColumnTitle: string) => void;
 	onCardDragEnd?: () => void;
@@ -340,7 +353,9 @@ function KanbanCard({
 	avatarSrc,
 	avatarUnassignedKind,
 	code,
+	dragGroupCount,
 	isDragging,
+	isSelected,
 	onClick,
 	onDragEnd,
 	onDragStart,
@@ -353,10 +368,12 @@ function KanbanCard({
 	avatarSrc?: string;
 	avatarUnassignedKind?: AvatarUnassignedKind;
 	code: string;
+	dragGroupCount?: number;
 	isDragging?: boolean;
-	onClick?: () => void;
+	isSelected?: boolean;
+	onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 	onDragEnd?: () => void;
-	onDragStart?: () => void;
+	onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void;
 	priority: KanbanBoardPriority;
 	tags?: readonly KanbanBoardCardTag[];
 	title: string;
@@ -367,18 +384,29 @@ function KanbanCard({
 	const PriorityIcon = PRIORITY_ICONS[priority];
 	const priorityColor = PRIORITY_COLORS[priority];
 
+	const showSelectionRing = Boolean(isSelected);
+	const groupBadgeCount = dragGroupCount && dragGroupCount > 1 ? dragGroupCount : null;
+
 	return (
 		<button
 			type="button"
 			draggable
-			className="border-2 border-transparent outline-none focus-visible:border-ring"
+			aria-pressed={showSelectionRing}
+			className={cn(
+				"relative border outline-none focus-visible:border-ring",
+				showSelectionRing ? "border-border-selected" : "border-transparent",
+			)}
 			onClick={onClick}
 			onDragStart={onDragStart}
 			onDragEnd={onDragEnd}
 			onMouseEnter={() => setIsHovered(true)}
 			onMouseLeave={() => setIsHovered(false)}
 			style={{
-				backgroundColor: isHovered ? token("color.background.neutral.subtle.hovered") : token("elevation.surface"),
+				backgroundColor: showSelectionRing
+					? token("color.background.selected")
+					: isHovered
+						? token("color.background.neutral.subtle.hovered")
+						: token("elevation.surface"),
 				borderRadius: token("radius.small"),
 				padding: token("space.150"),
 				cursor: isDragging ? "grabbing" : "grab",
@@ -389,6 +417,14 @@ function KanbanCard({
 				opacity: isDragging ? 0.5 : 1,
 			}}
 		>
+			{groupBadgeCount && isDragging ? (
+				<span
+					aria-hidden="true"
+					className="absolute -top-1.5 -right-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-text-inverse shadow-sm"
+				>
+					{groupBadgeCount}
+				</span>
+			) : null}
 			<div className="flex flex-col gap-2">
 				<span className="text-sm">{title}</span>
 
@@ -448,7 +484,10 @@ export function KanbanBoard({
 	boardColumns,
 	columnHeaderPaddingBlock = token("space.100"),
 	draggedCardCode = null,
+	draggedCardCount = 0,
+	selectedCardCodes,
 	onCardClick,
+	onCardSelect,
 	onCardDragEnd,
 	onCardDragStart,
 	onCardDrop,
@@ -459,6 +498,7 @@ export function KanbanBoard({
 }: Readonly<KanbanBoardProps>) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [canScrollRight, setCanScrollRight] = useState(false);
+	const dragImageRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
 		const scrollContainer = scrollRef.current;
@@ -508,6 +548,46 @@ export function KanbanBoard({
 		event.currentTarget.classList.add("border-transparent");
 		event.currentTarget.classList.remove("border-ring");
 		onCardDrop?.(targetColumnTitle);
+	};
+
+	const buildMultiDragImage = (count: number): HTMLDivElement => {
+		const node = document.createElement("div");
+		node.textContent = `${count} items`;
+		node.setAttribute("aria-hidden", "true");
+		node.style.position = "fixed";
+		node.style.top = "-1000px";
+		node.style.left = "-1000px";
+		node.style.padding = "6px 10px";
+		node.style.borderRadius = "6px";
+		node.style.background = "var(--ds-background-brand-bold)";
+		node.style.color = "var(--ds-text-inverse)";
+		node.style.font = "var(--ds-font-body-small)";
+		node.style.fontWeight = "600";
+		node.style.boxShadow = "var(--ds-shadow-raised)";
+		node.style.pointerEvents = "none";
+		document.body.appendChild(node);
+		return node;
+	};
+
+	const handleCardDragStartInternal = (
+		card: KanbanBoardCardData,
+		columnTitle: string,
+		event: React.DragEvent<HTMLButtonElement>,
+	) => {
+		const isMultiDrag = Boolean(selectedCardCodes?.has(card.code) && selectedCardCodes.size > 1);
+		if (isMultiDrag && event.dataTransfer && selectedCardCodes) {
+			dragImageRef.current = buildMultiDragImage(selectedCardCodes.size);
+			event.dataTransfer.setDragImage(dragImageRef.current, 0, 0);
+		}
+		onCardDragStart?.(card, columnTitle);
+	};
+
+	const handleCardDragEndInternal = () => {
+		if (dragImageRef.current) {
+			dragImageRef.current.remove();
+			dragImageRef.current = null;
+		}
+		onCardDragEnd?.();
 	};
 
 	return (
@@ -560,23 +640,45 @@ export function KanbanBoard({
 								}
 								title={column.title}
 							>
-								{column.cards.map((card) => (
-									<KanbanCard
-										key={card.code}
-										title={card.title}
-										code={card.code}
-										tags={card.tags}
-										priority={card.priority}
-										avatarSrc={card.avatarSrc}
-										avatarShape={card.avatarShape}
-										avatarUnassignedKind={card.avatarUnassignedKind}
-										avatarPulse={card.avatarPulse}
-										isDragging={draggedCardCode === card.code}
-										onClick={() => onCardClick?.(card.title, card.code, card, column.title)}
-										onDragStart={() => onCardDragStart?.(card, column.title)}
-										onDragEnd={onCardDragEnd}
-									/>
-								))}
+								{column.cards.map((card, cardIndex) => {
+									const isSelected = selectedCardCodes?.has(card.code) ?? false;
+									const isCardBeingDragged = draggedCardCode === card.code;
+									const isMultiSelection = (selectedCardCodes?.size ?? 0) > 1;
+									const dragGroupCount = isCardBeingDragged && isMultiSelection
+										? (draggedCardCount || selectedCardCodes?.size || 0)
+										: undefined;
+									const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+										const modifiers: KanbanBoardCardSelectModifiers = {
+											shiftKey: event.shiftKey,
+											metaOrCtrlKey: event.metaKey || event.ctrlKey,
+										};
+										if (modifiers.shiftKey || modifiers.metaOrCtrlKey) {
+											event.preventDefault();
+											onCardSelect?.(card.code, column.title, cardIndex, modifiers);
+											return;
+										}
+										onCardClick?.(card.title, card.code, card, column.title);
+									};
+									return (
+										<KanbanCard
+											key={card.code}
+											title={card.title}
+											code={card.code}
+											tags={card.tags}
+											priority={card.priority}
+											avatarSrc={card.avatarSrc}
+											avatarShape={card.avatarShape}
+											avatarUnassignedKind={card.avatarUnassignedKind}
+											avatarPulse={card.avatarPulse}
+											isDragging={isCardBeingDragged}
+											isSelected={isSelected}
+											dragGroupCount={dragGroupCount}
+											onClick={handleClick}
+											onDragStart={(event) => handleCardDragStartInternal(card, column.title, event)}
+											onDragEnd={handleCardDragEndInternal}
+										/>
+									);
+								})}
 							</BoardColumn>
 						</div>
 					))}
