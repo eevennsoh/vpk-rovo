@@ -7,7 +7,13 @@ import type { ComponentPropsWithoutRef, CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const ROVO_GENERATION_GRADIENT =
-	"conic-gradient(from 90deg, #fca700 0deg 73deg, #6a9a23 73deg 168deg, #1868db 168deg 253deg, #af59e0 253deg 360deg)";
+	"conic-gradient(from 90deg, var(--rovo-generation-stop-orange) 0deg 73deg, var(--rovo-generation-stop-lime) 73deg 168deg, var(--rovo-generation-stop-blue) 168deg 253deg, var(--rovo-generation-stop-purple) 253deg 360deg)";
+const ROVO_GENERATION_GRADIENT_TOKENS = {
+	"--rovo-generation-stop-orange": "var(--color-orange-300)",
+	"--rovo-generation-stop-lime": "var(--color-lime-400)",
+	"--rovo-generation-stop-blue": "var(--color-blue-600)",
+	"--rovo-generation-stop-purple": "var(--color-purple-500)",
+} as CSSProperties;
 
 const LINEAR_EASE: [number, number, number, number] = [0, 0, 1, 1];
 const ACTIVE_ROTATION_DURATION = 1.6;
@@ -185,6 +191,7 @@ function RovoGenerationRoot({
 				"--rovo-generation-border-width": `${normalizedBorderWidth}px`,
 				"--rovo-generation-glow-blur": `${normalizedGlowBlur}px`,
 				"--rovo-generation-glow-opacity": normalizedGlowOpacity,
+				...ROVO_GENERATION_GRADIENT_TOKENS,
 				width: "var(--rovo-generation-size)",
 				height: "var(--rovo-generation-size)",
 				borderRadius: "var(--rovo-generation-radius)",
