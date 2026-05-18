@@ -50,6 +50,7 @@ test("Kanban multi-card drag fades every selected card", () => {
 test("Kanban multi-card drag uses a move cursor affordance without covering the item count", () => {
 	assert.match(SOURCE, /event\.dataTransfer\.effectAllowed = "move";/);
 	assert.match(SOURCE, /event\.dataTransfer\.dropEffect = "move";/);
+	assert.match(SOURCE, /event\.dataTransfer\.setData\("text\/plain", card\.code\);/);
 	assert.match(COLUMN_DRAG_SOURCE, /event\.dataTransfer\.dropEffect = "move";/);
 	assert.match(SOURCE, /label\.style\.top = "18px";/);
 	assert.match(SOURCE, /label\.style\.background = "var\(--ds-background-neutral-bold\)";/);
