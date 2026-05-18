@@ -26,7 +26,9 @@ Before first deployment:
 
 ## Validation
 
-No automated test framework is configured. Verification is observational and tool-driven.
+There is no single `pnpm test` script. Run targeted `node --test` files or
+`pnpm exec playwright test <spec>` for touched behavior, and keep observational
+checks for UI changes.
 
 Run on every change:
 
