@@ -111,7 +111,7 @@ export function DetailsAccordion() {
 						) : null}
 
 						<DetailRow label="Parent">
-							<a href="#">{workItem.parent?.code ?? "RFP-100"}</a>
+							<a href="#">{workItem.parent?.code ?? "OMNI-100"}</a>
 						</DetailRow>
 
 						<DetailRow label="Labels" noPadding>

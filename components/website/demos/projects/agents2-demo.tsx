@@ -29,6 +29,7 @@ import {
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import type { ChatPanelCustomAgentTabs } from "@/components/projects/sidebar-chat/page";
+import type { StarredProject } from "@/components/blocks/product-sidebar/data/jira-navigation";
 import type { FloatingRovoButtonOnboardingConfig } from "@/components/projects/shared/components/floating-rovo-button";
 import { ROVO_AGENT_RESULT_SELECT_EVENT } from "@/components/projects/sidebar-chat/components/agent-result-card";
 import { useAgentsWorkItemPresentation, type AgentsWorkItemPresentationController } from "@/components/projects/agents2/hooks/use-agents-work-item-presentation";
@@ -38,10 +39,27 @@ import { useProjectDemoEmbedded } from "./use-project-demo-embedded";
 const AGENTS_CHAT_PROMPT_OPTIONS: SendPromptOptions = {
 	backendPreference: "ai-gateway",
 };
-const ROVO_BUTTON_AGENT_ONBOARDING_ID = "agents-rfp-drafting-agent-after-report-attach";
+const ROVO_BUTTON_AGENT_ONBOARDING_ID = "agents-voicemate-agent-after-report-attach";
 const ROVO_BUTTON_AGENT_ONBOARDING_DELAY_MS = 5000;
 const RFP_DRAFTING_AGENT_ACCENT_COLOR = "#82B536";
-const RFP_AGENT_CREATION_PROMPT = `Create an ${RFP_DRAFTING_AGENT_NAME} for the Drafting column on the Enterprise RFP Response board, including its description and conversation starters.`;
+const RFP_AGENT_CREATION_PROMPT = `Create an ${RFP_DRAFTING_AGENT_NAME} for the Outline Drafting column on the Omni Live Launch board, including its description and conversation starters.`;
+const AGENTS2_JIRA_STARRED_PROJECTS: readonly StarredProject[] = [
+	{
+		id: "omni-live-launch",
+		name: "Omni Live Launch",
+		imageSrc: "/avatar-project/rocket.svg",
+	},
+	{
+		id: "omni-live-demo-build",
+		name: "Omni Live Demo Build",
+		imageSrc: "/avatar-project/code.svg",
+	},
+	{
+		id: "voicemate-content-team",
+		name: "VoiceMate Content Team",
+		imageSrc: "/avatar-project/science.svg",
+	},
+] as const;
 
 function createAgentsDemoStarter(id: string, label: string): RovoAgentProfile["starters"][number] {
 	return {
@@ -77,7 +95,7 @@ function createAgentsDemoAgentContext(agent: BoardAgentData, description?: strin
 		`Agent: ${agent.name}`,
 		`Byline: ${agent.byline}`,
 		description ? `Description: ${description}` : null,
-		"Answer as this selected agent while using the existing Rovo chat capabilities and available /agents RFP demo context.",
+		"Answer as this selected agent while using the existing Rovo chat capabilities and available /agents2 Omni Live launch context.",
 		"[End selected custom agent]",
 	]
 		.filter((line): line is string => Boolean(line))
@@ -162,16 +180,16 @@ function AgentsDemoContent({
 		void sendPrompt(RFP_AGENT_CREATION_PROMPT, {
 			creationMode: "agent",
 			contextDescription: [
-				"[Agents RFP Drafter Creation Request]",
-				"Source: /agents RFP agent onboarding.",
-				"Board: Enterprise RFP Response.",
-				"Column: Drafting.",
-				"Trigger: On event: ticket enters Drafting.",
+				"[Agents VoiceMate Creation Request]",
+				"Source: /agents2 VoiceMate agent onboarding.",
+				"Board: Omni Live Launch.",
+				"Column: Outline Drafting.",
+				"Trigger: On event: ticket enters Outline Drafting.",
 				`Description: ${RFP_DRAFTING_AGENT_DESCRIPTION}`,
 				"Conversation starters:",
 				...RFP_DRAFTING_AGENT_CONVERSATION_STARTERS.map((starter) => `- ${starter}`),
-				"Expected output: create the agent, add it to this Jira project, then process Drafting tickets through the backend event flow.",
-				"[End Agents RFP Drafter Creation Request]",
+				"Expected output: create the agent, add it to this Jira project, attach a landing-page outline, flag missing brand/content inputs, and move ready work toward Experience Build in the local demo flow.",
+				"[End Agents VoiceMate Creation Request]",
 			].join("\n"),
 		});
 	}, [backToBoard, openChat, sendPrompt]);
@@ -260,14 +278,14 @@ function AgentsDemoContent({
 					agentName: RFP_DRAFTING_AGENT_NAME,
 					byline: "By you",
 					description: RFP_DRAFTING_AGENT_DESCRIPTION,
-					prompt: "Create an RFP agent to handle similar work items from this drafting flow.",
+					prompt: "Create VoiceMate to draft landing-page outlines for similar Omni Live launch work items.",
 					primaryActionLabel: "Create",
 					secondaryActionLabel: "Not now",
 					avatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,
 					coverSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,
 					coverBackgroundColor: RFP_DRAFTING_AGENT_ACCENT_COLOR,
 					avatarAlt: "",
-					closeLabel: "Dismiss RFP agent onboarding",
+					closeLabel: "Dismiss VoiceMate onboarding",
 					open: isRovoButtonOnboardingOpen,
 					openOnButtonClick: true,
 					onOpenChange: handleRovoButtonOnboardingOpenChange,
@@ -303,6 +321,8 @@ function AgentsDemoContent({
 			product="jira"
 			embedded={embedded}
 			chatPanelFlush
+			jiraSelectedItem="Omni Live Launch"
+			jiraStarredProjects={AGENTS2_JIRA_STARRED_PROJECTS}
 			hideRovoAction={rfpDemo.state.canvas.open}
 			onChatSurfaceSwitch={handleChatSurfaceSwitch}
 			chatContextBar={agentsChatScreenContext.chatContextBar}

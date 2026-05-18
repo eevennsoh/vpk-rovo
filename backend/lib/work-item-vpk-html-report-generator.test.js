@@ -3,8 +3,10 @@ const test = require("node:test");
 
 const {
 	DACI_ONE_PAGER_TEMPLATE_PATH,
+	LANDING_PAGE_OUTLINE_TEMPLATE_PATH,
 	assertVpkHtmlReportContract,
 	buildFallbackDaciReportFields,
+	buildFallbackLandingPageOutlineFields,
 	buildFallbackReportFields,
 	generateWorkItemVpkHtmlReport,
 	parseContextFieldSections,
@@ -58,6 +60,52 @@ const ACTIVE_CONTEXT = [
 	"[End Active Jira Work Item Context]",
 ].join("\n");
 
+const OMNI_CONTEXT = [
+	"[Active Jira Work Item Context]",
+	"Source: /agents2 Omni Live work item modal.",
+	"Key: OMNI-101",
+	"Title: Live demo: Define live-demo-first landing page narrative",
+	"Description: Omni Live needs a public landing page that makes a unified multimodal AI interface feel immediate.",
+	"Status: Briefing",
+	"Priority: High",
+	"Start date: May 12, 2026",
+	"Due date: May 28, 2026",
+	"Parent: OMNI-100 - Omni Live Launch",
+	"Product: Omni Live",
+	"Launch surface: Omni Live public landing page launch",
+	"Audience: developers and enterprise teams",
+	"Launch milestones: Developer Preview by May 28; Public Beta by June 18; GA by July 9",
+	"Current alternative: disconnected voice assistants, vision tools, and action agents split across tabs and apps",
+	"Content goal: Create a landing-page outline that starts with a tangible live demo, then explains why a continuous voice, vision, and action stream is more capable than a regular assistant.",
+	"Launch stage: Developer Preview launch content briefing",
+	"Target date: May 28, 2026",
+	"Assignee: Maya Chen (Launch content lead)",
+	"Reporter: Jordan Lee (Product marketing)",
+	"Labels: Live demo, hero, multimodal",
+	"Audience priorities:",
+	"- Developers need an AI companion that can see the current problem, hear intent, and act without repeated prompting.",
+	"- Enterprise teams need consent controls, partner integrations, and a clear path from preview to beta to GA.",
+	"Page success criteria:",
+	"- Hero section leads with the live demo rather than a generic product claim.",
+	"- CTA path supports developers signing up for preview and enterprise teams evaluating controls.",
+	"Positioning themes:",
+	"- Omni Live sees, hears, and acts in the same stream.",
+	"- Agentic multi-app execution turns the assistant from passive responder into an active launch companion.",
+	"Known risks:",
+	"- Live demo assets may not yet show the full voice, vision, and action loop in one continuous sequence.",
+	"- Consent copy needs legal review before it appears in a public launch surface.",
+	"Next actions:",
+	"- Lock the hero demo thesis and the first three page sections.",
+	"- Use VoiceMate to draft the first landing-page outline.",
+	"Launch team needs:",
+	"- Launch content lead: Maya Chen - Page structure, section hierarchy, proof points, and final outline approval.",
+	"- Consent and trust: Elena Ruiz - Enterprise consent controls, privacy language, and GA readiness claims.",
+	"Attachments:",
+	"- omni-live-brand-guide.page (12 May 2026, 09:12 AM)",
+	"- multi-app-workflow-walkthrough.mp4 (2 Jun 2026, 04:10 PM)",
+	"[End Active Jira Work Item Context]",
+].join("\n");
+
 test("parses Work Item context into fields and sections", () => {
 	const parsed = parseContextFieldSections(ACTIVE_CONTEXT);
 
@@ -107,6 +155,20 @@ test("buildFallbackDaciReportFields keeps non-Acmecorp RFP clients scoped", () =
 	assert.doesNotMatch(serialized, /Acmecorp/u);
 });
 
+test("buildFallbackLandingPageOutlineFields derives Omni Live outline fields", () => {
+	const fields = buildFallbackLandingPageOutlineFields(OMNI_CONTEXT);
+
+	assert.equal(fields.artifactTitle, "Omni Live landing-page outline");
+	assert.equal(fields.docTitle, "Omni Live landing-page outline");
+	assert.match(fields.heroDemoThesis, /live demo/u);
+	assert.match(fields.corePain, /see the current problem/u);
+	assert.match(fields.positioning, /sees, hears, and acts/u);
+	assert.match(fields.launchTimeline, /Developer Preview by May 28/u);
+	assert.ok(fields.sectionOutline.some((section) => /Live demo hero/u.test(section)));
+	assert.ok(fields.demoProofPoints.some((point) => /multi-app.*workflow/iu.test(point)));
+	assert.ok(fields.consentTrustNotes.some((note) => /Consent copy/u.test(note)));
+});
+
 test("generateWorkItemVpkHtmlReport fills the real one-pager template for RFP qualification", async () => {
 	const gatewayCalls = [];
 	const report = await generateWorkItemVpkHtmlReport({
@@ -152,6 +214,49 @@ test("generateWorkItemVpkHtmlReport fills the real one-pager template for RFP qu
 	assert.equal(report.validation.results.length, 2);
 	assert.equal(report.validation.results[1].scriptPath, "scripts/check-html.mjs");
 	assert.match(report.validation.results[1].stdout, /ok .*report\.html/u);
+});
+
+test("generateWorkItemVpkHtmlReport fills the one-pager template for Omni Live landing-page outlines", async () => {
+	const gatewayCalls = [];
+	const report = await generateWorkItemVpkHtmlReport({
+		contextDescription: OMNI_CONTEXT,
+		generateText: async (options) => {
+			gatewayCalls.push(options);
+			return JSON.stringify({
+				heroDemoThesis: "Open with Omni Live seeing a broken workflow, hearing the user's intent, and acting across apps without a mode switch.",
+				targetAudience: "developers and enterprise teams",
+				corePain: "AI work is fragmented when users must move between separate voice, vision, and action tools.",
+				positioning: "Omni Live is a continuous companion that sees, hears, and acts at the same time.",
+				sectionOutline: ["Live demo hero", "Fragmented AI pain", "Continuous multimodal proof", "Launch timeline", "Consent and CTA"],
+				demoProofPoints: ["Voice loop", "Camera feed", "Agentic action", "Multi-app workflow execution"],
+				cta: "Join the Developer Preview.",
+				brandVoiceNotes: "Use the brand guide and keep copy concrete and demo-led.",
+				launchTimeline: "Developer Preview May 28, Public Beta June 18, General Availability July 9.",
+				consentTrustNotes: ["Enterprise-grade consent controls need legal review."],
+				contentGaps: ["Final live demo sequence is not attached."],
+			});
+		},
+		runSkillValidation: false,
+	});
+
+	assert.equal(gatewayCalls.length, 1);
+	assert.match(gatewayCalls[0].system, /landing-page outline and content brief/u);
+	assert.match(gatewayCalls[0].prompt, /heroDemoThesis/u);
+	assert.equal(report.artifactTitle, "Omni Live landing-page outline");
+	assert.equal(report.skill.templatePath, LANDING_PAGE_OUTLINE_TEMPLATE_PATH);
+	assert.match(report.html, /Omni Live landing-page outline/u);
+	assert.match(report.html, /Live demo hero/u);
+	assert.match(report.html, /Voice loop/u);
+	assert.match(report.html, /Camera feed/u);
+	assert.match(report.html, /Join the Developer Preview/u);
+	assert.match(report.html, /Enterprise-grade consent controls/u);
+	assert.match(report.html, /Final live demo sequence is not attached/u);
+	assert.match(report.html, /<meta name="generator" content="vpk-html">/u);
+	assert.match(report.html, /class="header"/u);
+	assert.match(report.html, /<main>/u);
+	const bodyOnly = report.html.replace(/<style>[\s\S]*?<\/style>/u, "").replace(/<!--[\s\S]*?-->/gu, "");
+	assert.doesNotMatch(bodyOnly, /RFP|DACI|Acmecorp|bid\/no-bid/u);
+	assertVpkHtmlReportContract(report.html);
 });
 
 test("generateWorkItemVpkHtmlReport keeps generic work items on the status-report template", async () => {

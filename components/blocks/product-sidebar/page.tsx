@@ -7,16 +7,24 @@ import { useSidebar } from "@/app/contexts/context-sidebar";
 import { AdminSidebar } from "./variants/admin";
 import { JiraSidebar } from "./variants/jira";
 import { ConfluenceSidebar } from "./variants/confluence";
+import type { StarredProject } from "./data/jira-navigation";
 
 type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface SidebarProps {
 	product: Product;
 	embedded?: boolean;
+	jiraSelectedItem?: string;
+	jiraStarredProjects?: readonly StarredProject[];
 }
 
-export default function Sidebar({ product, embedded = false }: Readonly<SidebarProps>) {
-	const [selectedItem, setSelectedItem] = useState(product === "confluence" ? "Demo Live page" : "Enterprise RFP Qualification");
+export default function Sidebar({
+	product,
+	embedded = false,
+	jiraSelectedItem,
+	jiraStarredProjects,
+}: Readonly<SidebarProps>) {
+	const [selectedItem, setSelectedItem] = useState(product === "confluence" ? "Demo Live page" : jiraSelectedItem ?? "Enterprise RFP Qualification");
 	const { isVisible, isHovered, setHovered } = useSidebar();
 	const shouldShow = isVisible || isHovered;
 
@@ -26,7 +34,7 @@ export default function Sidebar({ product, embedded = false }: Readonly<SidebarP
 			case "admin":
 				return <AdminSidebar />;
 			case "jira":
-				return <JiraSidebar selectedItem={selectedItem} onSelectItem={setSelectedItem} />;
+				return <JiraSidebar selectedItem={selectedItem} onSelectItem={setSelectedItem} starredProjects={jiraStarredProjects} />;
 			case "confluence":
 				return <ConfluenceSidebar selectedItem={selectedItem} onSelectItem={setSelectedItem} />;
 			default:

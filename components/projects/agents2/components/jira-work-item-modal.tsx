@@ -46,8 +46,8 @@ export default function JiraWorkItemModal({
 	highlightedAttachmentId,
 	highlightedAttachmentKey,
 	workItem,
-	workItemTitle = "Acmecorp: Prepare for bid recommendation for ESM RFP",
-	workItemCode = "RFP-101",
+	workItemTitle = "Live demo: Define live-demo-first landing page narrative",
+	workItemCode = "OMNI-101",
 }: Readonly<JiraWorkItemModalProps>) {
 	const resolvedWorkItem = workItem ?? getAgentsWorkItemForCard({
 		title: workItemTitle,

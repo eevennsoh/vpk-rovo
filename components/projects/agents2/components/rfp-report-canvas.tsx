@@ -39,9 +39,9 @@ interface RfpHtmlReportPreviewState {
 	status: RfpHtmlReportStatus;
 }
 
-const RFP_REPORT_PREVIEW_ENDPOINT = "/api/agents/rfp-demo/vpk-html-report";
-const RFP_REPORT_ARTIFACT_TITLE = "Acmecorp RFP qualification DACI";
-const RFP_REPORT_ARTIFACT_METADATA = "PDF \u2022 Version 1";
+const RFP_REPORT_PREVIEW_ENDPOINT = "/api/agents2/omni-live/vpk-html-outline";
+const RFP_REPORT_ARTIFACT_TITLE = "Omni Live landing-page outline";
+const RFP_REPORT_ARTIFACT_METADATA = "HTML \u2022 vpk-html one-pager";
 
 function resolveRfpReportVariant(state: AgentsRfpDemoState): RfpReportVariant {
 	const selectedVersionId = state.report.currentVersionId
@@ -119,11 +119,11 @@ function useRfpHtmlReportPreview(state: AgentsRfpDemoState): RfpHtmlReportPrevie
 						"error" in payload &&
 						typeof payload.error === "string"
 						? payload.error
-							: "The report preview route returned an error.";
+							: "Landing-page outline preview route returned an error.";
 					throw new Error(message);
 				}
 				if (!isRfpHtmlReportPreviewResponse(payload)) {
-					throw new Error("The report preview route did not return a report document.");
+					throw new Error("Landing-page outline preview route did not return an HTML document.");
 				}
 
 				setPreviewState({
@@ -162,8 +162,8 @@ function RfpRenderedHtmlReport({
 		return (
 			<div className="flex size-full items-center justify-center bg-surface-sunken p-6">
 				<div className="max-w-md rounded-lg border border-border bg-surface p-4 text-sm text-text shadow-sm">
-					<p className="font-medium">Could not render the report.</p>
-					<p className="mt-2 text-text-subtle">{error ?? "The report preview route failed."}</p>
+					<p className="font-medium">Could not render landing-page outline.</p>
+					<p className="mt-2 text-text-subtle">{error ?? "Landing-page outline preview route failed."}</p>
 				</div>
 			</div>
 		);
@@ -173,13 +173,13 @@ function RfpRenderedHtmlReport({
 		return (
 			<div
 				aria-busy="true"
-				aria-label="Report preview loading"
+				aria-label="Landing-page outline preview loading"
 				className="grid size-full place-items-center bg-surface"
 				role="region"
 			>
 				<Spinner
 					className="size-12 text-icon-subtle"
-					label="Report preview loading"
+					label="Landing-page outline preview loading"
 				/>
 			</div>
 		);
@@ -187,7 +187,7 @@ function RfpRenderedHtmlReport({
 
 	return (
 		<iframe
-			title="Acmecorp RFP qualification DACI"
+			title="Omni Live landing-page outline"
 			className="block size-full border-0 bg-surface"
 			sandbox=""
 			srcDoc={html}
@@ -257,9 +257,9 @@ export function RfpReportCanvas({
 		() => [
 			{
 				id: "report",
-				label: "Report",
+				label: "Outline",
 				toolbar: "preview",
-				copyText: reportPreview.html ?? "Report preview is loading.",
+				copyText: reportPreview.html ?? "Landing-page outline preview is loading.",
 				content: (
 					<RfpRenderedHtmlReport
 						error={reportPreview.error}
@@ -279,7 +279,7 @@ export function RfpReportCanvas({
 			kind="report"
 			status={resolveRfpReportCanvasStatus(reportPreview.status)}
 			title={RFP_REPORT_ARTIFACT_TITLE}
-			primaryActionLabel="Add PDF to RFP-101"
+			primaryActionLabel="Add outline to OMNI-101"
 			onPrimaryAction={() => (onAttachReport ?? actions.attachReport)(reportPreview.html ?? undefined)}
 			views={views}
 			viewId={state.canvas.activeViewId}

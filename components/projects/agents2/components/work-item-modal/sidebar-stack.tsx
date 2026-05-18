@@ -71,7 +71,7 @@ export function StatusHeader() {
 	const [query, setQuery] = useState("");
 	const [selectedAgentIds, setSelectedAgentIds] = useState<readonly string[]>([]);
 	const [selectedStatuses, setSelectedStatuses] = useState<Record<string, string>>({});
-	const fallbackStatus = STATUS_PHASES[0] ?? "RFP Intake";
+	const fallbackStatus = STATUS_PHASES[0] ?? "Briefing";
 	const selectedStatus = selectedStatuses[workItem.code] ?? workItem.status ?? fallbackStatus;
 	const selectedStatusIndex = STATUS_PHASES.indexOf(selectedStatus);
 	const selectedStatusTone = getPhaseTone(

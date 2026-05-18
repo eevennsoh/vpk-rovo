@@ -28,8 +28,8 @@ export function RfpAttachmentPreviewDialog({
 			<DialogContent size="md">
 				<DialogHeader>
 					<div className="flex flex-wrap items-center gap-2">
-						<DialogTitle>{attachment?.displayName ?? "Acmecorp RFP qualification DACI.pdf"}</DialogTitle>
-						<Lozenge variant="neutral">Staged PDF</Lozenge>
+						<DialogTitle>{attachment?.displayName ?? "Omni Live landing-page outline.html"}</DialogTitle>
+						<Lozenge variant="neutral">Staged HTML</Lozenge>
 					</div>
 					<DialogDescription>
 						Browser-local preview for the staged export. No file was generated or downloaded.
@@ -39,12 +39,12 @@ export function RfpAttachmentPreviewDialog({
 				<div className="grid min-h-[320px] place-items-center rounded-lg border border-border bg-surface-raised p-6 text-center">
 					<div className="grid max-w-sm gap-3">
 						<div className="mx-auto grid size-14 place-items-center rounded-lg bg-surface text-2xl font-semibold text-text-subtle shadow-sm">
-							PDF
+							HTML
 						</div>
 						<div>
-							<p className="text-sm font-semibold text-text">Acmecorp RFP qualification DACI</p>
+							<p className="text-sm font-semibold text-text">Omni Live landing-page outline</p>
 							<p className="mt-1 text-sm text-text-subtle">
-								Approved PDF staged as an attachment entry for RFP-101.
+								Approved vpk-html outline staged as an attachment entry for OMNI-101.
 							</p>
 						</div>
 					</div>

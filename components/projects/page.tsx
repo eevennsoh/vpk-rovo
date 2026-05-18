@@ -19,6 +19,7 @@ import { SidebarResizeHandle } from "@/components/ui/sidebar";
 import { useSidebarResize } from "@/components/projects/rovo/hooks/use-sidebar-resize";
 import { useSidebar } from "@/app/contexts/context-sidebar";
 import { useRovoChat } from "@/app/contexts";
+import type { StarredProject } from "@/components/blocks/product-sidebar/data/jira-navigation";
 
 type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
 
@@ -34,6 +35,8 @@ interface AppLayoutProps {
 	customAgentTabs?: ChatPanelCustomAgentTabs;
 	rovoButtonSuggestion?: FloatingRovoButtonSuggestion | null;
 	rovoButtonOnboarding?: FloatingRovoButtonOnboardingConfig | null;
+	jiraSelectedItem?: string;
+	jiraStarredProjects?: readonly StarredProject[];
 	onArtifactDialogOpen?: () => void;
 	preserveFloatingSurfaceOnArtifactDialogOpen?: boolean;
 	/**
@@ -133,6 +136,8 @@ export default function AppLayout({
 	customAgentTabs,
 	rovoButtonSuggestion,
 	rovoButtonOnboarding,
+	jiraSelectedItem,
+	jiraStarredProjects,
 	onArtifactDialogOpen,
 	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 	chatPanelFlush = false,
@@ -174,7 +179,14 @@ export default function AppLayout({
 
 			<div style={{ display: "flex", height: shellContentHeight, position: "relative" }}>
 				<div data-shell-chrome="">
-					{!isEmbedded ? <Sidebar product={product} embedded={isEmbedded} /> : null}
+					{!isEmbedded ? (
+						<Sidebar
+							product={product}
+							embedded={isEmbedded}
+							jiraSelectedItem={jiraSelectedItem}
+							jiraStarredProjects={jiraStarredProjects}
+						/>
+					) : null}
 				</div>
 
 				{/* Main Content Area */}

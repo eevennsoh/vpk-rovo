@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type SetStateAction } from "react";
 import {
+	AGENTS_RFP_DEMO_STORAGE_KEY,
 	attachRfpReportToWorkItem,
 	approveRfpReport,
 	createDefaultAgentsRfpDemoState,
@@ -9,10 +10,11 @@ import {
 	exportRfpReportPdf,
 	generateRfpReport,
 	moveRfpDemoCard,
-	normalizeAgentsRfpDemoProfileMetadata,
+	parseAgentsRfpDemoState,
 	refineRfpReport,
 	selectRfpReportVersion,
 	clearRfpDraftingAgentTrigger,
+	scheduleRfpDraftingAgent,
 	setRfp101AnswerSummary,
 	setRfpDraftingAgentTrigger,
 	setRfpDemoCanvasOpen,
@@ -47,100 +49,31 @@ export interface AgentsRfpDemoController {
 	actions: AgentsRfpDemoActions;
 }
 
-const RFP_DEMO_STATE_ENDPOINT = "/api/agents/rfp-demo/state";
-const RFP_DEMO_RESET_ENDPOINT = "/api/agents/rfp-demo/reset";
-const RFP_DEMO_APPLY_AGENT_ENDPOINT = "/api/agents/rfp-demo/agent/apply";
-const RFP_DEMO_TICKET_EVENT_ENDPOINT = "/api/agents/rfp-demo/events/ticket-entered-column";
-
-async function readJsonStateResponse(response: Response): Promise<AgentsRfpDemoState> {
-	if (!response.ok) {
-		let message = `Request failed with status ${response.status}`;
-		try {
-			const payload = await response.json() as { error?: unknown; details?: unknown };
-			if (typeof payload.error === "string" && payload.error.trim()) {
-				message = payload.error.trim();
-			} else if (typeof payload.details === "string" && payload.details.trim()) {
-				message = payload.details.trim();
-			}
-		} catch {
-			const text = await response.text().catch(() => "");
-			if (text.trim()) {
-				message = text.trim();
-			}
-		}
-		throw new Error(message);
+function readStoredState(): AgentsRfpDemoState {
+	if (typeof window === "undefined") {
+		return createDefaultAgentsRfpDemoState();
 	}
 
-	const payload = await response.json() as { state?: AgentsRfpDemoState };
-	return payload.state
-		? normalizeAgentsRfpDemoProfileMetadata(payload.state)
-		: createDefaultAgentsRfpDemoState();
+	try {
+		return parseAgentsRfpDemoState(window.localStorage.getItem(AGENTS_RFP_DEMO_STORAGE_KEY));
+	} catch {
+		return createDefaultAgentsRfpDemoState();
+	}
+}
+
+function writeStoredState(state: AgentsRfpDemoState): void {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	window.localStorage.setItem(AGENTS_RFP_DEMO_STORAGE_KEY, JSON.stringify(state));
 }
 
 export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 	const [state, setState] = useState<AgentsRfpDemoState>(() => createDefaultAgentsRfpDemoState());
-	const hasPendingAgentWork = Object.values(state.workItems).some((workItem) => (
-		workItem.agentStatus === "queued" || workItem.agentStatus === "running"
-	));
 
 	useEffect(() => {
-		let cancelled = false;
-
-		async function loadState() {
-			try {
-				const nextState = await readJsonStateResponse(await fetch(RFP_DEMO_STATE_ENDPOINT));
-				if (!cancelled) {
-					setState(nextState);
-				}
-			} catch (error) {
-				console.error("[AgentsRfpDemo] Failed to load backend state:", error);
-			}
-		}
-
-		void loadState();
-
-		return () => {
-			cancelled = true;
-		};
-	}, []);
-
-	useEffect(() => {
-		if (!hasPendingAgentWork) {
-			return;
-		}
-
-		let cancelled = false;
-		const pollState = async () => {
-			try {
-				const nextState = await readJsonStateResponse(await fetch(RFP_DEMO_STATE_ENDPOINT));
-				if (!cancelled) {
-					setState(nextState);
-				}
-			} catch (error) {
-				console.error("[AgentsRfpDemo] Failed to poll backend state:", error);
-			}
-		};
-		const intervalId = window.setInterval(() => {
-			void pollState();
-		}, 1_000);
-
-		return () => {
-			cancelled = true;
-			window.clearInterval(intervalId);
-		};
-	}, [hasPendingAgentWork]);
-
-	const postStateMutation = useCallback(async (endpoint: string, body: Record<string, unknown> = {}) => {
-		try {
-			const nextState = await readJsonStateResponse(await fetch(endpoint, {
-				body: JSON.stringify(body),
-				headers: { "Content-Type": "application/json" },
-				method: "POST",
-			}));
-			setState(nextState);
-		} catch (error) {
-			console.error("[AgentsRfpDemo] Failed to mutate backend state:", error);
-		}
+		setState(readStoredState());
 	}, []);
 
 	const persistStateMutation = useCallback((updater: SetStateAction<AgentsRfpDemoState>) => {
@@ -148,12 +81,16 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 			const nextState = typeof updater === "function"
 				? (updater as (state: AgentsRfpDemoState) => AgentsRfpDemoState)(currentState)
 				: updater;
-			void postStateMutation(RFP_DEMO_STATE_ENDPOINT, { state: nextState });
+			writeStoredState(nextState);
 			return nextState;
 		});
-	}, [postStateMutation]);
+	}, []);
 
-	const reset = useCallback(() => postStateMutation(RFP_DEMO_RESET_ENDPOINT), [postStateMutation]);
+	const reset = useCallback(async () => {
+		const nextState = createDefaultAgentsRfpDemoState();
+		writeStoredState(nextState);
+		setState(nextState);
+	}, []);
 	const generateReport = useCallback(() => persistStateMutation(generateRfpReport), [persistStateMutation]);
 	const refineReport = useCallback(() => persistStateMutation(refineRfpReport), [persistStateMutation]);
 	const selectReportVersion = useCallback(
@@ -169,9 +106,7 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 		)),
 		[persistStateMutation],
 	);
-	const applyAgent = useCallback(() => {
-		void postStateMutation(RFP_DEMO_APPLY_AGENT_ENDPOINT);
-	}, [postStateMutation]);
+	const applyAgent = useCallback(() => persistStateMutation(scheduleRfpDraftingAgent), [persistStateMutation]);
 	const createAgent = applyAgent;
 	const scheduleAgent = applyAgent;
 	const setAgentTrigger = useCallback(
@@ -184,33 +119,21 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 	);
 	const moveCard = useCallback(
 		(cardCode: string, targetColumnTitle: string) => {
-			setState((currentState) => moveRfpDemoCard(currentState, cardCode, targetColumnTitle));
-			void postStateMutation(RFP_DEMO_TICKET_EVENT_ENDPOINT, {
-				ticketCode: cardCode,
-				targetColumn: targetColumnTitle,
-			});
+			persistStateMutation((currentState) => moveRfpDemoCard(currentState, cardCode, targetColumnTitle));
 		},
-		[postStateMutation],
+		[persistStateMutation],
 	);
 	const moveCards = useCallback(
 		(cardCodes: readonly string[], targetColumnTitle: string) => {
 			if (cardCodes.length === 0) {
 				return;
 			}
-			setState((currentState) => cardCodes.reduce(
+			persistStateMutation((currentState) => cardCodes.reduce(
 				(accState, cardCode) => moveRfpDemoCard(accState, cardCode, targetColumnTitle),
 				currentState,
 			));
-			void (async () => {
-				for (const cardCode of cardCodes) {
-					await postStateMutation(RFP_DEMO_TICKET_EVENT_ENDPOINT, {
-						ticketCode: cardCode,
-						targetColumn: targetColumnTitle,
-					});
-				}
-			})();
 		},
-		[postStateMutation],
+		[persistStateMutation],
 	);
 	const setAnswerSummary = useCallback(
 		(answerSummary: string) => persistStateMutation((currentState) => setRfp101AnswerSummary(currentState, answerSummary)),

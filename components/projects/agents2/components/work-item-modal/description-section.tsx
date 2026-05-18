@@ -25,7 +25,7 @@ export function Description() {
 			</FieldLabel>
 			<InlineEdit
 				value={description}
-				placeholder="Add RFP requirements, buyer priorities, win themes, and response notes"
+				placeholder="Add landing-page goals, audience needs, demo proof, and voice notes"
 				onConfirm={setDescription}
 				editButtonLabel="Edit description"
 				inputProps={{ id: "agents-description" }}

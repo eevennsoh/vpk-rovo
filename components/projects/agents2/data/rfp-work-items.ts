@@ -13,43 +13,33 @@ import FileIcon from "@atlaskit/icon/core/file";
 import { defaultSuggestions, type RovoSuggestion } from "@/lib/rovo-suggestions";
 import { BOARD_COLUMNS, RFP_CLIENT_NAMES_BY_CODE } from "./board-data";
 
-export const RFP_101_WORK_ITEM_CODE = "RFP-101";
-export const AGENTS_BOARD_CONTEXT_LABEL = "Enterprise RFP Response";
-const AGENTS_BOARD_CONTEXT_SIGNATURE = "agents-board:enterprise-rfp-response";
+export const RFP_101_WORK_ITEM_CODE = "OMNI-101";
+export const AGENTS_BOARD_CONTEXT_LABEL = "Omni Live Launch";
+const AGENTS_BOARD_CONTEXT_SIGNATURE = "agents2-board:omni-live-launch";
 
 function findBoardCardByCode(code: string): KanbanBoardCardData | undefined {
 	for (const column of BOARD_COLUMNS) {
 		const card = column.cards.find((boardCard) => boardCard.code === code);
-		if (card) {
-			return card;
-		}
+		if (card) return card;
 	}
-
 	return undefined;
 }
 
 function findBoardColumnTitleByCardCode(code: string): string | undefined {
 	for (const column of BOARD_COLUMNS) {
-		if (column.cards.some((boardCard) => boardCard.code === code)) {
-			return column.title;
-		}
+		if (column.cards.some((boardCard) => boardCard.code === code)) return column.title;
 	}
-
 	return undefined;
 }
 
 function createWorkItemLabelFields(
 	tags: readonly KanbanBoardCardTag[] | undefined,
 ): Pick<WorkItemData, "labels" | "labelTags"> {
-	if (!tags || tags.length === 0) {
-		return {};
-	}
-
+	if (!tags || tags.length === 0) return {};
 	const labelTags: WorkItemLabelTag[] = tags.map((tag) => ({
 		text: tag.text,
 		color: tag.color,
 	}));
-
 	return {
 		labels: labelTags.map((tag) => tag.text),
 		labelTags,
@@ -71,8 +61,8 @@ const ACTIVE_WORK_ITEM_GREETING: AgentsChatGreeting = {
 		suggestion.id === "translate-text"
 			? {
 					...suggestion,
-					label: "Should we respond to this RFP?",
-					prompt: "Should we respond to this RFP?",
+					label: "Draft the landing page outline",
+					prompt: "Draft the landing page outline for Omni Live.",
 					icon: FileIcon,
 				}
 			: suggestion
@@ -81,33 +71,33 @@ const ACTIVE_WORK_ITEM_GREETING: AgentsChatGreeting = {
 
 export const RFP_101_WORK_ITEM = {
 	code: RFP_101_WORK_ITEM_CODE,
-	title: `${RFP_CLIENT_NAMES_BY_CODE[RFP_101_WORK_ITEM_CODE]}: Prepare for bid recommendation for ESM RFP`,
+	title: `${RFP_CLIENT_NAMES_BY_CODE[RFP_101_WORK_ITEM_CODE]}: Define live-demo-first landing page narrative`,
 	description:
-		"Acmecorp is evaluating Atlassian as a replacement for its current service-management and work-management stack. Acmecorp has regional tool fragmentation, a mature but messy CMDB, a mix of service desk and business-team workflows, and a procurement packet that spans ITSM, asset management, knowledge, reporting, AI, compliance, implementation services, and executive-ready pricing. Qualify the Acmecorp RFP by separating mandatory requirements from differentiators, mapping each requirement area to Atlassian strengths, and identifying the responses that need product, legal, security, deal desk, or partner validation.",
+		"Omni Live needs a public landing page that makes a unified multimodal AI interface feel immediate. The page should lead with a live demo of an AI companion that sees, hears, and acts in one continuous stream, then explain why that is different from switching between separate voice, vision, and action tools. Shape the launch story for developers and enterprise teams, using the May 28 Developer Preview, June 18 Public Beta, and July 9 General Availability milestones as concrete proof of momentum.",
 	assignee: {
 		name: "Maya Chen",
 		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
-		role: "Proposal manager",
+		role: "Launch content lead",
 	},
 	reporter: {
 		name: "Jordan Lee",
 		avatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
-		role: "Account executive",
+		role: "Product marketing",
 	},
 	priority: "High",
-	status: "RFP Intake",
+	status: "Briefing",
 	startDate: "May 12, 2026",
-	dueDate: "Jun 8, 2026",
+	dueDate: "May 28, 2026",
 	parent: {
-		code: "RFP-100",
-		title: "Enterprise RFP Response",
+		code: "OMNI-100",
+		title: "Omni Live Launch",
 	},
 	...createWorkItemLabelFields(findBoardCardByCode(RFP_101_WORK_ITEM_CODE)?.tags),
 	childItems: [
 		{
 			type: "Sub-task",
-			key: "RFP-105",
-			summary: "Build requirement matrix for ITSM, CMDB, HAM, SAM, AI, GRC, and portal needs",
+			key: "OMNI-105",
+			summary: "Map Developer Preview, Public Beta, and GA launch promises",
 			priority: "high",
 			assignee: "Maya Chen",
 			assigneeAvatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
@@ -115,8 +105,8 @@ export const RFP_101_WORK_ITEM = {
 		},
 		{
 			type: "Sub-task",
-			key: "RFP-106",
-			summary: "Confirm JSM, Assets, Rovo, Guard, and platform demo owners",
+			key: "OMNI-106",
+			summary: "Collect live demo clips for voice loop, camera feed, and multi-app action",
 			priority: "medium",
 			assignee: "Priya Shah",
 			assigneeAvatarUrl: "/avatar-user/annie-clare/color/asow-strategy-orange.png",
@@ -124,8 +114,8 @@ export const RFP_101_WORK_ITEM = {
 		},
 		{
 			type: "Sub-task",
-			key: "RFP-107",
-			summary: "Draft win themes against incumbent cost, complexity, and adaptability pain points",
+			key: "OMNI-107",
+			summary: "Draft consent and enterprise trust notes for the hero narrative",
 			priority: "high",
 			assignee: "Jordan Lee",
 			assigneeAvatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
@@ -133,8 +123,8 @@ export const RFP_101_WORK_ITEM = {
 		},
 		{
 			type: "Sub-task",
-			key: "RFP-108",
-			summary: "Collect legal, data residency, audit, and vulnerability-management exhibits",
+			key: "OMNI-108",
+			summary: "Confirm brand voice constraints before VoiceMate drafts the outline",
 			priority: "medium",
 			assignee: "Elena Ruiz",
 			assigneeAvatarUrl: "/avatar-user/aoife-burke/color/asow-service-yellow.png",
@@ -143,67 +133,67 @@ export const RFP_101_WORK_ITEM = {
 	],
 	attachments: [
 		{
-			name: "rfp-intake-notes",
-			displayName: "RFP intake notes",
+			name: "omni-live-brand-guide",
+			displayName: "Omni Live brand guide",
 			ext: "page",
 			date: "12 May 2026, 09:12 AM",
 			thumbnailKind: "document",
 			previewSrc: "/generated/rfp-confluence-intake-notes.png",
-			previewAlt: "Flat preview of RFP intake notes",
+			previewAlt: "Flat preview of Omni Live brand guide notes",
 			sourceLabel: "Confluence page",
 			sourceProduct: "confluence",
 		},
 		{
-			name: "rfp-requirement-compliance-matrix",
-			displayName: "Compliance matrix",
+			name: "omni-live-page-outline-inputs",
+			displayName: "Landing page outline inputs",
 			ext: "xlsx",
 			date: "12 May 2026, 09:24 AM",
 			thumbnailKind: "document",
 			previewSrc: "/generated/rfp-compliance-matrix.png",
-			previewAlt: "Flat preview of a spreadsheet compliance matrix",
+			previewAlt: "Flat preview of structured landing page outline inputs",
 		},
 		{
-			name: "response-brief",
-			displayName: "Response brief",
+			name: "voice-tone-brief",
+			displayName: "Voice and tone brief",
 			ext: "docx",
 			date: "14 May 2026, 03:42 PM",
 			thumbnailKind: "document",
 			previewSrc: "/generated/rfp-response-brief.png",
-			previewAlt: "Flat preview of a response brief document",
+			previewAlt: "Flat preview of a voice and tone brief",
 		},
 		{
-			name: "enterprise-rfp-requirements",
-			displayName: "Enterprise RFP packet",
+			name: "omni-live-launch-brief",
+			displayName: "Omni Live launch brief",
 			ext: "pdf",
 			date: "15 May 2026, 11:05 AM",
 			thumbnailKind: "file",
 			previewSrc: "/generated/rfp-pdf-packet.png",
-			previewAlt: "Flat preview of an enterprise RFP PDF packet",
+			previewAlt: "Flat preview of an Omni Live launch brief document",
 		},
 		{
-			name: "proposal-audio-briefing",
-			displayName: "proposal-audio-briefing.mp3",
+			name: "voice-loop-demo-audio",
+			displayName: "voice-loop-demo-audio.mp3",
 			ext: "mp3",
 			date: "18 May 2026, 10:30 AM",
 			thumbnailKind: "audio",
 		},
 		{
-			name: "supplier-portal-upload",
-			displayName: "Supplier portal upload",
+			name: "camera-feed-debugging-capture",
+			displayName: "Camera feed debugging capture",
 			ext: "png",
 			date: "21 May 2026, 01:16 PM",
 			thumbnailKind: "image",
 			previewSrc: "/generated/rfp-portal-screenshot.png",
-			previewAlt: "Flat preview of a supplier portal upload screenshot",
+			previewAlt: "Flat preview of an Omni Live camera feed demo screenshot",
 		},
 		{
-			name: "proposal-walkthrough",
-			displayName: "Proposal walkthrough",
+			name: "multi-app-workflow-walkthrough",
+			displayName: "Multi-app workflow walkthrough",
 			ext: "mp4",
 			date: "2 Jun 2026, 04:10 PM",
 			thumbnailKind: "video",
 			previewSrc: "/generated/rfp-loom-walkthrough.png",
-			previewAlt: "Flat preview of a walkthrough video recording",
+			previewAlt: "Flat preview of a multi-app workflow recording",
 			sourceLabel: "Loom video",
 			sourceProduct: "loom",
 		},
@@ -214,22 +204,22 @@ export const RFP_101_WORK_ITEM = {
 			author: {
 				name: "Maya Chen",
 				avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
-				role: "Proposal manager",
+				role: "Launch content lead",
 			},
 			timestamp: "15 minutes ago",
 			content:
-				"I added the RFP timeline, supplier-question deadline, response deadline, and executive demo agenda. The first pass flags ITSM, CMDB, HAM/SAM, knowledge, reporting, portal, AI, data residency, customer service, GRC, and pricing as mandatory sections.",
+				"The first viewport should show Omni Live doing the work: camera sees the issue, voice captures intent, and the agent executes the next step without forcing the user into a new mode.",
 			replies: [
 				{
 					id: "comment-1-reply-1",
 					author: {
 						name: "Priya Shah",
 						avatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
-						role: "Sales engineer",
+						role: "Developer advocate",
 					},
 					timestamp: "10 minutes ago",
 					content:
-						"Sales engineering can own JSM workflows, Assets/CMDB, integrations, CI/CD change enablement, incident operations, and the Rovo demo. We should explicitly call out where HAM/SAM or SecOps needs partner coverage or roadmap positioning.",
+						"I can supply a developer troubleshooting clip that starts with a broken UI, talks through the problem, and ends with Omni Live opening the right app and preparing the fix.",
 				},
 			],
 		},
@@ -238,94 +228,94 @@ export const RFP_101_WORK_ITEM = {
 			author: {
 				name: "Jordan Lee",
 				avatarUrl: "/avatar-user/brian-lin/color/asow-teamwork-blue.png",
-				role: "Account executive",
+				role: "Product marketing",
 			},
 			timestamp: "4 minutes ago",
 			content:
-				"Customer pain points are incumbent cost, platform rigidity, regional tool fragmentation, CMDB quality at scale, and AI readiness. Lead with Atlassian System of Work, JSM request and incident operations, Teamwork Graph, Rovo, Assets, knowledge, reporting, and transparent TCO.",
+				"The page needs to contrast continuous context with today's fragmented assistant experience. The line is not more AI features; it is one companion that is present across seeing, hearing, and acting.",
 		},
 	],
 	approvers: [
 		{
 			name: "Elena Ruiz",
 			avatarUrl: "/avatar-user/aoife-burke/color/asow-service-yellow.png",
-			role: "Security and legal approver",
+			role: "Consent and trust reviewer",
 		},
 		{
 			name: "Darius Pavri",
 			avatarUrl: "/avatar-user/darius-pavri/color/asow-strategy-orange.png",
-			role: "Deal desk approver",
+			role: "Launch readiness approver",
 		},
 	],
 	effortEstimate: "21 pts",
-	account: "Acmecorp",
-	dealSize: "multi-thousand users; budget qualification pending",
+	account: "Omni Live",
+	dealSize: "Developer Preview by May 28; Public Beta by June 18; GA by July 9",
 	rfpContext: {
-		customerName: "Acmecorp",
-		opportunityName: "Acmecorp enterprise service-management platform evaluation",
-		seatCount: "multi-thousand users",
-		competitorProduct: "incumbent service-management, CMDB, asset, HR, GRC, and custom workflow tooling",
+		customerName: "Omni Live",
+		opportunityName: "Omni Live public landing page launch",
+		seatCount: "developers and enterprise teams",
+		competitorProduct: "disconnected voice assistants, vision tools, and action agents split across tabs and apps",
 		salesGoal:
-			"Help the sales team decide whether Atlassian should respond to the Acmecorp RFP by qualifying fit, budget, stakeholder access, competitive advantage, and review risk before drafting a customer-facing package.",
-		procurementStage: "Inbound RFP qualification and bid/no-bid recommendation",
-		responseDueDate: "Jun 8, 2026",
-		submissionPortal: "Acmecorp supplier RFP portal",
+			"Create a landing-page outline that starts with a tangible live demo, then explains why a continuous voice, vision, and action stream is more capable than a regular assistant.",
+		procurementStage: "Developer Preview launch content briefing",
+		responseDueDate: "May 28, 2026",
+		submissionPortal: "Omni Live launch site",
 		buyerPriorities: [
-			"Acmecorp wants to consolidate fragmented regional tools into a clearer enterprise service-management operating model.",
-			"Acmecorp needs coverage for incident, problem, change, request, CMDB, asset, knowledge, reporting, portal, customer service, and HR service workflows.",
-			"Acmecorp wants to improve CMDB maturity for millions of configuration items while focusing operations on active assets.",
-			"Acmecorp needs credible AI capabilities, integrations, data residency, legal compliance, GRC, risk, and vulnerability management.",
+			"Developers need an AI companion that can see the current problem, hear intent, and act without repeated prompting.",
+			"Enterprise teams need consent controls, partner integrations, and a clear path from preview to beta to GA.",
+			"The page must make multimodal continuity tangible with a live demo before explaining the product architecture.",
+			"The story should avoid passive assistant language and show Omni Live as present, responsive, and context-aware.",
 		],
 		evaluationCriteria: [
-			"Functional fit for ITSM, service desk, request management, change enablement, incident operations, and infrastructure operations.",
-			"Depth of Assets and CMDB story across hardware asset management, software asset management, discovery, and data quality.",
-			"Atlassian System of Work narrative across Teamwork Graph, Rovo, Platform, knowledge, metrics, reporting, and portal experiences.",
-			"Commercial model for a multi-thousand-user deployment, pricing transparency, implementation services, and long-term total cost of ownership.",
-			"Security, legal, data residency, audit logs, Guard, GRC, risk, vulnerability, and enterprise support readiness.",
+			"Hero section leads with the live demo rather than a generic product claim.",
+			"Core narrative clearly contrasts continuous context with fragmented voice, vision, and action modes.",
+			"Section outline covers Developer Preview, Public Beta, General Availability, partner integrations, and consent controls.",
+			"Voice and tone match the company brand guide while staying concrete and demo-led.",
+			"CTA path supports developers signing up for preview and enterprise teams evaluating controls.",
 		],
 		winThemes: [
-			"Atlassian can connect Acmecorp IT, software, support, and business teams through one system of work instead of another rigid ITSM silo.",
-			"Jira Service Management can demonstrate Acmecorp end-user request intake, fulfiller workflows, developer change enablement, and incident operations in one demo arc.",
-			"Rovo and Teamwork Graph can show Acmecorp how AI answers questions, summarizes knowledge, and connects work across Jira, Confluence, assets, and service operations.",
-			"Transparent pricing, phased migration, and marketplace/partner extensibility address Acmecorp's incumbent cost and adaptability concerns.",
+			"Omni Live sees, hears, and acts in the same stream, so users do not lose momentum when moving from observation to action.",
+			"Real-time camera and voice make troubleshooting feel collaborative instead of prompt-heavy.",
+			"Agentic multi-app execution turns the assistant from passive responder into an active launch companion.",
+			"Consent controls and partner integrations make the experience credible for enterprise adoption.",
 		],
 		risks: [
-			"Hardware and software asset management depth may require roadmap, partner, or future-state positioning.",
-			"Out-of-the-box security operations workflows need careful framing against Guard, audit, detection, vulnerability, and integration capabilities.",
-			"CMDB scale and data-quality assumptions need credible discovery, import, governance, and lifecycle examples.",
-			"The executive demo window is short, so the response team must prioritize the highest-value narrative and park detailed follow-ups.",
+			"Live demo assets may not yet show the full voice, vision, and action loop in one continuous sequence.",
+			"Consent copy needs legal review before it appears in a public launch surface.",
+			"Partner integration language must distinguish Developer Preview capability from beta and GA commitments.",
+			"Voice and tone inputs must be explicit enough for VoiceMate to draft a usable outline.",
 		],
 		nextActions: [
-			"Finish the Acmecorp requirement compliance matrix and mark every mandatory response owner.",
-			"Confirm whether Acmecorp budget, stakeholder access, and campaign fit justify a full response.",
-			"Validate Acmecorp Assets, CMDB, HAM/SAM, GRC, risk, vulnerability, and data residency responses with product and legal owners.",
-			"Prepare a concise Acmecorp bid/no-bid recommendation with clear strengths, known gaps, and follow-up questions.",
+			"Lock the hero demo thesis and the first three page sections.",
+			"Attach the brand guide, voice and tone brief, and launch milestone source notes.",
+			"Use VoiceMate to draft the first landing-page outline once OMNI-141 enters Outline Drafting.",
+			"Review the generated outline for demo clarity, consent language, and CTA specificity.",
 		],
 		responseTeam: [
 			{
-				role: "Account executive",
-				owner: "Jordan Lee",
-				need: "Customer strategy, incumbent displacement narrative, executive sponsor alignment, and final pitch.",
-			},
-			{
-				role: "Proposal manager",
+				role: "Launch content lead",
 				owner: "Maya Chen",
-				need: "Compliance matrix, response calendar, supplier questions, portal checklist, and submission readiness.",
+				need: "Page structure, section hierarchy, proof points, and final outline approval.",
 			},
 			{
-				role: "Sales engineer",
+				role: "Product marketing",
+				owner: "Jordan Lee",
+				need: "Positioning, audience pain, differentiator language, and CTA story.",
+			},
+			{
+				role: "Developer advocate",
 				owner: "Priya Shah",
-				need: "JSM workflows, Assets/CMDB, integrations, CI/CD, incident operations, AI demo, and technical appendix.",
+				need: "Live demo sequence, developer workflow examples, and troubleshooting proof.",
 			},
 			{
-				role: "Security and legal",
+				role: "Consent and trust",
 				owner: "Elena Ruiz",
-				need: "Data residency, DPA, legal terms, audit logs, Guard, compliance exhibits, and vulnerability answers.",
+				need: "Enterprise consent controls, privacy language, and GA readiness claims.",
 			},
 			{
-				role: "Deal desk",
+				role: "Launch readiness",
 				owner: "Darius Pavri",
-				need: "Pricing workbook, license assumptions, TCO positioning, discount guardrails, and approval path.",
+				need: "Milestone accuracy, sales enablement hooks, and partner integration framing.",
 			},
 		],
 	},
@@ -336,58 +326,50 @@ const WORK_ITEMS_BY_CODE: Record<string, WorkItemData> = {
 };
 
 const WORK_ITEM_DESCRIPTIONS_BY_CODE: Record<string, string> = {
-	"RFP-102": "Review the Northstar Bank supplier packet, procurement portal exports, and any requested file list to identify every response artifact the team must produce if the opportunity qualifies. Split Northstar Bank requirements into functional answers, legal or security exhibits, pricing files, implementation plans, customer-reference requests, and demo follow-ups. Flag ambiguous language early so the account team can submit clarification questions before the deadline instead of discovering gaps during final review.",
-	"RFP-103": "Create a DACI-style ownership map for the Meridian Health RFP qualification and possible response. Assign drivers, approvers, contributors, and informed stakeholders across account leadership, proposal management, sales engineering, product specialists, legal, security, deal desk, support, and partner teams. The goal is to make every Meridian Health decision area visibly owned, reduce duplicate drafting, and ensure the bid/no-bid recommendation has an escalation path for blocked answers or risky commitments.",
-	"RFP-104": "Inventory HelioWorks Energy's requirement areas and translate them into response tracks that can be staffed and reviewed. Cover ITSM, incident, problem, change, request, Assets and CMDB, hardware and software asset management, knowledge, reporting, portal management, AI, integrations, customer service, HR services, data residency, legal compliance, GRC, risk, vulnerability management, implementation services, and pricing. Mark which HelioWorks Energy topics are core Atlassian strengths, which need partner positioning, and which need careful expectation setting.",
-	"RFP-105": "Run the BluePeak Telecom bid/no-bid risk assessment before the team invests heavily in drafting. Check mandatory requirements, certification asks, residency constraints, asset-management depth, security operations expectations, migration timelines, pricing guardrails, reference requirements, and executive-demo readiness. Summarize the BluePeak Telecom risks as concrete mitigation actions so leadership can decide whether to proceed, qualify the response, or request additional customer clarification.",
-	"RFP-106": "Build a Redwood Retail Group response calendar that includes supplier questions, internal draft checkpoints, qualification reviews, legal and security approvals, pricing sign-off, final executive review, submission packaging, and post-submission follow-ups. Include buffer for missing evidence and late-stage scope changes. The timeline should be practical enough for the response team to work from and clear enough for leadership to understand where slippage will create Redwood Retail Group deal risk.",
-	"RFP-107": "Collect the Summit Grove Insurance context needed to make the bid recommendation specific without overfitting to a single buyer. Capture the current tools, known pain points, business outcomes, executive priorities, implementation constraints, success metrics, user populations, regional differences, support model, and likely competitor strengths. Convert that Summit Grove Insurance context into qualification evidence and reusable win themes that can shape the decision brief if the pursuit proceeds.",
-	"RFP-141": "Draft the executive narrative for why Atlassian is the right platform for Orion Motors' enterprise work transformation if the RFP clears qualification. Connect Jira Service Management, Jira, Confluence, Assets, Rovo, Teamwork Graph, Guard, analytics, automation, and marketplace extensibility into one coherent system-of-work story. The draft should explain how Atlassian could reduce Orion Motors tool sprawl, improve service delivery, give leaders visibility, and create a phased path from today's environment to a more connected operating model.",
-	"RFP-142": "Prepare the NimbusCare functional response for service desk, request management, portals, knowledge, and reporting once the opportunity is qualified. Show how NimbusCare could design intake channels, route work to the right teams, manage SLAs, publish knowledge from Confluence, report on operational performance, and connect service work to software delivery. Include demo moments, configuration assumptions, known limitations, and reusable answer snippets the proposal team can paste into the formal response matrix.",
-	"RFP-143": "Build the Copperline Logistics commercial and implementation response for the proposal. Cover licensing assumptions, phased rollout options, implementation services, migration support, training, success planning, total cost of ownership, renewal considerations, and any discount or approval dependencies. The work should give deal desk enough Copperline Logistics-specific detail to approve the numbers and give the customer a credible view of how Atlassian can be adopted without a disruptive big-bang migration.",
-	"RFP-161": "Review the VertexRail Assets, CMDB, hardware asset, and software asset management positioning before the response goes to final review. Validate where Atlassian can answer directly, where data import or discovery assumptions matter, and where a partner or roadmap explanation is the most honest answer. The review should produce precise VertexRail language that is confident, accurate, and demoable without overstating native capabilities.",
-	"RFP-162": "Review Greenfield BioSystems data residency, DPA, legal terms, procurement conditions, privacy requirements, and contract language for the response. Identify clauses that need legal approval, standard positions that can be reused, and Greenfield BioSystems-specific asks that may require exceptions. The output should give the proposal manager clear approved wording and a list of open legal risks that must be resolved before submission.",
-	"RFP-163": "Review HarborPoint Finance security, Guard, audit logging, compliance, GRC, risk, and vulnerability-management answers. Confirm the current evidence package, approved product language, and any integration-based positioning for requirements outside native JSM workflows. The goal is to make the HarborPoint Finance response strong enough for a security evaluator while avoiding commitments that product, legal, or support teams cannot stand behind.",
-	"RFP-164": "Prepare the Silverline Manufacturing executive review package for the final pitch. Summarize the customer problem, Atlassian win themes, major differentiators, known gaps, pricing posture, implementation approach, and demo storyline. The review should help leadership decide whether the Silverline Manufacturing response is compelling, whether the deal strategy is realistic, and which messages need to be emphasized in the final customer conversation.",
-	"RFP-181": "Package and submit the TidalWorks Utilities clarification responses that unblock the proposal team. Make sure every customer question has an owner-approved answer, every answer is consistent with the main qualification strategy, and any new TidalWorks Utilities requirement discovered through Q&A is routed back into the board. Capture the submission timestamp and any follow-up commitments so the team can prove what was sent and when.",
-	"RFP-182": "Archive the Novacore University final response package, exhibits, pricing files, demo deck, approved legal language, security artifacts, and reusable answer snippets. Tag the materials by requirement area so future RFP teams can find them quickly. Include a short retro summary that explains what worked, what created late risk, which answers should be promoted into the answer library, and which product gaps need follow-up.",
+	"OMNI-102": "Turn the fragmented AI experience into crisp landing-page copy. Show how users lose momentum when voice lives in one app, vision in another, and action in a third. The output should make the pain specific enough that the live demo feels like the answer, not a decorative product clip.",
+	"OMNI-103": "Collect the company brand guide, voice and tone rules, forbidden phrases, preferred product language, and example launches VoiceMate should follow. The goal is to make the landing-page outline sound like the company while keeping the page concrete, demo-led, and free of generic assistant claims.",
+	"OMNI-104": "Inventory proof points for the core Omni Live loop: real-time camera feed, low-latency voice loop, agentic action, and multi-app workflow execution. Separate Developer Preview proof from Public Beta and GA claims so the landing page does not overpromise.",
+	"OMNI-105": "Sequence the launch story around May 28 Developer Preview, June 18 Public Beta, and July 9 General Availability. Show what each milestone unlocks for the page narrative, the CTA, partner integrations, sales enablement, and enterprise consent controls.",
+	"OMNI-106": "Gather demo assets that make Omni Live visible: a troubleshooting clip, a camera-feed state, a voice loop moment, and a multi-app workflow execution sequence. The page should show Omni Live working before it explains why the product is different.",
+	"OMNI-107": "Define the enterprise trust story for consent controls, workspace boundaries, partner integrations, and action approval. The copy should reassure enterprise teams without burying the demo-led product story under policy language.",
+	"OMNI-141": "Use VoiceMate to draft the landing-page outline from the brand guide, voice and tone notes, launch milestones, audience pain, demo goals, and consent/trust requirements. The outline should begin with the live demo, then move through pain, differentiated capability, proof, timeline, trust, and CTA.",
+	"OMNI-142": "Write the section that explains how Omni Live differs from a regular assistant. Focus on continuity: seeing the context, hearing intent, and taking action in one stream rather than asking users to restate the problem across tools.",
+	"OMNI-143": "Plan proof sections for developers and enterprise teams. Developers need the troubleshooting and workflow execution story; enterprise teams need consent controls, partner integration readiness, and a credible GA path.",
+	"OMNI-161": "Build the live demo hero module content model. It should make the first viewport feel active, with a clear moment where Omni Live sees the screen, hears the user, and acts across apps.",
+	"OMNI-162": "Review voice, vision, and action states for copy clarity. The page should avoid three disconnected feature cards and instead show one continuous loop moving from perception to instruction to execution.",
+	"OMNI-163": "Validate brand voice, accessibility, and consent copy before the outline moves toward launch. Ensure the language is specific, readable, legally reviewable, and respectful of enterprise control expectations.",
+	"OMNI-164": "Prepare the executive review package for the launch story and CTA path. Summarize the hero thesis, audience pain, capability proof, milestone plan, consent narrative, and any open content gaps.",
+	"OMNI-181": "Package the Developer Preview landing page content for May 28 with the hero outline, CTA copy, preview scope, demo proof, and known limitations ready for implementation.",
+	"OMNI-182": "Archive beta, GA, sales enablement, partner integration, and consent-control notes so the launch narrative can expand after the Developer Preview without rewriting the page from scratch.",
 };
 
-const RFP_WORK_ITEM_PEOPLE: readonly WorkItemPerson[] = [
-	{
-		name: "Maya Chen",
-		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
-		role: "Proposal manager",
-	},
-	{
-		name: "Jordan Lee",
-		avatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
-		role: "Account executive",
-	},
+const OMNI_WORK_ITEM_PEOPLE: readonly WorkItemPerson[] = [
+	RFP_101_WORK_ITEM.assignee,
+	RFP_101_WORK_ITEM.reporter,
 	{
 		name: "Priya Shah",
 		avatarUrl: "/avatar-user/annie-clare/color/asow-strategy-orange.png",
-		role: "Sales engineer",
+		role: "Developer advocate",
 	},
 	{
 		name: "Elena Ruiz",
 		avatarUrl: "/avatar-user/aoife-burke/color/asow-service-yellow.png",
-		role: "Security and legal",
+		role: "Consent and trust reviewer",
 	},
 	{
 		name: "Darius Pavri",
 		avatarUrl: "/avatar-user/darius-pavri/color/asow-strategy-orange.png",
-		role: "Deal desk",
+		role: "Launch readiness approver",
 	},
 	{
 		name: "Florence Garcia",
 		avatarUrl: "/avatar-user/florence-garcia/color/asow-strategy-orange.png",
-		role: "Response specialist",
+		role: "Web experience designer",
 	},
 	{
 		name: "David Hsieh",
 		avatarUrl: "/avatar-user/david-hsieh/color/asow-service-yellow.png",
-		role: "Solution architect",
+		role: "Product engineer",
 	},
 ] as const;
 
@@ -395,46 +377,20 @@ const CHILD_ITEM_STATUSES = ["todo", "inprogress", "done"] as const satisfies re
 
 const CHILD_ITEM_TEMPLATES: ReadonlyArray<{
 	priority: WorkItemChildItem["priority"];
-	summary: (clientName: string) => string;
+	summary: (workstreamName: string) => string;
 }> = [
-	{
-		priority: "high",
-		summary: (clientName) => `Confirm ${clientName} mandatory response sections`,
-	},
-	{
-		priority: "medium",
-		summary: (clientName) => `Map ${clientName} stakeholder reviewers and decision owners`,
-	},
-	{
-		priority: "high",
-		summary: (clientName) => `Validate ${clientName} budget and procurement assumptions`,
-	},
-	{
-		priority: "medium",
-		summary: (clientName) => `Draft ${clientName} clarification questions for ambiguous requirements`,
-	},
-	{
-		priority: "low",
-		summary: (clientName) => `Collect reusable ${clientName} evidence and reference snippets`,
-	},
-	{
-		priority: "medium",
-		summary: (clientName) => `Review ${clientName} legal, security, and data-residency language`,
-	},
-	{
-		priority: "high",
-		summary: (clientName) => `Prepare ${clientName} executive review notes`,
-	},
-	{
-		priority: "low",
-		summary: (clientName) => `Archive ${clientName} response learnings for future RFPs`,
-	},
+	{ priority: "high", summary: (name) => `Confirm ${name} inputs for the landing-page outline` },
+	{ priority: "medium", summary: (name) => `Map ${name} owner and review path` },
+	{ priority: "high", summary: (name) => `Validate ${name} against launch milestones` },
+	{ priority: "medium", summary: (name) => `Draft ${name} content gaps for VoiceMate` },
+	{ priority: "low", summary: (name) => `Collect reusable ${name} proof snippets` },
+	{ priority: "medium", summary: (name) => `Review ${name} consent and enterprise language` },
 ] as const;
 
 interface AttachmentVariant {
 	ext: WorkItemAttachment["ext"];
 	name: string;
-	displayName: (clientName: string) => string;
+	displayName: (workstreamName: string) => string;
 	thumbnailKind: WorkItemAttachment["thumbnailKind"];
 	thumbnailTone: WorkItemAttachment["thumbnailTone"];
 	sourceLabel?: WorkItemAttachment["sourceLabel"];
@@ -442,68 +398,19 @@ interface AttachmentVariant {
 }
 
 const ATTACHMENT_VARIANTS: readonly AttachmentVariant[] = [
-	{
-		name: "supplier-questionnaire",
-		displayName: (clientName) => `${clientName} supplier questionnaire`,
-		ext: "pdf",
-		thumbnailKind: "file",
-		thumbnailTone: "information",
-	},
-	{
-		name: "portal-export",
-		displayName: (clientName) => `${clientName} portal export`,
-		ext: "xlsx",
-		thumbnailKind: "document",
-		thumbnailTone: "success",
-	},
-	{
-		name: "stakeholder-notes",
-		displayName: (clientName) => `${clientName} stakeholder notes`,
-		ext: "page",
-		thumbnailKind: "document",
-		thumbnailTone: "discovery",
-		sourceLabel: "Confluence page",
-		sourceProduct: "confluence",
-	},
-	{
-		name: "security-addendum",
-		displayName: (clientName) => `${clientName} security addendum`,
-		ext: "docx",
-		thumbnailKind: "document",
-		thumbnailTone: "warning",
-	},
-	{
-		name: "pricing-workbook",
-		displayName: (clientName) => `${clientName} pricing workbook`,
-		ext: "xlsx",
-		thumbnailKind: "document",
-		thumbnailTone: "neutral",
-	},
-	{
-		name: "demo-planning-clip",
-		displayName: (clientName) => `${clientName} demo planning clip`,
-		ext: "mp4",
-		thumbnailKind: "video",
-		thumbnailTone: "information",
-		sourceLabel: "Loom video",
-		sourceProduct: "loom",
-	},
-	{
-		name: "risk-register",
-		displayName: (clientName) => `${clientName} risk register`,
-		ext: "csv",
-		thumbnailKind: "document",
-		thumbnailTone: "warning",
-	},
+	{ name: "brand-guide", displayName: (name) => `${name} brand guide`, ext: "page", thumbnailKind: "document", thumbnailTone: "discovery", sourceLabel: "Confluence page", sourceProduct: "confluence" },
+	{ name: "demo-notes", displayName: (name) => `${name} demo notes`, ext: "docx", thumbnailKind: "document", thumbnailTone: "success" },
+	{ name: "launch-milestones", displayName: (name) => `${name} launch milestones`, ext: "xlsx", thumbnailKind: "document", thumbnailTone: "information" },
+	{ name: "consent-review", displayName: (name) => `${name} consent review`, ext: "pdf", thumbnailKind: "file", thumbnailTone: "warning" },
+	{ name: "walkthrough", displayName: (name) => `${name} walkthrough`, ext: "mp4", thumbnailKind: "video", thumbnailTone: "information", sourceLabel: "Loom video", sourceProduct: "loom" },
 ] as const;
 
-const COMMENT_TEMPLATES: ReadonlyArray<(clientName: string) => string> = [
-	(clientName) => `${clientName} procurement language needs one more pass before we commit response capacity.`,
-	(clientName) => `I added the latest ${clientName} stakeholder notes and marked unresolved items for follow-up.`,
-	(clientName) => `Sales engineering should confirm where the ${clientName} demo needs product or partner support.`,
-	(clientName) => `Deal desk needs a cleaner ${clientName} pricing assumption before final review.`,
-	(clientName) => `Legal and security language for ${clientName} should stay review-required until evidence is attached.`,
-	(clientName) => `The ${clientName} response looks usable, but the owner matrix still needs one accountable driver.`,
+const COMMENT_TEMPLATES: ReadonlyArray<(workstreamName: string) => string> = [
+	(name) => `${name} needs to stay demo-led; avoid turning this into a generic AI assistant section.`,
+	(name) => `I added ${name} notes and marked missing proof points for VoiceMate.`,
+	(name) => `Developer and enterprise examples for ${name} should share one continuous voice, vision, and action story.`,
+	(name) => `${name} needs one more consent-language pass before public launch copy.`,
+	(name) => `The ${name} outline is usable, but the CTA should be more specific.`,
 ] as const;
 
 function getStableSeed(value: string): number {
@@ -515,10 +422,7 @@ function getCycledItem<T>(items: readonly T[], index: number): T {
 }
 
 function getKebabCase(value: string): string {
-	return value
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/gu, "-")
-		.replace(/^-|-$/gu, "");
+	return value.toLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "");
 }
 
 function getDemoDate(seed: number, index: number): string {
@@ -541,17 +445,16 @@ function getPriorityFromCard(card: KanbanBoardCardData | undefined): WorkItemDat
 	}
 }
 
-function createVariableChildItems(code: string, clientName: string): WorkItemChildItem[] {
+function createVariableChildItems(code: string, workstreamName: string): WorkItemChildItem[] {
 	const seed = getStableSeed(code);
 	const count = 2 + (seed % 4);
-
 	return Array.from({ length: count }, (_, index) => {
 		const template = getCycledItem(CHILD_ITEM_TEMPLATES, seed + index);
-		const assignee = getCycledItem(RFP_WORK_ITEM_PEOPLE, seed + index + 1);
+		const assignee = getCycledItem(OMNI_WORK_ITEM_PEOPLE, seed + index + 1);
 		return {
 			type: "Sub-task",
 			key: `${code}-${String(index + 1).padStart(2, "0")}`,
-			summary: template.summary(clientName),
+			summary: template.summary(workstreamName),
 			priority: template.priority,
 			assignee: assignee.name,
 			assigneeAvatarUrl: assignee.avatarUrl,
@@ -560,16 +463,15 @@ function createVariableChildItems(code: string, clientName: string): WorkItemChi
 	});
 }
 
-function createVariableAttachments(code: string, clientName: string): WorkItemAttachment[] {
+function createVariableAttachments(code: string, workstreamName: string): WorkItemAttachment[] {
 	const seed = getStableSeed(code);
 	const count = 1 + ((seed + 1) % 4);
-	const clientSlug = getKebabCase(clientName);
-
+	const slug = getKebabCase(workstreamName);
 	return Array.from({ length: count }, (_, index) => {
 		const variant = getCycledItem(ATTACHMENT_VARIANTS, seed + index);
 		return {
-			name: `${clientSlug}-${variant.name}`,
-			displayName: variant.displayName(clientName),
+			name: `${slug}-${variant.name}`,
+			displayName: variant.displayName(workstreamName),
 			ext: variant.ext,
 			date: getDemoDate(seed, index),
 			thumbnailKind: variant.thumbnailKind,
@@ -580,37 +482,34 @@ function createVariableAttachments(code: string, clientName: string): WorkItemAt
 	});
 }
 
-function createVariableComments(code: string, clientName: string): WorkItemComment[] {
+function createVariableComments(code: string, workstreamName: string): WorkItemComment[] {
 	const seed = getStableSeed(code);
 	const count = 1 + ((seed + 2) % 3);
-
 	return Array.from({ length: count }, (_, index) => {
-		const author = getCycledItem(RFP_WORK_ITEM_PEOPLE, seed + index + 2);
-		const content = getCycledItem(COMMENT_TEMPLATES, seed + index)(clientName);
+		const author = getCycledItem(OMNI_WORK_ITEM_PEOPLE, seed + index + 2);
 		return {
 			id: `${code.toLowerCase()}-comment-${index + 1}`,
 			author,
 			timestamp: `${(index + 1) * 12} minutes ago`,
-			content,
+			content: getCycledItem(COMMENT_TEMPLATES, seed + index)(workstreamName),
 		};
 	});
 }
 
 function createVariableWorkItemFields(
 	code: string,
-	clientName: string,
+	workstreamName: string,
 	boardCard: KanbanBoardCardData | undefined,
 ): Pick<WorkItemData, "assignee" | "attachments" | "childItems" | "comments" | "priority" | "reporter" | "status"> {
 	const seed = getStableSeed(code);
-
 	return {
-		assignee: getCycledItem(RFP_WORK_ITEM_PEOPLE, seed),
-		reporter: getCycledItem(RFP_WORK_ITEM_PEOPLE, seed + 3),
+		assignee: getCycledItem(OMNI_WORK_ITEM_PEOPLE, seed),
+		reporter: getCycledItem(OMNI_WORK_ITEM_PEOPLE, seed + 3),
 		priority: getPriorityFromCard(boardCard),
 		status: findBoardColumnTitleByCardCode(code),
-		childItems: createVariableChildItems(code, clientName),
-		attachments: createVariableAttachments(code, clientName),
-		comments: createVariableComments(code, clientName),
+		childItems: createVariableChildItems(code, workstreamName),
+		attachments: createVariableAttachments(code, workstreamName),
+		comments: createVariableComments(code, workstreamName),
 	};
 }
 
@@ -622,7 +521,7 @@ function formatList(label: string, items: readonly string[] | undefined): string
 function formatTeam(team: readonly WorkItemRfpTeamMember[] | undefined): string[] {
 	if (!Array.isArray(team) || team.length === 0) return [];
 	return [
-		"Response team needs:",
+		"Launch team needs:",
 		...team.map((member) => `- ${member.role}: ${member.owner} - ${member.need}`),
 	];
 }
@@ -638,15 +537,14 @@ export function getAgentsWorkItemForCard(params: {
 }): WorkItemData {
 	const boardCard = findBoardCardByCode(params.code);
 	const labelFields = createWorkItemLabelFields(params.tags ?? boardCard?.tags);
-	const clientName = RFP_CLIENT_NAMES_BY_CODE[params.code as keyof typeof RFP_CLIENT_NAMES_BY_CODE];
+	const workstreamName = RFP_CLIENT_NAMES_BY_CODE[params.code as keyof typeof RFP_CLIENT_NAMES_BY_CODE];
 	const baseWorkItem = WORK_ITEMS_BY_CODE[params.code] ?? {
 		code: params.code,
 		title: params.title,
-		account: clientName,
+		account: workstreamName,
 		description: WORK_ITEM_DESCRIPTIONS_BY_CODE[params.code],
-		...(clientName ? createVariableWorkItemFields(params.code, clientName, boardCard) : {}),
+		...(workstreamName ? createVariableWorkItemFields(params.code, workstreamName, boardCard) : {}),
 	};
-
 	return {
 		...baseWorkItem,
 		...labelFields,
@@ -655,21 +553,17 @@ export function getAgentsWorkItemForCard(params: {
 
 export function formatAgentsBoardContext(): string {
 	const visibleColumns = BOARD_COLUMNS.map((column) => {
-		const sampleCards = column.cards
-			.slice(0, 2)
-			.map((card) => `${card.code}: ${card.title}`)
-			.join("; ");
+		const sampleCards = column.cards.slice(0, 2).map((card) => `${card.code}: ${card.title}`).join("; ");
 		return `- ${column.title}: ${column.count} work items${sampleCards ? ` (visible: ${sampleCards})` : ""}`;
 	});
-
 	return [
-		"[Agents Board Context]",
-		"Source: /agents Jira board.",
+		"[Agents2 Board Context]",
+		"Source: /agents2 Omni Live launch board.",
 		`Project: ${AGENTS_BOARD_CONTEXT_LABEL}`,
-		"Workflow: RFP response board.",
+		"Workflow: public landing page launch.",
 		"Visible columns:",
 		...visibleColumns,
-		"[End Agents Board Context]",
+		"[End Agents2 Board Context]",
 	].join("\n");
 }
 
@@ -677,19 +571,15 @@ function formatLightweightActiveJiraWorkItemContext(workItem: WorkItemData): str
 	const childItems = workItem.childItems?.map(
 		(item) => `- ${item.key}: ${item.summary} (${item.status}, ${item.priority}, owner: ${item.assignee ?? "unassigned"})`,
 	);
-	const attachments = workItem.attachments?.map(
-		(file) => `- ${file.name}.${file.ext} (${file.date})`,
-	);
+	const attachments = workItem.attachments?.map((file) => `- ${file.name}.${file.ext} (${file.date})`);
 	const recentActivity = workItem.comments?.flatMap((comment) => [
 		`- ${comment.timestamp}: ${formatNameWithRole(comment.author.name, comment.author.role)} - ${comment.content}`,
-		...(comment.replies ?? []).map(
-			(reply) => `  - ${reply.timestamp}: ${formatNameWithRole(reply.author.name, reply.author.role)} - ${reply.content}`,
-		),
+		...(comment.replies ?? []).map((reply) => `  - ${reply.timestamp}: ${formatNameWithRole(reply.author.name, reply.author.role)} - ${reply.content}`),
 	]);
 
 	return [
 		"[Active Jira Work Item Context]",
-		"Source: /agents Jira work item.",
+		"Source: /agents2 Omni Live work item.",
 		`Key: ${workItem.code}`,
 		`Title: ${workItem.title}`,
 		workItem.status ? `Status: ${workItem.status}` : null,
@@ -705,18 +595,13 @@ function formatLightweightActiveJiraWorkItemContext(workItem: WorkItemData): str
 		recentActivity?.length ? "Recent activity:" : null,
 		...(recentActivity ?? []),
 		"[End Active Jira Work Item Context]",
-	]
-		.filter((line): line is string => typeof line === "string" && line.length > 0)
-		.join("\n");
+	].filter((line): line is string => typeof line === "string" && line.length > 0).join("\n");
 }
 
 export function formatActiveJiraWorkItemContext(
 	workItem: WorkItemData | null | undefined,
 ): string | undefined {
-	if (!workItem) {
-		return undefined;
-	}
-
+	if (!workItem) return undefined;
 	if (workItem.code !== RFP_101_WORK_ITEM_CODE || !workItem.rfpContext) {
 		return formatLightweightActiveJiraWorkItemContext(workItem);
 	}
@@ -725,19 +610,15 @@ export function formatActiveJiraWorkItemContext(
 	const childItems = workItem.childItems?.map(
 		(item) => `- ${item.key}: ${item.summary} (${item.status}, ${item.priority}, owner: ${item.assignee ?? "unassigned"})`,
 	);
-	const attachments = workItem.attachments?.map(
-		(file) => `- ${file.name}.${file.ext} (${file.date})`,
-	);
+	const attachments = workItem.attachments?.map((file) => `- ${file.name}.${file.ext} (${file.date})`);
 	const recentActivity = workItem.comments?.flatMap((comment) => [
 		`- ${comment.timestamp}: ${formatNameWithRole(comment.author.name, comment.author.role)} - ${comment.content}`,
-		...(comment.replies ?? []).map(
-			(reply) => `  - ${reply.timestamp}: ${formatNameWithRole(reply.author.name, reply.author.role)} - ${reply.content}`,
-		),
+		...(comment.replies ?? []).map((reply) => `  - ${reply.timestamp}: ${formatNameWithRole(reply.author.name, reply.author.role)} - ${reply.content}`),
 	]);
 
 	return [
 		"[Active Jira Work Item Context]",
-		"Source: /agents Jira work item modal.",
+		"Source: /agents2 Omni Live work item modal.",
 		`Key: ${workItem.code}`,
 		`Title: ${workItem.title}`,
 		workItem.description ? `Description: ${workItem.description}` : null,
@@ -746,21 +627,21 @@ export function formatActiveJiraWorkItemContext(
 		workItem.startDate ? `Start date: ${workItem.startDate}` : null,
 		workItem.dueDate ? `Due date: ${workItem.dueDate}` : null,
 		workItem.parent ? `Parent: ${workItem.parent.code}${workItem.parent.title ? ` - ${workItem.parent.title}` : ""}` : null,
-		`Customer: ${rfp.customerName}`,
-		`Opportunity: ${rfp.opportunityName}`,
-		`Seat count: ${rfp.seatCount}`,
-		workItem.dealSize ? `Deal size: ${workItem.dealSize}` : null,
-		`Competitor product to displace: ${rfp.competitorProduct}`,
-		`Sales goal: ${rfp.salesGoal}`,
-		`Procurement stage: ${rfp.procurementStage}`,
-		`Submission portal: ${rfp.submissionPortal}`,
-		`Response due date: ${rfp.responseDueDate}`,
+		`Product: ${rfp.customerName}`,
+		`Launch surface: ${rfp.opportunityName}`,
+		`Audience: ${rfp.seatCount}`,
+		workItem.dealSize ? `Launch milestones: ${workItem.dealSize}` : null,
+		`Current alternative: ${rfp.competitorProduct}`,
+		`Content goal: ${rfp.salesGoal}`,
+		`Launch stage: ${rfp.procurementStage}`,
+		`Destination: ${rfp.submissionPortal}`,
+		`Target date: ${rfp.responseDueDate}`,
 		`Assignee: ${workItem.assignee?.name ? formatNameWithRole(workItem.assignee.name, workItem.assignee.role) : "Unassigned"}`,
 		`Reporter: ${workItem.reporter?.name ? formatNameWithRole(workItem.reporter.name, workItem.reporter.role) : "Unknown"}`,
 		workItem.labels?.length ? `Labels: ${workItem.labels.join(", ")}` : null,
-		...formatList("Buyer priorities:", rfp.buyerPriorities),
-		...formatList("Evaluation criteria:", rfp.evaluationCriteria),
-		...formatList("Win themes:", rfp.winThemes),
+		...formatList("Audience priorities:", rfp.buyerPriorities),
+		...formatList("Page success criteria:", rfp.evaluationCriteria),
+		...formatList("Positioning themes:", rfp.winThemes),
 		...formatList("Known risks:", rfp.risks),
 		...formatList("Next actions:", rfp.nextActions),
 		...formatTeam(rfp.responseTeam),
@@ -771,22 +652,19 @@ export function formatActiveJiraWorkItemContext(
 		recentActivity?.length ? "Recent activity:" : null,
 		...(recentActivity ?? []),
 		"[End Active Jira Work Item Context]",
-	]
-		.filter((line): line is string => typeof line === "string" && line.length > 0)
-		.join("\n");
+	].filter((line): line is string => typeof line === "string" && line.length > 0).join("\n");
 }
 
 export function resolveAgentsChatScreenContext(
 	workItem: WorkItemData | null | undefined,
 ): AgentsChatScreenContext {
 	const activeContextDescription = formatActiveJiraWorkItemContext(workItem);
-
 	if (workItem && activeContextDescription) {
 		return {
 			chatContextBar: {
 				label: `${workItem.code}: ${workItem.title}`,
 				iconName: "work-item",
-				signature: `agents-work-item:${workItem.code}`,
+				signature: `agents2-work-item:${workItem.code}`,
 			},
 			contextDescription: activeContextDescription,
 			greeting: ACTIVE_WORK_ITEM_GREETING,

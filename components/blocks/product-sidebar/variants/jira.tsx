@@ -7,7 +7,7 @@ import { NavigationItemWithHoverChevron } from "../components/navigation-item-wi
 import { Divider } from "../components/divider";
 import { ProjectItem } from "../components/project-item";
 import { SectionHeading } from "../components/section-heading";
-import { STARRED_PROJECTS, JIRA_EXTERNAL_LINKS } from "../data/jira-navigation";
+import { STARRED_PROJECTS, JIRA_EXTERNAL_LINKS, type StarredProject } from "../data/jira-navigation";
 import AlignTextLeftIcon from "@atlaskit/icon/core/align-text-left";
 import AppsIcon from "@atlaskit/icon/core/apps";
 import ChartTrendIcon from "@atlaskit/icon/core/chart-trend";
@@ -24,11 +24,13 @@ import FolderIcon from "@atlaskit/icon/core/folder-closed";
 interface JiraSidebarProps {
 	selectedItem: string;
 	onSelectItem: (item: string) => void;
+	starredProjects?: readonly StarredProject[];
 }
 
 export function JiraSidebar({
 	selectedItem,
 	onSelectItem,
+	starredProjects = STARRED_PROJECTS,
 }: Readonly<JiraSidebarProps>) {
 	const [isSpacesExpanded, setIsSpacesExpanded] = useState(true);
 
@@ -100,7 +102,7 @@ export function JiraSidebar({
 				<>
 					<SectionHeading>Starred</SectionHeading>
 					<div style={{ paddingLeft: token("space.150") }}>
-						{STARRED_PROJECTS.map((project) => (
+						{starredProjects.map((project) => (
 							<ProjectItem
 								key={project.id}
 								name={project.name}

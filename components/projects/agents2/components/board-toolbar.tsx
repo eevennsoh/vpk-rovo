@@ -75,7 +75,7 @@ export default function BoardToolbar({ avatars, onReset }: Readonly<BoardToolbar
 							<InputGroupAddon>
 								<SearchIcon label="" />
 							</InputGroupAddon>
-							<InputGroupInput placeholder="Search RFPs" />
+							<InputGroupInput placeholder="Search Omni work" />
 						</InputGroup>
 					</div>
 					<div style={{ display: "flex", marginLeft: token("space.negative.050") }}>
@@ -114,7 +114,7 @@ export default function BoardToolbar({ avatars, onReset }: Readonly<BoardToolbar
 								</AlertDialogMedia>
 								<AlertDialogTitle>Reset demo?</AlertDialogTitle>
 								<AlertDialogDescription>
-									This restores the RFP board, generated report, attachments, and open panels to their starting state, and permanently deletes all Rovo chat history.
+									This restores the Omni Live board, generated outline, attachments, and open panels to their starting state, and permanently deletes all Rovo chat history.
 								</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>
@@ -130,7 +130,7 @@ export default function BoardToolbar({ avatars, onReset }: Readonly<BoardToolbar
 						</AlertDialogContent>
 					</AlertDialog>
 					<Button className="gap-2" variant="outline">
-						<span>Group: RFP stage</span>
+						<span>Group: launch stage</span>
 						<ChevronDownIcon label="" size="small" />
 					</Button>
 					<Button aria-label="Customize" size="icon" variant="ghost">

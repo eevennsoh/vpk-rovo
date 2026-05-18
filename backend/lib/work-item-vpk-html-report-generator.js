@@ -16,13 +16,18 @@ const {
 const VPK_HTML_SKILL_NAME = "vpk-html";
 const STATUS_REPORT_TEMPLATE_PATH = "assets/templates/status-report.html";
 const DACI_ONE_PAGER_TEMPLATE_PATH = "assets/templates/one-pager.html";
+const LANDING_PAGE_OUTLINE_TEMPLATE_PATH = "assets/templates/one-pager.html";
 
 const SECTION_LABELS = new Map([
+	["audience priorities:", "buyerPriorities"],
 	["buyer priorities:", "buyerPriorities"],
+	["page success criteria:", "evaluationCriteria"],
 	["evaluation criteria:", "evaluationCriteria"],
+	["positioning themes:", "winThemes"],
 	["win themes:", "winThemes"],
 	["known risks:", "knownRisks"],
 	["next actions:", "nextActions"],
+	["launch team needs:", "responseTeam"],
 	["response team needs:", "responseTeam"],
 	["child work items:", "childItems"],
 	["attachments:", "attachments"],
@@ -440,6 +445,20 @@ function isRfpQualificationContext(activeWorkItemContext) {
 	return /^RFP-\d+$/iu.test(key || "") || /\brfp\b/iu.test(joinedContext);
 }
 
+function isLandingPageOutlineContext(activeWorkItemContext) {
+	const { fields, sections } = parseContextFieldSections(activeWorkItemContext);
+	const key = getNonEmptyString(fields.key);
+	const joinedContext = [
+		...Object.values(fields),
+		...Object.values(sections).flat(),
+	].join("\n");
+
+	return /^OMNI-\d+$/iu.test(key || "") ||
+		/\bomni live\b/iu.test(joinedContext) ||
+		/\blanding-page outline\b|\blanding page outline\b/iu.test(joinedContext) ||
+		/\bvoicemate\b/iu.test(joinedContext);
+}
+
 function findTeamMember(responseTeam, matcher) {
 	return responseTeam.find((member) => {
 		const text = [member.role, member.owner, member.need].filter(Boolean).join(" ").toLowerCase();
@@ -559,6 +578,91 @@ function buildFallbackDaciReportFields(activeWorkItemContext) {
 		title,
 		nextActions,
 		attachments,
+	};
+}
+
+function buildFallbackLandingPageOutlineFields(activeWorkItemContext) {
+	const { fields, sections } = parseContextFieldSections(activeWorkItemContext);
+	const key = getNonEmptyString(fields.key);
+	const title = getNonEmptyString(fields.title) || (key ? `${key} Omni Live landing-page outline` : "Omni Live landing-page outline");
+	const product = getNonEmptyString(fields.product) || getNonEmptyString(fields.customer) || "Omni Live";
+	const audience = getNonEmptyString(fields.audience) || "developers and enterprise teams";
+	const targetDate = getNonEmptyString(fields["target date"]) || getNonEmptyString(fields["due date"]) || "May 28, 2026";
+	const assignee = extractRolePerson(fields.assignee);
+	const reporter = extractRolePerson(fields.reporter);
+	const launchMilestones = getNonEmptyString(fields["launch milestones"]) ||
+		"Developer Preview by May 28; Public Beta by June 18; General Availability by July 9";
+	const corePain = sections.buyerPriorities.find((item) => /fragment|switch|mode|momentum|prompt/iu.test(item)) ||
+		"Working with AI is fragmented across separate voice, vision, and action modes, forcing users to restate context as they move between tabs, tools, and prompts.";
+	const heroDemoThesis = sections.evaluationCriteria.find((item) => /hero|demo/iu.test(item)) ||
+		"Lead with a live demo that shows Omni Live seeing the current problem, hearing the user's intent, and acting across apps in one continuous stream.";
+	const positioning = sections.winThemes.find((item) => /sees|hears|acts|stream|continuous/iu.test(item)) ||
+		"Omni Live is a unified multimodal AI interface that sees, hears, and acts at the same time, making it feel present rather than passive.";
+	const demoProofPoints = uniqueStrings([
+		...sections.winThemes,
+		...sections.buyerPriorities,
+		...sections.attachments,
+	]).filter((item) => /demo|voice|camera|vision|action|workflow|app|troubleshoot|feed/iu.test(item));
+	const consentTrustNotes = uniqueStrings([
+		...sections.knownRisks,
+		...sections.evaluationCriteria,
+		...sections.nextActions,
+	]).filter((item) => /consent|trust|enterprise|legal|partner|control|privacy|review/iu.test(item));
+	const contentGaps = uniqueStrings([
+		...collectInformationGaps({ fields, sections }),
+		...sections.knownRisks,
+	]).filter((item) => !/bid|budget|stakeholder relationship/iu.test(item));
+	const sectionOutline = [
+		"Live demo hero: show Omni Live seeing, hearing, and acting in one continuous sequence.",
+		"Pain: explain why disconnected voice, vision, and action tools break momentum.",
+		"Difference: position Omni Live as a responsive, context-aware AI companion rather than a regular assistant.",
+		"Proof: voice loop, camera feed, agentic action, and multi-app workflow execution.",
+		"Launch path: Developer Preview, Public Beta, General Availability.",
+		"Trust and CTA: consent controls, partner integrations, preview signup, and enterprise evaluation.",
+	];
+
+	return {
+		artifactTitle: "Omni Live landing-page outline",
+		author: assignee.name || reporter.name || "VoiceMate",
+		brandVoiceNotes: "Use the supplied company brand guide and voice/tone brief. Keep copy concrete, demo-led, and free of generic assistant claims.",
+		contentGaps: contentGaps.length > 0
+			? contentGaps
+			: ["Live demo assets, legal-reviewed consent language, and partner integration specifics should be confirmed before launch copy is finalized."],
+		consentTrustNotes: consentTrustNotes.length > 0
+			? consentTrustNotes
+			: ["Enterprise-grade consent controls and partner integration readiness should appear as trust proof without overtaking the demo-led story."],
+		corePain,
+		cta: "Invite developers to join the May 28 Developer Preview and give enterprise teams a path to evaluate consent controls and integrations.",
+		date: targetDate,
+		description: "A vpk-html one-pager content brief for the Omni Live public launch landing page.",
+		demoProofPoints: demoProofPoints.length > 0
+			? demoProofPoints
+			: ["Core voice loop", "Real-time camera feed", "Agentic action", "Multi-app workflow execution"],
+		docTitle: "Omni Live landing-page outline",
+		eyebrow: "Landing-page outline / VoiceMate",
+		footerLeft: "VoiceMate content brief",
+		footerRight: key ? `${key} · ${product}` : product,
+		headline: "Omni Live landing-page outline",
+		heroDemoThesis,
+		keywords: uniqueStrings([key, product, "VoiceMate", "landing page", "live demo"]).slice(0, 5).join(", "),
+		metricPairs: [
+			{ label: "product", value: product },
+			{ label: "preview", value: "May 28" },
+			{ label: "beta", value: "Jun 18" },
+			{ label: "GA", value: "Jul 9" },
+		],
+		positioning,
+		roadmap: [
+			{ head: "Developer Preview", body: "May 28: core voice loop and camera feed capabilities anchor the live-demo-first hero." },
+			{ head: "Public Beta", body: "June 18: multi-app workflow execution expands the proof story beyond a regular assistant." },
+			{ head: "General Availability", body: "July 9: sales enablement, partner integrations, and enterprise-grade consent controls complete launch readiness." },
+		],
+		sectionOutline,
+		statusText: fields.status ? `${fields.status} · ${fields.priority || "Priority unknown"}` : "Outline draft",
+		subtitle: `${audience} · sees, hears, and acts at the same time`,
+		targetAudience: audience,
+		title,
+		launchTimeline: launchMilestones,
 	};
 }
 
@@ -690,6 +794,49 @@ function mergeDistilledDaciReportFields(fallbackFields, distilledFields) {
 	return merged;
 }
 
+function mergeDistilledLandingPageOutlineFields(fallbackFields, distilledFields) {
+	if (!isObjectRecord(distilledFields)) {
+		return fallbackFields;
+	}
+
+	const merged = {
+		...fallbackFields,
+	};
+	for (const key of [
+		"brandVoiceNotes",
+		"corePain",
+		"cta",
+		"description",
+		"heroDemoThesis",
+		"launchTimeline",
+		"positioning",
+		"subtitle",
+		"targetAudience",
+	]) {
+		const value = pickDistilledString(distilledFields, key);
+		if (value) {
+			merged[key] = value;
+		}
+	}
+
+	for (const [key, limit] of [
+		["sectionOutline", 8],
+		["demoProofPoints", 6],
+		["consentTrustNotes", 6],
+		["contentGaps", 6],
+	]) {
+		if (!Array.isArray(distilledFields[key])) {
+			continue;
+		}
+		const values = uniqueStrings(distilledFields[key]).slice(0, limit);
+		if (values.length > 0) {
+			merged[key] = values;
+		}
+	}
+
+	return merged;
+}
+
 async function distillStructuredReportFields({
 	activeWorkItemContext,
 	generateText,
@@ -702,7 +849,14 @@ async function distillStructuredReportFields({
 	}
 
 	const isDaciReport = reportKind === "rfp-qualification-daci";
-	const system = isDaciReport
+	const isLandingPageOutline = reportKind === "landing-page-outline";
+	const system = isLandingPageOutline
+		? [
+				"You extract structured fields for a landing-page outline and content brief.",
+				"Use only facts present in the supplied Omni Live context. Do not invent product capabilities, dates, owners, metrics, brand rules, legal claims, or evidence.",
+				"Return only valid JSON. No markdown.",
+			].join(" ")
+		: isDaciReport
 		? [
 				"You extract structured fields for an RFP qualification DACI one-pager.",
 				"Use only facts present in the supplied context. Do not invent dates, owners, metrics, budget status, stakeholder relationships, or evidence.",
@@ -713,7 +867,27 @@ async function distillStructuredReportFields({
 				"Use only facts present in the supplied context. Do not invent dates, owners, metrics, or evidence.",
 				"Return only valid JSON. No markdown.",
 			].join(" ");
-	const prompt = isDaciReport
+	const prompt = isLandingPageOutline
+		? [
+				"Extract concise landing-page outline fields from this Omni Live Work Item context.",
+				"Schema:",
+				"{",
+				'  "heroDemoThesis": "one sentence on the live-demo-first hero",',
+				'  "targetAudience": "primary audience string",',
+				'  "corePain": "one paragraph about fragmented AI modes and lost momentum",',
+				'  "positioning": "one paragraph positioning Omni Live against a regular assistant",',
+				'  "sectionOutline": ["ordered landing page sections"],',
+				'  "demoProofPoints": ["voice, vision, action, workflow proof points"],',
+				'  "cta": "one CTA recommendation",',
+				'  "brandVoiceNotes": "one paragraph on voice and tone constraints",',
+				'  "launchTimeline": "one concise milestone summary",',
+				'  "consentTrustNotes": ["enterprise consent, trust, partner, or legal notes"],',
+				'  "contentGaps": ["missing brand/content/demo inputs"]',
+				"}",
+				"",
+				activeWorkItemContext,
+			].join("\n")
+		: isDaciReport
 		? [
 				"Extract concise RFP qualification DACI fields from this Work Item context.",
 				"Schema:",
@@ -848,6 +1022,114 @@ function buildRoadmapHtml(roadmap) {
 		`\t\t\t<div class="tl-body">${escapeHtml(step.body)}</div>`,
 		"\t\t</div>",
 	].join("\n")).join("\n");
+}
+
+function buildNamedListHtml(items, empty) {
+	return formatListItemsHtml(items, {
+		empty,
+		limit: 8,
+	});
+}
+
+function fillLandingPageOutlineTemplate(templateHtml, reportFields) {
+	const metaReplacements = new Map([
+		["{{AUTHOR}}", escapeHtml(reportFields.author)],
+		["{{DESCRIPTION}}", escapeHtml(reportFields.description)],
+		["{{DOC_TITLE}}", escapeHtml(reportFields.docTitle)],
+		["{{KEYWORDS}}", escapeHtml(reportFields.keywords)],
+	]);
+	let html = templateHtml;
+	for (const [placeholder, value] of metaReplacements) {
+		html = html.split(placeholder).join(value);
+	}
+
+	const body = [
+		"<body>",
+		"<main>",
+		"",
+		'<div class="header">',
+		'\t<div class="title-block">',
+		`\t\t<div class="eyebrow">${escapeHtml(reportFields.eyebrow)}</div>`,
+		`\t\t<h1>${escapeHtml(reportFields.headline)}</h1>`,
+		`\t\t<div class="subtitle">${escapeHtml(reportFields.subtitle)}</div>`,
+		"\t</div>",
+		'\t<div class="meta">',
+		`\t\t${escapeHtml(reportFields.author)}<br>`,
+		`\t\t${escapeHtml(reportFields.date)}<br>`,
+		`\t\t${escapeHtml(reportFields.statusText)}`,
+		"\t</div>",
+		"</div>",
+		"",
+		'<div class="metrics">',
+		buildMetricHtml(reportFields.metricPairs),
+		"</div>",
+		"",
+		`<p class="lead">${escapeHtml(sentence(reportFields.heroDemoThesis))}</p>`,
+		"",
+		'<div class="two-col">',
+		"\t<section>",
+		"\t\t<h2>Page thesis</h2>",
+		`\t\t<p>${escapeHtml(sentence(reportFields.corePain))}</p>`,
+		'\t\t<ul class="dash">',
+		`\t\t\t<li>${escapeHtml(`Audience: ${reportFields.targetAudience}.`)}</li>`,
+		`\t\t\t<li>${escapeHtml(sentence(reportFields.positioning))}</li>`,
+		`\t\t\t<li>${escapeHtml(sentence(reportFields.cta))}</li>`,
+		"\t\t</ul>",
+		"\t</section>",
+		"",
+		"\t<section>",
+		"\t\t<h2>Outline sections</h2>",
+		'\t\t<ul class="dash">',
+		buildNamedListHtml(reportFields.sectionOutline, "No section outline was supplied in the Work Item context."),
+		"\t\t</ul>",
+		"\t</section>",
+		"</div>",
+		"",
+		"<section>",
+		"\t<h2>Launch timeline<span class=\"sub\">preview to beta to GA</span></h2>",
+		'\t<div class="timeline">',
+		buildRoadmapHtml(reportFields.roadmap),
+		"\t</div>",
+		`<p>${escapeHtml(sentence(reportFields.launchTimeline))}</p>`,
+		"</section>",
+		"",
+		'<section>',
+		"\t<h2>Proof, trust, and gaps</h2>",
+		'\t<div class="two-col">',
+		"\t\t<div>",
+		"\t\t\t<h3>Demo proof points</h3>",
+		'\t\t\t<ul class="dash">',
+		buildNamedListHtml(reportFields.demoProofPoints, "No demo proof points were supplied in the Work Item context."),
+		"\t\t\t</ul>",
+		"\t\t</div>",
+		"\t\t<div>",
+		"\t\t\t<h3>Consent and trust notes</h3>",
+		'\t\t\t<ul class="dash">',
+		buildNamedListHtml(reportFields.consentTrustNotes, "No consent or trust notes were supplied in the Work Item context."),
+		"\t\t\t</ul>",
+		"\t\t</div>",
+		"\t</div>",
+		"</section>",
+		"",
+		`<div class="callout">${escapeHtml(sentence(reportFields.brandVoiceNotes))}</div>`,
+		"",
+		"<section>",
+		"\t<h2>Content gaps</h2>",
+		'\t<ul class="dash">',
+		buildNamedListHtml(reportFields.contentGaps, "No content gaps were supplied in the Work Item context."),
+		"\t</ul>",
+		"</section>",
+		"",
+		'<div class="footer">',
+		`\t<span>${escapeHtml(reportFields.footerLeft)}</span>`,
+		`\t<span>${escapeHtml(reportFields.footerRight)}</span>`,
+		"</div>",
+		"",
+		"</main>",
+		"</body>",
+	].join("\n");
+
+	return html.replace(/<body>[\s\S]*?<\/body>/u, body);
 }
 
 function fillDaciOnePagerTemplate(templateHtml, reportFields) {
@@ -1031,17 +1313,23 @@ async function generateWorkItemVpkHtmlReport({
 
 	const skillMetadata = await harness.loadSkillMetadata(VPK_HTML_SKILL_NAME);
 	const skill = await harness.loadSkill(VPK_HTML_SKILL_NAME);
-	const reportKind = isRfpQualificationContext(activeWorkItemContext)
+	const reportKind = isLandingPageOutlineContext(activeWorkItemContext)
+		? "landing-page-outline"
+		: isRfpQualificationContext(activeWorkItemContext)
 		? "rfp-qualification-daci"
 		: "status-report";
-	const templatePath = reportKind === "rfp-qualification-daci"
+	const templatePath = reportKind === "landing-page-outline"
+		? LANDING_PAGE_OUTLINE_TEMPLATE_PATH
+		: reportKind === "rfp-qualification-daci"
 		? DACI_ONE_PAGER_TEMPLATE_PATH
 		: STATUS_REPORT_TEMPLATE_PATH;
 	const templateHtml = await harness.readSkillFile(
 		VPK_HTML_SKILL_NAME,
 		templatePath,
 	);
-	const fallbackFields = reportKind === "rfp-qualification-daci"
+	const fallbackFields = reportKind === "landing-page-outline"
+		? buildFallbackLandingPageOutlineFields(activeWorkItemContext)
+		: reportKind === "rfp-qualification-daci"
 		? buildFallbackDaciReportFields(activeWorkItemContext)
 		: buildFallbackReportFields(activeWorkItemContext);
 	let distilledFields = null;
@@ -1060,10 +1348,14 @@ async function generateWorkItemVpkHtmlReport({
 		);
 	}
 
-	const reportFields = reportKind === "rfp-qualification-daci"
+	const reportFields = reportKind === "landing-page-outline"
+		? mergeDistilledLandingPageOutlineFields(fallbackFields, distilledFields)
+		: reportKind === "rfp-qualification-daci"
 		? mergeDistilledDaciReportFields(fallbackFields, distilledFields)
 		: mergeDistilledReportFields(fallbackFields, distilledFields);
-	const html = reportKind === "rfp-qualification-daci"
+	const html = reportKind === "landing-page-outline"
+		? fillLandingPageOutlineTemplate(templateHtml, reportFields)
+		: reportKind === "rfp-qualification-daci"
 		? fillDaciOnePagerTemplate(templateHtml, reportFields)
 		: fillStatusReportTemplate(templateHtml, reportFields);
 	assertVpkHtmlReportContract(html);
@@ -1091,12 +1383,15 @@ async function generateWorkItemVpkHtmlReport({
 
 module.exports = {
 	DACI_ONE_PAGER_TEMPLATE_PATH,
+	LANDING_PAGE_OUTLINE_TEMPLATE_PATH,
 	STATUS_REPORT_TEMPLATE_PATH,
 	VPK_HTML_SKILL_NAME,
 	assertVpkHtmlReportContract,
 	buildFallbackDaciReportFields,
+	buildFallbackLandingPageOutlineFields,
 	buildFallbackReportFields,
 	fillDaciOnePagerTemplate,
+	fillLandingPageOutlineTemplate,
 	fillStatusReportTemplate,
 	generateWorkItemVpkHtmlReport,
 	parseContextFieldSections,

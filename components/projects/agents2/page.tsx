@@ -49,27 +49,27 @@ const AGENTS_RFP_DEMO_TOASTER_ID = "agents-rfp-demo-notifications";
 const RFP_DEMO_HUMAN_ASSIGNEES: Record<string, { avatarUrl: string; role: string }> = {
 	"David Hsieh": {
 		avatarUrl: "/avatar-user/david-hsieh/color/asow-service-yellow.png",
-		role: "Proposal reviewer",
+		role: "Product engineer",
 	},
 	"Florence Garcia": {
 		avatarUrl: "/avatar-user/florence-garcia/color/asow-strategy-orange.png",
-		role: "Sales engineer",
+		role: "Web experience designer",
 	},
 	"Jordan Lee": {
 		avatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
-		role: "Account executive",
+		role: "Product marketing",
 	},
 	"Maya Chen": {
 		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
-		role: "Proposal manager",
+		role: "Launch content lead",
 	},
 	"Priya Shah": {
 		avatarUrl: "/avatar-user/annie-clare/color/asow-strategy-orange.png",
-		role: "Sales engineer",
+		role: "Developer advocate",
 	},
 	"Elena Ruiz": {
 		avatarUrl: "/avatar-user/aoife-burke/color/asow-service-yellow.png",
-		role: "Legal reviewer",
+		role: "Consent and trust reviewer",
 	},
 };
 
@@ -381,7 +381,7 @@ export default function AgentsView({
 	};
 
 	const handleCreateColumnAgent = (columnTitle: string) => {
-		if (columnTitle === "Drafting") {
+		if (columnTitle === "Outline Drafting") {
 			onCreateRfpDraftingAgent();
 			return;
 		}
@@ -393,8 +393,8 @@ export default function AgentsView({
 			.join("\n");
 		const contextDescription = [
 			"[Agents Board Column Context]",
-			"Source: /agents Jira board column.",
-			"Board: Enterprise RFP Response.",
+			"Source: /agents2 Omni Live launch board column.",
+			"Board: Omni Live Launch.",
 			`Column: ${columnTitle}.`,
 			typeof column?.count === "number" ? `Work item count: ${column.count}.` : null,
 			visibleWorkItems ? "Visible work items:" : null,
@@ -406,7 +406,7 @@ export default function AgentsView({
 
 		openChat("floating");
 		void sendPrompt(
-			`Create an agent for the ${columnTitle} column on the Enterprise RFP Response board.`,
+			`Create an agent for the ${columnTitle} column on the Omni Live Launch board.`,
 			{
 				creationMode: "agent",
 				contextDescription,
@@ -491,7 +491,7 @@ export default function AgentsView({
 					{/* Board columns */}
 					<KanbanBoard
 						agents={boardAgents}
-						ariaLabel="RFP board columns. Scroll horizontally to review all statuses."
+						ariaLabel="Omni Live launch board columns. Scroll horizontally to review all statuses."
 						assignedAgentIdsByColumn={assignedAgentIdsByColumn}
 						boardColumns={boardColumns}
 						draggedCardCode={draggedCard?.card.code ?? null}
@@ -568,7 +568,7 @@ function applyRfpDemoWorkItemState(
 		date: "Now",
 		source: "generated",
 		approved: attachment.approved,
-		previewHtml: attachment.previewHtml ?? (workItem.code === "RFP-101" ? state.report.previewHtml : undefined),
+		previewHtml: attachment.previewHtml ?? (workItem.code === "OMNI-101" ? state.report.previewHtml : undefined),
 		previewKind: attachment.previewKind,
 		thumbnailKind: attachment.previewKind === "pdf-preview" ? "file" : "document",
 		thumbnailTone: attachment.previewKind === "pdf-preview" ? "information" : "success",
@@ -588,7 +588,7 @@ function applyRfpDemoWorkItemState(
 		: null;
 	const baseComments = (workItem.comments ?? []).filter((comment) => comment.id !== agentComment?.id);
 	const assignee = (() => {
-		if (workItemState?.agentStatus === "completed" && workItemState.status === "Review" && !workItemState.assignee) {
+		if (workItemState?.agentStatus === "completed" && workItemState.status === "Experience Build" && !workItemState.assignee) {
 			return undefined;
 		}
 		if (!workItemState?.assignee) {
@@ -602,13 +602,13 @@ function applyRfpDemoWorkItemState(
 					? "Completed draft"
 					: workItemState.agentStatus === "failed"
 						? "Retry needed"
-						: "Drafting agent",
+						: "Outline Drafting agent",
 			};
 		}
 		return {
 			name: workItemState.assignee,
 			avatarUrl: RFP_DEMO_HUMAN_ASSIGNEES[workItemState.assignee]?.avatarUrl,
-			role: RFP_DEMO_HUMAN_ASSIGNEES[workItemState.assignee]?.role ?? "Reviewer",
+			role: RFP_DEMO_HUMAN_ASSIGNEES[workItemState.assignee]?.role ?? "Experience Builder",
 		};
 	})();
 

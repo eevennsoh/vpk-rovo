@@ -4,26 +4,26 @@ import type {
 } from "@/components/blocks/kanban-board";
 import { BOARD_COLUMNS } from "../data/board-data";
 
-export const AGENTS_RFP_DEMO_STORAGE_KEY = "vpk-rovo:agents-rfp-demo:v1";
+export const AGENTS_RFP_DEMO_STORAGE_KEY = "vpk-rovo:agents2-omni-live-demo:v1";
 export const AGENTS_RFP_DEMO_VERSION = 1;
-export const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
-export const RFP_DRAFTING_AGENT_NAME = "RFP Drafter";
+export const RFP_DRAFTING_AGENT_ID = "voicemate-agent";
+export const RFP_DRAFTING_AGENT_NAME = "VoiceMate";
 export const RFP_DRAFTING_AGENT_DESCRIPTION =
-	"Drafts first-pass RFP response packages for Enterprise RFP Response tickets entering Drafting.";
+	"Drafts landing-page outlines from company brand guide, voice and tone, launch milestones, demo goals, and consent requirements.";
 export const RFP_DRAFTING_AGENT_CONVERSATION_STARTERS = [
-	"Draft the response package for the next Drafting ticket.",
-	"Summarize blockers before this RFP can move to Review.",
-	"Create reusable answer snippets from the attached RFP packet.",
+	"Draft the Omni Live landing-page outline.",
+	"Summarize missing brand and demo inputs before this moves to Experience Build.",
+	"Create reusable hero, CTA, and trust copy from the attached launch brief.",
 ] as const;
 export const RFP_DRAFTING_TRIGGER_PROMPT = [
-	"When a ticket enters Drafting, inspect the RFP packet, customer context, and required response sections.",
-	"Draft the first-pass response package, flag blockers or missing inputs, attach the draft to the ticket, and move ready tickets to Review.",
+	"When a ticket enters Outline Drafting, inspect the brand guide, voice and tone notes, launch milestones, audience needs, demo goals, and consent requirements.",
+	"Draft a landing-page outline, flag missing brand or proof inputs, attach the outline to the ticket, and move ready tickets to Experience Build.",
 ].join(" ");
-export const RFP_DRAFTING_SCHEDULE_ID = "rfp-drafting-weekday-0900";
-export const RFP_DRAFTING_BOARD_NAME = "Enterprise RFP Response";
-export const RFP_DRAFTING_COLUMN_NAME = "Drafting";
-export const RFP_DRAFTING_EVENT_TRIGGER_LABEL = "On event: ticket enters Drafting";
-export const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
+export const RFP_DRAFTING_SCHEDULE_ID = "voicemate-outline-event";
+export const RFP_DRAFTING_BOARD_NAME = "Omni Live Launch";
+export const RFP_DRAFTING_COLUMN_NAME = "Outline Drafting";
+export const RFP_DRAFTING_EVENT_TRIGGER_LABEL = "On event: ticket enters Outline Drafting";
+export const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-omni-live-outline-html";
 export const RFP_DRAFTING_AGENT_AVATAR_SRC = "/avatar-agent/dev-agents/feature-flag-cleaner.svg";
 export const RFP_DRAFTING_AGENT_AVATAR_SRCS = [
 	"/avatar-agent/dev-agents/feature-flag-cleaner.svg",
@@ -140,7 +140,7 @@ export interface AgentsRfpDemoAgent {
 	description: string;
 	conversationStarters: readonly string[];
 	selected: boolean;
-	assignedColumn: "Drafting";
+	assignedColumn: "Outline Drafting";
 	createdAt: string;
 	avatarSrc?: string;
 	jobId?: string | null;
@@ -178,7 +178,7 @@ export interface AgentsRfpDemoJobRunSummary {
 
 export interface AgentsRfpDemoSchedule {
 	id: typeof RFP_DRAFTING_SCHEDULE_ID;
-	name: "Drafting column RFP response prep";
+	name: "Outline Drafting column landing page outline prep";
 	agentId: typeof RFP_DRAFTING_AGENT_ID;
 	scheduleLabel: string;
 	status: "scheduled" | "connected";
@@ -234,44 +234,44 @@ export interface AgentsRfpDemoState {
 
 const RFP_101_FIXTURE_ATTACHMENTS: readonly AgentsRfpDemoAttachment[] = [
 	{
-		id: "fixture-rfp-intake-notes",
-		displayName: "RFP intake notes",
+		id: "fixture-omni-live-brand-guide",
+		displayName: "Omni Live brand guide",
 		ext: "page",
 		source: "fixture",
 	},
 	{
-		id: "fixture-rfp-requirement-compliance-matrix",
-		displayName: "Compliance matrix",
+		id: "fixture-omni-live-outline-inputs",
+		displayName: "Landing page outline inputs",
 		ext: "xlsx",
 		source: "fixture",
 	},
 	{
-		id: "fixture-response-brief",
-		displayName: "Response brief",
+		id: "fixture-voice-tone-brief",
+		displayName: "Voice and tone brief",
 		ext: "docx",
 		source: "fixture",
 	},
 	{
-		id: "fixture-enterprise-rfp-requirements",
-		displayName: "Enterprise RFP packet",
+		id: "fixture-omni-live-launch-brief",
+		displayName: "Omni Live launch brief",
 		ext: "pdf",
 		source: "fixture",
 	},
 	{
-		id: "fixture-proposal-audio-briefing",
-		displayName: "proposal-audio-briefing.mp3",
+		id: "fixture-voice-loop-demo-audio",
+		displayName: "voice-loop-demo-audio.mp3",
 		ext: "mp3",
 		source: "fixture",
 	},
 	{
-		id: "fixture-supplier-portal-upload",
-		displayName: "Supplier portal upload",
+		id: "fixture-camera-feed-debugging-capture",
+		displayName: "Camera feed debugging capture",
 		ext: "png",
 		source: "fixture",
 	},
 	{
-		id: "fixture-proposal-walkthrough",
-		displayName: "Proposal walkthrough",
+		id: "fixture-multi-app-workflow-walkthrough",
+		displayName: "Multi-app workflow walkthrough",
 		ext: "mp4",
 		source: "fixture",
 	},
@@ -280,26 +280,26 @@ const RFP_101_FIXTURE_ATTACHMENTS: readonly AgentsRfpDemoAttachment[] = [
 const GENERATED_REPORT_ATTACHMENTS: readonly AgentsRfpDemoAttachment[] = [
 	{
 		id: GENERATED_RFP_REPORT_ATTACHMENT_ID,
-		displayName: "Acmecorp RFP qualification DACI.pdf",
-		ext: "pdf",
+		displayName: "Omni Live landing-page outline.html",
+		ext: "html",
 		source: "generated",
 		approved: true,
-		previewKind: "pdf-preview",
+		previewKind: "html-report",
 	},
 ];
 
 const INITIAL_REPORT_VERSION: AgentsRfpDemoReportVersion = {
 	id: "initial-generated-report",
-	label: "Initial generated report",
-	summary: "First offline HTML qualification DACI from RFP-101 context.",
+	label: "Initial generated outline",
+	summary: "First vpk-html one-pager outline from OMNI-101 context.",
 	createdBy: "Rovo",
 	timestampLabel: "Now",
 };
 
 const REFINED_REPORT_VERSION: AgentsRfpDemoReportVersion = {
 	id: "refined-current-report",
-	label: "Refined current report",
-	summary: "Qualification DACI with stronger budget, stakeholder, and review-risk notes.",
+	label: "Refined current outline",
+	summary: "Landing-page outline with stronger hero, CTA, and consent notes.",
 	createdBy: "Maya",
 	timestampLabel: "Now",
 };
@@ -405,7 +405,7 @@ function createDefaultWorkItems(): Record<string, AgentsRfpDemoWorkItemState> {
 		for (const card of column.cards) {
 			workItems[card.code] = {
 				status: column.title,
-				attachments: card.code === "RFP-101"
+				attachments: card.code === "OMNI-101"
 					? RFP_101_FIXTURE_ATTACHMENTS.map((attachment) => ({ ...attachment }))
 					: [],
 				agentAssignmentIds: [],
@@ -579,7 +579,7 @@ function updateWorkItem(
 	updater: (workItem: AgentsRfpDemoWorkItemState) => AgentsRfpDemoWorkItemState,
 ): AgentsRfpDemoState {
 	const currentWorkItem = state.workItems[code] ?? {
-		status: "RFP Intake",
+		status: "Briefing",
 		attachments: [],
 		agentAssignmentIds: [],
 	};
@@ -662,7 +662,7 @@ export function approveRfpReport(state: AgentsRfpDemoState): AgentsRfpDemoState 
 				stage: "approved",
 			},
 		},
-		"PDF approved for RFP-101.",
+		"Outline approved for OMNI-101.",
 		"report-approved",
 	);
 }
@@ -680,7 +680,7 @@ export function exportRfpReportPdf(state: AgentsRfpDemoState): AgentsRfpDemoStat
 				stage: "pdf-exported",
 			},
 		},
-		"Staged PDF export created for browser preview.",
+		"Staged vpk-html outline created for browser preview.",
 		"report-pdf-exported",
 	);
 }
@@ -699,7 +699,7 @@ export function attachRfpReportToWorkItem(
 			stage: reportState.report.stage === "attached" ? "attached" : "pdf-exported",
 		},
 	});
-	const attachedState = updateWorkItem(exportedState, "RFP-101", (workItem) => {
+	const attachedState = updateWorkItem(exportedState, "OMNI-101", (workItem) => {
 		const preservedAttachments = workItem.attachments.filter((attachment) => attachment.source !== "generated");
 
 		return {
@@ -726,7 +726,7 @@ export function attachRfpReportToWorkItem(
 				mode: "read-only",
 			},
 		},
-		"Added PDF to RFP-101.",
+		"Added landing-page outline to OMNI-101.",
 		"report-attached",
 	);
 }
@@ -744,7 +744,7 @@ export function createRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDemo
 				description: RFP_DRAFTING_AGENT_DESCRIPTION,
 				conversationStarters: [...RFP_DRAFTING_AGENT_CONVERSATION_STARTERS],
 				selected: true,
-				assignedColumn: "Drafting",
+				assignedColumn: "Outline Drafting",
 				createdAt: "Now",
 				avatarSrc: getRandomRfpDraftingAgentAvatarSrc(),
 				jobId: null,
@@ -766,7 +766,7 @@ export function createRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDemo
 	return appendUniqueActivity(withCreated, {
 		id: "activity-workflow-assigned",
 		timestampLabel: "Now",
-		message: `Rovo assigned ${RFP_DRAFTING_AGENT_NAME} to the Drafting workflow.`,
+		message: `Rovo assigned ${RFP_DRAFTING_AGENT_NAME} to the Outline Drafting workflow.`,
 		type: "workflow-assigned",
 	});
 }
@@ -788,7 +788,7 @@ export function scheduleRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDe
 	return appendUniqueActivity(scheduledState, {
 		id: "activity-agent-scheduled",
 		timestampLabel: "Now",
-		message: `Maya connected ${RFP_DRAFTING_AGENT_NAME} to Drafting column events.`,
+		message: `Maya connected ${RFP_DRAFTING_AGENT_NAME} to Outline Drafting column events.`,
 		type: "scheduled",
 	});
 }
@@ -844,13 +844,13 @@ function assignRfpDraftingAgentToCard(
 	const withPrep = appendUniqueActivity(withAssignment, {
 		id: `activity-${cardCode.toLowerCase()}-draft-started`,
 		timestampLabel: "Now",
-		message: `${RFP_DRAFTING_AGENT_NAME} started first-pass response prep for ${cardCode}.`,
+		message: `${RFP_DRAFTING_AGENT_NAME} started landing-page outline prep for ${cardCode}.`,
 		type: "draft-started",
 	});
 
 	return appendToast(
 		withPrep,
-		`${RFP_DRAFTING_AGENT_NAME} assigned to ${cardCode}. Preparing first-pass response package.`,
+		`${RFP_DRAFTING_AGENT_NAME} assigned to ${cardCode}. Preparing landing-page outline.`,
 		`${cardCode.toLowerCase()}-agent-assigned`,
 	);
 }
@@ -882,7 +882,7 @@ export function moveRfpDemoCard(
 		status: targetColumn.title,
 	};
 
-	if (cardCode === "RFP-102" && targetColumn.title === "Drafting" && nextState.agent) {
+	if (cardCode === "OMNI-102" && targetColumn.title === "Outline Drafting" && nextState.agent) {
 		return assignRfpDraftingAgentToCard(nextState, cardCode);
 	}
 
@@ -967,8 +967,8 @@ export function resolveRfpDemoBoardColumns(
 				const workItem = state.workItems[cardCode];
 				const agentAssignmentIds = workItem?.agentAssignmentIds ?? [];
 				const hasRfpDraftingAgent = agentAssignmentIds.includes(RFP_DRAFTING_AGENT_ID);
-				const isCompletedUnassignedReview = workItem?.agentStatus === "completed" &&
-					workItem.status === "Review" &&
+				const isCompletedUnassignedExperienceBuild = workItem?.agentStatus === "completed" &&
+					workItem.status === "Experience Build" &&
 					!workItem.assignee;
 				const agentStatusTag = workItem?.agentStatus === "running" || workItem?.agentStatus === "queued"
 					? { text: "agent running", color: "blue" as const }
@@ -997,7 +997,7 @@ export function resolveRfpDemoBoardColumns(
 					};
 				}
 
-				if (isCompletedUnassignedReview) {
+				if (isCompletedUnassignedExperienceBuild) {
 					return {
 						...resolvedCard,
 						avatarPulse: false,
@@ -1042,25 +1042,25 @@ export function getRfpDemoAgents(
 }
 
 export function formatRfpDemoContext(state: AgentsRfpDemoState): string {
-	const rfp101 = state.workItems["RFP-101"];
-	const rfp102 = state.workItems["RFP-102"];
-	const generatedAttachments = getGeneratedRfpAttachments(state, "RFP-101")
+	const rfp101 = state.workItems["OMNI-101"];
+	const rfp102 = state.workItems["OMNI-102"];
+	const generatedAttachments = getGeneratedRfpAttachments(state, "OMNI-101")
 		.map((attachment) => attachment.displayName)
 		.join(", ");
 
 	return [
-		"[Agents RFP Demo Local State]",
-		"Source: backend-persisted /agents RFP demo state.",
-		`Report stage: ${state.report.stage}.`,
-		generatedAttachments ? `Generated attachments on RFP-101: ${generatedAttachments}.` : "Generated attachments on RFP-101: none.",
-		`RFP-101 status: ${rfp101?.status ?? "unknown"}.`,
-		`RFP-102 status: ${rfp102?.status ?? "unknown"}.`,
-		state.agent ? `Custom agent: ${RFP_DRAFTING_AGENT_NAME} assigned to Drafting events.` : "Custom agent: not created.",
+		"[Agents2 Omni Live Demo Local State]",
+		"Source: local /agents2 Omni Live demo state.",
+		`Outline stage: ${state.report.stage}.`,
+		generatedAttachments ? `Generated outlines on OMNI-101: ${generatedAttachments}.` : "Generated outlines on OMNI-101: none.",
+		`OMNI-101 status: ${rfp101?.status ?? "unknown"}.`,
+		`OMNI-102 status: ${rfp102?.status ?? "unknown"}.`,
+		state.agent ? `Custom agent: ${RFP_DRAFTING_AGENT_NAME} assigned to Outline Drafting events.` : "Custom agent: not created.",
 		state.agent?.trigger ? `Trigger: ${state.agent.trigger.label}.` : "Trigger: none.",
 		state.agent?.trigger?.prompt ? `Trigger prompt: ${state.agent.trigger.prompt}` : null,
 		`Selected chat agent: ${state.chat.selectedAgentId === RFP_DRAFTING_AGENT_ID ? RFP_DRAFTING_AGENT_NAME : "Rovo"}.`,
-		state.chat.lastRfp101AnswerSummary ? `Latest Maya qualification answer: ${state.chat.lastRfp101AnswerSummary}` : null,
-		"[End Agents RFP Demo Local State]",
+		state.chat.lastRfp101AnswerSummary ? `Latest Maya outline answer: ${state.chat.lastRfp101AnswerSummary}` : null,
+		"[End Agents2 Omni Live Demo Local State]",
 	]
 		.filter((line): line is string => typeof line === "string" && line.length > 0)
 		.join("\n");

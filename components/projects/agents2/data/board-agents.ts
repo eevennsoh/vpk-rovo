@@ -29,7 +29,7 @@ export const BOARD_AGENTS: readonly KanbanBoardAgentData[] = [
 	},
 	{
 		id: "code-reviewer",
-		name: "Code Reviewer",
+		name: "Code Experience Builder",
 		byline: "Dev agent by Atlassian",
 		avatarSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
 	},

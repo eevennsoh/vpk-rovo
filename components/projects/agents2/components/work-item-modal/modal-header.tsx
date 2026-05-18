@@ -66,7 +66,7 @@ export function ModalHeader() {
 								</Tile>
 							}
 						>
-							{workItem.parent?.title ?? "Enterprise RFP Response"}
+							{workItem.parent?.title ?? "Omni Live Launch"}
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="shrink-0" />

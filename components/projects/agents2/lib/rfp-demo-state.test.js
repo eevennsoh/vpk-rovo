@@ -11,35 +11,30 @@ async function loadRfpDemoStateHarness() {
 				export {
 					AGENTS_RFP_DEMO_STORAGE_KEY,
 					GENERATED_RFP_REPORT_ATTACHMENT_ID,
-						RFP_DRAFTING_AGENT_AVATAR_SRCS,
-						RFP_DRAFTING_AGENT_CONVERSATION_STARTERS,
-						RFP_DRAFTING_AGENT_DESCRIPTION,
-						RFP_DRAFTING_AGENT_ID,
-						RFP_DRAFTING_AGENT_NAME,
-						RFP_DRAFTING_EVENT_TRIGGER_LABEL,
-						RFP_DRAFTING_TRIGGER_PROMPT,
-						attachRfpReportToWorkItem,
-					approveRfpReport,
-					clearRfpDraftingAgentTrigger,
+					RFP_DRAFTING_AGENT_CONVERSATION_STARTERS,
+					RFP_DRAFTING_AGENT_DESCRIPTION,
+					RFP_DRAFTING_AGENT_ID,
+					RFP_DRAFTING_AGENT_NAME,
+					RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+					RFP_DRAFTING_TRIGGER_PROMPT,
+					attachRfpReportToWorkItem,
 					createDefaultAgentsRfpDemoState,
 					createRfpDraftingAgent,
 					exportRfpReportPdf,
 					generateRfpReport,
 					getGeneratedRfpAttachments,
-					getRfpDemoAgents,
 					getRfpDemoColumnAgentAssignments,
 					moveRfpDemoCard,
 					parseAgentsRfpDemoState,
 					refineRfpReport,
 					resolveRfpDemoBoardColumns,
 					scheduleRfpDraftingAgent,
-					selectRfpReportVersion,
 					setRfpDraftingAgentTrigger,
 				} from "./components/projects/agents2/lib/rfp-demo-state";
 			`,
 			loader: "ts",
 			resolveDir: process.cwd(),
-			sourcefile: "rfp-demo-state-harness.ts",
+			sourcefile: "agents2-state-harness.ts",
 		},
 		bundle: true,
 		format: "cjs",
@@ -51,251 +46,72 @@ async function loadRfpDemoStateHarness() {
 	return loadCjsModuleFromText(result.outputFiles[0].text);
 }
 
-test("missing and invalid localStorage payloads seed default RFP demo state", async () => {
+test("default agents2 state is local, Omni-coded, and isolated from agents", async () => {
 	const harness = await loadRfpDemoStateHarness();
+	const state = harness.parseAgentsRfpDemoState(null);
 
-	const missing = harness.parseAgentsRfpDemoState(null);
-	assert.equal(missing.version, 1);
-	assert.equal(missing.report.stage, "none");
-	assert.equal(missing.board.columns[0].title, "RFP Intake");
-	assert.ok(missing.board.columns[0].cardCodes.includes("RFP-101"));
-
-	const invalid = harness.parseAgentsRfpDemoState(JSON.stringify({ version: 99 }));
-	assert.deepEqual(invalid, missing);
+	assert.equal(harness.AGENTS_RFP_DEMO_STORAGE_KEY, "vpk-rovo:agents2-omni-live-demo:v1");
+	assert.deepEqual(state.board.columns.map((column) => column.title), [
+		"Briefing",
+		"Outline Drafting",
+		"Experience Build",
+		"Launch Ready",
+	]);
+	assert.ok(state.board.columns[0].cardCodes.includes("OMNI-101"));
+	assert.equal(state.report.stage, "none");
+	assert.equal(state.agent, null);
 });
 
-test("valid persisted payload resumes board, report, agent trigger, and activity", async () => {
-	const harness = await loadRfpDemoStateHarness();
-	const state = harness.scheduleRfpDraftingAgent(
-		harness.attachRfpReportToWorkItem(harness.refineRfpReport(harness.createDefaultAgentsRfpDemoState())),
-	);
-	const resumed = harness.parseAgentsRfpDemoState(JSON.stringify(state));
-
-	assert.equal(resumed.report.stage, "attached");
-	assert.equal(resumed.agent.id, harness.RFP_DRAFTING_AGENT_ID);
-	assert.equal(resumed.agent.description, harness.RFP_DRAFTING_AGENT_DESCRIPTION);
-	assert.deepEqual(resumed.agent.conversationStarters, [...harness.RFP_DRAFTING_AGENT_CONVERSATION_STARTERS]);
-	assert.equal(resumed.schedule, null);
-	assert.equal(resumed.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
-	assert.equal(resumed.customAgentActivity.length, 3);
-	assert.deepEqual(
-		harness.getGeneratedRfpAttachments(resumed, "RFP-101").map((attachment) => attachment.displayName),
-		["Acmecorp RFP qualification DACI.pdf"],
-	);
-});
-
-test("legacy persisted RFP agent profile gets description and conversation starters", async () => {
+test("VoiceMate profile and trigger are normalized from persisted state", async () => {
 	const harness = await loadRfpDemoStateHarness();
 	const state = harness.createRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
 	delete state.agent.description;
 	delete state.agent.conversationStarters;
-
 	const resumed = harness.parseAgentsRfpDemoState(JSON.stringify(state));
 
+	assert.equal(resumed.agent.id, harness.RFP_DRAFTING_AGENT_ID);
+	assert.equal(resumed.agent.name, "VoiceMate");
+	assert.equal(harness.RFP_DRAFTING_AGENT_NAME, "VoiceMate");
 	assert.equal(resumed.agent.description, harness.RFP_DRAFTING_AGENT_DESCRIPTION);
 	assert.deepEqual(resumed.agent.conversationStarters, [...harness.RFP_DRAFTING_AGENT_CONVERSATION_STARTERS]);
+	assert.equal(resumed.agent.trigger.label, "On event: ticket enters Outline Drafting");
+	assert.match(resumed.agent.trigger.prompt, /brand guide, voice and tone notes, launch milestones/u);
+	assert.doesNotMatch(resumed.agent.trigger.prompt, /RFP|response package/u);
 });
 
-test("creating the RFP agent keeps Rovo as the selected chat agent", async () => {
-	const harness = await loadRfpDemoStateHarness();
-	const state = harness.createRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
-
-	assert.equal(state.agent.id, harness.RFP_DRAFTING_AGENT_ID);
-	assert.equal(state.chat.selectedAgentId, "rovo");
-});
-
-test("RFP agent trigger prompt saves and explicit no-trigger state survives parsing", async () => {
-	const harness = await loadRfpDemoStateHarness();
-	const created = harness.createRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
-	assert.equal(created.agent.trigger.prompt, harness.RFP_DRAFTING_TRIGGER_PROMPT);
-	const prompted = harness.setRfpDraftingAgentTrigger(
-		created,
-		"When an RFP ticket enters Drafting, inspect the packet and draft the response package.",
-	);
-
-	assert.equal(prompted.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
-	assert.equal(
-		prompted.agent.trigger.prompt,
-		"When an RFP ticket enters Drafting, inspect the packet and draft the response package.",
-	);
-
-	const cleared = harness.clearRfpDraftingAgentTrigger(prompted);
-	assert.equal(cleared.agent.trigger, null);
-
-	const resumed = harness.parseAgentsRfpDemoState(JSON.stringify(cleared));
-	assert.equal(resumed.agent.trigger, null);
-
-	const reapplied = harness.createRfpDraftingAgent(resumed);
-	assert.equal(reapplied.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
-	assert.equal(reapplied.agent.trigger.prompt, harness.RFP_DRAFTING_TRIGGER_PROMPT);
-});
-
-test("report stages advance through generated, refined, approved, pdf-exported, and attached", async () => {
+test("landing-page outline stages attach HTML to OMNI-101", async () => {
 	const harness = await loadRfpDemoStateHarness();
 	const generated = harness.generateRfpReport(harness.createDefaultAgentsRfpDemoState());
-	assert.equal(generated.report.stage, "generated");
-	assert.equal(generated.canvas.activeViewId, "report");
-	assert.deepEqual(generated.report.versions.map((version) => version.label), ["Initial generated report"]);
-
 	const refined = harness.refineRfpReport(generated);
-	assert.equal(refined.report.stage, "refined");
-	assert.equal(refined.canvas.activeViewId, "report");
-	assert.equal(refined.report.currentVersionId, "refined-current-report");
-	assert.deepEqual(
-		refined.report.versions.map((version) => version.label),
-		["Initial generated report", "Refined current report"],
-	);
+	const exported = harness.exportRfpReportPdf(refined);
+	const attached = harness.attachRfpReportToWorkItem(exported, "<!doctype html><html><body>Omni Live</body></html>");
+	const attachments = harness.getGeneratedRfpAttachments(attached, "OMNI-101");
 
-	const approved = harness.approveRfpReport(refined);
-	assert.equal(approved.report.stage, "approved");
-
-	const exported = harness.exportRfpReportPdf(approved);
+	assert.equal(refined.report.versions[0].label, "Initial generated outline");
+	assert.equal(refined.report.versions[1].label, "Refined current outline");
 	assert.equal(exported.report.stage, "pdf-exported");
-
-	const attached = harness.attachRfpReportToWorkItem(exported, "<!doctype html><html><body>Report</body></html>");
 	assert.equal(attached.report.stage, "attached");
-	assert.equal(attached.report.previewHtml, "<!doctype html><html><body>Report</body></html>");
-	assert.equal(attached.canvas.open, false);
-	assert.equal(attached.canvas.activeViewId, "report");
-	assert.deepEqual(
-		harness.getGeneratedRfpAttachments(attached, "RFP-101").map((attachment) => attachment.previewKind),
-		["pdf-preview"],
-	);
-	assert.deepEqual(
-		harness.getGeneratedRfpAttachments(attached, "RFP-101").map((attachment) => attachment.id),
-		[harness.GENERATED_RFP_REPORT_ATTACHMENT_ID],
-	);
-	assert.deepEqual(attached.toasts.map((toast) => toast.message), ["Added PDF to RFP-101."]);
+	assert.equal(attached.report.previewHtml, "<!doctype html><html><body>Omni Live</body></html>");
+	assert.deepEqual(attachments.map((attachment) => attachment.displayName), ["Omni Live landing-page outline.html"]);
+	assert.deepEqual(attachments.map((attachment) => attachment.previewKind), ["html-report"]);
+	assert.deepEqual(attachments.map((attachment) => attachment.id), [harness.GENERATED_RFP_REPORT_ATTACHMENT_ID]);
+	assert.deepEqual(attached.toasts.map((toast) => toast.message), ["Added landing-page outline to OMNI-101."]);
 });
 
-test("selecting a report version updates the current version only for known versions", async () => {
-	const harness = await loadRfpDemoStateHarness();
-	const refined = harness.refineRfpReport(harness.createDefaultAgentsRfpDemoState());
-	const initialSelected = harness.selectRfpReportVersion(refined, "initial-generated-report");
-
-	assert.equal(initialSelected.report.currentVersionId, "initial-generated-report");
-	assert.strictEqual(
-		harness.selectRfpReportVersion(initialSelected, "missing-version"),
-		initialSelected,
-	);
-});
-
-test("attaching the report collapses report confirmations to the final PDF toast", async () => {
-	const harness = await loadRfpDemoStateHarness();
-	const approved = harness.approveRfpReport(harness.refineRfpReport(harness.createDefaultAgentsRfpDemoState()));
-	const exported = harness.exportRfpReportPdf(approved);
-	const attached = harness.attachRfpReportToWorkItem(exported);
-
-	assert.deepEqual(attached.toasts.map((toast) => toast.message), ["Added PDF to RFP-101."]);
-});
-
-test("agent creation is idempotent and assigns Drafting without retroactively assigning RFP-101", async () => {
-	const harness = await loadRfpDemoStateHarness();
-	const once = harness.createRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
-	const twice = harness.createRfpDraftingAgent(once);
-
-	assert.equal(twice.agent.name, "RFP Drafter");
-	assert.equal(twice.agent.description, harness.RFP_DRAFTING_AGENT_DESCRIPTION);
-	assert.deepEqual(twice.agent.conversationStarters, [...harness.RFP_DRAFTING_AGENT_CONVERSATION_STARTERS]);
-	assert.ok(harness.RFP_DRAFTING_AGENT_AVATAR_SRCS.includes(twice.agent.avatarSrc));
-	assert.notEqual(twice.agent.avatarSrc, "/1p/rovo.svg");
-	assert.equal(twice.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
-	assert.deepEqual(harness.getRfpDemoColumnAgentAssignments(twice), {
-		Drafting: [harness.RFP_DRAFTING_AGENT_ID],
-	});
-	assert.equal(harness.getRfpDemoAgents(twice, [])[0].avatarSrc, twice.agent.avatarSrc);
-	assert.deepEqual(twice.workItems["RFP-101"].agentAssignmentIds, []);
-	assert.equal(
-		twice.customAgentActivity.filter((item) => item.type === "agent-created").length,
-		1,
-	);
-});
-
-test("dragging RFP-102 to Drafting before agent creation only moves the card", async () => {
-	const harness = await loadRfpDemoStateHarness();
-	const state = harness.moveRfpDemoCard(
-		harness.createDefaultAgentsRfpDemoState(),
-		"RFP-102",
-		"Drafting",
-	);
-	const columns = harness.resolveRfpDemoBoardColumns(state);
-	const drafting = columns.find((column) => column.title === "Drafting");
-
-	assert.equal(state.workItems["RFP-102"].status, "Drafting");
-	assert.equal(drafting.cards[0].code, "RFP-102");
-	assert.deepEqual(state.workItems["RFP-102"].agentAssignmentIds, []);
-	assert.deepEqual(state.customAgentActivity, []);
-});
-
-test("dragging RFP-102 to Drafting after agent creation assigns the agent and starts prep", async () => {
+test("moving an Outline Drafting ticket after VoiceMate creation assigns outline prep", async () => {
 	const harness = await loadRfpDemoStateHarness();
 	const state = harness.moveRfpDemoCard(
 		harness.scheduleRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState()),
-		"RFP-102",
-		"Drafting",
+		"OMNI-102",
+		"Outline Drafting",
 	);
+	const outlineColumn = harness.resolveRfpDemoBoardColumns(state).find((column) => column.title === "Outline Drafting");
 
-	assert.deepEqual(state.workItems["RFP-102"].agentAssignmentIds, [harness.RFP_DRAFTING_AGENT_ID]);
-	assert.match(
-		state.customAgentActivity.map((item) => item.message).join("\n"),
-		/RFP Drafter started first-pass response prep for RFP-102\./,
-	);
-	assert.match(state.toasts[0].message, /Preparing first-pass response package/);
-});
-
-test("running RFP agent assignees resolve to hexagon board card avatars", async () => {
-	const harness = await loadRfpDemoStateHarness();
-	const state = harness.moveRfpDemoCard(
-		harness.scheduleRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState()),
-		"RFP-102",
-		"Drafting",
-	);
-	state.workItems["RFP-102"] = {
-		...state.workItems["RFP-102"],
-		agentAssignmentIds: [harness.RFP_DRAFTING_AGENT_ID],
-		agentStatus: "running",
-		assignee: harness.RFP_DRAFTING_AGENT_NAME,
-	};
-
-	const drafting = harness.resolveRfpDemoBoardColumns(state).find((column) => column.title === "Drafting");
-	const activeCard = drafting.cards.find((card) => card.code === "RFP-102");
-
-	assert.equal(activeCard.avatarSrc, state.agent.avatarSrc);
-	assert.equal(activeCard.avatarShape, "hexagon");
-	assert.equal(activeCard.avatarPulse, true);
-});
-
-test("completed Review tickets left unassigned use the person placeholder avatar", async () => {
-	const harness = await loadRfpDemoStateHarness();
-	const state = harness.createDefaultAgentsRfpDemoState();
-	state.board.columns = state.board.columns.map((column) => {
-		if (column.title === "Drafting") {
-			return {
-				...column,
-				cardCodes: column.cardCodes.filter((cardCode) => cardCode !== "RFP-141"),
-			};
-		}
-		if (column.title === "Review") {
-			return {
-				...column,
-				cardCodes: ["RFP-141", ...column.cardCodes],
-			};
-		}
-		return column;
+	assert.deepEqual(harness.getRfpDemoColumnAgentAssignments(state), {
+		"Outline Drafting": [harness.RFP_DRAFTING_AGENT_ID],
 	});
-	state.workItems["RFP-141"] = {
-		...state.workItems["RFP-141"],
-		agentAssignmentIds: [harness.RFP_DRAFTING_AGENT_ID],
-		agentStatus: "completed",
-		assignee: null,
-		status: "Review",
-	};
-
-	const reviewColumn = harness.resolveRfpDemoBoardColumns(state).find((column) => column.title === "Review");
-	const completedCard = reviewColumn.cards.find((card) => card.code === "RFP-141");
-
-	assert.equal(completedCard.avatarSrc, undefined);
-	assert.equal(completedCard.avatarUnassignedKind, "person");
-	assert.equal(completedCard.avatarPulse, false);
-	assert.ok(completedCard.tags.some((tag) => tag.text === "draft ready"));
+	assert.equal(outlineColumn.cards[0].code, "OMNI-102");
+	assert.deepEqual(state.workItems["OMNI-102"].agentAssignmentIds, [harness.RFP_DRAFTING_AGENT_ID]);
+	assert.match(state.customAgentActivity.map((item) => item.message).join("\n"), /VoiceMate started landing-page outline prep for OMNI-102/u);
+	assert.match(state.toasts[0].message, /Preparing landing-page outline/u);
 });

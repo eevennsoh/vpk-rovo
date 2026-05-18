@@ -13,13 +13,13 @@ import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 
 const DEFAULT_CHILD_ITEMS: WorkItemChildItem[] = [
 	{
-		key: "RFP-105",
+		key: "OMNI-105",
 		summary: "Build requirement matrix for ITSM, CMDB, HAM, SAM, AI, GRC, and portal needs",
 		priority: "medium",
 		status: "inprogress",
 	},
 	{
-		key: "RFP-106",
+		key: "OMNI-106",
 		summary: "Confirm JSM, Assets, Rovo, Guard, and platform demo owners",
 		priority: "lowest",
 		status: "todo",

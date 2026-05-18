@@ -316,7 +316,7 @@ export function RfpAgentActivityDetails({
 
 	return timelineSteps.length > 0 ? (
 		<ProgressTracker
-			aria-label="RFP Drafter activity timeline"
+			aria-label="VoiceMate activity timeline"
 			bylineClassName="text-xs leading-4"
 			className="[&_[data-slot=progress-tracker-content]]:gap-0"
 			labelClassName="text-sm leading-5"

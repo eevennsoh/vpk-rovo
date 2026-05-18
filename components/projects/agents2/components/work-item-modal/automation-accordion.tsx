@@ -56,8 +56,8 @@ export function AutomationAccordion() {
 				<div style={{ padding: "8px 12px 12px" }}>
 					<div className="flex flex-col gap-3">
 						<span className="text-sm font-medium text-text-subtlest">Rule executions</span>
-						<AutomationRule name="Route RFP intake by region" lastExecuted="2 hours ago" />
-						<AutomationRule name="Notify deal desk on pricing review" lastExecuted="5 days ago" />
+						<AutomationRule name="Route outline gaps by launch owner" lastExecuted="2 hours ago" />
+						<AutomationRule name="Notify consent reviewer on trust-copy changes" lastExecuted="5 days ago" />
 					</div>
 				</div>
 			)}

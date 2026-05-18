@@ -38,7 +38,7 @@ export default function JiraHeader({ selectedTab, onTabChange }: Readonly<JiraHe
 									height={16}
 									style={{ width: "16px", height: "16px", borderRadius: token("radius.xsmall") }}
 								/>
-								<Heading size="medium">Enterprise RFP Response</Heading>
+								<Heading size="medium">Omni Live Launch</Heading>
 								<Button aria-label="Teams" size="icon-xs" variant="ghost">
 									<TeamsIcon label="" size="small" />
 								</Button>
@@ -104,7 +104,7 @@ export default function JiraHeader({ selectedTab, onTabChange }: Readonly<JiraHe
 								) : (
 									<div style={{ padding: token("space.400") }}>
 										<span className="text-sm font-medium text-text-subtlest">
-											No RFP content here yet
+											No Omni Live content here yet
 										</span>
 									</div>
 								)}

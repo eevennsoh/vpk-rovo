@@ -4281,6 +4281,61 @@ async function generateAgentsRfpDemoReportPreview(requestBody) {
 	};
 }
 
+async function generateAgents2OmniLiveOutlinePreview(requestBody) {
+	const contextDescription = getNonEmptyString(requestBody?.contextDescription);
+	if (!contextDescription) {
+		throw new Error("contextDescription is required");
+	}
+
+	const variant = getNonEmptyString(requestBody?.variant) === "refined"
+		? "refined"
+		: "initial";
+	const report = await generateWorkItemVpkHtmlReport({
+		contextDescription,
+		generateText: async () => JSON.stringify({
+			heroDemoThesis: "Lead with Omni Live seeing the live context, hearing intent, and acting across apps in one continuous stream.",
+			targetAudience: "developers and enterprise teams",
+			corePain: "Today, AI work is fragmented across voice in one app, vision in another, and action in a third, so users lose momentum every time they restate context.",
+			positioning: "Omni Live is not a regular assistant waiting for prompts; it is a responsive, context-aware companion that sees, hears, and acts at the same time.",
+			sectionOutline: [
+				"Live-demo-first hero showing the continuous voice, vision, and action loop.",
+				"Fragmented AI mode pain and the cost of switching tabs, tools, and prompts.",
+				"How Omni Live differs from a regular assistant.",
+				"Voice loop, camera feed, agentic action, and multi-app workflow proof.",
+				"Developer Preview, Public Beta, and GA launch timeline.",
+				"Enterprise consent controls, partner integrations, sales enablement, and CTA.",
+			],
+			demoProofPoints: [
+				"Core voice loop for the May 28 Developer Preview.",
+				"Camera feed capability that lets Omni Live see the current problem.",
+				"Agentic action that turns intent into execution.",
+				"Multi-app workflow execution for the June 18 Public Beta.",
+			],
+			cta: "Invite developers to join the Developer Preview and give enterprise teams a trust-focused evaluation path.",
+			brandVoiceNotes: "Use the company brand guide and voice/tone inputs; keep copy concrete, demo-led, and careful about preview versus beta versus GA claims.",
+			launchTimeline: "Developer Preview ships May 28, Public Beta ships June 18, and General Availability follows July 9.",
+			consentTrustNotes: [
+				"Enterprise-grade consent controls are a GA requirement.",
+				"Partner integration claims should be framed against beta and GA readiness.",
+				"Consent language needs review before the public page ships.",
+			],
+			contentGaps: [
+				"Confirm final brand voice examples.",
+				"Attach the continuous live demo sequence.",
+				"Finalize legally reviewed consent-control language.",
+			],
+		}),
+		runSkillValidation: false,
+		runVisualVerify: false,
+	});
+
+	return {
+		html: report.html,
+		skill: report.skill,
+		variant,
+	};
+}
+
 function writeAgentsRfpDemoArtifactResult(writer, artifactDocument) {
 	writer.write({
 		type: "data-artifact-result",
@@ -12220,6 +12275,18 @@ app.post("/api/agents/rfp-demo/vpk-html-report", async (req, res) => {
 		console.error("[AGENTS-RFP-DEMO] Failed to generate vpk-html report preview:", error);
 		return res.status(400).json({
 			error: error instanceof Error ? error.message : "Failed to generate vpk-html report preview",
+		});
+	}
+});
+
+app.post("/api/agents2/omni-live/vpk-html-outline", async (req, res) => {
+	try {
+		const report = await generateAgents2OmniLiveOutlinePreview(req.body || {});
+		return res.status(200).json(report);
+	} catch (error) {
+		console.error("[AGENTS2-OMNI-LIVE] Failed to generate vpk-html outline preview:", error);
+		return res.status(400).json({
+			error: error instanceof Error ? error.message : "Failed to generate vpk-html outline preview",
 		});
 	}
 });
