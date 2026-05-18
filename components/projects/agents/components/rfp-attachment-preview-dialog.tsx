@@ -28,7 +28,7 @@ export function RfpAttachmentPreviewDialog({
 			<DialogContent size="md">
 				<DialogHeader>
 					<div className="flex flex-wrap items-center gap-2">
-						<DialogTitle>{attachment?.displayName ?? "RFP response strategy.pdf"}</DialogTitle>
+						<DialogTitle>{attachment?.displayName ?? "Acmecorp RFP qualification DACI.pdf"}</DialogTitle>
 						<Lozenge variant="neutral">Staged PDF</Lozenge>
 					</div>
 					<DialogDescription>
@@ -42,7 +42,7 @@ export function RfpAttachmentPreviewDialog({
 							PDF
 						</div>
 						<div>
-							<p className="text-sm font-semibold text-text">RFP response strategy</p>
+							<p className="text-sm font-semibold text-text">Acmecorp RFP qualification DACI</p>
 							<p className="mt-1 text-sm text-text-subtle">
 								Approved PDF staged as an attachment entry for RFP-101.
 							</p>

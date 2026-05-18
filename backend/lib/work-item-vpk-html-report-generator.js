@@ -15,6 +15,7 @@ const {
 
 const VPK_HTML_SKILL_NAME = "vpk-html";
 const STATUS_REPORT_TEMPLATE_PATH = "assets/templates/status-report.html";
+const DACI_ONE_PAGER_TEMPLATE_PATH = "assets/templates/one-pager.html";
 
 const SECTION_LABELS = new Map([
 	["buyer priorities:", "buyerPriorities"],
@@ -50,6 +51,14 @@ function sentence(value) {
 	return /[.!?]$/u.test(text) ? text : `${text}.`;
 }
 
+function uniqueStrings(items) {
+	return Array.from(new Set(
+		(Array.isArray(items) ? items : [])
+			.map((item) => getNonEmptyString(item))
+			.filter(Boolean),
+	));
+}
+
 function formatSeries(items, {
 	empty,
 	limit = 5,
@@ -66,6 +75,15 @@ function formatSeries(items, {
 		? `; plus ${values.length - clipped.length} more`
 		: "";
 	return `${clipped.join("; ")}${suffix}.`;
+}
+
+function formatListItemsHtml(items, {
+	empty,
+	limit = 6,
+} = {}) {
+	const values = uniqueStrings(items).slice(0, limit);
+	const listItems = values.length > 0 ? values : [empty || "No evidence supplied in the Work Item context."];
+	return listItems.map((item) => `<li>${escapeHtml(sentence(item))}</li>`).join("\n");
 }
 
 function titleCaseStatus(value) {
@@ -286,6 +304,12 @@ function collectInformationGaps({
 	if (/\brfp\b/u.test(joinedContext) && !/bid\/no-bid decision date|bid no bid decision date/u.test(joinedContext)) {
 		gaps.push("Bid/no-bid decision date and approval owner are not specified in the Work Item context.");
 	}
+	if (/\brfp\b/u.test(joinedContext) && !/budget qualified|qualified budget|budget qualification/u.test(joinedContext)) {
+		gaps.push("Client budget qualification is not confirmed in the Work Item context.");
+	}
+	if (/\brfp\b/u.test(joinedContext) && !/stakeholder relationship|executive sponsor|champion/u.test(joinedContext)) {
+		gaps.push("Stakeholder relationship strength is not confirmed in the Work Item context.");
+	}
 	if (/data residency/u.test(joinedContext) && !/data residency region/u.test(joinedContext)) {
 		gaps.push("Required data residency region is not recorded in the Work Item context.");
 	}
@@ -405,6 +429,139 @@ function buildFallbackReportFields(activeWorkItemContext) {
 	};
 }
 
+function isRfpQualificationContext(activeWorkItemContext) {
+	const { fields, sections } = parseContextFieldSections(activeWorkItemContext);
+	const key = getNonEmptyString(fields.key);
+	const joinedContext = [
+		...Object.values(fields),
+		...Object.values(sections).flat(),
+	].join("\n");
+
+	return /^RFP-\d+$/iu.test(key || "") || /\brfp\b/iu.test(joinedContext);
+}
+
+function findTeamMember(responseTeam, matcher) {
+	return responseTeam.find((member) => {
+		const text = [member.role, member.owner, member.need].filter(Boolean).join(" ").toLowerCase();
+		return matcher.test(text);
+	}) ?? null;
+}
+
+function buildFallbackDaciReportFields(activeWorkItemContext) {
+	const { fields, sections } = parseContextFieldSections(activeWorkItemContext);
+	const childItems = sections.childItems.map(parseChildItem).filter(Boolean);
+	const attachments = sections.attachments.map(parseAttachment).filter(Boolean);
+	const recentActivity = sections.recentActivity.map(parseActivity).filter(Boolean);
+	const responseTeam = sections.responseTeam.map(parseTeamMember).filter(Boolean);
+	const assignee = extractRolePerson(fields.assignee);
+	const reporter = extractRolePerson(fields.reporter);
+	const key = getNonEmptyString(fields.key);
+	const customer = getNonEmptyString(fields.customer) || "the client";
+	const title = getNonEmptyString(fields.title) || (key ? `${key} RFP qualification` : "RFP qualification");
+	const dueDate = getNonEmptyString(fields["response due date"]) || getNonEmptyString(fields["due date"]);
+	const dealSize = getNonEmptyString(fields["deal size"]) || getNonEmptyString(fields["seat count"]);
+	const knownRisks = sections.knownRisks;
+	const buyerPriorities = sections.buyerPriorities;
+	const evaluationCriteria = sections.evaluationCriteria;
+	const winThemes = sections.winThemes;
+	const nextActions = sections.nextActions;
+	const informationGaps = collectInformationGaps({ fields, sections });
+	const legalApprover = findTeamMember(responseTeam, /\b(legal|security)\b/u);
+	const dealDeskApprover = findTeamMember(responseTeam, /\bdeal\s+desk\b/u);
+	const driverName = assignee.name || findTeamMember(responseTeam, /\bproposal\b/u)?.owner || "Proposal owner not specified";
+	const approverNames = uniqueStrings([
+		dealDeskApprover?.owner,
+		legalApprover?.owner,
+	]);
+	const contributorNames = uniqueStrings([
+		reporter.name,
+		...responseTeam
+			.filter((member) => !approverNames.includes(member.owner || "") && member.owner !== driverName)
+			.map((member) => member.owner),
+	]);
+	const inProgressChildItems = childItems.filter((item) => /\bin progress\b/iu.test(item.status || ""));
+	const todoChildItems = childItems.filter((item) => /\bto do\b/iu.test(item.status || ""));
+	const relationshipEvidence = uniqueStrings([
+		reporter.name ? `${reporter.name} is the account contact in the Work Item context` : null,
+		assignee.name ? `${assignee.name} is driving proposal coordination` : null,
+		...recentActivity.slice(0, 2).map((activity) => activity.content),
+	]);
+	const openGapItems = uniqueStrings([
+		...informationGaps,
+		...todoChildItems.map((item) => `${item.key || "Child item"} remains to do: ${item.summary}`),
+		...inProgressChildItems.map((item) => `${item.key || "Child item"} is still in progress: ${item.summary}`),
+	]);
+
+	return {
+		artifactTitle: `${customer} RFP qualification DACI`,
+		author: assignee.name || reporter.name || "Unassigned owner",
+		budgetText: dealSize
+			? `${customer} scale is recorded as ${dealSize}; budget qualification still needs explicit owner confirmation before a full response commitment.`
+			: `${customer} budget is not confirmed in the Work Item context; treat budget as a qualification gate before committing response capacity.`,
+		calloutText: `Recommendation: respond only if ${customer} confirms budget, stakeholder access, and review owners for legal, security, pricing, and product commitments.`,
+		campaignFitText: formatSeries([
+			...buyerPriorities.slice(0, 2),
+			...evaluationCriteria.slice(0, 2),
+		], {
+			empty: `${customer} campaign fit needs confirmation against enterprise service-management priorities.`,
+			limit: 4,
+		}),
+		competitiveAdvantages: uniqueStrings(winThemes).length > 0
+			? uniqueStrings(winThemes)
+			: [
+					"Atlassian System of Work can connect service, software, knowledge, and business teams.",
+					"Rovo and Teamwork Graph can make RFP evidence reusable and contextual.",
+				],
+		contributorsText: contributorNames.length > 0
+			? `Contributors: ${contributorNames.join(", ")}.`
+			: "Contributors: sales engineering, product, legal, security, deal desk, and partner owners need assignment.",
+		date: getNonEmptyString(fields["start date"]) || dueDate || new Date().toISOString().slice(0, 10),
+		decisionRisks: uniqueStrings(knownRisks).length > 0
+			? uniqueStrings(knownRisks)
+			: ["Legal, security, pricing, product, and partner commitments still need review."],
+		description: clipText(`${customer} RFP qualification DACI covering recommendation, roles, budget, relationship, campaign fit, advantages, risks, and open gaps.`, 150),
+		docTitle: `${customer} RFP qualification DACI`,
+		driverText: `Driver: ${driverName}.`,
+		eyebrow: "RFP Qualification / DACI",
+		footerLeft: "Internal qualification draft",
+		footerRight: key ? `${key} · ${customer}` : customer,
+		headline: `${customer} RFP qualification DACI`,
+		informedText: "Informed: response leadership, support, partner teams, and executive stakeholders after the bid/no-bid decision is recorded.",
+		keywords: uniqueStrings([
+			key,
+			customer,
+			"RFP qualification",
+			"DACI",
+			"bid recommendation",
+		]).slice(0, 5).join(", "),
+		metricPairs: [
+			{ label: "client", value: customer },
+			{ label: "decision", value: "Qualify" },
+			{ label: "due", value: dueDate || "Gap" },
+			{ label: "open gaps", value: String(openGapItems.length || 1) },
+		],
+		openGaps: openGapItems.length > 0 ? openGapItems : ["No open gaps were supplied in the Work Item context."],
+		approverText: approverNames.length > 0
+			? `Approver: ${approverNames.join(" and ")}.`
+			: "Approver: deal desk plus legal/security approver not fully confirmed.",
+		recommendationText: `Provisional recommendation: respond to ${customer} if the team confirms budget, stakeholder access, and review ownership for high-risk commitments before final drafting.`,
+		relationshipText: formatSeries(relationshipEvidence, {
+			empty: `${customer} stakeholder relationship strength is not documented; confirm champion and executive sponsor access.`,
+			limit: 4,
+		}),
+		roadmap: [
+			{ head: "Qualify", body: "Confirm budget, stakeholder access, and mandatory deal-breaker requirements before committing the full response team." },
+			{ head: "Own", body: `Lock Driver, Approver, Contributors, and Informed stakeholders so risky ${customer} answers have named decision owners.` },
+			{ head: "Respond", body: "Draft only after open gaps have owners and the bid/no-bid recommendation is recorded." },
+		],
+		statusText: fields.status ? `${fields.status} · ${fields.priority || "Priority unknown"}` : "Qualification draft",
+		subtitle: `${key || "RFP"} · should we respond to this RFP?`,
+		title,
+		nextActions,
+		attachments,
+	};
+}
+
 function parseJsonObjectFromText(value) {
 	const text = getNonEmptyString(value);
 	if (!text) {
@@ -478,37 +635,120 @@ function mergeDistilledReportFields(fallbackFields, distilledFields) {
 	return merged;
 }
 
+function mergeDistilledDaciReportFields(fallbackFields, distilledFields) {
+	if (!isObjectRecord(distilledFields)) {
+		return fallbackFields;
+	}
+
+	const merged = {
+		...fallbackFields,
+	};
+	const overridableStringKeys = [
+		"budgetText",
+		"calloutText",
+		"campaignFitText",
+		"contributorsText",
+		"description",
+		"driverText",
+		"informedText",
+		"approverText",
+		"recommendationText",
+		"relationshipText",
+		"statusText",
+		"subtitle",
+	];
+	for (const key of overridableStringKeys) {
+		const value = pickDistilledString(distilledFields, key);
+		if (value) {
+			merged[key] = value;
+		}
+	}
+
+	for (const [key, limit] of [
+		["competitiveAdvantages", 6],
+		["decisionRisks", 6],
+		["openGaps", 6],
+		["informationGaps", 6],
+	]) {
+		if (!Array.isArray(distilledFields[key])) {
+			continue;
+		}
+		const values = uniqueStrings(distilledFields[key]).slice(0, limit);
+		if (values.length === 0) {
+			continue;
+		}
+		if (key === "informationGaps") {
+			merged.openGaps = uniqueStrings([
+				...merged.openGaps,
+				...values,
+			]);
+			continue;
+		}
+		merged[key] = values;
+	}
+
+	return merged;
+}
+
 async function distillStructuredReportFields({
 	activeWorkItemContext,
 	generateText,
 	provider,
+	reportKind = "status-report",
 	signal,
 }) {
 	if (typeof generateText !== "function") {
 		return null;
 	}
 
-	const system = [
-		"You extract structured fields for a Jira Work Item status report.",
-		"Use only facts present in the supplied context. Do not invent dates, owners, metrics, or evidence.",
-		"Return only valid JSON. No markdown.",
-	].join(" ");
-	const prompt = [
-		"Extract concise report fields from this Work Item context.",
-		"Schema:",
-		"{",
-		'  "summary": "one sentence",',
-		'  "whatChangedText": "one evidence-backed paragraph",',
-		'  "confidenceText": "one evidence-backed paragraph",',
-		'  "progressText": "one evidence-backed paragraph",',
-		'  "blockersText": "one evidence-backed paragraph",',
-		'  "nextWindowText": "one evidence-backed paragraph",',
-		'  "milestonesText": "one evidence-backed paragraph",',
-		'  "informationGaps": ["concise missing evidence statements"]',
-		"}",
-		"",
-		activeWorkItemContext,
-	].join("\n");
+	const isDaciReport = reportKind === "rfp-qualification-daci";
+	const system = isDaciReport
+		? [
+				"You extract structured fields for an RFP qualification DACI one-pager.",
+				"Use only facts present in the supplied context. Do not invent dates, owners, metrics, budget status, stakeholder relationships, or evidence.",
+				"Return only valid JSON. No markdown.",
+			].join(" ")
+		: [
+				"You extract structured fields for a Jira Work Item status report.",
+				"Use only facts present in the supplied context. Do not invent dates, owners, metrics, or evidence.",
+				"Return only valid JSON. No markdown.",
+			].join(" ");
+	const prompt = isDaciReport
+		? [
+				"Extract concise RFP qualification DACI fields from this Work Item context.",
+				"Schema:",
+				"{",
+				'  "recommendationText": "one evidence-backed bid/no-bid recommendation paragraph",',
+				'  "driverText": "Driver: name and role",',
+				'  "approverText": "Approver: name(s) and role(s)",',
+				'  "contributorsText": "Contributors: name(s) and role(s)",',
+				'  "informedText": "Informed: group(s) or stakeholder(s)",',
+				'  "relationshipText": "one paragraph on stakeholder relationship strength",',
+				'  "budgetText": "one paragraph on whether client budget is qualified",',
+				'  "campaignFitText": "one paragraph on campaign fit",',
+				'  "competitiveAdvantages": ["concise advantages"],',
+				'  "decisionRisks": ["concise decision risks"],',
+				'  "openGaps": ["concise missing evidence statements"]',
+				"}",
+				"",
+				activeWorkItemContext,
+			].join("\n")
+		: [
+				"Extract concise report fields from this Work Item context.",
+				"Schema:",
+				"{",
+				'  "summary": "one sentence",',
+				'  "whatChangedText": "one evidence-backed paragraph",',
+				'  "confidenceText": "one evidence-backed paragraph",',
+				'  "progressText": "one evidence-backed paragraph",',
+				'  "blockersText": "one evidence-backed paragraph",',
+				'  "nextWindowText": "one evidence-backed paragraph",',
+				'  "milestonesText": "one evidence-backed paragraph",',
+				'  "informationGaps": ["concise missing evidence statements"]',
+				"}",
+				"",
+				activeWorkItemContext,
+			].join("\n");
 	const rawText = await generateText({
 		maxOutputTokens: 1600,
 		prompt,
@@ -578,6 +818,133 @@ function fillStatusReportTemplate(templateHtml, reportFields) {
 	return html;
 }
 
+function buildMetricHtml(metricPairs) {
+	const metrics = Array.isArray(metricPairs) ? metricPairs.slice(0, 4) : [];
+	while (metrics.length < 4) {
+		metrics.push({ label: "metric", value: "Gap" });
+	}
+
+	return metrics.map((metric) => [
+		'\t<div class="metric">',
+		`\t\t<div class="metric-value">${escapeHtml(metric.value)}</div>`,
+		`\t\t<div class="metric-label">${escapeHtml(metric.label)}</div>`,
+		"\t</div>",
+	].join("\n")).join("\n");
+}
+
+function buildRoadmapHtml(roadmap) {
+	const steps = Array.isArray(roadmap) && roadmap.length >= 3
+		? roadmap.slice(0, 3)
+		: [
+				{ head: "Qualify", body: "Confirm budget, stakeholders, and mandatory requirements." },
+				{ head: "Own", body: "Lock DACI owners for risky commitments." },
+				{ head: "Respond", body: "Draft only after the bid/no-bid decision is recorded." },
+			];
+
+	return steps.map((step, index) => [
+		'\t\t<div class="tl-step">',
+		`\t\t\t<div class="tl-year">Phase ${index + 1}</div>`,
+		`\t\t\t<div class="tl-head">${escapeHtml(step.head)}</div>`,
+		`\t\t\t<div class="tl-body">${escapeHtml(step.body)}</div>`,
+		"\t\t</div>",
+	].join("\n")).join("\n");
+}
+
+function fillDaciOnePagerTemplate(templateHtml, reportFields) {
+	const metaReplacements = new Map([
+		["{{AUTHOR}}", escapeHtml(reportFields.author)],
+		["{{DESCRIPTION}}", escapeHtml(reportFields.description)],
+		["{{DOC_TITLE}}", escapeHtml(reportFields.docTitle)],
+		["{{KEYWORDS}}", escapeHtml(reportFields.keywords)],
+	]);
+	let html = templateHtml;
+	for (const [placeholder, value] of metaReplacements) {
+		html = html.split(placeholder).join(value);
+	}
+
+	const body = [
+		"<body>",
+		"",
+		'<div class="header">',
+		'\t<div class="title-block">',
+		`\t\t<div class="eyebrow">${escapeHtml(reportFields.eyebrow)}</div>`,
+		`\t\t<h1>${escapeHtml(reportFields.headline)}</h1>`,
+		`\t\t<div class="subtitle">${escapeHtml(reportFields.subtitle)}</div>`,
+		"\t</div>",
+		'\t<div class="meta">',
+		`\t\t${escapeHtml(reportFields.author)}<br>`,
+		`\t\t${escapeHtml(reportFields.date)}<br>`,
+		`\t\t${escapeHtml(reportFields.statusText)}`,
+		"\t</div>",
+		"</div>",
+		"",
+		'<div class="metrics">',
+		buildMetricHtml(reportFields.metricPairs),
+		"</div>",
+		"",
+		`<p class="lead">${escapeHtml(sentence(reportFields.recommendationText))}</p>`,
+		"",
+		'<div class="two-col">',
+		"\t<section>",
+		"\t\t<h2>DACI roles</h2>",
+		`\t\t<p>${escapeHtml("Decision-making ownership for the qualification phase is intentionally explicit so the response team can avoid drafting around unresolved approval gaps.")}</p>`,
+		'\t\t<ul class="dash">',
+		`\t\t\t<li>${escapeHtml(reportFields.driverText)}</li>`,
+		`\t\t\t<li>${escapeHtml(reportFields.approverText)}</li>`,
+		`\t\t\t<li>${escapeHtml(reportFields.contributorsText)}</li>`,
+		`\t\t\t<li>${escapeHtml(reportFields.informedText)}</li>`,
+		"\t\t</ul>",
+		"\t</section>",
+		"",
+		"\t<section>",
+		"\t\t<h2>Qualification readout</h2>",
+		`\t\t<p>${escapeHtml(sentence(reportFields.relationshipText))}</p>`,
+		'\t\t<ul class="dash">',
+		`\t\t\t<li>${escapeHtml(sentence(reportFields.budgetText))}</li>`,
+		`\t\t\t<li>${escapeHtml(sentence(reportFields.campaignFitText))}</li>`,
+		`\t\t\t<li>${escapeHtml(`Competitive advantages: ${formatSeries(reportFields.competitiveAdvantages, { limit: 3 })}`)}</li>`,
+		"\t\t</ul>",
+		"\t</section>",
+		"</div>",
+		"",
+		"<section>",
+		"\t<h2>Decision path<span class=\"sub\">qualification before response drafting</span></h2>",
+		'\t<div class="timeline">',
+		buildRoadmapHtml(reportFields.roadmap),
+		"\t</div>",
+		"</section>",
+		"",
+		'<section>',
+		"\t<h2>Decision risks and open gaps</h2>",
+		'\t<div class="two-col">',
+		"\t\t<div>",
+		"\t\t\t<h3>Decision risks</h3>",
+		'\t\t\t<ul class="dash">',
+		formatListItemsHtml(reportFields.decisionRisks, { empty: "No decision risks were supplied in the Work Item context." }),
+		"\t\t\t</ul>",
+		"\t\t</div>",
+		"\t\t<div>",
+		"\t\t\t<h3>Open gaps</h3>",
+		'\t\t\t<ul class="dash">',
+		formatListItemsHtml(reportFields.openGaps, { empty: "No open gaps were supplied in the Work Item context." }),
+		"\t\t\t</ul>",
+		"\t\t</div>",
+		"\t</div>",
+		"</section>",
+		"",
+		`<div class="callout">${escapeHtml(sentence(reportFields.calloutText))}</div>`,
+		"",
+		'<div class="footer">',
+		`\t<span>${escapeHtml(reportFields.footerLeft)}</span>`,
+		`\t<span>${escapeHtml(reportFields.footerRight)}</span>`,
+		"</div>",
+		"",
+		"</body>",
+	].join("\n");
+
+	return html.replace(/<body>[\s\S]*?<\/body>/u, body);
+}
+
 function assertVpkHtmlReportContract(html) {
 	if (!/<!doctype html>/iu.test(html) || !/<html[\s>]/iu.test(html)) {
 		throw new Error("vpk-html report generation did not return a complete HTML document.");
@@ -588,7 +955,7 @@ function assertVpkHtmlReportContract(html) {
 	if (!/<meta\s+name="generator"\s+content="vpk-html">/iu.test(html)) {
 		throw new Error("vpk-html report generation did not preserve the generator metadata.");
 	}
-	if (!/font-family:\s*"Charlie Display"/u.test(html) || !/--grid-background/u.test(html) || !/class="masthead"/u.test(html)) {
+	if (!/font-family:\s*"Charlie Display"/u.test(html) || !/--grid-background/u.test(html) || !/(class="masthead"|class="header")/u.test(html)) {
 		throw new Error("vpk-html report generation did not preserve the template visual identity.");
 	}
 	if (
@@ -659,17 +1026,26 @@ async function generateWorkItemVpkHtmlReport({
 
 	const skillMetadata = await harness.loadSkillMetadata(VPK_HTML_SKILL_NAME);
 	const skill = await harness.loadSkill(VPK_HTML_SKILL_NAME);
+	const reportKind = isRfpQualificationContext(activeWorkItemContext)
+		? "rfp-qualification-daci"
+		: "status-report";
+	const templatePath = reportKind === "rfp-qualification-daci"
+		? DACI_ONE_PAGER_TEMPLATE_PATH
+		: STATUS_REPORT_TEMPLATE_PATH;
 	const templateHtml = await harness.readSkillFile(
 		VPK_HTML_SKILL_NAME,
-		STATUS_REPORT_TEMPLATE_PATH,
+		templatePath,
 	);
-	const fallbackFields = buildFallbackReportFields(activeWorkItemContext);
+	const fallbackFields = reportKind === "rfp-qualification-daci"
+		? buildFallbackDaciReportFields(activeWorkItemContext)
+		: buildFallbackReportFields(activeWorkItemContext);
 	let distilledFields = null;
 	try {
 		distilledFields = await distillStructuredReportFields({
 			activeWorkItemContext,
 			generateText,
 			provider,
+			reportKind,
 			signal,
 		});
 	} catch (error) {
@@ -679,8 +1055,12 @@ async function generateWorkItemVpkHtmlReport({
 		);
 	}
 
-	const reportFields = mergeDistilledReportFields(fallbackFields, distilledFields);
-	const html = fillStatusReportTemplate(templateHtml, reportFields);
+	const reportFields = reportKind === "rfp-qualification-daci"
+		? mergeDistilledDaciReportFields(fallbackFields, distilledFields)
+		: mergeDistilledReportFields(fallbackFields, distilledFields);
+	const html = reportKind === "rfp-qualification-daci"
+		? fillDaciOnePagerTemplate(templateHtml, reportFields)
+		: fillStatusReportTemplate(templateHtml, reportFields);
 	assertVpkHtmlReportContract(html);
 	const validation = runSkillValidation
 		? await runVpkHtmlValidationScripts({
@@ -698,17 +1078,20 @@ async function generateWorkItemVpkHtmlReport({
 			description: skillMetadata.description,
 			name: skill.name,
 			root: skill.skillRoot,
-			templatePath: STATUS_REPORT_TEMPLATE_PATH,
+			templatePath,
 		},
 		validation,
 	};
 }
 
 module.exports = {
+	DACI_ONE_PAGER_TEMPLATE_PATH,
 	STATUS_REPORT_TEMPLATE_PATH,
 	VPK_HTML_SKILL_NAME,
 	assertVpkHtmlReportContract,
+	buildFallbackDaciReportFields,
 	buildFallbackReportFields,
+	fillDaciOnePagerTemplate,
 	fillStatusReportTemplate,
 	generateWorkItemVpkHtmlReport,
 	parseContextFieldSections,

@@ -197,6 +197,21 @@ test("AgentsView keeps column agent assignment state local to the board", () => 
 	);
 });
 
+test("AgentsView filters bulk move actions to cards that change columns", () => {
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/const getMovableSelectedCardCodes = \(targetColumnTitle: string\) => Array\.from\(selectedCardCodes\)\.filter\(\(cardCode\) => \{[\s\S]*return sourceColumn \? sourceColumn\.title !== targetColumnTitle : false;/u,
+	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/const movableCodes = getMovableSelectedCardCodes\(targetColumnTitle\);[\s\S]*if \(movableCodes\.length > 0\) \{[\s\S]*rfpDemo\.actions\.moveCards\(movableCodes, targetColumnTitle\);/u,
+	);
+	assert.doesNotMatch(
+		AGENTS_VIEW_SOURCE,
+		/rfpDemo\.actions\.moveCards\(Array\.from\(selectedCardCodes\), targetColumnTitle\);/u,
+	);
+});
+
 test("Column agent assignment icons use selected icon color while the trigger is open", () => {
 	assert.match(
 		COLUMN_AGENT_ASSIGNMENT_SOURCE,
@@ -248,12 +263,14 @@ test("AgentsView maps backend RFP agent output onto cards, assignees, comments, 
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /No schedule/u);
 });
 
-test("RFP agent chat tab details expose trigger and activity content without a sheet", () => {
+test("RFP agent chat tab details expose trigger editor and merged activity timeline without a sheet", () => {
 	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /export function RfpAgentTriggerDetails/u);
 	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /export function RfpAgentActivityDetails/u);
-	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Tasks">/u);
 	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<ProgressTracker[\s\S]*aria-label="RFP Drafter activity timeline"[\s\S]*steps=\{timelineSteps\}/u);
 	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /function getActivityTimelineSteps\(state: AgentsRfpDemoState\): ProgressTrackerStep\[\]/u);
+	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Triggers">/u);
+	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Agent Instructions">/u);
+	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Tasks">/u);
 	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
 	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Activity">/u);
 	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /RfpAgentDetailsSheet/u);

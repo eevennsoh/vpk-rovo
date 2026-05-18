@@ -16,6 +16,7 @@ const {
 	createAgentsRfpDemoStateManager,
 	createDefaultAgentsRfpDemoState,
 	moveTicketToColumn,
+	moveTicketEnteredColumn,
 	normalizeAgentsRfpDemoState,
 	runRfpDraftingAgent,
 } = require("./agents-rfp-demo-state");
@@ -106,6 +107,12 @@ test("advancing due tickets completes them at staggered speeds with unique HTML"
 		assert.match(workItem.agentComment.content, /Status: draft complete\./u);
 		assert.match(workItem.agentComment.content, /left it unassigned for the response team to pick up/u);
 	}
+	assert.match(finalAdvance.state.workItems["RFP-141"].generatedAttachment.previewHtml, /Orion Motors/u);
+	assert.match(finalAdvance.state.workItems["RFP-142"].generatedAttachment.previewHtml, /NimbusCare/u);
+	assert.match(finalAdvance.state.workItems["RFP-143"].generatedAttachment.previewHtml, /Copperline Logistics/u);
+	assert.doesNotMatch(finalAdvance.state.workItems["RFP-141"].generatedAttachment.previewHtml, /Acmecorp/u);
+	assert.doesNotMatch(finalAdvance.state.workItems["RFP-142"].generatedAttachment.previewHtml, /Acmecorp/u);
+	assert.doesNotMatch(finalAdvance.state.workItems["RFP-143"].generatedAttachment.previewHtml, /Acmecorp/u);
 	assert.notEqual(
 		finalAdvance.state.workItems["RFP-141"].generatedAttachment.previewHtml,
 		finalAdvance.state.workItems["RFP-142"].generatedAttachment.previewHtml,
@@ -158,6 +165,62 @@ test("normalization drops stale no-work RFP agent toasts", () => {
 	]);
 });
 
+test("normalization preserves trigger prompt and explicit no-trigger state", () => {
+	const applied = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
+		jobId: "job-rfp-drafting",
+		now: RUN_NOW,
+		runId: "run-initial",
+	});
+	const prompted = normalizeAgentsRfpDemoState({
+		...applied.state,
+		agent: {
+			...applied.state.agent,
+			trigger: {
+				...RFP_DRAFTING_EVENT_TRIGGER,
+				prompt: "When an RFP ticket enters Drafting, inspect the packet and draft the response package.",
+			},
+		},
+	});
+
+	assert.equal(
+		prompted.agent.trigger.prompt,
+		"When an RFP ticket enters Drafting, inspect the packet and draft the response package.",
+	);
+
+	const cleared = normalizeAgentsRfpDemoState({
+		...prompted,
+		agent: {
+			...prompted.agent,
+			trigger: null,
+		},
+	});
+
+	assert.equal(cleared.agent.trigger, null);
+});
+
+test("ticket entered column events do not run when the agent trigger is cleared", () => {
+	const applied = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
+		jobId: "job-rfp-drafting",
+		now: RUN_NOW,
+		runId: "run-initial",
+	});
+	const withoutTrigger = {
+		...applied.state,
+		agent: {
+			...applied.state.agent,
+			trigger: null,
+		},
+	};
+	const eventRun = moveTicketEnteredColumn(withoutTrigger, {
+		ticketCode: "RFP-102",
+		targetColumn: RFP_DRAFTING_COLUMN_NAME,
+	});
+
+	assert.equal(eventRun.runSummary, null);
+	assert.deepEqual(eventRun.threadRecords, []);
+	assert.equal(eventRun.state.workItems["RFP-102"].status, RFP_DRAFTING_COLUMN_NAME);
+});
+
 test("a later ticket entering Drafting processes only that ticket", async () => {
 	const initial = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
 		jobId: "job-rfp-drafting",
@@ -182,6 +245,8 @@ test("a later ticket entering Drafting processes only that ticket", async () => 
 	assert.equal(eventCompletion.state.workItems["RFP-102"].status, RFP_REVIEW_COLUMN_NAME);
 	assert.equal(eventCompletion.state.workItems["RFP-102"].assignee, null);
 	assert.equal(eventCompletion.state.workItems["RFP-102"].agentComment.authorName, RFP_DRAFTING_AGENT_NAME);
+	assert.match(eventCompletion.state.workItems["RFP-102"].generatedAttachment.previewHtml, /Northstar Bank/u);
+	assert.doesNotMatch(eventCompletion.state.workItems["RFP-102"].generatedAttachment.previewHtml, /Acmecorp/u);
 	assert.equal(eventCompletion.state.workItems["RFP-141"].status, RFP_REVIEW_COLUMN_NAME);
 	assert.equal(eventRun.threadRecords.length, 1);
 });

@@ -7,7 +7,7 @@ const {
 } = require("./jira-work-item-presentation.ts");
 
 const WORK_ITEM = {
-	title: "Qualify enterprise service-management RFP",
+	title: "Prepare for bid recommendation for ESM RFP",
 	code: "RFP-101",
 };
 

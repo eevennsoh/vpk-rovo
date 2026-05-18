@@ -40,7 +40,7 @@ interface RfpHtmlReportPreviewState {
 }
 
 const RFP_REPORT_PREVIEW_ENDPOINT = "/api/agents/rfp-demo/vpk-html-report";
-const RFP_REPORT_ARTIFACT_TITLE = "RFP-101 response strategy report";
+const RFP_REPORT_ARTIFACT_TITLE = "Acmecorp RFP qualification DACI";
 const RFP_REPORT_ARTIFACT_METADATA = "PDF \u2022 Version 1";
 
 function resolveRfpReportVariant(state: AgentsRfpDemoState): RfpReportVariant {
@@ -187,7 +187,7 @@ function RfpRenderedHtmlReport({
 
 	return (
 		<iframe
-			title="RFP-101 response strategy report"
+			title="Acmecorp RFP qualification DACI"
 			className="block size-full border-0 bg-surface"
 			sandbox=""
 			srcDoc={html}

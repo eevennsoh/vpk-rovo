@@ -32,7 +32,7 @@ Use the existing `/agents` product prototype shape.
 
 - Route: `/agents`.
 - Board project: `Enterprise RFP Response`.
-- Key card: `RFP-101 - Qualify enterprise service-management RFP`.
+- Key card: `RFP-101 - Prepare for bid recommendation for ESM RFP`.
 - Automation destination: `Drafting`.
 - Future repeated-use card: `RFP-102 - Parse supplier questionnaire and requested files`.
 - Existing useful surfaces:
@@ -108,10 +108,10 @@ instead of closing the modal to use the board-level demo controls.
 Maya prompt:
 
 ```text
-Help me complete this RFP. Give me a bid/no-bid recommendation first,
-then draft a first-pass response strategy covering ITSM, CMDB, asset
-management, and AI compliance. Use everything in this ticket and the
-attached documents.
+Should we respond to this RFP? Give me a bid/no-bid recommendation and
+capture the qualification gaps, DACI roles, stakeholder relationship, budget
+posture, campaign fit, competitive position, and review gates. Use everything
+in this ticket and the attached documents.
 ```
 
 Expected behavior:
@@ -120,7 +120,7 @@ Expected behavior:
 - The chat context chip references `RFP-101`.
 - Submit through AI Gateway with active `RFP-101` context.
 - Show Chain of Thought tool-call UI while the response is being prepared.
-- The staged trace includes Jira, attachment, Teamwork Graph, and response-building steps.
+- The staged trace includes Jira, attachment, Teamwork Graph, and bid-qualification steps.
 - Gateway should generate a live question card if it needs qualification details.
 
 Staged tool-call trace examples:
@@ -264,8 +264,8 @@ Behavior:
 - Attach adds both artifacts to `RFP-101` attachments:
 
 ```text
-RFP response strategy.html
-RFP response strategy.pdf
+Acmecorp RFP qualification DACI.html
+Acmecorp RFP qualification DACI.pdf
 ```
 
 Click behavior:
@@ -294,9 +294,9 @@ Create an RFP Drafting Agent for the Drafting column on the Enterprise RFP Respo
 
 The agent should read each RFP work item, inspect attachments and subtasks,
 use Teamwork Graph to find related account memory and reusable response assets,
-ask missing qualification questions, draft a response strategy, generate an
-HTML report with vpk-html, stage a PDF export, and wait for human approval
-before attaching the report or moving the ticket forward.
+ask missing qualification questions, generate an HTML qualification DACI with
+vpk-html, stage a PDF export, and wait for human approval before attaching the
+report or moving the ticket forward.
 ```
 
 Creation behavior:
@@ -318,7 +318,7 @@ Confirmation surface:
 | Skills | vpk-html |
 | Tools | Jira work item reader, attachment scanner, Teamwork Graph search, report generator |
 | Knowledge | RFP-101 approved report, Standard ITSM RFP Response Template, prior JSM pilot notes, prior security review |
-| Output | HTML response strategy report and staged PDF |
+| Output | HTML qualification DACI brief and staged PDF |
 | Guardrail | Human approval required before attachment or status changes |
 | Assigned workflow | Drafting column |
 

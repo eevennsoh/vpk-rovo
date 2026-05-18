@@ -32,7 +32,7 @@ function createPrompt(overrides = {}) {
 	return {
 		id: "prompt-1",
 		files: [],
-		text: "Review and complete this RFP",
+		text: "Should we respond to this RFP?",
 		createdAt: Date.parse("2026-05-18T01:00:00.000Z"),
 		...overrides,
 	};

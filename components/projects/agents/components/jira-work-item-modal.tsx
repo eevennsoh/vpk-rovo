@@ -46,7 +46,7 @@ export default function JiraWorkItemModal({
 	highlightedAttachmentId,
 	highlightedAttachmentKey,
 	workItem,
-	workItemTitle = "Qualify enterprise service-management RFP",
+	workItemTitle = "Acmecorp: Prepare for bid recommendation for ESM RFP",
 	workItemCode = "RFP-101",
 }: Readonly<JiraWorkItemModalProps>) {
 	const resolvedWorkItem = workItem ?? getAgentsWorkItemForCard({

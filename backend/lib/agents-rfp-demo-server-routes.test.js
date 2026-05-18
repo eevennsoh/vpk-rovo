@@ -14,6 +14,7 @@ test("Agents RFP demo backend routes expose persisted state, apply, event, and r
 	assert.match(SERVER_SOURCE, /const state = await advanceAgentsRfpDemoProcessing\(\);/u);
 	assert.match(SERVER_SOURCE, /runAgentsRfpDemoJob\(\{[\s\S]*source: "agent-apply"[\s\S]*\}\)/u);
 	assert.match(SERVER_SOURCE, /runAgentsRfpDemoJob\(\{[\s\S]*source: "jira-column-entered"[\s\S]*ticketCodes: \[ticketCode\]/u);
+	assert.match(SERVER_SOURCE, /targetColumn !== RFP_DRAFTING_EVENT_TRIGGER\.column \|\| !state\.agent\?\.trigger/u);
 	assert.match(SERVER_SOURCE, /createHtmlReport: async \(\{ contextDescription, fields \}\) =>/u);
 });
 

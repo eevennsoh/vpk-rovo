@@ -1,36 +1,33 @@
 const RFP_101_CONTEXT_PATTERN = /\[Active Jira Work Item Context\][\s\S]*\bKey:\s*RFP-101\b[\s\S]*\[End Active Jira Work Item Context\]/;
 const RFP_DEMO_AGENT_CREATION_CONTEXT_PATTERN = /\[Agents RFP Demo Local State\][\s\S]*Report stage:\s*attached\.[\s\S]*Custom agent:\s*not created\.[\s\S]*(?:Trigger:\s*none\.[\s\S]*)?\[End Agents RFP Demo Local State\]/;
 const RFP_HELP_DETAILED_MARKERS = [
-	/\bcomplete this rfp\b/i,
+	/\bshould we respond to this rfp\b/i,
 	/\bbid\/no-bid\b/i,
-	/\bfirst-pass response strategy\b/i,
-	/\battached documents\b/i,
+	/\bqualification\b/i,
 ];
 const RFP_HELP_OBJECT_PATTERN = /\b(?:this\s+)?rfp\b/i;
 const RFP_HELP_COMPLETION_ACTION_PATTERNS = [
-	/\bcomplete\b/i,
-	/\bfinish\b/i,
-	/\breview\s+and\s+complete\b/i,
+	/\bshould\s+we\s+(?:respond|bid)\b/i,
+	/\bshould\s+atlassian\s+(?:respond|bid)\b/i,
 ];
 const RFP_HELP_DIRECT_REQUEST_PATTERNS = [
-	/\bhelp(?:\s+me)?\s+(?:prepare|complete|finish|work\s+on)\s+(?:this|the\s+)?rfp\b/i,
-	/^(?:please\s+)?(?:prepare|complete|finish|draft)\s+(?:this|the\s+)?rfp\b/i,
-	/\b(?:can|could|would)\s+you\s+(?:please\s+)?(?:help(?:\s+me)?\s+)?(?:prepare|complete|finish|draft|work\s+on)\s+(?:this|the\s+)?rfp\b/i,
+	/\bshould\s+we\s+respond\s+to\s+(?:(?:this|the)\s+)?rfp\b/i,
+	/\bshould\s+we\s+bid\s+on\s+(?:(?:this|the)\s+)?rfp\b/i,
+	/\b(?:can|could|would)\s+you\s+(?:please\s+)?(?:help(?:\s+me)?\s+)?(?:decide|recommend)\s+(?:whether\s+)?(?:we|atlassian)\s+should\s+(?:respond|bid)\s+(?:to|on)\s+(?:(?:this|the)\s+)?rfp\b/i,
 ];
 const RFP_HELP_ACTION_PATTERNS = [
-	/\bhelp(?:\s+me)?\b/i,
-	/\breview\b/i,
-	/\bcomplete\b/i,
-	/\bfinish\b/i,
-	/\bwork\s+on\b/i,
-	/\bdraft\b/i,
-	/\bprepare\b/i,
+	/\bdecide\b/i,
+	/\brecommend\b/i,
+	/\bqualif(?:y|ication)\b/i,
+	/\brespond\b/i,
+	/\bbid\b/i,
 ];
 const RFP_HELP_OUTPUT_PATTERNS = [
+	/\bshould\s+we\s+respond\b/i,
 	/\bbid\/no-bid\b/i,
-	/\bfirst-pass response strategy\b/i,
-	/\bresponse strategy\b/i,
-	/\battached documents?\b/i,
+	/\bbid recommendation\b/i,
+	/\bqualification\b/i,
+	/\bdaci\b/i,
 	/\bthis ticket\b/i,
 	/\bwork item\b/i,
 ];
@@ -52,9 +49,10 @@ const RFP_DEMO_AGENT_CONVERSATION_STARTERS = [
 ];
 const RFP_DEMO_TOOL_CALL_DELAY_MIN_MS = 1000;
 const RFP_DEMO_TOOL_CALL_DELAY_MAX_MS = 3000;
+const RFP_DEMO_SKILL_TOOL_CALL_DELAY_MS = 4500;
 const RFP_DEMO_QUALIFICATION_PRELOAD_DELAY_MS = 2000;
-const RFP_DEMO_REPORT_TITLE = "RFP-101 response strategy report";
-const RFP_DEMO_REPORT_PREVIEW_SUMMARY = "PDF report for RFP-101 with bid/no-bid recommendation, response strategy, reusable assets, and review gates.";
+const RFP_DEMO_REPORT_TITLE = "Acmecorp RFP qualification DACI";
+const RFP_DEMO_REPORT_PREVIEW_SUMMARY = "Offline vpk-html one-pager for RFP-101 with bid/no-bid recommendation, DACI roles, stakeholder relationship, budget qualification, campaign fit, competitive advantages, risks, and open gaps.";
 
 function getNonEmptyString(value) {
 	if (typeof value !== "string") {
@@ -206,55 +204,66 @@ function buildAgentsRfpDemoQuestionCardPayload() {
 		sessionId: RFP_DEMO_QUESTION_SESSION_ID,
 		round: 1,
 		maxRounds: 1,
-		title: "Qualify the RFP response",
-		description: "I have the ticket context and attachments. These inputs keep the recommendation and first-pass strategy accurate.",
+		title: "Qualify the Acmecorp RFP",
+		description: "I have the ticket context and attachments. These inputs keep the bid/no-bid recommendation and DACI roles accurate.",
 		directive: "Answer what you know. I will mark unknowns as assumptions or review-required.",
 		questions: [
 			{
-				id: "deal-size",
-				label: "What opportunity size should I assume?",
-				description: "Used to calibrate bid/no-bid priority and response depth.",
+				id: "budget",
+				label: "Has Acmecorp budget been qualified?",
+				description: "Used to decide whether the pursuit deserves a full response effort.",
 				required: true,
 				kind: "single-select",
-				placeholder: "Use a different ARR or deal size",
+				placeholder: "Use a different budget signal",
 				options: [
-					{ id: "strategic-2-4m-arr", label: "$2.4M ARR strategic pursuit", recommended: true },
-					{ id: "enterprise-expansion", label: "$750K enterprise expansion" },
-					{ id: "unknown-strategic", label: "Unknown, assume strategic" },
+					{ id: "qualified-strategic", label: "Qualified strategic budget", recommended: true },
+					{ id: "unconfirmed-budget", label: "Budget not confirmed" },
+					{ id: "budget-risk", label: "Budget likely constrained" },
 				],
 			},
 			{
-				id: "incumbent",
-				label: "Which incumbent platform should I position against?",
+				id: "stakeholder-relationship",
+				label: "How strong is our Acmecorp stakeholder relationship?",
 				required: true,
 				kind: "single-select",
 				options: [
-					{ id: "servicenow", label: "ServiceNow incumbent", recommended: true },
-					{ id: "bmc", label: "BMC or legacy ITSM" },
-					{ id: "unknown", label: "Not confirmed" },
+					{ id: "executive-and-champion", label: "Executive sponsor and champion", recommended: true },
+					{ id: "working-team-only", label: "Working team access only" },
+					{ id: "procurement-led", label: "Procurement-led with limited access" },
 				],
 			},
 			{
-				id: "audience",
-				label: "Who is the first draft for?",
+				id: "campaign-fit",
+				label: "Does Acmecorp match our current campaign?",
 				required: true,
 				kind: "single-select",
 				options: [
-					{ id: "deal-desk", label: "Internal deal desk first", recommended: true },
-					{ id: "customer", label: "Customer-facing draft" },
-					{ id: "executive", label: "Executive summary only" },
+					{ id: "strong-fit", label: "Strong enterprise service campaign fit", recommended: true },
+					{ id: "partial-fit", label: "Partial fit, needs qualification" },
+					{ id: "weak-fit", label: "Weak campaign fit" },
+				],
+			},
+			{
+				id: "competitive-position",
+				label: "What is our competitive position?",
+				required: true,
+				kind: "single-select",
+				options: [
+					{ id: "clear-advantages", label: "Clear Atlassian advantages", recommended: true },
+					{ id: "incumbent-favored", label: "Incumbent appears favored" },
+					{ id: "unknown-position", label: "Competitive position unknown" },
 				],
 			},
 			{
 				id: "review-posture",
-				label: "Which review and reuse posture should I apply?",
+				label: "Which review posture should the DACI show?",
 				required: true,
 				kind: "multi-select",
 				options: [
-					{ id: "approved-language", label: "Use approved standard language", recommended: true },
-					{ id: "review-required", label: "Mark gaps review-required", recommended: true },
-					{ id: "itsm-template", label: "Reuse standard ITSM template", recommended: true },
-					{ id: "pilot-notes", label: "Prior JSM pilot notes", recommended: true },
+					{ id: "deal-desk-approval", label: "Deal desk approval required", recommended: true },
+					{ id: "legal-security-review", label: "Legal and security review required", recommended: true },
+					{ id: "product-validation", label: "Product validation required", recommended: true },
+					{ id: "partner-coverage", label: "Partner coverage may be needed" },
 				],
 			},
 		],
@@ -269,7 +278,7 @@ function buildAgentsRfpDemoQualificationTrace() {
 			label: "Reading RFP-101",
 			content: "Loading active work item fields, subtasks, due date, priority, and parent RFP context.",
 			input: { key: "RFP-101", include: ["parent", "subtasks", "activity"] },
-			outputPreview: "RFP-101 is a high-priority enterprise service-management RFP due Sep 8, with response work split across matrix, win themes, and legal/security exhibits.",
+			outputPreview: "RFP-101 is a high-priority Acmecorp enterprise service-management RFP due Jun 8, 2026, with qualification work split across matrix, DACI ownership, win themes, and legal/security exhibits.",
 		},
 		{
 			toolName: "jira.scan_attachments",
@@ -293,17 +302,17 @@ function buildAgentsRfpDemoQualificationTrace() {
 			toolName: "teamwork_graph.search",
 			toolCallId: "agents-rfp-demo-twg-search",
 			label: "Searching Teamwork Graph",
-			content: "Looking for account memory, reusable response assets, people, goals, and prior pilot notes.",
-			input: { account: "Enterprise Evaluation Account", topics: ["ITSM RFP", "JSM pilot", "Rovo AI", "security review"] },
-			outputPreview: "Returned Standard ITSM RFP Response Template, prior JSM pilot notes, Rovo for ITSM demo recording, CSM/SE/legal contacts, and FY26 Enterprise Expansion goals.",
+			content: "Looking for Acmecorp account memory, stakeholder signals, reusable qualification assets, people, goals, and prior pilot notes.",
+			input: { account: "Acmecorp", topics: ["ITSM RFP", "budget qualification", "stakeholder relationship", "Rovo AI", "security review"] },
+			outputPreview: "Returned standard ITSM qualification criteria, prior JSM pilot notes, Acmecorp stakeholder map, Rovo for ITSM demo recording, CSM/SE/legal contacts, and FY26 Enterprise Expansion goals.",
 		},
 		{
 			toolName: "rfp.map_requirements",
 			toolCallId: "agents-rfp-demo-map-requirements",
 			label: "Mapping requirements",
-			content: "Structuring the bid/no-bid inputs across platform fit, response evidence, and review gaps.",
-			input: { sections: ["ITSM", "CMDB", "asset management", "AI compliance", "legal", "data residency", "security"] },
-			outputPreview: "Strong fit for ITSM, service desk, portal, knowledge, change, assets, and CMDB. Legal, data residency, audit, and vulnerability responses need review posture.",
+			content: "Structuring the Acmecorp bid/no-bid inputs across platform fit, budget, stakeholder access, competitive advantage, and review gaps.",
+			input: { sections: ["budget", "stakeholders", "campaign fit", "ITSM", "CMDB", "asset management", "AI compliance", "legal", "security"] },
+			outputPreview: "Strong fit for ITSM, service desk, portal, knowledge, change, assets, and CMDB. Budget, stakeholder access, legal, data residency, audit, and vulnerability posture need explicit DACI ownership.",
 		},
 		{
 			toolName: "rfp.check_unfinished_work",
@@ -317,8 +326,8 @@ function buildAgentsRfpDemoQualificationTrace() {
 			toolName: "ask_user_questions",
 			toolCallId: RFP_DEMO_QUESTION_TOOL_CALL_ID,
 			label: "Preparing clarification questions",
-			content: "Asking for the commercial and review posture details needed before drafting.",
-			input: { sessionId: RFP_DEMO_QUESTION_SESSION_ID, round: 1, questions: 4 },
+			content: "Asking for the Acmecorp budget, stakeholder, campaign fit, competitive, and review posture details needed before recommending whether to respond.",
+			input: { sessionId: RFP_DEMO_QUESTION_SESSION_ID, round: 1, questions: 5 },
 		},
 	];
 }
@@ -331,15 +340,15 @@ function buildAgentsRfpDemoAnswerTrace() {
 			label: "Applying your answers",
 			content: "Combining your qualification answers with the active RFP-101 context.",
 			input: { sessionId: RFP_DEMO_QUESTION_SESSION_ID },
-			outputPreview: "Assumptions captured for deal size, ServiceNow incumbent positioning, internal deal-desk audience, and review-required legal/security posture.",
+			outputPreview: "Assumptions captured for Acmecorp budget qualification, stakeholder relationship, campaign fit, competitive position, and review-required legal/security posture.",
 		},
 		{
-			toolName: "rfp.build_response_strategy",
+			toolName: "rfp.build_bid_recommendation",
 			toolCallId: "agents-rfp-demo-build-strategy",
-			label: "Drafting response strategy",
-			content: "Building the bid/no-bid recommendation, coverage matrix, win themes, reusable asset index, risks, and next actions.",
-			input: { key: "RFP-101", sections: ["recommendation", "coverage", "win themes", "risks", "next actions"] },
-			outputPreview: "Prepared a bid recommendation with unified ITSM/CMDB as the lead narrative and Rovo AI automation as the differentiator.",
+			label: "Building bid recommendation",
+			content: "Building the Acmecorp bid/no-bid recommendation, DACI roles, stakeholder relationship notes, budget qualification, campaign fit, competitive advantages, risks, and next actions.",
+			input: { key: "RFP-101", sections: ["recommendation", "daci", "relationship", "budget", "campaign fit", "competitive advantages", "risks", "gaps"] },
+			outputPreview: "Prepared a qualified-respond recommendation with unified ITSM/CMDB as the lead advantage and Rovo AI automation as the differentiator.",
 		},
 		{
 			toolName: "rfp.flag_reviews",
@@ -347,39 +356,39 @@ function buildAgentsRfpDemoAnswerTrace() {
 			label: "Flagging review gates",
 			content: "Separating approved standard language from items that need legal, data residency, audit, and vulnerability review.",
 			input: { reviewRequired: ["legal", "data residency", "audit", "vulnerability response"] },
-			outputPreview: "Marked the risk language review-required before customer-facing release.",
+			outputPreview: "Marked Acmecorp legal, security, pricing, and product commitments review-required before any customer-facing response.",
 		},
 		{
 			toolName: "agent_skill.load",
 			toolCallId: "agents-rfp-demo-load-vpk-html",
 			label: "Loading vpk-html",
-			content: "Selecting the repo-local vpk-html skill because the next step is an offline HTML report artifact.",
-			input: { skill: "vpk-html", template: "assets/templates/status-report.html" },
-			outputPreview: "Loaded the vpk-html report template and offline artifact contract.",
+			content: "Selecting the repo-local vpk-html skill because the next step is an offline HTML qualification DACI artifact.",
+			input: { skill: "vpk-html", template: "assets/templates/one-pager.html" },
+			outputPreview: "Loaded the vpk-html one-pager template and offline artifact contract.",
 		},
 		{
 			toolName: "vpk_html.distill_fields",
 			toolCallId: "agents-rfp-demo-vpk-html-distill",
-			label: "Distilling report fields",
-			content: "Converting the RFP context and your answers into structured status report fields without inventing facts.",
-			input: { key: "RFP-101", audience: "deal desk", factPolicy: "mark gaps" },
-			outputPreview: "Prepared summary, recommendation, progress, blockers, next-window, and information-gap fields.",
+			label: "Distilling DACI fields",
+			content: "Converting the Acmecorp RFP context and your answers into structured DACI qualification fields without inventing facts.",
+			input: { key: "RFP-101", audience: "deal desk", template: "one-pager", factPolicy: "mark gaps" },
+			outputPreview: "Prepared recommendation, Driver, Approver, Contributors, Informed, stakeholder relationship, budget qualification, campaign fit, competitive advantages, decision risks, and open gaps.",
 		},
 		{
 			toolName: "vpk_html.render_template",
 			toolCallId: "agents-rfp-demo-vpk-html-render",
-			label: "Rendering HTML report",
-			content: "Filling the vpk-html status report template as a single offline HTML artifact.",
+			label: "Rendering DACI one-pager",
+			content: "Filling the vpk-html one-pager template as a single offline HTML qualification artifact.",
 			input: { title: RFP_DEMO_REPORT_TITLE, kind: "html", dependencies: "inline-only" },
-			outputPreview: "Rendered the first report version with embedded styles and no remote runtime dependencies.",
+			outputPreview: "Rendered the first qualification DACI version with embedded styles and no remote runtime dependencies.",
 		},
 		{
 			toolName: "vpk_html.validate_artifact",
 			toolCallId: "agents-rfp-demo-vpk-html-validate",
 			label: "Validating artifact",
-			content: "Checking placeholder coverage and the static HTML contract before sharing the report.",
+			content: "Checking placeholder coverage and the static HTML contract before sharing the qualification DACI.",
 			input: { checks: ["placeholders", "html-validity", "offline-dependencies"] },
-			outputPreview: "Validated the report artifact and saved it to the active Rovo thread.",
+			outputPreview: "Validated the qualification DACI artifact and saved it to the active Rovo thread.",
 		},
 	];
 }
@@ -395,6 +404,15 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 			outputPreview: "Drafting has repeatable RFP response prep: inspect attachments, qualify gaps, draft strategy, attach the draft, comment, and move to Review.",
 		},
 		{
+			toolName: "agent_skill.load",
+			toolCallId: "agents-rfp-demo-agent-load-create-agent",
+			label: "Using create-agent skill",
+			content: "Loading the create-agent skill to turn the completed RFP-101 flow into a reusable Drafting agent.",
+			input: { skill: "create-agent", target: RFP_DEMO_AGENT_NAME, workflow: "Drafting" },
+			outputPreview: "Loaded the create-agent skill with the Drafting workflow context.",
+			delayMs: RFP_DEMO_SKILL_TOOL_CALL_DELAY_MS,
+		},
+		{
 			toolName: "agent.define_trigger",
 			toolCallId: "agents-rfp-demo-agent-define-trigger",
 			label: "Defining agent trigger",
@@ -406,19 +424,19 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 			toolName: "agent.configure_tools",
 			toolCallId: "agents-rfp-demo-agent-configure-tools",
 			label: "Adding tools and skills",
-			content: "Giving the agent deterministic demo access to Jira work items, attachments, Teamwork Graph account memory, response package templates, and proposal PDF output.",
-			input: { skills: ["rfp-response-package"], tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "proposal_pdf.render", "jira.attach_pdf"] },
-			outputPreview: "Tool set matches the completed RFP-101 report flow and produces ticket-specific proposal PDF packages.",
+			content: "Giving the agent deterministic demo access to Jira work items, attachments, Teamwork Graph account memory, the repo-local /vpk-html skill, and HTML draft attachment output.",
+			input: { skills: ["vpk-html"], tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "vpk_html.render_template", "jira.attach_html"] },
+			outputPreview: "Tool set matches the completed RFP-101 report flow and produces ticket-specific vpk-html draft artifacts.",
 		},
 		{
 			toolName: "agent.write_instructions",
 			toolCallId: "agents-rfp-demo-agent-instructions",
 			label: "Writing agent instructions",
-			content: "Adding the description, conversation starters, and instructions to read each ticket context, generate a contextual proposal PDF, comment with the ticket-specific handoff, and return work to a human reviewer.",
+			content: "Adding the description, conversation starters, and instructions to read each ticket context, generate a contextual HTML draft, comment with the ticket-specific handoff, and return work to a human reviewer.",
 			input: {
 				description: RFP_DEMO_AGENT_DESCRIPTION,
 				conversationStarters: RFP_DEMO_AGENT_CONVERSATION_STARTERS,
-				output: "proposal-pdf",
+				output: "html-report",
 				reviewColumn: "Review",
 				assigneePolicy: "return-to-human-owner",
 			},
@@ -431,6 +449,15 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 			content: "Connecting proposal memory, prior RFP language, Jira work-item context, and account-team ownership signals for the drafting flow.",
 			input: { sources: ["proposal memory", "prior RFP language", "Jira work items", "account-team ownership"] },
 			outputPreview: "Knowledge scope is limited to deterministic demo context so the agent can produce stable per-ticket drafts.",
+		},
+		{
+			toolName: "agent_skill.load",
+			toolCallId: "agents-rfp-demo-agent-load-create-automation",
+			label: "Using create-automation skill",
+			content: "Loading the create-automation skill to connect Drafting column events, rerun behavior, and the agent handoff.",
+			input: { skill: "create-automation", trigger: "jira-column-entered", column: "Drafting" },
+			outputPreview: "Loaded the create-automation skill for Drafting column event handling.",
+			delayMs: RFP_DEMO_SKILL_TOOL_CALL_DELAY_MS,
 		},
 		{
 			toolName: "agent.define_rerun_policy",
@@ -463,8 +490,8 @@ function buildAgentsRfpDemoAgentResultPayload() {
 		tools: [
 			"Jira work items",
 			"Teamwork Graph",
-			"RFP response library",
-			"Proposal PDF generator",
+			"vpk-html reports",
+			"HTML draft attachment",
 		],
 		guardrail: "Skips completed tickets on rerun and retries failed tickets later.",
 		action: "create",
@@ -472,16 +499,16 @@ function buildAgentsRfpDemoAgentResultPayload() {
 }
 
 function buildAgentsRfpDemoAgentCreationConfirmationText({ name = RFP_DEMO_AGENT_NAME } = {}) {
-	return `Created **${name}** and added it to the Enterprise RFP Response project. It runs when a ticket enters Drafting, creates a visible Rovo thread, generates a contextual proposal PDF, attaches it to the RFP ticket, comments in Jira, and returns successful tickets to Review for a human owner.`;
+	return `Created **${name}** and added it to the Enterprise RFP Response project. It runs when a ticket enters Drafting, creates a visible Rovo thread, generates a contextual vpk-html draft, attaches the HTML artifact, comments in Jira, and returns successful tickets to Review for a human owner.`;
 }
 
 function buildAgentsRfpDemoQualificationIntro() {
-	return "I found enough context in RFP-101 to start the bid/no-bid analysis. Before I draft the response package, I need a few qualification details so I do not overstate commercial, legal, or security posture.";
+	return "I found enough Acmecorp context in RFP-101 to start the bid/no-bid analysis. Before I recommend whether we should respond, I need a few qualification details so the DACI does not overstate budget, stakeholder, legal, or security posture.";
 }
 
 function buildAgentsRfpDemoReportConfirmationText({ documentId, title = RFP_DEMO_REPORT_TITLE } = {}) {
 	const resolvedDocumentId = getNonEmptyString(documentId) || "report";
-	return `Generate PDF created **${title}**. [Open it in Rovo Canvas](#rovo-canvas-${encodeURIComponent(resolvedDocumentId)}) to review the embedded PDF.`;
+	return `Generated **${title}** with the repo-local /vpk-html skill. [Open it in Rovo Canvas](#rovo-canvas-${encodeURIComponent(resolvedDocumentId)}) to review the embedded qualification DACI.`;
 }
 
 module.exports = {

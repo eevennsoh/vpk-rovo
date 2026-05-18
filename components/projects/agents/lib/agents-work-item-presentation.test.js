@@ -7,7 +7,7 @@ const {
 } = require("./agents-work-item-presentation.ts");
 
 const WORK_ITEM = {
-	title: "Qualify enterprise service-management RFP",
+	title: "Acmecorp: Prepare for bid recommendation for ESM RFP",
 	code: "RFP-101",
 };
 

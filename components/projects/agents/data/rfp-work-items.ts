@@ -1,13 +1,17 @@
 import type {
+	WorkItemAttachment,
+	WorkItemChildItem,
+	WorkItemComment,
 	WorkItemData,
 	WorkItemLabelTag,
+	WorkItemPerson,
 	WorkItemRfpTeamMember,
 } from "@/app/contexts/context-work-item-modal";
 import type { KanbanBoardCardData, KanbanBoardCardTag } from "@/components/blocks/kanban-board";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import FileIcon from "@atlaskit/icon/core/file";
 import { defaultSuggestions, type RovoSuggestion } from "@/lib/rovo-suggestions";
-import { BOARD_COLUMNS } from "./board-data";
+import { BOARD_COLUMNS, RFP_CLIENT_NAMES_BY_CODE } from "./board-data";
 
 export const RFP_101_WORK_ITEM_CODE = "RFP-101";
 export const AGENTS_BOARD_CONTEXT_LABEL = "Enterprise RFP Response";
@@ -18,6 +22,16 @@ function findBoardCardByCode(code: string): KanbanBoardCardData | undefined {
 		const card = column.cards.find((boardCard) => boardCard.code === code);
 		if (card) {
 			return card;
+		}
+	}
+
+	return undefined;
+}
+
+function findBoardColumnTitleByCardCode(code: string): string | undefined {
+	for (const column of BOARD_COLUMNS) {
+		if (column.cards.some((boardCard) => boardCard.code === code)) {
+			return column.title;
 		}
 	}
 
@@ -57,8 +71,8 @@ const ACTIVE_WORK_ITEM_GREETING: AgentsChatGreeting = {
 		suggestion.id === "translate-text"
 			? {
 					...suggestion,
-					label: "Review and complete this RFP",
-					prompt: "Review and complete this RFP",
+					label: "Should we respond to this RFP?",
+					prompt: "Should we respond to this RFP?",
 					icon: FileIcon,
 				}
 			: suggestion
@@ -67,9 +81,9 @@ const ACTIVE_WORK_ITEM_GREETING: AgentsChatGreeting = {
 
 export const RFP_101_WORK_ITEM = {
 	code: RFP_101_WORK_ITEM_CODE,
-	title: "Qualify enterprise service-management RFP",
+	title: `${RFP_CLIENT_NAMES_BY_CODE[RFP_101_WORK_ITEM_CODE]}: Prepare for bid recommendation for ESM RFP`,
 	description:
-		"A large enterprise customer is evaluating Atlassian as a replacement for its current service-management and work-management stack. The customer has regional tool fragmentation, a mature but messy CMDB, a mix of service desk and business-team workflows, and a procurement packet that spans ITSM, asset management, knowledge, reporting, AI, compliance, implementation services, and executive-ready pricing. Qualify the RFP by separating mandatory requirements from differentiators, mapping each requirement area to Atlassian strengths, and identifying the responses that need product, legal, security, deal desk, or partner validation. The output should give the account team a clear bid/no-bid recommendation, a first-pass response strategy, and a demo narrative that shows how Jira Service Management, Assets, Confluence, Rovo, Guard, and the Atlassian platform work together as an enterprise system of work.",
+		"Acmecorp is evaluating Atlassian as a replacement for its current service-management and work-management stack. Acmecorp has regional tool fragmentation, a mature but messy CMDB, a mix of service desk and business-team workflows, and a procurement packet that spans ITSM, asset management, knowledge, reporting, AI, compliance, implementation services, and executive-ready pricing. Qualify the Acmecorp RFP by separating mandatory requirements from differentiators, mapping each requirement area to Atlassian strengths, and identifying the responses that need product, legal, security, deal desk, or partner validation.",
 	assignee: {
 		name: "Maya Chen",
 		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
@@ -82,8 +96,8 @@ export const RFP_101_WORK_ITEM = {
 	},
 	priority: "High",
 	status: "RFP Intake",
-	startDate: "Aug 12, 2025",
-	dueDate: "Sep 8, 2025",
+	startDate: "May 12, 2026",
+	dueDate: "Jun 8, 2026",
 	parent: {
 		code: "RFP-100",
 		title: "Enterprise RFP Response",
@@ -132,7 +146,7 @@ export const RFP_101_WORK_ITEM = {
 			name: "rfp-intake-notes",
 			displayName: "RFP intake notes",
 			ext: "page",
-			date: "12 Aug 2025, 09:12 AM",
+			date: "12 May 2026, 09:12 AM",
 			thumbnailKind: "document",
 			previewSrc: "/generated/rfp-confluence-intake-notes.png",
 			previewAlt: "Flat preview of RFP intake notes",
@@ -143,7 +157,7 @@ export const RFP_101_WORK_ITEM = {
 			name: "rfp-requirement-compliance-matrix",
 			displayName: "Compliance matrix",
 			ext: "xlsx",
-			date: "12 Aug 2025, 09:24 AM",
+			date: "12 May 2026, 09:24 AM",
 			thumbnailKind: "document",
 			previewSrc: "/generated/rfp-compliance-matrix.png",
 			previewAlt: "Flat preview of a spreadsheet compliance matrix",
@@ -152,7 +166,7 @@ export const RFP_101_WORK_ITEM = {
 			name: "response-brief",
 			displayName: "Response brief",
 			ext: "docx",
-			date: "14 Aug 2025, 03:42 PM",
+			date: "14 May 2026, 03:42 PM",
 			thumbnailKind: "document",
 			previewSrc: "/generated/rfp-response-brief.png",
 			previewAlt: "Flat preview of a response brief document",
@@ -161,7 +175,7 @@ export const RFP_101_WORK_ITEM = {
 			name: "enterprise-rfp-requirements",
 			displayName: "Enterprise RFP packet",
 			ext: "pdf",
-			date: "15 Aug 2025, 11:05 AM",
+			date: "15 May 2026, 11:05 AM",
 			thumbnailKind: "file",
 			previewSrc: "/generated/rfp-pdf-packet.png",
 			previewAlt: "Flat preview of an enterprise RFP PDF packet",
@@ -170,14 +184,14 @@ export const RFP_101_WORK_ITEM = {
 			name: "proposal-audio-briefing",
 			displayName: "proposal-audio-briefing.mp3",
 			ext: "mp3",
-			date: "18 Aug 2025, 10:30 AM",
+			date: "18 May 2026, 10:30 AM",
 			thumbnailKind: "audio",
 		},
 		{
 			name: "supplier-portal-upload",
 			displayName: "Supplier portal upload",
 			ext: "png",
-			date: "21 Aug 2025, 01:16 PM",
+			date: "21 May 2026, 01:16 PM",
 			thumbnailKind: "image",
 			previewSrc: "/generated/rfp-portal-screenshot.png",
 			previewAlt: "Flat preview of a supplier portal upload screenshot",
@@ -186,7 +200,7 @@ export const RFP_101_WORK_ITEM = {
 			name: "proposal-walkthrough",
 			displayName: "Proposal walkthrough",
 			ext: "mp4",
-			date: "2 Sep 2025, 04:10 PM",
+			date: "2 Jun 2026, 04:10 PM",
 			thumbnailKind: "video",
 			previewSrc: "/generated/rfp-loom-walkthrough.png",
 			previewAlt: "Flat preview of a walkthrough video recording",
@@ -244,23 +258,23 @@ export const RFP_101_WORK_ITEM = {
 		},
 	],
 	effortEstimate: "21 pts",
-	account: "Enterprise Evaluation Account",
-	dealSize: "multi-thousand users",
+	account: "Acmecorp",
+	dealSize: "multi-thousand users; budget qualification pending",
 	rfpContext: {
-		customerName: "Enterprise Evaluation Account",
-		opportunityName: "Enterprise service-management platform evaluation",
+		customerName: "Acmecorp",
+		opportunityName: "Acmecorp enterprise service-management platform evaluation",
 		seatCount: "multi-thousand users",
 		competitorProduct: "incumbent service-management, CMDB, asset, HR, GRC, and custom workflow tooling",
 		salesGoal:
-			"Help the sales team complete a persuasive RFP response and executive demo that positions Atlassian as the lower-friction, AI-ready system of work for enterprise service delivery.",
-		procurementStage: "Shortlisted supplier RFP response and executive demo preparation",
-		responseDueDate: "Sep 8, 2025",
-		submissionPortal: "Supplier RFP response package",
+			"Help the sales team decide whether Atlassian should respond to the Acmecorp RFP by qualifying fit, budget, stakeholder access, competitive advantage, and review risk before drafting a customer-facing package.",
+		procurementStage: "Inbound RFP qualification and bid/no-bid recommendation",
+		responseDueDate: "Jun 8, 2026",
+		submissionPortal: "Acmecorp supplier RFP portal",
 		buyerPriorities: [
-			"Consolidate fragmented regional tools into a clearer enterprise service-management operating model.",
-			"Cover incident, problem, change, request, CMDB, asset, knowledge, reporting, portal, customer service, and HR service workflows.",
-			"Improve CMDB maturity for millions of configuration items while focusing operations on active assets.",
-			"Show credible AI capabilities, integrations, data residency, legal compliance, GRC, risk, and vulnerability management.",
+			"Acmecorp wants to consolidate fragmented regional tools into a clearer enterprise service-management operating model.",
+			"Acmecorp needs coverage for incident, problem, change, request, CMDB, asset, knowledge, reporting, portal, customer service, and HR service workflows.",
+			"Acmecorp wants to improve CMDB maturity for millions of configuration items while focusing operations on active assets.",
+			"Acmecorp needs credible AI capabilities, integrations, data residency, legal compliance, GRC, risk, and vulnerability management.",
 		],
 		evaluationCriteria: [
 			"Functional fit for ITSM, service desk, request management, change enablement, incident operations, and infrastructure operations.",
@@ -270,10 +284,10 @@ export const RFP_101_WORK_ITEM = {
 			"Security, legal, data residency, audit logs, Guard, GRC, risk, vulnerability, and enterprise support readiness.",
 		],
 		winThemes: [
-			"Atlassian connects IT, software, support, and business teams through one system of work instead of another rigid ITSM silo.",
-			"Jira Service Management can demonstrate end-user request intake, fulfiller workflows, developer change enablement, and incident operations in one demo arc.",
-			"Rovo and Teamwork Graph show how AI can answer questions, summarize knowledge, and connect work across Jira, Confluence, assets, and service operations.",
-			"Transparent pricing, phased migration, and marketplace/partner extensibility address incumbent cost and adaptability concerns.",
+			"Atlassian can connect Acmecorp IT, software, support, and business teams through one system of work instead of another rigid ITSM silo.",
+			"Jira Service Management can demonstrate Acmecorp end-user request intake, fulfiller workflows, developer change enablement, and incident operations in one demo arc.",
+			"Rovo and Teamwork Graph can show Acmecorp how AI answers questions, summarizes knowledge, and connects work across Jira, Confluence, assets, and service operations.",
+			"Transparent pricing, phased migration, and marketplace/partner extensibility address Acmecorp's incumbent cost and adaptability concerns.",
 		],
 		risks: [
 			"Hardware and software asset management depth may require roadmap, partner, or future-state positioning.",
@@ -282,10 +296,10 @@ export const RFP_101_WORK_ITEM = {
 			"The executive demo window is short, so the response team must prioritize the highest-value narrative and park detailed follow-ups.",
 		],
 		nextActions: [
-			"Finish the requirement compliance matrix and mark every mandatory response owner.",
-			"Draft executive summary, Atlassian System of Work story, JSM demo script, pricing/TCO narrative, and final pitch.",
-			"Validate Assets, CMDB, HAM/SAM, GRC, risk, vulnerability, and data residency responses with product and legal owners.",
-			"Prepare a concise executive demo agenda with clear strengths, known gaps, and follow-up answers for supplier Q&A.",
+			"Finish the Acmecorp requirement compliance matrix and mark every mandatory response owner.",
+			"Confirm whether Acmecorp budget, stakeholder access, and campaign fit justify a full response.",
+			"Validate Acmecorp Assets, CMDB, HAM/SAM, GRC, risk, vulnerability, and data residency responses with product and legal owners.",
+			"Prepare a concise Acmecorp bid/no-bid recommendation with clear strengths, known gaps, and follow-up questions.",
 		],
 		responseTeam: [
 			{
@@ -322,22 +336,283 @@ const WORK_ITEMS_BY_CODE: Record<string, WorkItemData> = {
 };
 
 const WORK_ITEM_DESCRIPTIONS_BY_CODE: Record<string, string> = {
-	"RFP-102": "Review the supplier packet, procurement portal exports, and any requested file list to identify every response artifact the team must produce. Split requirements into functional answers, legal or security exhibits, pricing files, implementation plans, customer-reference requests, and demo follow-ups. Flag ambiguous language early so the account team can submit clarification questions before the deadline instead of discovering gaps during final review.",
-	"RFP-103": "Create a DACI-style ownership map for the RFP response. Assign drivers, approvers, contributors, and informed stakeholders across account leadership, proposal management, sales engineering, product specialists, legal, security, deal desk, support, and partner teams. The goal is to make every section visibly owned, reduce duplicate drafting, and ensure the final response has an escalation path for blocked answers or risky commitments.",
-	"RFP-104": "Inventory the customer's requirement areas and translate them into response tracks that can be staffed and reviewed. Cover ITSM, incident, problem, change, request, Assets and CMDB, hardware and software asset management, knowledge, reporting, portal management, AI, integrations, customer service, HR services, data residency, legal compliance, GRC, risk, vulnerability management, implementation services, and pricing. Mark which topics are core Atlassian strengths, which need partner positioning, and which need careful expectation setting.",
-	"RFP-105": "Run the bid/no-bid risk assessment before the team invests heavily in drafting. Check mandatory requirements, certification asks, residency constraints, asset-management depth, security operations expectations, migration timelines, pricing guardrails, reference requirements, and executive-demo readiness. Summarize the risks as concrete mitigation actions so leadership can decide whether to proceed, qualify the response, or request additional customer clarification.",
-	"RFP-106": "Build a response calendar that includes supplier questions, internal draft checkpoints, demo-story reviews, legal and security approvals, pricing sign-off, final executive review, submission packaging, and post-submission follow-ups. Include buffer for missing evidence and late-stage scope changes. The timeline should be practical enough for the response team to work from and clear enough for leadership to understand where slippage will create deal risk.",
-	"RFP-107": "Collect the customer context needed to make the response feel specific without overfitting to a single buyer. Capture the current tools, known pain points, business outcomes, executive priorities, implementation constraints, success metrics, user populations, regional differences, support model, and likely competitor strengths. Convert that context into reusable win themes that can shape the executive summary, demo narrative, and answer library.",
-	"RFP-141": "Draft the executive narrative for why Atlassian is the right platform for the customer's enterprise work transformation. Connect Jira Service Management, Jira, Confluence, Assets, Rovo, Teamwork Graph, Guard, analytics, automation, and marketplace extensibility into one coherent system-of-work story. The draft should explain how Atlassian reduces tool sprawl, improves service delivery, gives leaders visibility, and creates a phased path from today's environment to a more connected operating model.",
-	"RFP-142": "Prepare the functional response for service desk, request management, portals, knowledge, and reporting. Show how customers can design intake channels, route work to the right teams, manage SLAs, publish knowledge from Confluence, report on operational performance, and connect service work to software delivery. Include demo moments, configuration assumptions, known limitations, and reusable answer snippets the proposal team can paste into the formal response matrix.",
-	"RFP-143": "Build the commercial and implementation response for the proposal. Cover licensing assumptions, phased rollout options, implementation services, migration support, training, success planning, total cost of ownership, renewal considerations, and any discount or approval dependencies. The work should give deal desk enough detail to approve the numbers and give the customer a credible view of how Atlassian can be adopted without a disruptive big-bang migration.",
-	"RFP-161": "Review the Assets, CMDB, hardware asset, and software asset management positioning before the response goes to final review. Validate where Atlassian can answer directly, where data import or discovery assumptions matter, and where a partner or roadmap explanation is the most honest answer. The review should produce precise language that is confident, accurate, and demoable without overstating native capabilities.",
-	"RFP-162": "Review data residency, DPA, legal terms, procurement conditions, privacy requirements, and contract language for the response. Identify clauses that need legal approval, standard positions that can be reused, and customer-specific asks that may require exceptions. The output should give the proposal manager clear approved wording and a list of open legal risks that must be resolved before submission.",
-	"RFP-163": "Review security, Guard, audit logging, compliance, GRC, risk, and vulnerability-management answers. Confirm the current evidence package, approved product language, and any integration-based positioning for requirements outside native JSM workflows. The goal is to make the response strong enough for a security evaluator while avoiding commitments that product, legal, or support teams cannot stand behind.",
-	"RFP-164": "Prepare the executive review package for the final pitch. Summarize the customer problem, Atlassian win themes, major differentiators, known gaps, pricing posture, implementation approach, and demo storyline. The review should help leadership decide whether the response is compelling, whether the deal strategy is realistic, and which messages need to be emphasized in the final customer conversation.",
-	"RFP-181": "Package and submit the clarification responses that unblock the proposal team. Make sure every customer question has an owner-approved answer, every answer is consistent with the main response strategy, and any new requirement discovered through Q&A is routed back into the board. Capture the submission timestamp and any follow-up commitments so the team can prove what was sent and when.",
-	"RFP-182": "Archive the final response package, exhibits, pricing files, demo deck, approved legal language, security artifacts, and reusable answer snippets. Tag the materials by requirement area so future RFP teams can find them quickly. Include a short retro summary that explains what worked, what created late risk, which answers should be promoted into the answer library, and which product gaps need follow-up.",
+	"RFP-102": "Review the Northstar Bank supplier packet, procurement portal exports, and any requested file list to identify every response artifact the team must produce if the opportunity qualifies. Split Northstar Bank requirements into functional answers, legal or security exhibits, pricing files, implementation plans, customer-reference requests, and demo follow-ups. Flag ambiguous language early so the account team can submit clarification questions before the deadline instead of discovering gaps during final review.",
+	"RFP-103": "Create a DACI-style ownership map for the Meridian Health RFP qualification and possible response. Assign drivers, approvers, contributors, and informed stakeholders across account leadership, proposal management, sales engineering, product specialists, legal, security, deal desk, support, and partner teams. The goal is to make every Meridian Health decision area visibly owned, reduce duplicate drafting, and ensure the bid/no-bid recommendation has an escalation path for blocked answers or risky commitments.",
+	"RFP-104": "Inventory HelioWorks Energy's requirement areas and translate them into response tracks that can be staffed and reviewed. Cover ITSM, incident, problem, change, request, Assets and CMDB, hardware and software asset management, knowledge, reporting, portal management, AI, integrations, customer service, HR services, data residency, legal compliance, GRC, risk, vulnerability management, implementation services, and pricing. Mark which HelioWorks Energy topics are core Atlassian strengths, which need partner positioning, and which need careful expectation setting.",
+	"RFP-105": "Run the BluePeak Telecom bid/no-bid risk assessment before the team invests heavily in drafting. Check mandatory requirements, certification asks, residency constraints, asset-management depth, security operations expectations, migration timelines, pricing guardrails, reference requirements, and executive-demo readiness. Summarize the BluePeak Telecom risks as concrete mitigation actions so leadership can decide whether to proceed, qualify the response, or request additional customer clarification.",
+	"RFP-106": "Build a Redwood Retail Group response calendar that includes supplier questions, internal draft checkpoints, qualification reviews, legal and security approvals, pricing sign-off, final executive review, submission packaging, and post-submission follow-ups. Include buffer for missing evidence and late-stage scope changes. The timeline should be practical enough for the response team to work from and clear enough for leadership to understand where slippage will create Redwood Retail Group deal risk.",
+	"RFP-107": "Collect the Summit Grove Insurance context needed to make the bid recommendation specific without overfitting to a single buyer. Capture the current tools, known pain points, business outcomes, executive priorities, implementation constraints, success metrics, user populations, regional differences, support model, and likely competitor strengths. Convert that Summit Grove Insurance context into qualification evidence and reusable win themes that can shape the decision brief if the pursuit proceeds.",
+	"RFP-141": "Draft the executive narrative for why Atlassian is the right platform for Orion Motors' enterprise work transformation if the RFP clears qualification. Connect Jira Service Management, Jira, Confluence, Assets, Rovo, Teamwork Graph, Guard, analytics, automation, and marketplace extensibility into one coherent system-of-work story. The draft should explain how Atlassian could reduce Orion Motors tool sprawl, improve service delivery, give leaders visibility, and create a phased path from today's environment to a more connected operating model.",
+	"RFP-142": "Prepare the NimbusCare functional response for service desk, request management, portals, knowledge, and reporting once the opportunity is qualified. Show how NimbusCare could design intake channels, route work to the right teams, manage SLAs, publish knowledge from Confluence, report on operational performance, and connect service work to software delivery. Include demo moments, configuration assumptions, known limitations, and reusable answer snippets the proposal team can paste into the formal response matrix.",
+	"RFP-143": "Build the Copperline Logistics commercial and implementation response for the proposal. Cover licensing assumptions, phased rollout options, implementation services, migration support, training, success planning, total cost of ownership, renewal considerations, and any discount or approval dependencies. The work should give deal desk enough Copperline Logistics-specific detail to approve the numbers and give the customer a credible view of how Atlassian can be adopted without a disruptive big-bang migration.",
+	"RFP-161": "Review the VertexRail Assets, CMDB, hardware asset, and software asset management positioning before the response goes to final review. Validate where Atlassian can answer directly, where data import or discovery assumptions matter, and where a partner or roadmap explanation is the most honest answer. The review should produce precise VertexRail language that is confident, accurate, and demoable without overstating native capabilities.",
+	"RFP-162": "Review Greenfield BioSystems data residency, DPA, legal terms, procurement conditions, privacy requirements, and contract language for the response. Identify clauses that need legal approval, standard positions that can be reused, and Greenfield BioSystems-specific asks that may require exceptions. The output should give the proposal manager clear approved wording and a list of open legal risks that must be resolved before submission.",
+	"RFP-163": "Review HarborPoint Finance security, Guard, audit logging, compliance, GRC, risk, and vulnerability-management answers. Confirm the current evidence package, approved product language, and any integration-based positioning for requirements outside native JSM workflows. The goal is to make the HarborPoint Finance response strong enough for a security evaluator while avoiding commitments that product, legal, or support teams cannot stand behind.",
+	"RFP-164": "Prepare the Silverline Manufacturing executive review package for the final pitch. Summarize the customer problem, Atlassian win themes, major differentiators, known gaps, pricing posture, implementation approach, and demo storyline. The review should help leadership decide whether the Silverline Manufacturing response is compelling, whether the deal strategy is realistic, and which messages need to be emphasized in the final customer conversation.",
+	"RFP-181": "Package and submit the TidalWorks Utilities clarification responses that unblock the proposal team. Make sure every customer question has an owner-approved answer, every answer is consistent with the main qualification strategy, and any new TidalWorks Utilities requirement discovered through Q&A is routed back into the board. Capture the submission timestamp and any follow-up commitments so the team can prove what was sent and when.",
+	"RFP-182": "Archive the Novacore University final response package, exhibits, pricing files, demo deck, approved legal language, security artifacts, and reusable answer snippets. Tag the materials by requirement area so future RFP teams can find them quickly. Include a short retro summary that explains what worked, what created late risk, which answers should be promoted into the answer library, and which product gaps need follow-up.",
 };
+
+const RFP_WORK_ITEM_PEOPLE: readonly WorkItemPerson[] = [
+	{
+		name: "Maya Chen",
+		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
+		role: "Proposal manager",
+	},
+	{
+		name: "Jordan Lee",
+		avatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
+		role: "Account executive",
+	},
+	{
+		name: "Priya Shah",
+		avatarUrl: "/avatar-user/annie-clare/color/asow-strategy-orange.png",
+		role: "Sales engineer",
+	},
+	{
+		name: "Elena Ruiz",
+		avatarUrl: "/avatar-user/aoife-burke/color/asow-service-yellow.png",
+		role: "Security and legal",
+	},
+	{
+		name: "Darius Pavri",
+		avatarUrl: "/avatar-user/darius-pavri/color/asow-strategy-orange.png",
+		role: "Deal desk",
+	},
+	{
+		name: "Florence Garcia",
+		avatarUrl: "/avatar-user/florence-garcia/color/asow-strategy-orange.png",
+		role: "Response specialist",
+	},
+	{
+		name: "David Hsieh",
+		avatarUrl: "/avatar-user/david-hsieh/color/asow-service-yellow.png",
+		role: "Solution architect",
+	},
+] as const;
+
+const CHILD_ITEM_STATUSES = ["todo", "inprogress", "done"] as const satisfies readonly WorkItemChildItem["status"][];
+
+const CHILD_ITEM_TEMPLATES: ReadonlyArray<{
+	priority: WorkItemChildItem["priority"];
+	summary: (clientName: string) => string;
+}> = [
+	{
+		priority: "high",
+		summary: (clientName) => `Confirm ${clientName} mandatory response sections`,
+	},
+	{
+		priority: "medium",
+		summary: (clientName) => `Map ${clientName} stakeholder reviewers and decision owners`,
+	},
+	{
+		priority: "high",
+		summary: (clientName) => `Validate ${clientName} budget and procurement assumptions`,
+	},
+	{
+		priority: "medium",
+		summary: (clientName) => `Draft ${clientName} clarification questions for ambiguous requirements`,
+	},
+	{
+		priority: "low",
+		summary: (clientName) => `Collect reusable ${clientName} evidence and reference snippets`,
+	},
+	{
+		priority: "medium",
+		summary: (clientName) => `Review ${clientName} legal, security, and data-residency language`,
+	},
+	{
+		priority: "high",
+		summary: (clientName) => `Prepare ${clientName} executive review notes`,
+	},
+	{
+		priority: "low",
+		summary: (clientName) => `Archive ${clientName} response learnings for future RFPs`,
+	},
+] as const;
+
+interface AttachmentVariant {
+	ext: WorkItemAttachment["ext"];
+	name: string;
+	displayName: (clientName: string) => string;
+	thumbnailKind: WorkItemAttachment["thumbnailKind"];
+	thumbnailTone: WorkItemAttachment["thumbnailTone"];
+	sourceLabel?: WorkItemAttachment["sourceLabel"];
+	sourceProduct?: WorkItemAttachment["sourceProduct"];
+}
+
+const ATTACHMENT_VARIANTS: readonly AttachmentVariant[] = [
+	{
+		name: "supplier-questionnaire",
+		displayName: (clientName) => `${clientName} supplier questionnaire`,
+		ext: "pdf",
+		thumbnailKind: "file",
+		thumbnailTone: "information",
+	},
+	{
+		name: "portal-export",
+		displayName: (clientName) => `${clientName} portal export`,
+		ext: "xlsx",
+		thumbnailKind: "document",
+		thumbnailTone: "success",
+	},
+	{
+		name: "stakeholder-notes",
+		displayName: (clientName) => `${clientName} stakeholder notes`,
+		ext: "page",
+		thumbnailKind: "document",
+		thumbnailTone: "discovery",
+		sourceLabel: "Confluence page",
+		sourceProduct: "confluence",
+	},
+	{
+		name: "security-addendum",
+		displayName: (clientName) => `${clientName} security addendum`,
+		ext: "docx",
+		thumbnailKind: "document",
+		thumbnailTone: "warning",
+	},
+	{
+		name: "pricing-workbook",
+		displayName: (clientName) => `${clientName} pricing workbook`,
+		ext: "xlsx",
+		thumbnailKind: "document",
+		thumbnailTone: "neutral",
+	},
+	{
+		name: "demo-planning-clip",
+		displayName: (clientName) => `${clientName} demo planning clip`,
+		ext: "mp4",
+		thumbnailKind: "video",
+		thumbnailTone: "information",
+		sourceLabel: "Loom video",
+		sourceProduct: "loom",
+	},
+	{
+		name: "risk-register",
+		displayName: (clientName) => `${clientName} risk register`,
+		ext: "csv",
+		thumbnailKind: "document",
+		thumbnailTone: "warning",
+	},
+] as const;
+
+const COMMENT_TEMPLATES: ReadonlyArray<(clientName: string) => string> = [
+	(clientName) => `${clientName} procurement language needs one more pass before we commit response capacity.`,
+	(clientName) => `I added the latest ${clientName} stakeholder notes and marked unresolved items for follow-up.`,
+	(clientName) => `Sales engineering should confirm where the ${clientName} demo needs product or partner support.`,
+	(clientName) => `Deal desk needs a cleaner ${clientName} pricing assumption before final review.`,
+	(clientName) => `Legal and security language for ${clientName} should stay review-required until evidence is attached.`,
+	(clientName) => `The ${clientName} response looks usable, but the owner matrix still needs one accountable driver.`,
+] as const;
+
+function getStableSeed(value: string): number {
+	return [...value].reduce((seed, char) => seed + char.charCodeAt(0), 0);
+}
+
+function getCycledItem<T>(items: readonly T[], index: number): T {
+	return items[index % items.length] ?? items[0]!;
+}
+
+function getKebabCase(value: string): string {
+	return value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/gu, "-")
+		.replace(/^-|-$/gu, "");
+}
+
+function getDemoDate(seed: number, index: number): string {
+	const day = 13 + ((seed + index) % 14);
+	const hour = 9 + ((seed + index * 2) % 8);
+	const minute = (seed + index * 13) % 60;
+	return `${day} May 2026, ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} AM`;
+}
+
+function getPriorityFromCard(card: KanbanBoardCardData | undefined): WorkItemData["priority"] {
+	switch (card?.priority) {
+		case "major":
+			return "High";
+		case "medium":
+			return "Medium";
+		case "minor":
+			return "Low";
+		default:
+			return "Medium";
+	}
+}
+
+function createVariableChildItems(code: string, clientName: string): WorkItemChildItem[] {
+	const seed = getStableSeed(code);
+	const count = 2 + (seed % 4);
+
+	return Array.from({ length: count }, (_, index) => {
+		const template = getCycledItem(CHILD_ITEM_TEMPLATES, seed + index);
+		const assignee = getCycledItem(RFP_WORK_ITEM_PEOPLE, seed + index + 1);
+		return {
+			type: "Sub-task",
+			key: `${code}-${String(index + 1).padStart(2, "0")}`,
+			summary: template.summary(clientName),
+			priority: template.priority,
+			assignee: assignee.name,
+			assigneeAvatarUrl: assignee.avatarUrl,
+			status: getCycledItem(CHILD_ITEM_STATUSES, seed + index),
+		};
+	});
+}
+
+function createVariableAttachments(code: string, clientName: string): WorkItemAttachment[] {
+	const seed = getStableSeed(code);
+	const count = 1 + ((seed + 1) % 4);
+	const clientSlug = getKebabCase(clientName);
+
+	return Array.from({ length: count }, (_, index) => {
+		const variant = getCycledItem(ATTACHMENT_VARIANTS, seed + index);
+		return {
+			name: `${clientSlug}-${variant.name}`,
+			displayName: variant.displayName(clientName),
+			ext: variant.ext,
+			date: getDemoDate(seed, index),
+			thumbnailKind: variant.thumbnailKind,
+			thumbnailTone: variant.thumbnailTone,
+			sourceLabel: variant.sourceLabel,
+			sourceProduct: variant.sourceProduct,
+		};
+	});
+}
+
+function createVariableComments(code: string, clientName: string): WorkItemComment[] {
+	const seed = getStableSeed(code);
+	const count = 1 + ((seed + 2) % 3);
+
+	return Array.from({ length: count }, (_, index) => {
+		const author = getCycledItem(RFP_WORK_ITEM_PEOPLE, seed + index + 2);
+		const content = getCycledItem(COMMENT_TEMPLATES, seed + index)(clientName);
+		return {
+			id: `${code.toLowerCase()}-comment-${index + 1}`,
+			author,
+			timestamp: `${(index + 1) * 12} minutes ago`,
+			content,
+		};
+	});
+}
+
+function createVariableWorkItemFields(
+	code: string,
+	clientName: string,
+	boardCard: KanbanBoardCardData | undefined,
+): Pick<WorkItemData, "assignee" | "attachments" | "childItems" | "comments" | "priority" | "reporter" | "status"> {
+	const seed = getStableSeed(code);
+
+	return {
+		assignee: getCycledItem(RFP_WORK_ITEM_PEOPLE, seed),
+		reporter: getCycledItem(RFP_WORK_ITEM_PEOPLE, seed + 3),
+		priority: getPriorityFromCard(boardCard),
+		status: findBoardColumnTitleByCardCode(code),
+		childItems: createVariableChildItems(code, clientName),
+		attachments: createVariableAttachments(code, clientName),
+		comments: createVariableComments(code, clientName),
+	};
+}
 
 function formatList(label: string, items: readonly string[] | undefined): string[] {
 	if (!items || items.length === 0) return [];
@@ -363,10 +638,13 @@ export function getAgentsWorkItemForCard(params: {
 }): WorkItemData {
 	const boardCard = findBoardCardByCode(params.code);
 	const labelFields = createWorkItemLabelFields(params.tags ?? boardCard?.tags);
+	const clientName = RFP_CLIENT_NAMES_BY_CODE[params.code as keyof typeof RFP_CLIENT_NAMES_BY_CODE];
 	const baseWorkItem = WORK_ITEMS_BY_CODE[params.code] ?? {
 		code: params.code,
 		title: params.title,
+		account: clientName,
 		description: WORK_ITEM_DESCRIPTIONS_BY_CODE[params.code],
+		...(clientName ? createVariableWorkItemFields(params.code, clientName, boardCard) : {}),
 	};
 
 	return {
@@ -396,6 +674,19 @@ export function formatAgentsBoardContext(): string {
 }
 
 function formatLightweightActiveJiraWorkItemContext(workItem: WorkItemData): string {
+	const childItems = workItem.childItems?.map(
+		(item) => `- ${item.key}: ${item.summary} (${item.status}, ${item.priority}, owner: ${item.assignee ?? "unassigned"})`,
+	);
+	const attachments = workItem.attachments?.map(
+		(file) => `- ${file.name}.${file.ext} (${file.date})`,
+	);
+	const recentActivity = workItem.comments?.flatMap((comment) => [
+		`- ${comment.timestamp}: ${formatNameWithRole(comment.author.name, comment.author.role)} - ${comment.content}`,
+		...(comment.replies ?? []).map(
+			(reply) => `  - ${reply.timestamp}: ${formatNameWithRole(reply.author.name, reply.author.role)} - ${reply.content}`,
+		),
+	]);
+
 	return [
 		"[Active Jira Work Item Context]",
 		"Source: /agents Jira work item.",
@@ -407,6 +698,12 @@ function formatLightweightActiveJiraWorkItemContext(workItem: WorkItemData): str
 		workItem.reporter?.name ? `Reporter: ${formatNameWithRole(workItem.reporter.name, workItem.reporter.role)}` : null,
 		workItem.labels?.length ? `Labels: ${workItem.labels.join(", ")}` : null,
 		workItem.description ? `Description: ${workItem.description}` : null,
+		childItems?.length ? "Child work items:" : null,
+		...(childItems ?? []),
+		attachments?.length ? "Attachments:" : null,
+		...(attachments ?? []),
+		recentActivity?.length ? "Recent activity:" : null,
+		...(recentActivity ?? []),
 		"[End Active Jira Work Item Context]",
 	]
 		.filter((line): line is string => typeof line === "string" && line.length > 0)
@@ -452,6 +749,7 @@ export function formatActiveJiraWorkItemContext(
 		`Customer: ${rfp.customerName}`,
 		`Opportunity: ${rfp.opportunityName}`,
 		`Seat count: ${rfp.seatCount}`,
+		workItem.dealSize ? `Deal size: ${workItem.dealSize}` : null,
 		`Competitor product to displace: ${rfp.competitorProduct}`,
 		`Sales goal: ${rfp.salesGoal}`,
 		`Procurement stage: ${rfp.procurementStage}`,

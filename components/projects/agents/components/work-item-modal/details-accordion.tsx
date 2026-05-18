@@ -101,7 +101,7 @@ export function DetailsAccordion() {
 						</DetailRow>
 
 						<DetailRow label="Start date">
-							<span className="text-sm">{workItem.startDate ?? "Oct 7, 2026"}</span>
+							<span className="text-sm">{workItem.startDate ?? "May 12, 2026"}</span>
 						</DetailRow>
 
 						{workItem.dueDate ? (

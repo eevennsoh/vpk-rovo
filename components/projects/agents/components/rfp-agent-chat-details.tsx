@@ -1,42 +1,70 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import AddIcon from "@atlaskit/icon/core/add";
+import AutomationIcon from "@atlaskit/icon/core/automation";
+import DeleteIcon from "@atlaskit/icon/core/delete";
+import { Button } from "@/components/ui/button";
+import { IconTile } from "@/components/ui/icon-tile";
 import { ProgressTracker, type ProgressTrackerStep } from "@/components/ui/progress-tracker";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tag } from "@/components/ui/tag";
-import type {
-	AgentsRfpDemoActivityItem,
-	AgentsRfpDemoJobRunSummary,
-	AgentsRfpDemoState,
+import { cn } from "@/lib/utils";
+import {
+	RFP_DRAFTING_BOARD_NAME,
+	RFP_DRAFTING_COLUMN_NAME,
+	type AgentsRfpDemoActivityItem,
+	type AgentsRfpDemoJobRunSummary,
+	type AgentsRfpDemoState,
 } from "../lib/rfp-demo-state";
 
-const TOOL_LABELS = [
-	"Jira work item reader",
-	"Attachment scanner",
-	"Teamwork Graph search",
-	"Report generator",
-	"Proposal PDF generator",
-] as const;
-
-const KNOWLEDGE_LABELS = [
-	"RFP-101 approved report",
-	"Standard ITSM RFP Response Template",
-	"Prior JSM pilot notes",
-	"Prior security review",
-] as const;
-
-function DetailsSection({
-	children,
-	title,
+function TriggerAddRow({
+	className,
+	label = "Add Trigger",
 }: Readonly<{
-	children: React.ReactNode;
-	title: string;
+	className?: string;
+	label?: string;
 }>): React.ReactElement {
 	return (
-		<section className="grid gap-2">
-			<h3 className="text-sm font-semibold text-text">{title}</h3>
-			{children}
-		</section>
+		<div
+			className={cn(
+				"flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm text-text-subtle",
+				className,
+			)}
+		>
+			<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle">
+				<AddIcon label="" size="small" />
+			</span>
+			<span className="text-sm font-medium">{label}</span>
+		</div>
+	);
+}
+
+function TriggerDropdown({
+	value,
+}: Readonly<{
+	value: string;
+}>): React.ReactElement {
+	return (
+		<Select defaultValue={value}>
+			<SelectTrigger
+				aria-label={value}
+				className="!h-6 gap-0 rounded-md !py-0 !pr-0 !pl-2 text-sm font-medium text-text [&_[data-slot=icon]]:size-6"
+				size="sm"
+				variant="none"
+			>
+				<SelectValue />
+			</SelectTrigger>
+			<SelectContent align="start" alignItemWithTrigger={false} className="min-w-0">
+				<SelectItem value={value}>{value}</SelectItem>
+			</SelectContent>
+		</Select>
 	);
 }
 
@@ -208,58 +236,54 @@ function getActivityTimelineSteps(state: AgentsRfpDemoState): ProgressTrackerSte
 }
 
 export function RfpAgentTriggerDetails({
+	onClearTrigger,
 	state,
 }: Readonly<{
+	onClearTrigger?: () => void;
 	state: AgentsRfpDemoState;
 }>): React.ReactElement {
 	const agent = state.agent;
-	const triggerLabel = agent?.trigger?.label ?? "On event: ticket enters Drafting";
+	const trigger = agent?.trigger ?? null;
+	const addTriggerControl = <TriggerAddRow />;
 
 	return (
 		<div className="grid gap-5">
-			<DetailsSection title="Tasks">
-				<div className="grid gap-2 text-sm text-text-subtle">
-					<p>Trigger: {triggerLabel}.</p>
-					<p>Job: {agent?.jobId ?? "Created when the agent is applied"}.</p>
-					<p>Scope: Drafting column.</p>
-					<p>Action: Create a thread, attach a draft, comment, and move successful tickets to Review.</p>
-					<p>Rerun policy: Completed tickets with draft output are skipped; failed tickets retry.</p>
+			<section className="grid gap-2">
+				<div className="rounded-xl border border-border bg-surface p-2">
+					{trigger ? (
+						<>
+							<div className="group/trigger-row flex min-h-14 items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered">
+								<IconTile
+									aria-hidden={true}
+									icon={<AutomationIcon label="" />}
+									label="Automation"
+									size="small"
+									variant="blue"
+								/>
+								<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm text-text">
+									<span className="font-medium">Status changed to</span>
+									<TriggerDropdown value={RFP_DRAFTING_COLUMN_NAME} />
+									<span className="font-medium">in</span>
+									<TriggerDropdown value={RFP_DRAFTING_BOARD_NAME} />
+								</div>
+								<Button
+									aria-label="Delete trigger"
+									className="opacity-0 transition-opacity duration-normal group-hover/trigger-row:opacity-100 focus-visible:opacity-100"
+									onClick={onClearTrigger}
+									size="icon-sm"
+									variant="ghost"
+								>
+									<DeleteIcon label="" size="small" />
+								</Button>
+							</div>
+							<Separator className="my-2" />
+							{addTriggerControl}
+						</>
+					) : (
+						addTriggerControl
+					)}
 				</div>
-			</DetailsSection>
-
-			<Separator />
-
-			<DetailsSection title="Instructions">
-				<p className="text-sm leading-6 text-text-subtle">
-					Read each RFP work item, inspect attachments and subtasks, use Teamwork Graph context to find account memory and reusable response assets, draft a deterministic first-pass RFP response package, attach the generated proposal PDF, add an agent-authored comment, and move successful tickets to Review.
-				</p>
-			</DetailsSection>
-
-			<DetailsSection title="Skills">
-				<div className="flex flex-wrap gap-2">
-					<Badge>RFP response package</Badge>
-				</div>
-			</DetailsSection>
-
-			<DetailsSection title="Tools">
-				<div className="flex flex-wrap gap-2">
-					{TOOL_LABELS.map((tool) => (
-						<Badge key={tool} variant="secondary">
-							{tool}
-						</Badge>
-					))}
-				</div>
-			</DetailsSection>
-
-			<DetailsSection title="Knowledge">
-				<div className="flex flex-wrap gap-2">
-					{KNOWLEDGE_LABELS.map((source) => (
-						<Badge key={source} variant="secondary">
-							{source}
-						</Badge>
-					))}
-				</div>
-			</DetailsSection>
+			</section>
 		</div>
 	);
 }

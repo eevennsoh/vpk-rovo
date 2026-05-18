@@ -18,8 +18,8 @@ export interface ExternalLink {
 
 export const STARRED_PROJECTS: readonly StarredProject[] = [
 	{
-		id: "vitafleet-q4-rfp-response",
-		name: "VitaFleet Q4 RFP Response",
+		id: "enterprise-rfp-qualification",
+		name: "Enterprise RFP Qualification",
 		imageSrc: "/avatar-project/rocket.svg",
 	},
 	{
@@ -28,8 +28,8 @@ export const STARRED_PROJECTS: readonly StarredProject[] = [
 		imageSrc: "/avatar-project/code.svg",
 	},
 	{
-		id: "vitafleet-sales-team",
-		name: "VitaFleet Sales Team",
+		id: "rfp-pursuit-team",
+		name: "RFP Pursuit Team",
 		imageSrc: "/avatar-project/science.svg",
 	},
 ] as const;

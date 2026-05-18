@@ -21,25 +21,24 @@ const {
 const RFP_101_CONTEXT = [
 	"[Active Jira Work Item Context]",
 	"Key: RFP-101",
-	"Title: Qualify enterprise service-management RFP",
+	"Title: Acmecorp: Prepare for bid recommendation for ESM RFP",
 	"[End Active Jira Work Item Context]",
 ].join("\n");
 
 const RFP_HELP_PROMPT = [
-	"Help me complete this RFP. Give me a bid/no-bid recommendation first,",
-	"then draft a first-pass response strategy covering ITSM, CMDB, asset",
-	"management, and AI compliance. Use everything in this ticket and the",
-	"attached documents.",
+	"Should we respond to this RFP? Give me a bid/no-bid recommendation",
+	"and qualification DACI covering ITSM, CMDB, asset management,",
+	"AI compliance, legal, security, budget, and stakeholder posture.",
 ].join("\n");
-const RFP_SHORT_HELP_PROMPT = "help me complete this RFP";
-const RFP_PREPARE_HELP_PROMPT = "help me prepare the RFP";
-const RFP_REVIEW_COMPLETE_PROMPT = "Review and complete this RFP";
+const RFP_SHORT_HELP_PROMPT = "Should we respond to this RFP?";
+const RFP_PREPARE_HELP_PROMPT = "Can you recommend whether we should bid on this RFP?";
+const RFP_REVIEW_COMPLETE_PROMPT = "Should Atlassian respond to this RFP?";
 
 const RFP_AGENT_CREATION_CONTEXT = [
 	"[Agents RFP Demo Local State]",
 	"Source: backend-persisted /agents RFP demo state.",
 	"Report stage: attached.",
-	"Generated attachments on RFP-101: RFP response strategy.pdf.",
+	"Generated attachments on RFP-101: Acmecorp RFP qualification DACI.pdf.",
 	"Custom agent: not created.",
 	"Trigger: none.",
 	"[End Agents RFP Demo Local State]",
@@ -50,7 +49,7 @@ const RFP_AGENT_CREATION_PROMPT = [
 	"The agent should read each RFP work item and stage reusable report work.",
 ].join("\n");
 
-test("detects the real RFP-101 floating-chat help turn from active context", () => {
+test("detects the real RFP-101 floating-chat qualification turn from active context", () => {
 	const turn = resolveAgentsRfpDemoChatTurn({
 		contextDescription: RFP_101_CONTEXT,
 		messages: [
@@ -64,7 +63,7 @@ test("detects the real RFP-101 floating-chat help turn from active context", () 
 	assert.equal(turn, "qualification-questions");
 });
 
-test("detects the short RFP-101 help turn from active context", () => {
+test("detects the short RFP-101 qualification turn from active context", () => {
 	const turn = resolveAgentsRfpDemoChatTurn({
 		contextDescription: RFP_101_CONTEXT,
 		messages: [
@@ -78,7 +77,7 @@ test("detects the short RFP-101 help turn from active context", () => {
 	assert.equal(turn, "qualification-questions");
 });
 
-test("detects the simple RFP-101 preparation help turn from active context", () => {
+test("detects the simple RFP-101 bid recommendation turn from active context", () => {
 	const turn = resolveAgentsRfpDemoChatTurn({
 		contextDescription: RFP_101_CONTEXT,
 		messages: [
@@ -92,7 +91,7 @@ test("detects the simple RFP-101 preparation help turn from active context", () 
 	assert.equal(turn, "qualification-questions");
 });
 
-test("detects the RFP-101 review-and-complete greeting turn from active context", () => {
+test("detects the RFP-101 should-we-respond greeting turn from active context", () => {
 	const turn = resolveAgentsRfpDemoChatTurn({
 		contextDescription: RFP_101_CONTEXT,
 		messages: [
@@ -157,7 +156,7 @@ test("does not treat generic agent creation as the RFP demo agent turn", () => {
 
 test("does not trigger the RFP demo turn from board fallback context alone", () => {
 	const turn = resolveAgentsRfpDemoChatTurn({
-		contextDescription: "[Agents Board Context]\nRFP-101: Qualify enterprise service-management RFP\n[End Agents Board Context]",
+		contextDescription: "[Agents Board Context]\nRFP-101: Acmecorp: Prepare for bid recommendation for ESM RFP\n[End Agents Board Context]",
 		messages: [
 			{
 				role: "user",
@@ -175,7 +174,7 @@ test("detects the RFP demo clarification answer turn by question session", () =>
 		clarification: {
 			sessionId: RFP_DEMO_QUESTION_SESSION_ID,
 			answers: {
-				"deal-size": "$2.4M ARR",
+				budget: "Qualified strategic budget",
 			},
 		},
 		messages: [
@@ -196,13 +195,14 @@ test("builds the shared question-card payload expected by compact chat", () => {
 	assert.equal(payload.type, "question-card");
 	assert.equal(payload.sessionId, RFP_DEMO_QUESTION_SESSION_ID);
 	assert.equal(payload.maxRounds, 1);
-	assert.equal(payload.questions.length, 4);
+	assert.equal(payload.questions.length, 5);
 	assert.deepEqual(
 		payload.questions.map((question) => question.id),
 		[
-			"deal-size",
-			"incumbent",
-			"audience",
+			"budget",
+			"stakeholder-relationship",
+			"campaign-fit",
+			"competitive-position",
 			"review-posture",
 		],
 	);
@@ -229,18 +229,18 @@ test("qualification trace leaves ask_user_questions awaiting a question card", (
 	assert.equal(trace.length, 6);
 	assert.equal(finalStep.toolName, "ask_user_questions");
 	assert.equal(finalStep.toolCallId, RFP_DEMO_QUESTION_TOOL_CALL_ID);
-	assert.equal(finalStep.input.questions, 4);
+	assert.equal(finalStep.input.questions, 5);
 	assert.equal(finalStep.outputPreview, undefined);
 });
 
-test("answer trace produces completed response-building steps", () => {
+test("answer trace produces completed qualification DACI steps", () => {
 	const trace = buildAgentsRfpDemoAnswerTrace();
 
 	assert.deepEqual(
 		trace.map((step) => step.toolName),
 		[
 			"rfp.apply_qualification_answers",
-			"rfp.build_response_strategy",
+			"rfp.build_bid_recommendation",
 			"rfp.flag_reviews",
 			"agent_skill.load",
 			"vpk_html.distill_fields",
@@ -259,13 +259,24 @@ test("agent creation trace creates an agent instead of rendering a vpk-html repo
 		trace.map((step) => step.toolName),
 		[
 			"jira.inspect_board_column",
+			"agent_skill.load",
 			"agent.define_trigger",
 			"agent.configure_tools",
 			"agent.write_instructions",
 			"teamwork_graph.link_knowledge",
+			"agent_skill.load",
 			"agent.define_rerun_policy",
 			"agent.persist_definition",
 		],
+	);
+	assert.deepEqual(
+		trace.filter((step) => step.toolName === "agent_skill.load").map((step) => step.label),
+		["Using create-agent skill", "Using create-automation skill"],
+	);
+	assert.ok(
+		trace
+			.filter((step) => step.toolName === "agent_skill.load")
+			.every((step) => step.delayMs === 4500),
 	);
 	assert.ok(trace.every((step) => typeof step.outputPreview === "string" && step.outputPreview.length > 0));
 	assert.equal(result.agentId, "rfp-drafting-agent");
@@ -280,7 +291,7 @@ test("agent creation trace creates an agent instead of rendering a vpk-html repo
 	assert.equal(result.action, "create");
 	assert.match(result.summary, /similar RFP work items/u);
 	assert.match(result.trigger, /ticket enters Drafting/u);
-	assert.match(result.tools.join(" "), /Proposal PDF generator/u);
+	assert.match(result.tools.join(" "), /HTML draft attachment/u);
 	assert.match(result.guardrail, /Skips completed tickets/u);
 	assert.match(
 		trace.find((step) => step.toolName === "agent.write_instructions")?.content ?? "",
@@ -288,7 +299,7 @@ test("agent creation trace creates an agent instead of rendering a vpk-html repo
 	);
 	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /Created \*\*RFP Drafter\*\*/u);
 	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /added it to the Enterprise RFP Response project/u);
-	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /proposal PDF/u);
+	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /vpk-html draft/u);
 	assert.doesNotMatch(
 		trace.map((step) => step.toolName).join("\n"),
 		/vpk_html\.render_template/u,
@@ -297,15 +308,15 @@ test("agent creation trace creates an agent instead of rendering a vpk-html repo
 });
 
 test("report confirmation points the user at Rovo Canvas", () => {
-	assert.equal(RFP_DEMO_REPORT_TITLE, "RFP-101 response strategy report");
-	assert.match(RFP_DEMO_REPORT_PREVIEW_SUMMARY, /PDF report for RFP-101/u);
-	const confirmation = buildAgentsRfpDemoReportConfirmationText({
-		documentId: "doc-123",
-		title: RFP_DEMO_REPORT_TITLE,
-	});
-	assert.match(confirmation, /Generate PDF created \*\*RFP-101 response strategy report\*\*/u);
-	assert.match(confirmation, /\[Open it in Rovo Canvas\]\(#rovo-canvas-doc-123\)[\s\S]*embedded PDF/u);
-	assert.doesNotMatch(confirmation, /vpk-html|embedded HTML/u);
+	assert.equal(RFP_DEMO_REPORT_TITLE, "Acmecorp RFP qualification DACI");
+	assert.match(RFP_DEMO_REPORT_PREVIEW_SUMMARY, /Offline vpk-html one-pager/u);
+	assert.match(
+		buildAgentsRfpDemoReportConfirmationText({
+			documentId: "doc-123",
+			title: RFP_DEMO_REPORT_TITLE,
+		}),
+		/Generated \*\*Acmecorp RFP qualification DACI\*\*[\s\S]*\[Open it in Rovo Canvas\]\(#rovo-canvas-doc-123\)[\s\S]*qualification DACI/u,
+	);
 });
 
 test("extracts the latest user message text from AI SDK UI parts", () => {
