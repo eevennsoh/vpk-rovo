@@ -88,3 +88,18 @@ test("Conversation resize follow uses the active follow target while content str
 		/void scrollToBottom\(\{ animation: resize, target: resizeTarget \}\)/,
 	);
 });
+
+test("Conversation gives its scroll viewport a constrained flex height", () => {
+	assert.match(
+		CONVERSATION_SOURCE,
+		/className=\{cn\("relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-hidden", className\)\}/,
+	);
+	assert.match(
+		CONVERSATION_SOURCE,
+		/className="min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto scrollbar-auto-hide"/,
+	);
+	assert.doesNotMatch(
+		CONVERSATION_SOURCE,
+		/className="h-full w-full overflow-x-hidden overflow-y-auto scrollbar-auto-hide"/,
+	);
+});
