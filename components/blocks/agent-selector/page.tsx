@@ -42,17 +42,8 @@ export default function AgentSelectorPage({ variant = "default" }: Readonly<Agen
 		]
 		: [];
 
-	function toggleAgent(agentId: string) {
-		if (variant === "selected-agent-actions") {
-			setSelectedAgentIds([agentId]);
-			return;
-		}
-
-		setSelectedAgentIds((currentIds) => (
-			currentIds.includes(agentId)
-				? currentIds.filter((currentId) => currentId !== agentId)
-				: [...currentIds, agentId]
-		));
+	function selectAgent(agentId: string) {
+		setSelectedAgentIds([agentId]);
 	}
 
 	return (
@@ -69,9 +60,10 @@ export default function AgentSelectorPage({ variant = "default" }: Readonly<Agen
 				<AgentSelector
 					agents={agents}
 					heading={variant === "selected-agent-actions" ? "Switch to another agent" : undefined}
-					onAgentToggle={toggleAgent}
+					onAgentToggle={selectAgent}
 					onBrowseAgents={() => undefined}
 					onCreateAgent={() => undefined}
+					selectionMode="single"
 					selectedAgentActions={selectedAgentActions}
 					selectedAgentIds={selectedAgentIds}
 				/>

@@ -2,11 +2,15 @@
 
 import * as React from "react"
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar"
+import type { NewCoreIconProps } from "@atlaskit/icon/base-new"
+import AiAgentIcon from "@atlaskit/icon/core/ai-agent"
 import CrossCircleIcon from "@atlaskit/icon/core/cross-circle"
 import LockLockedIcon from "@atlaskit/icon/core/lock-locked"
+import PersonAvatarIcon from "@atlaskit/icon/core/person-avatar"
 import StatusVerifiedIcon from "@atlaskit/icon/core/status-verified"
 import { cva, type VariantProps } from "class-variance-authority"
 
+import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 
 const HEXAGON_CLIP =
@@ -38,6 +42,8 @@ const avatarVariants = cva(
 )
 
 type AvatarPresence = "online" | "busy" | "offline" | "focus"
+type AvatarUnassignedKind = "person" | "agent"
+type AvatarSize = NonNullable<VariantProps<typeof avatarVariants>["size"]>
 
 interface AvatarProps
 	extends AvatarPrimitive.Root.Props,
@@ -103,6 +109,60 @@ function AvatarFallback({
 			)}
 			{...props}
 		/>
+	)
+}
+
+const avatarUnassignedIconSizeMap: Record<AvatarSize, NewCoreIconProps["size"]> = {
+	xs: "small",
+	sm: "small",
+	default: "medium",
+	lg: "medium",
+	xl: "medium",
+	"2xl": "medium",
+}
+
+interface AvatarUnassignedProps extends Omit<AvatarProps, "shape"> {
+	kind?: AvatarUnassignedKind
+}
+
+function AvatarUnassigned({
+	children,
+	className,
+	kind = "person",
+	label,
+	size = "default",
+	...props
+}: Readonly<AvatarUnassignedProps>) {
+	const isAgent = kind === "agent"
+	const IconComponent = isAgent ? AiAgentIcon : PersonAvatarIcon
+	const resolvedLabel = label ?? (isAgent ? "Unassigned agent" : "Unassigned person")
+	const resolvedSize = size ?? "default"
+
+	return (
+		<Avatar
+			data-unassigned={kind}
+			className={cn(
+				"items-center justify-center bg-muted text-icon-subtle after:border-border",
+				className
+			)}
+			label={resolvedLabel}
+			shape={isAgent ? "hexagon" : "circle"}
+			size={resolvedSize}
+			{...props}
+		>
+			<Icon
+				aria-hidden
+				className="text-icon-subtle"
+				render={
+					<IconComponent
+						color="currentColor"
+						label=""
+						size={avatarUnassignedIconSizeMap[resolvedSize]}
+					/>
+				}
+			/>
+			{children}
+		</Avatar>
 	)
 }
 
@@ -182,7 +242,7 @@ function AvatarStatusIndicator({
 	...props
 }: Readonly<AvatarStatusIndicatorProps>) {
 	const config = statusConfig[status]
-	const Icon = config.icon
+	const StatusIcon = config.icon
 
 	return (
 		<span
@@ -192,17 +252,21 @@ function AvatarStatusIndicator({
 			className={cn(
 				"ring-background absolute right-0 bottom-0 z-10 inline-flex items-center justify-center rounded-full ring-2",
 				config.className,
-				"group-data-[size=xs]/avatar:size-1.5 group-data-[size=xs]/avatar:[&>svg]:hidden",
-				"group-data-[size=sm]/avatar:size-2 group-data-[size=sm]/avatar:[&>svg]:hidden",
-				"group-data-[size=default]/avatar:size-2.5 group-data-[size=default]/avatar:[&>svg]:size-2",
-				"group-data-[size=lg]/avatar:size-3 group-data-[size=lg]/avatar:[&>svg]:size-2",
-				"group-data-[size=xl]/avatar:size-3.5 group-data-[size=xl]/avatar:[&>svg]:size-2.5",
-				"group-data-[size=2xl]/avatar:size-6 group-data-[size=2xl]/avatar:[&>svg]:size-4",
+				"group-data-[size=xs]/avatar:size-1.5",
+				"group-data-[size=sm]/avatar:size-2",
+				"group-data-[size=default]/avatar:size-2.5",
+				"group-data-[size=lg]/avatar:size-3",
+				"group-data-[size=xl]/avatar:size-3.5",
+				"group-data-[size=2xl]/avatar:size-6",
 				className
 			)}
 			{...props}
 		>
-			<Icon label="" size="small" color="currentColor" />
+			<Icon
+				aria-hidden
+				className="group-data-[size=xs]/avatar:hidden group-data-[size=sm]/avatar:hidden group-data-[size=default]/avatar:[&>span>svg]:size-2 group-data-[size=lg]/avatar:[&>span>svg]:size-2 group-data-[size=xl]/avatar:[&>span>svg]:size-2.5 group-data-[size=2xl]/avatar:[&>span>svg]:size-4"
+				render={<StatusIcon label="" size="small" color="currentColor" />}
+			/>
 		</span>
 	)
 }
@@ -246,6 +310,7 @@ export {
 	avatarVariants,
 	AvatarImage,
 	AvatarFallback,
+	AvatarUnassigned,
 	AvatarGroup,
 	AvatarGroupCount,
 	AvatarBadge,
@@ -254,6 +319,8 @@ export {
 	type AvatarProps,
 	type AvatarImageProps,
 	type AvatarFallbackProps,
+	type AvatarUnassignedProps,
+	type AvatarUnassignedKind,
 	type AvatarBadgeProps,
 	type AvatarGroupProps,
 	type AvatarGroupCountProps,

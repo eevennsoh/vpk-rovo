@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useRovoChat } from "@/app/contexts";
 import { RovoCanvas, type RovoCanvasStatus, type RovoCanvasVersion, type RovoCanvasView } from "@/components/blocks/rovo-canvas/page";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ArtifactCard, ARTIFACT_KIND_LABELS, type ArtifactKind } from "@/components/ui-custom/artifact";
 import {
 	Dialog,
@@ -71,6 +72,21 @@ function resolveCanvasStatus(isLoading: boolean, errorMessage: string | null): R
 	}
 
 	return errorMessage ? "error" : "ready";
+}
+
+function ArtifactResultCardPreviewSkeleton(): ReactNode {
+	return (
+		<div
+			aria-busy="true"
+			aria-label="Artifact preview loading"
+			className="flex w-full flex-col gap-2"
+			role="status"
+		>
+			<Skeleton className="h-4 w-full" />
+			<Skeleton className="h-4 w-full" />
+			<Skeleton className="h-4 w-3/4" />
+		</div>
+	);
 }
 
 function buildCanvasVersionHistory(
@@ -238,6 +254,7 @@ export function ArtifactResultCard({
 			summary: document?.previewSummary,
 		});
 	}, [artifact.kind, document, selectedContent]);
+	const isPreviewSummaryPending = shouldOpenInRovoCanvas && !document && !errorMessage;
 	const canvasViews = useMemo<ReadonlyArray<RovoCanvasView>>(
 		() => [
 			{
@@ -303,7 +320,9 @@ export function ArtifactResultCard({
 				previewSummary={document?.previewSummary ?? undefined}
 				title={artifact.title}
 				versionNumber={document?.versions.length ?? 1}
-			/>
+			>
+				{isPreviewSummaryPending ? <ArtifactResultCardPreviewSkeleton /> : null}
+			</ArtifactCard>
 			{shouldOpenInRovoCanvas ? (
 				<RovoCanvas
 					open={isOpen}

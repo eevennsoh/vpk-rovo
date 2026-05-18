@@ -13,6 +13,7 @@ test("RovoAppBrand agent selector keeps a single selected agent", () => {
 	assert.match(SOURCE, /function handleAgentSelect\(agentId: string\) \{/u);
 	assert.match(SOURCE, /selectAgent\(agentId\);/u);
 	assert.match(SOURCE, /onAgentToggle=\{handleAgentSelect\}/u);
+	assert.match(SOURCE, /selectionMode="single"/u);
 	assert.doesNotMatch(SOURCE, /currentIds\.includes\(agentId\)[\s\S]*currentIds\.filter/u);
 });
 
@@ -23,7 +24,6 @@ test("RovoAppBrand uses selected-agent actions while a custom agent is active", 
 	assert.match(SOURCE, /heading=\{isCustomAgentSelected \? "Switch to another agent" : undefined\}/u);
 	assert.match(SOURCE, /selectedAgentActions=\{selectedAgentActions\}/u);
 	assert.match(SOURCE, /const triggerLabel = isRovoAgentProfile\(selectedAgent\) \? "Rovo" : selectedAgent\.name;/u);
-	assert.match(SOURCE, /showSelectedIndicator=\{false\}/u);
 	assert.match(SOURCE, /ROVO_APP_BRAND_CONTAINER_VARIANTS/u);
 	assert.match(SOURCE, /<AnimatePresence initial=\{false\} mode="wait">/u);
 	assert.match(SOURCE, /key=\{selectedAgentId\}/u);

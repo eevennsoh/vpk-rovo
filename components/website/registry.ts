@@ -2392,6 +2392,13 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
+  "avatar-demo-unassigned": dynamic(
+    () =>
+      import("./demos/ui/avatar-demo").then((mod) => ({
+        default: mod.AvatarDemoUnassigned,
+      })),
+    { ssr: false },
+  ),
   "avatar-demo-group": dynamic(
     () =>
       import("./demos/ui/avatar-demo").then((mod) => ({

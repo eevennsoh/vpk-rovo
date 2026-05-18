@@ -145,6 +145,12 @@ const agents: AgentSelectorAgent[] = [
 				description: "Called when the search input changes.",
 			},
 			{
+				name: "selectionMode",
+				type: '"multiple" | "single"',
+				default: '"multiple"',
+				description: "Controls whether selected rows render with multi-select checkbox semantics and checkmarks.",
+			},
+			{
 				name: "selectedAgentActions",
 				type: "readonly AgentSelectorAction[]",
 				description: "Optional actions rendered above the switch-agent list for the currently selected agent.",

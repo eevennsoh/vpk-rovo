@@ -109,13 +109,21 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /RovoChatProvider/u);
 });
 
-test("RFP report canvas keeps first preview fetch visually blank instead of showing preloaders", () => {
+test("RFP report canvas centers a large spinner while the HTML preview is loading", () => {
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
 		/function resolveRfpReportCanvasStatus\(status: RfpHtmlReportStatus\): RovoCanvasStatus \{[\s\S]*if \(status === "error"\) \{[\s\S]*return "error";[\s\S]*return "ready";[\s\S]*\}/u,
 	);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/import \{ Spinner \} from "@\/components\/ui\/spinner";/u,
+	);
 	assert.match(RFP_REPORT_CANVAS_SOURCE, /aria-label="Report preview loading"/u);
 	assert.match(RFP_REPORT_CANVAS_SOURCE, /aria-busy="true"/u);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/className="grid size-full place-items-center bg-surface"[\s\S]*<Spinner[\s\S]*className="size-12 text-icon-subtle"[\s\S]*label="Report preview loading"/u,
+	);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /return "executing";/u);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /Rendering vpk-html report/u);
 });
@@ -204,6 +212,7 @@ test("AgentsView delegates RFP Drafting agent creation and keeps generic column 
 test("AgentsView maps backend RFP agent output onto cards, assignees, comments, and attachments", () => {
 	assert.match(AGENTS_VIEW_SOURCE, /RFP_DRAFTING_AGENT_NAME/u);
 	assert.match(AGENTS_VIEW_SOURCE, /workItemState\.assignee === RFP_DRAFTING_AGENT_NAME/u);
+	assert.match(AGENTS_VIEW_SOURCE, /workItemState\?\.agentStatus === "completed" && workItemState\.status === "Review" && !workItemState\.assignee/u);
 	assert.match(AGENTS_VIEW_SOURCE, /RFP_DEMO_HUMAN_ASSIGNEES\[workItemState\.assignee\]/u);
 	assert.match(AGENTS_VIEW_SOURCE, /role: workItemState\.agentStatus === "completed"[\s\S]*"Completed draft"/u);
 	assert.match(AGENTS_VIEW_SOURCE, /generatedAttachments = getGeneratedRfpAttachments\(state, workItem\.code\)/u);
@@ -247,7 +256,7 @@ test("RFP reset action lives in the board toolbar next to grouping", () => {
 	);
 	assert.match(BOARD_TOOLBAR_SOURCE, /<AlertDialogTitle>Reset demo\?<\/AlertDialogTitle>/u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /permanently deletes all Rovo chat history/u);
-	assert.match(BOARD_TOOLBAR_SOURCE, /role="status" aria-live="polite"[\s\S]*Resetting demo\.\.\./u);
+	assert.doesNotMatch(BOARD_TOOLBAR_SOURCE, /Resetting demo\.\.\./u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /<AlertDialogAction[\s\S]*isLoading=\{isResetting\}[\s\S]*onClick=\{\(\) => void handleConfirmReset\(\)\}[\s\S]*variant="warning"/u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /shape\?: "circle" \| "hexagon";/u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /<Avatar shape=\{avatar\.shape \?\? "circle"\} size="sm">/u);

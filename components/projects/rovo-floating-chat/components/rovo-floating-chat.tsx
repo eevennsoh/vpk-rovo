@@ -56,8 +56,8 @@ export default function RovoFloatingChat({
 						backgroundColor: "transparent",
 						borderRadius: 0,
 						borderWidth: 0,
-						display: "grid",
-						gridTemplateRows: "minmax(0, 1fr) auto",
+						display: "flex",
+						flexDirection: "column",
 						height: "auto",
 						maxHeight: "calc(min(720px, calc(100dvh - 96px)) - 56px)",
 					}}

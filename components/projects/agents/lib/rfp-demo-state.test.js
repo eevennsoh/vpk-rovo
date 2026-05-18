@@ -13,6 +13,7 @@ async function loadRfpDemoStateHarness() {
 					GENERATED_RFP_REPORT_ATTACHMENT_ID,
 					RFP_DRAFTING_AGENT_AVATAR_SRCS,
 					RFP_DRAFTING_AGENT_ID,
+					RFP_DRAFTING_AGENT_NAME,
 					RFP_DRAFTING_EVENT_TRIGGER_LABEL,
 					attachRfpReportToWorkItem,
 					approveRfpReport,
@@ -185,4 +186,60 @@ test("dragging RFP-102 to Drafting after agent creation assigns the agent and st
 		/RFP Drafting Agent started first-pass response prep for RFP-102\./,
 	);
 	assert.match(state.toasts[0].message, /Preparing first-pass response package/);
+});
+
+test("running RFP agent assignees resolve to hexagon board card avatars", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const state = harness.moveRfpDemoCard(
+		harness.scheduleRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState()),
+		"RFP-102",
+		"Drafting",
+	);
+	state.workItems["RFP-102"] = {
+		...state.workItems["RFP-102"],
+		agentAssignmentIds: [harness.RFP_DRAFTING_AGENT_ID],
+		agentStatus: "running",
+		assignee: harness.RFP_DRAFTING_AGENT_NAME,
+	};
+
+	const drafting = harness.resolveRfpDemoBoardColumns(state).find((column) => column.title === "Drafting");
+	const activeCard = drafting.cards.find((card) => card.code === "RFP-102");
+
+	assert.equal(activeCard.avatarSrc, state.agent.avatarSrc);
+	assert.equal(activeCard.avatarShape, "hexagon");
+	assert.equal(activeCard.avatarPulse, true);
+});
+
+test("completed Review tickets left unassigned do not inherit the seed human avatar", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const state = harness.createDefaultAgentsRfpDemoState();
+	state.board.columns = state.board.columns.map((column) => {
+		if (column.title === "Drafting") {
+			return {
+				...column,
+				cardCodes: column.cardCodes.filter((cardCode) => cardCode !== "RFP-141"),
+			};
+		}
+		if (column.title === "Review") {
+			return {
+				...column,
+				cardCodes: ["RFP-141", ...column.cardCodes],
+			};
+		}
+		return column;
+	});
+	state.workItems["RFP-141"] = {
+		...state.workItems["RFP-141"],
+		agentAssignmentIds: [harness.RFP_DRAFTING_AGENT_ID],
+		agentStatus: "completed",
+		assignee: null,
+		status: "Review",
+	};
+
+	const reviewColumn = harness.resolveRfpDemoBoardColumns(state).find((column) => column.title === "Review");
+	const completedCard = reviewColumn.cards.find((card) => card.code === "RFP-141");
+
+	assert.equal(completedCard.avatarSrc, undefined);
+	assert.equal(completedCard.avatarPulse, false);
+	assert.ok(completedCard.tags.some((tag) => tag.text === "draft ready"));
 });

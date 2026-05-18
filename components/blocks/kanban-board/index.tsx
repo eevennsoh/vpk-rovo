@@ -11,7 +11,7 @@ import TaskIcon from "@atlaskit/icon/core/task";
 
 import { useIsMounted } from "@/components/hooks/use-is-mounted";
 import { AgentSelector } from "@/components/blocks/agent-selector";
-import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarGroup, AvatarImage, type AvatarProps } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +38,7 @@ export interface KanbanBoardCardData {
 	tags: KanbanBoardCardTag[];
 	priority: KanbanBoardPriority;
 	avatarSrc?: string;
+	avatarShape?: NonNullable<AvatarProps["shape"]>;
 	avatarPulse?: boolean;
 }
 
@@ -326,6 +327,7 @@ function BoardColumn({
 
 function KanbanCard({
 	avatarPulse = false,
+	avatarShape = "circle",
 	avatarSrc,
 	code,
 	isDragging,
@@ -337,6 +339,7 @@ function KanbanCard({
 	title,
 }: Readonly<{
 	avatarPulse?: boolean;
+	avatarShape?: NonNullable<AvatarProps["shape"]>;
 	avatarSrc?: string;
 	code: string;
 	isDragging?: boolean;
@@ -402,6 +405,7 @@ function KanbanCard({
 									className={cn(
 										avatarPulse && "motion-safe:animate-pulse ring-2 ring-border-focused ring-offset-2 ring-offset-surface"
 									)}
+									shape={avatarShape}
 									size="sm"
 								>
 									{avatarSrc ? <AvatarImage src={avatarSrc} alt={code} /> : null}
@@ -543,6 +547,7 @@ export function KanbanBoard({
 										tags={card.tags}
 										priority={card.priority}
 										avatarSrc={card.avatarSrc}
+										avatarShape={card.avatarShape}
 										avatarPulse={card.avatarPulse}
 										isDragging={draggedCardCode === card.code}
 										onClick={() => onCardClick?.(card.title, card.code, card, column.title)}

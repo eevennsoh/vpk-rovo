@@ -37,6 +37,7 @@ test("work item modal accordion toggles are leading chevrons", () => {
 	assert.match(moreFieldsSource, /<Button[\s\S]*<ChevronDownIcon label="" size="small" \/> : <ChevronRightIcon label="" size="small" \/>[\s\S]*<\/Button>\s*<div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">[\s\S]*<Heading size="small" className="shrink-0 whitespace-nowrap">More fields<\/Heading>/);
 	assert.match(automationSource, /<Button[\s\S]*<ChevronDownIcon label="" size="small" \/> : <ChevronRightIcon label="" size="small" \/>[\s\S]*<\/Button>\s*<div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">[\s\S]*<Heading size="small" className="shrink-0 whitespace-nowrap">Automation<\/Heading>/);
 	assert.match(detailsSource, /const detailsSummary = "Assignee, Reporter, Priority, Start date, Due date, Parent, Labels";/);
+	assert.match(detailsSource, /const assignee = workItem\.assignee \?\? \{\s*name: "Unassigned",\s*\};/);
 	assert.match(moreFieldsSource, /"Approvers"[\s\S]*"Effort estimate"[\s\S]*workItem\.account \? \["Account"\][\s\S]*workItem\.dealSize \? \["Deal size"\]/);
 	assert.match(detailsSource, /className="block min-w-0 flex-1 truncate text-xs text-text-subtlest" title=\{detailsSummary\}/);
 	assert.match(moreFieldsSource, /className="block min-w-0 flex-1 truncate text-xs text-text-subtlest" title=\{moreFieldsSummary\}/);

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RovoCanvas, type RovoCanvasStatus, type RovoCanvasVersion, type RovoCanvasView } from "@/components/blocks/rovo-canvas/page";
 import ChatPanel, { type ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
+import { Spinner } from "@/components/ui/spinner";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import { RFP_101_WORK_ITEM, formatActiveJiraWorkItemContext } from "../data/rfp-work-items";
@@ -172,9 +173,14 @@ function RfpRenderedHtmlReport({
 			<div
 				aria-busy="true"
 				aria-label="Report preview loading"
-				className="size-full bg-surface"
+				className="grid size-full place-items-center bg-surface"
 				role="region"
-			/>
+			>
+				<Spinner
+					className="size-12 text-icon-subtle"
+					label="Report preview loading"
+				/>
+			</div>
 		);
 	}
 

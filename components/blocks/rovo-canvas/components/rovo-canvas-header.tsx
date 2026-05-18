@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 
@@ -14,13 +15,32 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DialogTitle } from "@/components/ui/dialog";
 import { Icon as VpkIcon } from "@/components/ui/icon";
-import { RovoAppBrand } from "@/components/projects/rovo/components/rovo-app-brand";
 
 interface RovoCanvasHeaderProps {
 	title: string;
 	primaryActionLabel: string;
 	onPrimaryAction?: () => void;
 	onClose: () => void;
+}
+
+function RovoCanvasBrand(): React.ReactElement {
+	return (
+		<div className="flex h-8 shrink-0 items-center gap-1.5 px-2 text-sm font-medium text-text">
+			<span
+				aria-hidden
+				data-icon="inline-start"
+				className="flex size-4 items-center justify-center"
+			>
+				<Image
+					src="/1p/rovo.svg"
+					alt=""
+					width={16}
+					height={16}
+				/>
+			</span>
+			<span className="font-semibold">Rovo</span>
+		</div>
+	);
 }
 
 export function RovoCanvasHeader({
@@ -31,7 +51,7 @@ export function RovoCanvasHeader({
 }: Readonly<RovoCanvasHeaderProps>): React.ReactElement {
 	return (
 		<header className="flex shrink-0 items-center justify-between gap-4">
-			<RovoAppBrand />
+			<RovoCanvasBrand />
 			<DialogTitle className="sr-only">{title}</DialogTitle>
 
 			<div className="flex shrink-0 items-center gap-2">

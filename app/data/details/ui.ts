@@ -2658,7 +2658,7 @@ import { Textarea } from "@/components/ui/textarea";
 
   avatar: {
     description:
-      "An avatar component built on Base UI with image, fallback, badge, presence, and status indicators in 6 sizes (xs through 2xl) and 3 shapes (circle, square, hexagon).",
+      "An avatar component built on Base UI with image, fallback, unassigned person and agent states, badge, presence, and status indicators in 6 sizes (xs through 2xl) and 3 shapes (circle, square, hexagon).",
     adsUrl: "https://atlassian.design/components/avatar",
     adsLinks: [
       {
@@ -2670,12 +2670,14 @@ import { Textarea } from "@/components/ui/textarea";
         url: "https://atlassian.design/components/avatar-group",
       },
     ],
-    usage: `import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+    usage: `import { Avatar, AvatarImage, AvatarFallback, AvatarUnassigned } from "@/components/ui/avatar";
 
 <Avatar>
   <AvatarImage src="/avatar-user/nova/color/asow-service-yellow.png" alt="User" />
   <AvatarFallback>CN</AvatarFallback>
-</Avatar>`,
+</Avatar>
+
+<AvatarUnassigned kind="agent" />`,
     props: [
       {
         name: "size",
@@ -2704,6 +2706,19 @@ import { Textarea } from "@/components/ui/textarea";
         name: "AvatarFallback",
         description: "Fallback content when image fails.",
       },
+      {
+        name: "AvatarUnassigned",
+        description: "Grey unassigned avatar state for people and agents.",
+        props: [
+          {
+            name: "kind",
+            type: '"person" | "agent"',
+            default: '"person"',
+            description:
+              "Unassigned avatar kind. Person renders a circle with a person icon; agent renders a hexagon with an agent icon.",
+          },
+        ],
+      },
       { name: "AvatarBadge", description: "Status badge overlay." },
       {
         name: "AvatarPresenceIndicator",
@@ -2729,6 +2744,11 @@ import { Textarea } from "@/components/ui/textarea";
         title: "Shapes",
         description: "Circle, square, and hexagon shapes.",
         demoSlug: "avatar-demo-shapes",
+      },
+      {
+        title: "Unassigned",
+        description: "Grey person and agent placeholder states.",
+        demoSlug: "avatar-demo-unassigned",
       },
       {
         title: "All sizes",

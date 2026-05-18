@@ -80,7 +80,7 @@ test("AgentsDemo opens Rovo agent onboarding after returning to the attached rep
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/const ROVO_BUTTON_AGENT_ONBOARDING_DELAY_MS = 900;/u,
+		/const ROVO_BUTTON_AGENT_ONBOARDING_DELAY_MS = 5000;/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,

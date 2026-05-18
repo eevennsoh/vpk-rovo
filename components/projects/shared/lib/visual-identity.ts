@@ -27,6 +27,7 @@ export interface VisualIdentity {
 export type ResolvedCardIdentity =
 	| { kind: "external-logo"; logoSrc: string }
 	| { kind: "atlassian-logo"; logoName: AtlassianLogoName }
+	| { kind: "avatar"; avatarSrc: string }
 	| { kind: "icon-tile"; iconName: string; tileVariant: VisualIdentityTileVariant };
 
 export interface GeneratedCardIdentityInput {
@@ -46,6 +47,7 @@ export interface ArtifactCardIdentityInput {
 	description?: string;
 	sourceName?: string;
 	sourceLogoSrc?: string;
+	sourceAvatarSrc?: string;
 	iconHint?: string;
 	hintText?: string;
 	identitySeed?: string;
@@ -442,6 +444,17 @@ export function resolveGenerativeCardIdentity(
 export function resolveArtifactCardIdentity(
 	input: Readonly<ArtifactCardIdentityInput>,
 ): ResolvedCardIdentity {
+	const explicitAvatarSrc =
+		typeof input.sourceAvatarSrc === "string" && input.sourceAvatarSrc.trim().length > 0
+			? input.sourceAvatarSrc.trim()
+			: null;
+	if (explicitAvatarSrc) {
+		return {
+			kind: "avatar",
+			avatarSrc: explicitAvatarSrc,
+		};
+	}
+
 	const explicitVisualIdentity = normalizeVisualIdentity(input.visualIdentity);
 	if (explicitVisualIdentity) {
 		return {

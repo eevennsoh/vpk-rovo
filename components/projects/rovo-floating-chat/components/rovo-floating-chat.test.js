@@ -264,10 +264,11 @@ test("Floating chat shell hugs content until it reaches the viewport-bounded max
 test("Floating chat panel receives a bounded max-height without forcing empty-state height", () => {
 	assert.match(ROVO_FLOATING_CHAT_SOURCE, /<div className="min-h-0 min-w-0 overflow-hidden">[\s\S]*<ChatPanel/);
 	assert.match(ROVO_FLOATING_CHAT_SOURCE, /containerClassName="min-h-0 min-w-0"/);
-	assert.match(ROVO_FLOATING_CHAT_SOURCE, /display: "grid"/);
-	assert.match(ROVO_FLOATING_CHAT_SOURCE, /gridTemplateRows: "minmax\(0, 1fr\) auto"/);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /display: "flex"/);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /flexDirection: "column"/);
 	assert.match(ROVO_FLOATING_CHAT_SOURCE, /height: "auto"/);
 	assert.match(ROVO_FLOATING_CHAT_SOURCE, /maxHeight: "calc\(min\(720px, calc\(100dvh - 96px\)\) - 56px\)"/);
+	assert.doesNotMatch(ROVO_FLOATING_CHAT_SOURCE, /gridTemplateRows: "minmax\(0, 1fr\) auto"/);
 	assert.doesNotMatch(ROVO_FLOATING_CHAT_SOURCE, /containerClassName="h-full min-h-0"/);
 });
 
@@ -293,6 +294,13 @@ test("Shared ChatPanel renders the Rovo-style conversation body and scroll butto
 		CHAT_PANEL_SOURCE,
 		/<ConversationScrollButton className="z-10 transition-all" \/>/,
 	);
+});
+
+test("Shared ChatPanel renders an optimistic user bubble before the SDK echoes a submitted compact prompt", () => {
+	assert.match(CHAT_PANEL_SOURCE, /appendOptimisticCompactUserMessage/u);
+	assert.match(CHAT_PANEL_SOURCE, /activePrompt/u);
+	assert.match(CHAT_PANEL_SOURCE, /const optimisticPrompt = activePrompt \?\? \(isSubmitPending \? queuedPrompts\[0\] \?\? null : null\);/u);
+	assert.match(CHAT_PANEL_SOURCE, /uiMessages: messages/u);
 });
 
 test("Floating chat thinking status uses ChainOfThought dots without literal ellipsis labels", () => {
@@ -328,7 +336,7 @@ test("ChatPanel keeps floating chat mounted while an artifact dialog replaces a 
 	assert.match(CHAT_PANEL_SOURCE, /pinFloating\(ARTIFACT_DIALOG_FLOATING_PIN_REASON\)/);
 	assert.match(CHAT_PANEL_SOURCE, /unpinFloating\(ARTIFACT_DIALOG_FLOATING_PIN_REASON\)/);
 	assert.match(CHAT_PANEL_SOURCE, /onArtifactDialogOpen\?\.\(artifact\)/);
-	assert.match(CHAT_PANEL_SOURCE, /onArtifactDialogClose=\{releaseArtifactDialogFloatingPin\}/);
+	assert.match(CHAT_PANEL_SOURCE, /onDialogClose=\{releaseArtifactDialogFloatingPin\}/);
 });
 
 test("RovoFloatingChat does not auto-promote submitted or existing messages to the sidebar", () => {

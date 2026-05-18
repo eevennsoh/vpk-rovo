@@ -42,6 +42,14 @@ interface ResolveAssistantThinkingTraceOpenOptions {
 	userOpenOverride: boolean | null;
 }
 
+interface ResolveAssistantThinkingTraceResponseGenerationStepOptions {
+	hasAwaitingInputToolCalls: boolean;
+	hasThinkingToolCalls: boolean;
+	hasWidgetOutput?: boolean;
+	isPostToolsGeneration?: boolean;
+	isPostToolsResultPending?: boolean;
+}
+
 interface ShouldCollapseAssistantThinkingTraceOptions {
 	previousReasoningPhase: ReasoningPhase;
 	reasoningPhase: ReasoningPhase;
@@ -190,6 +198,21 @@ export function resolveAssistantThinkingTraceOpen({
 	return (
 		hasThinkingToolCalls &&
 		(reasoningPhase === "preload" || reasoningPhase === "thinking")
+	);
+}
+
+export function resolveAssistantThinkingTraceResponseGenerationStep({
+	hasAwaitingInputToolCalls,
+	hasThinkingToolCalls,
+	hasWidgetOutput = false,
+	isPostToolsGeneration = false,
+	isPostToolsResultPending = false,
+}: Readonly<ResolveAssistantThinkingTraceResponseGenerationStepOptions>): boolean {
+	return (
+		hasThinkingToolCalls &&
+		!hasAwaitingInputToolCalls &&
+		!hasWidgetOutput &&
+		(isPostToolsGeneration || isPostToolsResultPending)
 	);
 }
 

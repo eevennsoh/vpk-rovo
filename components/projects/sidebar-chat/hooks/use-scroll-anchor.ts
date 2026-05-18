@@ -21,7 +21,7 @@ const FAST_TURN_SCROLL_ANIMATION = {
 } as const;
 
 interface UseScrollAnchorOptions {
-	uiMessages: RovoUIMessage[];
+	uiMessages: ReadonlyArray<RovoUIMessage>;
 	isGenerationActive: boolean;
 }
 

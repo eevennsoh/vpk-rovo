@@ -320,7 +320,7 @@ export function Conversation({
 	return (
 		<ConversationContext value={contextValue}>
 			<div
-				className={cn("relative flex-1 overflow-y-hidden", className)}
+				className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-hidden", className)}
 				role={role}
 				{...props}
 			>
@@ -358,7 +358,7 @@ export function ConversationContent({
 
 	return (
 		<div
-			className="h-full w-full overflow-x-hidden overflow-y-auto scrollbar-auto-hide"
+			className="min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto scrollbar-auto-hide"
 			ref={context?.scrollRef}
 		>
 			<div

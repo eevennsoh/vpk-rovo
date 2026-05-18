@@ -117,11 +117,6 @@ export default function BoardToolbar({ avatars, onReset }: Readonly<BoardToolbar
 									This restores the RFP board, generated report, attachments, and open panels to their starting state, and permanently deletes all Rovo chat history.
 								</AlertDialogDescription>
 							</AlertDialogHeader>
-							{isResetting ? (
-								<p className="text-sm text-text-subtle" role="status" aria-live="polite">
-									Resetting demo...
-								</p>
-							) : null}
 							<AlertDialogFooter>
 								<AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
 								<AlertDialogAction

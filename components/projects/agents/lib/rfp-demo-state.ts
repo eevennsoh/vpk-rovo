@@ -871,6 +871,9 @@ export function resolveRfpDemoBoardColumns(
 				const workItem = state.workItems[cardCode];
 				const agentAssignmentIds = workItem?.agentAssignmentIds ?? [];
 				const hasRfpDraftingAgent = agentAssignmentIds.includes(RFP_DRAFTING_AGENT_ID);
+				const isCompletedUnassignedReview = workItem?.agentStatus === "completed" &&
+					workItem.status === "Review" &&
+					!workItem.assignee;
 				const agentStatusTag = workItem?.agentStatus === "running" || workItem?.agentStatus === "queued"
 					? { text: "agent running", color: "blue" as const }
 					: workItem?.agentStatus === "completed"
@@ -893,7 +896,16 @@ export function resolveRfpDemoBoardColumns(
 					return {
 						...resolvedCard,
 						avatarSrc: state.agent?.avatarSrc ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
+						avatarShape: "hexagon" as const,
 						avatarPulse: workItem.agentStatus === "running" || workItem.agentStatus === "queued",
+					};
+				}
+
+				if (isCompletedUnassignedReview) {
+					return {
+						...resolvedCard,
+						avatarPulse: false,
+						avatarSrc: undefined,
 					};
 				}
 

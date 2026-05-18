@@ -195,8 +195,8 @@ export function RovoAppBrand() {
 					onQueryChange={setQuery}
 					query={query}
 					selectedAgentActions={selectedAgentActions}
+					selectionMode="single"
 					selectedAgentIds={selectedAgentIds}
-					showSelectedIndicator={false}
 				/>
 			</DropdownMenuContent>
 		</DropdownMenu>

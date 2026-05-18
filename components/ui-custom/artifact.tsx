@@ -246,6 +246,8 @@ export interface ArtifactCardProps {
 	onExpandedChange?: (expanded: boolean) => void;
 	/** Optional visual identity override used in the tile instead of the kind-based icon. */
 	visualIdentity?: VisualIdentity;
+	/** Optional avatar image rendered in the identity tile instead of an icon tile. */
+	identityAvatarSrc?: string;
 	/** Optional stable seed used to keep the tile color consistent across renders. */
 	identitySeed?: string;
 	/** Content string for the preview (code text, image URL, etc.). */
@@ -284,6 +286,7 @@ export function ArtifactCard({
 	expanded,
 	onExpandedChange,
 	visualIdentity,
+	identityAvatarSrc,
 	identitySeed,
 	previewContent = "",
 	previewSummary,
@@ -305,6 +308,7 @@ export function ArtifactCard({
 		kind,
 		title,
 		identitySeed,
+		sourceAvatarSrc: identityAvatarSrc,
 		visualIdentity,
 	});
 	const resolvedOpenLabel = openLabel ?? (actionLabel

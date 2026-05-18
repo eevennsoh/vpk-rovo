@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, PlusIcon } from "@/components/ui/vpk-icons";
-import { Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage, AvatarPresenceIndicator, AvatarStatusIndicator } from "@/components/ui/avatar";
+import { Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage, AvatarPresenceIndicator, AvatarStatusIndicator, AvatarUnassigned } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
@@ -140,6 +140,27 @@ export function AvatarDemoDefault() {
 			<AvatarImage src={PRIMARY_AVATAR_SRC} alt="User avatar" />
 			<AvatarFallback>CN</AvatarFallback>
 		</Avatar>
+	);
+}
+
+export function AvatarDemoUnassigned() {
+	return (
+		<div className="flex flex-wrap items-center gap-4">
+			<div className="flex flex-col items-center gap-1">
+				<AvatarUnassigned />
+				<span className="text-xs text-text-subtle">Person</span>
+			</div>
+			<div className="flex flex-col items-center gap-1">
+				<AvatarUnassigned kind="agent" />
+				<span className="text-xs text-text-subtle">Agent</span>
+			</div>
+			<div className="flex flex-col items-center gap-1">
+				<AvatarUnassigned kind="agent">
+					<AvatarPresenceIndicator presence="online" />
+				</AvatarUnassigned>
+				<span className="text-xs text-text-subtle">Active</span>
+			</div>
+		</div>
 	);
 }
 

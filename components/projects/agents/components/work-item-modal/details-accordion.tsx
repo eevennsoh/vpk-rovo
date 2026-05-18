@@ -26,8 +26,7 @@ export function DetailsAccordion() {
 	const { state, actions, meta } = useWorkItemModal();
 	const { workItem } = meta;
 	const assignee = workItem.assignee ?? {
-		name: "Maya Chen",
-		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
+		name: "Unassigned",
 	};
 	const reporter = workItem.reporter ?? {
 		name: "Jordan Lee",
