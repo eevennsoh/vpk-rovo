@@ -119,11 +119,11 @@ function useRfpHtmlReportPreview(state: AgentsRfpDemoState): RfpHtmlReportPrevie
 						"error" in payload &&
 						typeof payload.error === "string"
 						? payload.error
-						: "The vpk-html report preview route returned an error.";
+							: "The report preview route returned an error.";
 					throw new Error(message);
 				}
 				if (!isRfpHtmlReportPreviewResponse(payload)) {
-					throw new Error("The report preview route did not return a vpk-html document.");
+					throw new Error("The report preview route did not return a report document.");
 				}
 
 				setPreviewState({
@@ -162,7 +162,7 @@ function RfpRenderedHtmlReport({
 		return (
 			<div className="flex size-full items-center justify-center bg-surface-sunken p-6">
 				<div className="max-w-md rounded-lg border border-border bg-surface p-4 text-sm text-text shadow-sm">
-					<p className="font-medium">Could not render the vpk-html report.</p>
+					<p className="font-medium">Could not render the report.</p>
 					<p className="mt-2 text-text-subtle">{error ?? "The report preview route failed."}</p>
 				</div>
 			</div>
@@ -259,7 +259,7 @@ export function RfpReportCanvas({
 				id: "report",
 				label: "Report",
 				toolbar: "preview",
-				copyText: reportPreview.html ?? "vpk-html report preview is loading.",
+				copyText: reportPreview.html ?? "Report preview is loading.",
 				content: (
 					<RfpRenderedHtmlReport
 						error={reportPreview.error}

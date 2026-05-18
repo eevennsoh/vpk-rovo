@@ -37,6 +37,7 @@ const { getReasoningSectionTitle } = loadTsModule(
 	path.join(__dirname, "../lib/reasoning-labels.ts"),
 );
 const {
+	getThinkingToolByline,
 	getThinkingToolTitle,
 } = loadTsModule(path.join(__dirname, "thinking-tool-display.ts"));
 const {
@@ -70,6 +71,8 @@ test("collectAssistantThinkingTraceData detects event-only traces", () => {
 });
 
 test("thinking tool titles prefer plain English labels and useful fallbacks", () => {
+	const legacyVpkHtmlLabel = ["Loading", "vpk-html"].join(" ");
+
 	assert.equal(
 		getThinkingToolTitle({
 			id: "tool-1",
@@ -109,10 +112,39 @@ test("thinking tool titles prefer plain English labels and useful fallbacks", ()
 		}),
 		"Using create-automation skill",
 	);
-
 	assert.equal(
 		getThinkingToolTitle({
 			id: "tool-5",
+			toolName: "agent_skill.load",
+			state: "running",
+			input: { skill: "generate-pdf" },
+		}),
+		"Using generate-pdf skill",
+	);
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-legacy-vpk-html",
+			toolName: "agent_skill.load",
+			label: legacyVpkHtmlLabel,
+			state: "running",
+			input: { skill: "vpk-html" },
+		}),
+		"Using generate-pdf skill",
+	);
+	assert.equal(
+		getThinkingToolByline({
+			id: "tool-legacy-vpk-html",
+			toolName: "agent_skill.load",
+			label: legacyVpkHtmlLabel,
+			state: "running",
+			input: { skill: "vpk-html" },
+		}),
+		"Using vpk-html",
+	);
+
+	assert.equal(
+		getThinkingToolTitle({
+			id: "tool-6",
 			toolName: "jira.read_work_item",
 			state: "running",
 			input: { key: "RFP-101" },
@@ -231,6 +263,18 @@ test("tool icon resolver maps agents thinking tools to specific icons", () => {
 	assert.match(
 		resolveToolIcon({ toolName: "rfp.check" }).iconComponent?.name,
 		/^TaskToDoIcon/u
+	);
+	for (const skill of ["generate-pdf", "create-agent", "create-automation"]) {
+		const resolvedIcon = resolveToolIcon({
+			toolName: "agent_skill.load",
+			input: { skill },
+			title: `Using ${skill} skill`,
+		});
+		assert.match(resolvedIcon.iconComponent?.name, /^SkillIcon/u);
+	}
+	assert.match(
+		resolveToolIcon({ toolName: "generate_pdf.render_document" }).iconComponent?.name,
+		/^TemplateIcon/u
 	);
 });
 

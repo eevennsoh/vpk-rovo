@@ -127,7 +127,6 @@ test("generateWorkItemVpkHtmlReport fills the real one-pager template for RFP qu
 				openGaps: ["Deal desk approval date is not specified in the Work Item context."],
 			});
 		},
-		runSkillValidation: false,
 	});
 
 	assert.equal(gatewayCalls.length, 1);
@@ -139,6 +138,7 @@ test("generateWorkItemVpkHtmlReport fills the real one-pager template for RFP qu
 	assert.match(report.html, /font-family:\s*"Charlie Display"/);
 	assert.match(report.html, /--grid-background/);
 	assert.match(report.html, /class="header"/);
+	assert.match(report.html, /<main>/);
 	assert.match(report.html, /DACI roles/);
 	assert.match(report.html, /Driver: Maya Chen/);
 	assert.match(report.html, /Approver: Darius Pavri and Elena Ruiz/);
@@ -149,6 +149,7 @@ test("generateWorkItemVpkHtmlReport fills the real one-pager template for RFP qu
 	assert.doesNotMatch(report.html, /<link\b[^>]*\bhref=["']https?:\/\//iu);
 	assert.doesNotMatch(report.html, /url\(\s*["']?https?:\/\//iu);
 	assertVpkHtmlReportContract(report.html);
+	assert.equal(report.validation.results.length, 2);
 });
 
 test("generateWorkItemVpkHtmlReport keeps generic work items on the status-report template", async () => {
@@ -181,6 +182,7 @@ test("generateWorkItemVpkHtmlReport keeps generic work items on the status-repor
 	assert.equal(report.skill.templatePath, "assets/templates/status-report.html");
 	assert.match(report.html, /TEMPLATE · Status Report/);
 	assert.match(report.html, /class="masthead"/);
+	assert.match(report.html, /<main>/);
 	assert.doesNotMatch(report.html, /DACI roles/);
 });
 

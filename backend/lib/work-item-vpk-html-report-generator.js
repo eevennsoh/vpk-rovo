@@ -864,6 +864,7 @@ function fillDaciOnePagerTemplate(templateHtml, reportFields) {
 
 	const body = [
 		"<body>",
+		"<main>",
 		"",
 		'<div class="header">',
 		'\t<div class="title-block">',
@@ -939,6 +940,7 @@ function fillDaciOnePagerTemplate(templateHtml, reportFields) {
 		`\t<span>${escapeHtml(reportFields.footerRight)}</span>`,
 		"</div>",
 		"",
+		"</main>",
 		"</body>",
 	].join("\n");
 
@@ -957,6 +959,9 @@ function assertVpkHtmlReportContract(html) {
 	}
 	if (!/font-family:\s*"Charlie Display"/u.test(html) || !/--grid-background/u.test(html) || !/(class="masthead"|class="header")/u.test(html)) {
 		throw new Error("vpk-html report generation did not preserve the template visual identity.");
+	}
+	if (!/<main\b/iu.test(html)) {
+		throw new Error("vpk-html report generation did not preserve the main landmark.");
 	}
 	if (
 		/<script\b[^>]*\bsrc=["']https?:\/\//iu.test(html) ||

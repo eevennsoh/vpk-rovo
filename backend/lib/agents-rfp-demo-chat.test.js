@@ -243,15 +243,17 @@ test("answer trace produces completed qualification DACI steps", () => {
 			"rfp.build_bid_recommendation",
 			"rfp.flag_reviews",
 			"agent_skill.load",
-			"vpk_html.distill_fields",
-			"vpk_html.render_template",
-			"vpk_html.validate_artifact",
+			"generate_pdf.distill_fields",
+			"generate_pdf.render_document",
+			"generate_pdf.validate_artifact",
 		],
 	);
+	assert.equal(trace.find((step) => step.toolName === "agent_skill.load")?.label, "Using generate-pdf skill");
+	assert.equal(trace.find((step) => step.toolName === "agent_skill.load")?.input.skill, "generate-pdf");
 	assert.ok(trace.every((step) => typeof step.outputPreview === "string" && step.outputPreview.length > 0));
 });
 
-test("agent creation trace creates an agent instead of rendering a vpk-html report", () => {
+test("agent creation trace creates an agent instead of rendering another report", () => {
 	const trace = buildAgentsRfpDemoAgentCreationTrace();
 	const result = buildAgentsRfpDemoAgentResultPayload();
 
@@ -291,7 +293,7 @@ test("agent creation trace creates an agent instead of rendering a vpk-html repo
 	assert.equal(result.action, "create");
 	assert.match(result.summary, /similar RFP work items/u);
 	assert.match(result.trigger, /ticket enters Drafting/u);
-	assert.match(result.tools.join(" "), /HTML draft attachment/u);
+	assert.match(result.tools.join(" "), /PDF draft attachment/u);
 	assert.match(result.guardrail, /Skips completed tickets/u);
 	assert.match(
 		trace.find((step) => step.toolName === "agent.write_instructions")?.content ?? "",
@@ -299,23 +301,23 @@ test("agent creation trace creates an agent instead of rendering a vpk-html repo
 	);
 	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /Created \*\*RFP Drafter\*\*/u);
 	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /added it to the Enterprise RFP Response project/u);
-	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /vpk-html draft/u);
+	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /PDF draft/u);
 	assert.doesNotMatch(
 		trace.map((step) => step.toolName).join("\n"),
-		/vpk_html\.render_template/u,
+		/generate_pdf\.render_document/u,
 	);
 	assert.doesNotMatch(buildAgentsRfpDemoAgentCreationConfirmationText(result), /approval/u);
 });
 
 test("report confirmation points the user at Rovo Canvas", () => {
 	assert.equal(RFP_DEMO_REPORT_TITLE, "Acmecorp RFP qualification DACI");
-	assert.match(RFP_DEMO_REPORT_PREVIEW_SUMMARY, /Offline vpk-html one-pager/u);
+	assert.match(RFP_DEMO_REPORT_PREVIEW_SUMMARY, /PDF-ready one-pager/u);
 	assert.match(
 		buildAgentsRfpDemoReportConfirmationText({
 			documentId: "doc-123",
 			title: RFP_DEMO_REPORT_TITLE,
 		}),
-		/Generated \*\*Acmecorp RFP qualification DACI\*\*[\s\S]*\[Open it in Rovo Canvas\]\(#rovo-canvas-doc-123\)[\s\S]*qualification DACI/u,
+		/Generated \*\*Acmecorp RFP qualification DACI\*\* with the generate-pdf skill[\s\S]*\[Open it in Rovo Canvas\]\(#rovo-canvas-doc-123\)[\s\S]*qualification DACI/u,
 	);
 });
 

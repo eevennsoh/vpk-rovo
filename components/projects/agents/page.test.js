@@ -106,7 +106,7 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/id: "report",[\s\S]*label: "Report",[\s\S]*toolbar: "preview",[\s\S]*copyText: reportPreview\.html \?\? "vpk-html report preview is loading\.",[\s\S]*<RfpRenderedHtmlReport/u,
+		/id: "report",[\s\S]*label: "Report",[\s\S]*toolbar: "preview",[\s\S]*copyText: reportPreview\.html \?\? "Report preview is loading\.",[\s\S]*<RfpRenderedHtmlReport/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
@@ -138,6 +138,7 @@ test("RFP report canvas centers a large spinner while the HTML preview is loadin
 	);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /return "executing";/u);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /Rendering vpk-html report/u);
+	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /Could not render the vpk-html report/u);
 });
 
 test("AgentsView attaches generated reports through the RFP-101 modal and Sonner notifications", () => {
