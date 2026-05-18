@@ -20,6 +20,11 @@ test("RFP agent chat details render trigger editor states and run log links", ()
 	assert.match(DETAILS_SOURCE, /disabled=\{!canSaveTrigger\}/u);
 	assert.match(DETAILS_SOURCE, />\s*Save\s*<\/Button>/u);
 	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Tasks">/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Skills">/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Tools">/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Knowledge">/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /Jira work item reader/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /RFP-101 approved report/u);
 	assert.doesNotMatch(DETAILS_SOURCE, /Rerun policy: Completed tickets with draft output are skipped; failed tickets retry\./u);
 	assert.match(DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
 	assert.match(DETAILS_SOURCE, /Processed \{run\.processedTicketCodes\.length\}/u);

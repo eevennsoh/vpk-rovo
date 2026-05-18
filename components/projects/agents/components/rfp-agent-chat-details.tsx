@@ -27,21 +27,6 @@ import {
 	type AgentsRfpDemoState,
 } from "../lib/rfp-demo-state";
 
-const TOOL_LABELS = [
-	"Jira work item reader",
-	"Attachment scanner",
-	"Teamwork Graph search",
-	"Report generator",
-	"HTML draft attachment",
-] as const;
-
-const KNOWLEDGE_LABELS = [
-	"RFP-101 approved report",
-	"Standard ITSM RFP Response Template",
-	"Prior JSM pilot notes",
-	"Prior security review",
-] as const;
-
 const TRIGGER_OPTIONS = [
 	{
 		id: "ticket-enters-column",
@@ -284,31 +269,6 @@ export function RfpAgentTriggerDetails({
 				</DetailsSection>
 			) : null}
 
-			<DetailsSection title="Skills">
-				<div className="flex flex-wrap gap-2">
-					<Badge>vpk-html</Badge>
-				</div>
-			</DetailsSection>
-
-			<DetailsSection title="Tools">
-				<div className="flex flex-wrap gap-2">
-					{TOOL_LABELS.map((tool) => (
-						<Badge key={tool} variant="secondary">
-							{tool}
-						</Badge>
-					))}
-				</div>
-			</DetailsSection>
-
-			<DetailsSection title="Knowledge">
-				<div className="flex flex-wrap gap-2">
-					{KNOWLEDGE_LABELS.map((source) => (
-						<Badge key={source} variant="secondary">
-							{source}
-						</Badge>
-					))}
-				</div>
-			</DetailsSection>
 		</div>
 	);
 }
