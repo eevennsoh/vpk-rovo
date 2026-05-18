@@ -16,6 +16,27 @@ const REGISTRY_SOURCE = fs.readFileSync(
 	path.join(__dirname, "..", "website", "registry.ts"),
 	"utf8",
 );
+const PRIMARY_AVATAR_PATH = path.join(
+	__dirname,
+	"..",
+	"..",
+	"public",
+	"avatar-user",
+	"venn",
+	"venn.png",
+);
+
+function readPngDimensions(filePath) {
+	const buffer = fs.readFileSync(filePath);
+	assert.equal(buffer.toString("ascii", 1, 4), "PNG");
+	assert.equal(buffer.toString("ascii", 12, 16), "IHDR");
+
+	return {
+		width: buffer.readUInt32BE(16),
+		height: buffer.readUInt32BE(20),
+		bytes: buffer.byteLength,
+	};
+}
 
 test("AvatarUnassigned exposes grey person and agent avatar states", () => {
 	assert.match(AVATAR_SOURCE, /import AiAgentIcon from "@atlaskit\/icon\/core\/ai-agent"/);
@@ -53,4 +74,13 @@ test("avatar docs include only the base unassigned demo states", () => {
 	assert.match(AVATAR_DETAILS_SOURCE, /demoSlug: "avatar-demo-unassigned"/);
 	assert.match(REGISTRY_SOURCE, /"avatar-demo-unassigned"/);
 	assert.match(REGISTRY_SOURCE, /default: mod\.AvatarDemoUnassigned/);
+});
+
+test("primary avatar asset stays sized for rendered avatar slots", () => {
+	const dimensions = readPngDimensions(PRIMARY_AVATAR_PATH);
+
+	assert.equal(dimensions.width, 192);
+	assert.equal(dimensions.height, 192);
+	assert.ok(dimensions.bytes < 80_000);
+	assert.match(AVATAR_SOURCE, /"2xl": "size-24"/);
 });
