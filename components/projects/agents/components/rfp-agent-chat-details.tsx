@@ -46,7 +46,7 @@ function TriggerAddRow({
 				className,
 			)}
 		>
-			<span className="flex size-6 shrink-0 items-center justify-center">
+			<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle">
 				<AddIcon label="" size="small" />
 			</span>
 			<span className="text-sm font-medium">{label}</span>
