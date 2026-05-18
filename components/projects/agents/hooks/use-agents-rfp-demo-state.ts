@@ -12,7 +12,9 @@ import {
 	normalizeAgentsRfpDemoProfileMetadata,
 	refineRfpReport,
 	selectRfpReportVersion,
+	clearRfpDraftingAgentTrigger,
 	setRfp101AnswerSummary,
+	setRfpDraftingAgentTrigger,
 	setRfpDemoCanvasOpen,
 	setRfpDemoCanvasView,
 	type AgentsRfpDemoCanvasViewId,
@@ -30,6 +32,8 @@ export interface AgentsRfpDemoActions {
 	createAgent: () => void;
 	applyAgent: () => void;
 	scheduleAgent: () => void;
+	setAgentTrigger: (prompt: string) => void;
+	clearAgentTrigger: () => void;
 	moveCard: (cardCode: string, targetColumnTitle: string) => void;
 	moveCards: (cardCodes: readonly string[], targetColumnTitle: string) => void;
 	setAnswerSummary: (answerSummary: string) => void;
@@ -170,6 +174,14 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 	}, [postStateMutation]);
 	const createAgent = applyAgent;
 	const scheduleAgent = applyAgent;
+	const setAgentTrigger = useCallback(
+		(prompt: string) => persistStateMutation((currentState) => setRfpDraftingAgentTrigger(currentState, prompt)),
+		[persistStateMutation],
+	);
+	const clearAgentTrigger = useCallback(
+		() => persistStateMutation(clearRfpDraftingAgentTrigger),
+		[persistStateMutation],
+	);
 	const moveCard = useCallback(
 		(cardCode: string, targetColumnTitle: string) => {
 			setState((currentState) => moveRfpDemoCard(currentState, cardCode, targetColumnTitle));
@@ -230,6 +242,8 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 		createAgent,
 		applyAgent,
 		scheduleAgent,
+		setAgentTrigger,
+		clearAgentTrigger,
 		moveCard,
 		moveCards,
 		setAnswerSummary,

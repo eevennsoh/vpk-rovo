@@ -14812,7 +14812,7 @@ app.post("/api/agents/rfp-demo/events/ticket-entered-column", async (req, res) =
 		state = moveTicketToColumn(state, ticketCode, targetColumn);
 		await agentsRfpDemoStateManager.writeState(state);
 
-		if (targetColumn !== RFP_DRAFTING_EVENT_TRIGGER.column || !state.agent) {
+		if (targetColumn !== RFP_DRAFTING_EVENT_TRIGGER.column || !state.agent?.trigger) {
 			return res.json({
 				state,
 				job: state.agent?.jobId ? await getMergedHermesJob(state.agent.jobId).catch(() => null) : null,

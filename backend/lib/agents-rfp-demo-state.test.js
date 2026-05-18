@@ -16,6 +16,7 @@ const {
 	createAgentsRfpDemoStateManager,
 	createDefaultAgentsRfpDemoState,
 	moveTicketToColumn,
+	moveTicketEnteredColumn,
 	normalizeAgentsRfpDemoState,
 	runRfpDraftingAgent,
 } = require("./agents-rfp-demo-state");
@@ -162,6 +163,62 @@ test("normalization drops stale no-work RFP agent toasts", () => {
 			message: "Added PDF to RFP-101.",
 		},
 	]);
+});
+
+test("normalization preserves trigger prompt and explicit no-trigger state", () => {
+	const applied = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
+		jobId: "job-rfp-drafting",
+		now: RUN_NOW,
+		runId: "run-initial",
+	});
+	const prompted = normalizeAgentsRfpDemoState({
+		...applied.state,
+		agent: {
+			...applied.state.agent,
+			trigger: {
+				...RFP_DRAFTING_EVENT_TRIGGER,
+				prompt: "When an RFP ticket enters Drafting, inspect the packet and draft the response package.",
+			},
+		},
+	});
+
+	assert.equal(
+		prompted.agent.trigger.prompt,
+		"When an RFP ticket enters Drafting, inspect the packet and draft the response package.",
+	);
+
+	const cleared = normalizeAgentsRfpDemoState({
+		...prompted,
+		agent: {
+			...prompted.agent,
+			trigger: null,
+		},
+	});
+
+	assert.equal(cleared.agent.trigger, null);
+});
+
+test("ticket entered column events do not run when the agent trigger is cleared", () => {
+	const applied = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
+		jobId: "job-rfp-drafting",
+		now: RUN_NOW,
+		runId: "run-initial",
+	});
+	const withoutTrigger = {
+		...applied.state,
+		agent: {
+			...applied.state.agent,
+			trigger: null,
+		},
+	};
+	const eventRun = moveTicketEnteredColumn(withoutTrigger, {
+		ticketCode: "RFP-102",
+		targetColumn: RFP_DRAFTING_COLUMN_NAME,
+	});
+
+	assert.equal(eventRun.runSummary, null);
+	assert.deepEqual(eventRun.threadRecords, []);
+	assert.equal(eventRun.state.workItems["RFP-102"].status, RFP_DRAFTING_COLUMN_NAME);
 });
 
 test("a later ticket entering Drafting processes only that ticket", async () => {

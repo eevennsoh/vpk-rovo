@@ -19,6 +19,7 @@ async function loadRfpDemoStateHarness() {
 					RFP_DRAFTING_EVENT_TRIGGER_LABEL,
 					attachRfpReportToWorkItem,
 					approveRfpReport,
+					clearRfpDraftingAgentTrigger,
 					createDefaultAgentsRfpDemoState,
 					createRfpDraftingAgent,
 					exportRfpReportPdf,
@@ -32,6 +33,7 @@ async function loadRfpDemoStateHarness() {
 					resolveRfpDemoBoardColumns,
 					scheduleRfpDraftingAgent,
 					selectRfpReportVersion,
+					setRfpDraftingAgentTrigger,
 				} from "./components/projects/agents/lib/rfp-demo-state";
 			`,
 			loader: "ts",
@@ -91,6 +93,30 @@ test("legacy persisted RFP agent profile gets description and conversation start
 
 	assert.equal(resumed.agent.description, harness.RFP_DRAFTING_AGENT_DESCRIPTION);
 	assert.deepEqual(resumed.agent.conversationStarters, [...harness.RFP_DRAFTING_AGENT_CONVERSATION_STARTERS]);
+});
+
+test("RFP agent trigger prompt saves and explicit no-trigger state survives parsing", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const created = harness.createRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
+	const prompted = harness.setRfpDraftingAgentTrigger(
+		created,
+		"When an RFP ticket enters Drafting, inspect the packet and draft the response package.",
+	);
+
+	assert.equal(prompted.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
+	assert.equal(
+		prompted.agent.trigger.prompt,
+		"When an RFP ticket enters Drafting, inspect the packet and draft the response package.",
+	);
+
+	const cleared = harness.clearRfpDraftingAgentTrigger(prompted);
+	assert.equal(cleared.agent.trigger, null);
+
+	const resumed = harness.parseAgentsRfpDemoState(JSON.stringify(cleared));
+	assert.equal(resumed.agent.trigger, null);
+
+	const reapplied = harness.createRfpDraftingAgent(resumed);
+	assert.equal(reapplied.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
 });
 
 test("report stages advance through generated, refined, approved, pdf-exported, and attached", async () => {

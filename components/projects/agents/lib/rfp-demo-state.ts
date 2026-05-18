@@ -16,6 +16,8 @@ export const RFP_DRAFTING_AGENT_CONVERSATION_STARTERS = [
 	"Create reusable answer snippets from the attached RFP packet.",
 ] as const;
 export const RFP_DRAFTING_SCHEDULE_ID = "rfp-drafting-weekday-0900";
+export const RFP_DRAFTING_BOARD_NAME = "Enterprise RFP Response";
+export const RFP_DRAFTING_COLUMN_NAME = "Drafting";
 export const RFP_DRAFTING_EVENT_TRIGGER_LABEL = "On event: ticket enters Drafting";
 export const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
 export const RFP_DRAFTING_AGENT_AVATAR_SRC = "/avatar-agent/dev-agents/feature-flag-cleaner.svg";
@@ -138,15 +140,16 @@ export interface AgentsRfpDemoAgent {
 	createdAt: string;
 	avatarSrc?: string;
 	jobId?: string | null;
-	trigger?: AgentsRfpDemoEventTrigger;
+	trigger?: AgentsRfpDemoEventTrigger | null;
 	jobRunSummaries?: AgentsRfpDemoJobRunSummary[];
 }
 
 export interface AgentsRfpDemoEventTrigger {
 	type: "jira-column-entered" | string;
-	board: "Enterprise RFP Response" | string;
-	column: "Drafting" | string;
+	board: typeof RFP_DRAFTING_BOARD_NAME | string;
+	column: typeof RFP_DRAFTING_COLUMN_NAME | string;
 	label: string;
+	prompt?: string | null;
 }
 
 export interface AgentsRfpDemoThreadLink {
@@ -320,12 +323,41 @@ function getRfpDraftingAgentConversationStarters(starters?: readonly string[] | 
 		: [...RFP_DRAFTING_AGENT_CONVERSATION_STARTERS];
 }
 
+export function createRfpDraftingEventTrigger(prompt: string | null = null): AgentsRfpDemoEventTrigger {
+	return {
+		type: "jira-column-entered",
+		board: RFP_DRAFTING_BOARD_NAME,
+		column: RFP_DRAFTING_COLUMN_NAME,
+		label: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+		prompt,
+	};
+}
+
+function normalizeRfpDraftingAgentTrigger(trigger: AgentsRfpDemoAgent["trigger"] | undefined): AgentsRfpDemoEventTrigger | null {
+	if (trigger === null) {
+		return null;
+	}
+
+	if (!trigger) {
+		return createRfpDraftingEventTrigger();
+	}
+
+	return {
+		...createRfpDraftingEventTrigger(trigger.prompt ?? null),
+		type: trigger.type,
+		board: trigger.board,
+		column: trigger.column,
+		label: trigger.label,
+	};
+}
+
 function withRfpDraftingAgentProfileMetadata(agent: AgentsRfpDemoAgent): AgentsRfpDemoAgent {
 	return {
 		...agent,
 		name: RFP_DRAFTING_AGENT_NAME,
 		description: getRfpDraftingAgentDescription(agent.description),
 		conversationStarters: getRfpDraftingAgentConversationStarters(agent.conversationStarters),
+		trigger: normalizeRfpDraftingAgentTrigger(agent.trigger),
 	};
 }
 
@@ -700,6 +732,7 @@ export function createRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDemo
 		? withRfpDraftingAgentProfileMetadata({
 				...state.agent,
 				avatarSrc: state.agent.avatarSrc ?? getRandomRfpDraftingAgentAvatarSrc(),
+				trigger: createRfpDraftingEventTrigger(state.agent.trigger?.prompt ?? null),
 			})
 		: {
 				id: RFP_DRAFTING_AGENT_ID,
@@ -711,12 +744,7 @@ export function createRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDemo
 				createdAt: "Now",
 				avatarSrc: getRandomRfpDraftingAgentAvatarSrc(),
 				jobId: null,
-				trigger: {
-					type: "jira-column-entered",
-					board: "Enterprise RFP Response",
-					column: "Drafting",
-					label: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
-				},
+				trigger: createRfpDraftingEventTrigger(),
 				jobRunSummaries: [],
 			};
 	const createdState: AgentsRfpDemoState = {
@@ -751,12 +779,7 @@ export function scheduleRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDe
 		agent: agentState.agent
 			? {
 					...agentState.agent,
-					trigger: {
-						type: "jira-column-entered",
-						board: "Enterprise RFP Response",
-						column: "Drafting",
-						label: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
-					},
+					trigger: createRfpDraftingEventTrigger(agentState.agent.trigger?.prompt ?? null),
 					jobRunSummaries: agentState.agent.jobRunSummaries ?? [],
 				}
 			: agentState.agent,
@@ -768,6 +791,34 @@ export function scheduleRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDe
 		message: `Maya connected ${RFP_DRAFTING_AGENT_NAME} to Drafting column events.`,
 		type: "scheduled",
 	});
+}
+
+export function setRfpDraftingAgentTrigger(state: AgentsRfpDemoState, prompt: string): AgentsRfpDemoState {
+	if (!state.agent) {
+		return state;
+	}
+
+	return {
+		...state,
+		agent: withRfpDraftingAgentProfileMetadata({
+			...state.agent,
+			trigger: createRfpDraftingEventTrigger(prompt),
+		}),
+	};
+}
+
+export function clearRfpDraftingAgentTrigger(state: AgentsRfpDemoState): AgentsRfpDemoState {
+	if (!state.agent) {
+		return state;
+	}
+
+	return {
+		...state,
+		agent: withRfpDraftingAgentProfileMetadata({
+			...state.agent,
+			trigger: null,
+		}),
+	};
 }
 
 function assignRfpDraftingAgentToCard(
@@ -1006,6 +1057,7 @@ export function formatRfpDemoContext(state: AgentsRfpDemoState): string {
 		`RFP-102 status: ${rfp102?.status ?? "unknown"}.`,
 		state.agent ? `Custom agent: ${RFP_DRAFTING_AGENT_NAME} assigned to Drafting events.` : "Custom agent: not created.",
 		state.agent?.trigger ? `Trigger: ${state.agent.trigger.label}.` : "Trigger: none.",
+		state.agent?.trigger?.prompt ? `Trigger prompt: ${state.agent.trigger.prompt}` : null,
 		`Selected chat agent: ${state.chat.selectedAgentId === RFP_DRAFTING_AGENT_ID ? RFP_DRAFTING_AGENT_NAME : "Rovo"}.`,
 		state.chat.lastRfp101AnswerSummary ? `Latest Maya qualification answer: ${state.chat.lastRfp101AnswerSummary}` : null,
 		"[End Agents RFP Demo Local State]",
