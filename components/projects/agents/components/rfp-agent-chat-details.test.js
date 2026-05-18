@@ -14,6 +14,7 @@ test("RFP agent chat details render trigger editor states and run log links", ()
 	assert.match(DETAILS_SOURCE, /import \{ IconTile \} from "@\/components\/ui\/icon-tile";/u);
 	assert.match(DETAILS_SOURCE, /<IconTile[\s\S]*icon=\{<AutomationIcon label="" \/>\}[\s\S]*size="small"[\s\S]*variant="blue"/u);
 	assert.match(DETAILS_SOURCE, /inline-flex h-6 items-center rounded-md bg-bg-neutral pl-2 text-sm font-medium text-text/u);
+	assert.match(DETAILS_SOURCE, /group\/trigger-row flex min-h-14 items-center gap-3 rounded-lg px-2 py-2/u);
 	assert.match(DETAILS_SOURCE, /Status changed to/u);
 	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_COLUMN_NAME\}<\/TriggerChip>/u);
 	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_BOARD_NAME\}<\/TriggerChip>/u);

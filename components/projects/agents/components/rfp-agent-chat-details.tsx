@@ -99,7 +99,7 @@ export function RfpAgentTriggerDetails({
 				<div className="rounded-xl border border-border bg-surface p-2">
 					{trigger ? (
 						<>
-							<div className="group/trigger-row flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered">
+							<div className="group/trigger-row flex min-h-14 items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered">
 								<IconTile
 									aria-hidden={true}
 									icon={<AutomationIcon label="" />}
