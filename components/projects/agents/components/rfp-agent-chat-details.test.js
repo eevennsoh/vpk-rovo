@@ -12,12 +12,15 @@ test("RFP agent chat details render trigger editor states and run log links", ()
 	assert.match(DETAILS_SOURCE, /flex h-8 w-full items-center gap-2/u);
 	assert.match(DETAILS_SOURCE, /flex size-6 shrink-0 items-center justify-center text-icon-subtle/u);
 	assert.match(DETAILS_SOURCE, /import \{ IconTile \} from "@\/components\/ui\/icon-tile";/u);
+	assert.match(DETAILS_SOURCE, /SelectTrigger[\s\S]*SelectValue/u);
 	assert.match(DETAILS_SOURCE, /<IconTile[\s\S]*icon=\{<AutomationIcon label="" \/>\}[\s\S]*size="small"[\s\S]*variant="blue"/u);
-	assert.match(DETAILS_SOURCE, /inline-flex h-6 items-center rounded-md bg-bg-neutral pl-2 text-sm font-medium text-text/u);
+	assert.match(DETAILS_SOURCE, /variant="none"/u);
+	assert.match(DETAILS_SOURCE, /className="!h-6 gap-0 rounded-md !py-0 !pr-0 !pl-2 text-sm font-medium text-text \[&_\[data-slot=icon\]\]:size-6"/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /inline-flex h-6 items-center rounded-md bg-bg-neutral/u);
 	assert.match(DETAILS_SOURCE, /group\/trigger-row flex min-h-14 items-center gap-3 rounded-lg px-2 py-2/u);
 	assert.match(DETAILS_SOURCE, /Status changed to/u);
-	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_COLUMN_NAME\}<\/TriggerChip>/u);
-	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_BOARD_NAME\}<\/TriggerChip>/u);
+	assert.match(DETAILS_SOURCE, /<TriggerDropdown value=\{RFP_DRAFTING_COLUMN_NAME\} \/>/u);
+	assert.match(DETAILS_SOURCE, /<TriggerDropdown value=\{RFP_DRAFTING_BOARD_NAME\} \/>/u);
 	assert.match(DETAILS_SOURCE, /aria-label="Delete trigger"/u);
 	assert.match(DETAILS_SOURCE, /group-hover\/trigger-row:opacity-100/u);
 	assert.match(DETAILS_SOURCE, /<span className="text-sm font-medium">\{label\}<\/span>/u);

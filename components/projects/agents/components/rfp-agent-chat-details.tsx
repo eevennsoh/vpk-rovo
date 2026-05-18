@@ -3,12 +3,18 @@
 import type { ReactNode } from "react";
 import AddIcon from "@atlaskit/icon/core/add";
 import AutomationIcon from "@atlaskit/icon/core/automation";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { Lozenge } from "@/components/ui/lozenge";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
@@ -54,18 +60,25 @@ function TriggerAddRow({
 	);
 }
 
-function TriggerChip({
-	children,
+function TriggerDropdown({
+	value,
 }: Readonly<{
-	children: ReactNode;
+	value: string;
 }>): React.ReactElement {
 	return (
-		<span className="inline-flex h-6 items-center rounded-md bg-bg-neutral pl-2 text-sm font-medium text-text">
-			{children}
-			<span className="flex size-6 shrink-0 items-center justify-center">
-				<ChevronDownIcon label="" size="small" />
-			</span>
-		</span>
+		<Select defaultValue={value}>
+			<SelectTrigger
+				aria-label={value}
+				className="!h-6 gap-0 rounded-md !py-0 !pr-0 !pl-2 text-sm font-medium text-text [&_[data-slot=icon]]:size-6"
+				size="sm"
+				variant="none"
+			>
+				<SelectValue />
+			</SelectTrigger>
+			<SelectContent align="start" alignItemWithTrigger={false} className="min-w-0">
+				<SelectItem value={value}>{value}</SelectItem>
+			</SelectContent>
+		</Select>
 	);
 }
 
@@ -109,9 +122,9 @@ export function RfpAgentTriggerDetails({
 								/>
 								<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm text-text">
 									<span className="font-medium">Status changed to</span>
-									<TriggerChip>{RFP_DRAFTING_COLUMN_NAME}</TriggerChip>
+									<TriggerDropdown value={RFP_DRAFTING_COLUMN_NAME} />
 									<span className="font-medium">in</span>
-									<TriggerChip>{RFP_DRAFTING_BOARD_NAME}</TriggerChip>
+									<TriggerDropdown value={RFP_DRAFTING_BOARD_NAME} />
 								</div>
 								<Button
 									aria-label="Delete trigger"
