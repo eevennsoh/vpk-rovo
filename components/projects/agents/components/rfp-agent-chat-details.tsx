@@ -41,11 +41,13 @@ function TriggerAddRow({
 	return (
 		<div
 			className={cn(
-				"flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-text-subtle",
+				"flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm text-text-subtle",
 				className,
 			)}
 		>
-			<AddIcon label="" size="small" />
+			<span className="flex size-6 shrink-0 items-center justify-center">
+				<AddIcon label="" size="small" />
+			</span>
 			<span className="text-sm font-medium">{label}</span>
 		</div>
 	);
