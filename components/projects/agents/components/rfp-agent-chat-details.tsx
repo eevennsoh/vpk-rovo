@@ -92,7 +92,7 @@ function TriggerAddButton({
 			{...props}
 		>
 			<AddIcon label="" size="small" />
-			<span className="text-base font-medium">{label}</span>
+			<span className="text-sm font-medium">{label}</span>
 		</button>
 	);
 }
@@ -130,7 +130,7 @@ function TriggerPicker({
 					</span>
 					<span className="min-w-0 flex-1">
 						<span className="block font-medium">{option.label}</span>
-						<span className="block truncate text-xs text-text-subtle">{option.description}</span>
+						<span className="block truncate text-sm text-text-subtle">{option.description}</span>
 					</span>
 					<ChevronRightIcon label="" size="small" />
 				</button>
@@ -213,7 +213,7 @@ export function RfpAgentTriggerDetails({
 								<span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-bg-neutral text-icon-subtle">
 									<AutomationIcon label="" size="small" />
 								</span>
-								<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-base text-text">
+								<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm text-text">
 									<span className="font-medium">Status changed to</span>
 									<TriggerChip>{RFP_DRAFTING_COLUMN_NAME}</TriggerChip>
 									<span className="font-medium">in</span>
@@ -247,7 +247,7 @@ export function RfpAgentTriggerDetails({
 						<PromptInputBody>
 							<PromptInputTextarea
 								aria-label="Trigger natural language prompt"
-								className="min-h-28 px-0 py-0 text-base leading-6"
+								className="min-h-28 px-0 py-0 text-sm leading-5"
 								onChange={(event) => setPromptDraft(event.currentTarget.value)}
 								placeholder="Type @ to mention tools or MCP servers, / for skills..."
 								rows={4}
@@ -268,7 +268,6 @@ export function RfpAgentTriggerDetails({
 					</PromptInput>
 				</DetailsSection>
 			) : null}
-
 		</div>
 	);
 }

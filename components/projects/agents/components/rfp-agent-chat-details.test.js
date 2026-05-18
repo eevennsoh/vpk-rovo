@@ -15,7 +15,11 @@ test("RFP agent chat details render trigger editor states and run log links", ()
 	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_BOARD_NAME\}<\/TriggerChip>/u);
 	assert.match(DETAILS_SOURCE, /aria-label="Delete trigger"/u);
 	assert.match(DETAILS_SOURCE, /group-hover\/trigger-row:opacity-100/u);
+	assert.match(DETAILS_SOURCE, /<span className="text-sm font-medium">\{label\}<\/span>/u);
+	assert.match(DETAILS_SOURCE, /gap-2 text-sm text-text/u);
+	assert.match(DETAILS_SOURCE, /block truncate text-sm text-text-subtle/u);
 	assert.match(DETAILS_SOURCE, /<DetailsSection title="Agent Instructions">/u);
+	assert.match(DETAILS_SOURCE, /className="min-h-28 px-0 py-0 text-sm leading-5"/u);
 	assert.match(DETAILS_SOURCE, /placeholder="Type @ to mention tools or MCP servers, \/ for skills\.\.\."/u);
 	assert.match(DETAILS_SOURCE, /disabled=\{!canSaveTrigger\}/u);
 	assert.match(DETAILS_SOURCE, />\s*Save\s*<\/Button>/u);
