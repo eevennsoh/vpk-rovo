@@ -280,7 +280,7 @@ test("agent creation trace creates an agent instead of rendering a vpk-html repo
 	assert.equal(result.action, "create");
 	assert.match(result.summary, /similar RFP work items/u);
 	assert.match(result.trigger, /ticket enters Drafting/u);
-	assert.match(result.tools.join(" "), /HTML draft attachment/u);
+	assert.match(result.tools.join(" "), /Proposal PDF generator/u);
 	assert.match(result.guardrail, /Skips completed tickets/u);
 	assert.match(
 		trace.find((step) => step.toolName === "agent.write_instructions")?.content ?? "",
@@ -288,7 +288,7 @@ test("agent creation trace creates an agent instead of rendering a vpk-html repo
 	);
 	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /Created \*\*RFP Drafter\*\*/u);
 	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /added it to the Enterprise RFP Response project/u);
-	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /vpk-html draft/u);
+	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /proposal PDF/u);
 	assert.doesNotMatch(
 		trace.map((step) => step.toolName).join("\n"),
 		/vpk_html\.render_template/u,
@@ -298,14 +298,14 @@ test("agent creation trace creates an agent instead of rendering a vpk-html repo
 
 test("report confirmation points the user at Rovo Canvas", () => {
 	assert.equal(RFP_DEMO_REPORT_TITLE, "RFP-101 response strategy report");
-	assert.match(RFP_DEMO_REPORT_PREVIEW_SUMMARY, /Offline vpk-html report/u);
-	assert.match(
-		buildAgentsRfpDemoReportConfirmationText({
-			documentId: "doc-123",
-			title: RFP_DEMO_REPORT_TITLE,
-		}),
-		/Generated \*\*RFP-101 response strategy report\*\*[\s\S]*\[Open it in Rovo Canvas\]\(#rovo-canvas-doc-123\)/u,
-	);
+	assert.match(RFP_DEMO_REPORT_PREVIEW_SUMMARY, /PDF report for RFP-101/u);
+	const confirmation = buildAgentsRfpDemoReportConfirmationText({
+		documentId: "doc-123",
+		title: RFP_DEMO_REPORT_TITLE,
+	});
+	assert.match(confirmation, /Generate PDF created \*\*RFP-101 response strategy report\*\*/u);
+	assert.match(confirmation, /\[Open it in Rovo Canvas\]\(#rovo-canvas-doc-123\)[\s\S]*embedded PDF/u);
+	assert.doesNotMatch(confirmation, /vpk-html|embedded HTML/u);
 });
 
 test("extracts the latest user message text from AI SDK UI parts", () => {

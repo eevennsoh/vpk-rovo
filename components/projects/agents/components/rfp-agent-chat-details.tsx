@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { ProgressTracker, type ProgressTrackerStep } from "@/components/ui/progress-tracker";
 import { Separator } from "@/components/ui/separator";
+import { Tag } from "@/components/ui/tag";
 import type {
 	AgentsRfpDemoActivityItem,
 	AgentsRfpDemoJobRunSummary,
@@ -14,7 +15,7 @@ const TOOL_LABELS = [
 	"Attachment scanner",
 	"Teamwork Graph search",
 	"Report generator",
-	"HTML draft attachment",
+	"Proposal PDF generator",
 ] as const;
 
 const KNOWLEDGE_LABELS = [
@@ -61,6 +62,21 @@ function parseTimelineTimestamp(value?: string | null): number {
 	return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
 }
 
+function parseRunIdTimestamp(id: string): number | null {
+	const match = /^rfp-run-(\d+)-/u.exec(id.trim());
+	if (!match) {
+		return null;
+	}
+
+	const parsed = Number(match[1]);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getRunTimelineSortMs(run: AgentsRfpDemoJobRunSummary): number {
+	const runIdTimestamp = parseRunIdTimestamp(run.id);
+	return runIdTimestamp ?? parseTimelineTimestamp(run.finishedAt ?? run.startedAt);
+}
+
 function formatTimelineTimestamp(value?: string | null): string | null {
 	const normalizedValue = value?.trim();
 	if (!normalizedValue) {
@@ -104,26 +120,27 @@ function RunTimelineByline({
 	run: AgentsRfpDemoJobRunSummary;
 }>): React.ReactElement {
 	const timestampLabel = formatTimelineTimestamp(run.finishedAt ?? run.startedAt);
-	const detailLabel = [
-		run.triggerLabel,
-		run.source,
-		timestampLabel,
-	]
-		.filter((label): label is string => Boolean(label))
-		.join(" · ");
 
 	return (
-		<span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-			<span>{detailLabel}</span>
+		<span className="grid gap-1">
+			{timestampLabel ? <span data-run-timeline-timestamp>{timestampLabel}</span> : null}
 			{run.threadLinks.length > 0 ? (
-				<span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+				<span
+					className="flex flex-wrap items-center gap-x-1.5 gap-y-1"
+					data-run-timeline-metadata
+				>
 					{run.threadLinks.map((link) => (
 						<a
 							key={`${run.id}-${link.ticketCode}`}
-							className="font-medium text-link hover:underline"
+							className="group inline-flex rounded-sm no-underline focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none"
 							href={`/rovo/${encodeURIComponent(link.threadId)}`}
 						>
-							{link.ticketCode} thread
+							<Tag
+								color="blue"
+								className="cursor-pointer group-hover:bg-bg-neutral-subtle-hovered group-active:bg-bg-neutral-subtle-pressed"
+							>
+								{link.ticketCode}
+							</Tag>
 						</a>
 					))}
 				</span>
@@ -138,11 +155,9 @@ function createRunTimelineEntry(
 	runCount: number,
 	activityCount: number,
 ): ActivityTimelineEntry {
-	const timestamp = run.finishedAt ?? run.startedAt;
-
 	return {
 		sequence: activityCount + runCount - index,
-		sortMs: parseTimelineTimestamp(timestamp),
+		sortMs: getRunTimelineSortMs(run),
 		step: {
 			id: `run-${run.id}`,
 			label: run.summary,
@@ -216,13 +231,13 @@ export function RfpAgentTriggerDetails({
 
 			<DetailsSection title="Instructions">
 				<p className="text-sm leading-6 text-text-subtle">
-					Read each RFP work item, inspect attachments and subtasks, use Teamwork Graph context to find account memory and reusable response assets, draft a deterministic first-pass vpk-html response package, attach the generated HTML artifact, add an agent-authored comment, and move successful tickets to Review.
+					Read each RFP work item, inspect attachments and subtasks, use Teamwork Graph context to find account memory and reusable response assets, draft a deterministic first-pass RFP response package, attach the generated proposal PDF, add an agent-authored comment, and move successful tickets to Review.
 				</p>
 			</DetailsSection>
 
 			<DetailsSection title="Skills">
 				<div className="flex flex-wrap gap-2">
-					<Badge>vpk-html</Badge>
+					<Badge>RFP response package</Badge>
 				</div>
 			</DetailsSection>
 
@@ -259,7 +274,8 @@ export function RfpAgentActivityDetails({
 	return timelineSteps.length > 0 ? (
 		<ProgressTracker
 			aria-label="RFP Drafter activity timeline"
-			bylineClassName="text-sm leading-5"
+			bylineClassName="text-xs leading-4"
+			className="[&_[data-slot=progress-tracker-content]]:gap-0"
 			labelClassName="text-sm leading-5"
 			steps={timelineSteps}
 		/>

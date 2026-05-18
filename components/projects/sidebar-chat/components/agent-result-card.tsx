@@ -37,7 +37,7 @@ const AGENT_CAPABILITIES = [
 		icon: <BoardIcon label="" size="small" />,
 	},
 	{
-		label: "Generate vpk-html draft attachments",
+		label: "Generate PDF",
 		icon: <PageIcon label="" size="small" />,
 	},
 	{
@@ -48,7 +48,7 @@ const AGENT_CAPABILITIES = [
 
 function getAgentLongDescription(agent: AgentResult): string {
 	if (agent.agentId === RFP_DRAFTING_AGENT_ID) {
-		return "RFP Drafter monitors Drafting tickets, reads Jira context, uses Teamwork Graph knowledge, and creates a vpk-html draft attachment plus comment before returning work to review.";
+		return "RFP Drafter monitors Drafting tickets, reads Jira context, uses Teamwork Graph knowledge, and generates a proposal PDF plus comment before returning work to review.";
 	}
 
 	return agent.summary;
@@ -80,7 +80,7 @@ function getSkillTagIcon(tool: string): ReactNode {
 	if (normalizedTool.includes("teamwork") || normalizedTool.includes("graph")) {
 		return <DataFlowIcon label="" size="small" />;
 	}
-	if (normalizedTool.includes("html") || normalizedTool.includes("report")) {
+	if (normalizedTool.includes("html") || normalizedTool.includes("pdf") || normalizedTool.includes("report")) {
 		return <PageIcon label="" size="small" />;
 	}
 	if (normalizedTool.includes("agent")) {
@@ -98,7 +98,7 @@ function getSkillTagColor(tool: string): SkillTagColor {
 	if (normalizedTool.includes("teamwork") || normalizedTool.includes("graph")) {
 		return "teamwork";
 	}
-	if (normalizedTool.includes("html") || normalizedTool.includes("report")) {
+	if (normalizedTool.includes("html") || normalizedTool.includes("pdf") || normalizedTool.includes("report")) {
 		return "product";
 	}
 

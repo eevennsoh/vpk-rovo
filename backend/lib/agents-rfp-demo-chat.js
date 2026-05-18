@@ -54,7 +54,7 @@ const RFP_DEMO_TOOL_CALL_DELAY_MIN_MS = 1000;
 const RFP_DEMO_TOOL_CALL_DELAY_MAX_MS = 3000;
 const RFP_DEMO_QUALIFICATION_PRELOAD_DELAY_MS = 2000;
 const RFP_DEMO_REPORT_TITLE = "RFP-101 response strategy report";
-const RFP_DEMO_REPORT_PREVIEW_SUMMARY = "Offline vpk-html report for RFP-101 with bid/no-bid recommendation, response strategy, reusable assets, and review gates.";
+const RFP_DEMO_REPORT_PREVIEW_SUMMARY = "PDF report for RFP-101 with bid/no-bid recommendation, response strategy, reusable assets, and review gates.";
 
 function getNonEmptyString(value) {
 	if (typeof value !== "string") {
@@ -406,19 +406,19 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 			toolName: "agent.configure_tools",
 			toolCallId: "agents-rfp-demo-agent-configure-tools",
 			label: "Adding tools and skills",
-			content: "Giving the agent deterministic demo access to Jira work items, attachments, Teamwork Graph account memory, the repo-local /vpk-html skill, and HTML draft attachment output.",
-			input: { skills: ["vpk-html"], tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "vpk_html.render_template", "jira.attach_html"] },
-			outputPreview: "Tool set matches the completed RFP-101 report flow and produces ticket-specific vpk-html draft artifacts.",
+			content: "Giving the agent deterministic demo access to Jira work items, attachments, Teamwork Graph account memory, response package templates, and proposal PDF output.",
+			input: { skills: ["rfp-response-package"], tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "proposal_pdf.render", "jira.attach_pdf"] },
+			outputPreview: "Tool set matches the completed RFP-101 report flow and produces ticket-specific proposal PDF packages.",
 		},
 		{
 			toolName: "agent.write_instructions",
 			toolCallId: "agents-rfp-demo-agent-instructions",
 			label: "Writing agent instructions",
-			content: "Adding the description, conversation starters, and instructions to read each ticket context, generate a contextual HTML draft, comment with the ticket-specific handoff, and return work to a human reviewer.",
+			content: "Adding the description, conversation starters, and instructions to read each ticket context, generate a contextual proposal PDF, comment with the ticket-specific handoff, and return work to a human reviewer.",
 			input: {
 				description: RFP_DEMO_AGENT_DESCRIPTION,
 				conversationStarters: RFP_DEMO_AGENT_CONVERSATION_STARTERS,
-				output: "html-report",
+				output: "proposal-pdf",
 				reviewColumn: "Review",
 				assigneePolicy: "return-to-human-owner",
 			},
@@ -463,8 +463,8 @@ function buildAgentsRfpDemoAgentResultPayload() {
 		tools: [
 			"Jira work items",
 			"Teamwork Graph",
-			"vpk-html reports",
-			"HTML draft attachment",
+			"RFP response library",
+			"Proposal PDF generator",
 		],
 		guardrail: "Skips completed tickets on rerun and retries failed tickets later.",
 		action: "create",
@@ -472,7 +472,7 @@ function buildAgentsRfpDemoAgentResultPayload() {
 }
 
 function buildAgentsRfpDemoAgentCreationConfirmationText({ name = RFP_DEMO_AGENT_NAME } = {}) {
-	return `Created **${name}** and added it to the Enterprise RFP Response project. It runs when a ticket enters Drafting, creates a visible Rovo thread, generates a contextual vpk-html draft, attaches the HTML artifact, comments in Jira, and returns successful tickets to Review for a human owner.`;
+	return `Created **${name}** and added it to the Enterprise RFP Response project. It runs when a ticket enters Drafting, creates a visible Rovo thread, generates a contextual proposal PDF, attaches it to the RFP ticket, comments in Jira, and returns successful tickets to Review for a human owner.`;
 }
 
 function buildAgentsRfpDemoQualificationIntro() {
@@ -481,7 +481,7 @@ function buildAgentsRfpDemoQualificationIntro() {
 
 function buildAgentsRfpDemoReportConfirmationText({ documentId, title = RFP_DEMO_REPORT_TITLE } = {}) {
 	const resolvedDocumentId = getNonEmptyString(documentId) || "report";
-	return `Generated **${title}** with the repo-local /vpk-html skill. [Open it in Rovo Canvas](#rovo-canvas-${encodeURIComponent(resolvedDocumentId)}) to review the embedded HTML report.`;
+	return `Generate PDF created **${title}**. [Open it in Rovo Canvas](#rovo-canvas-${encodeURIComponent(resolvedDocumentId)}) to review the embedded PDF.`;
 }
 
 module.exports = {
