@@ -7,9 +7,8 @@ const DETAILS_SOURCE = fs.readFileSync(path.join(__dirname, "rfp-agent-chat-deta
 
 test("RFP agent chat details render trigger editor states and run log links", () => {
 	assert.match(DETAILS_SOURCE, /<DetailsSection title="Triggers">/u);
-	assert.match(DETAILS_SOURCE, /aria-label="Add trigger condition"/u);
-	assert.match(DETAILS_SOURCE, /Search triggers\.\.\./u);
-	assert.match(DETAILS_SOURCE, /Ticket enters column/u);
+	assert.match(DETAILS_SOURCE, /function TriggerAddRow/u);
+	assert.match(DETAILS_SOURCE, /const addTriggerControl = <TriggerAddRow \/>;/u);
 	assert.match(DETAILS_SOURCE, /Status changed to/u);
 	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_COLUMN_NAME\}<\/TriggerChip>/u);
 	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_BOARD_NAME\}<\/TriggerChip>/u);
@@ -17,12 +16,15 @@ test("RFP agent chat details render trigger editor states and run log links", ()
 	assert.match(DETAILS_SOURCE, /group-hover\/trigger-row:opacity-100/u);
 	assert.match(DETAILS_SOURCE, /<span className="text-sm font-medium">\{label\}<\/span>/u);
 	assert.match(DETAILS_SOURCE, /gap-2 text-sm text-text/u);
-	assert.match(DETAILS_SOURCE, /block truncate text-sm text-text-subtle/u);
-	assert.match(DETAILS_SOURCE, /<DetailsSection title="Agent Instructions">/u);
-	assert.match(DETAILS_SOURCE, /className="min-h-28 px-0 py-0 text-sm leading-5"/u);
-	assert.match(DETAILS_SOURCE, /placeholder="Type @ to mention tools or MCP servers, \/ for skills\.\.\."/u);
-	assert.match(DETAILS_SOURCE, /disabled=\{!canSaveTrigger\}/u);
-	assert.match(DETAILS_SOURCE, />\s*Save\s*<\/Button>/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /Search triggers\.\.\./u);
+	assert.doesNotMatch(DETAILS_SOURCE, /Ticket enters column/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /aria-label="Add trigger condition"/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /onClick=\{\(\) => setIsPickerOpen/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Agent Instructions">/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /PromptInput/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /Trigger natural language prompt/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /GPT-5\.5 Medium/u);
+	assert.doesNotMatch(DETAILS_SOURCE, />\s*Save\s*<\/Button>/u);
 	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Tasks">/u);
 	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Skills">/u);
 	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Tools">/u);
