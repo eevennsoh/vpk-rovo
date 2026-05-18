@@ -90,7 +90,7 @@ export function RfpAgentTriggerDetails({
 
 	return (
 		<div className="grid gap-5">
-			<DetailsSection title="Triggers">
+			<section className="grid gap-2">
 				<div className="rounded-xl border border-border bg-surface p-2">
 					{trigger ? (
 						<>
@@ -121,7 +121,7 @@ export function RfpAgentTriggerDetails({
 						addTriggerControl
 					)}
 				</div>
-			</DetailsSection>
+			</section>
 		</div>
 	);
 }

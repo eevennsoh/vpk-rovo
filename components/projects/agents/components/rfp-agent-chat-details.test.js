@@ -6,7 +6,7 @@ const test = require("node:test");
 const DETAILS_SOURCE = fs.readFileSync(path.join(__dirname, "rfp-agent-chat-details.tsx"), "utf8");
 
 test("RFP agent chat details render trigger editor states and run log links", () => {
-	assert.match(DETAILS_SOURCE, /<DetailsSection title="Triggers">/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Triggers">/u);
 	assert.match(DETAILS_SOURCE, /function TriggerAddRow/u);
 	assert.match(DETAILS_SOURCE, /const addTriggerControl = <TriggerAddRow \/>;/u);
 	assert.match(DETAILS_SOURCE, /Status changed to/u);
