@@ -52,7 +52,7 @@ const RFP_DEMO_TOOL_CALL_DELAY_MAX_MS = 3000;
 const RFP_DEMO_SKILL_TOOL_CALL_DELAY_MS = 4500;
 const RFP_DEMO_QUALIFICATION_PRELOAD_DELAY_MS = 2000;
 const RFP_DEMO_REPORT_TITLE = "Acmecorp RFP qualification DACI";
-const RFP_DEMO_REPORT_PREVIEW_SUMMARY = "Offline vpk-html one-pager for RFP-101 with bid/no-bid recommendation, DACI roles, stakeholder relationship, budget qualification, campaign fit, competitive advantages, risks, and open gaps.";
+const RFP_DEMO_REPORT_PREVIEW_SUMMARY = "PDF-ready one-pager for RFP-101 with bid/no-bid recommendation, DACI roles, stakeholder relationship, budget qualification, campaign fit, competitive advantages, risks, and open gaps.";
 
 function getNonEmptyString(value) {
 	if (typeof value !== "string") {
@@ -360,33 +360,33 @@ function buildAgentsRfpDemoAnswerTrace() {
 		},
 		{
 			toolName: "agent_skill.load",
-			toolCallId: "agents-rfp-demo-load-vpk-html",
-			label: "Loading vpk-html",
-			content: "Selecting the repo-local vpk-html skill because the next step is an offline HTML qualification DACI artifact.",
-			input: { skill: "vpk-html", template: "assets/templates/one-pager.html" },
-			outputPreview: "Loaded the vpk-html one-pager template and offline artifact contract.",
+			toolCallId: "agents-rfp-demo-load-generate-pdf",
+			label: "Using generate-pdf skill",
+			content: "Selecting the generate-pdf skill because the next step is a qualification DACI one-pager artifact.",
+			input: { skill: "generate-pdf", template: "assets/templates/one-pager.html" },
+			outputPreview: "Loaded the generate-pdf one-pager template and artifact contract.",
 		},
 		{
-			toolName: "vpk_html.distill_fields",
-			toolCallId: "agents-rfp-demo-vpk-html-distill",
+			toolName: "generate_pdf.distill_fields",
+			toolCallId: "agents-rfp-demo-generate-pdf-distill",
 			label: "Distilling DACI fields",
 			content: "Converting the Acmecorp RFP context and your answers into structured DACI qualification fields without inventing facts.",
 			input: { key: "RFP-101", audience: "deal desk", template: "one-pager", factPolicy: "mark gaps" },
 			outputPreview: "Prepared recommendation, Driver, Approver, Contributors, Informed, stakeholder relationship, budget qualification, campaign fit, competitive advantages, decision risks, and open gaps.",
 		},
 		{
-			toolName: "vpk_html.render_template",
-			toolCallId: "agents-rfp-demo-vpk-html-render",
+			toolName: "generate_pdf.render_document",
+			toolCallId: "agents-rfp-demo-generate-pdf-render",
 			label: "Rendering DACI one-pager",
-			content: "Filling the vpk-html one-pager template as a single offline HTML qualification artifact.",
-			input: { title: RFP_DEMO_REPORT_TITLE, kind: "html", dependencies: "inline-only" },
+			content: "Rendering the generate-pdf one-pager as a reviewable qualification artifact.",
+			input: { title: RFP_DEMO_REPORT_TITLE, kind: "pdf", dependencies: "inline-only" },
 			outputPreview: "Rendered the first qualification DACI version with embedded styles and no remote runtime dependencies.",
 		},
 		{
-			toolName: "vpk_html.validate_artifact",
-			toolCallId: "agents-rfp-demo-vpk-html-validate",
+			toolName: "generate_pdf.validate_artifact",
+			toolCallId: "agents-rfp-demo-generate-pdf-validate",
 			label: "Validating artifact",
-			content: "Checking placeholder coverage and the static HTML contract before sharing the qualification DACI.",
+			content: "Checking placeholder coverage and the artifact contract before sharing the qualification DACI.",
 			input: { checks: ["placeholders", "html-validity", "offline-dependencies"] },
 			outputPreview: "Validated the qualification DACI artifact and saved it to the active Rovo thread.",
 		},
@@ -424,19 +424,19 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 			toolName: "agent.configure_tools",
 			toolCallId: "agents-rfp-demo-agent-configure-tools",
 			label: "Adding tools and skills",
-			content: "Giving the agent deterministic demo access to Jira work items, attachments, Teamwork Graph account memory, the repo-local /vpk-html skill, and HTML draft attachment output.",
-			input: { skills: ["vpk-html"], tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "vpk_html.render_template", "jira.attach_html"] },
-			outputPreview: "Tool set matches the completed RFP-101 report flow and produces ticket-specific vpk-html draft artifacts.",
+			content: "Giving the agent deterministic demo access to Jira work items, attachments, Teamwork Graph account memory, the generate-pdf skill, and PDF draft attachment output.",
+			input: { skills: ["generate-pdf"], tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "generate_pdf.render_document", "jira.attach_pdf"] },
+			outputPreview: "Tool set matches the completed RFP-101 report flow and produces ticket-specific PDF draft artifacts.",
 		},
 		{
 			toolName: "agent.write_instructions",
 			toolCallId: "agents-rfp-demo-agent-instructions",
 			label: "Writing agent instructions",
-			content: "Adding the description, conversation starters, and instructions to read each ticket context, generate a contextual HTML draft, comment with the ticket-specific handoff, and return work to a human reviewer.",
+			content: "Adding the description, conversation starters, and instructions to read each ticket context, generate a contextual PDF draft, comment with the ticket-specific handoff, and return work to a human reviewer.",
 			input: {
 				description: RFP_DEMO_AGENT_DESCRIPTION,
 				conversationStarters: RFP_DEMO_AGENT_CONVERSATION_STARTERS,
-				output: "html-report",
+				output: "pdf-report",
 				reviewColumn: "Review",
 				assigneePolicy: "return-to-human-owner",
 			},
@@ -490,8 +490,8 @@ function buildAgentsRfpDemoAgentResultPayload() {
 		tools: [
 			"Jira work items",
 			"Teamwork Graph",
-			"vpk-html reports",
-			"HTML draft attachment",
+			"generate-pdf reports",
+			"PDF draft attachment",
 		],
 		guardrail: "Skips completed tickets on rerun and retries failed tickets later.",
 		action: "create",
@@ -499,7 +499,7 @@ function buildAgentsRfpDemoAgentResultPayload() {
 }
 
 function buildAgentsRfpDemoAgentCreationConfirmationText({ name = RFP_DEMO_AGENT_NAME } = {}) {
-	return `Created **${name}** and added it to the Enterprise RFP Response project. It runs when a ticket enters Drafting, creates a visible Rovo thread, generates a contextual vpk-html draft, attaches the HTML artifact, comments in Jira, and returns successful tickets to Review for a human owner.`;
+	return `Created **${name}** and added it to the Enterprise RFP Response project. It runs when a ticket enters Drafting, creates a visible Rovo thread, generates a contextual PDF draft, attaches the artifact, comments in Jira, and returns successful tickets to Review for a human owner.`;
 }
 
 function buildAgentsRfpDemoQualificationIntro() {
@@ -508,7 +508,7 @@ function buildAgentsRfpDemoQualificationIntro() {
 
 function buildAgentsRfpDemoReportConfirmationText({ documentId, title = RFP_DEMO_REPORT_TITLE } = {}) {
 	const resolvedDocumentId = getNonEmptyString(documentId) || "report";
-	return `Generated **${title}** with the repo-local /vpk-html skill. [Open it in Rovo Canvas](#rovo-canvas-${encodeURIComponent(resolvedDocumentId)}) to review the embedded qualification DACI.`;
+	return `Generated **${title}** with the generate-pdf skill. [Open it in Rovo Canvas](#rovo-canvas-${encodeURIComponent(resolvedDocumentId)}) to review the embedded qualification DACI.`;
 }
 
 module.exports = {

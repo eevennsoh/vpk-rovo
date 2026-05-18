@@ -335,7 +335,7 @@ test("Floating chat thinking status uses ChainOfThought dots without literal ell
 		/const shouldShowAnimatedDots =\s*resolvedState === "preload" \|\| resolvedState === "thinking";/
 	);
 	assert.match(CHAIN_OF_THOUGHT_SOURCE, /shouldShowAnimatedDots && typeof text === "string"[\s\S]*stripTrailingDots\(text\)/);
-	assert.match(REASONING_LABELS_SOURCE, /preloadShimmer: "Working"/);
+	assert.match(REASONING_LABELS_SOURCE, /preloadShimmer: "Thinking"/);
 	assert.doesNotMatch(REASONING_LABELS_SOURCE, /Rovo is cooking/);
 });
 

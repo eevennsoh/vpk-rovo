@@ -196,7 +196,7 @@ otherwise proceed to Step 6.
 ## Step 6 · Fill the template
 
 1. Copy the template into your working directory: `cp assets/templates/<id>.html <slug>.html`
-2. **CSS stays untouched**; only edit the body
+2. **CSS stays untouched**; only edit the body, preserving the single `<main>` landmark around visible content
 3. Content follows `references/writing.md` — data over adjectives, distinctive
    phrasing over industry clichés
 4. Avoid patterns listed in `references/anti-patterns.md`: emptiness,

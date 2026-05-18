@@ -43,7 +43,7 @@ export const Suggestion = ({
   onClick,
   className,
   variant = "outline",
-  size = "sm",
+  size = "default",
   children,
   ...props
 }: SuggestionProps) => {
@@ -53,7 +53,7 @@ export const Suggestion = ({
 
   return (
     <Button
-      className={cn("rounded-full px-4", className)}
+      className={cn("rounded-full px-4 text-sm", className)}
       onClick={handleClick}
       size={size}
       type="button"

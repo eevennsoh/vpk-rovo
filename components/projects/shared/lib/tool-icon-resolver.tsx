@@ -110,6 +110,9 @@ const NATIVE_TOOL_ICONS = new Map<string, (props: NewCoreIconProps) => ReactNode
 	[normalizeToken("vpk_html.distill_fields")!, ListChecklistIcon],
 	[normalizeToken("vpk_html.render_template")!, TemplateIcon],
 	[normalizeToken("vpk_html.validate_artifact")!, CheckCircleIcon],
+	[normalizeToken("generate_pdf.distill_fields")!, ListChecklistIcon],
+	[normalizeToken("generate_pdf.render_document")!, TemplateIcon],
+	[normalizeToken("generate_pdf.validate_artifact")!, CheckCircleIcon],
 ]);
 
 const MCP_SERVER_ICON_OVERRIDES = new Map<string, (props: NewCoreIconProps) => ReactNode>([

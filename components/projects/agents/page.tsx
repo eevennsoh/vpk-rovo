@@ -21,11 +21,11 @@ import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import { AVATARS } from "./data/avatars";
 import { BOARD_AGENTS } from "./data/board-agents";
@@ -649,34 +649,35 @@ function KanbanSelectionActionBar({
 			aria-label={`${selectedCount} card${selectedCount === 1 ? "" : "s"} selected. Bulk actions available.`}
 		>
 			<div className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-surface-raised pl-5 pr-2 py-2 shadow-2xl">
-				<span className="text-sm font-medium text-text">
-					{selectedCount} selected
-				</span>
-				<DropdownMenu>
-					<DropdownMenuTrigger
-						render={
-							<Button size="sm" variant="outline" className="ml-1 gap-1">
-								Move to
-								<Icon render={<ChevronDownIcon label="" size="small" />} />
-							</Button>
-						}
-					/>
-					<DropdownMenuContent align="center" sideOffset={6}>
-						{boardColumns.map((column) => (
-							<DropdownMenuItem
-								key={column.title}
-								onSelect={() => onMoveTo(column.title)}
-							>
-								{column.title}
-							</DropdownMenuItem>
-						))}
-					</DropdownMenuContent>
-				</DropdownMenu>
+				<div className="inline-flex items-center gap-2">
+					<span className="text-sm font-medium text-text-subtle">
+						{selectedCount} selected
+					</span>
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={<Button variant="outline" className="w-fit" />}
+						>
+							Move to
+						</DropdownMenuTrigger>
+						<DropdownMenuContent>
+							<DropdownMenuGroup>
+								{boardColumns.map((column) => (
+									<DropdownMenuItem
+										key={column.title}
+										onSelect={() => onMoveTo(column.title)}
+									>
+										{column.title}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuGroup>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
 				<Button
 					aria-label="Clear selection"
 					onClick={onClear}
 					shape="circle"
-					size="icon"
+					size="icon-sm"
 					variant="ghost"
 				>
 					<Icon render={<CrossIcon label="" size="small" />} />

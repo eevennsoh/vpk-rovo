@@ -235,6 +235,13 @@ function appendOverrides(text) {
 	return text.replace(/<\/style>/, `${VPK_OVERRIDES}</style>`);
 }
 
+function addMainLandmark(text) {
+	if (/<main\b/i.test(text)) return text;
+	return text
+		.replace(/<body([^>]*)>/i, `<body$1>\n<main>`)
+		.replace(/(\s*)(<script\b|<\/body>)/i, `\n</main>$1$2`);
+}
+
 function transform(rawHtml, slug, fontFaceBlock, themeBlock) {
 	let out = rawHtml;
 	out = rewriteFontStacks(out);
@@ -244,6 +251,7 @@ function transform(rawHtml, slug, fontFaceBlock, themeBlock) {
 	out = rewriteHeader(out, slug);
 	out = ensureFaviconLinks(out);
 	out = appendOverrides(out);
+	out = addMainLandmark(out);
 	return out;
 }
 

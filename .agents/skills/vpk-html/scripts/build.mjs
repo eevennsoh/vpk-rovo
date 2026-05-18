@@ -138,6 +138,10 @@ function checkTemplate(filePath) {
 
 	failures.push(...collectFaviconIssues(content));
 
+	if (!/<main\b/i.test(content)) {
+		failures.push("missing <main> landmark");
+	}
+
 	return failures;
 }
 

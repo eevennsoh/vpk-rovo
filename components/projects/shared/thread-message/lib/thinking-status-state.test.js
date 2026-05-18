@@ -136,7 +136,7 @@ test("normalizes generic thinking labels while preserving specific status labels
 			reasoningPhase: "thinking",
 			duration: undefined,
 		}),
-		"Working"
+		"Thinking"
 	);
 	assert.equal(
 		resolveThinkingStatusTriggerLabel({
@@ -144,7 +144,7 @@ test("normalizes generic thinking labels while preserving specific status labels
 			reasoningPhase: "thinking",
 			duration: undefined,
 		}),
-		"Working"
+		"Thinking"
 	);
 	assert.equal(
 		resolveThinkingStatusTriggerLabel({
@@ -152,7 +152,7 @@ test("normalizes generic thinking labels while preserving specific status labels
 			reasoningPhase: "thinking",
 			duration: undefined,
 		}),
-		"Working"
+		"Thinking"
 	);
 	assert.equal(
 		resolveThinkingStatusTriggerLabel({

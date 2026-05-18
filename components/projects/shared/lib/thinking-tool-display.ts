@@ -59,6 +59,12 @@ const TOOL_ACTION_LABELS = new Map<string, string>([
 	["vpk-html-render-template", "Rendering HTML report"],
 	["vpk-html-validate", "Validating artifact"],
 	["vpk-html-validate-artifact", "Validating artifact"],
+	["generate-pdf-distill", "Distilling report fields"],
+	["generate-pdf-distill-fields", "Distilling report fields"],
+	["generate-pdf-render", "Rendering PDF report"],
+	["generate-pdf-render-document", "Rendering PDF report"],
+	["generate-pdf-validate", "Validating artifact"],
+	["generate-pdf-validate-artifact", "Validating artifact"],
 	["system-tool-call", "Running tool"],
 	["system-encrypt", "Running tool"],
 ]);
@@ -117,6 +123,15 @@ function getInputString(input: unknown, keys: readonly string[]): string | null 
 function clipToolDetail(value: string): string {
 	const text = value.replace(/\s+/g, " ").trim();
 	return text.length > 140 ? `${text.slice(0, 137).trimEnd()}...` : text;
+}
+
+function getDisplaySkillName(skillName: string): string {
+	return normalizeToolActionKey(skillName) === "vpk-html" ? "generate-pdf" : skillName;
+}
+
+function isSkillLoadTool(displayName: string): boolean {
+	const normalizedDisplayName = displayName.toLowerCase();
+	return normalizedDisplayName === "get skill" || normalizedDisplayName.includes("skill");
 }
 
 function addToolActionKeyCandidate(candidates: Set<string>, value: string | null | undefined) {
@@ -219,8 +234,8 @@ export function getToolActionLabel(toolCall: ThinkingToolCallSummary): string {
 	if (hasToolActionKey(actionKeyCandidates, "jira-read", "jira-read-work-item")) {
 		return getJiraReadWorkItemLabel(toolCall);
 	}
-	if (skillName && (normalizedDisplayName === "get skill" || normalizedDisplayName.includes("skill"))) {
-		return `Using ${clipToolDetail(skillName)} skill`;
+	if (skillName && isSkillLoadTool(displayName)) {
+		return `Using ${clipToolDetail(getDisplaySkillName(skillName))} skill`;
 	}
 
 	const explicitActionLabel = findToolActionLabel(actionKeyCandidates);
@@ -288,6 +303,11 @@ export function getToolActionLabel(toolCall: ThinkingToolCallSummary): string {
 }
 
 export function getThinkingToolTitle(toolCall: ThinkingToolCallSummary): string {
+	const skillName = getInputString(toolCall.input, ["skill", "skillName", "skill_name", "name"]);
+	if (skillName && isSkillLoadTool(getThinkingToolDisplayName(toolCall))) {
+		return getToolActionLabel(toolCall);
+	}
+
 	const label = getNonEmptyString(toolCall.label);
 	if (label && !isPersistedFallbackLabel(label)) {
 		return label;
@@ -315,7 +335,7 @@ export function getToolInputDetail(toolCall: ThinkingToolCallSummary): string | 
 
 	const skillName = getInputString(toolCall.input, ["skill", "skillName", "skill_name", "name"]);
 	const skillReason = getInputString(toolCall.input, ["reason", "purpose", "description"]);
-	if (skillName && (normalizedDisplayName === "get skill" || normalizedDisplayName.includes("skill"))) {
+	if (skillName && isSkillLoadTool(displayName)) {
 		return skillReason
 			? `Using ${clipToolDetail(skillName)} to ${clipToolDetail(skillReason)}`
 			: `Using ${clipToolDetail(skillName)}`;
