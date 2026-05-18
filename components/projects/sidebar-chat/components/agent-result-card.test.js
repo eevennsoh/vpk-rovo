@@ -50,6 +50,7 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	assert.match(AGENT_RESULT_CARD_SOURCE, /const identityAvatarSrc = getAgentIdentityAvatarSrc\(agent\);/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /function getAgentLongDescription\(agent: AgentResult\): string/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /RFP Drafter monitors Drafting tickets, reads Jira context/u);
+	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /vpk-html draft attachment/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, />Description<\/h4>[\s\S]*getAgentLongDescription\(agent\)/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, />Description<\/h4>[\s\S]*getAgentLongDescription\(agent\)[\s\S]*<SkillTagGroup>[\s\S]*tools\.map[\s\S]*<SkillTag/u);
 	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, />Skills<\/h4>/u);
@@ -66,7 +67,7 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /const capabilities = getAgentCapabilities\(agent\);/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /Monitor tickets entering Drafting/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /Generate vpk-html draft attachments/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /Generate PDF/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /Comment and return work to Review/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /\{capabilities\.length > 0 \? \([\s\S]*>Capabilities<\/h4>[\s\S]*capabilities\.map/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /text-icon-subtle/u);

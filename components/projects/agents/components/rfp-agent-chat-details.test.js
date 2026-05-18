@@ -5,7 +5,8 @@ const test = require("node:test");
 
 const DETAILS_SOURCE = fs.readFileSync(path.join(__dirname, "rfp-agent-chat-details.tsx"), "utf8");
 
-test("RFP agent chat details render trigger editor states and run log links", () => {
+test("RFP agent chat details render trigger editor and merged activity timeline with Rovo thread links", () => {
+	// Trigger editor UI
 	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Triggers">/u);
 	assert.match(DETAILS_SOURCE, /function TriggerAddRow/u);
 	assert.match(DETAILS_SOURCE, /const addTriggerControl = <TriggerAddRow \/>;/u);
@@ -41,11 +42,36 @@ test("RFP agent chat details render trigger editor states and run log links", ()
 	assert.doesNotMatch(DETAILS_SOURCE, /Jira work item reader/u);
 	assert.doesNotMatch(DETAILS_SOURCE, /RFP-101 approved report/u);
 	assert.doesNotMatch(DETAILS_SOURCE, /Rerun policy: Completed tickets with draft output are skipped; failed tickets retry\./u);
-	assert.match(DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
-	assert.match(DETAILS_SOURCE, /Processed \{run\.processedTicketCodes\.length\}/u);
-	assert.match(DETAILS_SOURCE, /Skipped \{run\.skippedTicketCodes\.length\}/u);
-	assert.match(DETAILS_SOURCE, /Failed \{run\.failedTicketCodes\.length\}/u);
+
+	// Merged activity timeline (ProgressTracker)
+	assert.match(DETAILS_SOURCE, /import \{ ProgressTracker, type ProgressTrackerStep \} from "@\/components\/ui\/progress-tracker";/u);
+	assert.match(DETAILS_SOURCE, /import \{ Tag \} from "@\/components\/ui\/tag";/u);
+	assert.match(DETAILS_SOURCE, /function getActivityTimelineSteps\(state: AgentsRfpDemoState\): ProgressTrackerStep\[\]/u);
+	assert.match(DETAILS_SOURCE, /label: run\.summary/u);
+	assert.match(DETAILS_SOURCE, /byline: <RunTimelineByline run=\{run\} \/>/u);
+	assert.match(DETAILS_SOURCE, /state: getRunTrackerState\(run\.status\)/u);
+	assert.match(DETAILS_SOURCE, /state: getActivityTrackerState\(activity\)/u);
+	assert.match(DETAILS_SOURCE, /function parseRunIdTimestamp\(id: string\): number \| null/u);
+	assert.match(DETAILS_SOURCE, /return runIdTimestamp \?\? parseTimelineTimestamp\(run\.finishedAt \?\? run\.startedAt\);/u);
+	assert.match(DETAILS_SOURCE, /sortMs: getRunTimelineSortMs\(run\)/u);
+	assert.match(DETAILS_SOURCE, /compareActivityTimelineEntries/u);
+	assert.match(DETAILS_SOURCE, /labelClassName="text-sm leading-5"/u);
+	assert.match(DETAILS_SOURCE, /bylineClassName="text-xs leading-4"/u);
+	assert.match(DETAILS_SOURCE, /className="\[&_\[data-slot=progress-tracker-content\]\]:gap-0"/u);
+	assert.match(DETAILS_SOURCE, /data-run-timeline-timestamp/u);
+	assert.match(DETAILS_SOURCE, /data-run-timeline-metadata/u);
+	assert.match(DETAILS_SOURCE, /<span className="grid gap-1">/u);
+
+	// Thread links rendered as Tag pills (not "X thread" text)
 	assert.match(DETAILS_SOURCE, /href=\{`\/rovo\/\$\{encodeURIComponent\(link\.threadId\)\}`\}/u);
+	assert.match(DETAILS_SOURCE, /<Tag[\s\S]*color="blue"[\s\S]*\{link\.ticketCode\}[\s\S]*<\/Tag>/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /\{link\.ticketCode\} thread/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /<span className="flex flex-wrap items-center gap-x-1\.5 gap-y-1">\s*\{timestampLabel \?/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /run\.triggerLabel,[\s\S]*run\.source,[\s\S]*timestampLabel/u);
+
+	// Removed sections
+	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
+	assert.doesNotMatch(DETAILS_SOURCE, /<DetailsSection title="Activity">/u);
 	assert.doesNotMatch(DETAILS_SOURCE, /RfpAgentDetailsSheet/u);
 	assert.doesNotMatch(DETAILS_SOURCE, /SheetContent/u);
 	assert.doesNotMatch(DETAILS_SOURCE, /Weekdays at 9:00 AM/u);
