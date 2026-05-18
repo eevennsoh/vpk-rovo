@@ -613,11 +613,15 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const handleRovoAppSuggestionSelect = useCallback(
 		async (prompt: string) => {
 			const contextDescription = annotationContextRef.current ?? undefined;
-			await chat.submitPrompt({
-				...buildHermesPromptOptions(contextDescription),
-				files: [],
-				text: prompt,
-			});
+			try {
+				await chat.submitPrompt({
+					...buildHermesPromptOptions(contextDescription),
+					files: [],
+					text: prompt,
+				});
+			} catch {
+				// submitPrompt already sets a user-visible error state.
+			}
 		},
 		[buildHermesPromptOptions, chat],
 	);
