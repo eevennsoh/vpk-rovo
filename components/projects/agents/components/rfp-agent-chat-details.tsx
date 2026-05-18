@@ -7,6 +7,7 @@ import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconTile } from "@/components/ui/icon-tile";
 import { Lozenge } from "@/components/ui/lozenge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -97,9 +98,13 @@ export function RfpAgentTriggerDetails({
 					{trigger ? (
 						<>
 							<div className="group/trigger-row flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered">
-								<span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-bg-neutral text-icon-subtle">
-									<AutomationIcon label="" size="small" />
-								</span>
+								<IconTile
+									aria-hidden={true}
+									icon={<AutomationIcon label="" />}
+									label="Automation"
+									size="small"
+									variant="blue"
+								/>
 								<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm text-text">
 									<span className="font-medium">Status changed to</span>
 									<TriggerChip>{RFP_DRAFTING_COLUMN_NAME}</TriggerChip>
