@@ -336,9 +336,10 @@ export function getToolInputDetail(toolCall: ThinkingToolCallSummary): string | 
 	const skillName = getInputString(toolCall.input, ["skill", "skillName", "skill_name", "name"]);
 	const skillReason = getInputString(toolCall.input, ["reason", "purpose", "description"]);
 	if (skillName && isSkillLoadTool(displayName)) {
+		const displaySkillName = getDisplaySkillName(skillName);
 		return skillReason
-			? `Using ${clipToolDetail(skillName)} to ${clipToolDetail(skillReason)}`
-			: `Using ${clipToolDetail(skillName)}`;
+			? `Using ${clipToolDetail(displaySkillName)} to ${clipToolDetail(skillReason)}`
+			: `Using ${clipToolDetail(displaySkillName)}`;
 	}
 
 	const command = getInputString(toolCall.input, ["command", "cmd", "script"]);
