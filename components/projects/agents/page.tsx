@@ -495,7 +495,6 @@ export default function AgentsView({
 						assignedAgentIdsByColumn={assignedAgentIdsByColumn}
 						boardColumns={boardColumns}
 						draggedCardCode={draggedCard?.card.code ?? null}
-						draggedCardCount={selectedCardCodes.size}
 						selectedCardCodes={selectedCardCodes}
 						onCardClick={handleCardClick}
 						onCardSelect={handleCardSelect}

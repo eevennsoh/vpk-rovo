@@ -10,7 +10,7 @@ const COLUMN_DRAG_SOURCE = SOURCE.slice(
 );
 
 test("Kanban card focus border stays inside the card and uses the focused border token", () => {
-	assert.match(SOURCE, /className="border-2 border-transparent outline-none focus-visible:border-ring"/);
+	assert.match(SOURCE, /"relative border outline-none focus-visible:border-ring"/);
 	assert.doesNotMatch(SOURCE, /border: "none"/);
 });
 
@@ -40,4 +40,23 @@ test("Kanban card renders explicit unassigned avatars with the shared placeholde
 	assert.match(unassignedBranch, /<AvatarUnassigned/);
 	assert.match(unassignedBranch, /kind=\{avatarUnassignedKind\}/);
 	assert.match(unassignedBranch, /size="sm"/);
+});
+
+test("Kanban multi-card drag fades every selected card", () => {
+	assert.match(SOURCE, /const isSelectedCardBeingDragged = Boolean\(draggedCardCode && isMultiSelection && isSelected\);/);
+	assert.match(SOURCE, /isDragging=\{isCardBeingDragged \|\| isSelectedCardBeingDragged\}/);
+});
+
+test("Kanban multi-card drag uses a move cursor affordance without covering the item count", () => {
+	assert.match(SOURCE, /event\.dataTransfer\.effectAllowed = "move";/);
+	assert.match(SOURCE, /event\.dataTransfer\.dropEffect = "move";/);
+	assert.match(COLUMN_DRAG_SOURCE, /event\.dataTransfer\.dropEffect = "move";/);
+	assert.match(SOURCE, /label\.style\.top = "28px";/);
+	assert.match(SOURCE, /event\.dataTransfer\.setDragImage\(dragImageRef\.current, 0, 0\);/);
+});
+
+test("Kanban multi-card drag does not render an extra count badge on the source card", () => {
+	assert.doesNotMatch(SOURCE, /groupBadgeCount/);
+	assert.doesNotMatch(SOURCE, /dragGroupCount/);
+	assert.doesNotMatch(SOURCE, /draggedCardCount/);
 });
