@@ -22,7 +22,7 @@ interface AgentSelectorPageProps {
 export default function AgentSelectorPage({ variant = "default" }: Readonly<AgentSelectorPageProps> = {}): ReactElement {
 	const [open, setOpen] = useState(true);
 	const [selectedAgentIds, setSelectedAgentIds] = useState<readonly string[]>(
-		variant === "selected-agent-actions" ? ["ai-insights-agent"] : ["rovo-dev"]
+		variant === "selected-agent-actions" ? ["ai-insights-agent"] : ["github-copilot"]
 	);
 	const agents = variant === "selected-agent-actions" ? AGENT_SELECTOR_CUSTOM_AGENT_DEMO_AGENTS : AGENT_SELECTOR_DEMO_AGENTS;
 	const selectedAgentActions: readonly AgentSelectorAction[] = variant === "selected-agent-actions"

@@ -1,14 +1,12 @@
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
 import {
 	AI_INSIGHTS_AGENT_ID,
-	ROVO_AGENT_ID,
 	ROVO_AGENT_SELECTOR_AGENTS,
 	ROVO_CUSTOM_AGENT_SELECTOR_AGENTS,
 } from "@/components/projects/rovo/data/agent-profiles";
 
 const DEFAULT_AGENT_SELECTOR_ORDER = [
 	"github-copilot",
-	ROVO_AGENT_ID,
 	"readiness-checker",
 	"figma",
 	"canva",

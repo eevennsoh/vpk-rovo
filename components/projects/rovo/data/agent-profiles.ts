@@ -217,16 +217,16 @@ export const ROVO_AGENT_PROFILE_BY_ID = new Map(
 	ROVO_AGENT_PROFILES.map((agent) => [agent.id, agent]),
 );
 
-export const ROVO_AGENT_SELECTOR_AGENTS: readonly AgentSelectorAgent[] = ROVO_AGENT_PROFILES.map((agent) => ({
-	id: agent.id,
-	name: agent.name,
-	byline: agent.byline,
-	avatarSrc: agent.avatarSrc,
-}));
+export const ROVO_AGENT_SELECTOR_AGENTS: readonly AgentSelectorAgent[] = ROVO_AGENT_PROFILES
+	.filter((agent) => agent.id !== ROVO_AGENT_ID)
+	.map((agent) => ({
+		id: agent.id,
+		name: agent.name,
+		byline: agent.byline,
+		avatarSrc: agent.avatarSrc,
+	}));
 
-export const ROVO_CUSTOM_AGENT_SELECTOR_AGENTS: readonly AgentSelectorAgent[] = ROVO_AGENT_SELECTOR_AGENTS.filter(
-	(agent) => agent.id !== ROVO_AGENT_ID,
-);
+export const ROVO_CUSTOM_AGENT_SELECTOR_AGENTS: readonly AgentSelectorAgent[] = ROVO_AGENT_SELECTOR_AGENTS;
 
 export function getRovoAgentProfile(agentId: string): RovoAgentProfile {
 	const fallbackAgent = ROVO_AGENT_PROFILE_BY_ID.get(ROVO_AGENT_ID);
