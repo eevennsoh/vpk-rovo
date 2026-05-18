@@ -101,6 +101,7 @@ async function loadRovoFloatingChatHarness() {
 							"data-context-icon": props.chatContextBar?.iconName ?? "",
 							"data-greeting-labels": props.greeting?.suggestions?.map((suggestion) => suggestion.label).join("|") ?? "",
 							"data-greeting-hero": String(props.greeting?.showHero),
+							"data-has-custom-agent-tabs": String(Boolean(props.customAgentTabs)),
 							"data-has-artifact-dialog-open": String(typeof props.onArtifactDialogOpen === "function"),
 							"data-preserve-artifact-dialog": String(props.preserveFloatingSurfaceOnArtifactDialogOpen),
 							className: props.containerClassName,
@@ -164,6 +165,15 @@ async function loadRovoFloatingChatHarness() {
 									type: "skill",
 								},
 							],
+						},
+					}));
+				}
+
+				export function renderFloatingChatWithCustomAgentTabs() {
+					return renderToStaticMarkup(React.createElement(RovoFloatingChat, {
+						customAgentTabs: {
+							trigger: React.createElement("div", null, "Trigger content"),
+							activity: React.createElement("div", null, "Activity content"),
 						},
 					}));
 				}
@@ -238,6 +248,15 @@ test("RovoFloatingChat forwards context bar descriptor to the shared chat panel"
 
 	assert.match(markup, /data-context-label="RFP-101: Qualify enterprise service-management RFP"/);
 	assert.match(markup, /data-context-icon="work-item"/);
+});
+
+test("RovoFloatingChat forwards custom agent tab content to the shared chat panel", async () => {
+	const harness = await loadRovoFloatingChatHarness();
+	const markup = harness.renderFloatingChatWithCustomAgentTabs();
+
+	assert.match(markup, /data-has-custom-agent-tabs="true"/);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /customAgentTabs\?: ChatPanelCustomAgentTabs;/u);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /customAgentTabs=\{customAgentTabs\}/u);
 });
 
 test("RovoFloatingChat forwards artifact dialog lifecycle to the shared chat panel", async () => {

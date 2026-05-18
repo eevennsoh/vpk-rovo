@@ -46,7 +46,7 @@ const RFP_AGENT_CREATION_CONTEXT = [
 ].join("\n");
 
 const RFP_AGENT_CREATION_PROMPT = [
-	"Create an RFP Drafting Agent for the Drafting column on the Enterprise RFP Response board.",
+	"Create an RFP Drafter for the Drafting column on the Enterprise RFP Response board.",
 	"The agent should read each RFP work item and stage reusable report work.",
 ].join("\n");
 
@@ -269,14 +269,24 @@ test("agent creation trace creates an agent instead of rendering a vpk-html repo
 	);
 	assert.ok(trace.every((step) => typeof step.outputPreview === "string" && step.outputPreview.length > 0));
 	assert.equal(result.agentId, "rfp-drafting-agent");
-	assert.equal(result.name, "RFP Drafting Agent");
+	assert.equal(result.name, "RFP Drafter");
+	assert.match(result.description, /Drafts first-pass RFP response packages/u);
+	assert.deepEqual(result.conversationStarters, [
+		"Draft the response package for the next Drafting ticket.",
+		"Summarize blockers before this RFP can move to Review.",
+		"Create reusable answer snippets from the attached RFP packet.",
+	]);
 	assert.equal(result.assignedColumn, "Drafting");
 	assert.equal(result.action, "create");
 	assert.match(result.summary, /similar RFP work items/u);
 	assert.match(result.trigger, /ticket enters Drafting/u);
 	assert.match(result.tools.join(" "), /HTML draft attachment/u);
 	assert.match(result.guardrail, /Skips completed tickets/u);
-	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /Created \*\*RFP Drafting Agent\*\*/u);
+	assert.match(
+		trace.find((step) => step.toolName === "agent.write_instructions")?.content ?? "",
+		/description, conversation starters/u,
+	);
+	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /Created \*\*RFP Drafter\*\*/u);
 	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /added it to the Enterprise RFP Response project/u);
 	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /vpk-html draft/u);
 	assert.doesNotMatch(

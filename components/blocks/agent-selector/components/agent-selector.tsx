@@ -53,6 +53,15 @@ function matchesAgent(agent: AgentSelectorAgent, query: string): boolean {
 	return searchableText.includes(query);
 }
 
+function filterAgentsByQuery(
+	agents: readonly AgentSelectorAgent[],
+	normalizedQuery: string,
+): AgentSelectorAgent[] {
+	return normalizedQuery
+		? agents.filter((agent) => matchesAgent(agent, normalizedQuery))
+		: [...agents];
+}
+
 function AgentSelectorLogo({ agent }: Readonly<{ agent: AgentSelectorAgent }>): ReactElement {
 	return (
 		<span className="grid size-6 shrink-0 place-items-center overflow-hidden rounded-sm">
@@ -91,11 +100,11 @@ export function AgentSelector({
 			.map((agentId) => agentById.get(agentId))
 			.filter((agent): agent is AgentSelectorAgent => Boolean(agent));
 		const unselectedAgents = agents.filter((agent) => !selectedAgentIdSet.has(agent.id));
-		const filteredUnselectedAgents = normalizedQuery
-			? unselectedAgents.filter((agent) => matchesAgent(agent, normalizedQuery))
-			: unselectedAgents;
 
-		return [...selectedAgents, ...filteredUnselectedAgents];
+		return [
+			...filterAgentsByQuery(selectedAgents, normalizedQuery),
+			...filterAgentsByQuery(unselectedAgents, normalizedQuery),
+		];
 	}, [agents, normalizedQuery, selectedAgentIdSet, selectedIds]);
 
 	function handleQueryChange(nextQuery: string) {

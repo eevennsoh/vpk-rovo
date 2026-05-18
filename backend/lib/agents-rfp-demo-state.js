@@ -5,14 +5,21 @@ const path = require("node:path");
 
 const AGENTS_RFP_DEMO_VERSION = 1;
 const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
-const RFP_DRAFTING_AGENT_NAME = "RFP Drafting Agent";
+const RFP_DRAFTING_AGENT_NAME = "RFP Drafter";
+const RFP_DRAFTING_AGENT_DESCRIPTION =
+	"Drafts first-pass RFP response packages for Enterprise RFP Response tickets entering Drafting.";
+const RFP_DRAFTING_AGENT_CONVERSATION_STARTERS = [
+	"Draft the response package for the next Drafting ticket.",
+	"Summarize blockers before this RFP can move to Review.",
+	"Create reusable answer snippets from the attached RFP packet.",
+];
 const RFP_DRAFTING_AGENT_AVATAR_SRC = "/avatar-agent/dev-agents/feature-flag-cleaner.svg";
 const RFP_DRAFTING_BOARD_NAME = "Enterprise RFP Response";
 const RFP_DRAFTING_COLUMN_NAME = "Drafting";
 const RFP_REVIEW_COLUMN_NAME = "Review";
 const RFP_DRAFTING_EVENT_TRIGGER_LABEL = "On event: ticket enters Drafting";
 const AGENTS_RFP_DEMO_SURFACE = "agents-rfp-demo";
-const AGENTS_RFP_DEMO_JOB_NAME = "RFP Drafting Agent - Enterprise RFP Response";
+const AGENTS_RFP_DEMO_JOB_NAME = `${RFP_DRAFTING_AGENT_NAME} - Enterprise RFP Response`;
 const AGENTS_RFP_DEMO_JOB_PROMPT = [
 	"Process RFP tickets when they enter Drafting on the Enterprise RFP Response board.",
 	"Use deterministic demo outputs, create a visible Rovo thread per ticket, attach the response draft, comment with completion status, move successful tickets to Review, and leave them unassigned.",
@@ -21,6 +28,7 @@ const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf"
 const RFP_TICKET_DRAFT_ATTACHMENT_KIND = "rfp-draft-html";
 const DEMO_RUN_BASE_TIME = Date.parse("2025-09-03T15:00:00.000Z");
 const RFP_DRAFTING_PROCESSING_DELAYS_MS = [15_000, 24_000, 34_000, 19_000, 29_000];
+const RFP_DRAFTING_NO_WORK_TOAST_MESSAGE = `${RFP_DRAFTING_AGENT_NAME} found no new Drafting tickets to process.`;
 
 const RFP_DRAFTING_EVENT_TRIGGER = {
 	type: "jira-column-entered",
@@ -175,6 +183,13 @@ function normalizeStringArray(value) {
 	return Array.isArray(value)
 		? value.filter((item) => typeof item === "string" && item.trim().length > 0)
 		: [];
+}
+
+function normalizeConversationStarters(value) {
+	const starters = normalizeStringArray(value);
+	return starters.length > 0
+		? starters
+		: [...RFP_DRAFTING_AGENT_CONVERSATION_STARTERS];
 }
 
 function createThreadIdForTicket(ticketCode) {
@@ -427,6 +442,8 @@ function normalizeAgent(rawAgent) {
 	return {
 		id: RFP_DRAFTING_AGENT_ID,
 		name: RFP_DRAFTING_AGENT_NAME,
+		description: getNonEmptyString(rawAgent.description) ?? RFP_DRAFTING_AGENT_DESCRIPTION,
+		conversationStarters: normalizeConversationStarters(rawAgent.conversationStarters),
 		selected: rawAgent.selected !== false,
 		assignedColumn: RFP_DRAFTING_COLUMN_NAME,
 		createdAt: getNonEmptyString(rawAgent.createdAt) ?? "Sep 3, 2025, 10:00 AM",
@@ -437,6 +454,28 @@ function normalizeAgent(rawAgent) {
 			? rawAgent.jobRunSummaries.map(normalizeJobRunSummary).filter(Boolean)
 			: [],
 	};
+}
+
+function normalizeToasts(rawToasts) {
+	if (!Array.isArray(rawToasts)) {
+		return [];
+	}
+
+	return rawToasts
+		.map((rawToast) => {
+			if (!isObject(rawToast)) {
+				return null;
+			}
+
+			const id = getNonEmptyString(rawToast.id);
+			const message = getNonEmptyString(rawToast.message);
+			if (!id || !message || message === RFP_DRAFTING_NO_WORK_TOAST_MESSAGE) {
+				return null;
+			}
+
+			return { id, message };
+		})
+		.filter(Boolean);
 }
 
 function normalizeAgentsRfpDemoState(rawState) {
@@ -475,7 +514,7 @@ function normalizeAgentsRfpDemoState(rawState) {
 		customAgentActivity: Array.isArray(rawState.customAgentActivity) ? rawState.customAgentActivity : [],
 		canvas: isObject(rawState.canvas) ? { ...defaultState.canvas, ...rawState.canvas } : defaultState.canvas,
 		chat: isObject(rawState.chat) ? { ...defaultState.chat, ...rawState.chat } : defaultState.chat,
-		toasts: Array.isArray(rawState.toasts) ? rawState.toasts : [],
+		toasts: normalizeToasts(rawState.toasts),
 	};
 }
 
@@ -526,12 +565,12 @@ function ensureRfpDraftingAgent(state, { jobId, createdAtLabel = "Sep 3, 2025, 1
 	return appendUniqueActivity(appendUniqueActivity(nextState, {
 		id: "activity-agent-created",
 		timestampLabel: createdAtLabel,
-		message: "Rovo created RFP Drafting Agent.",
+		message: `Rovo created ${RFP_DRAFTING_AGENT_NAME}.`,
 		type: "agent-created",
 	}), {
 		id: "activity-workflow-assigned",
 		timestampLabel: createdAtLabel,
-		message: "Rovo assigned RFP Drafting Agent to the Drafting column event.",
+		message: `Rovo assigned ${RFP_DRAFTING_AGENT_NAME} to the Drafting column event.`,
 		type: "workflow-assigned",
 	});
 }
@@ -988,15 +1027,17 @@ function runRfpDraftingAgent(state, {
 		jobId,
 		jobRunSummaries: [runSummary, ...(nextState.agent?.jobRunSummaries ?? [])].slice(0, 10),
 	});
-	nextState = appendToast({
+	nextState = {
 		...nextState,
 		agent,
-	}, runSummary.status === "skipped"
-		? "RFP Drafting Agent found no new Drafting tickets to process."
-		: runSummary.status === "running"
+	};
+
+	if (runSummary.status !== "skipped") {
+		const toastMessage = runSummary.status === "running"
 			? `${RFP_DRAFTING_AGENT_NAME} queued ${processedTicketCodes.length} Drafting ticket${processedTicketCodes.length === 1 ? "" : "s"}.`
-			: `${RFP_DRAFTING_AGENT_NAME} ${runSummary.summary}`,
-	`rfp-agent-run-${runId}`);
+			: `${RFP_DRAFTING_AGENT_NAME} ${runSummary.summary}`;
+		nextState = appendToast(nextState, toastMessage, `rfp-agent-run-${runId}`);
+	}
 
 	return {
 		state: nextState,
@@ -1264,6 +1305,8 @@ module.exports = {
 	AGENTS_RFP_DEMO_VERSION,
 	GENERATED_RFP_REPORT_ATTACHMENT_ID,
 	RFP_DRAFTING_AGENT_AVATAR_SRC,
+	RFP_DRAFTING_AGENT_CONVERSATION_STARTERS,
+	RFP_DRAFTING_AGENT_DESCRIPTION,
 	RFP_DRAFTING_AGENT_ID,
 	RFP_DRAFTING_AGENT_NAME,
 	RFP_DRAFTING_BOARD_NAME,

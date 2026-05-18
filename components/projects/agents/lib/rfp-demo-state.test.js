@@ -12,6 +12,8 @@ async function loadRfpDemoStateHarness() {
 					AGENTS_RFP_DEMO_STORAGE_KEY,
 					GENERATED_RFP_REPORT_ATTACHMENT_ID,
 					RFP_DRAFTING_AGENT_AVATAR_SRCS,
+					RFP_DRAFTING_AGENT_CONVERSATION_STARTERS,
+					RFP_DRAFTING_AGENT_DESCRIPTION,
 					RFP_DRAFTING_AGENT_ID,
 					RFP_DRAFTING_AGENT_NAME,
 					RFP_DRAFTING_EVENT_TRIGGER_LABEL,
@@ -68,6 +70,8 @@ test("valid persisted payload resumes board, report, agent trigger, and activity
 
 	assert.equal(resumed.report.stage, "attached");
 	assert.equal(resumed.agent.id, harness.RFP_DRAFTING_AGENT_ID);
+	assert.equal(resumed.agent.description, harness.RFP_DRAFTING_AGENT_DESCRIPTION);
+	assert.deepEqual(resumed.agent.conversationStarters, [...harness.RFP_DRAFTING_AGENT_CONVERSATION_STARTERS]);
 	assert.equal(resumed.schedule, null);
 	assert.equal(resumed.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
 	assert.equal(resumed.customAgentActivity.length, 3);
@@ -75,6 +79,18 @@ test("valid persisted payload resumes board, report, agent trigger, and activity
 		harness.getGeneratedRfpAttachments(resumed, "RFP-101").map((attachment) => attachment.displayName),
 		["RFP response strategy.pdf"],
 	);
+});
+
+test("legacy persisted RFP agent profile gets description and conversation starters", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const state = harness.createRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
+	delete state.agent.description;
+	delete state.agent.conversationStarters;
+
+	const resumed = harness.parseAgentsRfpDemoState(JSON.stringify(state));
+
+	assert.equal(resumed.agent.description, harness.RFP_DRAFTING_AGENT_DESCRIPTION);
+	assert.deepEqual(resumed.agent.conversationStarters, [...harness.RFP_DRAFTING_AGENT_CONVERSATION_STARTERS]);
 });
 
 test("report stages advance through generated, refined, approved, pdf-exported, and attached", async () => {
@@ -141,7 +157,9 @@ test("agent creation is idempotent and assigns Drafting without retroactively as
 	const once = harness.createRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
 	const twice = harness.createRfpDraftingAgent(once);
 
-	assert.equal(twice.agent.name, "RFP Drafting Agent");
+	assert.equal(twice.agent.name, "RFP Drafter");
+	assert.equal(twice.agent.description, harness.RFP_DRAFTING_AGENT_DESCRIPTION);
+	assert.deepEqual(twice.agent.conversationStarters, [...harness.RFP_DRAFTING_AGENT_CONVERSATION_STARTERS]);
 	assert.ok(harness.RFP_DRAFTING_AGENT_AVATAR_SRCS.includes(twice.agent.avatarSrc));
 	assert.notEqual(twice.agent.avatarSrc, "/1p/rovo.svg");
 	assert.equal(twice.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
@@ -183,7 +201,7 @@ test("dragging RFP-102 to Drafting after agent creation assigns the agent and st
 	assert.deepEqual(state.workItems["RFP-102"].agentAssignmentIds, [harness.RFP_DRAFTING_AGENT_ID]);
 	assert.match(
 		state.customAgentActivity.map((item) => item.message).join("\n"),
-		/RFP Drafting Agent started first-pass response prep for RFP-102\./,
+		/RFP Drafter started first-pass response prep for RFP-102\./,
 	);
 	assert.match(state.toasts[0].message, /Preparing first-pass response package/);
 });
@@ -210,7 +228,7 @@ test("running RFP agent assignees resolve to hexagon board card avatars", async 
 	assert.equal(activeCard.avatarPulse, true);
 });
 
-test("completed Review tickets left unassigned do not inherit the seed human avatar", async () => {
+test("completed Review tickets left unassigned use the person placeholder avatar", async () => {
 	const harness = await loadRfpDemoStateHarness();
 	const state = harness.createDefaultAgentsRfpDemoState();
 	state.board.columns = state.board.columns.map((column) => {
@@ -240,6 +258,7 @@ test("completed Review tickets left unassigned do not inherit the seed human ava
 	const completedCard = reviewColumn.cards.find((card) => card.code === "RFP-141");
 
 	assert.equal(completedCard.avatarSrc, undefined);
+	assert.equal(completedCard.avatarUnassignedKind, "person");
 	assert.equal(completedCard.avatarPulse, false);
 	assert.ok(completedCard.tags.some((tag) => tag.text === "draft ready"));
 });

@@ -86,6 +86,11 @@ Required body sections:
 Structured body sections that need machine-readable values should contain a
 fenced `yaml` block. Keep prose around those blocks brief.
 
+If the agent will appear in a runtime UI, chat selector, or generated profile,
+carry the same frontmatter `description` and `## Conversation Starters` into
+that profile data. Do not create a visible agent with an empty description or
+empty starters just because the Markdown definition has the canonical fields.
+
 ## Build Workflow
 
 1. Inspect existing files:
@@ -119,6 +124,8 @@ file and the work it should do each run. Do not create background work silently.
 ## Quality Bar
 
 - The frontmatter description must clearly say when to use the agent.
+- Conversation starters must contain at least one concrete user-facing prompt;
+  use 2-4 starters for normal interactive agents.
 - The body must be operational enough for another agent to run without guessing.
 - The knowledge path must match `.agents/knowledge/<agent-name>/` when
   `memory: project`.

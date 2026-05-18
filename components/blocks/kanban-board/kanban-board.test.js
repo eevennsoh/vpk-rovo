@@ -4,6 +4,10 @@ const { join } = require("node:path");
 const { test } = require("node:test");
 
 const SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
+const COLUMN_DRAG_SOURCE = SOURCE.slice(
+	SOURCE.indexOf("const handleColumnDragOver"),
+	SOURCE.indexOf("<BoardColumn", SOURCE.indexOf("const handleColumnDragOver")),
+);
 
 test("Kanban card focus border stays inside the card and uses the focused border token", () => {
 	assert.match(SOURCE, /className="border-2 border-transparent outline-none focus-visible:border-ring"/);
@@ -11,8 +15,29 @@ test("Kanban card focus border stays inside the card and uses the focused border
 });
 
 test("Kanban drag-over column border stays inside the column and uses the focused border token", () => {
-	assert.match(SOURCE, /className="border-2 border-transparent transition-colors"/);
-	assert.match(SOURCE, /classList\.add\("border-ring"\)/);
-	assert.doesNotMatch(SOURCE, /ring-offset-2/);
-	assert.doesNotMatch(SOURCE, /ring-border-bold/);
+	assert.match(COLUMN_DRAG_SOURCE, /className="border-2 border-transparent transition-colors"/);
+	assert.match(COLUMN_DRAG_SOURCE, /classList\.add\("border-ring"\)/);
+	assert.doesNotMatch(COLUMN_DRAG_SOURCE, /ring-offset-2/);
+	assert.doesNotMatch(COLUMN_DRAG_SOURCE, /ring-border-bold/);
+});
+
+test("Kanban agent stack removes the avatar-group overlap ring", () => {
+	assert.match(SOURCE, /<AvatarGroup className="-space-x-1\.5 \*:data-\[slot=avatar\]:ring-0!"/);
+	assert.match(SOURCE, /label=\{agent\.name\} shape="hexagon" size="sm"/);
+	assert.doesNotMatch(SOURCE, /showHexagonBorder/);
+});
+
+test("Kanban agent assignment icons use selected icon color while the trigger is open", () => {
+	assert.match(SOURCE, /className="ml-0\.5 text-icon-subtle group-aria-expanded\/button:text-icon-selected"/);
+	assert.match(SOURCE, /className="text-icon-subtle group-aria-expanded\/button:text-icon-selected"/);
+});
+
+test("Kanban card renders explicit unassigned avatars with the shared placeholder", () => {
+	const unassignedBranch = SOURCE.match(/avatarUnassignedKind \? \(([\s\S]*?)\) : \(/)?.[1] ?? "";
+
+	assert.match(SOURCE, /AvatarUnassigned,/);
+	assert.match(SOURCE, /avatarUnassignedKind\?: AvatarUnassignedKind;/);
+	assert.match(unassignedBranch, /<AvatarUnassigned/);
+	assert.match(unassignedBranch, /kind=\{avatarUnassignedKind\}/);
+	assert.match(unassignedBranch, /size="sm"/);
 });

@@ -40,11 +40,11 @@ test("Hermes job links preserve event trigger metadata and RFP run history", asy
 		triggerLabel: "On event: ticket enters Drafting",
 	});
 
-	const merged = await manager.mergeJobsWithLinks([{
-		id: "job-rfp-drafting",
-		name: "RFP Drafting Agent - Enterprise RFP Response",
-		schedule: "manual",
-	}]);
+		const merged = await manager.mergeJobsWithLinks([{
+			id: "job-rfp-drafting",
+			name: "RFP Drafter - Enterprise RFP Response",
+			schedule: "manual",
+		}]);
 
 	assert.equal(merged[0].surface, "agents-rfp-demo");
 	assert.deepEqual(merged[0].trigger, {

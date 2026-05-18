@@ -197,6 +197,39 @@ function extractKnowledgePath(sections) {
 	return match ? match[1].trim() : null;
 }
 
+function inspectConversationStarters(sections) {
+	const sectionBody = sections.get("Conversation Starters") ?? "";
+	const [block] = findYamlBlocks(sectionBody);
+	if (!block) {
+		return {
+			hasKey: false,
+			count: 0,
+		};
+	}
+
+	const keyMatch = block.match(/^\s*conversation_starters\s*:\s*(.*)$/mu);
+	if (!keyMatch) {
+		return {
+			hasKey: false,
+			count: 0,
+		};
+	}
+
+	const inlineValue = keyMatch[1].trim();
+	if (inlineValue.startsWith("[") && inlineValue.endsWith("]")) {
+		const inner = inlineValue.slice(1, -1).trim();
+		return {
+			hasKey: true,
+			count: inner ? inner.split(",").filter((item) => stripQuotes(item.trim()).length > 0).length : 0,
+		};
+	}
+
+	return {
+		hasKey: true,
+		count: block.split(/\r?\n/u).filter((line) => /^\s*-\s+\S/u.test(line)).length,
+	};
+}
+
 function usesStructuredAgentCreatorSchema(frontmatter, sections) {
 	return frontmatter.memory === "project" || REQUIRED_SECTIONS.some((section) => sections.has(section));
 }
@@ -297,6 +330,15 @@ async function validateAgentFile(filePath, allAgentFiles, rootDir) {
 				if (yamlError) {
 					errors.push(`${relativeFile}: section "## ${section}" ${yamlError}`);
 				}
+			}
+		}
+
+		if (sections.has("Conversation Starters")) {
+			const starters = inspectConversationStarters(sections);
+			if (!starters.hasKey) {
+				errors.push(`${relativeFile}: section "## Conversation Starters" must define "conversation_starters".`);
+			} else if (starters.count === 0) {
+				errors.push(`${relativeFile}: section "## Conversation Starters" must include at least one starter.`);
 			}
 		}
 	} else {

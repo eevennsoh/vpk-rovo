@@ -117,7 +117,7 @@ const agents: AgentSelectorAgent[] = [
 			{
 				name: "selectedAgentIds",
 				type: "readonly string[]",
-				description: "Selected agent ids. Selected agents remain pinned above filtered unselected agents.",
+				description: "Selected agent ids. Selected agents remain pinned above unselected agents when there is no active search, and matching selected agents stay first while filtering.",
 			},
 			{
 				name: "onAgentToggle",

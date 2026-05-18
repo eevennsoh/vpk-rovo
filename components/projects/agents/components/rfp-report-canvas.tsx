@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RovoCanvas, type RovoCanvasStatus, type RovoCanvasVersion, type RovoCanvasView } from "@/components/blocks/rovo-canvas/page";
-import ChatPanel, { type ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
+import ChatPanel, { type ChatPanelCustomAgentTabs, type ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import { Spinner } from "@/components/ui/spinner";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
@@ -16,6 +16,7 @@ interface RfpReportCanvasProps {
 	onAttachReport?: (reportPreviewHtml?: string) => void;
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
+	customAgentTabs?: ChatPanelCustomAgentTabs;
 }
 
 interface RfpRenderedHtmlReportProps {
@@ -197,10 +198,12 @@ function RfpRenderedHtmlReport({
 function RfpReportCanvasChatRail({
 	chatContextBar,
 	chatGreeting,
+	customAgentTabs,
 	onClose,
 }: Readonly<{
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
+	customAgentTabs?: ChatPanelCustomAgentTabs;
 	onClose: () => void;
 }>): React.ReactElement {
 	const editContextBar: ChatContextBarDescriptor = {
@@ -218,6 +221,7 @@ function RfpReportCanvasChatRail({
 			abortOnUnmount={false}
 			chatContextBar={editContextBar}
 			greeting={chatGreeting}
+			customAgentTabs={customAgentTabs}
 			sendPromptOptions={{
 				smartGeneration: {
 					enabled: true,
@@ -234,6 +238,7 @@ export function RfpReportCanvas({
 	onAttachReport,
 	chatContextBar,
 	chatGreeting,
+	customAgentTabs,
 }: Readonly<RfpReportCanvasProps>): React.ReactElement {
 	const reportPreview = useRfpHtmlReportPreview(state);
 	const versions = useMemo<ReadonlyArray<RovoCanvasVersion>>(
@@ -288,6 +293,7 @@ export function RfpReportCanvas({
 				<RfpReportCanvasChatRail
 					chatContextBar={chatContextBar}
 					chatGreeting={chatGreeting}
+					customAgentTabs={customAgentTabs}
 					onClose={() => actions.setCanvasOpen(false)}
 				/>
 			}

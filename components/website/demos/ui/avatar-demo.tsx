@@ -154,12 +154,6 @@ export function AvatarDemoUnassigned() {
 				<AvatarUnassigned kind="agent" />
 				<span className="text-xs text-text-subtle">Agent</span>
 			</div>
-			<div className="flex flex-col items-center gap-1">
-				<AvatarUnassigned kind="agent">
-					<AvatarPresenceIndicator presence="online" />
-				</AvatarUnassigned>
-				<span className="text-xs text-text-subtle">Active</span>
-			</div>
 		</div>
 	);
 }

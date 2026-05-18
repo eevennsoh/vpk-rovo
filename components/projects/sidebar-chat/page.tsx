@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useCallback, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useCallback, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { DEFAULT_REASONING_OPTION_ID } from "@/components/blocks/shared-ui/data/customize-menu-data";
 import { useRovoChat } from "@/app/contexts";
 import type { SendPromptOptions } from "@/app/contexts";
@@ -11,6 +11,7 @@ import {
 	ConversationContent,
 	ConversationScrollButton,
 } from "@/components/ui-custom/conversation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageTurns } from "@/components/projects/shared/message-turns";
 import {
 	getMessageAgentResult,
@@ -77,12 +78,18 @@ export interface ChatPanelGreetingProps {
 	suggestions?: ReadonlyArray<RovoSuggestion>;
 }
 
+export interface ChatPanelCustomAgentTabs {
+	activity?: ReactNode;
+	trigger?: ReactNode;
+}
+
 interface ChatPanelProps {
 	onClose: () => void;
 	sendPromptOptions?: SendPromptOptions;
 	enableSmartWidgets?: boolean;
 	cards?: ChatPanelCardsProps;
 	greeting?: ChatPanelGreetingProps;
+	customAgentTabs?: ChatPanelCustomAgentTabs;
 	hideHeader?: boolean;
 	headerVariant?: "default" | "minimal";
 	abortOnUnmount?: boolean;
@@ -122,12 +129,30 @@ function getRealtimeTranscriptText(payload: RealtimeTranscriptPayload): string {
 	return payload.text ?? payload.transcript ?? payload.delta ?? "";
 }
 
+function CustomAgentTabEmptyState({
+	description,
+	title,
+}: Readonly<{
+	description: string;
+	title: string;
+}>): React.ReactElement {
+	return (
+		<div className="flex min-h-[220px] items-center justify-center p-6 text-center">
+			<div className="max-w-[280px] space-y-2">
+				<h3 className="text-sm font-semibold text-text">{title}</h3>
+				<p className="text-sm leading-6 text-text-subtle">{description}</p>
+			</div>
+		</div>
+	);
+}
+
 export default function ChatPanel({
 	onClose,
 	sendPromptOptions,
 	enableSmartWidgets = false,
 	cards,
 	greeting,
+	customAgentTabs,
 	hideHeader = false,
 	headerVariant = "default",
 	abortOnUnmount = true,
@@ -150,6 +175,7 @@ export default function ChatPanel({
 		chatSurface,
 		activeThreadId,
 		selectedAgent,
+		isCustomAgentSelected,
 		activePrompt,
 		isHistoryOpen,
 		pinFloating,
@@ -507,23 +533,10 @@ export default function ChatPanel({
 		minHeight: shouldHugEmptyGreeting ? "auto" : "100%",
 	};
 	const isHeaderHistoryEnabled = !hideHeader && headerVariant === "default";
-
-	return (
-		<div ref={panelRef} className={cn("relative overflow-hidden", containerClassName)} style={{ ...chatStyles.chatPanel, ...resolvedContainerStyle }}>
-			<ChatHistoryDrawer active={isHeaderHistoryEnabled && chatSurface === "sidebar"} />
-			{!hideHeader && (
-				<div className="shrink-0">
-					<ChatHeader
-						variant={headerVariant}
-						isHistoryOpen={isHistoryOpen}
-						onClose={onClose}
-						onHistoryToggle={toggleHistory}
-						onNewChat={resetChat}
-						onSurfaceSwitch={onSurfaceSwitch}
-					/>
-				</div>
-			)}
-
+	const shouldRenderHeaderHistory = isHeaderHistoryEnabled && chatSurface !== "floating";
+	const shouldRenderCustomAgentTabs = isCustomAgentSelected || Boolean(customAgentTabs);
+	const chatPanelBody = (
+		<>
 			<Conversation
 				className="min-h-0 min-w-0 flex-1"
 				contextRef={conversationContextRef}
@@ -692,6 +705,56 @@ export default function ChatPanel({
 					</>
 				)}
 			</div>
+		</>
+	);
+
+	return (
+		<div ref={panelRef} className={cn("relative overflow-hidden", containerClassName)} style={{ ...chatStyles.chatPanel, ...resolvedContainerStyle }}>
+			<ChatHistoryDrawer active={shouldRenderHeaderHistory} />
+			{!hideHeader && (
+				<div className="shrink-0">
+					<ChatHeader
+						variant={headerVariant}
+						isHistoryOpen={isHistoryOpen}
+						onClose={onClose}
+						onHistoryToggle={toggleHistory}
+						onNewChat={resetChat}
+						onSurfaceSwitch={onSurfaceSwitch}
+					/>
+				</div>
+			)}
+			{shouldRenderCustomAgentTabs ? (
+				<Tabs defaultValue="chat" aria-label="Custom agent views" className="min-h-0 min-w-0 flex-1">
+					<div className={cn("shrink-0 px-4", hideHeader ? "pt-3" : null)}>
+						<TabsList variant="line" className="w-full">
+							<TabsTrigger value="chat">Chat</TabsTrigger>
+							<TabsTrigger value="trigger">Trigger</TabsTrigger>
+							<TabsTrigger value="activity">Activity</TabsTrigger>
+						</TabsList>
+					</div>
+					<TabsContent value="chat" keepMounted className="min-h-0 flex flex-1 flex-col data-[hidden]:hidden">
+						{chatPanelBody}
+					</TabsContent>
+					<TabsContent value="trigger" className="min-h-0 overflow-y-auto px-4 py-5 data-[hidden]:hidden">
+						{customAgentTabs?.trigger ?? (
+							<CustomAgentTabEmptyState
+								title="No trigger configured"
+								description={`${selectedAgent.name} does not have trigger details in this view yet.`}
+							/>
+						)}
+					</TabsContent>
+					<TabsContent value="activity" className="min-h-0 overflow-y-auto px-4 py-5 data-[hidden]:hidden">
+						{customAgentTabs?.activity ?? (
+							<CustomAgentTabEmptyState
+								title="No activity yet"
+								description={`${selectedAgent.name} has not recorded activity in this view yet.`}
+							/>
+						)}
+					</TabsContent>
+				</Tabs>
+			) : (
+				chatPanelBody
+			)}
 		</div>
 	);
 }

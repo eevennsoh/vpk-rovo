@@ -11,7 +11,7 @@ import type {
 	FloatingRovoButtonSuggestion,
 } from "@/components/projects/shared/components/floating-rovo-button";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
-import type { ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
+import type { ChatPanelCustomAgentTabs, ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
@@ -31,6 +31,7 @@ interface AppLayoutProps {
 	onChatSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
+	customAgentTabs?: ChatPanelCustomAgentTabs;
 	rovoButtonSuggestion?: FloatingRovoButtonSuggestion | null;
 	rovoButtonOnboarding?: FloatingRovoButtonOnboardingConfig | null;
 	onArtifactDialogOpen?: () => void;
@@ -129,6 +130,7 @@ export default function AppLayout({
 	onChatSurfaceSwitch,
 	chatContextBar,
 	chatGreeting,
+	customAgentTabs,
 	rovoButtonSuggestion,
 	rovoButtonOnboarding,
 	onArtifactDialogOpen,
@@ -216,6 +218,7 @@ export default function AppLayout({
 							onSurfaceSwitch={onChatSurfaceSwitch}
 							chatContextBar={chatContextBar}
 							greeting={chatGreeting}
+							customAgentTabs={customAgentTabs}
 							onArtifactDialogOpen={onArtifactDialogOpen}
 							preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
 							containerStyle={
@@ -247,6 +250,7 @@ export default function AppLayout({
 						onSurfaceSwitch={onChatSurfaceSwitch}
 						chatContextBar={chatContextBar}
 						greeting={chatGreeting}
+						customAgentTabs={customAgentTabs}
 						onArtifactDialogOpen={onArtifactDialogOpen}
 						preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
 					/>

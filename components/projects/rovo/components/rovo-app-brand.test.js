@@ -9,11 +9,13 @@ const BACK_BUTTON_SOURCE = fs.readFileSync(path.join(__dirname, "rovo-agent-back
 
 test("RovoAppBrand agent selector keeps a single selected agent", () => {
 	assert.match(SOURCE, /useRovoSelectedAgent/u);
-	assert.match(SOURCE, /const selectedAgentIds = useMemo<readonly string\[\]>\(\(\) => \[selectedAgentId\], \[selectedAgentId\]\);/u);
+	assert.match(SOURCE, /selectableAgents/u);
 	assert.match(SOURCE, /function handleAgentSelect\(agentId: string\) \{/u);
 	assert.match(SOURCE, /selectAgent\(agentId\);/u);
 	assert.match(SOURCE, /onAgentToggle=\{handleAgentSelect\}/u);
 	assert.match(SOURCE, /selectionMode="single"/u);
+	assert.match(SOURCE, /agents=\{selectableAgents\}/u);
+	assert.doesNotMatch(SOURCE, /selectedAgentIds=\{selectedAgentIds\}/u);
 	assert.doesNotMatch(SOURCE, /currentIds\.includes\(agentId\)[\s\S]*currentIds\.filter/u);
 });
 
@@ -28,6 +30,8 @@ test("RovoAppBrand uses selected-agent actions while a custom agent is active", 
 	assert.match(SOURCE, /<AnimatePresence initial=\{false\} mode="wait">/u);
 	assert.match(SOURCE, /key=\{selectedAgentId\}/u);
 	assert.match(SOURCE, /variants=\{identityItemVariants\}/u);
+	assert.match(SOURCE, /className="-ml-0\.5 size-4 text-icon-subtle group-aria-expanded\/button:text-icon-selected"/u);
+	assert.doesNotMatch(SOURCE, /className="-ml-0\.5 size-4 text-icon-selected"/u);
 });
 
 test("fullscreen Rovo header exposes a custom-agent back button", () => {

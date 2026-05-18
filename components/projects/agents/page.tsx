@@ -15,7 +15,7 @@ import { AgentsWorkItemInlinePage } from "./components/agents-work-item-inline-p
 import { RfpAgentDetailsSheet } from "./components/rfp-agent-details-sheet";
 import { RfpAttachmentPreviewDialog } from "./components/rfp-attachment-preview-dialog";
 import { RfpReportCanvas } from "./components/rfp-report-canvas";
-import type { ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
+import type { ChatPanelCustomAgentTabs, ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import { SONNER_TOAST_AUTO_DISMISS_MS, SonnerToast, Toaster } from "@/components/ui/sonner";
 import { AVATARS } from "./data/avatars";
@@ -77,6 +77,7 @@ interface AgentsViewProps {
 	onCreateRfpDraftingAgent: () => void;
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
+	customAgentTabs?: ChatPanelCustomAgentTabs;
 }
 
 export default function AgentsView({
@@ -87,6 +88,7 @@ export default function AgentsView({
 	onCreateRfpDraftingAgent,
 	chatContextBar,
 	chatGreeting,
+	customAgentTabs,
 }: Readonly<AgentsViewProps>) {
 	const [selectedTab, setSelectedTab] = useState(1);
 	const [attachmentHighlight, setAttachmentHighlight] = useState<{ id: string; key: number } | null>(null);
@@ -431,6 +433,7 @@ export default function AgentsView({
 				onAttachReport={handleAttachReport}
 				chatContextBar={chatContextBar}
 				chatGreeting={chatGreeting}
+				customAgentTabs={customAgentTabs}
 			/>
 			<RfpAgentDetailsSheet
 				open={isAgentDetailsOpen}

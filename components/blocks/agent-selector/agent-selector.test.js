@@ -25,3 +25,9 @@ test("AgentSelector hides command checkmarks for single-select usage", () => {
 	assert.match(COMPONENT_SOURCE, /showCheckIcon=\{supportsMultipleSelection\}/u);
 	assert.match(COMPONENT_SOURCE, /data-checked=\{supportsMultipleSelection && isSelected \? true : undefined\}/u);
 });
+
+test("AgentSelector applies active search queries to selected and unselected agents", () => {
+	assert.match(COMPONENT_SOURCE, /function filterAgentsByQuery\([\s\S]*agents\.filter\(\(agent\) => matchesAgent\(agent, normalizedQuery\)\)[\s\S]*: \[\.\.\.agents\];/u);
+	assert.match(COMPONENT_SOURCE, /return \[\s*\.\.\.filterAgentsByQuery\(selectedAgents, normalizedQuery\),\s*\.\.\.filterAgentsByQuery\(unselectedAgents, normalizedQuery\),\s*\];/u);
+	assert.doesNotMatch(COMPONENT_SOURCE, /return \[\.\.\.selectedAgents, \.\.\.filteredUnselectedAgents\];/u);
+});

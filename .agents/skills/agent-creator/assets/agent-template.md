@@ -41,6 +41,7 @@ channels:
 ## Conversation Starters
 
 ```yaml
+# Include 2-4 concrete user-facing prompts for interactive agents.
 conversation_starters:
   - Ask Example Agent to handle a narrow task with clear inputs and expected output.
 ```

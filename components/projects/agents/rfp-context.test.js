@@ -359,7 +359,9 @@ test("Agents demo feeds active work item context into RovoChatProvider defaults"
 	assert.match(AGENTS_DEMO_SOURCE, /agentsChatScreenContext\.contextDescription/);
 	assert.match(AGENTS_DEMO_SOURCE, /formatRfpDemoContext\(rfpDemo\.state\)/);
 	assert.match(AGENTS_DEMO_SOURCE, /rfpDemoContext/);
-	assert.match(AGENTS_DEMO_SOURCE, /<RovoChatProvider defaultPromptOptions=\{chatPromptOptions\}>/);
+	assert.match(AGENTS_DEMO_SOURCE, /const chatAgentProfiles = useMemo/);
+	assert.match(AGENTS_DEMO_SOURCE, /getAgentsDemoAgentProfiles\(rfpDemo\.state\)/);
+	assert.match(AGENTS_DEMO_SOURCE, /<RovoChatProvider agentProfiles=\{chatAgentProfiles\} defaultPromptOptions=\{chatPromptOptions\}>/);
 	assert.match(AGENTS_DEMO_SOURCE, /chatContextBar=\{agentsChatScreenContext\.chatContextBar\}/);
 	assert.match(AGENTS_DEMO_SOURCE, /chatGreeting=\{agentsChatScreenContext\.greeting\}/);
 });

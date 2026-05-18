@@ -19,7 +19,8 @@ const REGISTRY_SOURCE = fs.readFileSync(
 
 test("AvatarUnassigned exposes grey person and agent avatar states", () => {
 	assert.match(AVATAR_SOURCE, /import AiAgentIcon from "@atlaskit\/icon\/core\/ai-agent"/);
-	assert.match(AVATAR_SOURCE, /import PersonAvatarIcon from "@atlaskit\/icon\/core\/person-avatar"/);
+	assert.match(AVATAR_SOURCE, /import PersonIcon from "@atlaskit\/icon\/core\/person"/);
+	assert.doesNotMatch(AVATAR_SOURCE, /@atlaskit\/icon\/core\/person-avatar/);
 	assert.match(AVATAR_SOURCE, /type AvatarUnassignedKind = "person" \| "agent"/);
 	assert.match(AVATAR_SOURCE, /function AvatarUnassigned\(/);
 	assert.match(
@@ -35,11 +36,20 @@ test("AvatarUnassigned exposes grey person and agent avatar states", () => {
 	assert.match(AVATAR_SOURCE, /type AvatarUnassignedProps,/);
 });
 
-test("avatar docs include the unassigned demo state", () => {
+test("hexagon avatars use a polygon stroke instead of a clipped rectangular border", () => {
+	assert.match(AVATAR_SOURCE, /const HEXAGON_POINTS =/);
+	assert.match(AVATAR_SOURCE, /hexagon: `\$\{HEXAGON_CLIP\} after:border-0`/);
+	assert.match(AVATAR_SOURCE, /function AvatarHexagonBorder\(\)/);
+	assert.match(AVATAR_SOURCE, /text-border!/);
+	assert.match(AVATAR_SOURCE, /<polygon[\s\S]*points=\{HEXAGON_POINTS\}[\s\S]*stroke="currentColor"/);
+	assert.match(AVATAR_SOURCE, /shape === "hexagon" \? <AvatarHexagonBorder \/> : null/);
+});
+
+test("avatar docs include only the base unassigned demo states", () => {
 	assert.match(AVATAR_DEMO_SOURCE, /export function AvatarDemoUnassigned\(\)/);
 	assert.match(AVATAR_DEMO_SOURCE, /<AvatarUnassigned \/>/);
 	assert.match(AVATAR_DEMO_SOURCE, /<AvatarUnassigned kind="agent" \/>/);
-	assert.match(AVATAR_DEMO_SOURCE, /<AvatarPresenceIndicator presence="online" \/>/);
+	assert.doesNotMatch(AVATAR_DEMO_SOURCE, /<AvatarUnassigned kind="agent">\s*<AvatarPresenceIndicator/);
 	assert.match(AVATAR_DETAILS_SOURCE, /demoSlug: "avatar-demo-unassigned"/);
 	assert.match(REGISTRY_SOURCE, /"avatar-demo-unassigned"/);
 	assert.match(REGISTRY_SOURCE, /default: mod\.AvatarDemoUnassigned/);

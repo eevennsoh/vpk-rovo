@@ -6,7 +6,7 @@ import type { NewCoreIconProps } from "@atlaskit/icon/base-new"
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent"
 import CrossCircleIcon from "@atlaskit/icon/core/cross-circle"
 import LockLockedIcon from "@atlaskit/icon/core/lock-locked"
-import PersonAvatarIcon from "@atlaskit/icon/core/person-avatar"
+import PersonIcon from "@atlaskit/icon/core/person"
 import StatusVerifiedIcon from "@atlaskit/icon/core/status-verified"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -15,6 +15,9 @@ import { cn } from "@/lib/utils"
 
 const HEXAGON_CLIP =
 	"[clip-path:polygon(45%_1.34%,46.58%_0.6%,48.26%_0.15%,50%_0%,51.74%_0.15%,53.42%_0.6%,55%_1.34%,89.64%_21.34%,91.07%_22.34%,92.3%_23.57%,93.3%_25%,94.04%_26.58%,94.49%_28.26%,94.64%_30%,94.64%_70%,94.49%_71.74%,94.04%_73.42%,93.3%_75%,92.3%_76.43%,91.07%_77.66%,89.64%_78.66%,55%_98.66%,53.42%_99.4%,51.74%_99.85%,50%_100%,48.26%_99.85%,46.58%_99.4%,45%_98.66%,10.36%_78.66%,8.93%_77.66%,7.7%_76.43%,6.7%_75%,5.96%_73.42%,5.51%_71.74%,5.36%_70%,5.36%_30%,5.51%_28.26%,5.96%_26.58%,6.7%_25%,7.7%_23.57%,8.93%_22.34%,10.36%_21.34%)]"
+
+const HEXAGON_POINTS =
+	"45,1.34 46.58,0.6 48.26,0.15 50,0 51.74,0.15 53.42,0.6 55,1.34 89.64,21.34 91.07,22.34 92.3,23.57 93.3,25 94.04,26.58 94.49,28.26 94.64,30 94.64,70 94.49,71.74 94.04,73.42 93.3,75 92.3,76.43 91.07,77.66 89.64,78.66 55,98.66 53.42,99.4 51.74,99.85 50,100 48.26,99.85 46.58,99.4 45,98.66 10.36,78.66 8.93,77.66 7.7,76.43 6.7,75 5.96,73.42 5.51,71.74 5.36,70 5.36,30 5.51,28.26 5.96,26.58 6.7,25 7.7,23.57 8.93,22.34 10.36,21.34"
 
 const avatarVariants = cva(
 	"group/avatar relative flex shrink-0 select-none after:absolute after:inset-0 after:border after:mix-blend-darken dark:after:mix-blend-lighten after:border-border",
@@ -31,7 +34,7 @@ const avatarVariants = cva(
 			shape: {
 				circle: "rounded-full after:rounded-full",
 				square: "rounded-xs after:rounded-xs",
-				hexagon: `${HEXAGON_CLIP} after:${HEXAGON_CLIP}`,
+				hexagon: `${HEXAGON_CLIP} after:border-0`,
 			},
 		},
 		defaultVariants: {
@@ -52,7 +55,27 @@ interface AvatarProps
 	label?: string
 }
 
+function AvatarHexagonBorder() {
+	return (
+		<svg
+			aria-hidden="true"
+			className="pointer-events-none absolute inset-0 z-[1] size-full p-px text-border! mix-blend-darken dark:mix-blend-lighten"
+			focusable="false"
+			viewBox="0 0 100 100"
+		>
+			<polygon
+				fill="none"
+				points={HEXAGON_POINTS}
+				stroke="currentColor"
+				strokeWidth="1"
+				vectorEffect="non-scaling-stroke"
+			/>
+		</svg>
+	)
+}
+
 function Avatar({
+	children,
 	className,
 	size = "default",
 	shape = "circle",
@@ -63,17 +86,20 @@ function Avatar({
 	return (
 		<AvatarPrimitive.Root
 			data-slot="avatar"
-			data-size={size}
-			data-shape={shape}
-			aria-label={label}
-			aria-disabled={disabled || undefined}
-			className={cn(
-				avatarVariants({ size, shape }),
-				disabled && "opacity-(--opacity-disabled) pointer-events-none grayscale",
-				className
-			)}
-			{...props}
-		/>
+				data-size={size}
+				data-shape={shape}
+				aria-label={label}
+				aria-disabled={disabled || undefined}
+				className={cn(
+					avatarVariants({ size, shape }),
+					disabled && "opacity-(--opacity-disabled) pointer-events-none grayscale",
+					className
+				)}
+				{...props}
+			>
+				{children}
+				{shape === "hexagon" ? <AvatarHexagonBorder /> : null}
+			</AvatarPrimitive.Root>
 	)
 }
 
@@ -134,7 +160,7 @@ function AvatarUnassigned({
 	...props
 }: Readonly<AvatarUnassignedProps>) {
 	const isAgent = kind === "agent"
-	const IconComponent = isAgent ? AiAgentIcon : PersonAvatarIcon
+	const IconComponent = isAgent ? AiAgentIcon : PersonIcon
 	const resolvedLabel = label ?? (isAgent ? "Unassigned agent" : "Unassigned person")
 	const resolvedSize = size ?? "default"
 

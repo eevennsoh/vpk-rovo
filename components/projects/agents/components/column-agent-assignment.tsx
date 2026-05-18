@@ -53,7 +53,7 @@ function AgentStack({ agents }: Readonly<{ agents: readonly BoardAgentData[] }>)
 	}
 
 	return (
-		<AvatarGroup className="-space-x-1.5" label={`Assigned agents: ${label}`}>
+		<AvatarGroup className="-space-x-1.5 *:data-[slot=avatar]:ring-0!" label={`Assigned agents: ${label}`}>
 			{visibleAgents.map((agent) => (
 				<AgentAvatar agent={agent} key={agent.id} />
 			))}
@@ -129,11 +129,11 @@ export default function ColumnAgentAssignment({
 								{hasAssignedAgents ? (
 									<>
 										<AgentStack agents={assignedAgents} />
-										<Icon className="ml-0.5 text-icon-subtle" render={<ChevronDownIcon label="" size="small" />} />
+										<Icon className="ml-0.5 text-icon-subtle group-aria-expanded/button:text-icon-selected" render={<ChevronDownIcon label="" size="small" />} />
 									</>
 								) : (
 									<Icon
-										className="text-icon-subtle"
+										className="text-icon-subtle group-aria-expanded/button:text-icon-selected"
 										label="Agent"
 										render={<AiAgentIcon label="" />}
 									/>

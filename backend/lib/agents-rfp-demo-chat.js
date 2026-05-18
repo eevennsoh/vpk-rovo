@@ -35,14 +35,21 @@ const RFP_HELP_OUTPUT_PATTERNS = [
 	/\bwork item\b/i,
 ];
 const RFP_AGENT_CREATION_MARKERS = [
-	/\brfp drafting agent\b/i,
+	/\brfp (?:drafting agent|drafter)\b/i,
 	/\bdrafting column\b/i,
 	/\benterprise rfp response board\b/i,
 ];
 const RFP_DEMO_QUESTION_SESSION_ID = "agents-rfp-demo-rfp-101-qualification";
 const RFP_DEMO_QUESTION_TOOL_CALL_ID = "ai-gateway-ask_user_questions-agents-rfp-demo-rfp-101";
 const RFP_DEMO_AGENT_ID = "rfp-drafting-agent";
-const RFP_DEMO_AGENT_NAME = "RFP Drafting Agent";
+const RFP_DEMO_AGENT_NAME = "RFP Drafter";
+const RFP_DEMO_AGENT_DESCRIPTION =
+	"Drafts first-pass RFP response packages for Enterprise RFP Response tickets entering Drafting.";
+const RFP_DEMO_AGENT_CONVERSATION_STARTERS = [
+	"Draft the response package for the next Drafting ticket.",
+	"Summarize blockers before this RFP can move to Review.",
+	"Create reusable answer snippets from the attached RFP packet.",
+];
 const RFP_DEMO_TOOL_CALL_DELAY_MIN_MS = 1000;
 const RFP_DEMO_TOOL_CALL_DELAY_MAX_MS = 3000;
 const RFP_DEMO_QUALIFICATION_PRELOAD_DELAY_MS = 2000;
@@ -407,9 +414,15 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 			toolName: "agent.write_instructions",
 			toolCallId: "agents-rfp-demo-agent-instructions",
 			label: "Writing agent instructions",
-			content: "Adding instructions to read each ticket context, generate a contextual HTML draft, comment with the ticket-specific handoff, and return work to a human reviewer.",
-			input: { output: "html-report", reviewColumn: "Review", assigneePolicy: "return-to-human-owner" },
-			outputPreview: "Instructions keep the flow event-triggered, backend-persisted, and bounded to the Enterprise RFP Response board.",
+			content: "Adding the description, conversation starters, and instructions to read each ticket context, generate a contextual HTML draft, comment with the ticket-specific handoff, and return work to a human reviewer.",
+			input: {
+				description: RFP_DEMO_AGENT_DESCRIPTION,
+				conversationStarters: RFP_DEMO_AGENT_CONVERSATION_STARTERS,
+				output: "html-report",
+				reviewColumn: "Review",
+				assigneePolicy: "return-to-human-owner",
+			},
+			outputPreview: "Profile metadata and instructions keep the flow event-triggered, backend-persisted, and bounded to the Enterprise RFP Response board.",
 		},
 		{
 			toolName: "teamwork_graph.link_knowledge",
@@ -442,6 +455,8 @@ function buildAgentsRfpDemoAgentResultPayload() {
 	return {
 		agentId: RFP_DEMO_AGENT_ID,
 		name: RFP_DEMO_AGENT_NAME,
+		description: RFP_DEMO_AGENT_DESCRIPTION,
+		conversationStarters: RFP_DEMO_AGENT_CONVERSATION_STARTERS,
 		assignedColumn: "Drafting",
 		summary: "Ready to handle similar RFP work items",
 		trigger: "On event: ticket enters Drafting.",

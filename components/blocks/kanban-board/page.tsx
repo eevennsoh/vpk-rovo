@@ -10,6 +10,8 @@ import {
 import { BOARD_AGENTS } from "@/components/projects/agents/data/board-agents";
 import { BOARD_COLUMNS } from "@/components/projects/agents/data/board-data";
 
+const DEFAULT_CREATED_COLUMN_AGENT_ID = "readiness-checker";
+
 interface DraggedCardState {
 	card: KanbanBoardCardData;
 	sourceColumnTitle: string;
@@ -96,13 +98,13 @@ export default function KanbanBoardPage() {
 		setColumnAgentAssignments((prevAssignments) => {
 			const assignedAgentIds = prevAssignments[columnTitle] ?? [];
 
-			if (assignedAgentIds.includes("rovo-dev")) {
+			if (assignedAgentIds.includes(DEFAULT_CREATED_COLUMN_AGENT_ID)) {
 				return prevAssignments;
 			}
 
 			return {
 				...prevAssignments,
-				[columnTitle]: [...assignedAgentIds, "rovo-dev"],
+				[columnTitle]: [...assignedAgentIds, DEFAULT_CREATED_COLUMN_AGENT_ID],
 			};
 		});
 	};

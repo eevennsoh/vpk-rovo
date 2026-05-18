@@ -257,7 +257,15 @@ test("project layout forwards chat context bars to sidebar and floating chat", (
 	);
 	assert.match(
 		PROJECT_LAYOUT_SOURCE,
+		/customAgentTabs\?: ChatPanelCustomAgentTabs;/,
+	);
+	assert.match(
+		PROJECT_LAYOUT_SOURCE,
 		/<ChatPanel[\s\S]*chatContextBar=\{chatContextBar\}/,
+	);
+	assert.match(
+		PROJECT_LAYOUT_SOURCE,
+		/<ChatPanel[\s\S]*customAgentTabs=\{customAgentTabs\}/,
 	);
 	assert.match(
 		PROJECT_LAYOUT_SOURCE,
@@ -266,6 +274,10 @@ test("project layout forwards chat context bars to sidebar and floating chat", (
 	assert.match(
 		PROJECT_LAYOUT_SOURCE,
 		/<RovoFloatingChat[\s\S]*chatContextBar=\{chatContextBar\}/,
+	);
+	assert.match(
+		PROJECT_LAYOUT_SOURCE,
+		/<RovoFloatingChat[\s\S]*customAgentTabs=\{customAgentTabs\}/,
 	);
 });
 

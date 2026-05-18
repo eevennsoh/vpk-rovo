@@ -160,6 +160,8 @@ test("compact chat merges selected custom agent context before queueing prompts"
 
 	assert.match(context, /selectedAgentId: string;/u);
 	assert.match(context, /selectedAgent: RovoAgentProfile;/u);
+	assert.match(context, /selectableAgents: readonly AgentSelectorAgent\[\];/u);
+	assert.match(context, /const selectableAgents = useMemo<readonly AgentSelectorAgent\[\]>/u);
 	assert.match(context, /selectAgent: \(agentId: string\) => void;/u);
 	assert.match(context, /resetAgentToRovo: \(\) => void;/u);
 	assert.match(context, /function mergeSelectedAgentPromptOptions/u);
@@ -168,6 +170,25 @@ test("compact chat merges selected custom agent context before queueing prompts"
 	assert.match(
 		context.slice(sendPromptIndex),
 		/mergeSendPromptOptions\(\s*defaultPromptOptions,\s*mergeSelectedAgentPromptOptions\(options, selectedAgent\)\s*\)/u,
+	);
+});
+
+test("compact chat resets the visible conversation when switching agents", () => {
+	const context = readProjectFile("app/contexts/context-rovo-chat.tsx");
+	const resetChatIndex = context.indexOf("const resetChat = useCallback(");
+	const selectAgentIndex = context.indexOf("const selectAgent = useCallback(", resetChatIndex);
+	const resetAgentToRovoIndex = context.indexOf("const resetAgentToRovo = useCallback(", selectAgentIndex);
+
+	assert.ok(resetChatIndex > -1);
+	assert.ok(selectAgentIndex > resetChatIndex);
+	assert.ok(resetAgentToRovoIndex > selectAgentIndex);
+	assert.match(
+		context.slice(selectAgentIndex, resetAgentToRovoIndex),
+		/if \(nextAgent\.id === selectedAgentId\) \{[\s\S]*return;[\s\S]*\}[\s\S]*setSelectedAgentId\(nextAgent\.id\);[\s\S]*resetChat\(\);/u,
+	);
+	assert.match(
+		context.slice(resetAgentToRovoIndex),
+		/if \(selectedAgentId === ROVO_AGENT_ID\) \{[\s\S]*return;[\s\S]*\}[\s\S]*setSelectedAgentId\(ROVO_AGENT_ID\);[\s\S]*resetChat\(\);/u,
 	);
 });
 

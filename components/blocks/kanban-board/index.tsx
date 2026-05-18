@@ -11,7 +11,15 @@ import TaskIcon from "@atlaskit/icon/core/task";
 
 import { useIsMounted } from "@/components/hooks/use-is-mounted";
 import { AgentSelector } from "@/components/blocks/agent-selector";
-import { Avatar, AvatarFallback, AvatarGroup, AvatarImage, type AvatarProps } from "@/components/ui/avatar";
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarGroup,
+	AvatarImage,
+	AvatarUnassigned,
+	type AvatarProps,
+	type AvatarUnassignedKind,
+} from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +47,7 @@ export interface KanbanBoardCardData {
 	priority: KanbanBoardPriority;
 	avatarSrc?: string;
 	avatarShape?: NonNullable<AvatarProps["shape"]>;
+	avatarUnassignedKind?: AvatarUnassignedKind;
 	avatarPulse?: boolean;
 }
 
@@ -124,7 +133,7 @@ function AgentStack({ agents }: Readonly<{ agents: readonly KanbanBoardAgentData
 	}
 
 	return (
-		<AvatarGroup className="-space-x-1.5" label={`Assigned agents: ${label}`}>
+		<AvatarGroup className="-space-x-1.5 *:data-[slot=avatar]:ring-0!" label={`Assigned agents: ${label}`}>
 			{visibleAgents.map((agent) => (
 				<AgentAvatar agent={agent} key={agent.id} />
 			))}
@@ -206,11 +215,11 @@ function ColumnAgentAssignment({
 								{hasAssignedAgents ? (
 									<>
 										<AgentStack agents={assignedAgents} />
-										<Icon className="ml-0.5 text-icon-subtle" render={<ChevronDownIcon label="" size="small" />} />
+										<Icon className="ml-0.5 text-icon-subtle group-aria-expanded/button:text-icon-selected" render={<ChevronDownIcon label="" size="small" />} />
 									</>
 								) : (
 									<Icon
-										className="text-icon-subtle"
+										className="text-icon-subtle group-aria-expanded/button:text-icon-selected"
 										label="Agent"
 										render={<AiAgentIcon label="" />}
 									/>
@@ -329,6 +338,7 @@ function KanbanCard({
 	avatarPulse = false,
 	avatarShape = "circle",
 	avatarSrc,
+	avatarUnassignedKind,
 	code,
 	isDragging,
 	onClick,
@@ -341,6 +351,7 @@ function KanbanCard({
 	avatarPulse?: boolean;
 	avatarShape?: NonNullable<AvatarProps["shape"]>;
 	avatarSrc?: string;
+	avatarUnassignedKind?: AvatarUnassignedKind;
 	code: string;
 	isDragging?: boolean;
 	onClick?: () => void;
@@ -401,16 +412,26 @@ function KanbanCard({
 						<div className="flex items-center gap-1.5">
 							<PriorityIcon label={`${priority} priority`} color={priorityColor} />
 							{isMounted ? (
-								<Avatar
-									className={cn(
-										avatarPulse && "motion-safe:animate-pulse ring-2 ring-border-focused ring-offset-2 ring-offset-surface"
-									)}
-									shape={avatarShape}
-									size="sm"
-								>
-									{avatarSrc ? <AvatarImage src={avatarSrc} alt={code} /> : null}
-									<AvatarFallback>{code?.[0] ?? "U"}</AvatarFallback>
-								</Avatar>
+								avatarUnassignedKind ? (
+									<AvatarUnassigned
+										className={cn(
+											avatarPulse && "motion-safe:animate-pulse ring-2 ring-border-focused ring-offset-2 ring-offset-surface"
+										)}
+										kind={avatarUnassignedKind}
+										size="sm"
+									/>
+								) : (
+									<Avatar
+										className={cn(
+											avatarPulse && "motion-safe:animate-pulse ring-2 ring-border-focused ring-offset-2 ring-offset-surface"
+										)}
+										shape={avatarShape}
+										size="sm"
+									>
+										{avatarSrc ? <AvatarImage src={avatarSrc} alt={code} /> : null}
+										<AvatarFallback>{code?.[0] ?? "U"}</AvatarFallback>
+									</Avatar>
+								)
 							) : null}
 						</div>
 					</div>
@@ -548,6 +569,7 @@ export function KanbanBoard({
 										priority={card.priority}
 										avatarSrc={card.avatarSrc}
 										avatarShape={card.avatarShape}
+										avatarUnassignedKind={card.avatarUnassignedKind}
 										avatarPulse={card.avatarPulse}
 										isDragging={draggedCardCode === card.code}
 										onClick={() => onCardClick?.(card.title, card.code, card, column.title)}

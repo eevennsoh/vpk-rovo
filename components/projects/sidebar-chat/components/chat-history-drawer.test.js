@@ -32,7 +32,8 @@ test("active compact chat surfaces own one contained history drawer", () => {
 
 	assert.doesNotMatch(appLayoutSource, /ChatHistoryDrawer/u);
 	assert.match(chatPanelSource, /const isHeaderHistoryEnabled = !hideHeader && headerVariant === "default";/u);
-	assert.match(chatPanelSource, /<ChatHistoryDrawer active=\{isHeaderHistoryEnabled && chatSurface === "sidebar"\} \/>/u);
+	assert.match(chatPanelSource, /const shouldRenderHeaderHistory = isHeaderHistoryEnabled && chatSurface !== "floating";/u);
+	assert.match(chatPanelSource, /<ChatHistoryDrawer active=\{shouldRenderHeaderHistory\} \/>/u);
 	assert.match(chatPanelSource, /variant=\{headerVariant\}/u);
 	assert.match(floatingSource, /<ChatHistoryDrawer \/>/u);
 	assert.match(chatPanelSource, /onHistoryToggle=\{toggleHistory\}/u);
@@ -67,6 +68,20 @@ test("minimal compact chat header suppresses history and action controls", () =>
 	assert.match(sidebarHeader, /\{showControls \? \([\s\S]*<ChatHistoryButton/u);
 	assert.match(sidebarHeader, /\{showControls \? \([\s\S]*aria-label="New chat"[\s\S]*aria-label="More"[\s\S]*aria-label="Close"/u);
 	assert.match(rovoCanvasRail, /headerVariant="minimal"/u);
+});
+
+test("custom agent compact chat renders view tabs below the header", () => {
+	const chatPanelSource = readProjectFile("components/projects/sidebar-chat/page.tsx");
+
+	assert.match(chatPanelSource, /import \{ Tabs, TabsContent, TabsList, TabsTrigger \} from "@\/components\/ui\/tabs";/u);
+	assert.match(chatPanelSource, /export interface ChatPanelCustomAgentTabs \{[\s\S]*activity\?: ReactNode;[\s\S]*trigger\?: ReactNode;[\s\S]*\}/u);
+	assert.match(chatPanelSource, /isCustomAgentSelected,/u);
+	assert.match(chatPanelSource, /customAgentTabs\?: ChatPanelCustomAgentTabs;/u);
+	assert.match(chatPanelSource, /const shouldRenderCustomAgentTabs = isCustomAgentSelected \|\| Boolean\(customAgentTabs\);/u);
+	assert.match(
+		chatPanelSource,
+		/\{shouldRenderCustomAgentTabs \? \([\s\S]*<Tabs defaultValue="chat" aria-label="Custom agent views" className="min-h-0 min-w-0 flex-1">[\s\S]*<TabsList variant="line" className="w-full">[\s\S]*<TabsTrigger value="chat">Chat<\/TabsTrigger>[\s\S]*<TabsTrigger value="trigger">Trigger<\/TabsTrigger>[\s\S]*<TabsTrigger value="activity">Activity<\/TabsTrigger>[\s\S]*<TabsContent value="chat" keepMounted[\s\S]*\{chatPanelBody\}[\s\S]*<TabsContent value="trigger"[\s\S]*customAgentTabs\?\.trigger[\s\S]*<TabsContent value="activity"[\s\S]*customAgentTabs\?\.activity/u,
+	);
 });
 
 test("rovo app sidebar renders the shared chat history panel inline", () => {

@@ -9,6 +9,7 @@ import {
 	exportRfpReportPdf,
 	generateRfpReport,
 	moveRfpDemoCard,
+	normalizeAgentsRfpDemoProfileMetadata,
 	refineRfpReport,
 	selectRfpReportVersion,
 	setRfp101AnswerSummary,
@@ -66,7 +67,9 @@ async function readJsonStateResponse(response: Response): Promise<AgentsRfpDemoS
 	}
 
 	const payload = await response.json() as { state?: AgentsRfpDemoState };
-	return payload.state ?? createDefaultAgentsRfpDemoState();
+	return payload.state
+		? normalizeAgentsRfpDemoProfileMetadata(payload.state)
+		: createDefaultAgentsRfpDemoState();
 }
 
 export function useAgentsRfpDemoState(): AgentsRfpDemoController {

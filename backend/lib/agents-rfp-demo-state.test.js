@@ -5,6 +5,8 @@ const path = require("node:path");
 const test = require("node:test");
 
 const {
+	RFP_DRAFTING_AGENT_CONVERSATION_STARTERS,
+	RFP_DRAFTING_AGENT_DESCRIPTION,
 	RFP_DRAFTING_AGENT_NAME,
 	RFP_DRAFTING_COLUMN_NAME,
 	RFP_DRAFTING_EVENT_TRIGGER,
@@ -14,6 +16,7 @@ const {
 	createAgentsRfpDemoStateManager,
 	createDefaultAgentsRfpDemoState,
 	moveTicketToColumn,
+	normalizeAgentsRfpDemoState,
 	runRfpDraftingAgent,
 } = require("./agents-rfp-demo-state");
 
@@ -41,7 +44,7 @@ test("default RFP demo backend state seeds the current board", () => {
 	assert.equal(state.schedule, null);
 });
 
-test("applying the RFP Drafting Agent queues all current Drafting tickets", () => {
+test("applying the RFP Drafter queues all current Drafting tickets", () => {
 	const result = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
 		jobId: "job-rfp-drafting",
 		now: RUN_NOW,
@@ -50,6 +53,8 @@ test("applying the RFP Drafting Agent queues all current Drafting tickets", () =
 	});
 
 	assert.equal(result.state.agent.name, RFP_DRAFTING_AGENT_NAME);
+	assert.equal(result.state.agent.description, RFP_DRAFTING_AGENT_DESCRIPTION);
+	assert.deepEqual(result.state.agent.conversationStarters, RFP_DRAFTING_AGENT_CONVERSATION_STARTERS);
 	assert.equal(result.state.agent.jobId, "job-rfp-drafting");
 	assert.deepEqual(result.state.agent.trigger, RFP_DRAFTING_EVENT_TRIGGER);
 	assert.equal(result.state.agent.trigger.label, RFP_DRAFTING_EVENT_TRIGGER_LABEL);
@@ -125,6 +130,32 @@ test("rerunning skips completed tickets with generated draft output", async () =
 	assert.deepEqual(rerun.runSummary.skippedTicketCodes, ["RFP-141", "RFP-142", "RFP-143"]);
 	assert.equal(rerun.runSummary.status, "skipped");
 	assert.equal(rerun.threadRecords.length, 0);
+	assert.deepEqual(rerun.state.toasts, completed.state.toasts);
+	assert.ok(rerun.state.toasts.every((toast) => !/found no new Drafting tickets/u.test(toast.message)));
+});
+
+test("normalization drops stale no-work RFP agent toasts", () => {
+	const state = {
+		...createDefaultAgentsRfpDemoState(),
+		toasts: [
+				{
+					id: "rfp-agent-run-stale",
+					message: "RFP Drafter found no new Drafting tickets to process.",
+				},
+			{
+				id: "report-attached",
+				message: "Added PDF to RFP-101.",
+			},
+		],
+	};
+	const normalized = normalizeAgentsRfpDemoState(state);
+
+	assert.deepEqual(normalized.toasts, [
+		{
+			id: "report-attached",
+			message: "Added PDF to RFP-101.",
+		},
+	]);
 });
 
 test("a later ticket entering Drafting processes only that ticket", async () => {

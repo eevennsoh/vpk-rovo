@@ -166,7 +166,7 @@ function CustomAgentStarterItem({
 				label={suggestion.label}
 				size="medium"
 			/>
-			<span className="min-w-0 flex-1 text-sm font-semibold leading-5 text-text-subtle">{suggestion.label}</span>
+			<span className="text-left text-sm text-text-subtle">{suggestion.label}</span>
 		</button>
 	);
 }

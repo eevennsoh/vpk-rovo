@@ -26,11 +26,14 @@ import {
 	type RovoAppHermesContext,
 	type RovoAppThread,
 } from "@/lib/rovo-app-types";
+import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
 import {
 	getRovoAgentProfile,
 	getRovoAgentPromptContext,
 	isRovoAgentProfile,
+	ROVO_AGENT_PROFILES,
 	ROVO_AGENT_ID,
+	ROVO_AGENT_SELECTOR_AGENTS,
 	type RovoAgentProfile,
 } from "@/components/projects/rovo/data/agent-profiles";
 import {
@@ -584,6 +587,7 @@ export type ChatSurface = "floating" | "sidebar";
 interface RovoChatContextType {
 	selectedAgentId: string;
 	selectedAgent: RovoAgentProfile;
+	selectableAgents: readonly AgentSelectorAgent[];
 	isCustomAgentSelected: boolean;
 	selectAgent: (agentId: string) => void;
 	resetAgentToRovo: () => void;
@@ -701,12 +705,23 @@ function createQueueItemId(fallbackCounter: number): string {
 }
 
 interface RovoChatProviderProps {
+	agentProfiles?: readonly RovoAgentProfile[];
 	children: ReactNode;
 	defaultPromptOptions?: SendPromptOptions;
 	portIndex?: number;
 }
 
+function toAgentSelectorAgent(agent: Pick<RovoAgentProfile, "avatarSrc" | "byline" | "id" | "name">): AgentSelectorAgent {
+	return {
+		id: agent.id,
+		name: agent.name,
+		byline: agent.byline,
+		avatarSrc: agent.avatarSrc,
+	};
+}
+
 export function RovoChatProvider({
+	agentProfiles,
 	children,
 	defaultPromptOptions,
 	portIndex,
@@ -759,21 +774,31 @@ export function RovoChatProvider({
 	const isMediaGeneratingRef = useRef(false);
 	const mediaGenerationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const suggestionsAbortControllerRef = useRef<AbortController | null>(null);
-	const selectedAgent = useMemo(() => getRovoAgentProfile(selectedAgentId), [selectedAgentId]);
+	const agentProfileById = useMemo(() => {
+		const profiles = agentProfiles ?? ROVO_AGENT_PROFILES;
+		return new Map(profiles.map((agent) => [agent.id, agent]));
+	}, [agentProfiles]);
+	const selectableAgents = useMemo<readonly AgentSelectorAgent[]>(() => {
+		const agents = agentProfiles ?? ROVO_AGENT_SELECTOR_AGENTS;
+		return agents.map(toAgentSelectorAgent);
+	}, [agentProfiles]);
+	const selectedAgent = useMemo(
+		() => agentProfileById.get(selectedAgentId) ?? getRovoAgentProfile(selectedAgentId),
+		[agentProfileById, selectedAgentId],
+	);
 	const isCustomAgentSelected = !isRovoAgentProfile(selectedAgent);
 
-	const selectAgent = useCallback((agentId: string) => {
-		setSelectedAgentId(getRovoAgentProfile(agentId).id);
-	}, []);
-
-	const resetAgentToRovo = useCallback(() => {
-		setSelectedAgentId(ROVO_AGENT_ID);
-	}, []);
 	const requestedSuggestionMessageIdsRef = useRef<Set<string>>(new Set());
 	const [isMediaGenerating, setIsMediaGenerating] = useState(false);
 	const maybeFinalizeAndProcessRef = useRef<() => void>(() => {});
 	const processNextPromptRef = useRef<() => Promise<void>>(async () => {});
 	const sendChatMessageRef = useRef<(promptItem: QueuedPromptItem) => Promise<void>>(async () => {});
+
+	useEffect(() => {
+		if (agentProfiles && !agentProfileById.has(selectedAgentId)) {
+			setSelectedAgentId(ROVO_AGENT_ID);
+		}
+	}, [agentProfileById, agentProfiles, selectedAgentId]);
 
 	const startSubmitPending = useCallback((startedAt: number) => {
 		if (isSubmitPendingRef.current) {
@@ -2216,6 +2241,25 @@ export function RovoChatProvider({
 		setMessages,
 	]);
 
+	const selectAgent = useCallback((agentId: string) => {
+		const nextAgent = agentProfileById.get(agentId) ?? getRovoAgentProfile(agentId);
+		if (nextAgent.id === selectedAgentId) {
+			return;
+		}
+
+		setSelectedAgentId(nextAgent.id);
+		resetChat();
+	}, [agentProfileById, resetChat, selectedAgentId]);
+
+	const resetAgentToRovo = useCallback(() => {
+		if (selectedAgentId === ROVO_AGENT_ID) {
+			return;
+		}
+
+		setSelectedAgentId(ROVO_AGENT_ID);
+		resetChat();
+	}, [resetChat, selectedAgentId]);
+
 	const replaceMessages = useCallback(
 		(messages: ReadonlyArray<RovoUIMessage>) => {
 			isCancellingRef.current = false;
@@ -2250,6 +2294,7 @@ export function RovoChatProvider({
 			value={{
 				selectedAgentId,
 				selectedAgent,
+				selectableAgents,
 				isCustomAgentSelected,
 				selectAgent,
 				resetAgentToRovo,
@@ -2319,6 +2364,7 @@ export function useRovoSelectedAgent() {
 	const {
 		selectedAgentId,
 		selectedAgent,
+		selectableAgents,
 		isCustomAgentSelected,
 		selectAgent,
 		resetAgentToRovo,
@@ -2327,6 +2373,7 @@ export function useRovoSelectedAgent() {
 	return {
 		selectedAgentId,
 		selectedAgent,
+		selectableAgents,
 		isCustomAgentSelected,
 		selectAgent,
 		resetAgentToRovo,

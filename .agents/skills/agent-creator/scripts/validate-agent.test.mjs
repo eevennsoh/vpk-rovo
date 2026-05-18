@@ -140,3 +140,13 @@ test("fails when structured trigger YAML is malformed", async () => {
 		assert.match(result.stderr, /Unclosed bracket or brace/u);
 	});
 });
+
+test("fails when conversation starters are empty", async () => {
+	await withFixture({
+		".agents/agents/report-agent.md": validAgent.replace("conversation_starters:\n  - Draft the weekly metrics report from this sheet.", "conversation_starters: []"),
+	}, async (root) => {
+		const result = await runValidator(root);
+		assert.equal(result.code, 1);
+		assert.match(result.stderr, /Conversation Starters.*at least one starter/u);
+	});
+});

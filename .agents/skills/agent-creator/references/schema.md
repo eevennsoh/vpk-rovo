@@ -95,6 +95,10 @@ conversation_starters:
   - Draft the weekly product metrics summary.
 ```
 
+At least one starter is required. Prefer 2-4 concrete user-facing prompts for
+interactive agents. If the agent is surfaced in a chat picker or generated
+runtime profile, copy these starters into that profile too.
+
 ### `## Validation`
 
 List manual checks, tests, browser checks, or dry-run prompts that prove the

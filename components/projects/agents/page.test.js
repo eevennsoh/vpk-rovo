@@ -12,6 +12,14 @@ const BOARD_TOOLBAR_SOURCE = fs.readFileSync(
 	path.join(__dirname, "components/board-toolbar.tsx"),
 	"utf8",
 );
+const COLUMN_AGENT_ASSIGNMENT_SOURCE = fs.readFileSync(
+	path.join(__dirname, "components/column-agent-assignment.tsx"),
+	"utf8",
+);
+const RFP_AGENT_DETAILS_SOURCE = fs.readFileSync(
+	path.join(__dirname, "components/rfp-agent-details-sheet.tsx"),
+	"utf8",
+);
 
 test("AgentsView reads chat surface pin state from useRovoChat", () => {
 	assert.match(
@@ -44,8 +52,12 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 		/<RfpReportCanvas[\s\S]*onAttachReport=\{handleAttachReport\}[\s\S]*chatContextBar=\{chatContextBar\}[\s\S]*chatGreeting=\{chatGreeting\}/u,
 	);
 	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/<RfpReportCanvas[\s\S]*customAgentTabs=\{customAgentTabs\}/u,
+	);
+	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/import ChatPanel, \{ type ChatPanelGreetingProps \} from "@\/components\/projects\/sidebar-chat\/page";/u,
+		/import ChatPanel, \{ type ChatPanelCustomAgentTabs, type ChatPanelGreetingProps \} from "@\/components\/projects\/sidebar-chat\/page";/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
@@ -70,11 +82,11 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /artefactLabel="Rovo Canvas report"/u);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/<ChatPanel[\s\S]*hideHeader[\s\S]*enableSmartWidgets[\s\S]*abortOnUnmount=\{false\}[\s\S]*chatContextBar=\{editContextBar\}[\s\S]*greeting=\{chatGreeting\}/u,
+		/<ChatPanel[\s\S]*hideHeader[\s\S]*enableSmartWidgets[\s\S]*abortOnUnmount=\{false\}[\s\S]*chatContextBar=\{editContextBar\}[\s\S]*greeting=\{chatGreeting\}[\s\S]*customAgentTabs=\{customAgentTabs\}/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/rightRail=\{[\s\S]*<RfpReportCanvasChatRail[\s\S]*chatContextBar=\{chatContextBar\}[\s\S]*chatGreeting=\{chatGreeting\}[\s\S]*onClose=\{\(\) => actions\.setCanvasOpen\(false\)\}/u,
+		/rightRail=\{[\s\S]*<RfpReportCanvasChatRail[\s\S]*chatContextBar=\{chatContextBar\}[\s\S]*chatGreeting=\{chatGreeting\}[\s\S]*customAgentTabs=\{customAgentTabs\}[\s\S]*onClose=\{\(\) => actions\.setCanvasOpen\(false\)\}/u,
 	);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /RfpAgentProposalBanner/u);
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /feedbackBanner=/u);
@@ -185,10 +197,25 @@ test("AgentsView keeps column agent assignment state local to the board", () => 
 	);
 });
 
+test("Column agent assignment icons use selected icon color while the trigger is open", () => {
+	assert.match(
+		COLUMN_AGENT_ASSIGNMENT_SOURCE,
+		/className="ml-0\.5 text-icon-subtle group-aria-expanded\/button:text-icon-selected"/u,
+	);
+	assert.match(
+		COLUMN_AGENT_ASSIGNMENT_SOURCE,
+		/className="text-icon-subtle group-aria-expanded\/button:text-icon-selected"/u,
+	);
+});
+
 test("AgentsView delegates RFP Drafting agent creation and keeps generic column creation local", () => {
 	assert.match(
 		AGENTS_VIEW_SOURCE,
 		/onCreateRfpDraftingAgent: \(\) => void;/u,
+	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/customAgentTabs\?: ChatPanelCustomAgentTabs;/u,
 	);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
@@ -222,6 +249,18 @@ test("AgentsView maps backend RFP agent output onto cards, assignees, comments, 
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /No schedule/u);
 });
 
+test("RFP agent details surface description and conversation starters", () => {
+	assert.match(RFP_AGENT_DETAILS_SOURCE, /RFP_DRAFTING_AGENT_DESCRIPTION/u);
+	assert.match(RFP_AGENT_DETAILS_SOURCE, /RFP_DRAFTING_AGENT_CONVERSATION_STARTERS/u);
+	assert.match(RFP_AGENT_DETAILS_SOURCE, /export function RfpAgentTriggerDetails/u);
+	assert.match(RFP_AGENT_DETAILS_SOURCE, /export function RfpAgentActivityDetails/u);
+	assert.match(RFP_AGENT_DETAILS_SOURCE, /<DetailsSection title="Description">/u);
+	assert.match(RFP_AGENT_DETAILS_SOURCE, /<DetailsSection title="Conversation Starters">/u);
+	assert.match(RFP_AGENT_DETAILS_SOURCE, /<DetailsSection title="Tasks">/u);
+	assert.match(RFP_AGENT_DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
+	assert.match(RFP_AGENT_DETAILS_SOURCE, /conversationStarters\.map/u);
+});
+
 test("AgentsView includes assigned agents in the board toolbar avatar cluster", () => {
 	assert.match(AGENTS_VIEW_SOURCE, /const toolbarAvatars = useMemo\(\(\) => \{/u);
 	assert.match(AGENTS_VIEW_SOURCE, /for \(const agentIds of Object\.values\(assignedAgentIdsByColumn\)\)/u);
@@ -232,6 +271,15 @@ test("AgentsView includes assigned agents in the board toolbar avatar cluster", 
 	);
 	assert.match(AGENTS_VIEW_SOURCE, /return \[[\s\S]*\.\.\.assignedAgentAvatars,[\s\S]*\.\.\.AVATARS,[\s\S]*\];/u);
 	assert.match(AGENTS_VIEW_SOURCE, /<BoardToolbar avatars=\{toolbarAvatars\} onReset=\{handleResetDemo\} \/>/u);
+});
+
+test("Agents column assignment removes the avatar-group overlap ring", () => {
+	assert.match(
+		COLUMN_AGENT_ASSIGNMENT_SOURCE,
+		/<AvatarGroup className="-space-x-1\.5 \*:data-\[slot=avatar\]:ring-0!"/u,
+	);
+	assert.match(COLUMN_AGENT_ASSIGNMENT_SOURCE, /label=\{agent\.name\} shape="hexagon" size="sm"/u);
+	assert.doesNotMatch(COLUMN_AGENT_ASSIGNMENT_SOURCE, /showHexagonBorder/u);
 });
 
 test("RFP report canvas marks refined copy from the selected version, not terminal report stage", () => {

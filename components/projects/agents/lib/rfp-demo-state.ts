@@ -7,7 +7,14 @@ import { BOARD_COLUMNS } from "../data/board-data";
 export const AGENTS_RFP_DEMO_STORAGE_KEY = "vpk-rovo:agents-rfp-demo:v1";
 export const AGENTS_RFP_DEMO_VERSION = 1;
 export const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
-export const RFP_DRAFTING_AGENT_NAME = "RFP Drafting Agent";
+export const RFP_DRAFTING_AGENT_NAME = "RFP Drafter";
+export const RFP_DRAFTING_AGENT_DESCRIPTION =
+	"Drafts first-pass RFP response packages for Enterprise RFP Response tickets entering Drafting.";
+export const RFP_DRAFTING_AGENT_CONVERSATION_STARTERS = [
+	"Draft the response package for the next Drafting ticket.",
+	"Summarize blockers before this RFP can move to Review.",
+	"Create reusable answer snippets from the attached RFP packet.",
+] as const;
 export const RFP_DRAFTING_SCHEDULE_ID = "rfp-drafting-weekday-0900";
 export const RFP_DRAFTING_EVENT_TRIGGER_LABEL = "On event: ticket enters Drafting";
 export const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
@@ -123,7 +130,9 @@ export interface AgentsRfpDemoReportVersion {
 
 export interface AgentsRfpDemoAgent {
 	id: typeof RFP_DRAFTING_AGENT_ID;
-	name: "RFP Drafting Agent";
+	name: typeof RFP_DRAFTING_AGENT_NAME;
+	description: string;
+	conversationStarters: readonly string[];
 	selected: boolean;
 	assignedColumn: "Drafting";
 	createdAt: string;
@@ -295,6 +304,40 @@ export const RFP_DRAFTING_AGENT: KanbanBoardAgentData = {
 	avatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,
 };
 
+function getRfpDraftingAgentDescription(description?: string | null): string {
+	return description && description.trim().length > 0
+		? description.trim()
+		: RFP_DRAFTING_AGENT_DESCRIPTION;
+}
+
+function getRfpDraftingAgentConversationStarters(starters?: readonly string[] | null): string[] {
+	const normalizedStarters = Array.isArray(starters)
+		? starters.filter((starter) => starter.trim().length > 0)
+		: [];
+
+	return normalizedStarters.length > 0
+		? normalizedStarters
+		: [...RFP_DRAFTING_AGENT_CONVERSATION_STARTERS];
+}
+
+function withRfpDraftingAgentProfileMetadata(agent: AgentsRfpDemoAgent): AgentsRfpDemoAgent {
+	return {
+		...agent,
+		name: RFP_DRAFTING_AGENT_NAME,
+		description: getRfpDraftingAgentDescription(agent.description),
+		conversationStarters: getRfpDraftingAgentConversationStarters(agent.conversationStarters),
+	};
+}
+
+export function normalizeAgentsRfpDemoProfileMetadata(state: AgentsRfpDemoState): AgentsRfpDemoState {
+	return state.agent
+		? {
+				...state,
+				agent: withRfpDraftingAgentProfileMetadata(state.agent),
+			}
+		: state;
+}
+
 function getRandomRfpDraftingAgentAvatarSrc(): string {
 	return RFP_DRAFTING_AGENT_AVATAR_SRC;
 }
@@ -446,7 +489,7 @@ export function parseAgentsRfpDemoState(rawValue: string | null): AgentsRfpDemoS
 	try {
 		const parsed = JSON.parse(rawValue) as unknown;
 		if (isValidAgentsRfpDemoState(parsed)) {
-			return parsed;
+			return normalizeAgentsRfpDemoProfileMetadata(parsed);
 		}
 	} catch {
 		return createDefaultAgentsRfpDemoState();
@@ -654,13 +697,15 @@ export function attachRfpReportToWorkItem(
 
 export function createRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDemoState {
 	const agent: AgentsRfpDemoAgent = state.agent
-		? {
+		? withRfpDraftingAgentProfileMetadata({
 				...state.agent,
 				avatarSrc: state.agent.avatarSrc ?? getRandomRfpDraftingAgentAvatarSrc(),
-			}
+			})
 		: {
 				id: RFP_DRAFTING_AGENT_ID,
 				name: RFP_DRAFTING_AGENT_NAME,
+				description: RFP_DRAFTING_AGENT_DESCRIPTION,
+				conversationStarters: [...RFP_DRAFTING_AGENT_CONVERSATION_STARTERS],
 				selected: true,
 				assignedColumn: "Drafting",
 				createdAt: "Now",
@@ -686,14 +731,14 @@ export function createRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDemo
 	const withCreated = appendUniqueActivity(createdState, {
 		id: "activity-agent-created",
 		timestampLabel: "Now",
-		message: "Rovo created RFP Drafting Agent.",
+		message: `Rovo created ${RFP_DRAFTING_AGENT_NAME}.`,
 		type: "agent-created",
 	});
 
 	return appendUniqueActivity(withCreated, {
 		id: "activity-workflow-assigned",
 		timestampLabel: "Now",
-		message: "Rovo assigned RFP Drafting Agent to the Drafting workflow.",
+		message: `Rovo assigned ${RFP_DRAFTING_AGENT_NAME} to the Drafting workflow.`,
 		type: "workflow-assigned",
 	});
 }
@@ -720,7 +765,7 @@ export function scheduleRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDe
 	return appendUniqueActivity(scheduledState, {
 		id: "activity-agent-scheduled",
 		timestampLabel: "Now",
-		message: "Maya connected RFP Drafting Agent to Drafting column events.",
+		message: `Maya connected ${RFP_DRAFTING_AGENT_NAME} to Drafting column events.`,
 		type: "scheduled",
 	});
 }
@@ -742,19 +787,19 @@ function assignRfpDraftingAgentToCard(
 	const withAssignment = appendUniqueActivity(assignedState, {
 		id: `activity-${cardCode.toLowerCase()}-assigned`,
 		timestampLabel: "Now",
-		message: `RFP Drafting Agent was assigned to ${cardCode}.`,
+		message: `${RFP_DRAFTING_AGENT_NAME} was assigned to ${cardCode}.`,
 		type: "card-assigned",
 	});
 	const withPrep = appendUniqueActivity(withAssignment, {
 		id: `activity-${cardCode.toLowerCase()}-draft-started`,
 		timestampLabel: "Now",
-		message: `RFP Drafting Agent started first-pass response prep for ${cardCode}.`,
+		message: `${RFP_DRAFTING_AGENT_NAME} started first-pass response prep for ${cardCode}.`,
 		type: "draft-started",
 	});
 
 	return appendToast(
 		withPrep,
-		`RFP Drafting Agent assigned to ${cardCode}. Preparing first-pass response package.`,
+		`${RFP_DRAFTING_AGENT_NAME} assigned to ${cardCode}. Preparing first-pass response package.`,
 		`${cardCode.toLowerCase()}-agent-assigned`,
 	);
 }
@@ -906,6 +951,7 @@ export function resolveRfpDemoBoardColumns(
 						...resolvedCard,
 						avatarPulse: false,
 						avatarSrc: undefined,
+						avatarUnassignedKind: "person" as const,
 					};
 				}
 
@@ -958,9 +1004,9 @@ export function formatRfpDemoContext(state: AgentsRfpDemoState): string {
 		generatedAttachments ? `Generated attachments on RFP-101: ${generatedAttachments}.` : "Generated attachments on RFP-101: none.",
 		`RFP-101 status: ${rfp101?.status ?? "unknown"}.`,
 		`RFP-102 status: ${rfp102?.status ?? "unknown"}.`,
-		state.agent ? "Custom agent: RFP Drafting Agent assigned to Drafting events." : "Custom agent: not created.",
+		state.agent ? `Custom agent: ${RFP_DRAFTING_AGENT_NAME} assigned to Drafting events.` : "Custom agent: not created.",
 		state.agent?.trigger ? `Trigger: ${state.agent.trigger.label}.` : "Trigger: none.",
-		`Selected chat agent: ${state.chat.selectedAgentId === RFP_DRAFTING_AGENT_ID ? "RFP Drafting Agent" : "Rovo"}.`,
+		`Selected chat agent: ${state.chat.selectedAgentId === RFP_DRAFTING_AGENT_ID ? RFP_DRAFTING_AGENT_NAME : "Rovo"}.`,
 		state.chat.lastRfp101AnswerSummary ? `Latest Maya qualification answer: ${state.chat.lastRfp101AnswerSummary}` : null,
 		"[End Agents RFP Demo Local State]",
 	]

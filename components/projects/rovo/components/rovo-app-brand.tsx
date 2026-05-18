@@ -17,8 +17,6 @@ import {
 import { Icon } from "@/components/ui/icon";
 import {
 	isRovoAgentProfile,
-	ROVO_AGENT_SELECTOR_AGENTS,
-	ROVO_CUSTOM_AGENT_SELECTOR_AGENTS,
 } from "@/components/projects/rovo/data/agent-profiles";
 
 const ROVO_APP_BRAND_CONTAINER_VARIANTS = {
@@ -82,11 +80,11 @@ export function RovoAppBrand() {
 	const {
 		selectedAgent,
 		selectedAgentId,
+		selectableAgents,
 		isCustomAgentSelected,
 		selectAgent,
 		resetAgentToRovo,
 	} = useRovoSelectedAgent();
-	const selectedAgentIds = useMemo<readonly string[]>(() => [selectedAgentId], [selectedAgentId]);
 
 	const closeSelector = useCallback(() => {
 		setOpen(false);
@@ -129,9 +127,6 @@ export function RovoAppBrand() {
 		}
 	}
 
-	const selectorAgents = isCustomAgentSelected
-		? ROVO_CUSTOM_AGENT_SELECTOR_AGENTS
-		: ROVO_AGENT_SELECTOR_AGENTS;
 	const triggerLabel = isRovoAgentProfile(selectedAgent) ? "Rovo" : selectedAgent.name;
 	const identityItemVariants = shouldReduceMotion ? ROVO_APP_BRAND_REDUCED_ITEM_VARIANTS : ROVO_APP_BRAND_ITEM_VARIANTS;
 
@@ -175,7 +170,7 @@ export function RovoAppBrand() {
 				</AnimatePresence>
 				<Icon
 					aria-hidden
-					className="-ml-0.5 size-4 text-icon-subtle"
+					className="-ml-0.5 size-4 text-icon-subtle group-aria-expanded/button:text-icon-selected"
 					data-icon="inline-end"
 					render={<ChevronDownIcon label="" size="small" spacing="none" />}
 				/>
@@ -187,7 +182,7 @@ export function RovoAppBrand() {
 				sideOffset={8}
 			>
 				<AgentSelector
-					agents={selectorAgents}
+					agents={selectableAgents}
 					heading={isCustomAgentSelected ? "Switch to another agent" : undefined}
 					onAgentToggle={handleAgentSelect}
 					onBrowseAgents={closeSelector}
@@ -196,7 +191,6 @@ export function RovoAppBrand() {
 					query={query}
 					selectedAgentActions={selectedAgentActions}
 					selectionMode="single"
-					selectedAgentIds={selectedAgentIds}
 				/>
 			</DropdownMenuContent>
 		</DropdownMenu>

@@ -156,6 +156,8 @@ export type RovoDataParts = {
 	"agent-result": {
 		agentId: string;
 		name: string;
+		description?: string;
+		conversationStarters?: string[];
 		assignedColumn?: string;
 		summary: string;
 		trigger?: string;
