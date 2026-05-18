@@ -189,12 +189,14 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 				(accState, cardCode) => moveRfpDemoCard(accState, cardCode, targetColumnTitle),
 				currentState,
 			));
-			for (const cardCode of cardCodes) {
-				void postStateMutation(RFP_DEMO_TICKET_EVENT_ENDPOINT, {
-					ticketCode: cardCode,
-					targetColumn: targetColumnTitle,
-				});
-			}
+			void (async () => {
+				for (const cardCode of cardCodes) {
+					await postStateMutation(RFP_DEMO_TICKET_EVENT_ENDPOINT, {
+						ticketCode: cardCode,
+						targetColumn: targetColumnTitle,
+					});
+				}
+			})();
 		},
 		[postStateMutation],
 	);

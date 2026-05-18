@@ -330,16 +330,18 @@ export default function AgentsView({
 		setDraggedCard({ card, sourceColumnTitle });
 	};
 
+	const getMovableSelectedCardCodes = (targetColumnTitle: string) => Array.from(selectedCardCodes).filter((cardCode) => {
+		const sourceColumn = boardColumns.find((column) => column.cards.some((card) => card.code === cardCode));
+		return sourceColumn ? sourceColumn.title !== targetColumnTitle : false;
+	});
+
 	const handleCardDrop = (targetColumnTitle: string) => {
 		if (!draggedCard) {
 			return;
 		}
 		const isMultiDrag = selectedCardCodes.has(draggedCard.card.code) && selectedCardCodes.size > 1;
 		if (isMultiDrag) {
-			const movableCodes = Array.from(selectedCardCodes).filter((cardCode) => {
-				const sourceColumn = boardColumns.find((column) => column.cards.some((card) => card.code === cardCode));
-				return sourceColumn ? sourceColumn.title !== targetColumnTitle : false;
-			});
+			const movableCodes = getMovableSelectedCardCodes(targetColumnTitle);
 			if (movableCodes.length > 0) {
 				rfpDemo.actions.moveCards(movableCodes, targetColumnTitle);
 			}
@@ -509,7 +511,10 @@ export default function AgentsView({
 						boardColumns={boardColumns}
 						onClear={clearSelection}
 						onMoveTo={(targetColumnTitle) => {
-							rfpDemo.actions.moveCards(Array.from(selectedCardCodes), targetColumnTitle);
+							const movableCodes = getMovableSelectedCardCodes(targetColumnTitle);
+							if (movableCodes.length > 0) {
+								rfpDemo.actions.moveCards(movableCodes, targetColumnTitle);
+							}
 							clearSelection();
 						}}
 						selectedCount={selectedCardCodes.size}

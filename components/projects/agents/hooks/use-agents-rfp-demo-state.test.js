@@ -18,6 +18,7 @@ test("useAgentsRfpDemoState loads and persists through backend routes instead of
 	assert.match(HOOK_SOURCE, /const reset = useCallback\(\(\) => postStateMutation\(RFP_DEMO_RESET_ENDPOINT\), \[postStateMutation\]\);/u);
 	assert.match(HOOK_SOURCE, /postStateMutation\(RFP_DEMO_APPLY_AGENT_ENDPOINT\)/u);
 	assert.match(HOOK_SOURCE, /postStateMutation\(RFP_DEMO_TICKET_EVENT_ENDPOINT,\s*\{[\s\S]*ticketCode: cardCode,[\s\S]*targetColumn: targetColumnTitle/u);
+	assert.match(HOOK_SOURCE, /void \(async \(\) => \{[\s\S]*for \(const cardCode of cardCodes\) \{[\s\S]*await postStateMutation\(RFP_DEMO_TICKET_EVENT_ENDPOINT/u);
 	assert.doesNotMatch(HOOK_SOURCE, /localStorage/u);
 	assert.doesNotMatch(HOOK_SOURCE, /AGENTS_RFP_DEMO_STORAGE_KEY/u);
 });
