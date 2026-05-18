@@ -252,7 +252,10 @@ test("RFP agent chat tab details expose trigger and activity content without a s
 	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /export function RfpAgentTriggerDetails/u);
 	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /export function RfpAgentActivityDetails/u);
 	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Tasks">/u);
-	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
+	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<ProgressTracker[\s\S]*aria-label="RFP Drafter activity timeline"[\s\S]*steps=\{timelineSteps\}/u);
+	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /function getActivityTimelineSteps\(state: AgentsRfpDemoState\): ProgressTrackerStep\[\]/u);
+	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
+	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Activity">/u);
 	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /RfpAgentDetailsSheet/u);
 	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /SheetContent/u);
 	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Conversation Starters">/u);

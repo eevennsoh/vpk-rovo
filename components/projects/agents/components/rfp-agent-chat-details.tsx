@@ -1,9 +1,13 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Lozenge } from "@/components/ui/lozenge";
+import { ProgressTracker, type ProgressTrackerStep } from "@/components/ui/progress-tracker";
 import { Separator } from "@/components/ui/separator";
-import type { AgentsRfpDemoState } from "../lib/rfp-demo-state";
+import type {
+	AgentsRfpDemoActivityItem,
+	AgentsRfpDemoJobRunSummary,
+	AgentsRfpDemoState,
+} from "../lib/rfp-demo-state";
 
 const TOOL_LABELS = [
 	"Jira work item reader",
@@ -35,17 +39,157 @@ function DetailsSection({
 	);
 }
 
-function getRunTone(status: string): "neutral" | "success" | "warning" | "danger" {
-	if (status === "completed") {
-		return "success";
+type TimelineProgressState = NonNullable<ProgressTrackerStep["state"]>;
+
+interface ActivityTimelineEntry {
+	sequence: number;
+	sortMs: number;
+	step: ProgressTrackerStep;
+}
+
+function parseTimelineTimestamp(value?: string | null): number {
+	const normalizedValue = value?.trim();
+	if (!normalizedValue) {
+		return Number.NEGATIVE_INFINITY;
 	}
-	if (status === "completed-with-failures") {
+
+	if (normalizedValue.toLowerCase() === "now") {
+		return Number.POSITIVE_INFINITY;
+	}
+
+	const parsed = Date.parse(normalizedValue);
+	return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+}
+
+function formatTimelineTimestamp(value?: string | null): string | null {
+	const normalizedValue = value?.trim();
+	if (!normalizedValue) {
+		return null;
+	}
+
+	const parsed = Date.parse(normalizedValue);
+	if (!Number.isFinite(parsed)) {
+		return null;
+	}
+
+	return new Intl.DateTimeFormat("en-US", {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(parsed));
+}
+
+function getRunTrackerState(status: AgentsRfpDemoJobRunSummary["status"]): TimelineProgressState {
+	if (status === "running") {
+		return "current";
+	}
+
+	if (status === "completed-with-failures" || status === "failed") {
 		return "warning";
 	}
-	if (status === "failed") {
-		return "danger";
+
+	if (status === "completed" || status === "skipped") {
+		return "done";
 	}
-	return "neutral";
+
+	return "todo";
+}
+
+function getActivityTrackerState(activity: AgentsRfpDemoActivityItem): TimelineProgressState {
+	return activity.type === "draft-failed" ? "warning" : "done";
+}
+
+function RunTimelineByline({
+	run,
+}: Readonly<{
+	run: AgentsRfpDemoJobRunSummary;
+}>): React.ReactElement {
+	const timestampLabel = formatTimelineTimestamp(run.finishedAt ?? run.startedAt);
+	const detailLabel = [
+		run.triggerLabel,
+		run.source,
+		timestampLabel,
+	]
+		.filter((label): label is string => Boolean(label))
+		.join(" · ");
+
+	return (
+		<span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+			<span>{detailLabel}</span>
+			{run.threadLinks.length > 0 ? (
+				<span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+					{run.threadLinks.map((link) => (
+						<a
+							key={`${run.id}-${link.ticketCode}`}
+							className="font-medium text-link hover:underline"
+							href={`/rovo/${encodeURIComponent(link.threadId)}`}
+						>
+							{link.ticketCode} thread
+						</a>
+					))}
+				</span>
+			) : null}
+		</span>
+	);
+}
+
+function createRunTimelineEntry(
+	run: AgentsRfpDemoJobRunSummary,
+	index: number,
+	runCount: number,
+	activityCount: number,
+): ActivityTimelineEntry {
+	const timestamp = run.finishedAt ?? run.startedAt;
+
+	return {
+		sequence: activityCount + runCount - index,
+		sortMs: parseTimelineTimestamp(timestamp),
+		step: {
+			id: `run-${run.id}`,
+			label: run.summary,
+			byline: <RunTimelineByline run={run} />,
+			state: getRunTrackerState(run.status),
+		},
+	};
+}
+
+function createActivityTimelineEntry(
+	activity: AgentsRfpDemoActivityItem,
+	index: number,
+): ActivityTimelineEntry {
+	return {
+		sequence: index,
+		sortMs: parseTimelineTimestamp(activity.timestampLabel),
+		step: {
+			id: `activity-${activity.id}`,
+			label: activity.message,
+			byline: activity.timestampLabel,
+			state: getActivityTrackerState(activity),
+		},
+	};
+}
+
+function compareActivityTimelineEntries(
+	first: ActivityTimelineEntry,
+	second: ActivityTimelineEntry,
+): number {
+	if (first.sortMs !== second.sortMs) {
+		return first.sortMs > second.sortMs ? -1 : 1;
+	}
+
+	return second.sequence - first.sequence;
+}
+
+function getActivityTimelineSteps(state: AgentsRfpDemoState): ProgressTrackerStep[] {
+	const runs = state.agent?.jobRunSummaries ?? [];
+	const activityItems = state.customAgentActivity;
+	const entries = [
+		...runs.map((run, index) => createRunTimelineEntry(run, index, runs.length, activityItems.length)),
+		...activityItems.map((activity, index) => createActivityTimelineEntry(activity, index)),
+	];
+
+	return entries
+		.sort(compareActivityTimelineEntries)
+		.map((entry) => entry.step);
 }
 
 export function RfpAgentTriggerDetails({
@@ -110,64 +254,16 @@ export function RfpAgentActivityDetails({
 }: Readonly<{
 	state: AgentsRfpDemoState;
 }>): React.ReactElement {
-	const runs = state.agent?.jobRunSummaries ?? [];
+	const timelineSteps = getActivityTimelineSteps(state);
 
-	return (
-		<div className="grid gap-5">
-			<DetailsSection title="Run log">
-				{runs.length > 0 ? (
-					<ul className="grid gap-3">
-						{runs.map((run) => (
-							<li key={run.id} className="grid gap-2 rounded-lg border border-border bg-surface-raised p-3">
-								<div className="flex flex-wrap items-center justify-between gap-2">
-									<div className="min-w-0">
-										<p className="text-sm font-medium text-text">{run.summary}</p>
-										<p className="text-xs text-text-subtlest">{run.triggerLabel} · {run.source}</p>
-									</div>
-									<Lozenge variant={getRunTone(run.status)}>{run.status}</Lozenge>
-								</div>
-								<div className="flex flex-wrap gap-2 text-xs text-text-subtle">
-									<Badge variant="secondary">Processed {run.processedTicketCodes.length}</Badge>
-									<Badge variant="secondary">Skipped {run.skippedTicketCodes.length}</Badge>
-									<Badge variant="secondary">Failed {run.failedTicketCodes.length}</Badge>
-								</div>
-								{run.threadLinks.length > 0 ? (
-									<div className="flex flex-wrap gap-2">
-										{run.threadLinks.map((link) => (
-											<a
-												key={`${run.id}-${link.ticketCode}`}
-												className="text-xs font-medium text-link hover:underline"
-												href={`/rovo/${encodeURIComponent(link.threadId)}`}
-											>
-												{link.ticketCode} thread
-											</a>
-										))}
-									</div>
-								) : null}
-							</li>
-						))}
-					</ul>
-				) : (
-					<p className="text-sm text-text-subtle">No event runs yet.</p>
-				)}
-			</DetailsSection>
-
-			<Separator />
-
-			<DetailsSection title="Activity">
-				{state.customAgentActivity.length > 0 ? (
-					<ul className="grid gap-3">
-						{state.customAgentActivity.map((activity) => (
-							<li key={activity.id} className="grid gap-1 border-l-2 border-border pl-3">
-								<p className="text-sm text-text">{activity.message}</p>
-								<p className="text-xs text-text-subtlest">{activity.timestampLabel}</p>
-							</li>
-						))}
-					</ul>
-				) : (
-					<p className="text-sm text-text-subtle">No custom-agent activity yet.</p>
-				)}
-			</DetailsSection>
-		</div>
+	return timelineSteps.length > 0 ? (
+		<ProgressTracker
+			aria-label="RFP Drafter activity timeline"
+			bylineClassName="text-sm leading-5"
+			labelClassName="text-sm leading-5"
+			steps={timelineSteps}
+		/>
+	) : (
+		<p className="text-sm text-text-subtle">No agent activity yet.</p>
 	);
 }

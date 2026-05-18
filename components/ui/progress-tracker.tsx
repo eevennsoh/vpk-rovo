@@ -2,23 +2,33 @@ import * as React from "react"
 
 import CheckCircleIcon from "@atlaskit/icon/core/check-circle"
 import NodeIcon from "@atlaskit/icon/core/node"
+import WarningIcon from "@atlaskit/icon/core/warning"
 
 import { token } from "@/lib/tokens"
 import { cn } from "@/lib/utils"
 
+export type ProgressTrackerStepState = "todo" | "current" | "done" | "warning"
+
 export interface ProgressTrackerStep {
 	id: string
-	label: string
-	state?: "todo" | "current" | "done"
+	label: React.ReactNode
+	byline?: React.ReactNode
+	state?: ProgressTrackerStepState
 }
 
 export interface ProgressTrackerProps extends React.ComponentProps<"ol"> {
 	steps: ReadonlyArray<ProgressTrackerStep>
+	labelClassName?: string
+	bylineClassName?: string
 }
 
-function StepIcon({ state }: Readonly<{ state: "todo" | "current" | "done" }>) {
+function StepIcon({ state }: Readonly<{ state: ProgressTrackerStepState }>) {
 	if (state === "done") {
 		return <CheckCircleIcon label="" size="small" color={token("color.icon.success")} />
+	}
+
+	if (state === "warning") {
+		return <WarningIcon label="" size="small" color={token("color.icon.warning")} />
 	}
 
 	if (state === "current") {
@@ -32,12 +42,18 @@ function StepIcon({ state }: Readonly<{ state: "todo" | "current" | "done" }>) {
 	return <NodeIcon label="" size="small" color={token("color.icon.subtlest")} />
 }
 
-function ProgressTracker({ steps, className, ...props }: Readonly<ProgressTrackerProps>) {
+function ProgressTracker({
+	steps,
+	className,
+	labelClassName,
+	bylineClassName,
+	...props
+}: Readonly<ProgressTrackerProps>) {
 	const stepKeys = React.useMemo(() => {
 		const keyTotals = new Map<string, number>()
 		const baseKeys = steps.map((step, index) => {
 			const normalizedId = step.id.trim()
-			const normalizedLabel = step.label.trim()
+			const normalizedLabel = typeof step.label === "string" ? step.label.trim() : ""
 			const baseKey = normalizedId || normalizedLabel || `step-${index + 1}`
 			keyTotals.set(baseKey, (keyTotals.get(baseKey) ?? 0) + 1)
 			return baseKey
@@ -65,16 +81,36 @@ function ProgressTracker({ steps, className, ...props }: Readonly<ProgressTracke
 							</div>
 							{!isLast ? <div className="min-h-4 w-px flex-1 bg-border" /> : null}
 						</div>
-						<span
+						<div
+							data-slot="progress-tracker-content"
 							className={cn(
-								"flex h-6 items-center px-1 text-xs leading-4",
-								state === "done" && "text-text",
-								state === "current" && "text-text font-medium",
-								state === "todo" && "text-text-subtlest"
+								"min-w-0 flex-1 px-1",
+								step.byline ? "grid gap-1 pt-0.5" : "flex h-6 items-center",
+								step.byline && !isLast && "pb-5"
 							)}
 						>
-							{step.label}
-						</span>
+							<span
+								data-slot="progress-tracker-label"
+								className={cn(
+									"text-xs leading-4",
+									state === "done" && "text-text",
+									state === "warning" && "text-text",
+									state === "current" && "text-text font-medium",
+									state === "todo" && "text-text-subtlest",
+									labelClassName
+								)}
+							>
+								{step.label}
+							</span>
+							{step.byline ? (
+								<span
+									data-slot="progress-tracker-byline"
+									className={cn("text-xs leading-4 text-text-subtlest", bylineClassName)}
+								>
+									{step.byline}
+								</span>
+							) : null}
+						</div>
 					</li>
 				)
 			})}

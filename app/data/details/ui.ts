@@ -6128,20 +6128,30 @@ import BugIcon from "@atlaskit/icon/core/bug";
 
   "progress-tracker": {
     description:
-      "Horizontal step tracker with labels and completion states. Maps to @atlaskit/progress-tracker.",
+      "Step tracker with labels, optional bylines, and completion states. Maps to @atlaskit/progress-tracker.",
     usage: `import { ProgressTracker, type ProgressTrackerStep } from "@/components/ui/progress-tracker"
 
 const steps: ProgressTrackerStep[] = [
-  { label: "Step 1", status: "complete" },
-  { label: "Step 2", status: "current" },
-  { label: "Step 3", status: "todo" },
+  { id: "1", label: "Step 1", state: "done" },
+  { id: "2", label: "Step 2", byline: "Optional detail", state: "current" },
+  { id: "3", label: "Step 3", state: "warning" },
 ]
 <ProgressTracker steps={steps} />`,
     props: [
       {
         name: "steps",
         type: "ProgressTrackerStep[]",
-        description: "Array of step objects with label and status.",
+        description: "Array of step objects with id, label, optional byline, and state.",
+      },
+      {
+        name: "labelClassName",
+        type: "string",
+        description: "Optional classes applied to each step label.",
+      },
+      {
+        name: "bylineClassName",
+        type: "string",
+        description: "Optional classes applied to each step byline.",
       },
     ],
     examples: [
