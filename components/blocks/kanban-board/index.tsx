@@ -551,15 +551,14 @@ export function KanbanBoard({
 		const label = document.createElement("span");
 		label.textContent = `${count} items`;
 		label.style.position = "absolute";
-		label.style.top = "28px";
-		label.style.left = "10px";
-		label.style.padding = "6px 10px";
+		label.style.top = "18px";
+		label.style.left = "6px";
+		label.style.padding = "6px 12px";
 		label.style.borderRadius = "6px";
-		label.style.background = "var(--ds-background-brand-bold)";
+		label.style.background = "var(--ds-background-neutral-bold)";
 		label.style.color = "var(--ds-text-inverse)";
 		label.style.font = "var(--ds-font-body-small)";
-		label.style.fontWeight = "600";
-		label.style.boxShadow = "var(--ds-shadow-raised)";
+		label.style.boxShadow = "var(--ds-shadow-overlay)";
 		node.appendChild(label);
 
 		document.body.appendChild(node);

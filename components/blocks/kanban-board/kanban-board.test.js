@@ -51,7 +51,8 @@ test("Kanban multi-card drag uses a move cursor affordance without covering the 
 	assert.match(SOURCE, /event\.dataTransfer\.effectAllowed = "move";/);
 	assert.match(SOURCE, /event\.dataTransfer\.dropEffect = "move";/);
 	assert.match(COLUMN_DRAG_SOURCE, /event\.dataTransfer\.dropEffect = "move";/);
-	assert.match(SOURCE, /label\.style\.top = "28px";/);
+	assert.match(SOURCE, /label\.style\.top = "18px";/);
+	assert.match(SOURCE, /label\.style\.background = "var\(--ds-background-neutral-bold\)";/);
 	assert.match(SOURCE, /event\.dataTransfer\.setDragImage\(dragImageRef\.current, 0, 0\);/);
 });
 
