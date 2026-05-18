@@ -13,6 +13,7 @@ test("RFP agent chat details render trigger editor states and run log links", ()
 	assert.match(DETAILS_SOURCE, /flex size-6 shrink-0 items-center justify-center/u);
 	assert.match(DETAILS_SOURCE, /import \{ IconTile \} from "@\/components\/ui\/icon-tile";/u);
 	assert.match(DETAILS_SOURCE, /<IconTile[\s\S]*icon=\{<AutomationIcon label="" \/>\}[\s\S]*size="small"[\s\S]*variant="blue"/u);
+	assert.match(DETAILS_SOURCE, /inline-flex h-6 items-center rounded-md bg-bg-neutral pl-2 text-sm font-medium text-text/u);
 	assert.match(DETAILS_SOURCE, /Status changed to/u);
 	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_COLUMN_NAME\}<\/TriggerChip>/u);
 	assert.match(DETAILS_SOURCE, /<TriggerChip>\{RFP_DRAFTING_BOARD_NAME\}<\/TriggerChip>/u);

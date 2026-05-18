@@ -60,9 +60,11 @@ function TriggerChip({
 	children: ReactNode;
 }>): React.ReactElement {
 	return (
-		<span className="inline-flex h-8 items-center gap-1 rounded-md bg-bg-neutral px-2.5 text-sm font-medium text-text">
+		<span className="inline-flex h-6 items-center rounded-md bg-bg-neutral pl-2 text-sm font-medium text-text">
 			{children}
-			<ChevronDownIcon label="" size="small" />
+			<span className="flex size-6 shrink-0 items-center justify-center">
+				<ChevronDownIcon label="" size="small" />
+			</span>
 		</span>
 	);
 }
