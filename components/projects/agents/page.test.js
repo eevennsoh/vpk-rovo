@@ -16,8 +16,8 @@ const COLUMN_AGENT_ASSIGNMENT_SOURCE = fs.readFileSync(
 	path.join(__dirname, "components/column-agent-assignment.tsx"),
 	"utf8",
 );
-const RFP_AGENT_DETAILS_SOURCE = fs.readFileSync(
-	path.join(__dirname, "components/rfp-agent-details-sheet.tsx"),
+const RFP_AGENT_CHAT_DETAILS_SOURCE = fs.readFileSync(
+	path.join(__dirname, "components/rfp-agent-chat-details.tsx"),
 	"utf8",
 );
 
@@ -69,7 +69,7 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/RFP_REPORT_ARTIFACT_METADATA = "HTML report \\u2022 Version 1"/u,
+		/RFP_REPORT_ARTIFACT_METADATA = "PDF \\u2022 Version 1"/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
@@ -221,10 +221,9 @@ test("AgentsView delegates RFP Drafting agent creation and keeps generic column 
 		AGENTS_VIEW_SOURCE,
 		/if \(columnTitle === "Drafting"\) \{\s*onCreateRfpDraftingAgent\(\);\s*return;\s*\}/u,
 	);
-	assert.match(
-		AGENTS_VIEW_SOURCE,
-		/<RfpAgentDetailsSheet[\s\S]*open=\{isAgentDetailsOpen\}[\s\S]*onOpenChange=\{onAgentDetailsOpenChange\}/u,
-	);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /RfpAgentDetailsSheet/u);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /isAgentDetailsOpen/u);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /onAgentDetailsOpenChange/u);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
 		/\bopenChat\("floating"\);/u,
@@ -249,16 +248,14 @@ test("AgentsView maps backend RFP agent output onto cards, assignees, comments, 
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /No schedule/u);
 });
 
-test("RFP agent details surface description and conversation starters", () => {
-	assert.match(RFP_AGENT_DETAILS_SOURCE, /RFP_DRAFTING_AGENT_DESCRIPTION/u);
-	assert.match(RFP_AGENT_DETAILS_SOURCE, /RFP_DRAFTING_AGENT_CONVERSATION_STARTERS/u);
-	assert.match(RFP_AGENT_DETAILS_SOURCE, /export function RfpAgentTriggerDetails/u);
-	assert.match(RFP_AGENT_DETAILS_SOURCE, /export function RfpAgentActivityDetails/u);
-	assert.match(RFP_AGENT_DETAILS_SOURCE, /<DetailsSection title="Description">/u);
-	assert.match(RFP_AGENT_DETAILS_SOURCE, /<DetailsSection title="Conversation Starters">/u);
-	assert.match(RFP_AGENT_DETAILS_SOURCE, /<DetailsSection title="Tasks">/u);
-	assert.match(RFP_AGENT_DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
-	assert.match(RFP_AGENT_DETAILS_SOURCE, /conversationStarters\.map/u);
+test("RFP agent chat tab details expose trigger and activity content without a sheet", () => {
+	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /export function RfpAgentTriggerDetails/u);
+	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /export function RfpAgentActivityDetails/u);
+	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Tasks">/u);
+	assert.match(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Run log">/u);
+	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /RfpAgentDetailsSheet/u);
+	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /SheetContent/u);
+	assert.doesNotMatch(RFP_AGENT_CHAT_DETAILS_SOURCE, /<DetailsSection title="Conversation Starters">/u);
 });
 
 test("AgentsView includes assigned agents in the board toolbar avatar cluster", () => {

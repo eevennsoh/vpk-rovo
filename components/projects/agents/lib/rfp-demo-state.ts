@@ -626,7 +626,7 @@ export function approveRfpReport(state: AgentsRfpDemoState): AgentsRfpDemoState 
 				stage: "approved",
 			},
 		},
-		"HTML report approved for RFP-101.",
+		"PDF approved for RFP-101.",
 		"report-approved",
 	);
 }

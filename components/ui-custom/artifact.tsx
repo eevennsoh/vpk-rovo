@@ -196,7 +196,7 @@ export const ARTIFACT_KIND_LABELS: Record<ArtifactKind, string> = {
 	browser: "Browser",
 	code: "Code",
 	excalidraw: "Diagram",
-	html: "HTML report",
+	html: "PDF",
 	image: "Image",
 	react: "App",
 	sheet: "Sheet",
@@ -211,6 +211,12 @@ function getArtifactActionLabel(
 	if (action === "update") return "Updated";
 	if (action === "create") return "Created";
 	return null;
+}
+
+function formatArtifactKindActionLabel(kindLabel: string): string {
+	return /^[A-Z0-9]+(?:\s[A-Z0-9]+)*$/u.test(kindLabel)
+		? kindLabel
+		: kindLabel.toLowerCase();
 }
 
 function getArtifactDescription({
@@ -311,10 +317,11 @@ export function ArtifactCard({
 		sourceAvatarSrc: identityAvatarSrc,
 		visualIdentity,
 	});
+	const actionKindLabel = formatArtifactKindActionLabel(kindLabel);
 	const resolvedOpenLabel = openLabel ?? (actionLabel
-		? `Open ${actionLabel.toLowerCase()} ${kindLabel.toLowerCase()} ${title}`
-		: `Open ${kindLabel.toLowerCase()} ${title}`);
-	const resolvedOpenCtaLabel = openCtaLabel ?? `Open ${kindLabel.toLowerCase()}`;
+		? `Open ${actionLabel.toLowerCase()} ${actionKindLabel} ${title}`
+		: `Open ${actionKindLabel} ${title}`);
+	const resolvedOpenCtaLabel = openCtaLabel ?? `Open ${actionKindLabel}`;
 	const resolvedPreviewBody = previewBody ?? buildArtifactPreviewBody({
 		content: previewContent,
 		kind,

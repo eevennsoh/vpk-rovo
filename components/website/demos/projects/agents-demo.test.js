@@ -31,8 +31,10 @@ test("AgentsDemo promotes the open modal before switching floating chat to the s
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/<AgentsView[\s\S]*workItemPresentation=\{workItemPresentation\}[\s\S]*rfpDemo=\{rfpDemo\}[\s\S]*isAgentDetailsOpen=\{isAgentDetailsOpen\}[\s\S]*onAgentDetailsOpenChange=\{setIsAgentDetailsOpen\}[\s\S]*onCreateRfpDraftingAgent=\{handleCreateRfpDraftingAgent\}[\s\S]*chatContextBar=\{agentsChatScreenContext\.chatContextBar\}[\s\S]*chatGreeting=\{agentsChatScreenContext\.greeting\}/u,
+		/<AgentsView[\s\S]*workItemPresentation=\{workItemPresentation\}[\s\S]*rfpDemo=\{rfpDemo\}[\s\S]*onCreateRfpDraftingAgent=\{handleCreateRfpDraftingAgent\}[\s\S]*chatContextBar=\{agentsChatScreenContext\.chatContextBar\}[\s\S]*chatGreeting=\{agentsChatScreenContext\.greeting\}/u,
 	);
+	assert.doesNotMatch(AGENTS_DEMO_SOURCE, /isAgentDetailsOpen/u);
+	assert.doesNotMatch(AGENTS_DEMO_SOURCE, /onAgentDetailsOpenChange/u);
 });
 
 test("AgentsDemo hides the layout-owned Rovo surfaces while the report canvas is open", () => {
@@ -104,15 +106,15 @@ test("AgentsDemo opens Rovo agent onboarding after returning to the attached rep
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/<RovoChatProvider agentProfiles=\{chatAgentProfiles\} defaultPromptOptions=\{chatPromptOptions\}>/u,
+		/const autoSelectAgentId = rfpDemo\.state\.agent && rfpDemo\.state\.chat\.selectedAgentId === RFP_DRAFTING_AGENT_ID[\s\S]*\? RFP_DRAFTING_AGENT_ID[\s\S]*: undefined;/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/const \{ isOpen: isChatOpen, openChat, selectAgent, selectedAgentId, sendPrompt, uiMessages \} = useRovoChat\(\);/u,
+		/<RovoChatProvider[\s\S]*agentProfiles=\{chatAgentProfiles\}[\s\S]*autoSelectAgentId=\{autoSelectAgentId\}[\s\S]*defaultPromptOptions=\{chatPromptOptions\}/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/hasAutoSelectedRfpAgentRef\.current = true;[\s\S]*selectAgent\(RFP_DRAFTING_AGENT_ID\);/u,
+		/const \{ isOpen: isChatOpen, openChat, sendPrompt, uiMessages \} = useRovoChat\(\);/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
@@ -142,13 +144,12 @@ test("AgentsDemo opens Rovo agent onboarding after returning to the attached rep
 		/const handleCreateRfpDraftingAgent = useCallback\(\(\) => \{([\s\S]*?)\n\t\}, \[[^\]]*backToBoard/u,
 	)?.[1] ?? "";
 	assert.doesNotMatch(createAgentHandler, /applyAgent/u);
-	assert.doesNotMatch(createAgentHandler, /setIsAgentDetailsOpen\(true\)/u);
 	assert.match(createAgentHandler, /sendPrompt/u);
 	assert.match(createAgentHandler, /openChat/u);
 	assert.match(createAgentHandler, /setIsRovoButtonOnboardingOpen\(false\)/u);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/import \{ ROVO_AGENT_RESULT_OPEN_EVENT \} from "@\/components\/projects\/sidebar-chat\/components\/agent-result-card";/u,
+		/import \{ ROVO_AGENT_RESULT_SELECT_EVENT \} from "@\/components\/projects\/sidebar-chat\/components\/agent-result-card";/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
@@ -162,12 +163,16 @@ test("AgentsDemo opens Rovo agent onboarding after returning to the attached rep
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/window\.addEventListener\(ROVO_AGENT_RESULT_OPEN_EVENT, handleOpenAgentResult\);[\s\S]*window\.removeEventListener\(ROVO_AGENT_RESULT_OPEN_EVENT, handleOpenAgentResult\);/u,
+		/window\.addEventListener\(ROVO_AGENT_RESULT_SELECT_EVENT, handleSelectAgentResult\);[\s\S]*window\.removeEventListener\(ROVO_AGENT_RESULT_SELECT_EVENT, handleSelectAgentResult\);/u,
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/detail\?\.agentId !== RFP_DRAFTING_AGENT_ID[\s\S]*if \(!hasAppliedRfpDraftingAgent\) \{[\s\S]*applyAgent\(\);[\s\S]*\}[\s\S]*setIsAgentDetailsOpen\(true\);/u,
+		/detail\?\.agentId !== RFP_DRAFTING_AGENT_ID[\s\S]*if \(!hasAppliedRfpDraftingAgent\) \{[\s\S]*applyAgent\(\);[\s\S]*\}[\s\S]*setIsRovoButtonOnboardingOpen\(false\);/u,
 	);
+	const selectAgentResultHandler = AGENTS_DEMO_SOURCE.match(
+		/const handleSelectAgentResult = \(event: Event\) => \{([\s\S]*?)\n\t\t\};/u,
+	)?.[1] ?? "";
+	assert.doesNotMatch(selectAgentResultHandler, /setIsAgentDetailsOpen/u);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
 		/getMessageAgentResult\(message\)[\s\S]*agentResult\?\.agentId !== RFP_DRAFTING_AGENT_ID[\s\S]*appliedAgentResultMessageIdsRef\.current\.add\(message\.id\)[\s\S]*applyAgent\(\);/u,

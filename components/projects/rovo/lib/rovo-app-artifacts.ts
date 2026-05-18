@@ -4,7 +4,7 @@ const ROVO_APP_ARTIFACT_KIND_LABELS = {
 	browser: "Browser",
 	code: "Code",
 	excalidraw: "Diagram",
-	html: "HTML report",
+	html: "PDF",
 	image: "Image",
 	react: "App",
 	sheet: "Sheet",

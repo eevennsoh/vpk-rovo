@@ -5,6 +5,19 @@ const test = require("node:test");
 
 const ARTIFACT_SOURCE = fs.readFileSync(path.join(__dirname, "artifact.tsx"), "utf8");
 
+test("ArtifactCard presents html artifacts as PDFs with acronym casing", () => {
+	assert.match(ARTIFACT_SOURCE, /html: "PDF"/u);
+	assert.match(ARTIFACT_SOURCE, /function formatArtifactKindActionLabel\(kindLabel: string\): string/u);
+	assert.match(ARTIFACT_SOURCE, /\? kindLabel\s*: kindLabel\.toLowerCase\(\);/u);
+	assert.match(ARTIFACT_SOURCE, /const actionKindLabel = formatArtifactKindActionLabel\(kindLabel\);/u);
+	assert.match(
+		ARTIFACT_SOURCE,
+		/resolvedOpenCtaLabel = openCtaLabel \?\? `Open \$\{actionKindLabel\}`/u,
+	);
+	assert.doesNotMatch(ARTIFACT_SOURCE, /html: "HTML report"/u);
+	assert.doesNotMatch(ARTIFACT_SOURCE, /Open \$\{kindLabel\.toLowerCase\(\)\}/u);
+});
+
 test("ArtifactPanel uses the Rovo Canvas version-history treatment instead of a select trigger", () => {
 	assert.match(ARTIFACT_SOURCE, /function ArtifactVersionHistoryPanel/u);
 	assert.match(

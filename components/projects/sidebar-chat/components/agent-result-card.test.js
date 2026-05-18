@@ -39,7 +39,7 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	assert.match(AGENT_RESULT_CARD_SOURCE, /description=\{AGENT_RESULT_DESCRIPTION\}/u);
 	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /Assigned to \$\{agent\.assignedColumn\}/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /displayMode="preview"/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /Open agent details/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /Select agent/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /agent\.tools\.filter/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /function getAgentDisplayName\(agent: AgentResult\): string/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";/u);
@@ -80,14 +80,14 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	);
 });
 
-test("AgentResultCard dispatches a generic open-agent event", () => {
+test("AgentResultCard dispatches a generic select-agent event", () => {
 	assert.match(
 		AGENT_RESULT_CARD_SOURCE,
-		/export const ROVO_AGENT_RESULT_OPEN_EVENT = "rovo:open-agent-result";/u,
+		/export const ROVO_AGENT_RESULT_SELECT_EVENT = "rovo:select-agent-result";/u,
 	);
 	assert.match(
 		AGENT_RESULT_CARD_SOURCE,
-		/window\.dispatchEvent\(new CustomEvent\(ROVO_AGENT_RESULT_OPEN_EVENT, \{[\s\S]*agentId: agent\.agentId,[\s\S]*source: "agent-result-card"/u,
+		/onSelectAgent\?\.\(agent\);[\s\S]*window\.dispatchEvent\(new CustomEvent\(ROVO_AGENT_RESULT_SELECT_EVENT, \{[\s\S]*agentId: agent\.agentId,[\s\S]*source: "agent-result-card"/u,
 	);
 });
 
@@ -107,8 +107,9 @@ test("ChatPanel renders generated result cards after the turn container", () => 
 	assert.match(CHAT_PANEL_SOURCE, /getMessageArtifactResult/u);
 	assert.match(CHAT_PANEL_SOURCE, /import \{ ArtifactResultCard, type ArtifactResult \} from "\.\/components\/artifact-result-card";/u);
 	assert.match(CHAT_PANEL_SOURCE, /import \{ AgentResultCard \} from "\.\/components\/agent-result-card";/u);
+	assert.match(CHAT_PANEL_SOURCE, /const handleAgentResultSelect = useCallback\(\(agent: RovoDataParts\["agent-result"\]\) => \{[\s\S]*selectableAgents\.some\(\(selectableAgent\) => selectableAgent\.id === agent\.agentId\)[\s\S]*selectAgent\(agent\.agentId\);/u);
 	assert.match(
 		CHAT_PANEL_SOURCE,
-		/renderTurnAfter=\{\(turn\) => \{[\s\S]*const generatedResults = turn\.flatMap[\s\S]*getMessageArtifactResult\(message\)[\s\S]*getMessageAgentResult\(message\)[\s\S]*className="w-full space-y-2" data-testid="rovo-generated-result-group"[\s\S]*<ArtifactResultCard[\s\S]*<AgentResultCard/u,
+		/renderTurnAfter=\{\(turn\) => \{[\s\S]*const generatedResults = turn\.flatMap[\s\S]*getMessageArtifactResult\(message\)[\s\S]*getMessageAgentResult\(message\)[\s\S]*className="w-full space-y-2" data-testid="rovo-generated-result-group"[\s\S]*<ArtifactResultCard[\s\S]*<AgentResultCard[\s\S]*onSelectAgent=\{handleAgentResultSelect\}/u,
 	);
 });

@@ -126,6 +126,9 @@ file and the work it should do each run. Do not create background work silently.
 - The frontmatter description must clearly say when to use the agent.
 - Conversation starters must contain at least one concrete user-facing prompt;
   use 2-4 starters for normal interactive agents.
+- Runtime UI or chat-selector profile data must be validated separately from
+  the Markdown agent file: description and conversation starters must be
+  non-empty and sourced from the canonical agent definition.
 - The body must be operational enough for another agent to run without guessing.
 - The knowledge path must match `.agents/knowledge/<agent-name>/` when
   `memory: project`.

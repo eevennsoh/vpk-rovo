@@ -12,7 +12,6 @@ import JiraHeader from "./components/jira-header";
 import BoardToolbar from "./components/board-toolbar";
 import JiraWorkItemModal from "./components/jira-work-item-modal";
 import { AgentsWorkItemInlinePage } from "./components/agents-work-item-inline-page";
-import { RfpAgentDetailsSheet } from "./components/rfp-agent-details-sheet";
 import { RfpAttachmentPreviewDialog } from "./components/rfp-attachment-preview-dialog";
 import { RfpReportCanvas } from "./components/rfp-report-canvas";
 import type { ChatPanelCustomAgentTabs, ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
@@ -72,8 +71,6 @@ interface DraggedCardState {
 interface AgentsViewProps {
 	rfpDemo: AgentsRfpDemoController;
 	workItemPresentation: AgentsWorkItemPresentationController;
-	isAgentDetailsOpen: boolean;
-	onAgentDetailsOpenChange: (open: boolean) => void;
 	onCreateRfpDraftingAgent: () => void;
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
@@ -83,8 +80,6 @@ interface AgentsViewProps {
 export default function AgentsView({
 	rfpDemo,
 	workItemPresentation,
-	isAgentDetailsOpen,
-	onAgentDetailsOpenChange,
 	onCreateRfpDraftingAgent,
 	chatContextBar,
 	chatGreeting,
@@ -357,7 +352,6 @@ export default function AgentsView({
 		await deleteAllThreads();
 		workItemPresentation.backToBoard();
 		closeChat();
-		onAgentDetailsOpenChange(false);
 		setAttachmentHighlight(null);
 		setPreviewAttachment(null);
 	};
@@ -434,11 +428,6 @@ export default function AgentsView({
 				chatContextBar={chatContextBar}
 				chatGreeting={chatGreeting}
 				customAgentTabs={customAgentTabs}
-			/>
-			<RfpAgentDetailsSheet
-				open={isAgentDetailsOpen}
-				state={rfpDemo.state}
-				onOpenChange={onAgentDetailsOpenChange}
 			/>
 			<RfpAttachmentPreviewDialog
 				attachment={previewAttachment}

@@ -44,7 +44,7 @@ export function RfpAttachmentPreviewDialog({
 						<div>
 							<p className="text-sm font-semibold text-text">RFP response strategy</p>
 							<p className="mt-1 text-sm text-text-subtle">
-								Approved HTML report staged as a PDF attachment entry for RFP-101.
+								Approved PDF staged as an attachment entry for RFP-101.
 							</p>
 						</div>
 					</div>

@@ -7,7 +7,7 @@ import type { SendPromptOptions } from "@/app/contexts";
 import { SidebarProvider } from "@/app/contexts/context-sidebar";
 import AppLayout from "@/components/projects/page";
 import AgentsView from "@/components/projects/agents/page";
-import { RfpAgentActivityDetails, RfpAgentTriggerDetails } from "@/components/projects/agents/components/rfp-agent-details-sheet";
+import { RfpAgentActivityDetails, RfpAgentTriggerDetails } from "@/components/projects/agents/components/rfp-agent-chat-details";
 import { BOARD_AGENTS, type BoardAgentData } from "@/components/projects/agents/data/board-agents";
 import { RFP_101_WORK_ITEM, resolveAgentsChatScreenContext } from "@/components/projects/agents/data/rfp-work-items";
 import { useAgentsRfpDemoState, type AgentsRfpDemoController } from "@/components/projects/agents/hooks/use-agents-rfp-demo-state";
@@ -30,7 +30,7 @@ import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import type { ChatPanelCustomAgentTabs } from "@/components/projects/sidebar-chat/page";
 import type { FloatingRovoButtonOnboardingConfig } from "@/components/projects/shared/components/floating-rovo-button";
-import { ROVO_AGENT_RESULT_OPEN_EVENT } from "@/components/projects/sidebar-chat/components/agent-result-card";
+import { ROVO_AGENT_RESULT_SELECT_EVENT } from "@/components/projects/sidebar-chat/components/agent-result-card";
 import { useAgentsWorkItemPresentation, type AgentsWorkItemPresentationController } from "@/components/projects/agents/hooks/use-agents-work-item-presentation";
 import { getMessageAgentResult } from "@/lib/rovo-ui-messages";
 import { useProjectDemoEmbedded } from "./use-project-demo-embedded";
@@ -131,12 +131,10 @@ function AgentsDemoContent({
 	workItemPresentation,
 	agentsChatScreenContext,
 }: Readonly<AgentsDemoContentProps>) {
-	const [isAgentDetailsOpen, setIsAgentDetailsOpen] = useState(false);
 	const [isRovoButtonOnboardingOpen, setIsRovoButtonOnboardingOpen] = useState(false);
 	const [dismissedRovoButtonOnboardingId, setDismissedRovoButtonOnboardingId] = useState<string | null>(null);
 	const appliedAgentResultMessageIdsRef = useRef<Set<string>>(new Set());
-	const hasAutoSelectedRfpAgentRef = useRef(false);
-	const { isOpen: isChatOpen, openChat, selectAgent, selectedAgentId, sendPrompt, uiMessages } = useRovoChat();
+	const { isOpen: isChatOpen, openChat, sendPrompt, uiMessages } = useRovoChat();
 	const { backToBoard, closeModal, promoteModalToInline } = workItemPresentation;
 	const { applyAgent } = rfpDemo.actions;
 	const hasAppliedRfpDraftingAgent = rfpDemo.state.agent?.id === RFP_DRAFTING_AGENT_ID;
@@ -198,7 +196,7 @@ function AgentsDemoContent({
 	}, [applyAgent, hasAppliedRfpDraftingAgent, uiMessages]);
 
 	useEffect(() => {
-		const handleOpenAgentResult = (event: Event) => {
+		const handleSelectAgentResult = (event: Event) => {
 			const { detail } = event as CustomEvent<{ agentId?: string }>;
 			if (detail?.agentId !== RFP_DRAFTING_AGENT_ID) {
 				return;
@@ -209,11 +207,10 @@ function AgentsDemoContent({
 			}
 			setDismissedRovoButtonOnboardingId(ROVO_BUTTON_AGENT_ONBOARDING_ID);
 			setIsRovoButtonOnboardingOpen(false);
-			setIsAgentDetailsOpen(true);
 		};
 
-		window.addEventListener(ROVO_AGENT_RESULT_OPEN_EVENT, handleOpenAgentResult);
-		return () => window.removeEventListener(ROVO_AGENT_RESULT_OPEN_EVENT, handleOpenAgentResult);
+		window.addEventListener(ROVO_AGENT_RESULT_SELECT_EVENT, handleSelectAgentResult);
+		return () => window.removeEventListener(ROVO_AGENT_RESULT_SELECT_EVENT, handleSelectAgentResult);
 	}, [applyAgent, hasAppliedRfpDraftingAgent]);
 
 	useEffect(() => {
@@ -222,21 +219,6 @@ function AgentsDemoContent({
 			setIsRovoButtonOnboardingOpen(false);
 		}
 	}, [rfpDemo.state.agent, rfpDemo.state.report.stage]);
-
-	useEffect(() => {
-		if (!rfpDemo.state.agent) {
-			hasAutoSelectedRfpAgentRef.current = false;
-			return;
-		}
-		if (hasAutoSelectedRfpAgentRef.current) {
-			return;
-		}
-
-		hasAutoSelectedRfpAgentRef.current = true;
-		if (selectedAgentId !== RFP_DRAFTING_AGENT_ID) {
-			selectAgent(RFP_DRAFTING_AGENT_ID);
-		}
-	}, [rfpDemo.state.agent, selectAgent, selectedAgentId]);
 
 	const shouldOfferRovoButtonOnboarding = (
 		rfpDemo.state.report.stage === "attached" &&
@@ -328,8 +310,6 @@ function AgentsDemoContent({
 			<AgentsView
 				workItemPresentation={workItemPresentation}
 				rfpDemo={rfpDemo}
-				isAgentDetailsOpen={isAgentDetailsOpen}
-				onAgentDetailsOpenChange={setIsAgentDetailsOpen}
 				onCreateRfpDraftingAgent={handleCreateRfpDraftingAgent}
 				chatContextBar={agentsChatScreenContext.chatContextBar}
 				chatGreeting={agentsChatScreenContext.greeting}
@@ -355,6 +335,9 @@ export default function AgentsDemo() {
 		() => getAgentsDemoAgentProfiles(rfpDemo.state),
 		[rfpDemo.state],
 	);
+	const autoSelectAgentId = rfpDemo.state.agent && rfpDemo.state.chat.selectedAgentId === RFP_DRAFTING_AGENT_ID
+		? RFP_DRAFTING_AGENT_ID
+		: undefined;
 	const chatPromptOptions = useMemo(
 		() => ({
 			...AGENTS_CHAT_PROMPT_OPTIONS,
@@ -369,7 +352,11 @@ export default function AgentsDemo() {
 
 	return (
 		<SidebarProvider>
-			<RovoChatProvider agentProfiles={chatAgentProfiles} defaultPromptOptions={chatPromptOptions}>
+			<RovoChatProvider
+				agentProfiles={chatAgentProfiles}
+				autoSelectAgentId={autoSelectAgentId}
+				defaultPromptOptions={chatPromptOptions}
+			>
 				<AgentsDemoContent
 					embedded={embedded}
 					rfpDemo={rfpDemo}

@@ -706,6 +706,7 @@ function createQueueItemId(fallbackCounter: number): string {
 
 interface RovoChatProviderProps {
 	agentProfiles?: readonly RovoAgentProfile[];
+	autoSelectAgentId?: string;
 	children: ReactNode;
 	defaultPromptOptions?: SendPromptOptions;
 	portIndex?: number;
@@ -722,6 +723,7 @@ function toAgentSelectorAgent(agent: Pick<RovoAgentProfile, "avatarSrc" | "bylin
 
 export function RovoChatProvider({
 	agentProfiles,
+	autoSelectAgentId,
 	children,
 	defaultPromptOptions,
 	portIndex,
@@ -766,6 +768,7 @@ export function RovoChatProvider({
 	const isDispatchingPromptRef = useRef(false);
 	const isCancellingRef = useRef(false);
 	const cancelStreamPromiseRef = useRef<Promise<void> | null>(null);
+	const autoSelectedAgentIdRef = useRef<string | null>(null);
 	const lastExplicitCancelAtRef = useRef(0);
 	const lastExplicitCancelKeyRef = useRef("");
 	const isSubmitPendingRef = useRef(false);
@@ -799,6 +802,26 @@ export function RovoChatProvider({
 			setSelectedAgentId(ROVO_AGENT_ID);
 		}
 	}, [agentProfileById, agentProfiles, selectedAgentId]);
+
+	useEffect(() => {
+		if (!autoSelectAgentId) {
+			autoSelectedAgentIdRef.current = null;
+			return;
+		}
+		if (autoSelectedAgentIdRef.current === autoSelectAgentId) {
+			return;
+		}
+
+		const nextAgent = agentProfileById.get(autoSelectAgentId);
+		if (!nextAgent) {
+			return;
+		}
+
+		autoSelectedAgentIdRef.current = autoSelectAgentId;
+		if (selectedAgentId !== nextAgent.id) {
+			setSelectedAgentId(nextAgent.id);
+		}
+	}, [agentProfileById, autoSelectAgentId, selectedAgentId]);
 
 	const startSubmitPending = useCallback((startedAt: number) => {
 		if (isSubmitPendingRef.current) {

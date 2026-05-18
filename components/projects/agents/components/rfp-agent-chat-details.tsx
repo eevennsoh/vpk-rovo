@@ -3,24 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Lozenge } from "@/components/ui/lozenge";
 import { Separator } from "@/components/ui/separator";
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-} from "@/components/ui/sheet";
-import {
-	RFP_DRAFTING_AGENT_CONVERSATION_STARTERS,
-	RFP_DRAFTING_AGENT_DESCRIPTION,
-	type AgentsRfpDemoState,
-} from "../lib/rfp-demo-state";
-
-interface RfpAgentDetailsSheetProps {
-	open: boolean;
-	state: AgentsRfpDemoState;
-	onOpenChange: (open: boolean) => void;
-}
+import type { AgentsRfpDemoState } from "../lib/rfp-demo-state";
 
 const TOOL_LABELS = [
 	"Jira work item reader",
@@ -186,61 +169,5 @@ export function RfpAgentActivityDetails({
 				)}
 			</DetailsSection>
 		</div>
-	);
-}
-
-export function RfpAgentDetailsSheet({
-	open,
-	state,
-	onOpenChange,
-}: Readonly<RfpAgentDetailsSheetProps>): React.ReactElement {
-	const agent = state.agent;
-	const agentDescription = agent?.description?.trim() || RFP_DRAFTING_AGENT_DESCRIPTION;
-	const conversationStarters = agent?.conversationStarters?.length
-		? agent.conversationStarters
-		: RFP_DRAFTING_AGENT_CONVERSATION_STARTERS;
-
-	return (
-		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent side="right" size="lg" className="gap-0 overflow-hidden bg-surface p-0">
-				<SheetHeader className="border-b border-border p-5">
-					<div className="flex flex-wrap items-center gap-2">
-						<SheetTitle>{agent?.name ?? "RFP Drafter"}</SheetTitle>
-						{agent ? <Lozenge variant="success">Assigned to Drafting</Lozenge> : null}
-					</div>
-					<SheetDescription>
-						{agentDescription}
-					</SheetDescription>
-				</SheetHeader>
-
-				<div className="min-h-0 flex-1 overflow-auto p-5">
-					<div className="grid gap-5">
-						<DetailsSection title="Description">
-							<p className="text-sm leading-6 text-text-subtle">{agentDescription}</p>
-						</DetailsSection>
-
-						<Separator />
-
-						<DetailsSection title="Conversation Starters">
-							<ul className="grid gap-2">
-								{conversationStarters.map((starter) => (
-									<li key={starter} className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-text-subtle">
-										{starter}
-									</li>
-								))}
-							</ul>
-						</DetailsSection>
-
-						<Separator />
-
-						<RfpAgentTriggerDetails state={state} />
-
-						<Separator />
-
-						<RfpAgentActivityDetails state={state} />
-					</div>
-				</div>
-			</SheetContent>
-		</Sheet>
 	);
 }

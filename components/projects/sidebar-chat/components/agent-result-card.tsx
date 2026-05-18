@@ -13,13 +13,14 @@ import { SkillTag, SkillTagGroup, type SkillTagColor } from "@/components/ui/ski
 import type { RovoDataParts } from "@/lib/rovo-ui-messages";
 import { cn } from "@/lib/utils";
 
-export const ROVO_AGENT_RESULT_OPEN_EVENT = "rovo:open-agent-result";
+export const ROVO_AGENT_RESULT_SELECT_EVENT = "rovo:select-agent-result";
 
 export type AgentResult = RovoDataParts["agent-result"];
 
 interface AgentResultCardProps {
 	agent: AgentResult;
 	className?: string;
+	onSelectAgent?: (agent: AgentResult) => void;
 }
 
 const AGENT_RESULT_VISUAL_IDENTITY = {
@@ -107,6 +108,7 @@ function getSkillTagColor(tool: string): SkillTagColor {
 export function AgentResultCard({
 	agent,
 	className,
+	onSelectAgent,
 }: Readonly<AgentResultCardProps>): ReactNode {
 	const displayName = getAgentDisplayName(agent);
 	const tools = Array.isArray(agent.tools)
@@ -114,8 +116,9 @@ export function AgentResultCard({
 		: [];
 	const capabilities = getAgentCapabilities(agent);
 	const identityAvatarSrc = getAgentIdentityAvatarSrc(agent);
-	const handleOpenAgent = () => {
-		window.dispatchEvent(new CustomEvent(ROVO_AGENT_RESULT_OPEN_EVENT, {
+	const handleSelectAgent = () => {
+		onSelectAgent?.(agent);
+		window.dispatchEvent(new CustomEvent(ROVO_AGENT_RESULT_SELECT_EVENT, {
 			detail: {
 				agentId: agent.agentId,
 				source: "agent-result-card",
@@ -133,9 +136,9 @@ export function AgentResultCard({
 				expandLabel="Expand agent details"
 				identityAvatarSrc={identityAvatarSrc}
 				kind="text"
-				onOpen={handleOpenAgent}
-				openCtaLabel="Open agent details"
-				openLabel={`Open ${displayName} details`}
+				onOpen={handleSelectAgent}
+				openCtaLabel="Select agent"
+				openLabel={`Select ${displayName}`}
 				title={displayName}
 				visualIdentity={identityAvatarSrc ? undefined : AGENT_RESULT_VISUAL_IDENTITY}
 			>

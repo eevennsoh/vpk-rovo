@@ -175,6 +175,8 @@ export default function ChatPanel({
 		chatSurface,
 		activeThreadId,
 		selectedAgent,
+		selectableAgents,
+		selectAgent,
 		isCustomAgentSelected,
 		activePrompt,
 		isHistoryOpen,
@@ -524,6 +526,11 @@ export default function ChatPanel({
 			preserveFloatingSurfaceOnArtifactDialogOpen,
 		],
 	);
+	const handleAgentResultSelect = useCallback((agent: RovoDataParts["agent-result"]) => {
+		if (selectableAgents.some((selectableAgent) => selectableAgent.id === agent.agentId)) {
+			selectAgent(agent.agentId);
+		}
+	}, [selectAgent, selectableAgents]);
 
 	const messagesContainerStyle = {
 		display: chatStyles.messagesContainer.display,
@@ -535,176 +542,182 @@ export default function ChatPanel({
 	const isHeaderHistoryEnabled = !hideHeader && headerVariant === "default";
 	const shouldRenderHeaderHistory = isHeaderHistoryEnabled && chatSurface !== "floating";
 	const shouldRenderCustomAgentTabs = isCustomAgentSelected || Boolean(customAgentTabs);
+	const chatConversationBody = (
+		<Conversation
+			className="min-h-0 min-w-0 flex-1"
+			contextRef={conversationContextRef}
+			followMode={scrollFollowMode}
+			initial={false}
+			resize={isStreamingLifecycleActive ? "instant" : "smooth"}
+			resizeTarget={isStreamingLifecycleActive ? "bottom" : "follow"}
+			targetScrollTop={getLatestTurnTargetTop}
+		>
+			<ConversationContent
+				className="mx-auto flex min-w-0 max-w-[800px] flex-col gap-4 px-4 py-6 md:gap-6"
+				style={messagesContainerStyle}
+			>
+				{messages.length === 0 ? (
+					<div className="w-full" style={chatStyles.emptyState}>
+						<ChatGreeting
+							heading={greeting?.heading}
+							illustrationSrc={greeting?.illustrationSrc}
+							illustrationDarkSrc={greeting?.illustrationDarkSrc}
+							isMaxMode={selectedReasoning === "max"}
+							selectedAgent={selectedAgent}
+							showHero={greeting?.showHero}
+							suggestions={greeting?.suggestions}
+							onSuggestionClick={handleGreetingSuggestionClick}
+						/>
+					</div>
+				) : (
+					<MessageTurns
+						isUserMessage={(message) => message.role === "user"}
+						getMessageContainerClassName={(message) => (message.role === "assistant" ? "[&:empty]:hidden" : undefined)}
+						getMessageContainerStyle={(message, messageIndex, turn) => {
+							return {
+								paddingLeft: message.role === "assistant" ? "12px" : "0",
+								paddingRight: message.role === "assistant" ? "12px" : "0",
+								marginTop: message.role === "assistant" && messageIndex > 0 && (turn[messageIndex - 1]?.role === "user" || turn[messageIndex - 1]?.role === "assistant") ? "24px" : "0",
+							};
+						}}
+						latestTurnClassName={styles.latestTurn}
+						latestTurnDataAttribute="data-chat-latest-turn"
+						messages={messages}
+						renderMessage={(message) => (
+							<MessageBubble
+								message={message}
+								isThinkingLifecycleStreaming={isStreamingLifecycleActive && message.id === lastAssistantMessageId}
+								onSuggestionClick={handleFollowUpSuggestionClick}
+								showFollowUpSuggestions={message.id === lastAssistantMessageId && !hasPendingChatWork}
+								enableSmartWidgets={enableSmartWidgets}
+								generativeCardAnimation={cards?.generativeAnimation}
+								editingMessageId={editingMessageId}
+								onEditMessage={(messageId, nextText) =>
+									editMessage(messageId, nextText, resolvedSendPromptOptions)
+								}
+								onSetEditingMessageId={setEditingMessageId}
+								onWidgetPrimaryAction={handleWidgetPrimaryAction}
+								onBuildPlan={handleBuildPlan}
+								resolvePlanBuildState={resolvePlanBuildState}
+							/>
+						)}
+						renderTurnAfter={(turn) => {
+							const generatedResults = turn.flatMap((message): GeneratedResult[] => {
+								const artifactResult = getMessageArtifactResult(message);
+								const agentResult = getMessageAgentResult(message);
+								const results: GeneratedResult[] = [];
+
+								if (artifactResult) {
+									results.push({ type: "artifact", result: artifactResult });
+								}
+								if (agentResult) {
+									results.push({ type: "agent", result: agentResult });
+								}
+
+								return results;
+							});
+
+							return generatedResults.length > 0 ? (
+								<div className="w-full space-y-2" data-testid="rovo-generated-result-group">
+									{generatedResults.map((generatedResult) => (
+										generatedResult.type === "artifact" ? (
+											<ArtifactResultCard
+												key={`artifact-${generatedResult.result.documentId}-${generatedResult.result.action}`}
+												artifact={generatedResult.result}
+												onDialogOpen={handleArtifactDialogOpen}
+												onDialogClose={releaseArtifactDialogFloatingPin}
+											/>
+										) : (
+											<AgentResultCard
+												key={`agent-${generatedResult.result.agentId}-${generatedResult.result.action}`}
+												agent={generatedResult.result}
+												onSelectAgent={handleAgentResultSelect}
+											/>
+										)
+									))}
+								</div>
+							) : null;
+						}}
+					/>
+				)}
+				{thinking.shouldShowPreloader ? (
+					<div style={chatStyles.thinkingContainer}>
+						<PreloadThinkingIndicator />
+					</div>
+				) : null}
+				{thinking.shouldShowThinkingStatus ? (
+					<StreamingThinkingIndicator
+						reasoningKey={thinking.streamingReasoningKey}
+						label={thinking.resolvedThinkingLabel}
+						hasDetails={thinking.hasThinkingDetails}
+						hasReasoningContent={thinking.hasReasoningContent}
+						trimmedReasoningContent={thinking.trimmedReasoningContent}
+						hasThinkingToolCalls={thinking.hasThinkingToolCalls}
+						thinkingToolCalls={thinking.thinkingToolCalls}
+						allowAutoCollapse={thinking.allowAutoCollapse}
+						lastMessageId={thinking.lastMessage?.id}
+						containerStyle={chatStyles.thinkingContainer}
+						phaseProps={thinking.reasoningPhaseProps}
+					/>
+				) : null}
+				{hasMessages ? <div ref={scrollSpacerRef} aria-hidden style={{ height: 0, flexShrink: 0 }} /> : null}
+			</ConversationContent>
+			<ConversationScrollButton className="z-10 transition-all" />
+		</Conversation>
+	);
+	const chatComposerBody = (
+		<div className="min-w-0 shrink-0">
+			{shouldShowQuestionCard && activeQuestionCard ? (
+				<>
+					<div className="px-3">
+						<ClarificationQuestionCard
+							key={activeQuestionCardKey ?? undefined}
+							questionCard={activeQuestionCard}
+							onSubmit={(answers) => {
+								handleClarificationSubmit(answers);
+								hideQuestionCard();
+							}}
+							onDismiss={dismissQuestionCard}
+						/>
+					</div>
+					<QuestionCardShortcutsFooter />
+				</>
+			) : shouldShowApprovalCard && activePendingPlan ? (
+				<>
+					<ApprovalCard
+						key={pendingPlanKey ?? undefined}
+						onDismiss={handleDismissApprovalCard}
+						onSelect={handlePlanApprovalSubmit}
+						isSubmitting={isSubmittingPlanApproval}
+					/>
+					<QuestionCardShortcutsFooter escLabel="cancel" />
+				</>
+			) : (
+				<>
+					<ChatComposer
+						prompt={prompt}
+						isStreaming={isStreamingLifecycleActive}
+						hasInFlightTurn={hasInFlightTurn}
+						queuedPrompts={queuedPrompts}
+						micStream={realtime.micStream}
+						onPromptChange={setPrompt}
+						onSubmit={handleSubmit}
+						onStop={abort}
+						onToggleRealtimeVoice={handleToggleRealtimeVoice}
+						onRemoveQueuedPrompt={removeQueuedPrompt}
+						onReasoningChange={setSelectedReasoning}
+						realtimeVoiceActive={isRealtimeVoiceActive}
+						selectedReasoning={selectedReasoning}
+						chatContextBar={chatContextBar}
+					/>
+				</>
+			)}
+		</div>
+	);
 	const chatPanelBody = (
 		<>
-			<Conversation
-				className="min-h-0 min-w-0 flex-1"
-				contextRef={conversationContextRef}
-				followMode={scrollFollowMode}
-				initial={false}
-				resize={isStreamingLifecycleActive ? "instant" : "smooth"}
-				resizeTarget={isStreamingLifecycleActive ? "bottom" : "follow"}
-				targetScrollTop={getLatestTurnTargetTop}
-			>
-				<ConversationContent
-					className="mx-auto flex min-w-0 max-w-[800px] flex-col gap-4 px-4 py-6 md:gap-6"
-					style={messagesContainerStyle}
-				>
-					{messages.length === 0 ? (
-						<div className="w-full" style={chatStyles.emptyState}>
-							<ChatGreeting
-								heading={greeting?.heading}
-								illustrationSrc={greeting?.illustrationSrc}
-								illustrationDarkSrc={greeting?.illustrationDarkSrc}
-								isMaxMode={selectedReasoning === "max"}
-								selectedAgent={selectedAgent}
-								showHero={greeting?.showHero}
-								suggestions={greeting?.suggestions}
-								onSuggestionClick={handleGreetingSuggestionClick}
-							/>
-						</div>
-					) : (
-						<MessageTurns
-							isUserMessage={(message) => message.role === "user"}
-							getMessageContainerClassName={(message) => (message.role === "assistant" ? "[&:empty]:hidden" : undefined)}
-							getMessageContainerStyle={(message, messageIndex, turn) => {
-								return {
-									paddingLeft: message.role === "assistant" ? "12px" : "0",
-									paddingRight: message.role === "assistant" ? "12px" : "0",
-									marginTop: message.role === "assistant" && messageIndex > 0 && (turn[messageIndex - 1]?.role === "user" || turn[messageIndex - 1]?.role === "assistant") ? "24px" : "0",
-								};
-							}}
-							latestTurnClassName={styles.latestTurn}
-							latestTurnDataAttribute="data-chat-latest-turn"
-							messages={messages}
-							renderMessage={(message) => (
-								<MessageBubble
-									message={message}
-									isThinkingLifecycleStreaming={isStreamingLifecycleActive && message.id === lastAssistantMessageId}
-									onSuggestionClick={handleFollowUpSuggestionClick}
-									showFollowUpSuggestions={message.id === lastAssistantMessageId && !hasPendingChatWork}
-									enableSmartWidgets={enableSmartWidgets}
-									generativeCardAnimation={cards?.generativeAnimation}
-									editingMessageId={editingMessageId}
-									onEditMessage={(messageId, nextText) =>
-										editMessage(messageId, nextText, resolvedSendPromptOptions)
-									}
-									onSetEditingMessageId={setEditingMessageId}
-									onWidgetPrimaryAction={handleWidgetPrimaryAction}
-									onBuildPlan={handleBuildPlan}
-									resolvePlanBuildState={resolvePlanBuildState}
-								/>
-							)}
-							renderTurnAfter={(turn) => {
-								const generatedResults = turn.flatMap((message): GeneratedResult[] => {
-									const artifactResult = getMessageArtifactResult(message);
-									const agentResult = getMessageAgentResult(message);
-									const results: GeneratedResult[] = [];
-
-									if (artifactResult) {
-										results.push({ type: "artifact", result: artifactResult });
-									}
-									if (agentResult) {
-										results.push({ type: "agent", result: agentResult });
-									}
-
-									return results;
-								});
-
-								return generatedResults.length > 0 ? (
-									<div className="w-full space-y-2" data-testid="rovo-generated-result-group">
-										{generatedResults.map((generatedResult) => (
-											generatedResult.type === "artifact" ? (
-												<ArtifactResultCard
-													key={`artifact-${generatedResult.result.documentId}-${generatedResult.result.action}`}
-													artifact={generatedResult.result}
-													onDialogOpen={handleArtifactDialogOpen}
-													onDialogClose={releaseArtifactDialogFloatingPin}
-												/>
-											) : (
-												<AgentResultCard
-													key={`agent-${generatedResult.result.agentId}-${generatedResult.result.action}`}
-													agent={generatedResult.result}
-												/>
-											)
-										))}
-									</div>
-								) : null;
-							}}
-						/>
-					)}
-					{thinking.shouldShowPreloader ? (
-						<div style={chatStyles.thinkingContainer}>
-							<PreloadThinkingIndicator />
-						</div>
-					) : null}
-					{thinking.shouldShowThinkingStatus ? (
-						<StreamingThinkingIndicator
-							reasoningKey={thinking.streamingReasoningKey}
-							label={thinking.resolvedThinkingLabel}
-							hasDetails={thinking.hasThinkingDetails}
-							hasReasoningContent={thinking.hasReasoningContent}
-							trimmedReasoningContent={thinking.trimmedReasoningContent}
-							hasThinkingToolCalls={thinking.hasThinkingToolCalls}
-							thinkingToolCalls={thinking.thinkingToolCalls}
-							allowAutoCollapse={thinking.allowAutoCollapse}
-							lastMessageId={thinking.lastMessage?.id}
-							containerStyle={chatStyles.thinkingContainer}
-							phaseProps={thinking.reasoningPhaseProps}
-						/>
-					) : null}
-					{hasMessages ? <div ref={scrollSpacerRef} aria-hidden style={{ height: 0, flexShrink: 0 }} /> : null}
-				</ConversationContent>
-				<ConversationScrollButton className="z-10 transition-all" />
-			</Conversation>
-
-			<div className="min-w-0 shrink-0">
-				{shouldShowQuestionCard && activeQuestionCard ? (
-					<>
-						<div className="px-3">
-							<ClarificationQuestionCard
-								key={activeQuestionCardKey ?? undefined}
-								questionCard={activeQuestionCard}
-								onSubmit={(answers) => {
-									handleClarificationSubmit(answers);
-									hideQuestionCard();
-								}}
-								onDismiss={dismissQuestionCard}
-							/>
-						</div>
-						<QuestionCardShortcutsFooter />
-					</>
-				) : shouldShowApprovalCard && activePendingPlan ? (
-					<>
-						<ApprovalCard
-							key={pendingPlanKey ?? undefined}
-							onDismiss={handleDismissApprovalCard}
-							onSelect={handlePlanApprovalSubmit}
-							isSubmitting={isSubmittingPlanApproval}
-						/>
-						<QuestionCardShortcutsFooter escLabel="cancel" />
-					</>
-				) : (
-					<>
-						<ChatComposer
-							prompt={prompt}
-							isStreaming={isStreamingLifecycleActive}
-							hasInFlightTurn={hasInFlightTurn}
-							queuedPrompts={queuedPrompts}
-							micStream={realtime.micStream}
-							onPromptChange={setPrompt}
-							onSubmit={handleSubmit}
-							onStop={abort}
-							onToggleRealtimeVoice={handleToggleRealtimeVoice}
-							onRemoveQueuedPrompt={removeQueuedPrompt}
-							onReasoningChange={setSelectedReasoning}
-							realtimeVoiceActive={isRealtimeVoiceActive}
-							selectedReasoning={selectedReasoning}
-							chatContextBar={chatContextBar}
-						/>
-					</>
-				)}
-			</div>
+			{chatConversationBody}
+			{chatComposerBody}
 		</>
 	);
 
@@ -724,34 +737,37 @@ export default function ChatPanel({
 				</div>
 			)}
 			{shouldRenderCustomAgentTabs ? (
-				<Tabs defaultValue="chat" aria-label="Custom agent views" className="min-h-0 min-w-0 flex-1">
-					<div className={cn("shrink-0 px-4", hideHeader ? "pt-3" : null)}>
-						<TabsList variant="line" className="w-full">
-							<TabsTrigger value="chat">Chat</TabsTrigger>
-							<TabsTrigger value="trigger">Trigger</TabsTrigger>
-							<TabsTrigger value="activity">Activity</TabsTrigger>
-						</TabsList>
-					</div>
-					<TabsContent value="chat" keepMounted className="min-h-0 flex flex-1 flex-col data-[hidden]:hidden">
-						{chatPanelBody}
-					</TabsContent>
-					<TabsContent value="trigger" className="min-h-0 overflow-y-auto px-4 py-5 data-[hidden]:hidden">
-						{customAgentTabs?.trigger ?? (
-							<CustomAgentTabEmptyState
-								title="No trigger configured"
-								description={`${selectedAgent.name} does not have trigger details in this view yet.`}
-							/>
-						)}
-					</TabsContent>
-					<TabsContent value="activity" className="min-h-0 overflow-y-auto px-4 py-5 data-[hidden]:hidden">
-						{customAgentTabs?.activity ?? (
-							<CustomAgentTabEmptyState
-								title="No activity yet"
-								description={`${selectedAgent.name} has not recorded activity in this view yet.`}
-							/>
-						)}
-					</TabsContent>
-				</Tabs>
+				<>
+					<Tabs defaultValue="chat" aria-label="Custom agent views" className="min-h-0 min-w-0 flex-1">
+						<div className={cn("shrink-0 px-3 pb-3", hideHeader ? "pt-3" : null)}>
+							<TabsList className="w-full">
+								<TabsTrigger value="chat">Chat</TabsTrigger>
+								<TabsTrigger value="trigger">Trigger</TabsTrigger>
+								<TabsTrigger value="activity">Activity</TabsTrigger>
+							</TabsList>
+						</div>
+						<TabsContent value="chat" keepMounted className="min-h-0 flex flex-1 flex-col data-[hidden]:hidden">
+							{chatConversationBody}
+						</TabsContent>
+						<TabsContent value="trigger" className="min-h-0 flex-1 overflow-y-auto px-4 py-5 data-[hidden]:hidden">
+							{customAgentTabs?.trigger ?? (
+								<CustomAgentTabEmptyState
+									title="No trigger configured"
+									description={`${selectedAgent.name} does not have trigger details in this view yet.`}
+								/>
+							)}
+						</TabsContent>
+						<TabsContent value="activity" className="min-h-0 flex-1 overflow-y-auto px-4 py-5 data-[hidden]:hidden">
+							{customAgentTabs?.activity ?? (
+								<CustomAgentTabEmptyState
+									title="No activity yet"
+									description={`${selectedAgent.name} has not recorded activity in this view yet.`}
+								/>
+							)}
+						</TabsContent>
+					</Tabs>
+					{chatComposerBody}
+				</>
 			) : (
 				chatPanelBody
 			)}

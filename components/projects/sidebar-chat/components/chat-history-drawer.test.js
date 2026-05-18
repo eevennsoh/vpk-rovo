@@ -80,8 +80,9 @@ test("custom agent compact chat renders view tabs below the header", () => {
 	assert.match(chatPanelSource, /const shouldRenderCustomAgentTabs = isCustomAgentSelected \|\| Boolean\(customAgentTabs\);/u);
 	assert.match(
 		chatPanelSource,
-		/\{shouldRenderCustomAgentTabs \? \([\s\S]*<Tabs defaultValue="chat" aria-label="Custom agent views" className="min-h-0 min-w-0 flex-1">[\s\S]*<TabsList variant="line" className="w-full">[\s\S]*<TabsTrigger value="chat">Chat<\/TabsTrigger>[\s\S]*<TabsTrigger value="trigger">Trigger<\/TabsTrigger>[\s\S]*<TabsTrigger value="activity">Activity<\/TabsTrigger>[\s\S]*<TabsContent value="chat" keepMounted[\s\S]*\{chatPanelBody\}[\s\S]*<TabsContent value="trigger"[\s\S]*customAgentTabs\?\.trigger[\s\S]*<TabsContent value="activity"[\s\S]*customAgentTabs\?\.activity/u,
+		/\{shouldRenderCustomAgentTabs \? \([\s\S]*<Tabs defaultValue="chat" aria-label="Custom agent views" className="min-h-0 min-w-0 flex-1">[\s\S]*<TabsList className="w-full">[\s\S]*<TabsTrigger value="chat">Chat<\/TabsTrigger>[\s\S]*<TabsTrigger value="trigger">Trigger<\/TabsTrigger>[\s\S]*<TabsTrigger value="activity">Activity<\/TabsTrigger>[\s\S]*<TabsContent value="chat" keepMounted[\s\S]*\{chatConversationBody\}[\s\S]*<TabsContent value="trigger"[\s\S]*customAgentTabs\?\.trigger[\s\S]*<TabsContent value="activity"[\s\S]*customAgentTabs\?\.activity[\s\S]*<\/Tabs>[\s\S]*\{chatComposerBody\}/u,
 	);
+	assert.match(chatPanelSource, /const chatPanelBody = \([\s\S]*\{chatConversationBody\}[\s\S]*\{chatComposerBody\}[\s\S]*\);/u);
 });
 
 test("rovo app sidebar renders the shared chat history panel inline", () => {
