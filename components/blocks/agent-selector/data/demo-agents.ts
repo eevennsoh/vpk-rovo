@@ -8,12 +8,6 @@ export const AGENT_SELECTOR_DEMO_AGENTS: readonly AgentSelectorAgent[] = [
 		avatarSrc: "/3p/github/24.svg",
 	},
 	{
-		id: "rovo-dev",
-		name: "Rovo Dev",
-		byline: "by Atlassian",
-		avatarSrc: "/1p/rovo.svg",
-	},
-	{
 		id: "readiness-checker",
 		name: "Readiness Checker",
 		byline: "Rovo agent by Enterprise Solutions",

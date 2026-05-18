@@ -896,6 +896,7 @@ export function resolveRfpDemoBoardColumns(
 					return {
 						...resolvedCard,
 						avatarSrc: state.agent?.avatarSrc ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
+						avatarShape: "hexagon" as const,
 						avatarPulse: workItem.agentStatus === "running" || workItem.agentStatus === "queued",
 					};
 				}

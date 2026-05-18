@@ -256,7 +256,7 @@ test("RFP reset action lives in the board toolbar next to grouping", () => {
 	);
 	assert.match(BOARD_TOOLBAR_SOURCE, /<AlertDialogTitle>Reset demo\?<\/AlertDialogTitle>/u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /permanently deletes all Rovo chat history/u);
-	assert.match(BOARD_TOOLBAR_SOURCE, /role="status" aria-live="polite"[\s\S]*Resetting demo\.\.\./u);
+	assert.doesNotMatch(BOARD_TOOLBAR_SOURCE, /Resetting demo\.\.\./u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /<AlertDialogAction[\s\S]*isLoading=\{isResetting\}[\s\S]*onClick=\{\(\) => void handleConfirmReset\(\)\}[\s\S]*variant="warning"/u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /shape\?: "circle" \| "hexagon";/u);
 	assert.match(BOARD_TOOLBAR_SOURCE, /<Avatar shape=\{avatar\.shape \?\? "circle"\} size="sm">/u);

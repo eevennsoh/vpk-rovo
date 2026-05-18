@@ -38,6 +38,7 @@ export interface AgentSelectorProps {
 	onQueryChange?: (query: string) => void;
 	query?: string;
 	searchPlaceholder?: string;
+	selectionMode?: "multiple" | "single";
 	selectedAgentActions?: readonly AgentSelectorAction[];
 	selectedAgentIds?: readonly string[];
 }
@@ -74,6 +75,7 @@ export function AgentSelector({
 	onQueryChange,
 	query,
 	searchPlaceholder = "Search agents",
+	selectionMode = "multiple",
 	selectedAgentActions,
 	selectedAgentIds,
 }: Readonly<AgentSelectorProps>): ReactElement {
@@ -105,6 +107,7 @@ export function AgentSelector({
 
 	const hasFooterActions = Boolean(onBrowseAgents || onCreateAgent);
 	const hasSelectedAgentActions = selectedActions.length > 0;
+	const supportsMultipleSelection = selectionMode === "multiple";
 
 	return (
 		<Command className={cn("h-[26rem] max-h-[min(26rem,var(--available-height))] min-h-0 min-w-80 flex-1 p-3", className)} shouldFilter={false}>
@@ -144,13 +147,14 @@ export function AgentSelector({
 						const isSelected = selectedAgentIdSet.has(agent.id);
 						return (
 							<CommandItem
-								aria-checked={isSelected}
+								aria-checked={supportsMultipleSelection ? isSelected : undefined}
 								className="h-12 min-h-12 items-center gap-3 rounded-[6px] px-3 py-1.5"
-								data-checked={isSelected}
+								data-checked={supportsMultipleSelection && isSelected ? true : undefined}
 								key={agent.id}
 								keywords={[agent.name, agent.byline]}
 								onSelect={() => onAgentToggle?.(agent.id)}
-								role="menuitemcheckbox"
+								role={supportsMultipleSelection ? "menuitemcheckbox" : undefined}
+								showCheckIcon={supportsMultipleSelection}
 								value={agent.name}
 							>
 								<AgentSelectorLogo agent={agent} />

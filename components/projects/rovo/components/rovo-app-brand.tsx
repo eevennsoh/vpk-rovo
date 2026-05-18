@@ -17,7 +17,7 @@ import { Icon } from "@/components/ui/icon";
 export function RovoAppBrand() {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
-	const [selectedAgentIds, setSelectedAgentIds] = useState<readonly string[]>(["rovo-dev"]);
+	const [selectedAgentIds, setSelectedAgentIds] = useState<readonly string[]>(["github-copilot"]);
 
 	function selectAgent(agentId: string) {
 		setSelectedAgentIds((currentIds) => (
@@ -84,6 +84,7 @@ export function RovoAppBrand() {
 					onCreateAgent={closeSelector}
 					onQueryChange={setQuery}
 					query={query}
+					selectionMode="single"
 					selectedAgentIds={selectedAgentIds}
 				/>
 			</DropdownMenuContent>

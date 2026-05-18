@@ -22,7 +22,7 @@ interface AgentSelectorPageProps {
 export default function AgentSelectorPage({ variant = "default" }: Readonly<AgentSelectorPageProps> = {}): ReactElement {
 	const [open, setOpen] = useState(true);
 	const [selectedAgentIds, setSelectedAgentIds] = useState<readonly string[]>(
-		variant === "selected-agent-actions" ? ["ai-insights-agent"] : ["rovo-dev"]
+		variant === "selected-agent-actions" ? ["ai-insights-agent"] : ["github-copilot"]
 	);
 	const agents = variant === "selected-agent-actions" ? AGENT_SELECTOR_CUSTOM_AGENT_DEMO_AGENTS : AGENT_SELECTOR_DEMO_AGENTS;
 	const selectedAgentActions: readonly AgentSelectorAction[] = variant === "selected-agent-actions"
@@ -42,17 +42,8 @@ export default function AgentSelectorPage({ variant = "default" }: Readonly<Agen
 		]
 		: [];
 
-	function toggleAgent(agentId: string) {
-		if (variant === "selected-agent-actions") {
-			setSelectedAgentIds([agentId]);
-			return;
-		}
-
-		setSelectedAgentIds((currentIds) => (
-			currentIds.includes(agentId)
-				? currentIds.filter((currentId) => currentId !== agentId)
-				: [...currentIds, agentId]
-		));
+	function selectAgent(agentId: string) {
+		setSelectedAgentIds([agentId]);
 	}
 
 	return (
@@ -69,9 +60,10 @@ export default function AgentSelectorPage({ variant = "default" }: Readonly<Agen
 				<AgentSelector
 					agents={agents}
 					heading={variant === "selected-agent-actions" ? "Switch to another agent" : undefined}
-					onAgentToggle={toggleAgent}
+					onAgentToggle={selectAgent}
 					onBrowseAgents={() => undefined}
 					onCreateAgent={() => undefined}
+					selectionMode="single"
 					selectedAgentActions={selectedAgentActions}
 					selectedAgentIds={selectedAgentIds}
 				/>

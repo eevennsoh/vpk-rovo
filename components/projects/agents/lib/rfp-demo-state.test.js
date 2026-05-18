@@ -13,6 +13,7 @@ async function loadRfpDemoStateHarness() {
 					GENERATED_RFP_REPORT_ATTACHMENT_ID,
 					RFP_DRAFTING_AGENT_AVATAR_SRCS,
 					RFP_DRAFTING_AGENT_ID,
+					RFP_DRAFTING_AGENT_NAME,
 					RFP_DRAFTING_EVENT_TRIGGER_LABEL,
 					attachRfpReportToWorkItem,
 					approveRfpReport,
@@ -185,6 +186,28 @@ test("dragging RFP-102 to Drafting after agent creation assigns the agent and st
 		/RFP Drafting Agent started first-pass response prep for RFP-102\./,
 	);
 	assert.match(state.toasts[0].message, /Preparing first-pass response package/);
+});
+
+test("running RFP agent assignees resolve to hexagon board card avatars", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const state = harness.moveRfpDemoCard(
+		harness.scheduleRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState()),
+		"RFP-102",
+		"Drafting",
+	);
+	state.workItems["RFP-102"] = {
+		...state.workItems["RFP-102"],
+		agentAssignmentIds: [harness.RFP_DRAFTING_AGENT_ID],
+		agentStatus: "running",
+		assignee: harness.RFP_DRAFTING_AGENT_NAME,
+	};
+
+	const drafting = harness.resolveRfpDemoBoardColumns(state).find((column) => column.title === "Drafting");
+	const activeCard = drafting.cards.find((card) => card.code === "RFP-102");
+
+	assert.equal(activeCard.avatarSrc, state.agent.avatarSrc);
+	assert.equal(activeCard.avatarShape, "hexagon");
+	assert.equal(activeCard.avatarPulse, true);
 });
 
 test("completed Review tickets left unassigned do not inherit the seed human avatar", async () => {
