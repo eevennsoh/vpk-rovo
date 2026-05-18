@@ -574,6 +574,7 @@ export function KanbanBoard({
 		const isMultiDrag = Boolean(selectedCardCodes?.has(card.code) && selectedCardCodes.size > 1);
 		event.dataTransfer.effectAllowed = "move";
 		event.dataTransfer.dropEffect = "move";
+		event.dataTransfer.setData("text/plain", card.code);
 		if (isMultiDrag && event.dataTransfer && selectedCardCodes) {
 			dragImageRef.current = buildMultiDragImage(selectedCardCodes.size);
 			event.dataTransfer.setDragImage(dragImageRef.current, 0, 0);
