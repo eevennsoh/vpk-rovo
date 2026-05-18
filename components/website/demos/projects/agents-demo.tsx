@@ -340,9 +340,6 @@ export default function AgentsDemo() {
 		() => getAgentsDemoAgentProfiles(rfpDemo.state),
 		[rfpDemo.state],
 	);
-	const autoSelectAgentId = rfpDemo.state.agent && rfpDemo.state.chat.selectedAgentId === RFP_DRAFTING_AGENT_ID
-		? RFP_DRAFTING_AGENT_ID
-		: undefined;
 	const chatPromptOptions = useMemo(
 		() => ({
 			...AGENTS_CHAT_PROMPT_OPTIONS,
@@ -359,7 +356,6 @@ export default function AgentsDemo() {
 		<SidebarProvider>
 			<RovoChatProvider
 				agentProfiles={chatAgentProfiles}
-				autoSelectAgentId={autoSelectAgentId}
 				defaultPromptOptions={chatPromptOptions}
 			>
 				<AgentsDemoContent

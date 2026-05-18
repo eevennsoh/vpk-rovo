@@ -15,6 +15,10 @@ export const RFP_DRAFTING_AGENT_CONVERSATION_STARTERS = [
 	"Summarize blockers before this RFP can move to Review.",
 	"Create reusable answer snippets from the attached RFP packet.",
 ] as const;
+export const RFP_DRAFTING_TRIGGER_PROMPT = [
+	"When a ticket enters Drafting, inspect the RFP packet, customer context, and required response sections.",
+	"Draft the first-pass response package, flag blockers or missing inputs, attach the draft to the ticket, and move ready tickets to Review.",
+].join(" ");
 export const RFP_DRAFTING_SCHEDULE_ID = "rfp-drafting-weekday-0900";
 export const RFP_DRAFTING_BOARD_NAME = "Enterprise RFP Response";
 export const RFP_DRAFTING_COLUMN_NAME = "Drafting";
@@ -323,13 +327,13 @@ function getRfpDraftingAgentConversationStarters(starters?: readonly string[] | 
 		: [...RFP_DRAFTING_AGENT_CONVERSATION_STARTERS];
 }
 
-export function createRfpDraftingEventTrigger(prompt: string | null = null): AgentsRfpDemoEventTrigger {
+export function createRfpDraftingEventTrigger(prompt: string | null = RFP_DRAFTING_TRIGGER_PROMPT): AgentsRfpDemoEventTrigger {
 	return {
 		type: "jira-column-entered",
 		board: RFP_DRAFTING_BOARD_NAME,
 		column: RFP_DRAFTING_COLUMN_NAME,
 		label: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
-		prompt,
+		prompt: prompt?.trim() || RFP_DRAFTING_TRIGGER_PROMPT,
 	};
 }
 
@@ -750,10 +754,6 @@ export function createRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDemo
 	const createdState: AgentsRfpDemoState = {
 		...state,
 		agent,
-		chat: {
-			...state.chat,
-			selectedAgentId: RFP_DRAFTING_AGENT_ID,
-		},
 	};
 
 	const withCreated = appendUniqueActivity(createdState, {

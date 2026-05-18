@@ -13,6 +13,10 @@ const RFP_DRAFTING_AGENT_CONVERSATION_STARTERS = [
 	"Summarize blockers before this RFP can move to Review.",
 	"Create reusable answer snippets from the attached RFP packet.",
 ];
+const RFP_DRAFTING_TRIGGER_PROMPT = [
+	"When a ticket enters Drafting, inspect the RFP packet, customer context, and required response sections.",
+	"Draft the first-pass response package, flag blockers or missing inputs, attach the draft to the ticket, and move ready tickets to Review.",
+].join(" ");
 const RFP_DRAFTING_AGENT_AVATAR_SRC = "/avatar-agent/dev-agents/feature-flag-cleaner.svg";
 const RFP_DRAFTING_BOARD_NAME = "Enterprise RFP Response";
 const RFP_DRAFTING_COLUMN_NAME = "Drafting";
@@ -27,6 +31,7 @@ const AGENTS_RFP_DEMO_JOB_PROMPT = [
 const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
 const RFP_TICKET_DRAFT_ATTACHMENT_KIND = "rfp-draft-html";
 const DEMO_RUN_BASE_TIME = Date.parse("2026-06-03T15:00:00.000Z");
+const DEMO_ACTIVITY_STEP_MS = 2 * 60_000;
 const RFP_DRAFTING_PROCESSING_DELAYS_MS = [15_000, 24_000, 34_000, 19_000, 29_000];
 const RFP_DRAFTING_NO_WORK_TOAST_MESSAGE = `${RFP_DRAFTING_AGENT_NAME} found no new Drafting tickets to process.`;
 
@@ -35,7 +40,7 @@ const RFP_DRAFTING_EVENT_TRIGGER = {
 	board: RFP_DRAFTING_BOARD_NAME,
 	column: RFP_DRAFTING_COLUMN_NAME,
 	label: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
-	prompt: null,
+	prompt: RFP_DRAFTING_TRIGGER_PROMPT,
 };
 
 const BOARD_SEED = [
@@ -221,7 +226,7 @@ function createRunId() {
 }
 
 function formatDemoTimestamp(index = 0) {
-	return new Date(DEMO_RUN_BASE_TIME + index * 2 * 60_000).toISOString();
+	return new Date(DEMO_RUN_BASE_TIME + index * DEMO_ACTIVITY_STEP_MS).toISOString();
 }
 
 function formatDemoTimestampLabel(index = 0) {
@@ -397,10 +402,10 @@ function normalizeBoard(rawBoard) {
 	return columns.length > 0 ? { columns } : defaultBoard;
 }
 
-function createRfpDraftingEventTrigger(prompt = null) {
+function createRfpDraftingEventTrigger(prompt = RFP_DRAFTING_TRIGGER_PROMPT) {
 	return {
 		...RFP_DRAFTING_EVENT_TRIGGER,
-		prompt: getNonEmptyString(prompt),
+		prompt: getNonEmptyString(prompt) ?? RFP_DRAFTING_TRIGGER_PROMPT,
 	};
 }
 
@@ -465,10 +470,46 @@ function normalizeJobRunSummary(rawRun) {
 	};
 }
 
+function repairRunningEventRunTimeline(jobRunSummaries) {
+	let latestSettledTimestamp = Math.max(
+		DEMO_RUN_BASE_TIME - DEMO_ACTIVITY_STEP_MS,
+		...jobRunSummaries
+			.filter((runSummary) => runSummary.status !== "running")
+			.map(getRunTimelineTimestampMs)
+			.filter((timestamp) => Number.isFinite(timestamp)),
+	);
+
+	return jobRunSummaries.map((runSummary) => {
+		const runTimestamp = getRunTimelineTimestampMs(runSummary);
+		if (
+			runSummary.status === "running" &&
+			runSummary.source === "jira-column-entered" &&
+			Number.isFinite(runTimestamp) &&
+			runTimestamp <= latestSettledTimestamp
+		) {
+			latestSettledTimestamp += DEMO_ACTIVITY_STEP_MS;
+			return {
+				...runSummary,
+				startedAt: new Date(latestSettledTimestamp).toISOString(),
+			};
+		}
+
+		if (Number.isFinite(runTimestamp)) {
+			latestSettledTimestamp = Math.max(latestSettledTimestamp, runTimestamp);
+		}
+
+		return runSummary;
+	});
+}
+
 function normalizeAgent(rawAgent) {
 	if (!isObject(rawAgent)) {
 		return null;
 	}
+
+	const jobRunSummaries = Array.isArray(rawAgent.jobRunSummaries)
+		? repairRunningEventRunTimeline(rawAgent.jobRunSummaries.map(normalizeJobRunSummary).filter(Boolean))
+		: [];
 
 	return {
 		id: RFP_DRAFTING_AGENT_ID,
@@ -481,9 +522,7 @@ function normalizeAgent(rawAgent) {
 		avatarSrc: getNonEmptyString(rawAgent.avatarSrc) ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
 		jobId: getNonEmptyString(rawAgent.jobId),
 		trigger: normalizeTrigger(rawAgent.trigger),
-		jobRunSummaries: Array.isArray(rawAgent.jobRunSummaries)
-			? rawAgent.jobRunSummaries.map(normalizeJobRunSummary).filter(Boolean)
-			: [],
+		jobRunSummaries,
 	};
 }
 
@@ -668,6 +707,53 @@ function getClientNameForTicket(ticketCode) {
 
 function getProcessingDelayMs(index) {
 	return RFP_DRAFTING_PROCESSING_DELAYS_MS[index % RFP_DRAFTING_PROCESSING_DELAYS_MS.length];
+}
+
+function getRunTimelineTimestampMs(runSummary) {
+	const finishedAtMs = Date.parse(runSummary?.finishedAt);
+	if (Number.isFinite(finishedAtMs)) {
+		return finishedAtMs;
+	}
+
+	const startedAtMs = Date.parse(runSummary?.startedAt);
+	return Number.isFinite(startedAtMs) ? startedAtMs : null;
+}
+
+function getNextRunTimelineTimestamp(state) {
+	const timestamps = (state.agent?.jobRunSummaries ?? [])
+		.map(getRunTimelineTimestampMs)
+		.filter((timestamp) => Number.isFinite(timestamp));
+
+	if (timestamps.length === 0) {
+		return formatDemoTimestamp(0);
+	}
+
+	return new Date(Math.max(...timestamps) + DEMO_ACTIVITY_STEP_MS).toISOString();
+}
+
+function getRunCompletionTimestamp(runSummary) {
+	const startedAtMs = Date.parse(runSummary?.startedAt);
+	if (!Number.isFinite(startedAtMs)) {
+		return runSummary?.finishedAt ?? formatDemoTimestamp(runSummary?.processedTicketCodes?.length ?? 0);
+	}
+
+	return new Date(startedAtMs + (runSummary.processedTicketCodes.length + 1) * DEMO_ACTIVITY_STEP_MS).toISOString();
+}
+
+function getTicketCompletionTimestamp(state, ticketCode, workItem, fallbackIndex) {
+	const runSummary = state.agent?.jobRunSummaries?.find((run) => run.id === workItem.agentJobRunId);
+	if (!runSummary) {
+		return formatDemoTimestamp(fallbackIndex + 1);
+	}
+
+	const processedIndex = runSummary.processedTicketCodes.indexOf(ticketCode);
+	const completionIndex = processedIndex >= 0 ? processedIndex + 1 : fallbackIndex + 1;
+	const startedAtMs = Date.parse(runSummary.startedAt);
+	if (!Number.isFinite(startedAtMs)) {
+		return formatDemoTimestamp(completionIndex);
+	}
+
+	return new Date(startedAtMs + completionIndex * DEMO_ACTIVITY_STEP_MS).toISOString();
 }
 
 function createGeneratedAttachment(ticketCode, previewHtml) {
@@ -973,7 +1059,8 @@ function runRfpDraftingAgent(state, {
 	const failedTicketCodes = [];
 	const threadLinks = [];
 	const threadRecords = [];
-	const startedAt = formatDemoTimestamp(0);
+	const startedAt = getNextRunTimelineTimestamp(nextState);
+	const startedAtMs = Date.parse(startedAt);
 
 	for (const [index, ticketCode] of ticketCodesToEvaluate.entries()) {
 		const currentWorkItem = nextState.workItems[ticketCode] ?? createDefaultWorkItemState(ticketCode, findColumnForTicket(nextState, ticketCode)?.title ?? RFP_DRAFTING_COLUMN_NAME);
@@ -1005,7 +1092,9 @@ function runRfpDraftingAgent(state, {
 		};
 
 		if (failSet.has(ticketCode)) {
-			const failedAt = formatDemoTimestamp(index + 1);
+			const failedAt = Number.isFinite(startedAtMs)
+				? new Date(startedAtMs + (index + 1) * DEMO_ACTIVITY_STEP_MS).toISOString()
+				: formatDemoTimestamp(index + 1);
 			nextState = {
 				...nextState,
 				workItems: {
@@ -1048,7 +1137,11 @@ function runRfpDraftingAgent(state, {
 		nextState.workItems[ticketCode]?.agentStatus === "running" ||
 		nextState.workItems[ticketCode]?.agentStatus === "queued"
 	));
-	const finishedAt = hasRunningTickets ? null : formatDemoTimestamp(ticketCodesToEvaluate.length + 1);
+	const finishedAt = hasRunningTickets
+		? null
+		: Number.isFinite(startedAtMs)
+			? new Date(startedAtMs + (ticketCodesToEvaluate.length + 1) * DEMO_ACTIVITY_STEP_MS).toISOString()
+			: formatDemoTimestamp(ticketCodesToEvaluate.length + 1);
 	const runSummary = buildRunSummary({
 		failedTicketCodes,
 		finishedAt,
@@ -1101,6 +1194,10 @@ function getDueAgentWorkItems(state, now) {
 		.map(([ticketCode, workItem]) => ({ ticketCode, workItem }));
 }
 
+function getRunSummaryFinishedAt(state, runSummary) {
+	return getRunCompletionTimestamp(runSummary) ?? runSummary.startedAt;
+}
+
 function refreshRunSummaries(state) {
 	if (!state.agent?.jobRunSummaries?.length) {
 		return state;
@@ -1136,7 +1233,7 @@ function refreshRunSummaries(state) {
 			...runSummary,
 			status,
 			failedTicketCodes,
-			finishedAt: runSummary.finishedAt ?? formatDemoTimestamp(runSummary.processedTicketCodes.length + 1),
+			finishedAt: getRunSummaryFinishedAt(state, runSummary),
 			summary: [
 				`Processed ${runSummary.processedTicketCodes.length} ticket${runSummary.processedTicketCodes.length === 1 ? "" : "s"}`,
 				`skipped ${runSummary.skippedTicketCodes.length}`,
@@ -1171,7 +1268,7 @@ async function advanceRfpDraftingAgentProcessing(state, {
 	for (const [index, { ticketCode, workItem }] of dueItems.entries()) {
 		const ticketTitle = WORK_ITEM_TITLES[ticketCode] ?? ticketCode;
 		const threadId = workItem.agentSessionThreadId ?? createThreadIdForTicket(ticketCode);
-		const completedAt = formatDemoTimestamp(index + 1);
+		const completedAt = getTicketCompletionTimestamp(nextState, ticketCode, workItem, index);
 
 		try {
 			const contextDescription = buildActiveJiraWorkItemContextForTicket(ticketCode, workItem.status);
@@ -1352,6 +1449,7 @@ module.exports = {
 	RFP_DRAFTING_COLUMN_NAME,
 	RFP_DRAFTING_EVENT_TRIGGER,
 	RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+	RFP_DRAFTING_TRIGGER_PROMPT,
 	RFP_REVIEW_COLUMN_NAME,
 	advanceRfpDraftingAgentProcessing,
 	buildActiveJiraWorkItemContextForTicket,

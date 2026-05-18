@@ -11,13 +11,14 @@ async function loadRfpDemoStateHarness() {
 				export {
 					AGENTS_RFP_DEMO_STORAGE_KEY,
 					GENERATED_RFP_REPORT_ATTACHMENT_ID,
-					RFP_DRAFTING_AGENT_AVATAR_SRCS,
-					RFP_DRAFTING_AGENT_CONVERSATION_STARTERS,
-					RFP_DRAFTING_AGENT_DESCRIPTION,
-					RFP_DRAFTING_AGENT_ID,
-					RFP_DRAFTING_AGENT_NAME,
-					RFP_DRAFTING_EVENT_TRIGGER_LABEL,
-					attachRfpReportToWorkItem,
+						RFP_DRAFTING_AGENT_AVATAR_SRCS,
+						RFP_DRAFTING_AGENT_CONVERSATION_STARTERS,
+						RFP_DRAFTING_AGENT_DESCRIPTION,
+						RFP_DRAFTING_AGENT_ID,
+						RFP_DRAFTING_AGENT_NAME,
+						RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+						RFP_DRAFTING_TRIGGER_PROMPT,
+						attachRfpReportToWorkItem,
 					approveRfpReport,
 					clearRfpDraftingAgentTrigger,
 					createDefaultAgentsRfpDemoState,
@@ -95,9 +96,18 @@ test("legacy persisted RFP agent profile gets description and conversation start
 	assert.deepEqual(resumed.agent.conversationStarters, [...harness.RFP_DRAFTING_AGENT_CONVERSATION_STARTERS]);
 });
 
+test("creating the RFP agent keeps Rovo as the selected chat agent", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const state = harness.createRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
+
+	assert.equal(state.agent.id, harness.RFP_DRAFTING_AGENT_ID);
+	assert.equal(state.chat.selectedAgentId, "rovo");
+});
+
 test("RFP agent trigger prompt saves and explicit no-trigger state survives parsing", async () => {
 	const harness = await loadRfpDemoStateHarness();
 	const created = harness.createRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
+	assert.equal(created.agent.trigger.prompt, harness.RFP_DRAFTING_TRIGGER_PROMPT);
 	const prompted = harness.setRfpDraftingAgentTrigger(
 		created,
 		"When an RFP ticket enters Drafting, inspect the packet and draft the response package.",
@@ -117,6 +127,7 @@ test("RFP agent trigger prompt saves and explicit no-trigger state survives pars
 
 	const reapplied = harness.createRfpDraftingAgent(resumed);
 	assert.equal(reapplied.agent.trigger.label, harness.RFP_DRAFTING_EVENT_TRIGGER_LABEL);
+	assert.equal(reapplied.agent.trigger.prompt, harness.RFP_DRAFTING_TRIGGER_PROMPT);
 });
 
 test("report stages advance through generated, refined, approved, pdf-exported, and attached", async () => {

@@ -106,12 +106,9 @@ test("AgentsDemo opens Rovo agent onboarding after returning to the attached rep
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/const autoSelectAgentId = rfpDemo\.state\.agent && rfpDemo\.state\.chat\.selectedAgentId === RFP_DRAFTING_AGENT_ID[\s\S]*\? RFP_DRAFTING_AGENT_ID[\s\S]*: undefined;/u,
+		/<RovoChatProvider[\s\S]*agentProfiles=\{chatAgentProfiles\}[\s\S]*defaultPromptOptions=\{chatPromptOptions\}/u,
 	);
-	assert.match(
-		AGENTS_DEMO_SOURCE,
-		/<RovoChatProvider[\s\S]*agentProfiles=\{chatAgentProfiles\}[\s\S]*autoSelectAgentId=\{autoSelectAgentId\}[\s\S]*defaultPromptOptions=\{chatPromptOptions\}/u,
-	);
+	assert.doesNotMatch(AGENTS_DEMO_SOURCE, /autoSelectAgentId/u);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
 		/const \{ isOpen: isChatOpen, openChat, sendPrompt, uiMessages \} = useRovoChat\(\);/u,

@@ -11,6 +11,7 @@ const {
 	RFP_DRAFTING_COLUMN_NAME,
 	RFP_DRAFTING_EVENT_TRIGGER,
 	RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+	RFP_DRAFTING_TRIGGER_PROMPT,
 	RFP_REVIEW_COLUMN_NAME,
 	advanceRfpDraftingAgentProcessing,
 	createAgentsRfpDemoStateManager,
@@ -171,6 +172,7 @@ test("normalization preserves trigger prompt and explicit no-trigger state", () 
 		now: RUN_NOW,
 		runId: "run-initial",
 	});
+	assert.equal(applied.state.agent.trigger.prompt, RFP_DRAFTING_TRIGGER_PROMPT);
 	const prompted = normalizeAgentsRfpDemoState({
 		...applied.state,
 		agent: {
@@ -196,6 +198,43 @@ test("normalization preserves trigger prompt and explicit no-trigger state", () 
 	});
 
 	assert.equal(cleared.agent.trigger, null);
+});
+
+test("normalization moves stale running event activity after completed RFP Drafter work", () => {
+	const applied = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
+		jobId: "job-rfp-drafting",
+		runId: "run-initial",
+	});
+	const staleRunningSummary = {
+		id: "run-stale-event",
+		jobId: "job-rfp-drafting",
+		source: "jira-column-entered",
+		triggerLabel: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+		status: "running",
+		startedAt: "2026-06-03T15:00:00.000Z",
+		finishedAt: null,
+		processedTicketCodes: ["RFP-103"],
+		skippedTicketCodes: [],
+		failedTicketCodes: [],
+		threadLinks: [{ ticketCode: "RFP-103", threadId: "agents-rfp-demo-rfp-103" }],
+		summary: "Queued 1 ticket, skipped 0, failed 0.",
+	};
+	const normalized = normalizeAgentsRfpDemoState({
+		...applied.state,
+		agent: {
+			...applied.state.agent,
+			jobRunSummaries: [
+				staleRunningSummary,
+				{
+					...applied.state.agent.jobRunSummaries[0],
+					status: "completed",
+					finishedAt: "2026-06-03T15:08:00.000Z",
+				},
+			],
+		},
+	});
+
+	assert.equal(normalized.agent.jobRunSummaries[0].startedAt, "2026-06-03T15:10:00.000Z");
 });
 
 test("ticket entered column events do not run when the agent trigger is cleared", () => {
@@ -231,13 +270,15 @@ test("a later ticket entering Drafting processes only that ticket", async () => 
 	const movedState = moveTicketToColumn(completed.state, "RFP-102", RFP_DRAFTING_COLUMN_NAME);
 	const eventRun = runRfpDraftingAgent(movedState, {
 		jobId: "job-rfp-drafting",
-		now: RUN_NOW + 20_000,
+		now: RUN_NOW + 60_000,
 		runId: "run-rfp-102",
 		source: "jira-column-entered",
 		ticketCodes: ["RFP-102"],
 	});
-	const eventCompletion = await advanceAll(eventRun.state, RUN_NOW + 37_000);
+	const eventCompletion = await advanceAll(eventRun.state, RUN_NOW + 77_000);
 
+	assert.equal(initial.runSummary.startedAt, "2026-06-03T15:00:00.000Z");
+	assert.equal(eventRun.runSummary.startedAt, "2026-06-03T15:10:00.000Z");
 	assert.deepEqual(eventRun.runSummary.processedTicketCodes, ["RFP-102"]);
 	assert.deepEqual(eventRun.runSummary.skippedTicketCodes, []);
 	assert.deepEqual(eventRun.runSummary.failedTicketCodes, []);
@@ -249,6 +290,11 @@ test("a later ticket entering Drafting processes only that ticket", async () => 
 	assert.doesNotMatch(eventCompletion.state.workItems["RFP-102"].generatedAttachment.previewHtml, /Acmecorp/u);
 	assert.equal(eventCompletion.state.workItems["RFP-141"].status, RFP_REVIEW_COLUMN_NAME);
 	assert.equal(eventRun.threadRecords.length, 1);
+	assert.equal(eventCompletion.state.agent.jobRunSummaries[0].finishedAt, "2026-06-03T15:14:00.000Z");
+	assert.ok(
+		Date.parse(eventCompletion.state.agent.jobRunSummaries[0].finishedAt) >
+			Date.parse(eventCompletion.state.agent.jobRunSummaries[1].finishedAt),
+	);
 });
 
 test("failed tickets do not block other tickets and retry on a later run", async () => {

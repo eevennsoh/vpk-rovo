@@ -3,6 +3,7 @@
 import AddIcon from "@atlaskit/icon/core/add";
 import AutomationIcon from "@atlaskit/icon/core/automation";
 import DeleteIcon from "@atlaskit/icon/core/delete";
+import GenerativeIndicatorIcon from "@atlaskit/icon-lab/core/generative-indicator";
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { ProgressTracker, type ProgressTrackerStep } from "@/components/ui/progress-tracker";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 import {
 	RFP_DRAFTING_BOARD_NAME,
 	RFP_DRAFTING_COLUMN_NAME,
+	RFP_DRAFTING_TRIGGER_PROMPT,
 	type AgentsRfpDemoActivityItem,
 	type AgentsRfpDemoJobRunSummary,
 	type AgentsRfpDemoState,
@@ -34,11 +36,11 @@ function TriggerAddRow({
 	return (
 		<div
 			className={cn(
-				"flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm text-text-subtle",
+				"grid h-8 w-full grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-3 rounded-lg px-2 text-left text-sm text-text-subtle transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered",
 				className,
 			)}
 		>
-			<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle">
+			<span className="flex size-6 shrink-0 items-center justify-center justify-self-center text-icon-subtle">
 				<AddIcon label="" size="small" />
 			</span>
 			<span className="text-sm font-medium">{label}</span>
@@ -55,9 +57,8 @@ function TriggerDropdown({
 		<Select defaultValue={value}>
 			<SelectTrigger
 				aria-label={value}
-				className="!h-6 gap-0 rounded-md !py-0 !pr-0 !pl-2 text-sm font-medium text-text [&_[data-slot=icon]]:size-6"
+					className="!h-6 gap-0 rounded-md !py-0 !pr-0 !pl-2 text-sm font-medium text-text-subtle [&_[data-slot=icon]]:size-6"
 				size="sm"
-				variant="none"
 			>
 				<SelectValue />
 			</SelectTrigger>
@@ -73,6 +74,7 @@ type TimelineProgressState = NonNullable<ProgressTrackerStep["state"]>;
 interface ActivityTimelineEntry {
 	sequence: number;
 	sortMs: number;
+	tieBreakMs: number;
 	step: ProgressTrackerStep;
 }
 
@@ -101,8 +103,7 @@ function parseRunIdTimestamp(id: string): number | null {
 }
 
 function getRunTimelineSortMs(run: AgentsRfpDemoJobRunSummary): number {
-	const runIdTimestamp = parseRunIdTimestamp(run.id);
-	return runIdTimestamp ?? parseTimelineTimestamp(run.finishedAt ?? run.startedAt);
+	return parseTimelineTimestamp(run.finishedAt ?? run.startedAt);
 }
 
 function formatTimelineTimestamp(value?: string | null): string | null {
@@ -186,6 +187,7 @@ function createRunTimelineEntry(
 	return {
 		sequence: activityCount + runCount - index,
 		sortMs: getRunTimelineSortMs(run),
+		tieBreakMs: parseRunIdTimestamp(run.id) ?? Number.NEGATIVE_INFINITY,
 		step: {
 			id: `run-${run.id}`,
 			label: run.summary,
@@ -202,6 +204,7 @@ function createActivityTimelineEntry(
 	return {
 		sequence: index,
 		sortMs: parseTimelineTimestamp(activity.timestampLabel),
+		tieBreakMs: Number.NEGATIVE_INFINITY,
 		step: {
 			id: `activity-${activity.id}`,
 			label: activity.message,
@@ -217,6 +220,10 @@ function compareActivityTimelineEntries(
 ): number {
 	if (first.sortMs !== second.sortMs) {
 		return first.sortMs > second.sortMs ? -1 : 1;
+	}
+
+	if (first.tieBreakMs !== second.tieBreakMs) {
+		return first.tieBreakMs > second.tieBreakMs ? -1 : 1;
 	}
 
 	return second.sequence - first.sequence;
@@ -244,39 +251,51 @@ export function RfpAgentTriggerDetails({
 }>): React.ReactElement {
 	const agent = state.agent;
 	const trigger = agent?.trigger ?? null;
+	const triggerPrompt = trigger?.prompt?.trim() || RFP_DRAFTING_TRIGGER_PROMPT;
 	const addTriggerControl = <TriggerAddRow />;
 
 	return (
 		<div className="grid gap-5">
 			<section className="grid gap-2">
 				<div className="rounded-xl border border-border bg-surface p-2">
-					{trigger ? (
-						<>
-							<div className="group/trigger-row flex min-h-14 items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered">
-								<IconTile
-									aria-hidden={true}
-									icon={<AutomationIcon label="" />}
-									label="Automation"
-									size="small"
-									variant="blue"
-								/>
-								<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm text-text">
-									<span className="font-medium">Status changed to</span>
-									<TriggerDropdown value={RFP_DRAFTING_COLUMN_NAME} />
-									<span className="font-medium">in</span>
-									<TriggerDropdown value={RFP_DRAFTING_BOARD_NAME} />
-								</div>
-								<Button
-									aria-label="Delete trigger"
-									className="opacity-0 transition-opacity duration-normal group-hover/trigger-row:opacity-100 focus-visible:opacity-100"
-									onClick={onClearTrigger}
-									size="icon-sm"
-									variant="ghost"
-								>
-									<DeleteIcon label="" size="small" />
-								</Button>
-							</div>
-							<Separator className="my-2" />
+						{trigger ? (
+							<>
+								<div className="group/trigger-row grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 rounded-lg px-2 py-2 transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered">
+										<div className="flex flex-col items-center" aria-hidden={true}>
+											<IconTile
+												aria-hidden={true}
+												icon={<AutomationIcon label="" size="small" />}
+												label="Automation"
+												size="small"
+												variant="blue"
+										/>
+										<div className="my-2 h-7 w-px bg-border" />
+										<span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-bg-neutral text-icon-subtle">
+											<GenerativeIndicatorIcon label="" size="small" />
+										</span>
+									</div>
+									<div className="grid min-w-0 gap-4">
+										<div className="flex min-h-6 items-start gap-2">
+											<div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-sm text-text">
+													<span>Status changed to</span>
+													<TriggerDropdown value={RFP_DRAFTING_COLUMN_NAME} />
+													<span className="font-medium">in</span>
+													<TriggerDropdown value={RFP_DRAFTING_BOARD_NAME} />
+												</div>
+												<Button
+													aria-label="Delete trigger"
+													className="self-start opacity-0 transition-opacity duration-normal group-hover/trigger-row:opacity-100 focus-visible:opacity-100"
+													onClick={onClearTrigger}
+													size="icon-sm"
+													variant="ghost"
+												>
+													<DeleteIcon label="" size="small" />
+												</Button>
+											</div>
+											<p className="min-w-0 flex-1 text-sm leading-5 text-text">{triggerPrompt}</p>
+										</div>
+									</div>
+								<Separator className="my-2" />
 							{addTriggerControl}
 						</>
 					) : (
