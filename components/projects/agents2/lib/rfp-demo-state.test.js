@@ -115,3 +115,28 @@ test("moving an Outline Drafting ticket after VoiceMate creation assigns outline
 	assert.match(state.customAgentActivity.map((item) => item.message).join("\n"), /VoiceMate started landing-page outline prep for OMNI-102/u);
 	assert.match(state.toasts[0].message, /Preparing landing-page outline/u);
 });
+
+test("scheduling VoiceMate only creates the trigger profile; backend run owns ticket assignment", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const state = harness.scheduleRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
+	const outlineCardCodes = state.board.columns.find((column) => column.title === "Outline Drafting").cardCodes;
+	const outlineColumn = harness.resolveRfpDemoBoardColumns(state).find((column) => column.title === "Outline Drafting");
+
+	assert.deepEqual(outlineCardCodes, ["OMNI-141", "OMNI-142", "OMNI-143"]);
+	assert.equal(state.schedule, null);
+	assert.equal(state.agent.name, "VoiceMate");
+	assert.equal(state.agent.trigger.label, "On event: ticket enters Outline Drafting");
+	for (const cardCode of outlineCardCodes) {
+		assert.deepEqual(state.workItems[cardCode].agentAssignmentIds, []);
+		assert.equal(state.workItems[cardCode].assignee, null);
+		assert.equal(state.workItems[cardCode].agentStatus, "idle");
+	}
+	assert.deepEqual(
+		outlineColumn.cards.map((card) => card.avatarShape),
+		[undefined, undefined, undefined],
+	);
+	assert.deepEqual(
+		outlineColumn.cards.map((card) => card.avatarPulse),
+		[undefined, undefined, undefined],
+	);
+});

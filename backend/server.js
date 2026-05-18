@@ -224,9 +224,16 @@ const {
 	createRouteDecisionPart,
 } = require("./lib/route-decision");
 const {
+	AGENTS2_OMNI_LIVE_OUTLINE_PREVIEW_SUMMARY,
+	AGENTS2_OMNI_LIVE_OUTLINE_TITLE,
 	RFP_DEMO_REPORT_PREVIEW_SUMMARY,
 	RFP_DEMO_REPORT_TITLE,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
+	buildAgents2OmniLiveAgentCreationConfirmationText,
+	buildAgents2OmniLiveAgentCreationTrace,
+	buildAgents2OmniLiveAgentResultPayload,
+	buildAgents2OmniLiveOutlineConfirmationText,
+	buildAgents2OmniLiveOutlineTrace,
 	buildAgentsRfpDemoAnswerTrace,
 	buildAgentsRfpDemoAgentCreationConfirmationText,
 	buildAgentsRfpDemoAgentCreationTrace,
@@ -237,6 +244,7 @@ const {
 	buildAgentsRfpDemoReportConfirmationText,
 	getAgentsRfpDemoPreloadDelayMs,
 	getAgentsRfpDemoToolCallDelayMs,
+	resolveAgents2OmniLiveChatTurn,
 	resolveAgentsRfpDemoChatTurn,
 } = require("./lib/agents-rfp-demo-chat");
 const {
@@ -252,6 +260,19 @@ const {
 	moveTicketToColumn,
 	runRfpDraftingAgent,
 } = require("./lib/agents-rfp-demo-state");
+const {
+	AGENTS2_RFP_DEMO_JOB_NAME,
+	AGENTS2_RFP_DEMO_JOB_PROMPT,
+	AGENTS2_RFP_DEMO_SURFACE,
+	RFP_DRAFTING_AGENT_NAME: AGENTS2_RFP_DRAFTING_AGENT_NAME,
+	RFP_DRAFTING_EVENT_TRIGGER: AGENTS2_RFP_DRAFTING_EVENT_TRIGGER,
+	RFP_DRAFTING_EVENT_TRIGGER_LABEL: AGENTS2_RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+	advanceRfpDraftingAgentProcessing: advanceAgents2RfpDraftingAgentProcessing,
+	createAgents2RfpDemoStateManager,
+	getDemoCreatedThreadIds: getAgents2DemoCreatedThreadIds,
+	moveTicketToColumn: moveAgents2TicketToColumn,
+	runRfpDraftingAgent: runAgents2RfpDraftingAgent,
+} = require("./lib/agents2-rfp-demo-state");
 const {
 	buildSmartGenerationGatewayOptions,
 } = require("./lib/smart-generation-gateway-options");
@@ -1318,6 +1339,187 @@ async function deleteAgentsRfpDemoHermesJobs(state) {
 	}
 }
 
+function isAgents2RfpDemoJobMetadata(jobOrLink) {
+	return (
+		jobOrLink?.surface === AGENTS2_RFP_DEMO_SURFACE &&
+		jobOrLink?.trigger?.type === AGENTS2_RFP_DRAFTING_EVENT_TRIGGER.type &&
+		jobOrLink?.trigger?.board === AGENTS2_RFP_DRAFTING_EVENT_TRIGGER.board &&
+		jobOrLink?.trigger?.column === AGENTS2_RFP_DRAFTING_EVENT_TRIGGER.column
+	);
+}
+
+function buildAgents2RfpDemoJobLinkMetadata(overrides = {}) {
+	return {
+		postResultToThread: false,
+		runHistory: [],
+		surface: AGENTS2_RFP_DEMO_SURFACE,
+		threadStrategy: "new-per-run",
+		trigger: AGENTS2_RFP_DRAFTING_EVENT_TRIGGER,
+		triggerLabel: AGENTS2_RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+		...(overrides && typeof overrides === "object" ? overrides : {}),
+	};
+}
+
+async function ensureAgents2RfpDemoHermesJob() {
+	const currentState = await agents2RfpDemoStateManager.readState();
+	const stateJobId = getNonEmptyString(currentState.agent?.jobId);
+	if (stateJobId) {
+		try {
+			const job = await getMergedHermesJob(stateJobId);
+			if (isAgents2RfpDemoJobMetadata(job)) {
+				return job;
+			}
+		} catch (error) {
+			if (error?.code !== "ENOENT") {
+				throw error;
+			}
+		}
+	}
+
+	const jobs = await listMergedHermesJobs();
+	const existingJob = jobs.find(isAgents2RfpDemoJobMetadata);
+	if (existingJob) {
+		await persistHermesJobLink(
+			existingJob.id,
+			buildAgents2RfpDemoJobLinkMetadata({
+				runHistory: existingJob.runHistory,
+			}),
+			{},
+			{ mergeExisting: true },
+		);
+		return getMergedHermesJob(existingJob.id);
+	}
+
+	const job = await hermesJobsProvider.createHermesJob({
+		deliver: "local",
+		name: AGENTS2_RFP_DEMO_JOB_NAME,
+		prompt: AGENTS2_RFP_DEMO_JOB_PROMPT,
+		schedule: "manual",
+		skills: ["vpk-html"],
+	});
+	const linkMetadata = await persistHermesJobLink(
+		job.id,
+		buildAgents2RfpDemoJobLinkMetadata(),
+	);
+	return {
+		...job,
+		...(linkMetadata ?? {}),
+	};
+}
+
+async function persistAgents2RfpDemoRunResult({ jobId, result }) {
+	await Promise.all(result.threadRecords.map(upsertAgentsRfpDemoThread));
+	const currentLink = await hermesJobLinkManager.getLink(jobId);
+	await persistHermesJobLink(
+		jobId,
+		buildAgents2RfpDemoJobLinkMetadata({
+			...(currentLink ?? {}),
+			runHistory: [
+				result.runSummary,
+				...((currentLink?.runHistory ?? []).filter((run) => run?.id !== result.runSummary.id)),
+			].slice(0, 10),
+		}),
+		{},
+		{ mergeExisting: true },
+	);
+	await agents2RfpDemoStateManager.writeState(result.state);
+}
+
+async function advanceAgents2RfpDemoProcessing() {
+	const currentState = await agents2RfpDemoStateManager.readState();
+	const result = await advanceAgents2RfpDraftingAgentProcessing(currentState, {
+		createHtmlReport: async ({ contextDescription, fields }) => {
+			const report = await generateWorkItemVpkHtmlReport({
+				contextDescription,
+				generateText: async () => JSON.stringify(fields),
+				runSkillValidation: false,
+				runVisualVerify: false,
+			});
+			return { html: report.html, skill: report.skill };
+		},
+	});
+	if (!result.changed) {
+		return currentState;
+	}
+
+	await Promise.all(result.threadRecords.map(upsertAgentsRfpDemoThread));
+	const nextState = await agents2RfpDemoStateManager.writeState(result.state);
+	const jobId = getNonEmptyString(nextState.agent?.jobId);
+	if (jobId) {
+		const currentLink = await hermesJobLinkManager.getLink(jobId);
+		await persistHermesJobLink(
+			jobId,
+			buildAgents2RfpDemoJobLinkMetadata({
+				...(currentLink ?? {}),
+				runHistory: nextState.agent?.jobRunSummaries ?? currentLink?.runHistory ?? [],
+			}),
+			{},
+			{ mergeExisting: true },
+		);
+	}
+	return nextState;
+}
+
+async function executeAgents2RfpDemoHermesJob({ context, job, source }) {
+	const link = await hermesJobLinkManager.getLink(job.id);
+	if (!isAgents2RfpDemoJobMetadata(link)) {
+		return null;
+	}
+
+	const currentState = await agents2RfpDemoStateManager.readState();
+	const ticketCodes = Array.isArray(context?.ticketCodes)
+		? context.ticketCodes.filter((ticketCode) => typeof ticketCode === "string" && ticketCode.trim())
+		: undefined;
+	const result = runAgents2RfpDraftingAgent(currentState, {
+		jobId: job.id,
+		runId: getNonEmptyString(context?.runId) ?? undefined,
+		source: getNonEmptyString(source) ?? "manual",
+		ticketCodes,
+	});
+	await persistAgents2RfpDemoRunResult({ jobId: job.id, result });
+
+	return {
+		ok: true,
+		text: `${AGENTS2_RFP_DRAFTING_AGENT_NAME} ${result.runSummary.summary}`,
+	};
+}
+
+async function runAgents2RfpDemoJob({ source = "manual", ticketCodes } = {}) {
+	const job = await ensureAgents2RfpDemoHermesJob();
+	await hermesJobsProvider.runHermesJob(job.id, source, {
+		ticketCodes: Array.isArray(ticketCodes) ? ticketCodes : undefined,
+	});
+	const [state, mergedJob] = await Promise.all([
+		agents2RfpDemoStateManager.readState(),
+		getMergedHermesJob(job.id),
+	]);
+	return { job: mergedJob, state };
+}
+
+async function deleteAgents2RfpDemoHermesJobs(state) {
+	const jobIds = new Set();
+	const stateJobId = getNonEmptyString(state.agent?.jobId);
+	if (stateJobId) {
+		jobIds.add(stateJobId);
+	}
+
+	const jobs = await listMergedHermesJobs().catch(() => []);
+	for (const job of jobs) {
+		if (isAgents2RfpDemoJobMetadata(job)) {
+			jobIds.add(job.id);
+		}
+	}
+
+	for (const jobId of jobIds) {
+		await hermesJobsProvider.deleteHermesJob(jobId).catch((error) => {
+			if (error?.code !== "ENOENT") {
+				throw error;
+			}
+		});
+		await hermesJobLinkManager.removeLink(jobId);
+	}
+}
+
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.text({ limit: "50mb", type: "text/markdown" }));
@@ -1967,6 +2169,9 @@ const hermesJobLinkManager = createHermesJobLinkManager({
 const agentsRfpDemoStateManager = createAgentsRfpDemoStateManager({
 	baseDir: path.join(__dirname, "data"),
 });
+const agents2RfpDemoStateManager = createAgents2RfpDemoStateManager({
+	baseDir: path.join(__dirname, "data"),
+});
 const hermesJobsProvider = createHermesJobsProvider({
 	baseDir: path.join(__dirname, "data"),
 	executeTask: async ({
@@ -1983,6 +2188,15 @@ const hermesJobsProvider = createHermesJobsProvider({
 		});
 		if (rfpJobResult) {
 			return rfpJobResult;
+		}
+
+		const agents2RfpJobResult = await executeAgents2RfpDemoHermesJob({
+			context,
+			job,
+			source,
+		});
+		if (agents2RfpJobResult) {
+			return agents2RfpJobResult;
 		}
 
 		return executeRovoTask({
@@ -4202,6 +4416,48 @@ async function createAgentsRfpDemoReportArtifact(requestBody) {
 	return artifactDocument;
 }
 
+async function createAgents2OmniLiveOutlineArtifact(requestBody) {
+	const threadId = getNonEmptyString(requestBody?.id);
+	if (!threadId) {
+		throw new Error("Cannot create the Omni Live outline artifact without an active Rovo thread.");
+	}
+
+	const report = await generateWorkItemVpkHtmlReport({
+		contextDescription: requestBody.contextDescription,
+		generateText: (options) =>
+			generateTextViaGateway({
+				...options,
+				backendPreference: "ai-gateway",
+				provider: options?.provider || getNonEmptyString(requestBody.provider),
+			}),
+		provider: getNonEmptyString(requestBody.provider),
+		runSkillValidation: true,
+		runVisualVerify: false,
+	});
+	const artifactDocument = await rovoAppDocumentManager.createDocument({
+		threadId,
+		title: AGENTS2_OMNI_LIVE_OUTLINE_TITLE,
+		kind: "html",
+		content: report.html,
+		previewSummary: AGENTS2_OMNI_LIVE_OUTLINE_PREVIEW_SUMMARY,
+		changeLabel: "Generated with vpk-html",
+		sourceMessageId: null,
+	});
+	const currentThread = await rovoAppThreadManager.getThread(threadId);
+	await rovoAppThreadManager.updateThread(threadId, {
+		activeDocumentId: artifactDocument.id,
+		hermesContext: buildNextHermesThreadContext({
+			currentHermesContext: currentThread?.hermesContext,
+			selectedSkillIds: mergeHermesSkillIds(
+				currentThread?.hermesContext?.selectedSkillIds,
+				"vpk-html",
+			),
+		}),
+	});
+
+	return artifactDocument;
+}
+
 function buildAgentsRfpDemoReportPreviewFields(variant) {
 	if (variant === "refined") {
 		return {
@@ -4350,9 +4606,13 @@ function writeAgentsRfpDemoArtifactResult(writer, artifactDocument) {
 }
 
 function writeAgentsRfpDemoAgentResult(writer) {
+	writeAgentsRfpDemoAgentResultPayload(writer, buildAgentsRfpDemoAgentResultPayload());
+}
+
+function writeAgentsRfpDemoAgentResultPayload(writer, payload) {
 	writer.write({
 		type: "data-agent-result",
-		data: buildAgentsRfpDemoAgentResultPayload(),
+		data: payload,
 	});
 }
 
@@ -4444,6 +4704,48 @@ function streamAgentsRfpDemoChatTurn(res, turn, requestBody) {
 	});
 }
 
+function streamAgents2OmniLiveChatTurn(res, turn, requestBody) {
+	const stream = createUIMessageStream({
+		execute: async ({ writer }) => {
+			if (turn === "omni-agent-creation") {
+				await writeAgentsRfpDemoTrace(writer, buildAgents2OmniLiveAgentCreationTrace());
+				writeAgentsRfpDemoAgentResultPayload(writer, buildAgents2OmniLiveAgentResultPayload());
+				writeAgentsRfpDemoText(
+					writer,
+					`agents2-omni-live-agent-created-${Date.now()}`,
+					buildAgents2OmniLiveAgentCreationConfirmationText(),
+				);
+				writeAgentsRfpDemoTurnComplete(writer);
+				return;
+			}
+
+			await writeAgentsRfpDemoTrace(writer, buildAgents2OmniLiveOutlineTrace());
+			const artifactDocument = await createAgents2OmniLiveOutlineArtifact(requestBody);
+			writeAgentsRfpDemoArtifactResult(writer, artifactDocument);
+			writeAgentsRfpDemoText(
+				writer,
+				`agents2-omni-live-outline-${Date.now()}`,
+				buildAgents2OmniLiveOutlineConfirmationText({
+					documentId: artifactDocument.id,
+					title: artifactDocument.title,
+				}),
+			);
+			writeAgentsRfpDemoTurnComplete(writer, "artifact_create");
+		},
+		onError: (error) => {
+			if (error instanceof Error) {
+				return error.message;
+			}
+			return "Failed to stream Omni Live demo response";
+		},
+	});
+
+	pipeUIMessageStreamToResponse({
+		response: res,
+		stream,
+	});
+}
+
 async function proxyRovoAppChatRequest(req, res) {
 	const requestBody =
 		req.body && typeof req.body === "object" ? { ...req.body } : {};
@@ -4467,6 +4769,13 @@ async function proxyRovoAppChatRequest(req, res) {
 		: null;
 	if (agentsRfpDemoTurn) {
 		streamAgentsRfpDemoChatTurn(res, agentsRfpDemoTurn, requestBody);
+		return;
+	}
+	const agents2OmniLiveTurn = !existingRun
+		? resolveAgents2OmniLiveChatTurn(requestBody)
+		: null;
+	if (agents2OmniLiveTurn) {
+		streamAgents2OmniLiveChatTurn(res, agents2OmniLiveTurn, requestBody);
 		return;
 	}
 
@@ -14917,9 +15226,100 @@ app.post("/api/agents/rfp-demo/events/ticket-entered-column", async (req, res) =
 	}
 });
 
+app.get("/api/agents2/rfp-demo/state", async (_req, res) => {
+	try {
+		const state = await advanceAgents2RfpDemoProcessing();
+		return res.json({ state });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to load Agents2 Omni Live demo state",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/agents2/rfp-demo/state", async (req, res) => {
+	try {
+		if (!req.body?.state || typeof req.body.state !== "object") {
+			return res.status(400).json({ error: "state is required." });
+		}
+
+		const state = await agents2RfpDemoStateManager.writeState(req.body.state);
+		return res.json({ state });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to save Agents2 Omni Live demo state",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/agents2/rfp-demo/reset", async (_req, res) => {
+	try {
+		const currentState = await agents2RfpDemoStateManager.readState();
+		const threadIds = getAgents2DemoCreatedThreadIds(currentState);
+		await deleteAgents2RfpDemoHermesJobs(currentState);
+		await Promise.all(threadIds.map((threadId) => deleteAgentsRfpDemoThread(threadId).catch(() => {})));
+		const state = await agents2RfpDemoStateManager.resetState();
+		return res.json({ state });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to reset Agents2 Omni Live demo state",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/agents2/rfp-demo/agent/apply", async (_req, res) => {
+	try {
+		const { job, state } = await runAgents2RfpDemoJob({
+			source: "agent-apply",
+		});
+		return res.json({ job, state });
+	} catch (error) {
+		return res.status(error?.code === "INVALID_INPUT" ? 400 : 500).json({
+			error: "Failed to apply VoiceMate",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/agents2/rfp-demo/events/ticket-entered-column", async (req, res) => {
+	try {
+		const ticketCode = getNonEmptyString(req.body?.ticketCode ?? req.body?.key);
+		const targetColumn = getNonEmptyString(req.body?.targetColumn ?? req.body?.column);
+		if (!ticketCode || !targetColumn) {
+			return res.status(400).json({ error: "ticketCode and targetColumn are required." });
+		}
+
+		let state = await agents2RfpDemoStateManager.readState();
+		state = moveAgents2TicketToColumn(state, ticketCode, targetColumn);
+		await agents2RfpDemoStateManager.writeState(state);
+
+		if (targetColumn !== AGENTS2_RFP_DRAFTING_EVENT_TRIGGER.column || !state.agent?.trigger) {
+			return res.json({
+				state,
+				job: state.agent?.jobId ? await getMergedHermesJob(state.agent.jobId).catch(() => null) : null,
+			});
+		}
+
+		const { job, state: processedState } = await runAgents2RfpDemoJob({
+			source: "jira-column-entered",
+			ticketCodes: [ticketCode],
+		});
+		return res.json({ job, state: processedState });
+	} catch (error) {
+		return res.status(error?.code === "INVALID_INPUT" ? 400 : 500).json({
+			error: "Failed to process Agents2 Omni Live ticket event",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
 app.get("/api/jobs", async (_req, res) => {
 	try {
 		await advanceAgentsRfpDemoProcessing();
+		await advanceAgents2RfpDemoProcessing();
 		const jobs = await listMergedHermesJobs(_req.query);
 		await syncHermesJobResultsToRovoThreads({
 			jobs,

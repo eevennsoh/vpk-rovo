@@ -27,6 +27,19 @@ test("Agents RFP demo reset removes the demo Hermes job and demo-created Rovo th
 	assert.match(SERVER_SOURCE, /rovoAppThreadManager\.deleteThread\(threadId\)/u);
 });
 
+test("Agents2 Omni Live demo backend routes copy the Agents RFP demo state contract", () => {
+	assert.match(SERVER_SOURCE, /app\.get\("\/api\/agents2\/rfp-demo\/state"/u);
+	assert.match(SERVER_SOURCE, /app\.post\("\/api\/agents2\/rfp-demo\/state"/u);
+	assert.match(SERVER_SOURCE, /app\.post\("\/api\/agents2\/rfp-demo\/agent\/apply"/u);
+	assert.match(SERVER_SOURCE, /app\.post\("\/api\/agents2\/rfp-demo\/events\/ticket-entered-column"/u);
+	assert.match(SERVER_SOURCE, /app\.post\("\/api\/agents2\/rfp-demo\/reset"/u);
+	assert.match(SERVER_SOURCE, /const state = await advanceAgents2RfpDemoProcessing\(\);/u);
+	assert.match(SERVER_SOURCE, /runAgents2RfpDemoJob\(\{[\s\S]*source: "agent-apply"[\s\S]*\}\)/u);
+	assert.match(SERVER_SOURCE, /runAgents2RfpDemoJob\(\{[\s\S]*source: "jira-column-entered"[\s\S]*ticketCodes: \[ticketCode\]/u);
+	assert.match(SERVER_SOURCE, /targetColumn !== AGENTS2_RFP_DRAFTING_EVENT_TRIGGER\.column \|\| !state\.agent\?\.trigger/u);
+	assert.match(SERVER_SOURCE, /await advanceAgents2RfpDemoProcessing\(\);/u);
+});
+
 test("Agents RFP demo reset only closes browser workspaces for existing Rovo threads", () => {
 	assert.match(
 		SERVER_SOURCE,

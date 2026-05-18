@@ -1,5 +1,7 @@
 const RFP_101_CONTEXT_PATTERN = /\[Active Jira Work Item Context\][\s\S]*\bKey:\s*RFP-101\b[\s\S]*\[End Active Jira Work Item Context\]/;
 const RFP_DEMO_AGENT_CREATION_CONTEXT_PATTERN = /\[Agents RFP Demo Local State\][\s\S]*Report stage:\s*attached\.[\s\S]*Custom agent:\s*not created\.[\s\S]*(?:Trigger:\s*none\.[\s\S]*)?\[End Agents RFP Demo Local State\]/;
+const OMNI_101_CONTEXT_PATTERN = /\[Active Jira Work Item Context\][\s\S]*\bKey:\s*OMNI-101\b[\s\S]*\[End Active Jira Work Item Context\]/;
+const AGENTS2_OMNI_LIVE_AGENT_CREATION_CONTEXT_PATTERN = /\[Agents VoiceMate Creation Request\][\s\S]*Board:\s*Omni Live Launch\.[\s\S]*Column:\s*Outline Drafting\.[\s\S]*\[End Agents VoiceMate Creation Request\]/;
 const RFP_HELP_DETAILED_MARKERS = [
 	/\bshould we respond to this rfp\b/i,
 	/\bbid\/no-bid\b/i,
@@ -53,6 +55,17 @@ const RFP_DEMO_SKILL_TOOL_CALL_DELAY_MS = 4500;
 const RFP_DEMO_QUALIFICATION_PRELOAD_DELAY_MS = 2000;
 const RFP_DEMO_REPORT_TITLE = "Acmecorp RFP qualification DACI";
 const RFP_DEMO_REPORT_PREVIEW_SUMMARY = "PDF-ready one-pager for RFP-101 with bid/no-bid recommendation, DACI roles, stakeholder relationship, budget qualification, campaign fit, competitive advantages, risks, and open gaps.";
+const AGENTS2_OMNI_LIVE_OUTLINE_TITLE = "Omni Live landing-page outline";
+const AGENTS2_OMNI_LIVE_OUTLINE_PREVIEW_SUMMARY = "HTML one-pager landing-page outline for OMNI-101 with hero demo thesis, audience, pain, positioning, section outline, proof points, CTA, launch timeline, consent/trust notes, and content gaps.";
+const AGENTS2_OMNI_LIVE_AGENT_ID = "voicemate-agent";
+const AGENTS2_OMNI_LIVE_AGENT_NAME = "VoiceMate";
+const AGENTS2_OMNI_LIVE_AGENT_DESCRIPTION =
+	"Drafts landing-page outlines from company brand guide, voice and tone, launch milestones, demo goals, and consent requirements.";
+const AGENTS2_OMNI_LIVE_AGENT_CONVERSATION_STARTERS = [
+	"Draft the Omni Live landing-page outline.",
+	"Flag missing brand or proof inputs before Experience Build.",
+	"Summarize launch milestones and consent notes for this page.",
+];
 
 function getNonEmptyString(value) {
 	if (typeof value !== "string") {
@@ -110,6 +123,16 @@ function hasRfpDemoAgentCreationContext(requestBody) {
 	);
 }
 
+function hasOmni101Context(requestBody) {
+	return OMNI_101_CONTEXT_PATTERN.test(getNonEmptyString(requestBody?.contextDescription) || "");
+}
+
+function hasAgents2OmniLiveAgentCreationContext(requestBody) {
+	return AGENTS2_OMNI_LIVE_AGENT_CREATION_CONTEXT_PATTERN.test(
+		getNonEmptyString(requestBody?.contextDescription) || "",
+	);
+}
+
 function countMatchingPatterns(patterns, prompt) {
 	return patterns.reduce(
 		(count, pattern) => count + (pattern.test(prompt) ? 1 : 0),
@@ -150,6 +173,37 @@ function isRfpAgentCreationPrompt(prompt, requestBody) {
 	return RFP_AGENT_CREATION_MARKERS.every((pattern) => pattern.test(prompt));
 }
 
+function isAgents2OmniLiveOutlinePrompt(prompt) {
+	const normalizedPrompt = getNonEmptyString(prompt);
+	if (!normalizedPrompt) {
+		return false;
+	}
+
+	if (
+		/\bclarification answers\b/i.test(normalizedPrompt) &&
+		/\b(?:landing[-\s]?page|html mockup|html|outline|one[-\s]?pager|brief)\b/i.test(normalizedPrompt)
+	) {
+		return true;
+	}
+
+	return (
+		/\b(generate|create|write|make|build|draft|prepare|compose|render|produce)\b/i.test(normalizedPrompt) &&
+		/\b(?:omni live|landing[-\s]?page|outline|one[-\s]?pager|content brief|vpk-html|html)\b/i.test(normalizedPrompt) &&
+		/\b(?:outline|one[-\s]?pager|brief|html|artifact|document|page)\b/i.test(normalizedPrompt)
+	);
+}
+
+function isAgents2OmniLiveAgentCreationPrompt(prompt, requestBody) {
+	if (requestBody?.creationMode !== "agent" || !getNonEmptyString(prompt)) {
+		return false;
+	}
+
+	return (
+		/\bvoicemate\b/i.test(prompt) &&
+		/\b(?:landing[-\s]?page|outline|omni live|launch)\b/i.test(prompt)
+	);
+}
+
 function resolveAgentsRfpDemoChatTurn(requestBody) {
 	if (!requestBody || typeof requestBody !== "object") {
 		return null;
@@ -177,6 +231,30 @@ function resolveAgentsRfpDemoChatTurn(requestBody) {
 	}
 
 	return isRfpHelpPrompt(prompt) ? "qualification-questions" : null;
+}
+
+function resolveAgents2OmniLiveChatTurn(requestBody) {
+	if (!requestBody || typeof requestBody !== "object") {
+		return null;
+	}
+
+	const prompt = getLatestUserMessageText(requestBody.messages);
+	if (
+		hasAgents2OmniLiveAgentCreationContext(requestBody) &&
+		isAgents2OmniLiveAgentCreationPrompt(prompt, requestBody)
+	) {
+		return "omni-agent-creation";
+	}
+
+	if (!hasOmni101Context(requestBody)) {
+		return null;
+	}
+
+	if (requestBody.clarification && typeof requestBody.clarification === "object") {
+		return "omni-outline-create";
+	}
+
+	return isAgents2OmniLiveOutlinePrompt(prompt) ? "omni-outline-create" : null;
 }
 
 function getAgentsRfpDemoToolCallDelayMs(random = Math.random) {
@@ -511,11 +589,220 @@ function buildAgentsRfpDemoReportConfirmationText({ documentId, title = RFP_DEMO
 	return `Generated **${title}** with the generate-pdf skill. [Open it in Rovo Canvas](#rovo-canvas-${encodeURIComponent(resolvedDocumentId)}) to review the embedded qualification DACI.`;
 }
 
+function buildAgents2OmniLiveOutlineTrace() {
+	return [
+		{
+			toolName: "jira.read_work_item",
+			toolCallId: "agents2-omni-live-read-omni-101",
+			label: "Reading OMNI-101",
+			content: "Loading the active Omni Live work item, subtasks, launch dates, labels, attachments, and modal context.",
+			input: { key: "OMNI-101", include: ["description", "subtasks", "attachments", "activity"] },
+			outputPreview: "OMNI-101 is the live-demo-first landing-page narrative for Omni Live, anchored on voice loop, camera feed, agentic action, and May 28 / June 18 / July 9 launch milestones.",
+		},
+		{
+			toolName: "jira.scan_attachments",
+			toolCallId: "agents2-omni-live-scan-assets",
+			label: "Scanning launch inputs",
+			content: "Checking brand guide, voice and tone brief, launch brief, and early landing-page outline attachments.",
+			input: {
+				key: "OMNI-101",
+				attachments: [
+					"omni-live-brand-guide.pdf",
+					"voice-and-tone-brief.docx",
+					"omni-live-launch-brief.pdf",
+					"landing-page-outline-inputs.xlsx",
+				],
+			},
+			outputPreview: "Found product story, demo-first mandate, audience notes, preview/beta/GA milestones, and unresolved consent-control language.",
+		},
+		{
+			toolName: "teamwork_graph.search",
+			toolCallId: "agents2-omni-live-search-memory",
+			label: "Searching launch memory",
+			content: "Looking for Omni Live positioning, developer preview guidance, enterprise trust requirements, demo goals, and partner integration notes.",
+			input: { product: "Omni Live", topics: ["voice loop", "camera feed", "agentic action", "launch milestones", "consent controls"] },
+			outputPreview: "Returned the sees-hears-acts positioning, live demo proof points, preview/beta/GA rollout guidance, and enterprise trust guardrails.",
+		},
+		{
+			toolName: "omni.map_page_story",
+			toolCallId: "agents2-omni-live-map-page-story",
+			label: "Mapping page story",
+			content: "Structuring the landing-page outline so the live demo makes the multimodal value tangible before explaining differentiation.",
+			input: { sections: ["hero demo", "fragmented AI pain", "positioning", "proof points", "timeline", "trust", "CTA"] },
+			outputPreview: "Page story starts with the continuous live demo, moves into fragmented mode pain, then explains how Omni Live sees, hears, and acts in one stream.",
+		},
+		{
+			toolName: "omni.check_content_gaps",
+			toolCallId: "agents2-omni-live-check-gaps",
+			label: "Checking content gaps",
+			content: "Identifying missing inputs VoiceMate should flag before Experience Build.",
+			input: { key: "OMNI-101", requiredInputs: ["brand voice", "demo clips", "consent language", "partner integration claims"] },
+			outputPreview: "Flagged final brand voice examples, continuous live demo sequence, and legally reviewed consent-control wording as content gaps.",
+		},
+		{
+			toolName: "agent_skill.load",
+			toolCallId: "agents2-omni-live-load-generate-html",
+			label: "Using generate-html skill",
+			content: "Selecting the generate-html skill backed by the repo-local one-pager template for a concise landing-page outline/content brief.",
+			input: { skill: "generate-html", template: "assets/templates/one-pager.html", artifactKind: "landing-page-outline" },
+			outputPreview: "Loaded the generate-html one-pager contract for a self-contained HTML artifact with deterministic fallback fields.",
+			delayMs: RFP_DEMO_SKILL_TOOL_CALL_DELAY_MS,
+		},
+		{
+			toolName: "generate_html.distill_fields",
+			toolCallId: "agents2-omni-live-generate-html-distill-fields",
+			label: "Distilling outline fields",
+			content: "Converting OMNI-101 context into hero demo thesis, audience, pain, positioning, proof points, CTA, timeline, trust notes, and gaps.",
+			input: { key: "OMNI-101", reportKind: "landing-page-outline", factPolicy: "mark gaps" },
+			outputPreview: "Prepared structured landing-page outline fields without turning the brief into a finished landing page implementation.",
+		},
+		{
+			toolName: "generate_html.render_one_pager",
+			toolCallId: "agents2-omni-live-generate-html-render-outline",
+			label: "Rendering one-pager",
+			content: "Rendering the Omni Live landing-page outline as a generate-html one-pager artifact.",
+			input: { title: AGENTS2_OMNI_LIVE_OUTLINE_TITLE, kind: "html", dependencies: "inline-only" },
+			outputPreview: "Rendered the one-pager with embedded styles and no remote runtime dependencies.",
+		},
+		{
+			toolName: "generate_html.validate_artifact",
+			toolCallId: "agents2-omni-live-generate-html-validate-outline",
+			label: "Validating outline artifact",
+			content: "Checking placeholders, offline dependencies, and required outline sections before sharing the artifact.",
+			input: { checks: ["placeholders", "html-validity", "offline-dependencies", "content-gaps"] },
+			outputPreview: "Validated the Omni Live landing-page outline and saved it to the active Rovo thread.",
+		},
+	];
+}
+
+function buildAgents2OmniLiveAgentCreationTrace() {
+	return [
+		{
+			toolName: "jira.inspect_board_column",
+			toolCallId: "agents2-omni-live-agent-inspect-outline-drafting",
+			label: "Inspecting Outline Drafting",
+			content: "Reading the Outline Drafting column, OMNI-101 context, and related launch work items to scope VoiceMate.",
+			input: { board: "Omni Live Launch", column: "Outline Drafting", include: ["OMNI-101", "OMNI-102", "OMNI-103"] },
+			outputPreview: "Outline Drafting has repeatable launch-content prep: read brand inputs, map page story, flag gaps, attach outline, and move ready work to Experience Build.",
+		},
+		{
+			toolName: "agent_skill.load",
+			toolCallId: "agents2-omni-live-agent-load-create-agent",
+			label: "Using create-agent skill",
+			content: "Loading the create-agent skill to turn the OMNI-101 outline flow into a reusable VoiceMate agent.",
+			input: { skill: "create-agent", target: AGENTS2_OMNI_LIVE_AGENT_NAME, workflow: "Outline Drafting" },
+			outputPreview: "Loaded the create-agent skill with the Outline Drafting workflow context.",
+			delayMs: RFP_DEMO_SKILL_TOOL_CALL_DELAY_MS,
+		},
+		{
+			toolName: "agent.define_trigger",
+			toolCallId: "agents2-omni-live-agent-define-trigger",
+			label: "Defining agent trigger",
+			content: "Setting VoiceMate to activate when an Omni Live work item enters Outline Drafting.",
+			input: { board: "Omni Live Launch", column: "Outline Drafting", signal: "jira-column-entered" },
+			outputPreview: "Trigger scoped to Outline Drafting tickets so VoiceMate handles launch outline work without interrupting unrelated tasks.",
+		},
+		{
+			toolName: "agent.configure_tools",
+			toolCallId: "agents2-omni-live-agent-configure-tools",
+			label: "Adding tools and skills",
+			content: "Giving VoiceMate deterministic demo access to Jira work items, attachments, Teamwork Graph launch memory, generate-html, and ticket attachment output.",
+			input: { skills: ["generate-html"], tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "generate_html.render_one_pager", "jira.attach_html"] },
+			outputPreview: "Tool set matches the completed OMNI-101 outline flow and produces ticket-specific HTML one-pager outlines.",
+		},
+		{
+			toolName: "agent.write_instructions",
+			toolCallId: "agents2-omni-live-agent-instructions",
+			label: "Writing agent instructions",
+			content: "Adding the description, conversation starters, and instructions to read each ticket context, draft a landing-page outline, flag gaps, attach the artifact, and move ready tickets forward.",
+			input: {
+				description: AGENTS2_OMNI_LIVE_AGENT_DESCRIPTION,
+				conversationStarters: AGENTS2_OMNI_LIVE_AGENT_CONVERSATION_STARTERS,
+				output: "landing-page-outline",
+				reviewColumn: "Experience Build",
+				assigneePolicy: "return-to-human-owner",
+			},
+			outputPreview: "Profile metadata and instructions keep VoiceMate event-triggered, context-bound, and scoped to Omni Live launch work.",
+		},
+		{
+			toolName: "teamwork_graph.link_knowledge",
+			toolCallId: "agents2-omni-live-agent-knowledge",
+			label: "Linking launch knowledge",
+			content: "Connecting brand guide, voice and tone, launch milestones, demo goals, audience needs, and consent/trust requirements.",
+			input: { sources: ["brand guide", "voice and tone", "launch milestones", "demo goals", "consent requirements"] },
+			outputPreview: "Knowledge scope is limited to deterministic Omni Live demo context so VoiceMate can produce stable per-ticket outlines.",
+		},
+		{
+			toolName: "agent_skill.load",
+			toolCallId: "agents2-omni-live-agent-load-create-automation",
+			label: "Using create-automation skill",
+			content: "Loading the create-automation skill to connect Outline Drafting column events, rerun behavior, and the VoiceMate handoff.",
+			input: { skill: "create-automation", trigger: "jira-column-entered", column: "Outline Drafting" },
+			outputPreview: "Loaded the create-automation skill for Outline Drafting event handling.",
+			delayMs: RFP_DEMO_SKILL_TOOL_CALL_DELAY_MS,
+		},
+		{
+			toolName: "agent.define_rerun_policy",
+			toolCallId: "agents2-omni-live-agent-rerun-policy",
+			label: "Setting rerun policy",
+			content: "Skipping tickets that already have a VoiceMate outline and retrying failed Outline Drafting tickets on later event runs.",
+			input: { skipWhen: ["generated-html", "agent-comment"], retryWhen: ["agentStatus=failed"] },
+			outputPreview: "Completed tickets are idempotent on rerun, and failed tickets remain retryable without blocking other launch work.",
+		},
+		{
+			toolName: "agent.persist_definition",
+			toolCallId: "agents2-omni-live-agent-persist",
+			label: `Creating ${AGENTS2_OMNI_LIVE_AGENT_NAME}`,
+			content: "Saving the VoiceMate definition, selecting it for chat, and assigning it to the Outline Drafting workflow.",
+			input: { agentId: AGENTS2_OMNI_LIVE_AGENT_ID, name: AGENTS2_OMNI_LIVE_AGENT_NAME, assignedColumn: "Outline Drafting" },
+			outputPreview: "VoiceMate is ready for Outline Drafting work items and selected for the current Rovo session.",
+		},
+	];
+}
+
+function buildAgents2OmniLiveAgentResultPayload() {
+	return {
+		agentId: AGENTS2_OMNI_LIVE_AGENT_ID,
+		name: AGENTS2_OMNI_LIVE_AGENT_NAME,
+		description: AGENTS2_OMNI_LIVE_AGENT_DESCRIPTION,
+		conversationStarters: AGENTS2_OMNI_LIVE_AGENT_CONVERSATION_STARTERS,
+		assignedColumn: "Outline Drafting",
+		summary: "Ready to handle similar Omni Live launch work items",
+		trigger: "On event: ticket enters Outline Drafting.",
+		tools: [
+			"Jira work items",
+			"Teamwork Graph",
+			"generate-html one-pagers",
+			"HTML outline attachment",
+		],
+		guardrail: "Skips completed tickets on rerun and retries failed tickets later.",
+		action: "create",
+	};
+}
+
+function buildAgents2OmniLiveAgentCreationConfirmationText({ name = AGENTS2_OMNI_LIVE_AGENT_NAME } = {}) {
+	return `Created **${name}** and added it to the Omni Live Launch project. It runs when a ticket enters Outline Drafting, drafts a generate-html landing-page outline, flags missing brand or proof inputs, attaches the HTML one-pager, comments in Jira, and moves ready work toward Experience Build.`;
+}
+
+function buildAgents2OmniLiveOutlineConfirmationText({ documentId, title = AGENTS2_OMNI_LIVE_OUTLINE_TITLE } = {}) {
+	const resolvedDocumentId = getNonEmptyString(documentId) || "outline";
+	return `Generated **${title}** with the generate-html skill. [Open it in Rovo Canvas](#rovo-canvas-${encodeURIComponent(resolvedDocumentId)}) to review the HTML one-pager content brief.`;
+}
+
 module.exports = {
+	AGENTS2_OMNI_LIVE_AGENT_ID,
+	AGENTS2_OMNI_LIVE_AGENT_NAME,
+	AGENTS2_OMNI_LIVE_OUTLINE_PREVIEW_SUMMARY,
+	AGENTS2_OMNI_LIVE_OUTLINE_TITLE,
 	RFP_DEMO_REPORT_PREVIEW_SUMMARY,
 	RFP_DEMO_REPORT_TITLE,
 	RFP_DEMO_QUESTION_SESSION_ID,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
+	buildAgents2OmniLiveAgentCreationConfirmationText,
+	buildAgents2OmniLiveAgentCreationTrace,
+	buildAgents2OmniLiveAgentResultPayload,
+	buildAgents2OmniLiveOutlineConfirmationText,
+	buildAgents2OmniLiveOutlineTrace,
 	buildAgentsRfpDemoQualificationIntro,
 	buildAgentsRfpDemoAgentCreationConfirmationText,
 	buildAgentsRfpDemoAgentCreationTrace,
@@ -527,5 +814,6 @@ module.exports = {
 	getAgentsRfpDemoPreloadDelayMs,
 	getAgentsRfpDemoToolCallDelayMs,
 	getLatestUserMessageText,
+	resolveAgents2OmniLiveChatTurn,
 	resolveAgentsRfpDemoChatTurn,
 };

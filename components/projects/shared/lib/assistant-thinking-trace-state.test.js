@@ -119,7 +119,7 @@ test("thinking tool titles prefer plain English labels and useful fallbacks", ()
 			state: "running",
 			input: { skill: "generate-pdf" },
 		}),
-		"Using generate-pdf skill",
+		"Using generate-html skill",
 	);
 	assert.equal(
 		getThinkingToolTitle({
@@ -129,7 +129,7 @@ test("thinking tool titles prefer plain English labels and useful fallbacks", ()
 			state: "running",
 			input: { skill: "vpk-html" },
 		}),
-		"Using generate-pdf skill",
+		"Using generate-html skill",
 	);
 	assert.equal(
 		getThinkingToolByline({
@@ -264,7 +264,7 @@ test("tool icon resolver maps agents thinking tools to specific icons", () => {
 		resolveToolIcon({ toolName: "rfp.check" }).iconComponent?.name,
 		/^TaskToDoIcon/u
 	);
-	for (const skill of ["generate-pdf", "create-agent", "create-automation"]) {
+	for (const skill of ["generate-html", "create-agent", "create-automation"]) {
 		const resolvedIcon = resolveToolIcon({
 			toolName: "agent_skill.load",
 			input: { skill },

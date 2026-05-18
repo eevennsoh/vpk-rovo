@@ -59,10 +59,16 @@ const TOOL_ACTION_LABELS = new Map<string, string>([
 	["vpk-html-render-template", "Rendering HTML report"],
 	["vpk-html-validate", "Validating artifact"],
 	["vpk-html-validate-artifact", "Validating artifact"],
-	["generate-pdf-distill", "Distilling report fields"],
-	["generate-pdf-distill-fields", "Distilling report fields"],
-	["generate-pdf-render", "Rendering PDF report"],
-	["generate-pdf-render-document", "Rendering PDF report"],
+	["generate-html-distill", "Distilling outline fields"],
+	["generate-html-distill-fields", "Distilling outline fields"],
+	["generate-html-render", "Rendering HTML outline"],
+	["generate-html-render-one-pager", "Rendering HTML outline"],
+	["generate-html-validate", "Validating artifact"],
+	["generate-html-validate-artifact", "Validating artifact"],
+	["generate-pdf-distill", "Distilling HTML fields"],
+	["generate-pdf-distill-fields", "Distilling HTML fields"],
+	["generate-pdf-render", "Rendering HTML"],
+	["generate-pdf-render-document", "Rendering HTML"],
 	["generate-pdf-validate", "Validating artifact"],
 	["generate-pdf-validate-artifact", "Validating artifact"],
 	["system-tool-call", "Running tool"],
@@ -126,7 +132,10 @@ function clipToolDetail(value: string): string {
 }
 
 function getDisplaySkillName(skillName: string): string {
-	return normalizeToolActionKey(skillName) === "vpk-html" ? "generate-pdf" : skillName;
+	const normalizedSkillName = normalizeToolActionKey(skillName);
+	return normalizedSkillName === "vpk-html" || normalizedSkillName === "generate-pdf"
+		? "generate-html"
+		: skillName;
 }
 
 function isSkillLoadTool(displayName: string): boolean {
@@ -281,6 +290,15 @@ export function getToolActionLabel(toolCall: ThinkingToolCallSummary): string {
 	}
 	if (hasToolActionNamespace(actionKeyCandidates, "rfp")) {
 		return "Checking RFP";
+	}
+	if (hasToolActionNamespace(actionKeyCandidates, "omni")) {
+		return "Mapping Omni Live";
+	}
+	if (hasToolActionNamespace(actionKeyCandidates, "vpk_html")) {
+		return "Rendering HTML";
+	}
+	if (hasToolActionNamespace(actionKeyCandidates, "generate_html")) {
+		return "Rendering HTML";
 	}
 	if (hasToolActionNamespace(actionKeyCandidates, "system")) {
 		return "Running tool";

@@ -360,7 +360,7 @@ function HtmlPreview({
 		return (
 			<div className="rounded-md">
 				<p className="text-left text-sm leading-6 text-text">
-					{summary?.trim() || "PDF ready to open"}
+					{summary?.trim() || "HTML ready to open"}
 				</p>
 			</div>
 		);

@@ -67,7 +67,7 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /const capabilities = getAgentCapabilities\(agent\);/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /Monitor tickets entering Drafting/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /Generate PDF/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /Generate HTML/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /Comment and return work to Review/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /\{capabilities\.length > 0 \? \([\s\S]*>Capabilities<\/h4>[\s\S]*capabilities\.map/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /text-icon-subtle/u);

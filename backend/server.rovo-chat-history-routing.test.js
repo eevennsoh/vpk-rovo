@@ -41,7 +41,19 @@ test("compact rovo chat starts managed runs on AI Gateway without a RovoDev gate
 test("RFP demo floating-chat turns stream before creating a managed run", () => {
 	const proxySource = getFunctionSource("proxyRovoAppChatRequest");
 	const demoBranchIndex = proxySource.indexOf("const agentsRfpDemoTurn = !existingRun");
-	const streamIndex = proxySource.indexOf("streamAgentsRfpDemoChatTurn(res, agentsRfpDemoTurn);", demoBranchIndex);
+	const streamIndex = proxySource.indexOf("streamAgentsRfpDemoChatTurn(res, agentsRfpDemoTurn, requestBody);", demoBranchIndex);
+	const createRunIndex = proxySource.indexOf("rovoAppRunManager.createRun", demoBranchIndex);
+
+	assert.notEqual(demoBranchIndex, -1);
+	assert.notEqual(streamIndex, -1);
+	assert.notEqual(createRunIndex, -1);
+	assert.ok(streamIndex < createRunIndex);
+});
+
+test("Agents2 Omni Live demo turns stream before creating a managed run", () => {
+	const proxySource = getFunctionSource("proxyRovoAppChatRequest");
+	const demoBranchIndex = proxySource.indexOf("const agents2OmniLiveTurn = !existingRun");
+	const streamIndex = proxySource.indexOf("streamAgents2OmniLiveChatTurn(res, agents2OmniLiveTurn, requestBody);", demoBranchIndex);
 	const createRunIndex = proxySource.indexOf("rovoAppRunManager.createRun", demoBranchIndex);
 
 	assert.notEqual(demoBranchIndex, -1);

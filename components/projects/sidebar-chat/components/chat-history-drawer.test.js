@@ -77,7 +77,8 @@ test("custom agent compact chat renders view tabs below the header", () => {
 	assert.match(chatPanelSource, /export interface ChatPanelCustomAgentTabs \{[\s\S]*activity\?: ReactNode;[\s\S]*trigger\?: ReactNode;[\s\S]*\}/u);
 	assert.match(chatPanelSource, /isCustomAgentSelected,/u);
 	assert.match(chatPanelSource, /customAgentTabs\?: ChatPanelCustomAgentTabs;/u);
-	assert.match(chatPanelSource, /const shouldRenderCustomAgentTabs = isCustomAgentSelected \|\| Boolean\(customAgentTabs\);/u);
+	assert.match(chatPanelSource, /const shouldRenderCustomAgentTabs = isCustomAgentSelected;/u);
+	assert.doesNotMatch(chatPanelSource, /const shouldRenderCustomAgentTabs = isCustomAgentSelected \|\| Boolean\(customAgentTabs\);/u);
 	assert.match(
 		chatPanelSource,
 		/\{shouldRenderCustomAgentTabs \? \([\s\S]*<Tabs defaultValue="chat" aria-label="Custom agent views" className="min-h-0 min-w-0 flex-1">[\s\S]*<TabsList className="w-full">[\s\S]*<TabsTrigger value="chat">Chat<\/TabsTrigger>[\s\S]*<TabsTrigger value="trigger">Trigger<\/TabsTrigger>[\s\S]*<TabsTrigger value="activity">Activity<\/TabsTrigger>[\s\S]*<TabsContent value="chat" keepMounted[\s\S]*\{chatConversationBody\}[\s\S]*<TabsContent value="trigger"[\s\S]*customAgentTabs\?\.trigger[\s\S]*<TabsContent value="activity"[\s\S]*customAgentTabs\?\.activity[\s\S]*<\/Tabs>[\s\S]*\{chatComposerBody\}/u,

@@ -380,6 +380,7 @@ export default function ChatPanel({
 	}, [activeThreadId]);
 
 	const { conversationContextRef, scrollSpacerRef, getLatestTurnTargetTop, scrollFollowMode } = useScrollAnchor({
+		enableLatestTurnAnchor: chatSurface !== "floating",
 		isGenerationActive: isStreamingLifecycleActive,
 		uiMessages: messages,
 	});
@@ -541,7 +542,7 @@ export default function ChatPanel({
 	};
 	const isHeaderHistoryEnabled = !hideHeader && headerVariant === "default";
 	const shouldRenderHeaderHistory = isHeaderHistoryEnabled && chatSurface !== "floating";
-	const shouldRenderCustomAgentTabs = isCustomAgentSelected || Boolean(customAgentTabs);
+	const shouldRenderCustomAgentTabs = isCustomAgentSelected;
 	const chatConversationBody = (
 		<Conversation
 			className="min-h-0 min-w-0 flex-1"

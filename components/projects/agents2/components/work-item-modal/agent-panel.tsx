@@ -2,10 +2,16 @@
 
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import { motion, useReducedMotion, type Variants } from "motion/react";
+import Image from "next/image";
 import { useState } from "react";
 import { useWorkItemData } from "@/app/contexts/context-work-item-modal";
 import { AgentSelector } from "@/components/blocks/agent-selector";
 import { BOARD_AGENTS } from "@/components/projects/agents2/data/board-agents";
+import {
+	RFP_DRAFTING_AGENT_AVATAR_SRC,
+	RFP_DRAFTING_AGENT_ID,
+	RFP_DRAFTING_AGENT_NAME,
+} from "@/components/projects/agents2/lib/rfp-demo-state";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -91,6 +97,23 @@ export function AgentPanel() {
 	const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [selectedAgentIds, setSelectedAgentIds] = useState<readonly string[]>([]);
+	const shouldSuggestVoiceMate = workItem.attachments?.some((attachment) => (
+		attachment.source === "generated" && attachment.previewKind === "html-report"
+	)) ?? false;
+	const agents = shouldSuggestVoiceMate
+		? [
+				{
+					id: RFP_DRAFTING_AGENT_ID,
+					name: RFP_DRAFTING_AGENT_NAME,
+					byline: "Suggested by Rovo",
+					avatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,
+				},
+				...BOARD_AGENTS,
+			]
+		: BOARD_AGENTS;
+	const resolvedSelectedAgentIds = shouldSuggestVoiceMate
+		? Array.from(new Set([RFP_DRAFTING_AGENT_ID, ...selectedAgentIds]))
+		: selectedAgentIds;
 
 	const handleAgentToggle = (agentId: string) => {
 		setSelectedAgentIds((currentIds) => (
@@ -132,7 +155,10 @@ export function AgentPanel() {
 
 			<div
 				data-testid="ai-agent-sessions.agent-panel-empty-state"
-				className="flex min-h-14 items-center justify-center rounded-lg border border-dashed border-border"
+				className={cn(
+					"flex min-h-14 rounded-lg border border-dashed border-border",
+					shouldSuggestVoiceMate ? "items-stretch justify-between gap-3" : "items-center justify-center",
+				)}
 				onMouseEnter={() => handleAgentPanelHover("enter")}
 				onMouseLeave={() => handleAgentPanelHover("leave")}
 				style={{
@@ -140,18 +166,36 @@ export function AgentPanel() {
 					paddingInline: token("space.200"),
 				}}
 			>
+				{shouldSuggestVoiceMate ? (
+					<div className="flex min-w-0 items-center gap-3">
+						<Image
+							alt=""
+							aria-hidden
+							className="size-8 shrink-0 rounded-[6px] object-contain"
+							height={32}
+							src={RFP_DRAFTING_AGENT_AVATAR_SRC}
+							width={32}
+						/>
+						<div className="min-w-0">
+							<p className="truncate text-sm font-semibold leading-5 text-text">{RFP_DRAFTING_AGENT_NAME}</p>
+							<p className="truncate text-xs leading-4 text-text-subtle">Suggested for this HTML outline</p>
+						</div>
+					</div>
+				) : null}
 				<div
 					className="flex items-center justify-center gap-2"
 				>
-					<div
-						data-slot="icon-tile"
-						aria-label="Agent"
-						className="relative inline-flex size-6 shrink-0 items-center justify-center"
-					>
-						<AgentPanelIllustration
-							isSparkleVisible={isAgentPanelHovered}
-						/>
-					</div>
+					{shouldSuggestVoiceMate ? null : (
+						<div
+							data-slot="icon-tile"
+							aria-label="Agent"
+							className="relative inline-flex size-6 shrink-0 items-center justify-center"
+						>
+							<AgentPanelIllustration
+								isSparkleVisible={isAgentPanelHovered}
+							/>
+						</div>
+					)}
 					<DropdownMenu open={isSelectorOpen} onOpenChange={handleSelectorOpenChange}>
 						<DropdownMenuTrigger
 							render={
@@ -161,7 +205,7 @@ export function AgentPanel() {
 								/>
 							}
 						>
-							Start work
+							{shouldSuggestVoiceMate ? "Manage" : "Start work"}
 							<ChevronDownIcon label="" size="small" />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent
@@ -171,13 +215,13 @@ export function AgentPanel() {
 							sideOffset={8}
 						>
 							<AgentSelector
-								agents={BOARD_AGENTS}
+								agents={agents}
 								onAgentToggle={handleAgentToggle}
 								onBrowseAgents={handleFooterAction}
 								onCreateAgent={handleFooterAction}
 								onQueryChange={setQuery}
 								query={query}
-								selectedAgentIds={selectedAgentIds}
+								selectedAgentIds={resolvedSelectedAgentIds}
 							/>
 						</DropdownMenuContent>
 					</DropdownMenu>

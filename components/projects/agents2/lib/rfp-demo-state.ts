@@ -785,12 +785,14 @@ export function scheduleRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDe
 			: agentState.agent,
 	};
 
-	return appendUniqueActivity(scheduledState, {
+	const withScheduledActivity = appendUniqueActivity(scheduledState, {
 		id: "activity-agent-scheduled",
 		timestampLabel: "Now",
 		message: `Maya connected ${RFP_DRAFTING_AGENT_NAME} to Outline Drafting column events.`,
 		type: "scheduled",
 	});
+
+	return withScheduledActivity;
 }
 
 export function setRfpDraftingAgentTrigger(state: AgentsRfpDemoState, prompt: string): AgentsRfpDemoState {
@@ -882,7 +884,7 @@ export function moveRfpDemoCard(
 		status: targetColumn.title,
 	};
 
-	if (cardCode === "OMNI-102" && targetColumn.title === "Outline Drafting" && nextState.agent) {
+	if (targetColumn.title === RFP_DRAFTING_COLUMN_NAME && nextState.agent?.trigger) {
 		return assignRfpDraftingAgentToCard(nextState, cardCode);
 	}
 

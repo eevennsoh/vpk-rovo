@@ -10,6 +10,8 @@ const USE_SCROLL_ANCHOR_SOURCE = fs.readFileSync(
 
 test("compact chat scroll anchor uses the Rovo bottom/target follow lifecycle", () => {
 	assert.match(USE_SCROLL_ANCHOR_SOURCE, /resolveRovoAppScrollAnchorLayout/);
+	assert.match(USE_SCROLL_ANCHOR_SOURCE, /enableLatestTurnAnchor\?: boolean;/);
+	assert.match(USE_SCROLL_ANCHOR_SOURCE, /enableLatestTurnAnchor = true/);
 	assert.match(USE_SCROLL_ANCHOR_SOURCE, /isGenerationActive: boolean;/);
 	assert.match(
 		USE_SCROLL_ANCHOR_SOURCE,
@@ -33,8 +35,22 @@ test("compact chat scroll anchor uses the Rovo bottom/target follow lifecycle", 
 		USE_SCROLL_ANCHOR_SOURCE,
 		/conversationContextRef\.current\?\.scrollToBottom\(\{\s+animation: pendingAnchorScrollAnimationRef\.current,\s+ignoreEscapes: true,/,
 	);
+	assert.match(USE_SCROLL_ANCHOR_SOURCE, /enableLatestTurnAnchor &&\s+isGenerationActive/);
+	assert.match(USE_SCROLL_ANCHOR_SOURCE, /\(!isGenerationActive \|\| !enableLatestTurnAnchor\) && scrollFollowMode !== "bottom"/);
 	assert.doesNotMatch(
 		USE_SCROLL_ANCHOR_SOURCE,
 		/target: "bottom"/,
+	);
+});
+
+test("ChatPanel disables latest-turn spacer anchoring while floating", () => {
+	const chatPanelSource = fs.readFileSync(
+		path.join(__dirname, "..", "page.tsx"),
+		"utf8",
+	);
+
+	assert.match(
+		chatPanelSource,
+		/enableLatestTurnAnchor: chatSurface !== "floating"/u,
 	);
 });

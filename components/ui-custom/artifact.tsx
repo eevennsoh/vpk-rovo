@@ -196,7 +196,7 @@ export const ARTIFACT_KIND_LABELS: Record<ArtifactKind, string> = {
 	browser: "Browser",
 	code: "Code",
 	excalidraw: "Diagram",
-	html: "PDF",
+	html: "HTML",
 	image: "Image",
 	react: "App",
 	sheet: "Sheet",

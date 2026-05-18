@@ -37,7 +37,7 @@ const AGENT_CAPABILITIES = [
 		icon: <BoardIcon label="" size="small" />,
 	},
 	{
-		label: "Generate PDF",
+		label: "Generate HTML",
 		icon: <PageIcon label="" size="small" />,
 	},
 	{
@@ -48,7 +48,7 @@ const AGENT_CAPABILITIES = [
 
 function getAgentLongDescription(agent: AgentResult): string {
 	if (agent.agentId === RFP_DRAFTING_AGENT_ID) {
-		return "RFP Drafter monitors Drafting tickets, reads Jira context, uses Teamwork Graph knowledge, and generates a proposal PDF plus comment before returning work to review.";
+		return "RFP Drafter monitors Drafting tickets, reads Jira context, uses Teamwork Graph knowledge, and generates a proposal HTML artifact plus comment before returning work to review.";
 	}
 
 	return agent.summary;

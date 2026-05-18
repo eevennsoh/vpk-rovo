@@ -1,10 +1,19 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+	AGENTS2_OMNI_LIVE_AGENT_ID,
+	AGENTS2_OMNI_LIVE_AGENT_NAME,
+	AGENTS2_OMNI_LIVE_OUTLINE_PREVIEW_SUMMARY,
+	AGENTS2_OMNI_LIVE_OUTLINE_TITLE,
 	RFP_DEMO_REPORT_PREVIEW_SUMMARY,
 	RFP_DEMO_REPORT_TITLE,
 	RFP_DEMO_QUESTION_SESSION_ID,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
+	buildAgents2OmniLiveAgentCreationConfirmationText,
+	buildAgents2OmniLiveAgentCreationTrace,
+	buildAgents2OmniLiveAgentResultPayload,
+	buildAgents2OmniLiveOutlineConfirmationText,
+	buildAgents2OmniLiveOutlineTrace,
 	buildAgentsRfpDemoAnswerTrace,
 	buildAgentsRfpDemoAgentCreationConfirmationText,
 	buildAgentsRfpDemoAgentCreationTrace,
@@ -15,6 +24,7 @@ const {
 	getAgentsRfpDemoToolCallDelayMs,
 	getAgentsRfpDemoPreloadDelayMs,
 	getLatestUserMessageText,
+	resolveAgents2OmniLiveChatTurn,
 	resolveAgentsRfpDemoChatTurn,
 } = require("./agents-rfp-demo-chat");
 
@@ -47,6 +57,26 @@ const RFP_AGENT_CREATION_CONTEXT = [
 const RFP_AGENT_CREATION_PROMPT = [
 	"Create an RFP Drafter for the Drafting column on the Enterprise RFP Response board.",
 	"The agent should read each RFP work item and stage reusable report work.",
+].join("\n");
+
+const OMNI_101_CONTEXT = [
+	"[Active Jira Work Item Context]",
+	"Source: /agents2 Omni Live work item modal.",
+	"Key: OMNI-101",
+	"Title: Live demo: Define live-demo-first landing page narrative",
+	"Description: Omni Live needs a public landing page that makes the live demo tangible.",
+	"Launch milestones: Developer Preview May 28, Public Beta June 18, GA July 9.",
+	"[End Active Jira Work Item Context]",
+].join("\n");
+
+const OMNI_AGENT_CREATION_CONTEXT = [
+	"[Agents VoiceMate Creation Request]",
+	"Source: /agents2 VoiceMate agent onboarding.",
+	"Board: Omni Live Launch.",
+	"Column: Outline Drafting.",
+	"Trigger: On event: ticket enters Outline Drafting.",
+	"Expected output: create the agent, add it to this Jira project, attach a landing-page outline, flag missing brand/content inputs, and move ready work toward Experience Build in the local demo flow.",
+	"[End Agents VoiceMate Creation Request]",
 ].join("\n");
 
 test("detects the real RFP-101 floating-chat qualification turn from active context", () => {
@@ -168,6 +198,73 @@ test("does not trigger the RFP demo turn from board fallback context alone", () 
 	assert.equal(turn, null);
 });
 
+test("detects the Agents2 Omni Live outline turn from OMNI-101 context", () => {
+	const turn = resolveAgents2OmniLiveChatTurn({
+		contextDescription: OMNI_101_CONTEXT,
+		messages: [
+			{
+				role: "user",
+				parts: [{ type: "text", text: "Generate an Omni Live landing-page outline" }],
+			},
+		],
+	});
+
+	assert.equal(turn, "omni-outline-create");
+});
+
+test("detects the Agents2 Omni Live outline turn after clarification answers", () => {
+	const turn = resolveAgents2OmniLiveChatTurn({
+		contextDescription: OMNI_101_CONTEXT,
+		messages: [
+			{
+				role: "user",
+				metadata: { source: "clarification-submit" },
+				parts: [{
+					type: "text",
+					text: [
+						"Here are my clarification answers for \"Answer these questions to continue\":",
+						"",
+						"- What format should the landing page output take?: HTML mockup",
+						"- Which audience should the hero lead with?: Balanced split",
+						"- How prominent should the launch milestones be?: Footer band",
+					].join("\n"),
+				}],
+			},
+		],
+	});
+
+	assert.equal(turn, "omni-outline-create");
+});
+
+test("does not trigger Agents2 Omni Live outline turns without OMNI-101 context", () => {
+	const turn = resolveAgents2OmniLiveChatTurn({
+		contextDescription: "[Agents2 Board Context]\nOMNI-101: Live demo narrative\n[End Agents2 Board Context]",
+		messages: [
+			{
+				role: "user",
+				parts: [{ type: "text", text: "Generate an Omni Live landing-page outline" }],
+			},
+		],
+	});
+
+	assert.equal(turn, null);
+});
+
+test("detects the Agents2 VoiceMate creation turn from onboarding context", () => {
+	const turn = resolveAgents2OmniLiveChatTurn({
+		contextDescription: OMNI_AGENT_CREATION_CONTEXT,
+		creationMode: "agent",
+		messages: [
+			{
+				role: "user",
+				parts: [{ type: "text", text: "Create VoiceMate to draft landing-page outlines for similar Omni Live launch work items." }],
+			},
+		],
+	});
+
+	assert.equal(turn, "omni-agent-creation");
+});
+
 test("detects the RFP demo clarification answer turn by question session", () => {
 	const turn = resolveAgentsRfpDemoChatTurn({
 		contextDescription: RFP_101_CONTEXT,
@@ -253,6 +350,62 @@ test("answer trace produces completed qualification DACI steps", () => {
 	assert.ok(trace.every((step) => typeof step.outputPreview === "string" && step.outputPreview.length > 0));
 });
 
+test("Agents2 Omni Live outline trace uses generate-html one-pager steps", () => {
+	const trace = buildAgents2OmniLiveOutlineTrace();
+
+	assert.deepEqual(
+		trace.map((step) => step.toolName),
+		[
+			"jira.read_work_item",
+			"jira.scan_attachments",
+			"teamwork_graph.search",
+			"omni.map_page_story",
+			"omni.check_content_gaps",
+			"agent_skill.load",
+			"generate_html.distill_fields",
+			"generate_html.render_one_pager",
+			"generate_html.validate_artifact",
+		],
+	);
+	assert.equal(trace.find((step) => step.toolName === "agent_skill.load")?.label, "Using generate-html skill");
+	assert.equal(trace.find((step) => step.toolName === "agent_skill.load")?.input.skill, "generate-html");
+	assert.match(trace.map((step) => step.content).join("\n"), /landing-page outline/u);
+	assert.match(trace.map((step) => step.outputPreview).join("\n"), /May 28 \/ June 18 \/ July 9/u);
+	assert.ok(trace.every((step) => typeof step.outputPreview === "string" && step.outputPreview.length > 0));
+});
+
+test("Agents2 VoiceMate creation trace maps the custom agent to Outline Drafting", () => {
+	const trace = buildAgents2OmniLiveAgentCreationTrace();
+	const result = buildAgents2OmniLiveAgentResultPayload();
+
+	assert.deepEqual(
+		trace.map((step) => step.toolName),
+		[
+			"jira.inspect_board_column",
+			"agent_skill.load",
+			"agent.define_trigger",
+			"agent.configure_tools",
+			"agent.write_instructions",
+			"teamwork_graph.link_knowledge",
+			"agent_skill.load",
+			"agent.define_rerun_policy",
+			"agent.persist_definition",
+		],
+	);
+	assert.deepEqual(
+		trace.filter((step) => step.toolName === "agent_skill.load").map((step) => step.input.skill),
+		["create-agent", "create-automation"],
+	);
+	assert.equal(result.agentId, AGENTS2_OMNI_LIVE_AGENT_ID);
+	assert.equal(result.name, AGENTS2_OMNI_LIVE_AGENT_NAME);
+	assert.equal(result.assignedColumn, "Outline Drafting");
+	assert.match(result.trigger, /ticket enters Outline Drafting/u);
+	assert.match(result.tools.join(" "), /generate-html one-pagers/u);
+	assert.match(buildAgents2OmniLiveAgentCreationConfirmationText(result), /Created \*\*VoiceMate\*\*/u);
+	assert.match(buildAgents2OmniLiveAgentCreationConfirmationText(result), /Omni Live Launch project/u);
+	assert.doesNotMatch(trace.map((step) => step.toolName).join("\n"), /generate_pdf/u);
+});
+
 test("agent creation trace creates an agent instead of rendering another report", () => {
 	const trace = buildAgentsRfpDemoAgentCreationTrace();
 	const result = buildAgentsRfpDemoAgentResultPayload();
@@ -318,6 +471,18 @@ test("report confirmation points the user at Rovo Canvas", () => {
 			title: RFP_DEMO_REPORT_TITLE,
 		}),
 		/Generated \*\*Acmecorp RFP qualification DACI\*\* with the generate-pdf skill[\s\S]*\[Open it in Rovo Canvas\]\(#rovo-canvas-doc-123\)[\s\S]*qualification DACI/u,
+	);
+});
+
+test("Agents2 outline confirmation points the user at Rovo Canvas", () => {
+	assert.equal(AGENTS2_OMNI_LIVE_OUTLINE_TITLE, "Omni Live landing-page outline");
+	assert.match(AGENTS2_OMNI_LIVE_OUTLINE_PREVIEW_SUMMARY, /HTML one-pager landing-page outline/u);
+	assert.match(
+		buildAgents2OmniLiveOutlineConfirmationText({
+			documentId: "doc-omni",
+			title: AGENTS2_OMNI_LIVE_OUTLINE_TITLE,
+		}),
+		/Generated \*\*Omni Live landing-page outline\*\* with the generate-html skill[\s\S]*\[Open it in Rovo Canvas\]\(#rovo-canvas-doc-omni\)[\s\S]*HTML one-pager content brief/u,
 	);
 });
 

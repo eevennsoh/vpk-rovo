@@ -5,8 +5,8 @@ const test = require("node:test");
 
 const ARTIFACT_SOURCE = fs.readFileSync(path.join(__dirname, "artifact.tsx"), "utf8");
 
-test("ArtifactCard presents html artifacts as PDFs with acronym casing", () => {
-	assert.match(ARTIFACT_SOURCE, /html: "PDF"/u);
+test("ArtifactCard presents html artifacts as HTML with acronym casing", () => {
+	assert.match(ARTIFACT_SOURCE, /html: "HTML"/u);
 	assert.match(ARTIFACT_SOURCE, /function formatArtifactKindActionLabel\(kindLabel: string\): string/u);
 	assert.match(ARTIFACT_SOURCE, /\? kindLabel\s*: kindLabel\.toLowerCase\(\);/u);
 	assert.match(ARTIFACT_SOURCE, /const actionKindLabel = formatArtifactKindActionLabel\(kindLabel\);/u);
@@ -15,6 +15,7 @@ test("ArtifactCard presents html artifacts as PDFs with acronym casing", () => {
 		/resolvedOpenCtaLabel = openCtaLabel \?\? `Open \$\{actionKindLabel\}`/u,
 	);
 	assert.doesNotMatch(ARTIFACT_SOURCE, /html: "HTML report"/u);
+	assert.doesNotMatch(ARTIFACT_SOURCE, /html: "PDF"/u);
 	assert.doesNotMatch(ARTIFACT_SOURCE, /Open \$\{kindLabel\.toLowerCase\(\)\}/u);
 });
 
