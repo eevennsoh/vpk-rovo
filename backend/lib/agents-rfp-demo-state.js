@@ -1402,8 +1402,10 @@ function getDemoCreatedThreadIds(state) {
 
 function createAgentsRfpDemoStateManager({ baseDir }) {
 	const filePath = path.join(baseDir, "agents-rfp-demo", "state.json");
+	let mutationQueue = Promise.resolve();
+	let tempWriteCounter = 0;
 
-	async function readState() {
+	async function readStateFromDisk() {
 		try {
 			const rawText = await fs.readFile(filePath, "utf8");
 			return normalizeAgentsRfpDemoState(JSON.parse(rawText));
@@ -1415,11 +1417,36 @@ function createAgentsRfpDemoStateManager({ baseDir }) {
 		}
 	}
 
-	async function writeState(state) {
+	async function writeStateToDisk(state) {
 		const normalizedState = normalizeAgentsRfpDemoState(state);
 		await fs.mkdir(path.dirname(filePath), { recursive: true });
-		await fs.writeFile(filePath, `${JSON.stringify(normalizedState, null, 2)}\n`, "utf8");
+		const tempFilePath = `${filePath}.${process.pid}.${Date.now()}.${tempWriteCounter++}.tmp`;
+		try {
+			await fs.writeFile(tempFilePath, `${JSON.stringify(normalizedState, null, 2)}\n`, "utf8");
+			await fs.rename(tempFilePath, filePath);
+		} catch (error) {
+			await fs.rm(tempFilePath, { force: true }).catch(() => {});
+			throw error;
+		}
 		return cloneJson(normalizedState);
+	}
+
+	function enqueueMutation(task) {
+		const result = mutationQueue.then(task, task);
+		mutationQueue = result.then(
+			() => undefined,
+			() => undefined,
+		);
+		return result;
+	}
+
+	async function readState() {
+		await mutationQueue;
+		return readStateFromDisk();
+	}
+
+	async function writeState(state) {
+		return enqueueMutation(() => writeStateToDisk(state));
 	}
 
 	async function resetState() {
@@ -1427,9 +1454,11 @@ function createAgentsRfpDemoStateManager({ baseDir }) {
 	}
 
 	async function updateState(updater) {
-		const currentState = await readState();
-		const nextState = await updater(currentState);
-		return writeState(nextState);
+		return enqueueMutation(async () => {
+			const currentState = await readStateFromDisk();
+			const nextState = await updater(currentState);
+			return writeStateToDisk(nextState);
+		});
 	}
 
 	return {

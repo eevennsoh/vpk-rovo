@@ -347,3 +347,28 @@ test("state manager persists normalized demo state and reset clears agent output
 	assert.equal(reset.workItems["RFP-141"].agentStatus, "idle");
 	assert.equal(reset.workItems["RFP-141"].generatedAttachment, null);
 });
+
+test("state manager serializes concurrent ticket move updates", async (t) => {
+	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "agents-rfp-demo-state-"));
+	t.after(() => fs.rm(tempDir, { force: true, recursive: true }));
+	const manager = createAgentsRfpDemoStateManager({ baseDir: tempDir });
+
+	await manager.writeState(createDefaultAgentsRfpDemoState());
+	await Promise.all([
+		manager.updateState((state) => moveTicketToColumn(state, "RFP-102", RFP_DRAFTING_COLUMN_NAME)),
+		manager.updateState((state) => moveTicketToColumn(state, "RFP-103", RFP_REVIEW_COLUMN_NAME)),
+		manager.updateState((state) => moveTicketToColumn(state, "RFP-104", "Submitted")),
+	]);
+
+	const persisted = await manager.readState();
+	assert.equal(persisted.workItems["RFP-102"].status, RFP_DRAFTING_COLUMN_NAME);
+	assert.equal(persisted.workItems["RFP-103"].status, RFP_REVIEW_COLUMN_NAME);
+	assert.equal(persisted.workItems["RFP-104"].status, "Submitted");
+	assert.deepEqual(
+		persisted.board.columns.find((column) => column.title === "RFP Intake").cardCodes,
+		["RFP-101", "RFP-105", "RFP-106", "RFP-107"],
+	);
+
+	const files = await fs.readdir(path.join(tempDir, "agents-rfp-demo"));
+	assert.deepEqual(files, ["state.json"]);
+});

@@ -14840,9 +14840,9 @@ app.post("/api/agents/rfp-demo/events/ticket-entered-column", async (req, res) =
 			return res.status(400).json({ error: "ticketCode and targetColumn are required." });
 		}
 
-		let state = await agentsRfpDemoStateManager.readState();
-		state = moveTicketToColumn(state, ticketCode, targetColumn);
-		await agentsRfpDemoStateManager.writeState(state);
+		const state = await agentsRfpDemoStateManager.updateState((currentState) => (
+			moveTicketToColumn(currentState, ticketCode, targetColumn)
+		));
 
 		if (targetColumn !== RFP_DRAFTING_EVENT_TRIGGER.column || !state.agent?.trigger) {
 			return res.json({
