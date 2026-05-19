@@ -545,6 +545,55 @@ function PendingAnnotationPopover({
 	);
 }
 
+export interface ArtifactAnnotationLayerProps {
+	annotations?: ArtifactAnnotation[];
+	onAddComment?: (comment: string) => void;
+	onDismissSelection?: () => void;
+	onRemoveAnnotation?: (id: string) => void;
+	pendingSelection?: PendingArtifactSelection | null;
+}
+
+export function ArtifactAnnotationLayer({
+	annotations = EMPTY_ANNOTATIONS,
+	onAddComment,
+	onDismissSelection,
+	onRemoveAnnotation,
+	pendingSelection = null,
+}: Readonly<ArtifactAnnotationLayerProps>) {
+	return (
+		<div
+			className="pointer-events-none absolute inset-0 z-10"
+			data-artifact-annotation-ui=""
+		>
+			{annotations.map((annotation) => (
+				<Button
+					key={annotation.id}
+					className={cn(
+						"pointer-events-auto absolute size-7 rounded-full border border-border-selected bg-background px-0 text-[11px] font-semibold text-text shadow-sm",
+					)}
+					onClick={() => onRemoveAnnotation?.(annotation.id)}
+					size="icon-sm"
+					style={getAnnotationPinStyle(annotation.position)}
+					title={`Remove annotation #${annotation.index}: ${annotation.comment}`}
+					type="button"
+					variant="outline"
+				>
+					{annotation.index}
+				</Button>
+			))}
+
+			{pendingSelection ? (
+				<PendingAnnotationPopover
+					key={`${pendingSelection.position.left}-${pendingSelection.position.top}-${pendingSelection.anchor.selector ?? "selection"}`}
+					onAddComment={onAddComment}
+					onDismissSelection={onDismissSelection}
+					pendingSelection={pendingSelection}
+				/>
+			) : null}
+		</div>
+	);
+}
+
 const EMPTY_ANNOTATIONS: ArtifactAnnotation[] = [];
 
 type ArtifactVersionHistoryItem = ArtifactDocument["versions"][number];
@@ -925,36 +974,13 @@ export function ArtifactPanel({
 						/>
 
 						{mode === "preview" ? (
-							<div
-								className="pointer-events-none absolute inset-0 z-10"
-								data-artifact-annotation-ui=""
-							>
-								{annotations.map((annotation) => (
-									<Button
-										key={annotation.id}
-										className={cn(
-											"pointer-events-auto absolute size-7 rounded-full border border-border-selected bg-background px-0 text-[11px] font-semibold text-text shadow-sm",
-										)}
-										onClick={() => onRemoveAnnotation?.(annotation.id)}
-										size="icon-sm"
-										style={getAnnotationPinStyle(annotation.position)}
-										title={`Remove annotation #${annotation.index}: ${annotation.comment}`}
-										type="button"
-										variant="outline"
-									>
-										{annotation.index}
-									</Button>
-								))}
-
-								{pendingSelection ? (
-									<PendingAnnotationPopover
-										key={`${pendingSelection.position.left}-${pendingSelection.position.top}-${pendingSelection.anchor.selector ?? "selection"}`}
-										onAddComment={onAddComment}
-										onDismissSelection={onDismissSelection}
-										pendingSelection={pendingSelection}
-									/>
-								) : null}
-							</div>
+							<ArtifactAnnotationLayer
+								annotations={annotations}
+								onAddComment={onAddComment}
+								onDismissSelection={onDismissSelection}
+								onRemoveAnnotation={onRemoveAnnotation}
+								pendingSelection={pendingSelection}
+							/>
 						) : null}
 					</div>
 				)}

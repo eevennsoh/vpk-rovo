@@ -120,6 +120,31 @@ test("Rovo Canvas version history entries expose selected state and selection ca
 	);
 });
 
+test("Rovo Canvas select mode uses the shared artifact annotation layer", () => {
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/import \{ ArtifactAnnotationLayer \} from "@\/components\/ui-custom\/artifact";/u,
+	);
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/import \{ useArtifactAnnotations \} from "@\/components\/ui-custom\/hooks\/use-artifact-annotations";/u,
+	);
+	assert.match(ROVO_CANVAS_SOURCE, /annotationContainerRef = useRef<HTMLDivElement>\(null\)/u);
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/useArtifactAnnotations\(\{[\s\S]*active: isAnnotationModeAvailable && isSelectMode,[\s\S]*containerRef: annotationContainerRef,/u,
+	);
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/ref=\{isActivePreviewView \? annotationContainerRef : undefined\}/u,
+	);
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/<ArtifactAnnotationLayer[\s\S]*annotations=\{annotations\}[\s\S]*onAddComment=\{addComment\}[\s\S]*onDismissSelection=\{dismissSelection\}[\s\S]*onRemoveAnnotation=\{removeAnnotation\}[\s\S]*pendingSelection=\{pendingSelection\}/u,
+	);
+	assert.doesNotMatch(ROVO_CANVAS_SOURCE, /function SelectModeOverlay/u);
+});
+
 test("Rovo Canvas main artefact frame uses a border without elevation", () => {
 	assert.match(
 		ROVO_CANVAS_SOURCE,
