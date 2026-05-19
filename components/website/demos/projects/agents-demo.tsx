@@ -260,7 +260,7 @@ function AgentsDemoContent({
 					agentName: RFP_DRAFTING_AGENT_NAME,
 					byline: "By you",
 					description: RFP_DRAFTING_AGENT_DESCRIPTION,
-					prompt: "Create an RFP agent to handle similar work items from this drafting flow.",
+					prompt: "Make an agent that handles similar RFP response workflows.",
 					primaryActionLabel: "Create",
 					secondaryActionLabel: "Not now",
 					avatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,

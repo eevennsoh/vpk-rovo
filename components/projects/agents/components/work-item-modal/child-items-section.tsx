@@ -28,7 +28,27 @@ const DEFAULT_CHILD_ITEMS: WorkItemChildItem[] = [
 
 export function ChildItemsSection() {
 	const workItem = useWorkItemData();
-	const childItems = workItem.childItems?.length ? workItem.childItems : DEFAULT_CHILD_ITEMS;
+	const childItems = workItem.childItems ?? DEFAULT_CHILD_ITEMS;
+
+	if (childItems.length === 0) {
+		return (
+			<section
+				style={{
+					display: "grid",
+					rowGap: token("space.100"),
+				}}
+			>
+				<div className="flex justify-between items-center">
+					<Heading size="small" as="h3">
+						Subtasks
+					</Heading>
+					<Button aria-label="Add work item" size="icon-sm" variant="ghost">
+						<AddIcon label="" size="small" />
+					</Button>
+				</div>
+			</section>
+		);
+	}
 
 	return (
 		<section

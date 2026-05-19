@@ -1,5 +1,7 @@
 "use client";
 
+import type { MouseEvent } from "react";
+
 import { token } from "@/lib/tokens";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useWorkItemData, type WorkItemComment } from "@/app/contexts/context-work-item-modal";
@@ -73,6 +75,15 @@ function CommentAvatar({ comment }: Readonly<CommentProps>) {
 function Comment({ comment }: Readonly<CommentProps>) {
 	const replies = comment.replies ?? [];
 	const hasReplies = replies.length > 0;
+	const contentLines = comment.content.split("\n");
+	const handleActionClick = (event: MouseEvent<HTMLAnchorElement>) => {
+		if (!comment.actionLink?.eventName) {
+			return;
+		}
+
+		window.dispatchEvent(new Event(comment.actionLink.eventName, { cancelable: true }));
+		event.preventDefault();
+	};
 
 	return (
 		<article
@@ -110,7 +121,20 @@ function Comment({ comment }: Readonly<CommentProps>) {
 				</div>
 			) : null}
 			<div className="min-w-0 text-sm text-text-subtle" style={{ gridColumn: 2, gridRow: 2 }}>
-				{comment.content}
+				{contentLines.map((line, index) => (
+					<p key={`${comment.id}-line-${index}`} className={index === 0 ? "font-medium text-text" : undefined}>
+						{line}
+					</p>
+				))}
+				{comment.actionLink ? (
+					<a
+						className="mt-1 inline-flex text-link hover:underline"
+						href={comment.actionLink.href}
+						onClick={handleActionClick}
+					>
+						{comment.actionLink.label}
+					</a>
+				) : null}
 			</div>
 			<div style={{ gridColumn: 2, gridRow: 3 }}>
 				<CommentActions />
@@ -151,7 +175,11 @@ function Comment({ comment }: Readonly<CommentProps>) {
 
 export function CommentThread() {
 	const workItem = useWorkItemData();
-	const comments = workItem.comments?.length ? workItem.comments : DEFAULT_COMMENTS;
+	const comments = workItem.comments ?? DEFAULT_COMMENTS;
+
+	if (comments.length === 0) {
+		return null;
+	}
 
 	return (
 		<div className="flex flex-col">

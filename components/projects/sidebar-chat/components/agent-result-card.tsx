@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import AutomationIcon from "@atlaskit/icon/core/automation";
 import BoardIcon from "@atlaskit/icon/core/board";
-import CommentIcon from "@atlaskit/icon/core/comment";
 import DataFlowIcon from "@atlaskit/icon/core/data-flow";
 import PageIcon from "@atlaskit/icon/core/page";
 import { RFP_DRAFTING_AGENT_AVATAR_SRC } from "@/components/projects/agents/lib/rfp-demo-state";
@@ -30,36 +29,28 @@ const AGENT_RESULT_VISUAL_IDENTITY = {
 
 const AGENT_RESULT_DESCRIPTION = "Agent \u2022 Version 1";
 const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
-
-const AGENT_CAPABILITIES = [
-	{
-		label: "Monitor tickets entering Drafting",
-		icon: <BoardIcon label="" size="small" />,
-	},
-	{
-		label: "Generate PDF",
-		icon: <PageIcon label="" size="small" />,
-	},
-	{
-		label: "Comment and return work to Review",
-		icon: <CommentIcon label="" size="small" />,
-	},
-] as const;
+const AGENT_TOOL_LABELS: Record<string, string> = {
+	"generate_pdf.render_document": "generate-pdf",
+	"jira.attach_pdf": "attach-file",
+	"jira.attachments": "attach-file",
+	"jira.work_items": "get-jira-workitems",
+	"teamwork_graph.search": "teamwork-graph",
+	"Jira work items": "get-jira-workitems",
+	"Teamwork Graph": "teamwork-graph",
+	"PDF draft attachment": "attach-file",
+	"generate-pdf reports": "generate-pdf",
+};
 
 function getAgentLongDescription(agent: AgentResult): string {
 	if (agent.agentId === RFP_DRAFTING_AGENT_ID) {
-		return "RFP Drafter monitors Drafting tickets, reads Jira context, uses Teamwork Graph knowledge, and generates a proposal PDF plus comment before returning work to review.";
+		return "RFP Drafter monitors Drafting tickets, reads Jira context, uses Teamwork Graph knowledge, and generates and attaches a response PDF.";
 	}
 
-	return agent.summary;
+	return agent.summary || agent.description || "";
 }
 
 function getAgentDisplayName(agent: AgentResult): string {
 	return agent.agentId === RFP_DRAFTING_AGENT_ID ? "RFP Drafter" : agent.name;
-}
-
-function getAgentCapabilities(agent: AgentResult): typeof AGENT_CAPABILITIES | [] {
-	return agent.agentId === RFP_DRAFTING_AGENT_ID ? AGENT_CAPABILITIES : [];
 }
 
 function getAgentIdentityAvatarSrc(agent: AgentResult): string | undefined {
@@ -105,17 +96,23 @@ function getSkillTagColor(tool: string): SkillTagColor {
 	return "software";
 }
 
+function getSkillTagLabel(tool: string): string {
+	const trimmedTool = tool.trim();
+	return AGENT_TOOL_LABELS[trimmedTool] ?? trimmedTool;
+}
+
 export function AgentResultCard({
 	agent,
 	className,
 	onSelectAgent,
 }: Readonly<AgentResultCardProps>): ReactNode {
 	const displayName = getAgentDisplayName(agent);
+	const identityAvatarSrc = getAgentIdentityAvatarSrc(agent);
+	const description = agent.description?.trim() || AGENT_RESULT_DESCRIPTION;
+	const profileDescription = getAgentLongDescription(agent).trim() || description;
 	const tools = Array.isArray(agent.tools)
 		? agent.tools.filter((tool): tool is string => typeof tool === "string" && tool.trim().length > 0)
 		: [];
-	const capabilities = getAgentCapabilities(agent);
-	const identityAvatarSrc = getAgentIdentityAvatarSrc(agent);
 	const handleSelectAgent = () => {
 		onSelectAgent?.(agent);
 		window.dispatchEvent(new CustomEvent(ROVO_AGENT_RESULT_SELECT_EVENT, {
@@ -131,37 +128,40 @@ export function AgentResultCard({
 			<ArtifactCard
 				action={agent.action}
 				collapseLabel="Collapse agent details"
-				description={AGENT_RESULT_DESCRIPTION}
+				description={description}
 				displayMode="preview"
 				expandLabel="Expand agent details"
 				identityAvatarSrc={identityAvatarSrc}
 				kind="text"
 				onOpen={handleSelectAgent}
-				openCtaLabel="Select agent"
+				openCtaLabel="Chat with agent"
 				openLabel={`Select ${displayName}`}
 				title={displayName}
 				visualIdentity={identityAvatarSrc ? undefined : AGENT_RESULT_VISUAL_IDENTITY}
 			>
 				<div className="flex flex-col gap-4">
 					<section className="flex flex-col gap-1.5">
-						<h4 className="text-xs font-semibold leading-4 text-text">Description</h4>
-						<p className="text-sm leading-5 text-text-subtle">
-							{getAgentLongDescription(agent)}
+						<h4 className="text-xs font-semibold leading-4 text-text">Agent description</h4>
+						<p className="text-sm leading-5 text-text">
+							{profileDescription}
 						</p>
-						{tools.length > 0 ? (
+					</section>
+					{tools.length > 0 ? (
+						<section className="flex flex-col gap-1.5">
+							<h4 className="text-xs font-semibold leading-4 text-text">Skills</h4>
 							<SkillTagGroup>
 								{tools.map((tool) => (
-									<SkillTag
-										key={tool}
-										color={getSkillTagColor(tool)}
-										icon={getSkillTagIcon(tool)}
-									>
-										{tool}
-									</SkillTag>
-								))}
+								<SkillTag
+									key={tool}
+									color={getSkillTagColor(tool)}
+									icon={getSkillTagIcon(tool)}
+								>
+									{getSkillTagLabel(tool)}
+								</SkillTag>
+							))}
 							</SkillTagGroup>
-						) : null}
-					</section>
+						</section>
+					) : null}
 					{agent.trigger ? (
 						<section className="flex flex-col gap-1.5">
 							<h4 className="text-xs font-semibold leading-4 text-text">Trigger</h4>
@@ -170,21 +170,6 @@ export function AgentResultCard({
 									<AutomationIcon label="" size="small" />
 								</span>
 								<span>{formatAgentTriggerLabel(agent.trigger)}</span>
-							</div>
-						</section>
-					) : null}
-					{capabilities.length > 0 ? (
-						<section className="flex flex-col gap-1.5">
-							<h4 className="text-xs font-semibold leading-4 text-text">Capabilities</h4>
-							<div className="flex flex-col gap-2">
-								{capabilities.map((capability) => (
-									<div key={capability.label} className="flex items-center gap-2 text-sm leading-5 text-text">
-										<span className="flex size-4 shrink-0 items-center justify-center text-icon-subtle">
-											{capability.icon}
-										</span>
-										<span>{capability.label}</span>
-									</div>
-								))}
 							</div>
 						</section>
 					) : null}

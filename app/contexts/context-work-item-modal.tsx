@@ -68,6 +68,11 @@ export interface WorkItemComment {
 	author: WorkItemPerson;
 	timestamp: string;
 	content: string;
+	actionLink?: {
+		label: string;
+		href: string;
+		eventName?: "rovo:open-canvas-artifact";
+	};
 	replies?: WorkItemComment[];
 }
 

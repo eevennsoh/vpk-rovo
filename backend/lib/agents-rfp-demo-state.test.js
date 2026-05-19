@@ -46,6 +46,34 @@ test("default RFP demo backend state seeds the current board", () => {
 	assert.equal(state.schedule, null);
 });
 
+test("backend normalization preserves RFP attachment comments", () => {
+	const normalized = normalizeAgentsRfpDemoState({
+		...createDefaultAgentsRfpDemoState(),
+		workItems: {
+			"RFP-101": {
+				status: "RFP Intake",
+				attachments: [],
+				agentAssignmentIds: [],
+				attachmentComment: {
+					id: "maya-comment-rfp-101-report-attached",
+					authorName: "Maya Chen",
+					authorAvatarSrc: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
+					timestampLabel: "Now",
+					content: "Rovo drafted this comment\nRovo added Acmecorp RFP qualification DACI.pdf back to RFP-101.",
+					attachmentId: "generated-rfp-response-strategy-pdf",
+					attachmentLabel: "Open attachment in Rovo Canvas",
+					attachmentHref: "#rovo-canvas-generated-rfp-response-strategy-pdf",
+				},
+			},
+		},
+	});
+	const comment = normalized.workItems["RFP-101"].attachmentComment;
+
+	assert.equal(comment.authorName, "Maya Chen");
+	assert.match(comment.content, /^Rovo drafted this comment\n/u);
+	assert.equal(comment.attachmentHref, "#rovo-canvas-generated-rfp-response-strategy-pdf");
+});
+
 test("applying the RFP Drafter queues all current Drafting tickets", () => {
 	const result = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
 		jobId: "job-rfp-drafting",
@@ -95,6 +123,10 @@ test("advancing due tickets completes them at staggered speeds with unique HTML"
 	const finalAdvance = await advanceAll(firstAdvance.state);
 	assert.deepEqual(finalAdvance.completedTicketCodes, ["RFP-142", "RFP-143"]);
 	assert.equal(finalAdvance.state.agent.jobRunSummaries[0].status, "completed");
+	assert.deepEqual(
+		finalAdvance.state.board.columns.find((column) => column.title === RFP_REVIEW_COLUMN_NAME).cardCodes.slice(0, 3),
+		["RFP-143", "RFP-142", "RFP-141"],
+	);
 	for (const ticketCode of ["RFP-141", "RFP-142", "RFP-143"]) {
 		const workItem = finalAdvance.state.workItems[ticketCode];
 		assert.equal(workItem.status, RFP_REVIEW_COLUMN_NAME);
@@ -289,6 +321,10 @@ test("a later ticket entering Drafting processes only that ticket", async () => 
 	assert.match(eventCompletion.state.workItems["RFP-102"].generatedAttachment.previewHtml, /Northstar Bank/u);
 	assert.doesNotMatch(eventCompletion.state.workItems["RFP-102"].generatedAttachment.previewHtml, /Acmecorp/u);
 	assert.equal(eventCompletion.state.workItems["RFP-141"].status, RFP_REVIEW_COLUMN_NAME);
+	assert.equal(
+		eventCompletion.state.board.columns.find((column) => column.title === RFP_REVIEW_COLUMN_NAME).cardCodes[0],
+		"RFP-102",
+	);
 	assert.equal(eventRun.threadRecords.length, 1);
 	assert.equal(eventCompletion.state.agent.jobRunSummaries[0].finishedAt, "2026-06-03T15:14:00.000Z");
 	assert.ok(

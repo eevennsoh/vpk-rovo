@@ -9,7 +9,7 @@ import type {
 } from "@/app/contexts/context-work-item-modal";
 import type { KanbanBoardCardData, KanbanBoardCardTag } from "@/components/blocks/kanban-board";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
-import FileIcon from "@atlaskit/icon/core/file";
+import PersonAddIcon from "@atlaskit/icon/core/person-add";
 import { defaultSuggestions, type RovoSuggestion } from "@/lib/rovo-suggestions";
 import { BOARD_COLUMNS, RFP_CLIENT_NAMES_BY_CODE } from "./board-data";
 
@@ -71,9 +71,9 @@ const ACTIVE_WORK_ITEM_GREETING: AgentsChatGreeting = {
 		suggestion.id === "translate-text"
 			? {
 					...suggestion,
-					label: "Should we respond to this RFP?",
-					prompt: "Should we respond to this RFP?",
-					icon: FileIcon,
+					label: "Recommend an assignee",
+					prompt: "Recommend an assignee",
+					icon: PersonAddIcon,
 				}
 			: suggestion
 	)),
@@ -83,7 +83,7 @@ export const RFP_101_WORK_ITEM = {
 	code: RFP_101_WORK_ITEM_CODE,
 	title: `${RFP_CLIENT_NAMES_BY_CODE[RFP_101_WORK_ITEM_CODE]}: Prepare for bid recommendation for ESM RFP`,
 	description:
-		"Acmecorp is evaluating Atlassian as a replacement for its current service-management and work-management stack. Acmecorp has regional tool fragmentation, a mature but messy CMDB, a mix of service desk and business-team workflows, and a procurement packet that spans ITSM, asset management, knowledge, reporting, AI, compliance, implementation services, and executive-ready pricing. Qualify the Acmecorp RFP by separating mandatory requirements from differentiators, mapping each requirement area to Atlassian strengths, and identifying the responses that need product, legal, security, deal desk, or partner validation.",
+		"Acmecorp is evaluating Atlassian as a replacement for its current service-management and work-management stack.\n\n• Consolidate regional IT, asset, knowledge, reporting, and business workflows.\n• Clarify CMDB and procurement requirements into must-haves, differentiators, and owners.\n• Map requirements to Atlassian strengths and flag product, legal, security, deal desk, or partner reviews.",
 	assignee: {
 		name: "Maya Chen",
 		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
@@ -103,44 +103,7 @@ export const RFP_101_WORK_ITEM = {
 		title: "Enterprise RFP Response",
 	},
 	...createWorkItemLabelFields(findBoardCardByCode(RFP_101_WORK_ITEM_CODE)?.tags),
-	childItems: [
-		{
-			type: "Sub-task",
-			key: "RFP-105",
-			summary: "Build requirement matrix for ITSM, CMDB, HAM, SAM, AI, GRC, and portal needs",
-			priority: "high",
-			assignee: "Maya Chen",
-			assigneeAvatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
-			status: "inprogress",
-		},
-		{
-			type: "Sub-task",
-			key: "RFP-106",
-			summary: "Confirm JSM, Assets, Rovo, Guard, and platform demo owners",
-			priority: "medium",
-			assignee: "Priya Shah",
-			assigneeAvatarUrl: "/avatar-user/annie-clare/color/asow-strategy-orange.png",
-			status: "todo",
-		},
-		{
-			type: "Sub-task",
-			key: "RFP-107",
-			summary: "Draft win themes against incumbent cost, complexity, and adaptability pain points",
-			priority: "high",
-			assignee: "Jordan Lee",
-			assigneeAvatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
-			status: "done",
-		},
-		{
-			type: "Sub-task",
-			key: "RFP-108",
-			summary: "Collect legal, data residency, audit, and vulnerability-management exhibits",
-			priority: "medium",
-			assignee: "Elena Ruiz",
-			assigneeAvatarUrl: "/avatar-user/aoife-burke/color/asow-service-yellow.png",
-			status: "todo",
-		},
-	],
+	childItems: [],
 	attachments: [
 		{
 			name: "rfp-intake-notes",
@@ -153,98 +116,8 @@ export const RFP_101_WORK_ITEM = {
 			sourceLabel: "Confluence page",
 			sourceProduct: "confluence",
 		},
-		{
-			name: "rfp-requirement-compliance-matrix",
-			displayName: "Compliance matrix",
-			ext: "xlsx",
-			date: "12 May 2026, 09:24 AM",
-			thumbnailKind: "document",
-			previewSrc: "/generated/rfp-compliance-matrix.png",
-			previewAlt: "Flat preview of a spreadsheet compliance matrix",
-		},
-		{
-			name: "response-brief",
-			displayName: "Response brief",
-			ext: "docx",
-			date: "14 May 2026, 03:42 PM",
-			thumbnailKind: "document",
-			previewSrc: "/generated/rfp-response-brief.png",
-			previewAlt: "Flat preview of a response brief document",
-		},
-		{
-			name: "enterprise-rfp-requirements",
-			displayName: "Enterprise RFP packet",
-			ext: "pdf",
-			date: "15 May 2026, 11:05 AM",
-			thumbnailKind: "file",
-			previewSrc: "/generated/rfp-pdf-packet.png",
-			previewAlt: "Flat preview of an enterprise RFP PDF packet",
-		},
-		{
-			name: "proposal-audio-briefing",
-			displayName: "proposal-audio-briefing.mp3",
-			ext: "mp3",
-			date: "18 May 2026, 10:30 AM",
-			thumbnailKind: "audio",
-		},
-		{
-			name: "supplier-portal-upload",
-			displayName: "Supplier portal upload",
-			ext: "png",
-			date: "21 May 2026, 01:16 PM",
-			thumbnailKind: "image",
-			previewSrc: "/generated/rfp-portal-screenshot.png",
-			previewAlt: "Flat preview of a supplier portal upload screenshot",
-		},
-		{
-			name: "proposal-walkthrough",
-			displayName: "Proposal walkthrough",
-			ext: "mp4",
-			date: "2 Jun 2026, 04:10 PM",
-			thumbnailKind: "video",
-			previewSrc: "/generated/rfp-loom-walkthrough.png",
-			previewAlt: "Flat preview of a walkthrough video recording",
-			sourceLabel: "Loom video",
-			sourceProduct: "loom",
-		},
 	],
-	comments: [
-		{
-			id: "comment-1",
-			author: {
-				name: "Maya Chen",
-				avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
-				role: "Proposal manager",
-			},
-			timestamp: "15 minutes ago",
-			content:
-				"I added the RFP timeline, supplier-question deadline, response deadline, and executive demo agenda. The first pass flags ITSM, CMDB, HAM/SAM, knowledge, reporting, portal, AI, data residency, customer service, GRC, and pricing as mandatory sections.",
-			replies: [
-				{
-					id: "comment-1-reply-1",
-					author: {
-						name: "Priya Shah",
-						avatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
-						role: "Sales engineer",
-					},
-					timestamp: "10 minutes ago",
-					content:
-						"Sales engineering can own JSM workflows, Assets/CMDB, integrations, CI/CD change enablement, incident operations, and the Rovo demo. We should explicitly call out where HAM/SAM or SecOps needs partner coverage or roadmap positioning.",
-				},
-			],
-		},
-		{
-			id: "comment-2",
-			author: {
-				name: "Jordan Lee",
-				avatarUrl: "/avatar-user/brian-lin/color/asow-teamwork-blue.png",
-				role: "Account executive",
-			},
-			timestamp: "4 minutes ago",
-			content:
-				"Customer pain points are incumbent cost, platform rigidity, regional tool fragmentation, CMDB quality at scale, and AI readiness. Lead with Atlassian System of Work, JSM request and incident operations, Teamwork Graph, Rovo, Assets, knowledge, reporting, and transparent TCO.",
-		},
-	],
+	comments: [],
 	approvers: [
 		{
 			name: "Elena Ruiz",

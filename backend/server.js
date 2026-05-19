@@ -112,6 +112,7 @@ const {
 	resolveFastRovoAppArtifactIntent,
 } = require("./lib/rovo-app-artifact-intent");
 const {
+	applyAtlassianLogoToHtmlArtifact,
 	deriveRovoAppVersionChangeLabel,
 	isExplicitNewRovoAppArtifactRequest,
 	isSameRovoAppArtifactVersionRequest,
@@ -2677,6 +2678,7 @@ function streamRovoAppArtifactToolResponse({
 	changeLabel,
 	contextDescription,
 	conversationHistory,
+	deterministicArtifactContent,
 	latestUserMessage,
 	requestOrigin,
 	artifactThreadId,
@@ -2741,6 +2743,18 @@ function streamRovoAppArtifactToolResponse({
 				fallbackTitle: artifactDocument.title,
 				latestUserMessage,
 				generateArtifactText: async ({ onTextDelta }) => {
+					if (typeof deterministicArtifactContent === "string") {
+						writer.write({
+							type: deltaType,
+							data: deterministicArtifactContent,
+							transient: true,
+						});
+						if (typeof onTextDelta === "function") {
+							onTextDelta(deterministicArtifactContent);
+						}
+						return deterministicArtifactContent;
+					}
+
 					const shouldUseWorkItemVpkHtmlSkill = shouldUseWorkItemVpkHtmlReportGenerator({
 						artifactKind: artifactDocument.kind,
 						contextDescription,
@@ -2999,15 +3013,8 @@ async function handleRovoAppArtifactToolRequest({
 		return false;
 	}
 
-	const artifactContextBlock =
-		decision.action === "updateDocument"
-			? buildRovoAppArtifactContext(activeArtifact)
-			: null;
-	const resolvedContextDescription = artifactContextBlock
-		? contextDescription
-			? `${artifactContextBlock}\n\n${contextDescription}`
-			: artifactContextBlock
-		: contextDescription;
+	let resolvedContextDescription = contextDescription;
+	let deterministicArtifactContent = null;
 
 	const artifactTitle = deriveRovoAppArtifactTitle({
 		action: decision.action,
@@ -3044,6 +3051,20 @@ async function handleRovoAppArtifactToolRequest({
 				: await rovoAppDocumentManager.getDocument(activeArtifact.id);
 		if (!existingDocument) {
 			return false;
+		}
+
+		const existingContent = getNonEmptyString(existingDocument.versions?.at(-1)?.content);
+		deterministicArtifactContent = applyAtlassianLogoToHtmlArtifact({
+			content: existingContent,
+			latestUserMessage,
+		});
+		if (!deterministicArtifactContent) {
+			const artifactContextBlock = buildRovoAppArtifactContext(activeArtifact);
+			resolvedContextDescription = artifactContextBlock
+				? contextDescription
+					? `${artifactContextBlock}\n\n${contextDescription}`
+					: artifactContextBlock
+				: contextDescription;
 		}
 
 		artifactDocument = {
@@ -3116,6 +3137,7 @@ async function handleRovoAppArtifactToolRequest({
 		changeLabel,
 		contextDescription: resolvedContextDescription,
 		conversationHistory,
+		deterministicArtifactContent,
 		latestUserMessage,
 		requestOrigin,
 		provider: getNonEmptyString(requestBody.provider),

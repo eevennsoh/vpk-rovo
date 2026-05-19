@@ -9,7 +9,7 @@ export const AGENTS_RFP_DEMO_VERSION = 1;
 export const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
 export const RFP_DRAFTING_AGENT_NAME = "RFP Drafter";
 export const RFP_DRAFTING_AGENT_DESCRIPTION =
-	"Drafts first-pass RFP response packages for Enterprise RFP Response tickets entering Drafting.";
+	"Drafts first-pass RFP response packages for Enterprise RFP Response";
 export const RFP_DRAFTING_AGENT_CONVERSATION_STARTERS = [
 	"Draft the response package for the next Drafting ticket.",
 	"Summarize blockers before this RFP can move to Review.",
@@ -109,6 +109,17 @@ export interface AgentsRfpDemoAgentComment {
 	content: string;
 }
 
+export interface AgentsRfpDemoAttachmentComment {
+	id: string;
+	authorName: string;
+	authorAvatarSrc: string;
+	timestampLabel: string;
+	content: string;
+	attachmentId: string;
+	attachmentLabel: string;
+	attachmentHref: string;
+}
+
 export interface AgentsRfpDemoWorkItemState {
 	status: string;
 	attachments: AgentsRfpDemoAttachment[];
@@ -122,6 +133,7 @@ export interface AgentsRfpDemoWorkItemState {
 	agentJobRunId?: string | null;
 	generatedAttachment?: AgentsRfpDemoAttachment | null;
 	agentComment?: AgentsRfpDemoAgentComment | null;
+	attachmentComment?: AgentsRfpDemoAttachmentComment | null;
 	completedAt?: string | null;
 	lastError?: string | null;
 }
@@ -238,42 +250,6 @@ const RFP_101_FIXTURE_ATTACHMENTS: readonly AgentsRfpDemoAttachment[] = [
 		id: "fixture-rfp-intake-notes",
 		displayName: "RFP intake notes",
 		ext: "page",
-		source: "fixture",
-	},
-	{
-		id: "fixture-rfp-requirement-compliance-matrix",
-		displayName: "Compliance matrix",
-		ext: "xlsx",
-		source: "fixture",
-	},
-	{
-		id: "fixture-response-brief",
-		displayName: "Response brief",
-		ext: "docx",
-		source: "fixture",
-	},
-	{
-		id: "fixture-enterprise-rfp-requirements",
-		displayName: "Enterprise RFP packet",
-		ext: "pdf",
-		source: "fixture",
-	},
-	{
-		id: "fixture-proposal-audio-briefing",
-		displayName: "proposal-audio-briefing.mp3",
-		ext: "mp3",
-		source: "fixture",
-	},
-	{
-		id: "fixture-supplier-portal-upload",
-		displayName: "Supplier portal upload",
-		ext: "png",
-		source: "fixture",
-	},
-	{
-		id: "fixture-proposal-walkthrough",
-		displayName: "Proposal walkthrough",
-		ext: "mp4",
 		source: "fixture",
 	},
 ];
@@ -417,6 +393,7 @@ function createDefaultWorkItems(): Record<string, AgentsRfpDemoWorkItemState> {
 				agentJobRunId: null,
 				generatedAttachment: null,
 				agentComment: null,
+				attachmentComment: null,
 				completedAt: null,
 				lastError: null,
 			};
@@ -595,6 +572,24 @@ function updateWorkItem(
 	};
 }
 
+function createRfp101AttachmentComment(): AgentsRfpDemoAttachmentComment {
+	const attachment = GENERATED_REPORT_ATTACHMENTS[0];
+
+	return {
+		id: "maya-comment-rfp-101-report-attached",
+		authorName: "Maya Chen",
+		authorAvatarSrc: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
+		timestampLabel: "Now",
+		content: [
+			"Rovo drafted this comment",
+			`Rovo prepared the Acmecorp qualification DACI, exported the approved PDF, and added ${attachment.displayName} back to RFP-101.`,
+		].join("\n"),
+		attachmentId: attachment.id,
+		attachmentLabel: "Open attachment in Rovo Canvas",
+		attachmentHref: `#rovo-canvas-${attachment.id}`,
+	};
+}
+
 export function generateRfpReport(state: AgentsRfpDemoState): AgentsRfpDemoState {
 	return {
 		...state,
@@ -710,6 +705,7 @@ export function attachRfpReportToWorkItem(
 				...preservedAttachments,
 				...GENERATED_REPORT_ATTACHMENTS.map((attachment) => ({ ...attachment })),
 			],
+			attachmentComment: createRfp101AttachmentComment(),
 		};
 	});
 

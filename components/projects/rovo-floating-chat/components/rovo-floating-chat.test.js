@@ -161,7 +161,7 @@ async function loadRovoFloatingChatHarness() {
 							suggestions: [
 								{
 									id: "translate-text",
-									label: "Should we respond to this RFP?",
+									label: "Find related RFPs",
 									type: "skill",
 								},
 							],
@@ -271,7 +271,7 @@ test("RovoFloatingChat forwards custom suggestions while keeping compact greetin
 	const harness = await loadRovoFloatingChatHarness();
 	const markup = harness.renderFloatingChatWithGreeting();
 
-	assert.match(markup, /data-greeting-labels="Should we respond to this RFP\?"/);
+	assert.match(markup, /data-greeting-labels="Find related RFPs"/);
 	assert.match(markup, /data-greeting-hero="false"/);
 });
 

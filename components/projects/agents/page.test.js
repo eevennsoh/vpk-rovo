@@ -156,6 +156,9 @@ test("AgentsView attaches generated reports through the RFP-101 modal and Sonner
 	assert.match(AGENTS_VIEW_SOURCE, /<Toaster id=\{AGENTS_RFP_DEMO_TOASTER_ID\} position="bottom-left" expand=\{true\} \/>/u);
 	assert.match(AGENTS_VIEW_SOURCE, /toast\.custom\([\s\S]*<SonnerToast[\s\S]*dismissible=\{true\}/u);
 	assert.match(AGENTS_VIEW_SOURCE, /previewHtml: attachment\.previewHtml \?\? \(workItem\.code === "RFP-101" \? state\.report\.previewHtml : undefined\)/u);
+	assert.match(AGENTS_VIEW_SOURCE, /attachmentComment = workItemState\?\.attachmentComment/u);
+	assert.match(AGENTS_VIEW_SOURCE, /eventName: "rovo:open-canvas-artifact" as const/u);
+	assert.match(AGENTS_VIEW_SOURCE, /comments: generatedComments\.length \? \[\.\.\.generatedComments, \.\.\.baseComments\] : workItem\.comments/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /pointer-events-none fixed right-4 bottom-4/u);
 	assert.match(RFP_REPORT_CANVAS_SOURCE, /primaryActionLabel="Add PDF to RFP-101"/u);
 	assert.match(
@@ -259,7 +262,8 @@ test("AgentsView maps backend RFP agent output onto cards, assignees, comments, 
 	assert.match(AGENTS_VIEW_SOURCE, /role: workItemState\.agentStatus === "completed"[\s\S]*"Completed draft"/u);
 	assert.match(AGENTS_VIEW_SOURCE, /generatedAttachments = getGeneratedRfpAttachments\(state, workItem\.code\)/u);
 	assert.match(AGENTS_VIEW_SOURCE, /agentComment = workItemState\?\.agentComment/u);
-	assert.match(AGENTS_VIEW_SOURCE, /comments: agentComment \? \[agentComment, \.\.\.baseComments\] : workItem\.comments/u);
+	assert.match(AGENTS_VIEW_SOURCE, /generatedComments = \[[\s\S]*attachmentComment,[\s\S]*agentComment,[\s\S]*\]\.filter/u);
+	assert.match(AGENTS_VIEW_SOURCE, /comments: generatedComments\.length \? \[\.\.\.generatedComments, \.\.\.baseComments\] : workItem\.comments/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /Weekdays at 9:00 AM/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /No schedule/u);
 });

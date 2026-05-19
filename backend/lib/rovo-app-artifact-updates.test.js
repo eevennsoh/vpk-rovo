@@ -2,9 +2,11 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+	applyAtlassianLogoToHtmlArtifact,
 	applyRovoAppArtifactTitleRename,
 	deriveRovoAppVersionChangeLabel,
 	extractRovoAppRequestedTitle,
+	isAtlassianLogoAdditionRequest,
 	isExplicitNewRovoAppArtifactRequest,
 	isRenameOnlyRovoAppArtifactRequest,
 	isSameRovoAppArtifactVersionRequest,
@@ -133,5 +135,61 @@ test("deriveRovoAppVersionChangeLabel returns readable labels for common update 
 			latestUserMessage: "make this tighter",
 		}),
 		"Steered update",
+	);
+});
+
+test("isAtlassianLogoAdditionRequest detects narrow top-left Atlassian logo edits", () => {
+	assert.equal(
+		isAtlassianLogoAdditionRequest({
+			latestUserMessage: "at the top of the document, in top left, can you add the Atlassian logo?",
+		}),
+		true,
+	);
+	assert.equal(
+		isAtlassianLogoAdditionRequest({
+			latestUserMessage: "rewrite the report with Atlassian positioning",
+		}),
+		false,
+	);
+});
+
+test("applyAtlassianLogoToHtmlArtifact inserts offline Atlassian logo into html main", () => {
+	const html = [
+		"<!doctype html>",
+		"<html>",
+		"<head>",
+		"<style>body { color: var(--ink); }</style>",
+		"</head>",
+		"<body>",
+		"<main>",
+		'<div class="header"><h1>Report</h1></div>',
+		"</main>",
+		"</body>",
+		"</html>",
+	].join("\n");
+
+	const updated = applyAtlassianLogoToHtmlArtifact({
+		content: html,
+		latestUserMessage: "Please add the Atlassian logo in the top left.",
+	});
+
+	assert.match(updated, /data-rovo-artifact-atlassian-logo="true"/u);
+	assert.match(updated, /<path fill="currentColor" d="M22\.878 24\.378/u);
+	assert.ok(
+		updated.indexOf('class="vpk-atlassian-logo"') <
+			updated.indexOf('<div class="header">'),
+	);
+	assert.equal((updated.match(/data-rovo-artifact-atlassian-logo="true"/gu) || []).length, 1);
+});
+
+test("applyAtlassianLogoToHtmlArtifact does not duplicate an existing logo", () => {
+	const html = '<html><head></head><body><main><div data-rovo-artifact-atlassian-logo="true"></div></main></body></html>';
+
+	assert.equal(
+		applyAtlassianLogoToHtmlArtifact({
+			content: html,
+			latestUserMessage: "add the Atlassian logo top left",
+		}),
+		html,
 	);
 });

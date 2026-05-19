@@ -586,7 +586,31 @@ function applyRfpDemoWorkItemState(
 				content: workItemState.agentComment.content,
 			}
 		: null;
-	const baseComments = (workItem.comments ?? []).filter((comment) => comment.id !== agentComment?.id);
+	const attachmentComment = workItemState?.attachmentComment
+		? {
+				id: workItemState.attachmentComment.id,
+				author: {
+					name: workItemState.attachmentComment.authorName,
+					avatarUrl: workItemState.attachmentComment.authorAvatarSrc,
+				},
+				timestamp: workItemState.attachmentComment.timestampLabel,
+				content: workItemState.attachmentComment.content,
+				actionLink: {
+					label: workItemState.attachmentComment.attachmentLabel,
+					href: workItemState.attachmentComment.attachmentHref,
+					eventName: "rovo:open-canvas-artifact" as const,
+				},
+			}
+		: null;
+	const generatedCommentIds = new Set([
+		agentComment?.id,
+		attachmentComment?.id,
+	].filter((commentId): commentId is string => Boolean(commentId)));
+	const generatedComments = [
+		attachmentComment,
+		agentComment,
+	].filter((comment): comment is NonNullable<typeof comment> => comment !== null);
+	const baseComments = (workItem.comments ?? []).filter((comment) => !generatedCommentIds.has(comment.id));
 	const assignee = (() => {
 		if (workItemState?.agentStatus === "completed" && workItemState.status === "Review" && !workItemState.assignee) {
 			return undefined;
@@ -620,7 +644,7 @@ function applyRfpDemoWorkItemState(
 			...baseAttachments,
 			...generatedAttachments,
 		],
-		comments: agentComment ? [agentComment, ...baseComments] : workItem.comments,
+		comments: generatedComments.length ? [...generatedComments, ...baseComments] : workItem.comments,
 	};
 }
 

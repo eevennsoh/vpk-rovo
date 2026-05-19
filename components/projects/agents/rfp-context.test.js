@@ -126,30 +126,25 @@ test("RFP-101 active work item formats a bounded hidden Jira context block", asy
 	assert.match(context, /Deal size: multi-thousand users; budget qualification pending/);
 	assert.match(context, /incumbent service-management, CMDB/);
 	assert.match(context, /Response team needs:/);
-	assert.match(context, /RFP-105: Build requirement matrix/);
-	assert.match(context, /enterprise-rfp-requirements\.pdf/);
-	assert.match(context, /Recent activity:/);
-	assert.match(context, /Sales engineering can own JSM workflows/);
+	assert.doesNotMatch(context, /Child work items:/);
+	assert.doesNotMatch(context, /RFP-105: Build requirement matrix/);
+	assert.match(context, /rfp-intake-notes\.page/);
+	assert.doesNotMatch(context, /enterprise-rfp-requirements\.pdf/);
+	assert.doesNotMatch(context, /Recent activity:/);
+	assert.doesNotMatch(context, /Sales engineering can own JSM workflows/);
 });
 
-test("RFP-101 includes the mixed static attachment placeholder set", async () => {
+test("RFP-101 only includes the intake notes attachment", async () => {
 	const harness = await loadRfpContextHarness();
 	const attachments = harness.RFP_101_WORK_ITEM.attachments;
 
-	assert.equal(attachments.length, 7);
+	assert.equal(attachments.length, 1);
 	assert.deepEqual(
 		attachments.map((attachment) => attachment.ext),
-		["page", "xlsx", "docx", "pdf", "mp3", "png", "mp4"],
+		["page"],
 	);
-	assert.ok(
-		attachments
-			.filter((attachment) => attachment.ext !== "mp3")
-			.every((attachment) => attachment.previewSrc?.startsWith("/generated/")),
-	);
-	assert.equal(
-		attachments.find((attachment) => attachment.ext === "mp3")?.previewSrc,
-		undefined,
-	);
+	assert.equal(attachments[0]?.displayName, "RFP intake notes");
+	assert.equal(attachments[0]?.previewSrc, "/generated/rfp-confluence-intake-notes.png");
 	assert.ok(
 		attachments.every((attachment) => !("sourceHref" in attachment)),
 	);
@@ -157,13 +152,13 @@ test("RFP-101 includes the mixed static attachment placeholder set", async () =>
 		attachments
 			.filter((attachment) => attachment.sourceProduct)
 			.map((attachment) => attachment.sourceLabel),
-		["Confluence page", "Loom video"],
+		["Confluence page"],
 	);
 
 	const context = harness.formatActiveJiraWorkItemContext(harness.RFP_101_WORK_ITEM);
 	assert.match(context, /rfp-intake-notes\.page/);
-	assert.match(context, /proposal-audio-briefing\.mp3/);
-	assert.match(context, /proposal-walkthrough\.mp4/);
+	assert.doesNotMatch(context, /proposal-audio-briefing\.mp3/);
+	assert.doesNotMatch(context, /proposal-walkthrough\.mp4/);
 });
 
 test("board fallback formats bounded visible /agents context", async () => {
@@ -380,8 +375,8 @@ test("agents chat screen resolver switches from board fallback to active work it
 	const translatedPrompt = workItemContext.greeting.suggestions.find(
 		(suggestion) => suggestion.id === "translate-text",
 	);
-	assert.equal(translatedPrompt.label, "Should we respond to this RFP?");
-	assert.equal(translatedPrompt.prompt, "Should we respond to this RFP?");
+	assert.equal(translatedPrompt.label, "Find related RFPs");
+	assert.equal(translatedPrompt.prompt, "Find related RFPs");
 });
 
 test("Rovo context merging preserves active work item context and suggestion context", async () => {

@@ -7,7 +7,7 @@ const AGENTS_RFP_DEMO_VERSION = 1;
 const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
 const RFP_DRAFTING_AGENT_NAME = "RFP Drafter";
 const RFP_DRAFTING_AGENT_DESCRIPTION =
-	"Drafts first-pass RFP response packages for Enterprise RFP Response tickets entering Drafting.";
+	"Drafts first-pass RFP response packages for Enterprise RFP Response";
 const RFP_DRAFTING_AGENT_CONVERSATION_STARTERS = [
 	"Draft the response package for the next Drafting ticket.",
 	"Summarize blockers before this RFP can move to Review.",
@@ -101,7 +101,7 @@ const WORK_ITEM_TITLES = {
 };
 
 const WORK_ITEM_DESCRIPTIONS = {
-	"RFP-101": "Qualify the Acmecorp enterprise service-management RFP by separating mandatory requirements from differentiators, mapping each requirement area to Atlassian strengths, and identifying responses that need product, legal, security, deal desk, or partner validation.",
+	"RFP-101": "Acmecorp is evaluating Atlassian as a replacement for its current service-management and work-management stack.\n\n• Consolidate regional IT, asset, knowledge, reporting, and business workflows.\n• Clarify CMDB and procurement requirements into must-haves, differentiators, and owners.\n• Map requirements to Atlassian strengths and flag product, legal, security, deal desk, or partner reviews.",
 	"RFP-102": "Review the Northstar Bank supplier packet, procurement portal exports, and requested file list to identify every response artifact the team must produce if the opportunity qualifies. Split requirements into functional answers, legal or security exhibits, pricing files, implementation plans, customer-reference requests, and demo follow-ups.",
 	"RFP-103": "Create a DACI-style ownership map for the Meridian Health RFP qualification and possible response across account leadership, proposal management, sales engineering, product specialists, legal, security, deal desk, support, and partner teams.",
 	"RFP-104": "Inventory HelioWorks Energy requirement areas and translate them into response tracks covering ITSM, incident, problem, change, request, Assets and CMDB, asset management, knowledge, reporting, AI, data residency, legal compliance, implementation services, and pricing.",
@@ -150,42 +150,6 @@ const RFP_101_FIXTURE_ATTACHMENTS = [
 		id: "fixture-rfp-intake-notes",
 		displayName: "RFP intake notes",
 		ext: "page",
-		source: "fixture",
-	},
-	{
-		id: "fixture-rfp-requirement-compliance-matrix",
-		displayName: "Compliance matrix",
-		ext: "xlsx",
-		source: "fixture",
-	},
-	{
-		id: "fixture-response-brief",
-		displayName: "Response brief",
-		ext: "docx",
-		source: "fixture",
-	},
-	{
-		id: "fixture-enterprise-rfp-requirements",
-		displayName: "Enterprise RFP packet",
-		ext: "pdf",
-		source: "fixture",
-	},
-	{
-		id: "fixture-proposal-audio-briefing",
-		displayName: "proposal-audio-briefing.mp3",
-		ext: "mp3",
-		source: "fixture",
-	},
-	{
-		id: "fixture-supplier-portal-upload",
-		displayName: "Supplier portal upload",
-		ext: "png",
-		source: "fixture",
-	},
-	{
-		id: "fixture-proposal-walkthrough",
-		displayName: "Proposal walkthrough",
-		ext: "mp4",
 		source: "fixture",
 	},
 ];
@@ -256,6 +220,7 @@ function createDefaultWorkItemState(code, status) {
 		agentJobRunId: null,
 		generatedAttachment: null,
 		agentComment: null,
+		attachmentComment: null,
 		completedAt: null,
 		lastError: null,
 	};
@@ -346,6 +311,30 @@ function normalizeAgentComment(rawComment) {
 	};
 }
 
+function normalizeAttachmentComment(rawComment) {
+	if (!isObject(rawComment)) {
+		return null;
+	}
+
+	const id = getNonEmptyString(rawComment.id);
+	const content = getNonEmptyString(rawComment.content);
+	const attachmentId = getNonEmptyString(rawComment.attachmentId);
+	if (!id || !content || !attachmentId) {
+		return null;
+	}
+
+	return {
+		id,
+		authorName: getNonEmptyString(rawComment.authorName) ?? "Maya Chen",
+		authorAvatarSrc: getNonEmptyString(rawComment.authorAvatarSrc) ?? "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
+		timestampLabel: getNonEmptyString(rawComment.timestampLabel) ?? "Now",
+		content,
+		attachmentId,
+		attachmentLabel: getNonEmptyString(rawComment.attachmentLabel) ?? "Open attachment in Rovo Canvas",
+		attachmentHref: getNonEmptyString(rawComment.attachmentHref) ?? `#rovo-canvas-${attachmentId}`,
+	};
+}
+
 function normalizeWorkItemState(rawWorkItem, code, fallbackStatus) {
 	const base = createDefaultWorkItemState(code, fallbackStatus);
 	if (!isObject(rawWorkItem)) {
@@ -373,6 +362,7 @@ function normalizeWorkItemState(rawWorkItem, code, fallbackStatus) {
 		agentJobRunId: getNonEmptyString(rawWorkItem.agentJobRunId),
 		generatedAttachment: normalizeAttachment(rawWorkItem.generatedAttachment),
 		agentComment: normalizeAgentComment(rawWorkItem.agentComment),
+		attachmentComment: normalizeAttachmentComment(rawWorkItem.attachmentComment),
 		completedAt: getNonEmptyString(rawWorkItem.completedAt),
 		lastError: getNonEmptyString(rawWorkItem.lastError),
 	};
@@ -1295,7 +1285,7 @@ async function advanceRfpDraftingAgentProcessing(state, {
 			));
 
 			nextState = {
-				...moveTicketToColumn(nextState, ticketCode, RFP_REVIEW_COLUMN_NAME, { append: true }),
+				...moveTicketToColumn(nextState, ticketCode, RFP_REVIEW_COLUMN_NAME),
 				workItems: {
 					...nextState.workItems,
 					[ticketCode]: {

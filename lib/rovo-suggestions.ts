@@ -8,7 +8,7 @@ import type { ComponentType } from "react";
 
 // Icon imports - these will be used by consuming components
 import TimelineIcon from "@atlaskit/icon/core/timeline";
-import EditIcon from "@atlaskit/icon/core/edit";
+import PageIcon from "@atlaskit/icon/core/page";
 import TranslateIcon from "@atlaskit/icon/core/translate";
 
 export interface RovoSuggestion {
@@ -76,8 +76,8 @@ export const defaultSuggestions: RovoSuggestion[] = [
 	},
 	{
 		id: "draft-confluence-page",
-		label: "Draft Confluence page",
-		icon: EditIcon,
+		label: "Find related RFPs",
+		icon: PageIcon,
 		type: "skill",
 	},
 	{

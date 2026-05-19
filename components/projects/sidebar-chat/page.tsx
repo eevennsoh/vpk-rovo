@@ -146,6 +146,10 @@ function CustomAgentTabEmptyState({
 	);
 }
 
+function isCustomAgentTabsProfile(agent: { byline?: string }): boolean {
+	return /\bcustom agent\b/iu.test(agent.byline ?? "");
+}
+
 export default function ChatPanel({
 	onClose,
 	sendPromptOptions,
@@ -542,7 +546,7 @@ export default function ChatPanel({
 	};
 	const isHeaderHistoryEnabled = !hideHeader && headerVariant === "default";
 	const shouldRenderHeaderHistory = isHeaderHistoryEnabled && chatSurface !== "floating";
-	const shouldRenderCustomAgentTabs = isCustomAgentSelected || Boolean(customAgentTabs);
+	const shouldRenderCustomAgentTabs = Boolean(customAgentTabs) || (isCustomAgentSelected && isCustomAgentTabsProfile(selectedAgent));
 	const chatConversationBody = (
 		<Conversation
 			className="min-h-0 min-w-0 flex-1"

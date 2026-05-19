@@ -20,7 +20,7 @@ const MESSAGE_TURNS_SOURCE = fs.readFileSync(
 	"utf8",
 );
 
-test("AgentResultCard renders created agent details in a vertical stack", () => {
+test("AgentResultCard renders created agent profile description", () => {
 	assert.match(
 		AGENT_RESULT_CARD_SOURCE,
 		/import \{ ArtifactCard, type ArtifactCardProps \} from "@\/components\/ui-custom\/artifact";/u,
@@ -36,10 +36,17 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	assert.match(AGENT_RESULT_CARD_SOURCE, /data-testid="rovo-agent-result-card"/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /iconName: "ai-agent"/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /AGENT_RESULT_DESCRIPTION = "Agent \\u2022 Version 1";/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /description=\{AGENT_RESULT_DESCRIPTION\}/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /const description = agent\.description\?\.trim\(\) \|\| AGENT_RESULT_DESCRIPTION;/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /description=\{description\}/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /function getAgentLongDescription\(agent: AgentResult\): string/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /RFP Drafter monitors Drafting tickets, reads Jira context/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /const profileDescription = getAgentLongDescription\(agent\)\.trim\(\) \|\| description;/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, />Agent description<\/h4>[\s\S]*\{profileDescription\}/u);
 	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /Assigned to \$\{agent\.assignedColumn\}/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /displayMode="preview"/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /Select agent/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /Chat with agent/u);
+	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /RFP_DRAFTING_AGENT_TOOLS/u);
+	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /function getAgentTools/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /agent\.tools\.filter/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /function getAgentDisplayName\(agent: AgentResult\): string/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";/u);
@@ -48,28 +55,23 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	assert.match(AGENT_RESULT_CARD_SOURCE, /function getAgentIdentityAvatarSrc\(agent: AgentResult\): string \| undefined/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /agent\.agentId === RFP_DRAFTING_AGENT_ID \? RFP_DRAFTING_AGENT_AVATAR_SRC : undefined/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /const identityAvatarSrc = getAgentIdentityAvatarSrc\(agent\);/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /function getAgentLongDescription\(agent: AgentResult\): string/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /RFP Drafter monitors Drafting tickets, reads Jira context/u);
 	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /vpk-html draft attachment/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, />Description<\/h4>[\s\S]*getAgentLongDescription\(agent\)/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, />Description<\/h4>[\s\S]*getAgentLongDescription\(agent\)[\s\S]*<SkillTagGroup>[\s\S]*tools\.map[\s\S]*<SkillTag/u);
-	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, />Skills<\/h4>/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, />Skills<\/h4>[\s\S]*<SkillTagGroup>[\s\S]*tools\.map[\s\S]*<SkillTag/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /"jira\.work_items": "get-jira-workitems"/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /"teamwork_graph\.search": "teamwork-graph"/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /"generate_pdf\.render_document": "generate-pdf"/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /"jira\.attach_pdf": "attach-file"/u);
+	assert.match(AGENT_RESULT_CARD_SOURCE, /\{getSkillTagLabel\(tool\)\}/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /function formatAgentTriggerLabel\(trigger: string\): string/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /replace\(\/\\bticket\\b\/giu, "work item"\)/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /replace\(\/\\\.\$\/u, ""\)/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, />Trigger<\/h4>[\s\S]*<AutomationIcon label="" size="small" \/>[\s\S]*<span>\{formatAgentTriggerLabel\(agent\.trigger\)\}<\/span>/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /function getSkillTagIcon\(tool: string\): ReactNode/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /function getSkillTagColor\(tool: string\): SkillTagColor/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /AGENT_CAPABILITIES = \[/u);
-	assert.match(
-		AGENT_RESULT_CARD_SOURCE,
-		/function getAgentCapabilities\(agent: AgentResult\): typeof AGENT_CAPABILITIES \| \[\] \{[\s\S]*agent\.agentId === RFP_DRAFTING_AGENT_ID \? AGENT_CAPABILITIES : \[\]/u,
-	);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /const capabilities = getAgentCapabilities\(agent\);/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /Monitor tickets entering Drafting/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /Generate PDF/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /Comment and return work to Review/u);
-	assert.match(AGENT_RESULT_CARD_SOURCE, /\{capabilities\.length > 0 \? \([\s\S]*>Capabilities<\/h4>[\s\S]*capabilities\.map/u);
+	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /AGENT_CAPABILITIES/u);
+	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /getAgentCapabilities/u);
+	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /capabilities\.map/u);
+	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, />Capabilities<\/h4>/u);
 	assert.match(AGENT_RESULT_CARD_SOURCE, /text-icon-subtle/u);
 	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /text-icon-brand/u);
 	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, /divide-y/u);
@@ -77,7 +79,7 @@ test("AgentResultCard renders created agent details in a vertical stack", () => 
 	assert.doesNotMatch(AGENT_RESULT_CARD_SOURCE, />Guardrail</u);
 	assert.match(
 		AGENT_RESULT_CARD_SOURCE,
-		/<ArtifactCard[\s\S]*identityAvatarSrc=\{identityAvatarSrc\}[\s\S]*visualIdentity=\{identityAvatarSrc \? undefined : AGENT_RESULT_VISUAL_IDENTITY\}/u,
+		/<ArtifactCard[\s\S]*identityAvatarSrc=\{identityAvatarSrc\}[\s\S]*visualIdentity=\{identityAvatarSrc \? undefined : AGENT_RESULT_VISUAL_IDENTITY\}[\s\S]*>[\s\S]*\{profileDescription\}[\s\S]*<\/ArtifactCard>/u,
 	);
 });
 

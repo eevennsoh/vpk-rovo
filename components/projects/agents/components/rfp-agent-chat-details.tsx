@@ -4,6 +4,7 @@ import AddIcon from "@atlaskit/icon/core/add";
 import AutomationIcon from "@atlaskit/icon/core/automation";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import GenerativeIndicatorIcon from "@atlaskit/icon-lab/core/generative-indicator";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { ProgressTracker, type ProgressTrackerStep } from "@/components/ui/progress-tracker";
@@ -49,21 +50,38 @@ function TriggerAddRow({
 }
 
 function TriggerDropdown({
+	showProjectAvatar = false,
 	value,
 }: Readonly<{
+	showProjectAvatar?: boolean;
 	value: string;
 }>): React.ReactElement {
+	const labelContent = showProjectAvatar ? (
+		<span className="flex min-w-0 items-center gap-1">
+			<Image
+				src="/avatar-project/rocket.svg"
+				alt=""
+				width={12}
+				height={12}
+				className="size-3 shrink-0 rounded-[2px]"
+			/>
+			<span className="min-w-0 truncate">{value}</span>
+		</span>
+	) : (
+		value
+	);
+
 	return (
 		<Select defaultValue={value}>
 			<SelectTrigger
 				aria-label={value}
-					className="!h-6 gap-0 rounded-md !py-0 !pr-0 !pl-2 text-sm font-medium text-text-subtle [&_[data-slot=icon]]:size-6"
+				className="!h-6 gap-0 rounded-md !py-0 !pr-0 !pl-2 text-sm font-medium text-text-subtle [&_[data-slot=icon]]:size-6"
 				size="sm"
 			>
-				<SelectValue />
+				<SelectValue>{labelContent}</SelectValue>
 			</SelectTrigger>
 			<SelectContent align="start" alignItemWithTrigger={false} className="min-w-0">
-				<SelectItem value={value}>{value}</SelectItem>
+				<SelectItem value={value}>{labelContent}</SelectItem>
 			</SelectContent>
 		</Select>
 	);
@@ -280,7 +298,7 @@ export function RfpAgentTriggerDetails({
 													<span>Status changed to</span>
 													<TriggerDropdown value={RFP_DRAFTING_COLUMN_NAME} />
 													<span className="font-medium">in</span>
-													<TriggerDropdown value={RFP_DRAFTING_BOARD_NAME} />
+													<TriggerDropdown showProjectAvatar value={RFP_DRAFTING_BOARD_NAME} />
 												</div>
 												<Button
 													aria-label="Delete trigger"

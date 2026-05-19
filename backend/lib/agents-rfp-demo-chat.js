@@ -41,7 +41,7 @@ const RFP_DEMO_QUESTION_TOOL_CALL_ID = "ai-gateway-ask_user_questions-agents-rfp
 const RFP_DEMO_AGENT_ID = "rfp-drafting-agent";
 const RFP_DEMO_AGENT_NAME = "RFP Drafter";
 const RFP_DEMO_AGENT_DESCRIPTION =
-	"Drafts first-pass RFP response packages for Enterprise RFP Response tickets entering Drafting.";
+	"Drafts first-pass RFP response packages for Enterprise RFP Response";
 const RFP_DEMO_AGENT_CONVERSATION_STARTERS = [
 	"Draft the response package for the next Drafting ticket.",
 	"Summarize blockers before this RFP can move to Review.",
@@ -296,25 +296,18 @@ function buildAgentsRfpDemoQualificationTrace() {
 			toolName: "jira.read_work_item",
 			toolCallId: "agents-rfp-demo-jira-read-rfp-101",
 			label: "Reading RFP-101",
-			content: "Loading active work item fields, subtasks, due date, priority, and parent RFP context.",
-			input: { key: "RFP-101", include: ["parent", "subtasks", "activity"] },
-			outputPreview: "RFP-101 is a high-priority Acmecorp enterprise service-management RFP due Jun 8, 2026, with qualification work split across matrix, DACI ownership, win themes, and legal/security exhibits.",
+			content: "Loading active work item fields, due date, priority, parent RFP context, and activity.",
+			input: { key: "RFP-101", include: ["parent", "activity"] },
+			outputPreview: "RFP-101 is a high-priority Acmecorp enterprise service-management RFP due Jun 8, 2026, with no subtasks and qualification notes attached.",
 		},
 		{
 			toolName: "jira.scan_attachments",
 			toolCallId: "agents-rfp-demo-jira-scan-attachments",
 			label: "Scanning attachments",
-			content: "Checking the RFP packet, compliance matrix, response brief, supplier portal upload, audio briefing, and walkthrough.",
+			content: "Checking the RFP intake notes attached to the work item.",
 			input: {
 				key: "RFP-101",
-				attachments: [
-					"enterprise-rfp-requirements.pdf",
-					"compliance-matrix.xlsx",
-					"response-brief.docx",
-					"supplier-portal-upload.png",
-					"proposal-audio-briefing.mp3",
-					"proposal-walkthrough.mp4",
-				],
+				attachments: ["rfp-intake-notes.page"],
 			},
 			outputPreview: "Found requirements for ITSM, CMDB, asset lifecycle, AI compliance, data residency, audit, and vulnerability response.",
 		},
@@ -338,9 +331,9 @@ function buildAgentsRfpDemoQualificationTrace() {
 			toolName: "rfp.check_unfinished_work",
 			toolCallId: "agents-rfp-demo-check-gaps",
 			label: "Checking open work",
-			content: "Looking for unresolved subtasks that should shape the recommendation.",
+			content: "Looking for open validation gaps that should shape the recommendation.",
 			input: { key: "RFP-101", status: "RFP Intake" },
-			outputPreview: "Flagged RFP-106 and RFP-108 as validation gaps before customer-facing release.",
+			outputPreview: "Flagged product, legal, security, deal desk, and partner validation gaps before customer-facing release.",
 		},
 		{
 			toolName: "ask_user_questions",

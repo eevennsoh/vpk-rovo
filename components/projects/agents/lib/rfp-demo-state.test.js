@@ -165,6 +165,10 @@ test("report stages advance through generated, refined, approved, pdf-exported, 
 		harness.getGeneratedRfpAttachments(attached, "RFP-101").map((attachment) => attachment.id),
 		[harness.GENERATED_RFP_REPORT_ATTACHMENT_ID],
 	);
+	assert.equal(attached.workItems["RFP-101"].attachmentComment.authorName, "Maya Chen");
+	assert.match(attached.workItems["RFP-101"].attachmentComment.content, /^Rovo drafted this comment\n/u);
+	assert.match(attached.workItems["RFP-101"].attachmentComment.content, /Acmecorp RFP qualification DACI\.pdf/u);
+	assert.equal(attached.workItems["RFP-101"].attachmentComment.attachmentHref, `#rovo-canvas-${harness.GENERATED_RFP_REPORT_ATTACHMENT_ID}`);
 	assert.deepEqual(attached.toasts.map((toast) => toast.message), ["Added PDF to RFP-101."]);
 });
 
