@@ -7,6 +7,7 @@ import {
 import type { FileUIPart } from "ai";
 
 const COMPACT_USER_MESSAGE_ID_PREFIX = "compact-user";
+const TURN_COMPLETE_TIMESTAMP_TOLERANCE_MS = 1_000;
 
 export function getCompactPromptMessageId(promptId: string): string {
 	return `${COMPACT_USER_MESSAGE_ID_PREFIX}-${promptId}`;
@@ -61,6 +62,42 @@ function getLastUserMessageIndex(
 	return -1;
 }
 
+function getTurnCompleteTimestampMs(
+	message: RovoRenderableUIMessage
+): number | null {
+	for (let index = message.parts.length - 1; index >= 0; index -= 1) {
+		const part = message.parts[index];
+		if (part.type !== "data-turn-complete") {
+			continue;
+		}
+
+		const timestamp = (part as { data?: { timestamp?: unknown } }).data?.timestamp;
+		if (typeof timestamp !== "string") {
+			return null;
+		}
+
+		const timestampMs = Date.parse(timestamp);
+		return Number.isFinite(timestampMs) ? timestampMs : null;
+	}
+
+	return null;
+}
+
+function latestCompletedAssistantCanBelongToPrompt(
+	message: RovoRenderableUIMessage | null,
+	prompt: QueuedPromptItem
+): boolean {
+	if (!message || !hasTurnCompleteSignal(message)) {
+		return false;
+	}
+
+	const timestampMs = getTurnCompleteTimestampMs(message);
+	return (
+		timestampMs === null ||
+		timestampMs + TURN_COMPLETE_TIMESTAMP_TOLERANCE_MS >= prompt.createdAt
+	);
+}
+
 function hasMatchingSubmittedUserMessage(
 	messages: ReadonlyArray<RovoRenderableUIMessage>,
 	prompt: QueuedPromptItem,
@@ -80,7 +117,10 @@ function hasMatchingSubmittedUserMessage(
 			lastUserIndex >= 0 &&
 			lastAssistantMessage !== null &&
 			lastAssistantIndex > lastUserIndex &&
-			!hasTurnCompleteSignal(lastAssistantMessage)
+			(
+				!hasTurnCompleteSignal(lastAssistantMessage) ||
+				latestCompletedAssistantCanBelongToPrompt(lastAssistantMessage, prompt)
+			)
 		);
 
 	if (!latestUserCanBelongToPrompt) {

@@ -129,6 +129,7 @@ const EXPLICIT_CANCEL_GRACE_MS = 1_200;
 const MEDIA_GENERATION_TIMEOUT_MS = 120_000;
 const COMPACT_HISTORY_LIMIT = 40;
 const COMPACT_THREAD_PERSIST_DEBOUNCE_MS = 450;
+const TURN_COMPLETE_TIMESTAMP_TOLERANCE_MS = 1_000;
 
 function resolveClientTimeZone(explicitTimeZone?: string): string | undefined {
 	if (typeof explicitTimeZone === "string" && explicitTimeZone.trim().length > 0) {
@@ -393,6 +394,90 @@ function getClarificationResolutionOutput(options: SendPromptOptions | undefined
 	return options?.messageMetadata?.clarificationStatus === "dismissed"
 		? "Question dismissed."
 		: "Answers received.";
+}
+
+function getTurnCompleteTimestampMs(message: RovoUIMessage): number | null | undefined {
+	for (let index = message.parts.length - 1; index >= 0; index -= 1) {
+		const part = message.parts[index];
+		if (part.type !== "data-turn-complete") {
+			continue;
+		}
+
+		const timestamp = (part as { data?: { timestamp?: unknown } }).data?.timestamp;
+		if (typeof timestamp !== "string") {
+			return null;
+		}
+
+		const timestampMs = Date.parse(timestamp);
+		return Number.isFinite(timestampMs) ? timestampMs : null;
+	}
+
+	return undefined;
+}
+
+function hasTurnCompleteForPrompt(
+	message: RovoUIMessage,
+	prompt: QueuedPromptItem
+): boolean {
+	const timestampMs = getTurnCompleteTimestampMs(message);
+	if (timestampMs === undefined) {
+		return false;
+	}
+
+	return (
+		timestampMs === null ||
+		timestampMs + TURN_COMPLETE_TIMESTAMP_TOLERANCE_MS >= prompt.createdAt
+	);
+}
+
+function getFileSignature(file: FileUIPart): string {
+	return [
+		file.url,
+		file.filename ?? "",
+		file.mediaType ?? "",
+	].join("\u0000");
+}
+
+function hasMatchingFileParts(
+	message: RovoUIMessage,
+	files: ReadonlyArray<FileUIPart>
+): boolean {
+	if (files.length === 0) {
+		return false;
+	}
+
+	const messageFileSignatures = new Set(
+		message.parts
+			.filter((part): part is FileUIPart => part.type === "file")
+			.map(getFileSignature)
+	);
+
+	return files.every((file) => messageFileSignatures.has(getFileSignature(file)));
+}
+
+function didAssistantCompleteActivePrompt(
+	messages: ReadonlyArray<RovoUIMessage>,
+	assistantIndex: number,
+	prompt: QueuedPromptItem
+): boolean {
+	const promptText = prompt.text.trim();
+	for (let index = assistantIndex - 1; index >= 0; index -= 1) {
+		const message = messages[index];
+		if (message.role === "assistant") {
+			return false;
+		}
+
+		if (message.role !== "user") {
+			continue;
+		}
+
+		return (
+			(promptText.length > 0 && getMessageText(message).trim() === promptText) ||
+			hasMatchingFileParts(message, prompt.files)
+		);
+	}
+
+	return false;
 }
 
 function markPendingClarificationResolvedInMessages(
@@ -1178,14 +1263,13 @@ export function RovoChatProvider({
 	// Watch for the data-turn-complete sentinel on the last assistant message.
 	// This fires when the backend has finished all post-stream work (suggestions,
 	// orchestrator log, etc.) and signals it is safe to advance the queue.
-	// Only accept a sentinel whose timestamp is >= the active prompt's createdAt
-	// to avoid picking up a stale signal from the previous turn.
+	// Only accept a sentinel that belongs to the active prompt to avoid picking
+	// up a stale signal from a previous turn.
 	useEffect(() => {
-		if (!activePromptRef.current || hasTurnCompleteSignalRef.current) {
+		const activePrompt = activePromptRef.current;
+		if (!activePrompt || hasTurnCompleteSignalRef.current) {
 			return;
 		}
-
-		const activeCreatedAt = activePromptRef.current.createdAt;
 
 		for (let i = rawUiMessages.length - 1; i >= 0; i--) {
 			const msg = rawUiMessages[i];
@@ -1193,18 +1277,11 @@ export function RovoChatProvider({
 				continue;
 			}
 
-			const turnCompletePart = msg.parts.find(
-				(part) => part.type === "data-turn-complete"
-			);
-			if (!turnCompletePart) {
+			if (!hasTurnCompleteForPrompt(msg, activePrompt)) {
 				break;
 			}
 
-			const partData = turnCompletePart as {
-				data?: { timestamp?: string };
-			};
-			const ts = partData.data?.timestamp;
-			if (ts && new Date(ts).getTime() >= activeCreatedAt) {
+			if (didAssistantCompleteActivePrompt(rawUiMessages, i, activePrompt)) {
 				hasTurnCompleteSignalRef.current = true;
 				queueTick();
 			}
