@@ -148,6 +148,38 @@ test("compact chat keeps the SDK user message once the assistant has started str
 	assert.equal(result, messages);
 });
 
+test("compact chat does not re-add the active prompt after a completed question-card turn", async () => {
+	const { appendOptimisticCompactUserMessage } = await loadOptimisticUserMessageModule();
+	const prompt = createPrompt();
+	const messages = [
+		{
+			id: "sdk-user-1",
+			role: "user",
+			parts: [{ type: "text", text: prompt.text, state: "done" }],
+		},
+		{
+			id: "assistant-1",
+			role: "assistant",
+			parts: [
+				{ type: "text", text: "I need a few details first.", state: "done" },
+				{
+					type: "data-widget-data",
+					data: {
+						type: "question-card",
+						payload: { type: "question-card", questions: [] },
+					},
+				},
+				{ type: "data-turn-complete", data: { timestamp: "2026-05-18T01:00:01.000Z" } },
+			],
+		},
+	];
+
+	const result = appendOptimisticCompactUserMessage(messages, prompt);
+
+	assert.equal(result.length, 2);
+	assert.equal(result, messages);
+});
+
 test("compact chat does not render hidden synthetic prompts as optimistic user bubbles", async () => {
 	const { appendOptimisticCompactUserMessage } = await loadOptimisticUserMessageModule();
 	const prompt = createPrompt({
