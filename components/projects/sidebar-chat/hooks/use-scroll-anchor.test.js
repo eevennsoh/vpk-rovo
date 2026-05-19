@@ -11,6 +11,8 @@ const USE_SCROLL_ANCHOR_SOURCE = fs.readFileSync(
 test("compact chat scroll anchor uses the Rovo bottom/target follow lifecycle", () => {
 	assert.match(USE_SCROLL_ANCHOR_SOURCE, /resolveRovoAppScrollAnchorLayout/);
 	assert.match(USE_SCROLL_ANCHOR_SOURCE, /isGenerationActive: boolean;/);
+	assert.match(USE_SCROLL_ANCHOR_SOURCE, /enableTargetFollow\?: boolean;/);
+	assert.match(USE_SCROLL_ANCHOR_SOURCE, /enableTargetFollow = true,/);
 	assert.match(
 		USE_SCROLL_ANCHOR_SOURCE,
 		/useState<ConversationFollowMode>\("bottom"\)/,
@@ -32,6 +34,10 @@ test("compact chat scroll anchor uses the Rovo bottom/target follow lifecycle", 
 	assert.match(
 		USE_SCROLL_ANCHOR_SOURCE,
 		/conversationContextRef\.current\?\.scrollToBottom\(\{\s+animation: pendingAnchorScrollAnimationRef\.current,\s+ignoreEscapes: true,/,
+	);
+	assert.match(
+		USE_SCROLL_ANCHOR_SOURCE,
+		/const shouldActivateTargetFollow =\s+enableTargetFollow &&\s+isGenerationActive/u,
 	);
 	assert.doesNotMatch(
 		USE_SCROLL_ANCHOR_SOURCE,

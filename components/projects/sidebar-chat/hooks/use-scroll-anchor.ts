@@ -21,6 +21,7 @@ const FAST_TURN_SCROLL_ANIMATION = {
 } as const;
 
 interface UseScrollAnchorOptions {
+	enableTargetFollow?: boolean;
 	uiMessages: ReadonlyArray<RovoUIMessage>;
 	isGenerationActive: boolean;
 }
@@ -33,6 +34,7 @@ interface UseScrollAnchorReturn {
 }
 
 export function useScrollAnchor({
+	enableTargetFollow = true,
 	isGenerationActive,
 	uiMessages,
 }: Readonly<UseScrollAnchorOptions>): UseScrollAnchorReturn {
@@ -61,6 +63,7 @@ export function useScrollAnchor({
 			hasLatestUserMessage &&
 			latestUserMessageId !== previousLatestUserMessageIdRef.current;
 		const shouldActivateTargetFollow =
+			enableTargetFollow &&
 			isGenerationActive &&
 			hasLatestUserMessage &&
 			(
@@ -91,6 +94,7 @@ export function useScrollAnchor({
 		previousLatestUserMessageIdRef.current = latestUserMessageId;
 		hasInitializedScrollRef.current = true;
 	}, [
+		enableTargetFollow,
 		isGenerationActive,
 		latestUserMessageId,
 		scrollAnchorMessageId,

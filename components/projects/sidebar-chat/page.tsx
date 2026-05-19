@@ -380,6 +380,7 @@ export default function ChatPanel({
 	}, [activeThreadId]);
 
 	const { conversationContextRef, scrollSpacerRef, getLatestTurnTargetTop, scrollFollowMode } = useScrollAnchor({
+		enableTargetFollow: chatSurface !== "floating",
 		isGenerationActive: isStreamingLifecycleActive,
 		uiMessages: messages,
 	});

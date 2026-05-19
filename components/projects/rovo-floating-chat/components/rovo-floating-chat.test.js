@@ -303,6 +303,7 @@ test("Shared ChatPanel renders the Rovo-style conversation body and scroll butto
 	assert.match(CHAT_PANEL_SOURCE, /scrollFollowMode/);
 	assert.match(CHAT_PANEL_SOURCE, /isGenerationActive: isStreamingLifecycleActive/);
 	assert.match(CHAT_PANEL_SOURCE, /followMode=\{scrollFollowMode\}/);
+	assert.match(CHAT_PANEL_SOURCE, /enableTargetFollow: chatSurface !== "floating"/);
 	assert.match(CHAT_PANEL_SOURCE, /resize=\{isStreamingLifecycleActive \? "instant" : "smooth"\}/);
 	assert.match(CHAT_PANEL_SOURCE, /resizeTarget=\{isStreamingLifecycleActive \? "bottom" : "follow"\}/);
 	assert.match(
