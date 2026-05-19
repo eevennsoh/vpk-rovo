@@ -526,6 +526,7 @@ function buildFallbackDaciReportFields(activeWorkItemContext) {
 		footerLeft: "Internal qualification draft",
 		footerRight: key ? `${key} · ${customer}` : customer,
 		headline: `${customer} RFP qualification DACI`,
+		includeAtlassianLogo: false,
 		informedText: "Informed: response leadership, support, partner teams, and executive stakeholders after the bid/no-bid decision is recorded.",
 		keywords: uniqueStrings([
 			key,
@@ -685,6 +686,9 @@ function mergeDistilledDaciReportFields(fallbackFields, distilledFields) {
 			continue;
 		}
 		merged[key] = values;
+	}
+	if (distilledFields.includeAtlassianLogo === true) {
+		merged.includeAtlassianLogo = true;
 	}
 
 	return merged;
@@ -867,6 +871,17 @@ function fillDaciOnePagerTemplate(templateHtml, reportFields) {
 		"<main>",
 		"",
 		'<div class="header">',
+		reportFields.includeAtlassianLogo
+			? [
+					'\t<div aria-label="Atlassian" style="align-items:center;display:flex;gap:8px;margin-right:24px;min-width:132px;">',
+					'\t\t<svg aria-hidden="true" focusable="false" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">',
+					'\t\t\t<path d="M7.4 4.2c.5-.9 1.8-.9 2.3 0l6.6 11.6c.5.9-.1 2-1.1 2h-3.1c-.5 0-1-.3-1.2-.7L7.4 11 4 17.1c-.2.4-.7.7-1.2.7H.9c-1 0-1.6-1.1-1.1-2L7.4 4.2Z" fill="var(--primary-blue)" transform="translate(2 1)"/>',
+					'\t\t\t<path d="M14.3 4.2c.5-.9 1.8-.9 2.3 0l7.6 13.6h-4.1c-.5 0-1-.3-1.2-.7L12.5 5.7l1.8-1.5Z" fill="var(--link)" transform="translate(-2 1)"/>',
+					"\t\t</svg>",
+					'\t\t<span style="color:var(--body-text);font-size:13px;font-weight:700;letter-spacing:0;">Atlassian</span>',
+					"\t</div>",
+				].join("\n")
+			: "",
 		'\t<div class="title-block">',
 		`\t\t<div class="eyebrow">${escapeHtml(reportFields.eyebrow)}</div>`,
 		`\t\t<h1>${escapeHtml(reportFields.headline)}</h1>`,
