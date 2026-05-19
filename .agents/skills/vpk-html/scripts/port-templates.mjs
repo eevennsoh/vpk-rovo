@@ -235,11 +235,18 @@ function appendOverrides(text) {
 	return text.replace(/<\/style>/, `${VPK_OVERRIDES}</style>`);
 }
 
-function addMainLandmark(text) {
+export function addMainLandmark(text) {
 	if (/<main\b/i.test(text)) return text;
-	return text
-		.replace(/<body([^>]*)>/i, `<body$1>\n<main>`)
-		.replace(/(\s*)(<script\b|<\/body>)/i, `\n</main>$1$2`);
+	const bodyOpenMatch = /<body([^>]*)>/i.exec(text);
+	if (!bodyOpenMatch) return text;
+	const bodyOpenEnd = bodyOpenMatch.index + bodyOpenMatch[0].length;
+	const bodyTail = text.slice(bodyOpenEnd);
+	const bodyCloseMatch = /<\/body>/i.exec(bodyTail);
+	if (!bodyCloseMatch) return text;
+	const bodyContent = bodyTail.slice(0, bodyCloseMatch.index);
+	const bodyScriptMatch = /<script\b/i.exec(bodyContent);
+	const mainCloseOffset = bodyOpenEnd + (bodyScriptMatch ? bodyScriptMatch.index : bodyCloseMatch.index);
+	return `${text.slice(0, bodyOpenEnd)}\n<main>${text.slice(bodyOpenEnd, mainCloseOffset)}\n</main>${text.slice(mainCloseOffset)}`;
 }
 
 function transform(rawHtml, slug, fontFaceBlock, themeBlock) {
@@ -282,4 +289,6 @@ function main() {
 	console.log(`Ported ${TEMPLATES.length} templates → ${path.relative(process.cwd(), VPK_TEMPLATES)}`);
 }
 
-main();
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+	main();
+}
