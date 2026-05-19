@@ -18,6 +18,9 @@ import { Footer } from "@/components/ui/footer";
 import { Icon as VpkIcon } from "@/components/ui/icon";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArtifactAnnotationLayer } from "@/components/ui-custom/artifact";
+import { useArtifactAnnotations } from "@/components/ui-custom/hooks/use-artifact-annotations";
+import type { ArtifactAnnotationKind } from "@/components/ui-custom/lib/artifact-annotations";
 import { cn } from "@/lib/utils";
 
 import { RovoCanvasHeader } from "./rovo-canvas-header";
@@ -108,6 +111,9 @@ export interface RovoCanvasProps {
 	onRefresh?: (viewId: string) => void;
 	onCopy?: (view: RovoCanvasView) => void;
 	onSelectModeChange?: (isSelectMode: boolean) => void;
+	annotationDocumentId?: string | null;
+	annotationDocumentKind?: ArtifactAnnotationKind | null;
+	annotationDocumentVersionId?: string | null;
 	className?: string;
 }
 
@@ -177,6 +183,14 @@ const VIEW_SETS: Record<RovoCanvasArtefactKind, ReadonlyArray<RovoCanvasView>> =
 
 function isScriptKind(kind: RovoCanvasArtefactKind): boolean {
 	return kind === "script" || kind === "script-py" || kind === "script-js";
+}
+
+function getDefaultAnnotationKind(kind: RovoCanvasArtefactKind): ArtifactAnnotationKind {
+	if (isScriptKind(kind)) {
+		return "code";
+	}
+
+	return "html";
 }
 
 function getDefaultViewId(kind: RovoCanvasArtefactKind): string {
@@ -292,11 +306,13 @@ function CanvasToolbarAction({
 	label,
 	children,
 	onClick,
+	disabled = false,
 	isSelected = false,
 }: Readonly<{
 	label: string;
 	children: ReactNode;
 	onClick?: () => void;
+	disabled?: boolean;
 	isSelected?: boolean;
 }>): React.ReactElement {
 	return (
@@ -306,6 +322,7 @@ function CanvasToolbarAction({
 					<Button
 						aria-label={label}
 						aria-pressed={isSelected ? true : undefined}
+						disabled={disabled}
 						size="icon-sm"
 						variant="ghost"
 						onClick={onClick}
@@ -379,26 +396,9 @@ function ShimmerOverlay(): React.ReactElement {
 	);
 }
 
-function SelectModeOverlay(): React.ReactElement {
-	return (
-		<div className="pointer-events-none absolute inset-0 z-10">
-			<div className="absolute top-16 left-16 h-24 w-56 rounded-md border-2 border-border-selected bg-surface-selected/20" />
-			<div className="absolute top-14 left-14 grid size-6 place-items-center rounded-full bg-bg-selected text-xs font-semibold text-text-selected shadow-sm">
-				1
-			</div>
-			<div className="absolute top-44 left-72 w-72 rounded-lg border border-border bg-surface-overlay p-3 shadow-lg">
-				<p className="text-xs font-semibold text-text">Selected element</p>
-				<div className="mt-2 h-9 rounded-md border border-border bg-surface" />
-			</div>
-		</div>
-	);
-}
-
 export function RovoCanvasPlaceholder({
-	isSelectMode = false,
 	isEditing = false,
 }: Readonly<{
-	isSelectMode?: boolean;
 	isEditing?: boolean;
 }>): React.ReactElement {
 	return (
@@ -407,24 +407,18 @@ export function RovoCanvasPlaceholder({
 			className="relative size-full overflow-auto bg-surface"
 			role="region"
 		>
-			{isSelectMode ? <SelectModeOverlay /> : null}
 			{isEditing ? <ShimmerOverlay /> : null}
 		</div>
 	);
 }
 
 function RovoCanvasDefaultView({
-	view,
-	isSelectMode,
 	status,
 }: Readonly<{
-	view: RovoCanvasView;
-	isSelectMode: boolean;
 	status: RovoCanvasStatus;
 }>): React.ReactElement {
 	return (
 		<RovoCanvasPlaceholder
-			isSelectMode={getToolbarMode(view) === "preview" ? isSelectMode : false}
 			isEditing={status === "editing"}
 		/>
 	);
@@ -503,6 +497,8 @@ function CanvasToolbar({
 	isVersionHistoryOpen,
 	isSelectMode,
 	isCopied,
+	showSelectModeControl,
+	isSelectModeDisabled,
 	onRefresh,
 	onToggleVersionHistory,
 	onToggleSelectMode,
@@ -512,6 +508,8 @@ function CanvasToolbar({
 	isVersionHistoryOpen: boolean;
 	isSelectMode: boolean;
 	isCopied: boolean;
+	showSelectModeControl: boolean;
+	isSelectModeDisabled: boolean;
 	onRefresh: () => void;
 	onToggleVersionHistory: () => void;
 	onToggleSelectMode: () => void;
@@ -535,9 +533,10 @@ function CanvasToolbar({
 			>
 				<VpkIcon render={<ClockIcon label="" />} />
 			</CanvasToolbarAction>
-			{toolbarMode === "preview" ? (
+			{toolbarMode === "preview" && showSelectModeControl ? (
 				<CanvasToolbarAction
 					label={isSelectMode ? "Exit select mode" : "Select element"}
+					disabled={isSelectModeDisabled}
 					isSelected={isSelectMode}
 					onClick={onToggleSelectMode}
 				>
@@ -576,6 +575,9 @@ export function RovoCanvas({
 	onRefresh,
 	onCopy,
 	onSelectModeChange,
+	annotationDocumentId,
+	annotationDocumentKind,
+	annotationDocumentVersionId,
 	className,
 }: Readonly<RovoCanvasProps>): React.ReactElement {
 	const resolvedViews = views ?? VIEW_SETS[kind];
@@ -589,6 +591,7 @@ export function RovoCanvas({
 	const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
 	const [isSelectMode, setSelectMode] = useState(false);
 	const [isCopied, setCopied] = useState(false);
+	const annotationContainerRef = useRef<HTMLDivElement>(null);
 	const canvasInstanceIdRef = useRef<symbol | null>(null);
 	const activeView = useMemo(
 		() => resolvedViews.find((view) => view.id === activeViewId) ?? resolvedViews[0],
@@ -597,6 +600,37 @@ export function RovoCanvas({
 	const resolvedActiveViewId = activeView?.id ?? resolvedViews[0]?.id ?? defaultViewForKind;
 	const resolvedArtefactLabel = artefactLabel ?? getArtefactLabel(kind);
 	const shouldShowVersionHistory = isVersionHistoryOpen && getToolbarMode(activeView) !== "none";
+	const activeToolbarMode = getToolbarMode(activeView);
+	const isPreviewToolbarActive = activeToolbarMode === "preview";
+	const showSelectModeControl = process.env.NODE_ENV === "development";
+	const isAnnotationModeAvailable =
+		showSelectModeControl
+		&& isOpen
+		&& isPreviewToolbarActive
+		&& !isWorkingStatus(status);
+	const resolvedAnnotationDocumentId = annotationDocumentId === undefined
+		? `rovo-canvas:${kind}:${title}`
+		: annotationDocumentId;
+	const resolvedAnnotationDocumentKind = annotationDocumentKind === undefined
+		? getDefaultAnnotationKind(kind)
+		: annotationDocumentKind;
+	const resolvedAnnotationDocumentVersionId = annotationDocumentVersionId === undefined
+		? resolvedActiveViewId
+		: annotationDocumentVersionId;
+	const {
+		annotations,
+		addComment,
+		clearAnnotations,
+		dismissSelection,
+		pendingSelection,
+		removeAnnotation,
+	} = useArtifactAnnotations({
+		active: isAnnotationModeAvailable && isSelectMode,
+		documentId: resolvedAnnotationDocumentId,
+		documentKind: resolvedAnnotationDocumentKind,
+		documentVersionId: resolvedAnnotationDocumentVersionId,
+		containerRef: annotationContainerRef,
+	});
 
 	if (canvasInstanceIdRef.current === null) {
 		canvasInstanceIdRef.current = Symbol("rovo-canvas");
@@ -637,19 +671,23 @@ export function RovoCanvas({
 	}, [activeViewId, defaultViewForKind, resolvedViews, setActiveViewId]);
 
 	useEffect(() => {
-		if (getToolbarMode(activeView) === "preview") {
+		if (isAnnotationModeAvailable) {
 			return;
 		}
 
-		if (!isSelectMode) {
-			return;
-		}
+		clearAnnotations();
 
-		setSelectMode(false);
-		onSelectModeChange?.(false);
-	}, [activeView, isSelectMode, onSelectModeChange]);
+		if (isSelectMode) {
+			setSelectMode(false);
+			onSelectModeChange?.(false);
+		}
+	}, [clearAnnotations, isAnnotationModeAvailable, isSelectMode, onSelectModeChange]);
 
 	function handleToggleSelectMode(): void {
+		if (!isAnnotationModeAvailable) {
+			return;
+		}
+
 		const nextSelectMode = !isSelectMode;
 		setSelectMode(nextSelectMode);
 		onSelectModeChange?.(nextSelectMode);
@@ -725,6 +763,8 @@ export function RovoCanvas({
 											isVersionHistoryOpen={shouldShowVersionHistory}
 											isSelectMode={isSelectMode}
 											isCopied={isCopied}
+											showSelectModeControl={showSelectModeControl}
+											isSelectModeDisabled={!isAnnotationModeAvailable}
 											onRefresh={handleRefresh}
 											onToggleVersionHistory={() => setVersionHistoryOpen((value) => !value)}
 											onToggleSelectMode={handleToggleSelectMode}
@@ -734,17 +774,32 @@ export function RovoCanvas({
 
 									<div className="flex min-h-0 flex-1">
 										<div className="relative min-w-0 flex-1">
-											{resolvedViews.map((view) => (
-												<TabsContent key={view.id} value={view.id} className="size-full">
-													{view.content === undefined ? (
-														<RovoCanvasDefaultView
-															view={view}
-															isSelectMode={isSelectMode}
-															status={status}
-														/>
-													) : view.content}
-												</TabsContent>
-											))}
+											{resolvedViews.map((view) => {
+												const isActivePreviewView =
+													view.id === resolvedActiveViewId && getToolbarMode(view) === "preview";
+
+												return (
+													<TabsContent key={view.id} value={view.id} className="size-full">
+														<div
+															ref={isActivePreviewView ? annotationContainerRef : undefined}
+															className="relative size-full min-h-0 overflow-hidden"
+														>
+															{view.content === undefined ? (
+																<RovoCanvasDefaultView status={status} />
+															) : view.content}
+															{isActivePreviewView ? (
+																<ArtifactAnnotationLayer
+																	annotations={annotations}
+																	onAddComment={addComment}
+																	onDismissSelection={dismissSelection}
+																	onRemoveAnnotation={removeAnnotation}
+																	pendingSelection={pendingSelection}
+																/>
+															) : null}
+														</div>
+													</TabsContent>
+												);
+											})}
 											{isWorkingStatus(status) ? <LoadingScreen /> : null}
 										</div>
 										{shouldShowVersionHistory ? (

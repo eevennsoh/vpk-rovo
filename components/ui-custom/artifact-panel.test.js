@@ -35,3 +35,15 @@ test("ArtifactPanel uses the Rovo Canvas version-history treatment instead of a 
 	assert.doesNotMatch(ARTIFACT_SOURCE, /SelectTrigger/u);
 	assert.doesNotMatch(ARTIFACT_SOURCE, /aria-label="Artifact version"/u);
 });
+
+test("ArtifactPanel renders annotations through the shared annotation layer", () => {
+	assert.match(ARTIFACT_SOURCE, /export function ArtifactAnnotationLayer/u);
+	assert.match(
+		ARTIFACT_SOURCE,
+		/<ArtifactAnnotationLayer[\s\S]*annotations=\{annotations\}[\s\S]*onAddComment=\{onAddComment\}[\s\S]*onDismissSelection=\{onDismissSelection\}[\s\S]*onRemoveAnnotation=\{onRemoveAnnotation\}[\s\S]*pendingSelection=\{pendingSelection\}/u,
+	);
+	assert.match(
+		ARTIFACT_SOURCE,
+		/function PendingAnnotationPopover/u,
+	);
+});
