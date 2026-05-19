@@ -303,3 +303,62 @@ test("completed Review tickets left unassigned use the person placeholder avatar
 	assert.equal(completedCard.avatarPulse, false);
 	assert.ok(completedCard.tags.some((tag) => tag.text === "draft ready"));
 });
+
+test("resolved Review column promotes latest completed RFP agent tickets", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const state = harness.createDefaultAgentsRfpDemoState();
+	state.board.columns = state.board.columns.map((column) => {
+		if (column.title === "Drafting") {
+			return {
+				...column,
+				cardCodes: column.cardCodes.filter((cardCode) => !["RFP-141", "RFP-142", "RFP-143"].includes(cardCode)),
+			};
+		}
+		if (column.title === "Review") {
+			return {
+				...column,
+				cardCodes: [...column.cardCodes, "RFP-141", "RFP-142", "RFP-143", "RFP-101"],
+			};
+		}
+		return column;
+	});
+	state.workItems["RFP-141"] = {
+		...state.workItems["RFP-141"],
+		agentAssignmentIds: [harness.RFP_DRAFTING_AGENT_ID],
+		agentStatus: "completed",
+		assignee: null,
+		completedAt: "2026-06-03T15:02:00.000Z",
+		status: "Review",
+	};
+	state.workItems["RFP-142"] = {
+		...state.workItems["RFP-142"],
+		agentAssignmentIds: [harness.RFP_DRAFTING_AGENT_ID],
+		agentStatus: "completed",
+		assignee: null,
+		completedAt: "2026-06-03T15:04:00.000Z",
+		status: "Review",
+	};
+	state.workItems["RFP-143"] = {
+		...state.workItems["RFP-143"],
+		agentAssignmentIds: [harness.RFP_DRAFTING_AGENT_ID],
+		agentStatus: "completed",
+		assignee: null,
+		completedAt: "2026-06-03T15:06:00.000Z",
+		status: "Review",
+	};
+	state.workItems["RFP-101"] = {
+		...state.workItems["RFP-101"],
+		agentAssignmentIds: [harness.RFP_DRAFTING_AGENT_ID],
+		agentStatus: "completed",
+		assignee: null,
+		completedAt: "2026-06-03T15:20:00.000Z",
+		status: "Review",
+	};
+
+	const reviewColumn = harness.resolveRfpDemoBoardColumns(state).find((column) => column.title === "Review");
+
+	assert.deepEqual(
+		reviewColumn.cards.slice(0, 4).map((card) => card.code),
+		["RFP-101", "RFP-143", "RFP-142", "RFP-141"],
+	);
+});

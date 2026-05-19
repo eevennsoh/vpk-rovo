@@ -539,6 +539,54 @@ function normalizeToasts(rawToasts) {
 		.filter(Boolean);
 }
 
+function getReviewPromotionTimestamp(workItem) {
+	const completedAtMs = Date.parse(workItem?.completedAt);
+	if (Number.isFinite(completedAtMs)) {
+		return completedAtMs;
+	}
+
+	const agentStartedAtMs = Date.parse(workItem?.agentStartedAt);
+	return Number.isFinite(agentStartedAtMs) ? agentStartedAtMs : 0;
+}
+
+function shouldPromoteCompletedReviewTicket(workItem) {
+	return (
+		workItem?.status === RFP_REVIEW_COLUMN_NAME &&
+		workItem.agentStatus === "completed" &&
+		!workItem.assignee
+	);
+}
+
+function normalizeReviewColumnOrder(board, workItems) {
+	return {
+		columns: board.columns.map((column) => {
+			if (column.title !== RFP_REVIEW_COLUMN_NAME) {
+				return column;
+			}
+
+			const indexedCodes = column.cardCodes.map((code, index) => ({ code, index }));
+			const promotedCodes = indexedCodes
+				.filter(({ code }) => shouldPromoteCompletedReviewTicket(workItems[code]))
+				.sort((left, right) => {
+					const timestampDelta =
+						getReviewPromotionTimestamp(workItems[right.code]) -
+						getReviewPromotionTimestamp(workItems[left.code]);
+					return timestampDelta === 0 ? left.index - right.index : timestampDelta;
+				})
+				.map(({ code }) => code);
+			const promotedCodeSet = new Set(promotedCodes);
+
+			return {
+				...column,
+				cardCodes: [
+					...promotedCodes,
+					...column.cardCodes.filter((code) => !promotedCodeSet.has(code)),
+				],
+			};
+		}),
+	};
+}
+
 function normalizeAgentsRfpDemoState(rawState) {
 	const defaultState = createDefaultAgentsRfpDemoState();
 	if (!isObject(rawState) || rawState.version !== AGENTS_RFP_DEMO_VERSION) {
@@ -557,10 +605,11 @@ function normalizeAgentsRfpDemoState(rawState) {
 			defaultStatuses.get(code) ?? defaultState.workItems[code]?.status ?? "RFP Intake",
 		);
 	}
+	const normalizedBoard = normalizeReviewColumnOrder(board, workItems);
 
 	return {
 		...defaultState,
-		board,
+		board: normalizedBoard,
 		workItems,
 		report: isObject(rawState.report)
 			? {

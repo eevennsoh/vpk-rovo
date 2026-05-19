@@ -74,6 +74,56 @@ test("backend normalization preserves RFP attachment comments", () => {
 	assert.equal(comment.attachmentHref, "#rovo-canvas-generated-rfp-response-strategy-pdf");
 });
 
+test("backend normalization promotes completed Review tickets latest first", () => {
+	const staleState = createDefaultAgentsRfpDemoState();
+	staleState.board.columns = staleState.board.columns.map((column) => (
+		column.title === RFP_REVIEW_COLUMN_NAME
+			? {
+					...column,
+					cardCodes: [...column.cardCodes, "RFP-141", "RFP-142", "RFP-143", "RFP-101"],
+				}
+			: {
+					...column,
+					cardCodes: column.cardCodes.filter((cardCode) => !["RFP-141", "RFP-142", "RFP-143"].includes(cardCode)),
+				}
+	));
+	staleState.workItems["RFP-141"] = {
+		...staleState.workItems["RFP-141"],
+		agentStatus: "completed",
+		assignee: null,
+		completedAt: "2026-06-03T15:02:00.000Z",
+		status: RFP_REVIEW_COLUMN_NAME,
+	};
+	staleState.workItems["RFP-142"] = {
+		...staleState.workItems["RFP-142"],
+		agentStatus: "completed",
+		assignee: null,
+		completedAt: "2026-06-03T15:04:00.000Z",
+		status: RFP_REVIEW_COLUMN_NAME,
+	};
+	staleState.workItems["RFP-143"] = {
+		...staleState.workItems["RFP-143"],
+		agentStatus: "completed",
+		assignee: null,
+		completedAt: "2026-06-03T15:06:00.000Z",
+		status: RFP_REVIEW_COLUMN_NAME,
+	};
+	staleState.workItems["RFP-101"] = {
+		...staleState.workItems["RFP-101"],
+		agentStatus: "completed",
+		assignee: null,
+		completedAt: "2026-06-03T15:20:00.000Z",
+		status: RFP_REVIEW_COLUMN_NAME,
+	};
+
+	const normalized = normalizeAgentsRfpDemoState(staleState);
+
+	assert.deepEqual(
+		normalized.board.columns.find((column) => column.title === RFP_REVIEW_COLUMN_NAME).cardCodes.slice(0, 4),
+		["RFP-101", "RFP-143", "RFP-142", "RFP-141"],
+	);
+});
+
 test("applying the RFP Drafter queues all current Drafting tickets", () => {
 	const result = runRfpDraftingAgent(createDefaultAgentsRfpDemoState(), {
 		jobId: "job-rfp-drafting",

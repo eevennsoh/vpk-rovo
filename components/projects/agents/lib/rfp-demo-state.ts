@@ -947,6 +947,50 @@ export function getGeneratedRfpAttachments(
 		.map((attachment) => ({ ...attachment }));
 }
 
+function getReviewPromotionTimestamp(workItem: AgentsRfpDemoWorkItemState | undefined): number {
+	const completedAtMs = Date.parse(workItem?.completedAt ?? "");
+	if (Number.isFinite(completedAtMs)) {
+		return completedAtMs;
+	}
+
+	const agentStartedAtMs = Date.parse(workItem?.agentStartedAt ?? "");
+	return Number.isFinite(agentStartedAtMs) ? agentStartedAtMs : 0;
+}
+
+function shouldPromoteCompletedReviewCard(workItem: AgentsRfpDemoWorkItemState | undefined): boolean {
+	return Boolean(
+		workItem?.status === "Review" &&
+		workItem.agentStatus === "completed" &&
+		!workItem.assignee,
+	);
+}
+
+function getResolvedColumnCardCodes(
+	column: AgentsRfpDemoBoardColumnState,
+	state: AgentsRfpDemoState,
+): string[] {
+	if (column.title !== "Review") {
+		return column.cardCodes;
+	}
+
+	const indexedCodes = column.cardCodes.map((code, index) => ({ code, index }));
+	const promotedCodes = indexedCodes
+		.filter(({ code }) => shouldPromoteCompletedReviewCard(state.workItems[code]))
+		.sort((left, right) => {
+			const timestampDelta =
+				getReviewPromotionTimestamp(state.workItems[right.code]) -
+				getReviewPromotionTimestamp(state.workItems[left.code]);
+			return timestampDelta === 0 ? left.index - right.index : timestampDelta;
+		})
+		.map(({ code }) => code);
+	const promotedCodeSet = new Set(promotedCodes);
+
+	return [
+		...promotedCodes,
+		...column.cardCodes.filter((code) => !promotedCodeSet.has(code)),
+	];
+}
+
 export function resolveRfpDemoBoardColumns(
 	state: AgentsRfpDemoState,
 ): KanbanBoardColumnData[] {
@@ -955,7 +999,7 @@ export function resolveRfpDemoBoardColumns(
 	);
 
 	return state.board.columns.map((column) => {
-		const cards = column.cardCodes
+		const cards = getResolvedColumnCardCodes(column, state)
 			.map((cardCode) => {
 				const card = baseCards.get(cardCode);
 				if (!card) {
