@@ -80,6 +80,9 @@ async function loadRfpContextHarness() {
 		platform: "node",
 		tsconfig: path.join(process.cwd(), "tsconfig.json"),
 		write: false,
+		loader: {
+			".css": "empty",
+		},
 		plugins: [
 			{
 				name: "rfp-context-test-mocks",
@@ -375,8 +378,8 @@ test("agents chat screen resolver switches from board fallback to active work it
 	const translatedPrompt = workItemContext.greeting.suggestions.find(
 		(suggestion) => suggestion.id === "translate-text",
 	);
-	assert.equal(translatedPrompt.label, "Find related RFPs");
-	assert.equal(translatedPrompt.prompt, "Find related RFPs");
+	assert.equal(translatedPrompt.label, "Recommend an assignee");
+	assert.equal(translatedPrompt.prompt, "Recommend an assignee");
 });
 
 test("Rovo context merging preserves active work item context and suggestion context", async () => {
