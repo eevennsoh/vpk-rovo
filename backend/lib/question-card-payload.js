@@ -3,7 +3,7 @@ const { getNonEmptyString, getPositiveInteger } = require("./shared-utils");
 const DEFAULT_WIDGET_TYPE = "question-card";
 const DEFAULT_MAX_ROUNDS = Number.MAX_SAFE_INTEGER;
 const DEFAULT_MAX_QUESTIONS = 4;
-const DEFAULT_MAX_PRESET_OPTIONS = 4;
+const DEFAULT_MAX_PRESET_OPTIONS = 3;
 const DEFAULT_CUSTOM_OPTION_PLACEHOLDER = "Tell Rovo what to do...";
 
 const QUESTION_CARD_KINDS = new Set([
@@ -406,7 +406,8 @@ function normalizeRequestUserInputOptions(value) {
 			};
 		})
 		.filter(Boolean)
-		.filter((option) => !isSelfReferentialFreeTextOption(option.label));
+		.filter((option) => !isSelfReferentialFreeTextOption(option.label))
+		.slice(0, DEFAULT_MAX_PRESET_OPTIONS);
 }
 
 function getQuestionOptionSource(question) {

@@ -228,6 +228,7 @@ export interface AgentsRfpDemoState {
 	chat: {
 		selectedAgentId: "rovo" | typeof RFP_DRAFTING_AGENT_ID;
 		lastRfp101AnswerSummary?: string;
+		selectedRfpKnowledge?: string | null;
 	};
 	toasts: AgentsRfpDemoToast[];
 }
@@ -444,6 +445,7 @@ export function createDefaultAgentsRfpDemoState(): AgentsRfpDemoState {
 		},
 		chat: {
 			selectedAgentId: "rovo",
+			selectedRfpKnowledge: null,
 		},
 		toasts: [],
 	};
@@ -1058,6 +1060,7 @@ export function formatRfpDemoContext(state: AgentsRfpDemoState): string {
 		state.agent ? `Custom agent: ${RFP_DRAFTING_AGENT_NAME} assigned to Drafting events.` : "Custom agent: not created.",
 		state.agent?.trigger ? `Trigger: ${state.agent.trigger.label}.` : "Trigger: none.",
 		state.agent?.trigger?.prompt ? `Trigger prompt: ${state.agent.trigger.prompt}` : null,
+		state.chat.selectedRfpKnowledge ? `Selected RFP agent knowledge: ${state.chat.selectedRfpKnowledge}.` : null,
 		`Selected chat agent: ${state.chat.selectedAgentId === RFP_DRAFTING_AGENT_ID ? RFP_DRAFTING_AGENT_NAME : "Rovo"}.`,
 		state.chat.lastRfp101AnswerSummary ? `Latest Maya qualification answer: ${state.chat.lastRfp101AnswerSummary}` : null,
 		"[End Agents RFP Demo Local State]",

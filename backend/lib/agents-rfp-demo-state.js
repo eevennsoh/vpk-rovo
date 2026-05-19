@@ -290,6 +290,7 @@ function createDefaultAgentsRfpDemoState() {
 		},
 		chat: {
 			selectedAgentId: "rovo",
+			selectedRfpKnowledge: null,
 		},
 		toasts: [],
 	};
@@ -583,7 +584,13 @@ function normalizeAgentsRfpDemoState(rawState) {
 		schedule: null,
 		customAgentActivity: Array.isArray(rawState.customAgentActivity) ? rawState.customAgentActivity : [],
 		canvas: isObject(rawState.canvas) ? { ...defaultState.canvas, ...rawState.canvas } : defaultState.canvas,
-		chat: isObject(rawState.chat) ? { ...defaultState.chat, ...rawState.chat } : defaultState.chat,
+		chat: isObject(rawState.chat)
+			? {
+					...defaultState.chat,
+					...rawState.chat,
+					selectedRfpKnowledge: getNonEmptyString(rawState.chat.selectedRfpKnowledge),
+				}
+			: defaultState.chat,
 		toasts: normalizeToasts(rawState.toasts),
 	};
 }

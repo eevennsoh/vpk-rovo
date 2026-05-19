@@ -445,6 +445,36 @@ test("parseQuestionCardPayload keeps options that mention typing in context", ()
 	assert.equal(payload.questions[0].options.length, 2);
 });
 
+test("parseQuestionCardPayload caps generated options at three", () => {
+	const payload = parseQuestionCardPayload({
+		type: "question-card",
+		sessionId: "widget-three-option-cap",
+		questions: [
+			{
+				id: "q-1",
+				label: "Which knowledge source?",
+				kind: "single-select",
+				options: [
+					{ label: "Reusable answer library" },
+					{ label: "Customer/account context" },
+					{ label: "Product and security evidence" },
+					{ label: "Pricing desk approvals" },
+				],
+			},
+		],
+	});
+
+	assert.ok(payload);
+	assert.deepEqual(
+		payload.questions[0].options.map((option) => option.label),
+		[
+			"Reusable answer library",
+			"Customer/account context",
+			"Product and security evidence",
+		],
+	);
+});
+
 test("getLatestQuestionCardPayload finds a question card even if another widget follows", () => {
 	const payload = getLatestQuestionCardPayload([
 		{
@@ -973,4 +1003,29 @@ test("buildClarificationSummaryPrompt contains only title and answers", () => {
 	assert.doesNotMatch(prompt, /Plan mode is still active/i);
 	assert.doesNotMatch(prompt, /exit_plan_mode/i);
 	assert.doesNotMatch(prompt, /continue the user's original request/i);
+});
+
+test("buildClarificationSummaryPrompt tells final-round cards to continue with best judgment", () => {
+	const parsedPayload = parseQuestionCardPayload({
+		type: "question-card",
+		sessionId: "summary-final-round",
+		title: "Shape the reusable RFP agent",
+		round: 1,
+		maxRounds: 1,
+		questions: [
+			{
+				id: "knowledge-source",
+				label: "Which knowledge should the agent reuse first?",
+				kind: "single-select",
+				options: [{ id: "answers", label: "Reusable answer library" }],
+			},
+		],
+	});
+	assert.ok(parsedPayload);
+
+	const prompt = buildClarificationSummaryPrompt(parsedPayload, {});
+
+	assert.match(prompt, /final clarification round/i);
+	assert.match(prompt, /Do not ask more clarification questions/i);
+	assert.match(prompt, /use best judgment for unanswered items/i);
 });

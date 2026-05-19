@@ -32,7 +32,7 @@ export interface QuestionCardProps extends Omit<React.ComponentProps<"div">, "on
 	onDismiss?: () => void;
 	/** When set, Skip closes the whole card (deferred clarification); parent should cancel the tool in `onDismiss`. */
 	toolCallId?: string;
-	/** Maximum number of pre-defined options to display per question. Additional options are truncated. @default 4 */
+	/** Maximum number of pre-defined options to display per question. Additional options are truncated. @default 3 */
 	maxVisibleOptions?: number;
 	/** Placeholder text for the free-form custom input row. @default "Tell Rovo what to do..." */
 	customInputPlaceholder?: string;
@@ -46,7 +46,7 @@ export interface QuestionCardProps extends Omit<React.ComponentProps<"div">, "on
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_MAX_VISIBLE_OPTIONS = 4;
+const DEFAULT_MAX_VISIBLE_OPTIONS = 3;
 const DEFAULT_CUSTOM_INPUT_PLACEHOLDER = "Tell Rovo what to do...";
 
 // ---------------------------------------------------------------------------

@@ -139,6 +139,37 @@ test("normalizes Gateway ask_user_questions input into question-card payload met
 	});
 });
 
+test("normalizes Gateway ask_user_questions input with a three option cap", () => {
+	const payload = buildQuestionCardPayloadFromAIGatewayDeferredTool(
+		{
+			questions: [
+				{
+					question: "Which knowledge should the agent reuse first?",
+					options: [
+						{ label: "Reusable answer library" },
+						{ label: "Customer/account context" },
+						{ label: "Product and security evidence" },
+						{ label: "Pricing approvals" },
+					],
+				},
+			],
+		},
+		{
+			sessionId: "request-user-input-ai-gateway-three-options",
+		},
+	);
+
+	assert.ok(payload);
+	assert.deepEqual(
+		payload.questions[0].options.map((option) => option.label),
+		[
+			"Reusable answer library",
+			"Customer/account context",
+			"Product and security evidence",
+		],
+	);
+});
+
 test("normalizes Gateway exit_plan_mode input into plan widget payload", () => {
 	const payload = buildPlanWidgetPayloadFromAIGatewayDeferredTool(
 		{

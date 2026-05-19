@@ -12,6 +12,7 @@ const {
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
 	buildAgentsRfpDemoReportConfirmationText,
+	extractAgentsRfpDemoSelectedKnowledge,
 	getAgentsRfpDemoToolCallDelayMs,
 	getAgentsRfpDemoPreloadDelayMs,
 	getLatestUserMessageText,
@@ -174,7 +175,7 @@ test("detects the RFP demo clarification answer turn by question session", () =>
 		clarification: {
 			sessionId: RFP_DEMO_QUESTION_SESSION_ID,
 			answers: {
-				budget: "Qualified strategic budget",
+				"knowledge-source": "reusable-answer-library",
 			},
 		},
 		messages: [
@@ -195,19 +196,39 @@ test("builds the shared question-card payload expected by compact chat", () => {
 	assert.equal(payload.type, "question-card");
 	assert.equal(payload.sessionId, RFP_DEMO_QUESTION_SESSION_ID);
 	assert.equal(payload.maxRounds, 1);
-	assert.equal(payload.questions.length, 5);
+	assert.equal(payload.questions.length, 3);
 	assert.deepEqual(
 		payload.questions.map((question) => question.id),
 		[
-			"budget",
-			"stakeholder-relationship",
-			"campaign-fit",
-			"competitive-position",
+			"agent-focus",
+			"knowledge-source",
 			"review-posture",
 		],
 	);
 	assert.ok(payload.questions.every((question) => question.options.length > 0));
-	assert.ok(payload.questions.some((question) => question.kind === "multi-select"));
+	assert.ok(payload.questions.every((question) => question.options.length <= 3));
+	assert.deepEqual(
+		payload.questions[1].options.map((option) => option.label),
+		[
+			"Reusable answer library",
+			"Customer/account context",
+			"Product and security evidence",
+		],
+	);
+	assert.ok(payload.questions.every((question) => question.kind === "single-select"));
+});
+
+test("extracts selected RFP knowledge from clarification answers for agent creation", () => {
+	assert.equal(
+		extractAgentsRfpDemoSelectedKnowledge({
+			clarification: {
+				answers: {
+					"knowledge-source": "product-security-evidence",
+				},
+			},
+		}),
+		"Product and security evidence",
+	);
 });
 
 test("RFP demo tool-call delay varies between one and three seconds", () => {
@@ -229,7 +250,7 @@ test("qualification trace leaves ask_user_questions awaiting a question card", (
 	assert.equal(trace.length, 6);
 	assert.equal(finalStep.toolName, "ask_user_questions");
 	assert.equal(finalStep.toolCallId, RFP_DEMO_QUESTION_TOOL_CALL_ID);
-	assert.equal(finalStep.input.questions, 5);
+	assert.equal(finalStep.input.questions, 3);
 	assert.equal(finalStep.outputPreview, undefined);
 });
 
@@ -254,8 +275,12 @@ test("answer trace produces completed qualification DACI steps", () => {
 });
 
 test("agent creation trace creates an agent instead of rendering another report", () => {
-	const trace = buildAgentsRfpDemoAgentCreationTrace();
-	const result = buildAgentsRfpDemoAgentResultPayload();
+	const trace = buildAgentsRfpDemoAgentCreationTrace({
+		selectedKnowledge: "Product and security evidence",
+	});
+	const result = buildAgentsRfpDemoAgentResultPayload({
+		selectedKnowledge: "Product and security evidence",
+	});
 
 	assert.deepEqual(
 		trace.map((step) => step.toolName),
@@ -273,7 +298,7 @@ test("agent creation trace creates an agent instead of rendering another report"
 	);
 	assert.deepEqual(
 		trace.filter((step) => step.toolName === "agent_skill.load").map((step) => step.label),
-		["Using create-agent skill", "Using create-automation skill"],
+		["Using agent-creator skill", "Using create-automation skill"],
 	);
 	assert.ok(
 		trace
@@ -291,6 +316,11 @@ test("agent creation trace creates an agent instead of rendering another report"
 	]);
 	assert.equal(result.assignedColumn, "Drafting");
 	assert.equal(result.action, "create");
+	assert.equal(result.knowledgePath, ".agents/knowledge/rfp-drafting-agent/");
+	assert.equal(result.selectedKnowledge, "Product and security evidence");
+	assert.deepEqual(result.seedKnowledge, [
+		".agents/knowledge/rfp-drafting-agent/product-security-evidence.md",
+	]);
 	assert.match(result.summary, /similar RFP work items/u);
 	assert.match(result.trigger, /ticket enters Drafting/u);
 	assert.match(result.tools.join(" "), /PDF draft attachment/u);
@@ -298,6 +328,10 @@ test("agent creation trace creates an agent instead of rendering another report"
 	assert.match(
 		trace.find((step) => step.toolName === "agent.write_instructions")?.content ?? "",
 		/description, conversation starters/u,
+	);
+	assert.equal(
+		trace.find((step) => step.toolName === "teamwork_graph.link_knowledge")?.input.selectedKnowledge,
+		"Product and security evidence",
 	);
 	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /Created \*\*RFP Drafter\*\*/u);
 	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /added it to the Enterprise RFP Response project/u);

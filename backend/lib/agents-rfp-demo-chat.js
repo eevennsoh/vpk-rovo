@@ -47,6 +47,17 @@ const RFP_DEMO_AGENT_CONVERSATION_STARTERS = [
 	"Summarize blockers before this RFP can move to Review.",
 	"Create reusable answer snippets from the attached RFP packet.",
 ];
+const RFP_DEMO_KNOWLEDGE_QUESTION_ID = "knowledge-source";
+const RFP_DEMO_KNOWLEDGE_OPTIONS = [
+	{ id: "reusable-answer-library", label: "Reusable answer library" },
+	{ id: "customer-account-context", label: "Customer/account context" },
+	{ id: "product-security-evidence", label: "Product and security evidence" },
+];
+const RFP_DEMO_KNOWLEDGE_SEED_FILES_BY_ID = {
+	"reusable-answer-library": [".agents/knowledge/rfp-drafting-agent/reusable-answer-library.md"],
+	"customer-account-context": [".agents/knowledge/rfp-drafting-agent/customer-account-context.md"],
+	"product-security-evidence": [".agents/knowledge/rfp-drafting-agent/product-security-evidence.md"],
+};
 const RFP_DEMO_TOOL_CALL_DELAY_MIN_MS = 1000;
 const RFP_DEMO_TOOL_CALL_DELAY_MAX_MS = 3000;
 const RFP_DEMO_SKILL_TOOL_CALL_DELAY_MS = 4500;
@@ -198,72 +209,81 @@ function getAgentsRfpDemoPreloadDelayMs(turn) {
 		: 0;
 }
 
+function normalizeAgentsRfpDemoKnowledgeAnswer(value) {
+	const answer = Array.isArray(value) ? value[0] : value;
+	const normalizedAnswer = getNonEmptyString(answer);
+	if (!normalizedAnswer) {
+		return null;
+	}
+
+	const matchingOption = RFP_DEMO_KNOWLEDGE_OPTIONS.find((option) => (
+		option.id === normalizedAnswer ||
+		option.label.toLowerCase() === normalizedAnswer.toLowerCase()
+	));
+
+	return matchingOption?.label ?? normalizedAnswer;
+}
+
+function extractAgentsRfpDemoSelectedKnowledge(requestBody) {
+	const answers = requestBody?.clarification?.answers;
+	if (!answers || typeof answers !== "object") {
+		return null;
+	}
+
+	return normalizeAgentsRfpDemoKnowledgeAnswer(answers[RFP_DEMO_KNOWLEDGE_QUESTION_ID]);
+}
+
+function getAgentsRfpDemoKnowledgeSeedFiles(selectedKnowledge) {
+	const option = RFP_DEMO_KNOWLEDGE_OPTIONS.find((candidate) => candidate.label === selectedKnowledge);
+	return option ? RFP_DEMO_KNOWLEDGE_SEED_FILES_BY_ID[option.id] : [];
+}
+
 function buildAgentsRfpDemoQuestionCardPayload() {
 	return {
 		type: "question-card",
 		sessionId: RFP_DEMO_QUESTION_SESSION_ID,
 		round: 1,
 		maxRounds: 1,
-		title: "Qualify the Acmecorp RFP",
-		description: "I have the ticket context and attachments. These inputs keep the bid/no-bid recommendation and DACI roles accurate.",
-		directive: "Answer what you know. I will mark unknowns as assumptions or review-required.",
+		title: "Shape the reusable RFP agent",
+		description: "These answers guide this RFP and seed the later custom agent.",
+		directive: "Answer what you know. This is the only question round; I will infer unanswered items and continue with the best recommendation.",
 		questions: [
 			{
-				id: "budget",
-				label: "Has Acmecorp budget been qualified?",
-				description: "Used to decide whether the pursuit deserves a full response effort.",
+				id: "agent-focus",
+				label: "What should the RFP agent optimize for?",
+				description: "This becomes the agent's default operating priority.",
 				required: true,
 				kind: "single-select",
-				placeholder: "Use a different budget signal",
+				placeholder: "Describe a different RFP priority",
 				options: [
-					{ id: "qualified-strategic", label: "Qualified strategic budget", recommended: true },
-					{ id: "unconfirmed-budget", label: "Budget not confirmed" },
-					{ id: "budget-risk", label: "Budget likely constrained" },
+					{ id: "bid-qualification", label: "Bid qualification", recommended: true },
+					{ id: "compliance-response", label: "Compliance response" },
+					{ id: "win-narrative", label: "Win narrative" },
 				],
 			},
 			{
-				id: "stakeholder-relationship",
-				label: "How strong is our Acmecorp stakeholder relationship?",
+				id: RFP_DEMO_KNOWLEDGE_QUESTION_ID,
+				label: "Which knowledge should the agent reuse first?",
+				description: "This seeds the custom agent knowledge path.",
 				required: true,
 				kind: "single-select",
-				options: [
-					{ id: "executive-and-champion", label: "Executive sponsor and champion", recommended: true },
-					{ id: "working-team-only", label: "Working team access only" },
-					{ id: "procurement-led", label: "Procurement-led with limited access" },
-				],
-			},
-			{
-				id: "campaign-fit",
-				label: "Does Acmecorp match our current campaign?",
-				required: true,
-				kind: "single-select",
-				options: [
-					{ id: "strong-fit", label: "Strong enterprise service campaign fit", recommended: true },
-					{ id: "partial-fit", label: "Partial fit, needs qualification" },
-					{ id: "weak-fit", label: "Weak campaign fit" },
-				],
-			},
-			{
-				id: "competitive-position",
-				label: "What is our competitive position?",
-				required: true,
-				kind: "single-select",
-				options: [
-					{ id: "clear-advantages", label: "Clear Atlassian advantages", recommended: true },
-					{ id: "incumbent-favored", label: "Incumbent appears favored" },
-					{ id: "unknown-position", label: "Competitive position unknown" },
-				],
+				placeholder: "Name another knowledge source",
+				options: RFP_DEMO_KNOWLEDGE_OPTIONS.map((option, index) => ({
+					...option,
+					recommended: index === 0,
+				})),
 			},
 			{
 				id: "review-posture",
-				label: "Which review posture should the DACI show?",
+				label: "What should require human review before the agent moves work forward?",
+				description: "This becomes the agent's review gate.",
 				required: true,
-				kind: "multi-select",
+				kind: "single-select",
+				placeholder: "Describe another review gate",
 				options: [
-					{ id: "deal-desk-approval", label: "Deal desk approval required", recommended: true },
-					{ id: "legal-security-review", label: "Legal and security review required", recommended: true },
-					{ id: "product-validation", label: "Product validation required", recommended: true },
-					{ id: "partner-coverage", label: "Partner coverage may be needed" },
+					{ id: "commercial-assumptions", label: "Commercial assumptions", recommended: true },
+					{ id: "legal-security-commitments", label: "Legal/security commitments" },
+					{ id: "product-fit-gaps", label: "Product fit gaps" },
 				],
 			},
 		],
@@ -326,8 +346,8 @@ function buildAgentsRfpDemoQualificationTrace() {
 			toolName: "ask_user_questions",
 			toolCallId: RFP_DEMO_QUESTION_TOOL_CALL_ID,
 			label: "Preparing clarification questions",
-			content: "Asking for the Acmecorp budget, stakeholder, campaign fit, competitive, and review posture details needed before recommending whether to respond.",
-			input: { sessionId: RFP_DEMO_QUESTION_SESSION_ID, round: 1, questions: 5 },
+			content: "Asking reusable RFP discovery questions that can inform this response and seed the later custom agent.",
+			input: { sessionId: RFP_DEMO_QUESTION_SESSION_ID, round: 1, questions: 3 },
 		},
 	];
 }
@@ -340,7 +360,7 @@ function buildAgentsRfpDemoAnswerTrace() {
 			label: "Applying your answers",
 			content: "Combining your qualification answers with the active RFP-101 context.",
 			input: { sessionId: RFP_DEMO_QUESTION_SESSION_ID },
-			outputPreview: "Assumptions captured for Acmecorp budget qualification, stakeholder relationship, campaign fit, competitive position, and review-required legal/security posture.",
+			outputPreview: "Reusable RFP agent priorities, knowledge preference, and human-review gates captured where provided. Unanswered items will be inferred for the recommendation.",
 		},
 		{
 			toolName: "rfp.build_bid_recommendation",
@@ -393,7 +413,8 @@ function buildAgentsRfpDemoAnswerTrace() {
 	];
 }
 
-function buildAgentsRfpDemoAgentCreationTrace() {
+function buildAgentsRfpDemoAgentCreationTrace({ selectedKnowledge } = {}) {
+	const knowledgeSeedFiles = getAgentsRfpDemoKnowledgeSeedFiles(selectedKnowledge);
 	return [
 		{
 			toolName: "jira.inspect_board_column",
@@ -406,10 +427,10 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 		{
 			toolName: "agent_skill.load",
 			toolCallId: "agents-rfp-demo-agent-load-create-agent",
-			label: "Using create-agent skill",
-			content: "Loading the create-agent skill to turn the completed RFP-101 flow into a reusable Drafting agent.",
-			input: { skill: "create-agent", target: RFP_DEMO_AGENT_NAME, workflow: "Drafting" },
-			outputPreview: "Loaded the create-agent skill with the Drafting workflow context.",
+			label: "Using agent-creator skill",
+			content: "Loading the agent-creator skill to turn the completed RFP flow into a reusable Drafting agent.",
+			input: { skill: "agent-creator", target: RFP_DEMO_AGENT_NAME, workflow: "Drafting" },
+			outputPreview: "Loaded the agent-creator skill with the Drafting workflow, canonical agent file, and knowledge path context.",
 			delayMs: RFP_DEMO_SKILL_TOOL_CALL_DELAY_MS,
 		},
 		{
@@ -436,19 +457,31 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 			input: {
 				description: RFP_DEMO_AGENT_DESCRIPTION,
 				conversationStarters: RFP_DEMO_AGENT_CONVERSATION_STARTERS,
+				knowledgePath: ".agents/knowledge/rfp-drafting-agent/",
+				selectedKnowledge: selectedKnowledge || undefined,
+				seedFiles: knowledgeSeedFiles,
 				output: "pdf-report",
 				reviewColumn: "Review",
 				assigneePolicy: "return-to-human-owner",
 			},
-			outputPreview: "Profile metadata and instructions keep the flow event-triggered, backend-persisted, and bounded to the Enterprise RFP Response board.",
+			outputPreview: selectedKnowledge
+				? `Profile metadata, instructions, and knowledge seed path preserve the user's ${selectedKnowledge} preference.`
+				: "Profile metadata and instructions keep the flow event-triggered, backend-persisted, and bounded to the Enterprise RFP Response board.",
 		},
 		{
 			toolName: "teamwork_graph.link_knowledge",
 			toolCallId: "agents-rfp-demo-agent-knowledge",
 			label: "Linking Teamwork Graph knowledge",
 			content: "Connecting proposal memory, prior RFP language, Jira work-item context, and account-team ownership signals for the drafting flow.",
-			input: { sources: ["proposal memory", "prior RFP language", "Jira work items", "account-team ownership"] },
-			outputPreview: "Knowledge scope is limited to deterministic demo context so the agent can produce stable per-ticket drafts.",
+			input: {
+				path: ".agents/knowledge/rfp-drafting-agent/",
+				selectedKnowledge: selectedKnowledge || "Reusable answer library",
+				seedFiles: knowledgeSeedFiles,
+				sources: ["proposal memory", "prior RFP language", "Jira work items", "account-team ownership"],
+			},
+			outputPreview: selectedKnowledge
+				? `${selectedKnowledge} will be added to the future custom agent knowledge setup.`
+				: "Knowledge scope is limited to deterministic demo context so the agent can produce stable per-ticket drafts.",
 		},
 		{
 			toolName: "agent_skill.load",
@@ -478,7 +511,7 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 	];
 }
 
-function buildAgentsRfpDemoAgentResultPayload() {
+function buildAgentsRfpDemoAgentResultPayload({ selectedKnowledge } = {}) {
 	return {
 		agentId: RFP_DEMO_AGENT_ID,
 		name: RFP_DEMO_AGENT_NAME,
@@ -487,6 +520,9 @@ function buildAgentsRfpDemoAgentResultPayload() {
 		assignedColumn: "Drafting",
 		summary: "Ready to handle similar RFP work items",
 		trigger: "On event: ticket enters Drafting.",
+		knowledgePath: ".agents/knowledge/rfp-drafting-agent/",
+		selectedKnowledge: selectedKnowledge || null,
+		seedKnowledge: getAgentsRfpDemoKnowledgeSeedFiles(selectedKnowledge),
 		tools: [
 			"Jira work items",
 			"Teamwork Graph",
@@ -503,7 +539,7 @@ function buildAgentsRfpDemoAgentCreationConfirmationText({ name = RFP_DEMO_AGENT
 }
 
 function buildAgentsRfpDemoQualificationIntro() {
-	return "I found enough Acmecorp context in RFP-101 to start the bid/no-bid analysis. Before I recommend whether we should respond, I need a few qualification details so the DACI does not overstate budget, stakeholder, legal, or security posture.";
+	return "I found enough Acmecorp context in RFP-101 to start the bid/no-bid analysis. Before I recommend whether we should respond, I need a few reusable RFP preferences so this work can also seed the custom agent later.";
 }
 
 function buildAgentsRfpDemoReportConfirmationText({ documentId, title = RFP_DEMO_REPORT_TITLE } = {}) {
@@ -524,6 +560,7 @@ module.exports = {
 	buildAgentsRfpDemoQuestionCardPayload,
 	buildAgentsRfpDemoReportConfirmationText,
 	buildAgentsRfpDemoAnswerTrace,
+	extractAgentsRfpDemoSelectedKnowledge,
 	getAgentsRfpDemoPreloadDelayMs,
 	getAgentsRfpDemoToolCallDelayMs,
 	getLatestUserMessageText,

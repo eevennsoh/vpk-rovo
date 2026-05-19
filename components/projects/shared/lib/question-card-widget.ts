@@ -67,7 +67,7 @@ const DEFAULT_SESSION_ID = "clarification-session";
 const DEFAULT_MAX_ROUNDS = Number.MAX_SAFE_INTEGER;
 const DEFAULT_TITLE = "Help me clarify this";
 const DEFAULT_PLACEHOLDER = "Tell Rovo what to do...";
-const MAX_GENERATED_OPTIONS = 8;
+const MAX_GENERATED_OPTIONS = 3;
 const MAX_QUESTIONS_PER_ROUND = 4;
 const QUESTION_CARD_SKIPPED_VALUE = "Skipped";
 const CLARIFICATION_DISMISS_SUMMARY_QUESTION = "Clarification status";
@@ -589,16 +589,29 @@ export function buildClarificationSummaryPrompt(
 	const answerSummaryLines = summaryRows.map(
 		(summaryRow) => `- ${summaryRow.question}: ${summaryRow.answer}`
 	);
+	const isFinalQuestionRound = questionCard.round >= questionCard.maxRounds;
+	const finalRoundInstruction = isFinalQuestionRound
+		? "This was the final clarification round. Do not ask more clarification questions; use best judgment for unanswered items and continue with the best recommendation."
+		: null;
 
 	if (answerSummaryLines.length === 0) {
-		return `Please continue with a best-effort plan for "${questionCard.title}".`;
+		return [
+			`Please continue with a best-effort plan for "${questionCard.title}".`,
+			finalRoundInstruction,
+		]
+			.filter((line): line is string => typeof line === "string")
+			.join("\n");
 	}
 
 	return [
 		`Here are my clarification answers for "${questionCard.title}":`,
 		"",
 		...answerSummaryLines,
-	].join("\n");
+		finalRoundInstruction ? "" : null,
+		finalRoundInstruction,
+	]
+		.filter((line): line is string => typeof line === "string")
+		.join("\n");
 }
 
 /**

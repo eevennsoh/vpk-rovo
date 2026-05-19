@@ -233,7 +233,7 @@ test("request_user_input conversion parses questions nested under tool-result ou
 	assert.equal(payload.questions[0].options[0].label, "softwareteams.atlassian.net");
 });
 
-test("request_user_input conversion supports 8 preset options for clarification cards", () => {
+test("request_user_input conversion caps preset options at three", () => {
 	const optionLabels = Array.from(
 		{ length: 12 },
 		(_, index) => `site-${index + 1}.atlassian.net`
@@ -258,9 +258,9 @@ test("request_user_input conversion supports 8 preset options for clarification 
 	);
 
 	assert.ok(payload);
-	assert.equal(payload.questions[0].options.length, 8);
+	assert.equal(payload.questions[0].options.length, 3);
 	assert.equal(payload.questions[0].options[0].label, "site-1.atlassian.net");
-	assert.equal(payload.questions[0].options[7].label, "site-8.atlassian.net");
+	assert.equal(payload.questions[0].options[2].label, "site-3.atlassian.net");
 });
 
 // ── findRequestUserInputQuestionContainer tests ──

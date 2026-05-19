@@ -144,6 +144,33 @@ test("converts standard QuestionsInput format with questions and options", () =>
 	assert.equal(result[0].options[0].description, "Fix an existing issue");
 });
 
+test("converts at most three preset options per question", () => {
+	const toolInput = {
+		questions: [
+			{
+				question: "Which knowledge should the agent reuse first?",
+				options: [
+					{ label: "Reusable answer library" },
+					{ label: "Customer/account context" },
+					{ label: "Product and security evidence" },
+					{ label: "Pricing approvals" },
+				],
+			},
+		],
+	};
+
+	const result = convertToolInputToQuestionCardFormat(toolInput);
+	assert.ok(result);
+	assert.deepEqual(
+		result[0].options.map((option) => option.label),
+		[
+			"Reusable answer library",
+			"Customer/account context",
+			"Product and security evidence",
+		],
+	);
+});
+
 test("converts multiple questions", () => {
 	const toolInput = {
 		questions: [
