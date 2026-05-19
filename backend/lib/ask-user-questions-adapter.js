@@ -115,6 +115,7 @@ function convertToolInputToQuestionCardFormat(toolInput) {
 						};
 					})
 					.filter(Boolean)
+					.slice(0, 3)
 				: [];
 
 			return {

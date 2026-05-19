@@ -84,11 +84,11 @@ test("backend Work Item artifact route uses the vpk-html runner and emits an htm
 
 test("RFP demo agent creation emits an agent result instead of an artifact result", () => {
 	assert.match(SERVER_SOURCE, /turn === "agent-creation"/u);
-	assert.match(SERVER_SOURCE, /buildAgentsRfpDemoAgentCreationTrace\(\)/u);
+	assert.match(SERVER_SOURCE, /buildAgentsRfpDemoAgentCreationTrace\(\{ selectedKnowledge \}\)/u);
 	assert.match(SERVER_SOURCE, /type:\s*"data-agent-result"/u);
 	assert.match(SERVER_SOURCE, /buildAgentsRfpDemoAgentCreationConfirmationText\(\)/u);
 	assert.match(
 		SERVER_SOURCE,
-		/if \(turn === "agent-creation"\) \{[\s\S]*writeAgentsRfpDemoAgentResult\(writer\);[\s\S]*writeAgentsRfpDemoTurnComplete\(writer\);[\s\S]*return;\s*\}\s*if \(turn === "qualification-answer"\)/u,
+		/if \(turn === "agent-creation"\) \{[\s\S]*writeAgentsRfpDemoAgentResult\(writer, \{ selectedKnowledge \}\);[\s\S]*writeAgentsRfpDemoTurnComplete\(writer\);[\s\S]*return;\s*\}\s*if \(turn === "qualification-answer"\)/u,
 	);
 });

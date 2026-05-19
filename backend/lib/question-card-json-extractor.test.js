@@ -154,6 +154,39 @@ test("caps fenced question-card payloads to four questions", () => {
 	);
 });
 
+test("caps fenced question-card options to three", () => {
+	const text = [
+		"```question-card",
+		JSON.stringify({
+			questions: [
+				{
+					id: "knowledge",
+					label: "Which knowledge should the agent reuse first?",
+					kind: "single-select",
+					options: [
+						{ id: "answers", label: "Reusable answer library" },
+						{ id: "account", label: "Customer/account context" },
+						{ id: "evidence", label: "Product and security evidence" },
+						{ id: "pricing", label: "Pricing approvals" },
+					],
+				},
+			],
+		}),
+		"```",
+	].join("\n");
+
+	const result = extractQuestionCardJsonFromAssistantText(text);
+	assert.ok(result);
+	assert.deepEqual(
+		result.payload.questions[0].options.map((option) => option.label),
+		[
+			"Reusable answer library",
+			"Customer/account context",
+			"Product and security evidence",
+		],
+	);
+});
+
 test("text kind has no options and is accepted", () => {
 	const text = [
 		"```question-card",

@@ -132,10 +132,10 @@ test("buildUserMessage includes Hermes skill discoverability protocol in default
 test("buildUserMessage keeps ask_user_questions options and bylines compact", () => {
 	const message = buildUserMessage("Help me choose an implementation path.", [], undefined);
 
-	assert.match(message, /1–4 predefined options/);
+	assert.match(message, /1–3 predefined options/);
 	assert.match(message, /one free-text option/);
 	assert.match(message, /description\/byline to one short sentence, ideally 12 words or fewer/i);
-	assert.doesNotMatch(message, /1–3 predefined options/);
+	assert.doesNotMatch(message, /1–4 predefined options/);
 });
 
 test("buildAIGatewaySystemPrompt keeps deferred ask_user_questions options and bylines compact", () => {
@@ -143,18 +143,18 @@ test("buildAIGatewaySystemPrompt keeps deferred ask_user_questions options and b
 		currentDate: "Thursday, May 14, 2026 at 10:30:00 AM AEST",
 	});
 
-	assert.match(systemPrompt, /1–4 concrete preset options per question/);
+	assert.match(systemPrompt, /1–3 concrete preset options per question/);
 	assert.match(systemPrompt, /description\/byline to one short sentence, ideally 12 words or fewer/i);
 	assert.match(systemPrompt, /host UI appends one free-text option/i);
 });
 
-test("ClarificationQuestionCard limits preset options to four", () => {
+test("ClarificationQuestionCard limits preset options to three", () => {
 	const source = fs.readFileSync(
 		path.join(__dirname, "../components/projects/shared/components/clarification-question-card.tsx"),
 		"utf8",
 	);
 
-	assert.match(source, /const MAX_VISIBLE_CLARIFICATION_OPTIONS = 4;/);
+	assert.match(source, /const MAX_VISIBLE_CLARIFICATION_OPTIONS = 3;/);
 	assert.doesNotMatch(source, /const MAX_VISIBLE_CLARIFICATION_OPTIONS = 8;/);
 });
 

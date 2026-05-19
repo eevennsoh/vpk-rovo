@@ -11,7 +11,7 @@ interface ClarificationQuestionCardProps {
 	onDismiss?: () => void;
 }
 
-const MAX_VISIBLE_CLARIFICATION_OPTIONS = 4;
+const MAX_VISIBLE_CLARIFICATION_OPTIONS = 3;
 
 export function ClarificationQuestionCard({ questionCard, isSubmitting, onSubmit, onDismiss }: Readonly<ClarificationQuestionCardProps>): React.ReactElement {
 	return (

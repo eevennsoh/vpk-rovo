@@ -235,6 +235,7 @@ const {
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
 	buildAgentsRfpDemoReportConfirmationText,
+	extractAgentsRfpDemoSelectedKnowledge,
 	getAgentsRfpDemoPreloadDelayMs,
 	getAgentsRfpDemoToolCallDelayMs,
 	resolveAgentsRfpDemoChatTurn,
@@ -4294,10 +4295,10 @@ function writeAgentsRfpDemoArtifactResult(writer, artifactDocument) {
 	});
 }
 
-function writeAgentsRfpDemoAgentResult(writer) {
+function writeAgentsRfpDemoAgentResult(writer, options = {}) {
 	writer.write({
 		type: "data-agent-result",
-		data: buildAgentsRfpDemoAgentResultPayload(),
+		data: buildAgentsRfpDemoAgentResultPayload(options),
 	});
 }
 
@@ -4317,8 +4318,10 @@ function streamAgentsRfpDemoChatTurn(res, turn, requestBody) {
 	const stream = createUIMessageStream({
 		execute: async ({ writer }) => {
 			if (turn === "agent-creation") {
-				await writeAgentsRfpDemoTrace(writer, buildAgentsRfpDemoAgentCreationTrace());
-				writeAgentsRfpDemoAgentResult(writer);
+				const currentState = await agentsRfpDemoStateManager.readState();
+				const selectedKnowledge = getNonEmptyString(currentState.chat?.selectedRfpKnowledge);
+				await writeAgentsRfpDemoTrace(writer, buildAgentsRfpDemoAgentCreationTrace({ selectedKnowledge }));
+				writeAgentsRfpDemoAgentResult(writer, { selectedKnowledge });
 				writeAgentsRfpDemoText(
 					writer,
 					`agents-rfp-demo-agent-created-${Date.now()}`,
@@ -4329,6 +4332,17 @@ function streamAgentsRfpDemoChatTurn(res, turn, requestBody) {
 			}
 
 			if (turn === "qualification-answer") {
+				const selectedKnowledge = extractAgentsRfpDemoSelectedKnowledge(requestBody);
+				if (selectedKnowledge) {
+					const currentState = await agentsRfpDemoStateManager.readState();
+					await agentsRfpDemoStateManager.writeState({
+						...currentState,
+						chat: {
+							...currentState.chat,
+							selectedRfpKnowledge: selectedKnowledge,
+						},
+					});
+				}
 				await writeAgentsRfpDemoTrace(writer, buildAgentsRfpDemoAnswerTrace());
 				const artifactDocument = await createAgentsRfpDemoReportArtifact(requestBody);
 				writeAgentsRfpDemoArtifactResult(writer, artifactDocument);
