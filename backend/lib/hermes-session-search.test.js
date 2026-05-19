@@ -78,6 +78,42 @@ test("searchThreads returns results sorted by match count then recency", () => {
 	}
 });
 
+test("searchThreads parses recency once per matching thread", () => {
+	const threads = Array.from({ length: 12 }, (_, index) => ({
+		id: `thread-${index}`,
+		title: "Shared result",
+		messages: [{ content: "shared result body" }],
+		updatedAt: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(),
+	}));
+	const OriginalDate = Date;
+	let dateConstructCount = 0;
+
+	function CountingDate(...args) {
+		dateConstructCount += 1;
+		return new OriginalDate(...args);
+	}
+	CountingDate.UTC = OriginalDate.UTC;
+	CountingDate.parse = OriginalDate.parse;
+	CountingDate.now = OriginalDate.now;
+	CountingDate.prototype = OriginalDate.prototype;
+
+	try {
+		global.Date = CountingDate;
+		const results = searchThreads(threads, "shared", { limit: threads.length });
+
+		assert.equal(dateConstructCount, 0);
+		assert.deepEqual(Object.keys(results[0]), [
+			"threadId",
+			"title",
+			"snippet",
+			"matchCount",
+			"lastMessageAt",
+		]);
+	} finally {
+		global.Date = OriginalDate;
+	}
+});
+
 test("searchThreads handles empty query", () => {
 	const results = searchThreads(THREADS, "");
 	assert.equal(results.length, 0);

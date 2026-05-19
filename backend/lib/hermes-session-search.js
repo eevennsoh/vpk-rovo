@@ -133,24 +133,28 @@ function searchThreads(threads, query, options) {
 
 		const snippet = buildSnippet(fullText, pattern);
 
+		const lastMessageAt = thread.updatedAt || new Date().toISOString();
 		results.push({
-			threadId: thread.id,
-			title: title || "Untitled",
-			snippet,
-			matchCount,
-			lastMessageAt: thread.updatedAt || new Date().toISOString(),
+			item: {
+				threadId: thread.id,
+				title: title || "Untitled",
+				snippet,
+				matchCount,
+				lastMessageAt,
+			},
+			lastMessageAtMs: Date.parse(lastMessageAt),
 		});
 	}
 
 	// Sort by match count desc, then recency desc
 	results.sort((a, b) => {
-		if (b.matchCount !== a.matchCount) {
-			return b.matchCount - a.matchCount;
+		if (b.item.matchCount !== a.item.matchCount) {
+			return b.item.matchCount - a.item.matchCount;
 		}
-		return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+		return b.lastMessageAtMs - a.lastMessageAtMs;
 	});
 
-	return results.slice(0, limit);
+	return results.slice(0, limit).map((result) => result.item);
 }
 
 module.exports = {
