@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RovoCanvas, type RovoCanvasStatus, type RovoCanvasVersion, type RovoCanvasView } from "@/components/blocks/rovo-canvas/page";
 import ChatPanel, { type ChatPanelCustomAgentTabs, type ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
+import type { ArtifactResult } from "@/components/projects/sidebar-chat/components/artifact-result-card";
 import { Spinner } from "@/components/ui/spinner";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
@@ -26,7 +27,7 @@ interface RfpRenderedHtmlReportProps {
 }
 
 type RfpHtmlReportStatus = "idle" | "loading" | "ready" | "error";
-type RfpReportVariant = "initial" | "refined";
+type RfpReportVariant = "initial" | "refined" | "branded";
 
 interface RfpHtmlReportPreviewResponse {
 	html: string;
@@ -41,16 +42,29 @@ interface RfpHtmlReportPreviewState {
 
 const RFP_REPORT_PREVIEW_ENDPOINT = "/api/agents/rfp-demo/vpk-html-report";
 const RFP_REPORT_ARTIFACT_TITLE = "Acmecorp RFP qualification DACI";
-const RFP_REPORT_ARTIFACT_METADATA = "PDF \u2022 Version 1";
 
 function resolveRfpReportVariant(state: AgentsRfpDemoState): RfpReportVariant {
 	const selectedVersionId = state.report.currentVersionId
 		?? state.report.versions[state.report.versions.length - 1]?.id
 		?? null;
 
+	if (selectedVersionId === "atlassian-logo-report") {
+		return "branded";
+	}
+
 	return selectedVersionId === "refined-current-report"
 		? "refined"
 		: "initial";
+}
+
+function resolveRfpReportVersionMetadata(state: AgentsRfpDemoState): string {
+	const selectedVersionId = state.report.currentVersionId
+		?? state.report.versions[state.report.versions.length - 1]?.id
+		?? null;
+	const selectedVersionIndex = state.report.versions.findIndex((version) => version.id === selectedVersionId);
+	const versionNumber = selectedVersionIndex >= 0 ? selectedVersionIndex + 1 : 1;
+
+	return `PDF \u2022 Version ${versionNumber}`;
 }
 
 function buildRfpReportContextDescription(state: AgentsRfpDemoState): string {
@@ -199,11 +213,13 @@ function RfpReportCanvasChatRail({
 	chatContextBar,
 	chatGreeting,
 	customAgentTabs,
+	onArtifactResult,
 	onClose,
 }: Readonly<{
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
 	customAgentTabs?: ChatPanelCustomAgentTabs;
+	onArtifactResult: (artifact: ArtifactResult) => void;
 	onClose: () => void;
 }>): React.ReactElement {
 	const editContextBar: ChatContextBarDescriptor = {
@@ -222,6 +238,7 @@ function RfpReportCanvasChatRail({
 			chatContextBar={editContextBar}
 			greeting={chatGreeting}
 			customAgentTabs={customAgentTabs}
+			onArtifactResult={onArtifactResult}
 			sendPromptOptions={{
 				smartGeneration: {
 					enabled: true,
@@ -241,6 +258,7 @@ export function RfpReportCanvas({
 	customAgentTabs,
 }: Readonly<RfpReportCanvasProps>): React.ReactElement {
 	const reportPreview = useRfpHtmlReportPreview(state);
+	const artefactMetadata = useMemo(() => resolveRfpReportVersionMetadata(state), [state]);
 	const versions = useMemo<ReadonlyArray<RovoCanvasVersion>>(
 		() => state.report.versions.map((version) => ({
 			id: version.id,
@@ -287,13 +305,18 @@ export function RfpReportCanvas({
 			onRefresh={reportPreview.reload}
 			onVersionSelect={actions.selectReportVersion}
 			artefactLabel={RFP_REPORT_ARTIFACT_TITLE}
-			artefactMetadata={RFP_REPORT_ARTIFACT_METADATA}
+			artefactMetadata={artefactMetadata}
 			versionHistory={versions}
 			rightRail={
 				<RfpReportCanvasChatRail
 					chatContextBar={chatContextBar}
 					chatGreeting={chatGreeting}
 					customAgentTabs={customAgentTabs}
+					onArtifactResult={(artifact) => {
+						if (artifact.action === "update") {
+							actions.recordReportUpdate();
+						}
+					}}
 					onClose={() => actions.setCanvasOpen(false)}
 				/>
 			}

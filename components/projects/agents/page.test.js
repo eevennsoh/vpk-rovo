@@ -69,11 +69,11 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/RFP_REPORT_ARTIFACT_METADATA = "PDF \\u2022 Version 1"/u,
+		/const artefactMetadata = useMemo\(\(\) => resolveRfpReportVersionMetadata\(state\), \[state\]\);/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/artefactLabel=\{RFP_REPORT_ARTIFACT_TITLE\}[\s\S]*artefactMetadata=\{RFP_REPORT_ARTIFACT_METADATA\}/u,
+		/artefactLabel=\{RFP_REPORT_ARTIFACT_TITLE\}[\s\S]*artefactMetadata=\{artefactMetadata\}/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
@@ -82,7 +82,7 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /artefactLabel="Rovo Canvas report"/u);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/<ChatPanel[\s\S]*hideHeader[\s\S]*enableSmartWidgets[\s\S]*abortOnUnmount=\{false\}[\s\S]*chatContextBar=\{editContextBar\}[\s\S]*greeting=\{chatGreeting\}[\s\S]*customAgentTabs=\{customAgentTabs\}/u,
+		/<ChatPanel[\s\S]*hideHeader[\s\S]*enableSmartWidgets[\s\S]*abortOnUnmount=\{false\}[\s\S]*chatContextBar=\{editContextBar\}[\s\S]*greeting=\{chatGreeting\}[\s\S]*customAgentTabs=\{customAgentTabs\}[\s\S]*onArtifactResult=\{onArtifactResult\}/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,

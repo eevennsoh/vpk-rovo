@@ -10,6 +10,7 @@ import {
 	generateRfpReport,
 	moveRfpDemoCard,
 	normalizeAgentsRfpDemoProfileMetadata,
+	recordRfpReportArtifactUpdate,
 	refineRfpReport,
 	selectRfpReportVersion,
 	clearRfpDraftingAgentTrigger,
@@ -25,6 +26,7 @@ export interface AgentsRfpDemoActions {
 	reset: () => Promise<void>;
 	generateReport: () => void;
 	refineReport: () => void;
+	recordReportUpdate: () => void;
 	selectReportVersion: (versionId: string) => void;
 	approveReport: () => void;
 	exportPdf: () => void;
@@ -156,6 +158,10 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 	const reset = useCallback(() => postStateMutation(RFP_DEMO_RESET_ENDPOINT), [postStateMutation]);
 	const generateReport = useCallback(() => persistStateMutation(generateRfpReport), [persistStateMutation]);
 	const refineReport = useCallback(() => persistStateMutation(refineRfpReport), [persistStateMutation]);
+	const recordReportUpdate = useCallback(
+		() => persistStateMutation(recordRfpReportArtifactUpdate),
+		[persistStateMutation],
+	);
 	const selectReportVersion = useCallback(
 		(versionId: string) => persistStateMutation((currentState) => selectRfpReportVersion(currentState, versionId)),
 		[persistStateMutation],
@@ -235,6 +241,7 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 		reset,
 		generateReport,
 		refineReport,
+		recordReportUpdate,
 		selectReportVersion,
 		approveReport,
 		exportPdf,

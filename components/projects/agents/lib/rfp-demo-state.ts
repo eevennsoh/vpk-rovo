@@ -281,6 +281,14 @@ const REFINED_REPORT_VERSION: AgentsRfpDemoReportVersion = {
 	timestampLabel: "Now",
 };
 
+const ATLASSIAN_LOGO_REPORT_VERSION: AgentsRfpDemoReportVersion = {
+	id: "atlassian-logo-report",
+	label: "Added Atlassian logo",
+	summary: "Updated report with Atlassian branding in the document header.",
+	createdBy: "Rovo",
+	timestampLabel: "Now",
+};
+
 export const RFP_DRAFTING_AGENT: KanbanBoardAgentData = {
 	id: RFP_DRAFTING_AGENT_ID,
 	name: RFP_DRAFTING_AGENT_NAME,
@@ -627,6 +635,39 @@ export function refineRfpReport(state: AgentsRfpDemoState): AgentsRfpDemoState {
 			mode: "editable",
 		},
 	};
+}
+
+export function addRfpReportLogoVersion(state: AgentsRfpDemoState): AgentsRfpDemoState {
+	const generatedState = state.report.versions.length > 0
+		? state
+		: generateRfpReport(state);
+	const versions = [
+		INITIAL_REPORT_VERSION,
+		...generatedState.report.versions.filter((version) => (
+			version.id !== INITIAL_REPORT_VERSION.id &&
+			version.id !== ATLASSIAN_LOGO_REPORT_VERSION.id
+		)),
+		ATLASSIAN_LOGO_REPORT_VERSION,
+	];
+
+	return {
+		...generatedState,
+		report: {
+			...generatedState.report,
+			stage: "refined",
+			currentVersionId: ATLASSIAN_LOGO_REPORT_VERSION.id,
+			versions,
+		},
+		canvas: {
+			open: true,
+			activeViewId: "report",
+			mode: "editable",
+		},
+	};
+}
+
+export function recordRfpReportArtifactUpdate(state: AgentsRfpDemoState): AgentsRfpDemoState {
+	return addRfpReportLogoVersion(state);
 }
 
 export function selectRfpReportVersion(

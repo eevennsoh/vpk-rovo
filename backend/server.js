@@ -4226,8 +4226,9 @@ async function createAgentsRfpDemoReportArtifact(requestBody) {
 }
 
 function buildAgentsRfpDemoReportPreviewFields(variant) {
-	if (variant === "refined") {
+	if (variant === "refined" || variant === "branded") {
 		return {
+			includeAtlassianLogo: variant === "branded",
 			recommendationText: "Provisional recommendation: respond to the Acmecorp RFP only if budget, stakeholder access, and review owners are confirmed before the team commits to a full response package.",
 			driverText: "Driver: Maya Chen, proposal manager.",
 			approverText: "Approver: Darius Pavri for deal desk and Elena Ruiz for security/legal posture.",
@@ -4289,6 +4290,8 @@ async function generateAgentsRfpDemoReportPreview(requestBody) {
 
 	const variant = getNonEmptyString(requestBody?.variant) === "refined"
 		? "refined"
+		: getNonEmptyString(requestBody?.variant) === "branded"
+		? "branded"
 		: "initial";
 	const report = await generateWorkItemVpkHtmlReport({
 		contextDescription,

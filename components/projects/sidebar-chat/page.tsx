@@ -97,6 +97,7 @@ interface ChatPanelProps {
 	containerStyle?: CSSProperties;
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	chatContextBar?: ChatContextBarDescriptor | null;
+	onArtifactResult?: (artifact: ArtifactResult) => void;
 	onArtifactDialogOpen?: (artifact: ArtifactResult) => void;
 	preserveFloatingSurfaceOnArtifactDialogOpen?: boolean;
 }
@@ -164,6 +165,7 @@ export default function ChatPanel({
 	containerStyle,
 	onSurfaceSwitch,
 	chatContextBar,
+	onArtifactResult,
 	onArtifactDialogOpen,
 	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 }: Readonly<ChatPanelProps>): React.ReactElement {
@@ -190,6 +192,7 @@ export default function ChatPanel({
 	} = useRovoChat();
 	const panelRef = useRef<HTMLDivElement | null>(null);
 	const artifactDialogFloatingPinRef = useRef(false);
+	const reportedArtifactResultKeysRef = useRef<Set<string>>(new Set());
 	const [containerWidthPx, setContainerWidthPx] = useState<number | null>(null);
 	const [viewportWidthPx, setViewportWidthPx] = useState<number | null>(null);
 	const [selectedReasoning, setSelectedReasoning] = useState(DEFAULT_REASONING_OPTION_ID);
@@ -332,6 +335,27 @@ export default function ChatPanel({
 		() => appendOptimisticCompactUserMessage(rawMessages, optimisticPrompt),
 		[optimisticPrompt, rawMessages]
 	);
+
+	useEffect(() => {
+		if (!onArtifactResult) {
+			return;
+		}
+
+		for (const message of messages) {
+			const artifactResult = getMessageArtifactResult(message);
+			if (!artifactResult) {
+				continue;
+			}
+
+			const resultKey = `${message.id}:${artifactResult.documentId}:${artifactResult.action}`;
+			if (reportedArtifactResultKeysRef.current.has(resultKey)) {
+				continue;
+			}
+
+			reportedArtifactResultKeysRef.current.add(resultKey);
+			onArtifactResult(artifactResult);
+		}
+	}, [messages, onArtifactResult]);
 	const lastAssistantMessageId = useMemo(() => {
 		for (let i = messages.length - 1; i >= 0; i--) {
 			if (messages[i].role === "assistant") {

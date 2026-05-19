@@ -124,6 +124,7 @@ test("generateWorkItemVpkHtmlReport fills the real one-pager template for RFP qu
 				campaignFitText: "Acmecorp matches the enterprise service-management campaign.",
 				competitiveAdvantages: ["JSM and Assets fit the ITSM and CMDB story.", "Rovo differentiates AI knowledge reuse."],
 				decisionRisks: ["Budget and stakeholder access are not confirmed."],
+				includeAtlassianLogo: true,
 				openGaps: ["Deal desk approval date is not specified in the Work Item context."],
 			});
 		},
@@ -138,6 +139,7 @@ test("generateWorkItemVpkHtmlReport fills the real one-pager template for RFP qu
 	assert.match(report.html, /font-family:\s*"Charlie Display"/);
 	assert.match(report.html, /--grid-background/);
 	assert.match(report.html, /class="header"/);
+	assert.match(report.html, /aria-label="Atlassian"/);
 	assert.match(report.html, /<main>/);
 	assert.match(report.html, /DACI roles/);
 	assert.match(report.html, /Driver: Maya Chen/);

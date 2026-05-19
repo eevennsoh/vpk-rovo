@@ -30,6 +30,7 @@ async function loadRfpDemoStateHarness() {
 					getRfpDemoColumnAgentAssignments,
 					moveRfpDemoCard,
 					parseAgentsRfpDemoState,
+					recordRfpReportArtifactUpdate,
 					refineRfpReport,
 					resolveRfpDemoBoardColumns,
 					scheduleRfpDraftingAgent,
@@ -146,7 +147,16 @@ test("report stages advance through generated, refined, approved, pdf-exported, 
 		["Initial generated report", "Refined current report"],
 	);
 
-	const approved = harness.approveRfpReport(refined);
+	const updated = harness.recordRfpReportArtifactUpdate(refined);
+	assert.equal(updated.report.stage, "refined");
+	assert.equal(updated.canvas.activeViewId, "report");
+	assert.equal(updated.report.currentVersionId, "atlassian-logo-report");
+	assert.deepEqual(
+		updated.report.versions.map((version) => version.label),
+		["Initial generated report", "Refined current report", "Added Atlassian logo"],
+	);
+
+	const approved = harness.approveRfpReport(updated);
 	assert.equal(approved.report.stage, "approved");
 
 	const exported = harness.exportRfpReportPdf(approved);
