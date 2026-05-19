@@ -309,21 +309,11 @@ function applyAtlassianLogoToHtmlArtifact({
 		? content.replace(/<\/style>/iu, `${ATLASSIAN_LOGO_CSS}\n</style>`)
 		: content.replace(/<\/head>/iu, `<style>${ATLASSIAN_LOGO_CSS}</style>\n</head>`);
 
-	if (/<main\b[^>]*>/iu.test(withStyles)) {
-		return withStyles.replace(
-			/(<main\b[^>]*>)/iu,
-			`$1\n${ATLASSIAN_LOGO_HTML}\n`,
-		);
-	}
-
-	if (/<body\b[^>]*>/iu.test(withStyles)) {
-		return withStyles.replace(
-			/(<body\b[^>]*>)/iu,
-			`$1\n${ATLASSIAN_LOGO_HTML}\n`,
-		);
-	}
-
-	return null;
+	const logoAnchorPattern = [/(<main\b[^>]*>)/iu, /(<body\b[^>]*>)/iu]
+		.find((pattern) => pattern.test(withStyles));
+	return logoAnchorPattern
+		? withStyles.replace(logoAnchorPattern, `$1\n${ATLASSIAN_LOGO_HTML}\n`)
+		: null;
 }
 
 module.exports = {
