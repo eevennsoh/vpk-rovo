@@ -145,6 +145,7 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 - Start backend only: `pnpm run dev:backend`
 - Start with tmux (8 panes): `pnpm run rovodev:tmux:start`
 - Stop tmux dev session: `pnpm run rovodev:tmux:stop`
+- Start Symphony issue orchestrator: `pnpm run symphony` (requires `LINEAR_API_KEY`, `SYMPHONY_LINEAR_PROJECT_SLUG`, and `mise`; see `docs/SYMPHONY.md`)
 
 ### Build and deploy
 
