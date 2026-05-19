@@ -85,6 +85,42 @@ test("valid persisted payload resumes board, report, agent trigger, and activity
 	);
 });
 
+test("persisted report versions are normalized before canvas props consume them", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const state = {
+		...harness.createDefaultAgentsRfpDemoState(),
+		report: {
+			stage: "refined",
+			currentVersionId: "missing-version",
+			previewHtml: "  <!doctype html><html><body>Report</body></html>  ",
+			versions: [
+				{
+					id: " refined-current-report ",
+					label: "Refined current report",
+					summary: "",
+					createdBy: "Maya",
+					timestampLabel: "",
+				},
+				{ id: "", label: "Broken version" },
+				"not-a-version",
+			],
+		},
+	};
+	const resumed = harness.parseAgentsRfpDemoState(JSON.stringify(state));
+
+	assert.deepEqual(resumed.report.versions, [
+		{
+			id: "refined-current-report",
+			label: "Refined current report",
+			summary: "Refined current report",
+			createdBy: "Maya",
+			timestampLabel: "Now",
+		},
+	]);
+	assert.equal(resumed.report.currentVersionId, undefined);
+	assert.equal(resumed.report.previewHtml, "<!doctype html><html><body>Report</body></html>");
+});
+
 test("legacy persisted RFP agent profile gets description and conversation starters", async () => {
 	const harness = await loadRfpDemoStateHarness();
 	const state = harness.createRfpDraftingAgent(harness.createDefaultAgentsRfpDemoState());
