@@ -34,6 +34,15 @@ const DEMO_RUN_BASE_TIME = Date.parse("2026-06-03T15:00:00.000Z");
 const DEMO_ACTIVITY_STEP_MS = 2 * 60_000;
 const RFP_DRAFTING_PROCESSING_DELAYS_MS = [15_000, 24_000, 34_000, 19_000, 29_000];
 const RFP_DRAFTING_NO_WORK_TOAST_MESSAGE = `${RFP_DRAFTING_AGENT_NAME} found no new Drafting tickets to process.`;
+const REPORT_STAGES = new Set([
+	"none",
+	"generating",
+	"generated",
+	"refined",
+	"approved",
+	"pdf-exported",
+	"attached",
+]);
 
 const RFP_DRAFTING_EVENT_TRIGGER = {
 	type: "jira-column-entered",
@@ -539,6 +548,50 @@ function normalizeToasts(rawToasts) {
 		.filter(Boolean);
 }
 
+function normalizeReportVersion(rawVersion) {
+	if (!isObject(rawVersion)) {
+		return null;
+	}
+
+	const id = getNonEmptyString(rawVersion.id);
+	const label = getNonEmptyString(rawVersion.label);
+	if (!id || !label) {
+		return null;
+	}
+
+	return {
+		id,
+		label,
+		summary: getNonEmptyString(rawVersion.summary) ?? label,
+		createdBy: rawVersion.createdBy === "Maya" ? "Maya" : "Rovo",
+		timestampLabel: getNonEmptyString(rawVersion.timestampLabel) ?? "Now",
+	};
+}
+
+function normalizeReport(rawReport, defaultReport) {
+	if (!isObject(rawReport)) {
+		return defaultReport;
+	}
+
+	const versions = Array.isArray(rawReport.versions)
+		? rawReport.versions.map(normalizeReportVersion).filter(Boolean)
+		: [];
+	const currentVersionId = getNonEmptyString(rawReport.currentVersionId);
+	const selectedVersionId = currentVersionId &&
+		versions.some((version) => version.id === currentVersionId)
+		? currentVersionId
+		: null;
+	const previewHtml = getNonEmptyString(rawReport.previewHtml);
+
+	return {
+		...defaultReport,
+		stage: REPORT_STAGES.has(rawReport.stage) ? rawReport.stage : defaultReport.stage,
+		versions,
+		...(selectedVersionId ? { currentVersionId: selectedVersionId } : {}),
+		...(previewHtml ? { previewHtml } : {}),
+	};
+}
+
 function getReviewPromotionTimestamp(workItem) {
 	const completedAtMs = Date.parse(workItem?.completedAt);
 	if (Number.isFinite(completedAtMs)) {
@@ -611,14 +664,7 @@ function normalizeAgentsRfpDemoState(rawState) {
 		...defaultState,
 		board: normalizedBoard,
 		workItems,
-		report: isObject(rawState.report)
-			? {
-					...defaultState.report,
-					...rawState.report,
-					stage: getNonEmptyString(rawState.report.stage) ?? defaultState.report.stage,
-					versions: Array.isArray(rawState.report.versions) ? rawState.report.versions : [],
-				}
-			: defaultState.report,
+		report: normalizeReport(rawState.report, defaultState.report),
 		agent: normalizeAgent(rawState.agent),
 		schedule: null,
 		customAgentActivity: Array.isArray(rawState.customAgentActivity) ? rawState.customAgentActivity : [],

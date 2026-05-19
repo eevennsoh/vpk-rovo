@@ -81,6 +81,16 @@ export type AgentsRfpDemoReportStage =
 	| "pdf-exported"
 	| "attached";
 
+const REPORT_STAGES = new Set<AgentsRfpDemoReportStage>([
+	"none",
+	"generating",
+	"generated",
+	"refined",
+	"approved",
+	"pdf-exported",
+	"attached",
+]);
+
 export type AgentsRfpDemoCanvasViewId = "report";
 
 export interface AgentsRfpDemoBoardColumnState {
@@ -351,12 +361,13 @@ function withRfpDraftingAgentProfileMetadata(agent: AgentsRfpDemoAgent): AgentsR
 }
 
 export function normalizeAgentsRfpDemoProfileMetadata(state: AgentsRfpDemoState): AgentsRfpDemoState {
-	return state.agent
-		? {
-				...state,
-				agent: withRfpDraftingAgentProfileMetadata(state.agent),
-			}
-		: state;
+	return {
+		...state,
+		report: normalizeAgentsRfpDemoReport(state.report),
+		agent: state.agent
+			? withRfpDraftingAgentProfileMetadata(state.agent)
+			: state.agent,
+	};
 }
 
 function getRandomRfpDraftingAgentAvatarSrc(): string {
@@ -444,6 +455,58 @@ function hasString(value: unknown): value is string {
 	return typeof value === "string" && value.length > 0;
 }
 
+function getNonEmptyString(value: unknown): string | null {
+	return typeof value === "string" && value.trim().length > 0
+		? value.trim()
+		: null;
+}
+
+function isReportStage(value: unknown): value is AgentsRfpDemoReportStage {
+	return typeof value === "string" && REPORT_STAGES.has(value as AgentsRfpDemoReportStage);
+}
+
+function normalizeReportVersion(value: unknown): AgentsRfpDemoReportVersion | null {
+	if (!isObject(value)) {
+		return null;
+	}
+
+	const id = getNonEmptyString(value.id);
+	const label = getNonEmptyString(value.label);
+	if (!id || !label) {
+		return null;
+	}
+
+	return {
+		id,
+		label,
+		summary: getNonEmptyString(value.summary) ?? label,
+		createdBy: value.createdBy === "Maya" ? "Maya" : "Rovo",
+		timestampLabel: getNonEmptyString(value.timestampLabel) ?? "Now",
+	};
+}
+
+function normalizeAgentsRfpDemoReport(value: unknown): AgentsRfpDemoState["report"] {
+	if (!isObject(value)) {
+		return createDefaultAgentsRfpDemoState().report;
+	}
+
+	const versions = Array.isArray(value.versions)
+		? value.versions.map(normalizeReportVersion).filter((version): version is AgentsRfpDemoReportVersion => Boolean(version))
+		: [];
+	const currentVersionId = getNonEmptyString(value.currentVersionId);
+	const selectedVersionId = currentVersionId && versions.some((version) => version.id === currentVersionId)
+		? currentVersionId
+		: null;
+	const previewHtml = getNonEmptyString(value.previewHtml);
+
+	return {
+		stage: isReportStage(value.stage) ? value.stage : "none",
+		versions,
+		...(selectedVersionId ? { currentVersionId: selectedVersionId } : {}),
+		...(previewHtml ? { previewHtml } : {}),
+	};
+}
+
 function isValidBoard(value: unknown): value is AgentsRfpDemoState["board"] {
 	if (!isObject(value) || !Array.isArray(value.columns)) {
 		return false;
@@ -475,15 +538,7 @@ function isValidReport(value: unknown): value is AgentsRfpDemoState["report"] {
 		return false;
 	}
 
-	return [
-		"none",
-		"generating",
-		"generated",
-		"refined",
-		"approved",
-		"pdf-exported",
-		"attached",
-	].includes(value.stage);
+	return isReportStage(value.stage);
 }
 
 export function isValidAgentsRfpDemoState(value: unknown): value is AgentsRfpDemoState {

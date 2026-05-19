@@ -74,6 +74,40 @@ test("backend normalization preserves RFP attachment comments", () => {
 	assert.equal(comment.attachmentHref, "#rovo-canvas-generated-rfp-response-strategy-pdf");
 });
 
+test("backend normalization only keeps valid RFP report versions for canvas handoff", () => {
+	const normalized = normalizeAgentsRfpDemoState({
+		...createDefaultAgentsRfpDemoState(),
+		report: {
+			stage: "refined",
+			currentVersionId: "missing-version",
+			previewHtml: "  <!doctype html><html><body>Report</body></html>  ",
+			versions: [
+				{
+					id: " refined-current-report ",
+					label: "Refined current report",
+					summary: "",
+					createdBy: "Maya",
+					timestampLabel: "",
+				},
+				{ id: "", label: "Broken version" },
+				"not-a-version",
+			],
+		},
+	});
+
+	assert.deepEqual(normalized.report.versions, [
+		{
+			id: "refined-current-report",
+			label: "Refined current report",
+			summary: "Refined current report",
+			createdBy: "Maya",
+			timestampLabel: "Now",
+		},
+	]);
+	assert.equal(normalized.report.currentVersionId, undefined);
+	assert.equal(normalized.report.previewHtml, "<!doctype html><html><body>Report</body></html>");
+});
+
 test("backend normalization promotes completed Review tickets latest first", () => {
 	const staleState = createDefaultAgentsRfpDemoState();
 	staleState.board.columns = staleState.board.columns.map((column) => (
