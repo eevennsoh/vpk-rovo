@@ -182,6 +182,29 @@ test("applyAtlassianLogoToHtmlArtifact inserts offline Atlassian logo into html 
 	assert.equal((updated.match(/data-rovo-artifact-atlassian-logo="true"/gu) || []).length, 1);
 });
 
+test("applyAtlassianLogoToHtmlArtifact falls back to html body when main is absent", () => {
+	const html = [
+		"<!doctype html>",
+		"<html>",
+		"<head></head>",
+		"<body>",
+		'<div class="header"><h1>Report</h1></div>',
+		"</body>",
+		"</html>",
+	].join("\n");
+
+	const updated = applyAtlassianLogoToHtmlArtifact({
+		content: html,
+		latestUserMessage: "Please insert the Atlassian logo in the upper left.",
+	});
+
+	assert.match(updated, /data-rovo-artifact-atlassian-logo="true"/u);
+	assert.ok(
+		updated.indexOf('class="vpk-atlassian-logo"') <
+			updated.indexOf('<div class="header">'),
+	);
+});
+
 test("applyAtlassianLogoToHtmlArtifact does not duplicate an existing logo", () => {
 	const html = '<html><head></head><body><main><div data-rovo-artifact-atlassian-logo="true"></div></main></body></html>';
 
