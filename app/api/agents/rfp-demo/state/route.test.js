@@ -95,3 +95,88 @@ test("POST /api/agents/rfp-demo/state forwards persisted state payload", async (
 		url: "http://backend.local/api/agents/rfp-demo/state",
 	}]);
 });
+
+test("GET /api/agents/rfp-demo/state falls back to default state when backend is unavailable", async (t) => {
+	const { GET } = await loadBundledRoute(t);
+	mockBackendFetch(t, () => {
+		throw new TypeError("fetch failed");
+	});
+
+	const response = await GET();
+	const payload = await response.json();
+
+	assert.equal(response.status, 200);
+	assert.equal(payload.backendUnavailable, true);
+	assert.equal(payload.error, "Cannot connect to backend server");
+	assert.equal(payload.state.version, 1);
+	assert.deepEqual(payload.state.report, {
+		stage: "none",
+		versions: [],
+	});
+});
+
+test("POST /api/agents/rfp-demo/state echoes valid state when backend is unavailable", async (t) => {
+	const { POST } = await loadBundledRoute(t);
+	mockBackendFetch(t, () => {
+		throw new TypeError("fetch failed");
+	});
+	const body = {
+		state: {
+			version: 1,
+			board: {
+				columns: [
+					{ id: "drafting", title: "Drafting", cardCodes: ["RFP-101"] },
+				],
+			},
+			workItems: {
+				"RFP-101": {
+					status: "Drafting",
+					attachments: [],
+					agentAssignmentIds: [],
+					assignee: null,
+					previousAssignee: null,
+					agentStatus: "idle",
+					agentSessionThreadId: null,
+					agentJobRunId: null,
+					generatedAttachment: null,
+					agentComment: null,
+					attachmentComment: null,
+					completedAt: null,
+					lastError: null,
+				},
+			},
+			report: {
+				stage: "generated",
+				versions: [],
+			},
+			agent: null,
+			schedule: null,
+			customAgentActivity: [],
+			canvas: {
+				open: false,
+				activeViewId: "report",
+				mode: "editable",
+			},
+			chat: {
+				selectedAgentId: "rovo",
+				selectedRfpKnowledge: null,
+			},
+			toasts: [],
+		},
+	};
+
+	const response = await POST(new Request("http://localhost/api/agents/rfp-demo/state", {
+		body: JSON.stringify(body),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	}));
+	const payload = await response.json();
+
+	assert.equal(response.status, 200);
+	assert.equal(payload.backendUnavailable, true);
+	assert.equal(payload.error, "Cannot connect to backend server");
+	assert.equal(payload.state.report.stage, "generated");
+	assert.deepEqual(payload.state.board.columns, [
+		{ id: "drafting", title: "Drafting", cardCodes: ["RFP-101"] },
+	]);
+});

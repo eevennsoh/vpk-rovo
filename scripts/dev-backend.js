@@ -8,6 +8,10 @@ const basePort = getBackendBasePort();
 const maxTries = Number.parseInt(process.env.PORT_SEARCH_MAX ?? "20", 10);
 const portFile = path.join(process.cwd(), ".dev-backend-port");
 const sessionOwned = process.env.VPK_TMUX_OWNED === "1";
+const healthProbeTimeoutMs = Number.parseInt(
+	process.env.BACKEND_HEALTH_PROBE_TIMEOUT_MS ?? "1500",
+	10
+);
 
 const unsupportedErrors = new Set([
 	"EADDRNOTAVAIL",
@@ -71,6 +75,48 @@ const isPortInWorktreeRange = (port) =>
 	port >= basePort &&
 	port < basePort + maxTries;
 
+const probeBackendHealth = (port) =>
+	new Promise((resolve) => {
+		const req = require("node:http").request(
+			{
+				host: "127.0.0.1",
+				port,
+				path: "/api/health",
+				method: "GET",
+				timeout: healthProbeTimeoutMs,
+			},
+			(res) => {
+				if (res.statusCode !== 200) {
+					res.resume();
+					resolve(false);
+					return;
+				}
+				let body = "";
+				res.setEncoding("utf8");
+				res.on("data", (chunk) => {
+					body += chunk;
+					if (body.length > 4096) {
+						req.destroy();
+					}
+				});
+				res.on("end", () => {
+					try {
+						const payload = JSON.parse(body);
+						resolve(payload && payload.status === "OK");
+					} catch {
+						resolve(false);
+					}
+				});
+			}
+		);
+		req.on("error", () => resolve(false));
+		req.on("timeout", () => {
+			req.destroy();
+			resolve(false);
+		});
+		req.end();
+	});
+
 const writePortFile = (port) => {
 	fs.writeFileSync(portFile, String(port));
 };
@@ -111,17 +157,24 @@ const run = async () => {
 		} else {
 		const inUse = !(await isPortAvailable(recordedPort));
 		if (inUse) {
-			if (sessionOwned) {
-				throw new Error(
-					`Backend is already running for this worktree on port ${recordedPort}. ` +
-					"Stop the existing backend before starting a tmux-owned session."
+			const isOurBackend = await probeBackendHealth(recordedPort);
+			if (isOurBackend) {
+				if (sessionOwned) {
+					throw new Error(
+						`Backend is already running for this worktree on port ${recordedPort}. ` +
+						"Stop the existing backend before starting a tmux-owned session."
+					);
+				}
+				writePortFile(recordedPort);
+				console.log(
+					`Backend dev server is already running for this worktree on port ${recordedPort}. Reusing existing process.`
 				);
+				return;
 			}
-			writePortFile(recordedPort);
-			console.log(
-				`Backend dev server is already running for this worktree on port ${recordedPort}. Reusing existing process.`
+			console.warn(
+				`Port ${recordedPort} is in use but did not respond to /api/health as our backend. ` +
+				"Assuming the port is held by an unrelated process and picking the next available port."
 			);
-			return;
 		}
 		cleanupPortFile();
 		}
