@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useConversation } from "@elevenlabs/react"
+import { ConversationProvider, useConversation } from "@elevenlabs/react"
 import {
   ArrowUpIcon,
   ChevronDownIcon as ChevronDown,
@@ -64,20 +64,29 @@ export interface ConversationBarProps {
 export const ConversationBar = React.forwardRef<
   HTMLDivElement,
   ConversationBarProps
->(
-  (
-    {
-      agentId,
-      className,
-      waveformClassName,
-      onConnect,
-      onDisconnect,
-      onError,
-      onMessage,
-      onSendMessage,
-    },
-    ref
-  ) => {
+>((props, ref) => (
+  <ConversationProvider>
+    <ConversationBarContent {...props} innerRef={ref} />
+  </ConversationProvider>
+))
+
+ConversationBar.displayName = "ConversationBar"
+
+interface ConversationBarContentProps extends ConversationBarProps {
+  innerRef?: React.Ref<HTMLDivElement>
+}
+
+function ConversationBarContent({
+  agentId,
+  className,
+  waveformClassName,
+  onConnect,
+  onDisconnect,
+  onError,
+  onMessage,
+  onSendMessage,
+  innerRef,
+}: ConversationBarContentProps) {
     const [isMuted, setIsMuted] = React.useState(false)
     const [agentState, setAgentState] = React.useState<
       "disconnected" | "connecting" | "connected" | "disconnecting" | null
@@ -127,7 +136,7 @@ export const ConversationBar = React.forwardRef<
 
         await getMicStream()
 
-        await conversation.startSession({
+        conversation.startSession({
           agentId,
           connectionType: "webrtc",
           onStatusChange: (status) => setAgentState(status.status),
@@ -204,7 +213,7 @@ export const ConversationBar = React.forwardRef<
 
     return (
       <div
-        ref={ref}
+        ref={innerRef}
         className={cn("flex w-full items-end justify-center p-4", className)}
       >
         <Card className="m-0 w-full gap-0 border p-0 shadow-lg">
@@ -340,7 +349,4 @@ export const ConversationBar = React.forwardRef<
         </Card>
       </div>
     )
-  }
-)
-
-ConversationBar.displayName = "ConversationBar"
+}
