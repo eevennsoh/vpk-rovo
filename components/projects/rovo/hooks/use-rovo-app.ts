@@ -40,7 +40,10 @@ import {
 	shouldPersistResolvedRovoAppTitle,
 	shouldRecoverRovoAppThreadAfterPersistenceFailure,
 } from "@/components/projects/rovo/lib/rovo-app-thread-persistence";
-import { waitForChatSendSettled } from "@/components/projects/rovo/lib/rovo-app-send-guard";
+import {
+	isRovoAppSendSettledTimeoutError,
+	waitForChatSendSettled,
+} from "@/components/projects/rovo/lib/rovo-app-send-guard";
 import { shouldSuppressRovoAppPlanRetry } from "@/components/projects/rovo/lib/rovo-app-plan-retry-guard";
 import { buildRovoAppActiveThreadTransitionPlan } from "@/components/projects/rovo/lib/rovo-app-active-thread-transition";
 import {
@@ -3219,7 +3222,9 @@ export function useRovoApp({
 					throw sendError;
 				}
 			} catch (error) {
-				setInputError(toRovoAppUserErrorMessage(error));
+				if (!isRovoAppSendSettledTimeoutError(error)) {
+					setInputError(toRovoAppUserErrorMessage(error));
+				}
 				throw error;
 			}
 		},
@@ -3309,6 +3314,8 @@ export function useRovoApp({
 			const resolvedThreadId = activeThreadIdRef.current ?? draftThreadId;
 			const shouldEnqueue =
 				queueProcessorRunningRef.current ||
+				useChatStatus === "submitted" ||
+				useChatStatus === "streaming" ||
 				isRovoAppThreadBusy({
 					activeRunStatus: currentThread?.activeRun?.status ?? null,
 					attachedRunStatus,
@@ -3348,6 +3355,7 @@ export function useRovoApp({
 			isPlanModeRef,
 			kickQueue,
 			queuedActionsByThreadId,
+			useChatStatus,
 		],
 	);
 
@@ -4124,8 +4132,14 @@ export function useRovoApp({
 					}
 				} catch (error) {
 					prependQueuedAction(nextAction);
-					console.error("[RovoApp] Failed to dispatch queued action:", error);
-					setInputError(toRovoAppUserErrorMessage(error));
+					if (isRovoAppSendSettledTimeoutError(error)) {
+						window.setTimeout(() => {
+							void processQueueRef.current();
+						}, 250);
+					} else {
+						console.error("[RovoApp] Failed to dispatch queued action:", error);
+						setInputError(toRovoAppUserErrorMessage(error));
+					}
 					break;
 				}
 			}

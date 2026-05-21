@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+	isRovoAppSendSettledTimeoutError,
 	waitForChatSendSettled,
 	rovoAppSendGuardConstants,
 } = require("./rovo-app-send-guard.ts");
@@ -42,4 +43,27 @@ test("waitForChatSendSettled does not add extra delay once the idle grace has el
 	});
 
 	assert.deepEqual(waits, []);
+});
+
+test("waitForChatSendSettled throws a retryable timeout while the previous turn is still busy", async () => {
+	let nowValue = 1_000;
+	const statusRef = { current: "streaming" };
+
+	await assert.rejects(
+		waitForChatSendSettled({
+			statusRef,
+			now: () => nowValue,
+			sleep: async (ms) => {
+				nowValue += ms;
+			},
+		}),
+		(error) => {
+			assert.equal(isRovoAppSendSettledTimeoutError(error), true);
+			assert.equal(
+				error.message,
+				"Timed out waiting for previous turn to settle before sending.",
+			);
+			return true;
+		},
+	);
 });

@@ -881,7 +881,7 @@ export function PersonalGraphSurface({
 	return (
 		<main
 			aria-label="Personal Graph"
-			className={cn("relative isolate min-h-svh overflow-hidden bg-surface text-text", className)}
+			className={cn("relative isolate w-full min-h-svh overflow-hidden bg-surface text-text", className)}
 			ref={liquidGlassStageRef}
 			style={style}
 			{...props}
