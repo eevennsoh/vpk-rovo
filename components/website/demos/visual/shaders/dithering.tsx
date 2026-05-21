@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, type CSSProperties } from "react";
 
 export const DITHERING_BLEND_MODES = [
 	"normal",
@@ -530,6 +530,54 @@ export default function Dithering({
 	const effectiveShadowColor = shadowColor ?? presetDefaults.shadowColor ?? "#101010";
 	const effectiveHighlightColor = highlightColor ?? presetDefaults.highlightColor ?? "#f5f2e8";
 
+	const propsRef = useRef({
+		sourceMode,
+		imageSrc,
+		opacity,
+		blendMode,
+		compositeMode,
+		hue,
+		saturation,
+		dotScale,
+		animateDither,
+		ditherSpeed,
+		chromaticSplit,
+		monoColor,
+		speed,
+		effectiveAlgorithm,
+		effectiveLevels,
+		effectivePixelSize,
+		effectiveSpread,
+		effectiveColorMode,
+		effectiveShadowColor,
+		effectiveHighlightColor,
+	});
+
+	useLayoutEffect(() => {
+		propsRef.current = {
+			sourceMode,
+			imageSrc,
+			opacity,
+			blendMode,
+			compositeMode,
+			hue,
+			saturation,
+			dotScale,
+			animateDither,
+			ditherSpeed,
+			chromaticSplit,
+			monoColor,
+			speed,
+			effectiveAlgorithm,
+			effectiveLevels,
+			effectivePixelSize,
+			effectiveSpread,
+			effectiveColorMode,
+			effectiveShadowColor,
+			effectiveHighlightColor,
+		};
+	});
+
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
@@ -563,6 +611,32 @@ export default function Dithering({
 		gl.enableVertexAttribArray(position);
 		gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
+		const u = {
+			resolution: gl.getUniformLocation(program, "u_resolution"),
+			pixelRatio: gl.getUniformLocation(program, "u_pixelRatio"),
+			time: gl.getUniformLocation(program, "u_time"),
+			texture: gl.getUniformLocation(program, "u_texture"),
+			sourceMode: gl.getUniformLocation(program, "u_sourceMode"),
+			speed: gl.getUniformLocation(program, "u_speed"),
+			layerOpacity: gl.getUniformLocation(program, "u_layerOpacity"),
+			blendMode: gl.getUniformLocation(program, "u_blendMode"),
+			compositeMode: gl.getUniformLocation(program, "u_compositeMode"),
+			hue: gl.getUniformLocation(program, "u_hue"),
+			saturation: gl.getUniformLocation(program, "u_saturation"),
+			algorithm: gl.getUniformLocation(program, "u_algorithm"),
+			levels: gl.getUniformLocation(program, "u_levels"),
+			pixelSize: gl.getUniformLocation(program, "u_pixelSize"),
+			spread: gl.getUniformLocation(program, "u_spread"),
+			dotScale: gl.getUniformLocation(program, "u_dotScale"),
+			animateDither: gl.getUniformLocation(program, "u_animateDither"),
+			ditherSpeed: gl.getUniformLocation(program, "u_ditherSpeed"),
+			chromaticSplit: gl.getUniformLocation(program, "u_chromaticSplit"),
+			colorMode: gl.getUniformLocation(program, "u_colorMode"),
+			monoColor: gl.getUniformLocation(program, "u_monoColor"),
+			shadowColor: gl.getUniformLocation(program, "u_shadowColor"),
+			highlightColor: gl.getUniformLocation(program, "u_highlightColor"),
+		};
+
 		const sourceTexture = gl.createTexture();
 		gl.activeTexture(gl.TEXTURE0);
 		gl.bindTexture(gl.TEXTURE_2D, sourceTexture);
@@ -570,49 +644,38 @@ export default function Dithering({
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.uniform1i(gl.getUniformLocation(program, "u_texture"), 0);
+		if (u.texture) gl.uniform1i(u.texture, 0);
 		setTextureFromSource(gl, sourceTexture, createDefaultTexture());
 
-		gl.uniform1f(gl.getUniformLocation(program, "u_sourceMode"), sourceMode === "image" ? 1 : 0);
-		gl.uniform1f(gl.getUniformLocation(program, "u_speed"), speed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_layerOpacity"), opacity);
-		gl.uniform1f(gl.getUniformLocation(program, "u_blendMode"), enumIndex(DITHERING_BLEND_MODES, blendMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_compositeMode"), enumIndex(DITHERING_COMPOSITE_MODES, compositeMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_hue"), hue);
-		gl.uniform1f(gl.getUniformLocation(program, "u_saturation"), saturation);
-		gl.uniform1f(gl.getUniformLocation(program, "u_algorithm"), getAlgorithmValue(effectiveAlgorithm));
-		gl.uniform1f(gl.getUniformLocation(program, "u_levels"), Math.max(2, effectiveLevels));
-		gl.uniform1f(gl.getUniformLocation(program, "u_pixelSize"), Math.max(1, Math.round(effectivePixelSize)));
-		gl.uniform1f(gl.getUniformLocation(program, "u_spread"), effectiveSpread);
-		gl.uniform1f(gl.getUniformLocation(program, "u_dotScale"), dotScale);
-		gl.uniform1f(gl.getUniformLocation(program, "u_animateDither"), animateDither ? 1 : 0);
-		gl.uniform1f(gl.getUniformLocation(program, "u_ditherSpeed"), ditherSpeed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_chromaticSplit"), chromaticSplit ? 1 : 0);
-		gl.uniform1f(gl.getUniformLocation(program, "u_colorMode"), getColorModeValue(effectiveColorMode));
-
-		const monoRGB = parseHexColor(monoColor, [0.96, 0.96, 0.94]);
-		const shadowRGB = parseHexColor(effectiveShadowColor, [0.06, 0.06, 0.06]);
-		const highlightRGB = parseHexColor(effectiveHighlightColor, [0.96, 0.95, 0.91]);
-		gl.uniform3f(gl.getUniformLocation(program, "u_monoColor"), monoRGB[0], monoRGB[1], monoRGB[2]);
-		gl.uniform3f(gl.getUniformLocation(program, "u_shadowColor"), shadowRGB[0], shadowRGB[1], shadowRGB[2]);
-		gl.uniform3f(gl.getUniformLocation(program, "u_highlightColor"), highlightRGB[0], highlightRGB[1], highlightRGB[2]);
-
 		let disposed = false;
-		if (imageSrc) {
+		let currentImageSrc: string | undefined;
+		const loadImage = (src: string | undefined) => {
+			if (src === currentImageSrc) return;
+			currentImageSrc = src;
+			if (!src) return;
 			const image = new window.Image();
 			image.crossOrigin = "anonymous";
 			image.onload = () => {
 				if (disposed) return;
+				if (currentImageSrc !== src) return;
 				gl.activeTexture(gl.TEXTURE0);
 				setTextureFromSource(gl, sourceTexture, image);
 			};
-			image.src = imageSrc;
-		}
+			image.src = src;
+		};
 
-		const uResolution = gl.getUniformLocation(program, "u_resolution");
-		const uPixelRatio = gl.getUniformLocation(program, "u_pixelRatio");
-		const uTime = gl.getUniformLocation(program, "u_time");
+		loadImage(propsRef.current.imageSrc);
+
+		let lastMonoColor: string | undefined;
+		let lastShadowColor: string | undefined;
+		let lastHighlightColor: string | undefined;
+
 		const render = (timeMs = 0) => {
+			if (disposed) return;
+			const p = propsRef.current;
+
+			loadImage(p.imageSrc);
+
 			const dpr = window.devicePixelRatio || 1;
 			const width = Math.max(Math.floor(canvas.clientWidth * dpr), 1);
 			const height = Math.max(Math.floor(canvas.clientHeight * dpr), 1);
@@ -623,9 +686,43 @@ export default function Dithering({
 				gl.viewport(0, 0, width, height);
 			}
 
-			gl.uniform2f(uResolution, width, height);
-			gl.uniform1f(uPixelRatio, dpr);
-			gl.uniform1f(uTime, timeMs * 0.001);
+			if (u.resolution) gl.uniform2f(u.resolution, width, height);
+			if (u.pixelRatio) gl.uniform1f(u.pixelRatio, dpr);
+			if (u.time) gl.uniform1f(u.time, timeMs * 0.001);
+
+			if (u.sourceMode) gl.uniform1f(u.sourceMode, p.sourceMode === "image" ? 1 : 0);
+			if (u.speed) gl.uniform1f(u.speed, p.speed);
+			if (u.layerOpacity) gl.uniform1f(u.layerOpacity, p.opacity);
+			if (u.blendMode) gl.uniform1f(u.blendMode, enumIndex(DITHERING_BLEND_MODES, p.blendMode));
+			if (u.compositeMode) gl.uniform1f(u.compositeMode, enumIndex(DITHERING_COMPOSITE_MODES, p.compositeMode));
+			if (u.hue) gl.uniform1f(u.hue, p.hue);
+			if (u.saturation) gl.uniform1f(u.saturation, p.saturation);
+			if (u.algorithm) gl.uniform1f(u.algorithm, getAlgorithmValue(p.effectiveAlgorithm));
+			if (u.levels) gl.uniform1f(u.levels, Math.max(2, p.effectiveLevels));
+			if (u.pixelSize) gl.uniform1f(u.pixelSize, Math.max(1, Math.round(p.effectivePixelSize)));
+			if (u.spread) gl.uniform1f(u.spread, p.effectiveSpread);
+			if (u.dotScale) gl.uniform1f(u.dotScale, p.dotScale);
+			if (u.animateDither) gl.uniform1f(u.animateDither, p.animateDither ? 1 : 0);
+			if (u.ditherSpeed) gl.uniform1f(u.ditherSpeed, p.ditherSpeed);
+			if (u.chromaticSplit) gl.uniform1f(u.chromaticSplit, p.chromaticSplit ? 1 : 0);
+			if (u.colorMode) gl.uniform1f(u.colorMode, getColorModeValue(p.effectiveColorMode));
+
+			if (u.monoColor && p.monoColor !== lastMonoColor) {
+				const rgb = parseHexColor(p.monoColor, [0.96, 0.96, 0.94]);
+				gl.uniform3f(u.monoColor, rgb[0], rgb[1], rgb[2]);
+				lastMonoColor = p.monoColor;
+			}
+			if (u.shadowColor && p.effectiveShadowColor !== lastShadowColor) {
+				const rgb = parseHexColor(p.effectiveShadowColor, [0.06, 0.06, 0.06]);
+				gl.uniform3f(u.shadowColor, rgb[0], rgb[1], rgb[2]);
+				lastShadowColor = p.effectiveShadowColor;
+			}
+			if (u.highlightColor && p.effectiveHighlightColor !== lastHighlightColor) {
+				const rgb = parseHexColor(p.effectiveHighlightColor, [0.96, 0.95, 0.91]);
+				gl.uniform3f(u.highlightColor, rgb[0], rgb[1], rgb[2]);
+				lastHighlightColor = p.effectiveHighlightColor;
+			}
+
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 			animRef.current = requestAnimationFrame(render);
 		};
@@ -641,28 +738,7 @@ export default function Dithering({
 			gl.deleteShader(vertexShader);
 			gl.deleteShader(fragmentShader);
 		};
-	}, [
-		animateDither,
-		blendMode,
-		chromaticSplit,
-		compositeMode,
-		ditherSpeed,
-		dotScale,
-		effectiveAlgorithm,
-		effectiveColorMode,
-		effectiveHighlightColor,
-		effectiveLevels,
-		effectivePixelSize,
-		effectiveShadowColor,
-		effectiveSpread,
-		hue,
-		imageSrc,
-		monoColor,
-		opacity,
-		saturation,
-		sourceMode,
-		speed,
-	]);
+	}, []);
 
 	return (
 		<canvas

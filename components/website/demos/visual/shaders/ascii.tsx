@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from "react";
 
 export const ASCII_CHARSETS = {
 	light: " .:-=+*#%@",
@@ -1184,202 +1184,7 @@ export default function Ascii({
 	const activeMonoColor = monoColor ?? tint ?? "#F5F5F0";
 	const sourceColorValues = useMemo(() => resolveSourceColorValues(sourceColors), [sourceColors]);
 
-	useEffect(() => {
-		const canvas = canvasRef.current;
-		if (!canvas) return;
-
-		const gl = canvas.getContext("webgl2", {
-			alpha: resolvedTransparentBackground,
-			antialias: false,
-			premultipliedAlpha: !resolvedTransparentBackground,
-		});
-		if (!gl) return;
-
-		const vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
-		const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-		if (!vertexShader || !fragmentShader) return;
-
-		const program = gl.createProgram();
-		if (!program) return;
-
-		gl.attachShader(program, vertexShader);
-		gl.attachShader(program, fragmentShader);
-		gl.linkProgram(program);
-
-		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-			console.error(gl.getProgramInfoLog(program));
-			return;
-		}
-
-		gl.useProgram(program);
-
-		const buffer = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-
-		const position = gl.getAttribLocation(program, "a_position");
-		gl.enableVertexAttribArray(position);
-		gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-
-		const sourceTexture = gl.createTexture();
-		gl.activeTexture(gl.TEXTURE0);
-		gl.bindTexture(gl.TEXTURE_2D, sourceTexture);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.uniform1i(gl.getUniformLocation(program, "u_texture"), 0);
-		setTextureFromSource(gl, sourceTexture, createEmptyTexture());
-
-		const atlas = createAsciiAtlas(activeCharacters, fontWeight);
-		const atlasTexture = gl.createTexture();
-		gl.activeTexture(gl.TEXTURE1);
-		gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-		gl.uniform1i(gl.getUniformLocation(program, "u_asciiAtlas"), 1);
-		setTextureFromSource(gl, atlasTexture, atlas.canvas);
-
-		gl.uniform1f(gl.getUniformLocation(program, "u_sourceMode"), sourceMode === "image" ? 1 : 0);
-		gl.uniform1f(gl.getUniformLocation(program, "u_cellSize"), resolvedCellSize);
-		gl.uniform1f(gl.getUniformLocation(program, "u_layerOpacity"), opacity);
-		gl.uniform1f(gl.getUniformLocation(program, "u_blendMode"), enumIndex(ASCII_BLEND_MODES, blendMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_compositeMode"), enumIndex(ASCII_COMPOSITE_MODES, compositeMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_hue"), hue);
-		gl.uniform1f(gl.getUniformLocation(program, "u_saturation"), saturation);
-		gl.uniform1f(gl.getUniformLocation(program, "u_brightness"), brightness);
-		gl.uniform1f(gl.getUniformLocation(program, "u_contrast"), contrast);
-		gl.uniform1f(gl.getUniformLocation(program, "u_characterMode"), enumIndex(ASCII_CHARACTER_MODES, resolvedCharacterMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_colorMode"), enumIndex(ASCII_COLOR_MODES, colorMode, 1));
-		gl.uniform1f(gl.getUniformLocation(program, "u_colorSourceMode"), enumIndex(ASCII_COLOR_SOURCE_MODES, colorSourceMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_directionBias"), resolvedDirectionBias);
-		gl.uniform1f(gl.getUniformLocation(program, "u_glyphSignalMode"), enumIndex(ASCII_SIGNAL_MODES, glyphSignalMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_colorSignalMode"), enumIndex(ASCII_SIGNAL_MODES, colorSignalMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_maskSource"), enumIndex(ASCII_MASK_SOURCES, maskSource));
-		gl.uniform1f(gl.getUniformLocation(program, "u_maskMode"), enumIndex(ASCII_MASK_MODES, maskMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_maskInvert"), maskInvert ? 1 : 0);
-		gl.uniform1f(gl.getUniformLocation(program, "u_toneMappingMode"), enumIndex(ASCII_TONE_MAPPING_MODES, toneMapping));
-		gl.uniform1f(gl.getUniformLocation(program, "u_signalBlackPoint"), signalBlackPoint);
-		gl.uniform1f(gl.getUniformLocation(program, "u_signalWhitePoint"), signalWhitePoint);
-		gl.uniform1f(gl.getUniformLocation(program, "u_signalGamma"), signalGamma);
-		gl.uniform1f(gl.getUniformLocation(program, "u_presenceThreshold"), resolvedPresenceThreshold);
-		gl.uniform1f(gl.getUniformLocation(program, "u_presenceSoftness"), presenceSoftness);
-		gl.uniform1f(gl.getUniformLocation(program, "u_characterOpacity"), characterOpacity);
-		gl.uniform1f(gl.getUniformLocation(program, "u_randomizeCharacters"), randomizeCharacters);
-		gl.uniform1f(gl.getUniformLocation(program, "u_randomSeed"), randomSeed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_animatedCharacters"), animatedCharacters ? 1 : 0);
-		gl.uniform1f(gl.getUniformLocation(program, "u_animationStyle"), enumIndex(ASCII_ANIMATION_STYLES, animationStyle));
-		gl.uniform1f(gl.getUniformLocation(program, "u_animationIntensity"), animationIntensity);
-		gl.uniform1f(gl.getUniformLocation(program, "u_animationRandomness"), animationRandomness);
-		gl.uniform1f(gl.getUniformLocation(program, "u_characterCycleSpeed"), characterCycleSpeed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_dotGridOverlay"), dotGridOverlay);
-		gl.uniform1f(gl.getUniformLocation(program, "u_shimmerAmount"), shimmerAmount);
-		gl.uniform1f(gl.getUniformLocation(program, "u_shimmerSpeed"), shimmerSpeed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bloomEnabled"), bloomEnabled ? 1 : 0);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bloomIntensity"), bloomIntensity);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bloomThreshold"), bloomThreshold);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bloomRadius"), bloomRadius);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bloomSoftness"), bloomSoftness);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bgOpacity"), bgOpacity);
-		gl.uniform1f(gl.getUniformLocation(program, "u_backgroundMode"), resolveBackgroundModeIndex(backgroundMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_backgroundOpacity"), backgroundOpacity);
-		gl.uniform1f(gl.getUniformLocation(program, "u_backgroundBlurRadius"), backgroundBlurRadius);
-		gl.uniform1f(gl.getUniformLocation(program, "u_colorOverlay"), resolveEffectAmount(colorOverlay));
-		gl.uniform1f(gl.getUniformLocation(program, "u_colorOverlayBlendMode"), enumIndex(ASCII_BLEND_MODES, colorOverlayBlendMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_vignette"), resolveEffectAmount(vignette));
-		gl.uniform1f(gl.getUniformLocation(program, "u_scanLines"), resolveEffectAmount(scanLines));
-		gl.uniform1f(gl.getUniformLocation(program, "u_crtCurvature"), resolveEffectAmount(crtCurvature));
-		gl.uniform1f(gl.getUniformLocation(program, "u_chromatic"), resolveEffectAmount(chromatic));
-		gl.uniform1f(gl.getUniformLocation(program, "u_chromaticOffset"), chromaticOffset);
-		gl.uniform1f(gl.getUniformLocation(program, "u_characterBloom"), resolveEffectAmount(characterBloom));
-		gl.uniform1f(gl.getUniformLocation(program, "u_characterChromatic"), resolveEffectAmount(characterChromatic));
-		gl.uniform1f(gl.getUniformLocation(program, "u_characterChromaticOffset"), characterChromaticOffset);
-		gl.uniform1f(gl.getUniformLocation(program, "u_chromaticAberration"), chromaticAberration);
-		gl.uniform1f(gl.getUniformLocation(program, "u_rgbSplit"), resolveEffectAmount(resolvedRgbSplit));
-		gl.uniform1f(gl.getUniformLocation(program, "u_rgbSplitOffset"), rgbSplitOffset);
-		gl.uniform1f(gl.getUniformLocation(program, "u_glitch"), resolveEffectAmount(glitch));
-		gl.uniform1f(gl.getUniformLocation(program, "u_blur"), resolveEffectAmount(blur));
-		gl.uniform1f(gl.getUniformLocation(program, "u_blurRadius"), blurRadius);
-		gl.uniform1f(gl.getUniformLocation(program, "u_pixelate"), resolveEffectAmount(pixelate));
-		gl.uniform1f(gl.getUniformLocation(program, "u_pixelateSize"), pixelateSize);
-		gl.uniform1f(gl.getUniformLocation(program, "u_halftone"), resolveEffectAmount(halftone));
-		gl.uniform1f(gl.getUniformLocation(program, "u_halftoneSize"), halftoneSize);
-		gl.uniform1f(gl.getUniformLocation(program, "u_filmGrain"), resolveEffectAmount(filmGrain));
-		gl.uniform1f(gl.getUniformLocation(program, "u_filmDust"), resolveEffectAmount(filmDust));
-		gl.uniform1f(gl.getUniformLocation(program, "u_invert"), invert ? 1 : 0);
-		gl.uniform1f(gl.getUniformLocation(program, "u_speed"), speed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_transparentBackground"), resolvedTransparentBackground ? 1 : 0);
-		gl.uniform1f(gl.getUniformLocation(program, "u_atlasColumns"), atlas.columns);
-		gl.uniform1f(gl.getUniformLocation(program, "u_atlasRows"), atlas.rows);
-		gl.uniform1f(gl.getUniformLocation(program, "u_characterCount"), atlas.characterCount);
-		gl.uniform1i(gl.getUniformLocation(program, "u_sourceColorCount"), sourceColorValues.length);
-		gl.uniform4fv(gl.getUniformLocation(program, "u_sourceColors[0]"), flattenSourceColorValues(sourceColorValues));
-
-		const tintRGB = parseColor(activeMonoColor, [0.96, 0.96, 0.94]);
-		const backgroundRGB = parseColor(backgroundColor, [0, 0, 0]);
-		const colorOverlayRGB = parseColor(colorOverlayColor, [0.96, 0.96, 0.94]);
-		gl.uniform3f(gl.getUniformLocation(program, "u_tintColor"), tintRGB[0], tintRGB[1], tintRGB[2]);
-		gl.uniform3f(gl.getUniformLocation(program, "u_backgroundColor"), backgroundRGB[0], backgroundRGB[1], backgroundRGB[2]);
-		gl.uniform3f(gl.getUniformLocation(program, "u_colorOverlayColor"), colorOverlayRGB[0], colorOverlayRGB[1], colorOverlayRGB[2]);
-
-		let disposed = false;
-		if (sourceMode === "image" && imageSrc) {
-			const image = new window.Image();
-			if (shouldUseAnonymousCrossOrigin(imageSrc)) {
-				image.crossOrigin = "anonymous";
-			}
-			image.onload = () => {
-				if (disposed) return;
-				gl.activeTexture(gl.TEXTURE0);
-				setTextureFromSource(gl, sourceTexture, image);
-			};
-			image.src = imageSrc;
-		}
-
-		const uResolution = gl.getUniformLocation(program, "u_resolution");
-		const uPixelRatio = gl.getUniformLocation(program, "u_pixelRatio");
-		const uTime = gl.getUniformLocation(program, "u_time");
-		let previousFrameMs: number | null = null;
-		const render = (timeMs = 0) => {
-			if (previousFrameMs === null) previousFrameMs = timeMs;
-			const frameDelta = Math.min(Math.max((timeMs - previousFrameMs) * 0.001, 0), 0.1);
-			previousFrameMs = timeMs;
-			if (animationPlaying) {
-				elapsedTimeRef.current += frameDelta;
-			}
-
-			const dpr = window.devicePixelRatio || 1;
-			const width = Math.max(Math.floor(canvas.clientWidth * dpr), 1);
-			const height = Math.max(Math.floor(canvas.clientHeight * dpr), 1);
-
-			if (canvas.width !== width || canvas.height !== height) {
-				canvas.width = width;
-				canvas.height = height;
-				gl.viewport(0, 0, width, height);
-			}
-
-			gl.uniform2f(uResolution, width, height);
-			gl.uniform1f(uPixelRatio, dpr);
-			gl.uniform1f(uTime, elapsedTimeRef.current);
-			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-			animRef.current = requestAnimationFrame(render);
-		};
-
-		animRef.current = requestAnimationFrame(render);
-
-		return () => {
-			disposed = true;
-			cancelAnimationFrame(animRef.current);
-			gl.deleteTexture(sourceTexture);
-			gl.deleteTexture(atlasTexture);
-			gl.deleteBuffer(buffer);
-			gl.deleteProgram(program);
-			gl.deleteShader(vertexShader);
-			gl.deleteShader(fragmentShader);
-		};
-	}, [
+	const propsRef = useRef({
 		activeCharacters,
 		activeMonoColor,
 		animatedCharacters,
@@ -1457,7 +1262,421 @@ export default function Ascii({
 		speed,
 		toneMapping,
 		vignette,
-	]);
+	});
+
+	useLayoutEffect(() => {
+		propsRef.current = {
+			activeCharacters,
+			activeMonoColor,
+			animatedCharacters,
+			animationIntensity,
+			animationPlaying,
+			animationRandomness,
+			animationStyle,
+			backgroundBlurRadius,
+			backgroundColor,
+			backgroundMode,
+			backgroundOpacity,
+			blendMode,
+			bloomEnabled,
+			bloomIntensity,
+			bloomRadius,
+			bloomSoftness,
+			bloomThreshold,
+			bgOpacity,
+			brightness,
+			characterCycleSpeed,
+			characterOpacity,
+			characterBloom,
+			characterChromatic,
+			characterChromaticOffset,
+			chromatic,
+			chromaticOffset,
+			chromaticAberration,
+			colorOverlay,
+			colorOverlayBlendMode,
+			colorOverlayColor,
+			colorMode,
+			colorSourceMode,
+			colorSignalMode,
+			compositeMode,
+			contrast,
+			dotGridOverlay,
+			blur,
+			blurRadius,
+			crtCurvature,
+			filmGrain,
+			filmDust,
+			fontWeight,
+			glyphSignalMode,
+			hue,
+			imageSrc,
+			invert,
+			maskInvert,
+			maskMode,
+			maskSource,
+			opacity,
+			presenceSoftness,
+			glitch,
+			halftone,
+			halftoneSize,
+			pixelate,
+			pixelateSize,
+			randomizeCharacters,
+			randomSeed,
+			resolvedCellSize,
+			resolvedCharacterMode,
+			resolvedDirectionBias,
+			resolvedPresenceThreshold,
+			resolvedRgbSplit,
+			resolvedTransparentBackground,
+			rgbSplitOffset,
+			saturation,
+			scanLines,
+			shimmerAmount,
+			shimmerSpeed,
+			signalBlackPoint,
+			signalGamma,
+			signalWhitePoint,
+			sourceColorValues,
+			sourceMode,
+			speed,
+			toneMapping,
+			vignette,
+		};
+	});
+
+	useEffect(() => {
+		const canvas = canvasRef.current;
+		if (!canvas) return;
+
+		const initialProps = propsRef.current;
+		// alpha/premultipliedAlpha are frozen at context creation; toggling
+		// transparentBackground after mount won't change the canvas alpha channel
+		// until next remount, but u_transparentBackground still updates per frame.
+		const gl = canvas.getContext("webgl2", {
+			alpha: initialProps.resolvedTransparentBackground,
+			antialias: false,
+			premultipliedAlpha: !initialProps.resolvedTransparentBackground,
+		});
+		if (!gl) return;
+
+		const vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
+		const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+		if (!vertexShader || !fragmentShader) return;
+
+		const program = gl.createProgram();
+		if (!program) return;
+
+		gl.attachShader(program, vertexShader);
+		gl.attachShader(program, fragmentShader);
+		gl.linkProgram(program);
+
+		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+			console.error(gl.getProgramInfoLog(program));
+			return;
+		}
+
+		gl.useProgram(program);
+
+		const buffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+		const position = gl.getAttribLocation(program, "a_position");
+		gl.enableVertexAttribArray(position);
+		gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+		const sourceTexture = gl.createTexture();
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, sourceTexture);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		setTextureFromSource(gl, sourceTexture, createEmptyTexture());
+
+		const atlasTexture = gl.createTexture();
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+		const u = {
+			texture: gl.getUniformLocation(program, "u_texture"),
+			asciiAtlas: gl.getUniformLocation(program, "u_asciiAtlas"),
+			resolution: gl.getUniformLocation(program, "u_resolution"),
+			pixelRatio: gl.getUniformLocation(program, "u_pixelRatio"),
+			time: gl.getUniformLocation(program, "u_time"),
+			sourceMode: gl.getUniformLocation(program, "u_sourceMode"),
+			cellSize: gl.getUniformLocation(program, "u_cellSize"),
+			layerOpacity: gl.getUniformLocation(program, "u_layerOpacity"),
+			blendMode: gl.getUniformLocation(program, "u_blendMode"),
+			compositeMode: gl.getUniformLocation(program, "u_compositeMode"),
+			hue: gl.getUniformLocation(program, "u_hue"),
+			saturation: gl.getUniformLocation(program, "u_saturation"),
+			brightness: gl.getUniformLocation(program, "u_brightness"),
+			contrast: gl.getUniformLocation(program, "u_contrast"),
+			characterMode: gl.getUniformLocation(program, "u_characterMode"),
+			colorMode: gl.getUniformLocation(program, "u_colorMode"),
+			colorSourceMode: gl.getUniformLocation(program, "u_colorSourceMode"),
+			directionBias: gl.getUniformLocation(program, "u_directionBias"),
+			glyphSignalMode: gl.getUniformLocation(program, "u_glyphSignalMode"),
+			colorSignalMode: gl.getUniformLocation(program, "u_colorSignalMode"),
+			maskSource: gl.getUniformLocation(program, "u_maskSource"),
+			maskMode: gl.getUniformLocation(program, "u_maskMode"),
+			maskInvert: gl.getUniformLocation(program, "u_maskInvert"),
+			toneMappingMode: gl.getUniformLocation(program, "u_toneMappingMode"),
+			signalBlackPoint: gl.getUniformLocation(program, "u_signalBlackPoint"),
+			signalWhitePoint: gl.getUniformLocation(program, "u_signalWhitePoint"),
+			signalGamma: gl.getUniformLocation(program, "u_signalGamma"),
+			presenceThreshold: gl.getUniformLocation(program, "u_presenceThreshold"),
+			presenceSoftness: gl.getUniformLocation(program, "u_presenceSoftness"),
+			characterOpacity: gl.getUniformLocation(program, "u_characterOpacity"),
+			randomizeCharacters: gl.getUniformLocation(program, "u_randomizeCharacters"),
+			randomSeed: gl.getUniformLocation(program, "u_randomSeed"),
+			animatedCharacters: gl.getUniformLocation(program, "u_animatedCharacters"),
+			animationStyle: gl.getUniformLocation(program, "u_animationStyle"),
+			animationIntensity: gl.getUniformLocation(program, "u_animationIntensity"),
+			animationRandomness: gl.getUniformLocation(program, "u_animationRandomness"),
+			characterCycleSpeed: gl.getUniformLocation(program, "u_characterCycleSpeed"),
+			dotGridOverlay: gl.getUniformLocation(program, "u_dotGridOverlay"),
+			shimmerAmount: gl.getUniformLocation(program, "u_shimmerAmount"),
+			shimmerSpeed: gl.getUniformLocation(program, "u_shimmerSpeed"),
+			bloomEnabled: gl.getUniformLocation(program, "u_bloomEnabled"),
+			bloomIntensity: gl.getUniformLocation(program, "u_bloomIntensity"),
+			bloomThreshold: gl.getUniformLocation(program, "u_bloomThreshold"),
+			bloomRadius: gl.getUniformLocation(program, "u_bloomRadius"),
+			bloomSoftness: gl.getUniformLocation(program, "u_bloomSoftness"),
+			bgOpacity: gl.getUniformLocation(program, "u_bgOpacity"),
+			backgroundMode: gl.getUniformLocation(program, "u_backgroundMode"),
+			backgroundOpacity: gl.getUniformLocation(program, "u_backgroundOpacity"),
+			backgroundBlurRadius: gl.getUniformLocation(program, "u_backgroundBlurRadius"),
+			colorOverlay: gl.getUniformLocation(program, "u_colorOverlay"),
+			colorOverlayBlendMode: gl.getUniformLocation(program, "u_colorOverlayBlendMode"),
+			vignette: gl.getUniformLocation(program, "u_vignette"),
+			scanLines: gl.getUniformLocation(program, "u_scanLines"),
+			crtCurvature: gl.getUniformLocation(program, "u_crtCurvature"),
+			chromatic: gl.getUniformLocation(program, "u_chromatic"),
+			chromaticOffset: gl.getUniformLocation(program, "u_chromaticOffset"),
+			characterBloom: gl.getUniformLocation(program, "u_characterBloom"),
+			characterChromatic: gl.getUniformLocation(program, "u_characterChromatic"),
+			characterChromaticOffset: gl.getUniformLocation(program, "u_characterChromaticOffset"),
+			chromaticAberration: gl.getUniformLocation(program, "u_chromaticAberration"),
+			rgbSplit: gl.getUniformLocation(program, "u_rgbSplit"),
+			rgbSplitOffset: gl.getUniformLocation(program, "u_rgbSplitOffset"),
+			glitch: gl.getUniformLocation(program, "u_glitch"),
+			blur: gl.getUniformLocation(program, "u_blur"),
+			blurRadius: gl.getUniformLocation(program, "u_blurRadius"),
+			pixelate: gl.getUniformLocation(program, "u_pixelate"),
+			pixelateSize: gl.getUniformLocation(program, "u_pixelateSize"),
+			halftone: gl.getUniformLocation(program, "u_halftone"),
+			halftoneSize: gl.getUniformLocation(program, "u_halftoneSize"),
+			filmGrain: gl.getUniformLocation(program, "u_filmGrain"),
+			filmDust: gl.getUniformLocation(program, "u_filmDust"),
+			invert: gl.getUniformLocation(program, "u_invert"),
+			speed: gl.getUniformLocation(program, "u_speed"),
+			transparentBackground: gl.getUniformLocation(program, "u_transparentBackground"),
+			atlasColumns: gl.getUniformLocation(program, "u_atlasColumns"),
+			atlasRows: gl.getUniformLocation(program, "u_atlasRows"),
+			characterCount: gl.getUniformLocation(program, "u_characterCount"),
+			sourceColorCount: gl.getUniformLocation(program, "u_sourceColorCount"),
+			sourceColors: gl.getUniformLocation(program, "u_sourceColors[0]"),
+			tintColor: gl.getUniformLocation(program, "u_tintColor"),
+			backgroundColor: gl.getUniformLocation(program, "u_backgroundColor"),
+			colorOverlayColor: gl.getUniformLocation(program, "u_colorOverlayColor"),
+		};
+
+		if (u.texture) gl.uniform1i(u.texture, 0);
+		if (u.asciiAtlas) gl.uniform1i(u.asciiAtlas, 1);
+
+		let currentActiveCharacters: string | null = null;
+		let currentFontWeight: typeof initialProps.fontWeight | null = null;
+		const applyAtlas = (chars: string, weight: typeof initialProps.fontWeight) => {
+			const atlas = createAsciiAtlas(chars, weight);
+			gl.activeTexture(gl.TEXTURE1);
+			gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
+			setTextureFromSource(gl, atlasTexture, atlas.canvas);
+			if (u.atlasColumns) gl.uniform1f(u.atlasColumns, atlas.columns);
+			if (u.atlasRows) gl.uniform1f(u.atlasRows, atlas.rows);
+			if (u.characterCount) gl.uniform1f(u.characterCount, atlas.characterCount);
+			currentActiveCharacters = chars;
+			currentFontWeight = weight;
+		};
+		applyAtlas(initialProps.activeCharacters, initialProps.fontWeight);
+
+		let currentImageSrc: string | undefined;
+		let currentSourceMode: typeof initialProps.sourceMode | null = null;
+		let disposed = false;
+		const applyImage = (src: string | undefined, mode: typeof initialProps.sourceMode) => {
+			currentImageSrc = src;
+			currentSourceMode = mode;
+			if (mode === "image" && src) {
+				const image = new window.Image();
+				if (shouldUseAnonymousCrossOrigin(src)) {
+					image.crossOrigin = "anonymous";
+				}
+				image.onload = () => {
+					if (disposed) return;
+					if (currentImageSrc !== src) return;
+					gl.activeTexture(gl.TEXTURE0);
+					setTextureFromSource(gl, sourceTexture, image);
+				};
+				image.src = src;
+			} else {
+				gl.activeTexture(gl.TEXTURE0);
+				setTextureFromSource(gl, sourceTexture, createEmptyTexture());
+			}
+		};
+		applyImage(initialProps.imageSrc, initialProps.sourceMode);
+
+		let lastMonoColor: string | null = null;
+		let lastBackgroundColor: string | null = null;
+		let lastColorOverlayColor: string | null = null;
+		let lastSourceColorValues: typeof initialProps.sourceColorValues | null = null;
+
+		let previousFrameMs: number | null = null;
+		const render = (timeMs = 0) => {
+			const p = propsRef.current;
+			if (previousFrameMs === null) previousFrameMs = timeMs;
+			const frameDelta = Math.min(Math.max((timeMs - previousFrameMs) * 0.001, 0), 0.1);
+			previousFrameMs = timeMs;
+			if (p.animationPlaying) {
+				elapsedTimeRef.current += frameDelta;
+			}
+
+			const dpr = window.devicePixelRatio || 1;
+			const width = Math.max(Math.floor(canvas.clientWidth * dpr), 1);
+			const height = Math.max(Math.floor(canvas.clientHeight * dpr), 1);
+
+			if (canvas.width !== width || canvas.height !== height) {
+				canvas.width = width;
+				canvas.height = height;
+				gl.viewport(0, 0, width, height);
+			}
+
+			if (p.activeCharacters !== currentActiveCharacters || p.fontWeight !== currentFontWeight) {
+				applyAtlas(p.activeCharacters, p.fontWeight);
+			}
+
+			if (p.imageSrc !== currentImageSrc || p.sourceMode !== currentSourceMode) {
+				applyImage(p.imageSrc, p.sourceMode);
+			}
+
+			if (u.tintColor && p.activeMonoColor !== lastMonoColor) {
+				const rgb = parseColor(p.activeMonoColor, [0.96, 0.96, 0.94]);
+				gl.uniform3f(u.tintColor, rgb[0], rgb[1], rgb[2]);
+				lastMonoColor = p.activeMonoColor;
+			}
+			if (u.backgroundColor && p.backgroundColor !== lastBackgroundColor) {
+				const rgb = parseColor(p.backgroundColor, [0, 0, 0]);
+				gl.uniform3f(u.backgroundColor, rgb[0], rgb[1], rgb[2]);
+				lastBackgroundColor = p.backgroundColor;
+			}
+			if (u.colorOverlayColor && p.colorOverlayColor !== lastColorOverlayColor) {
+				const rgb = parseColor(p.colorOverlayColor, [0.96, 0.96, 0.94]);
+				gl.uniform3f(u.colorOverlayColor, rgb[0], rgb[1], rgb[2]);
+				lastColorOverlayColor = p.colorOverlayColor;
+			}
+
+			if (p.sourceColorValues !== lastSourceColorValues) {
+				if (u.sourceColorCount) gl.uniform1i(u.sourceColorCount, p.sourceColorValues.length);
+				if (u.sourceColors) gl.uniform4fv(u.sourceColors, flattenSourceColorValues(p.sourceColorValues));
+				lastSourceColorValues = p.sourceColorValues;
+			}
+
+			if (u.sourceMode) gl.uniform1f(u.sourceMode, p.sourceMode === "image" ? 1 : 0);
+			if (u.cellSize) gl.uniform1f(u.cellSize, p.resolvedCellSize);
+			if (u.layerOpacity) gl.uniform1f(u.layerOpacity, p.opacity);
+			if (u.blendMode) gl.uniform1f(u.blendMode, enumIndex(ASCII_BLEND_MODES, p.blendMode));
+			if (u.compositeMode) gl.uniform1f(u.compositeMode, enumIndex(ASCII_COMPOSITE_MODES, p.compositeMode));
+			if (u.hue) gl.uniform1f(u.hue, p.hue);
+			if (u.saturation) gl.uniform1f(u.saturation, p.saturation);
+			if (u.brightness) gl.uniform1f(u.brightness, p.brightness);
+			if (u.contrast) gl.uniform1f(u.contrast, p.contrast);
+			if (u.characterMode) gl.uniform1f(u.characterMode, enumIndex(ASCII_CHARACTER_MODES, p.resolvedCharacterMode));
+			if (u.colorMode) gl.uniform1f(u.colorMode, enumIndex(ASCII_COLOR_MODES, p.colorMode, 1));
+			if (u.colorSourceMode) gl.uniform1f(u.colorSourceMode, enumIndex(ASCII_COLOR_SOURCE_MODES, p.colorSourceMode));
+			if (u.directionBias) gl.uniform1f(u.directionBias, p.resolvedDirectionBias);
+			if (u.glyphSignalMode) gl.uniform1f(u.glyphSignalMode, enumIndex(ASCII_SIGNAL_MODES, p.glyphSignalMode));
+			if (u.colorSignalMode) gl.uniform1f(u.colorSignalMode, enumIndex(ASCII_SIGNAL_MODES, p.colorSignalMode));
+			if (u.maskSource) gl.uniform1f(u.maskSource, enumIndex(ASCII_MASK_SOURCES, p.maskSource));
+			if (u.maskMode) gl.uniform1f(u.maskMode, enumIndex(ASCII_MASK_MODES, p.maskMode));
+			if (u.maskInvert) gl.uniform1f(u.maskInvert, p.maskInvert ? 1 : 0);
+			if (u.toneMappingMode) gl.uniform1f(u.toneMappingMode, enumIndex(ASCII_TONE_MAPPING_MODES, p.toneMapping));
+			if (u.signalBlackPoint) gl.uniform1f(u.signalBlackPoint, p.signalBlackPoint);
+			if (u.signalWhitePoint) gl.uniform1f(u.signalWhitePoint, p.signalWhitePoint);
+			if (u.signalGamma) gl.uniform1f(u.signalGamma, p.signalGamma);
+			if (u.presenceThreshold) gl.uniform1f(u.presenceThreshold, p.resolvedPresenceThreshold);
+			if (u.presenceSoftness) gl.uniform1f(u.presenceSoftness, p.presenceSoftness);
+			if (u.characterOpacity) gl.uniform1f(u.characterOpacity, p.characterOpacity);
+			if (u.randomizeCharacters) gl.uniform1f(u.randomizeCharacters, p.randomizeCharacters);
+			if (u.randomSeed) gl.uniform1f(u.randomSeed, p.randomSeed);
+			if (u.animatedCharacters) gl.uniform1f(u.animatedCharacters, p.animatedCharacters ? 1 : 0);
+			if (u.animationStyle) gl.uniform1f(u.animationStyle, enumIndex(ASCII_ANIMATION_STYLES, p.animationStyle));
+			if (u.animationIntensity) gl.uniform1f(u.animationIntensity, p.animationIntensity);
+			if (u.animationRandomness) gl.uniform1f(u.animationRandomness, p.animationRandomness);
+			if (u.characterCycleSpeed) gl.uniform1f(u.characterCycleSpeed, p.characterCycleSpeed);
+			if (u.dotGridOverlay) gl.uniform1f(u.dotGridOverlay, p.dotGridOverlay);
+			if (u.shimmerAmount) gl.uniform1f(u.shimmerAmount, p.shimmerAmount);
+			if (u.shimmerSpeed) gl.uniform1f(u.shimmerSpeed, p.shimmerSpeed);
+			if (u.bloomEnabled) gl.uniform1f(u.bloomEnabled, p.bloomEnabled ? 1 : 0);
+			if (u.bloomIntensity) gl.uniform1f(u.bloomIntensity, p.bloomIntensity);
+			if (u.bloomThreshold) gl.uniform1f(u.bloomThreshold, p.bloomThreshold);
+			if (u.bloomRadius) gl.uniform1f(u.bloomRadius, p.bloomRadius);
+			if (u.bloomSoftness) gl.uniform1f(u.bloomSoftness, p.bloomSoftness);
+			if (u.bgOpacity) gl.uniform1f(u.bgOpacity, p.bgOpacity);
+			if (u.backgroundMode) gl.uniform1f(u.backgroundMode, resolveBackgroundModeIndex(p.backgroundMode));
+			if (u.backgroundOpacity) gl.uniform1f(u.backgroundOpacity, p.backgroundOpacity);
+			if (u.backgroundBlurRadius) gl.uniform1f(u.backgroundBlurRadius, p.backgroundBlurRadius);
+			if (u.colorOverlay) gl.uniform1f(u.colorOverlay, resolveEffectAmount(p.colorOverlay));
+			if (u.colorOverlayBlendMode) gl.uniform1f(u.colorOverlayBlendMode, enumIndex(ASCII_BLEND_MODES, p.colorOverlayBlendMode));
+			if (u.vignette) gl.uniform1f(u.vignette, resolveEffectAmount(p.vignette));
+			if (u.scanLines) gl.uniform1f(u.scanLines, resolveEffectAmount(p.scanLines));
+			if (u.crtCurvature) gl.uniform1f(u.crtCurvature, resolveEffectAmount(p.crtCurvature));
+			if (u.chromatic) gl.uniform1f(u.chromatic, resolveEffectAmount(p.chromatic));
+			if (u.chromaticOffset) gl.uniform1f(u.chromaticOffset, p.chromaticOffset);
+			if (u.characterBloom) gl.uniform1f(u.characterBloom, resolveEffectAmount(p.characterBloom));
+			if (u.characterChromatic) gl.uniform1f(u.characterChromatic, resolveEffectAmount(p.characterChromatic));
+			if (u.characterChromaticOffset) gl.uniform1f(u.characterChromaticOffset, p.characterChromaticOffset);
+			if (u.chromaticAberration) gl.uniform1f(u.chromaticAberration, p.chromaticAberration);
+			if (u.rgbSplit) gl.uniform1f(u.rgbSplit, resolveEffectAmount(p.resolvedRgbSplit));
+			if (u.rgbSplitOffset) gl.uniform1f(u.rgbSplitOffset, p.rgbSplitOffset);
+			if (u.glitch) gl.uniform1f(u.glitch, resolveEffectAmount(p.glitch));
+			if (u.blur) gl.uniform1f(u.blur, resolveEffectAmount(p.blur));
+			if (u.blurRadius) gl.uniform1f(u.blurRadius, p.blurRadius);
+			if (u.pixelate) gl.uniform1f(u.pixelate, resolveEffectAmount(p.pixelate));
+			if (u.pixelateSize) gl.uniform1f(u.pixelateSize, p.pixelateSize);
+			if (u.halftone) gl.uniform1f(u.halftone, resolveEffectAmount(p.halftone));
+			if (u.halftoneSize) gl.uniform1f(u.halftoneSize, p.halftoneSize);
+			if (u.filmGrain) gl.uniform1f(u.filmGrain, resolveEffectAmount(p.filmGrain));
+			if (u.filmDust) gl.uniform1f(u.filmDust, resolveEffectAmount(p.filmDust));
+			if (u.invert) gl.uniform1f(u.invert, p.invert ? 1 : 0);
+			if (u.speed) gl.uniform1f(u.speed, p.speed);
+			if (u.transparentBackground) gl.uniform1f(u.transparentBackground, p.resolvedTransparentBackground ? 1 : 0);
+
+			gl.uniform2f(u.resolution, width, height);
+			gl.uniform1f(u.pixelRatio, dpr);
+			gl.uniform1f(u.time, elapsedTimeRef.current);
+			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+			animRef.current = requestAnimationFrame(render);
+		};
+
+		animRef.current = requestAnimationFrame(render);
+
+		return () => {
+			disposed = true;
+			cancelAnimationFrame(animRef.current);
+			gl.deleteTexture(sourceTexture);
+			gl.deleteTexture(atlasTexture);
+			gl.deleteBuffer(buffer);
+			gl.deleteProgram(program);
+			gl.deleteShader(vertexShader);
+			gl.deleteShader(fragmentShader);
+		};
+	}, []);
 
 	return (
 		<canvas

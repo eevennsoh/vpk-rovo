@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -184,6 +184,42 @@ export default function Holo({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animRef = useRef<number>(0);
 
+	const propsRef = useRef({
+		seed,
+		speed,
+		scale,
+		turbAmp,
+		turbIter,
+		warp,
+		fringeFreq,
+		iter,
+		bandSpread,
+		noise,
+		bumpStrength,
+		ambient,
+		saturation,
+		exposure,
+	});
+
+	useLayoutEffect(() => {
+		propsRef.current = {
+			seed,
+			speed,
+			scale,
+			turbAmp,
+			turbIter,
+			warp,
+			fringeFreq,
+			iter,
+			bandSpread,
+			noise,
+			bumpStrength,
+			ambient,
+			saturation,
+			exposure,
+		};
+	});
+
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
@@ -228,26 +264,31 @@ export default function Holo({
 		gl.enableVertexAttribArray(position);
 		gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
-		const uResolution = gl.getUniformLocation(program, "u_resolution");
-		const uTime = gl.getUniformLocation(program, "u_time");
+		const u = {
+			resolution: gl.getUniformLocation(program, "u_resolution"),
+			time: gl.getUniformLocation(program, "u_time"),
+			seed: gl.getUniformLocation(program, "u_seed"),
+			speed: gl.getUniformLocation(program, "u_speed"),
+			scale: gl.getUniformLocation(program, "u_scale"),
+			turbAmp: gl.getUniformLocation(program, "u_turbAmp"),
+			turbIter: gl.getUniformLocation(program, "u_turbIter"),
+			warp: gl.getUniformLocation(program, "u_warp"),
+			fringeFreq: gl.getUniformLocation(program, "u_fringeFreq"),
+			iter: gl.getUniformLocation(program, "u_iter"),
+			bandSpread: gl.getUniformLocation(program, "u_bandSpread"),
+			noise: gl.getUniformLocation(program, "u_noise"),
+			bumpStrength: gl.getUniformLocation(program, "u_bumpStrength"),
+			ambient: gl.getUniformLocation(program, "u_ambient"),
+			saturation: gl.getUniformLocation(program, "u_saturation"),
+			exposure: gl.getUniformLocation(program, "u_exposure"),
+		};
 
-		gl.uniform1f(gl.getUniformLocation(program, "u_seed"), seed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_speed"), speed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_scale"), scale);
-		gl.uniform1f(gl.getUniformLocation(program, "u_turbAmp"), turbAmp);
-		gl.uniform1f(gl.getUniformLocation(program, "u_turbIter"), turbIter);
-		gl.uniform1f(gl.getUniformLocation(program, "u_warp"), warp);
-		gl.uniform1f(gl.getUniformLocation(program, "u_fringeFreq"), fringeFreq);
-		gl.uniform1f(gl.getUniformLocation(program, "u_iter"), iter);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bandSpread"), bandSpread);
-		gl.uniform1f(gl.getUniformLocation(program, "u_noise"), noise);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bumpStrength"), bumpStrength);
-		gl.uniform1f(gl.getUniformLocation(program, "u_ambient"), ambient);
-		gl.uniform1f(gl.getUniformLocation(program, "u_saturation"), saturation);
-		gl.uniform1f(gl.getUniformLocation(program, "u_exposure"), exposure);
-
+		let cancelled = false;
 		const start = performance.now();
 		const render = () => {
+			if (cancelled) return;
+			const p = propsRef.current;
+
 			const dpr = window.devicePixelRatio || 1;
 			const width = canvas.clientWidth * dpr;
 			const height = canvas.clientHeight * dpr;
@@ -258,8 +299,24 @@ export default function Holo({
 				gl.viewport(0, 0, width, height);
 			}
 
-			gl.uniform2f(uResolution, width, height);
-			gl.uniform1f(uTime, (performance.now() - start) / 1000);
+			if (u.resolution) gl.uniform2f(u.resolution, width, height);
+			if (u.time) gl.uniform1f(u.time, (performance.now() - start) / 1000);
+
+			if (u.seed) gl.uniform1f(u.seed, p.seed);
+			if (u.speed) gl.uniform1f(u.speed, p.speed);
+			if (u.scale) gl.uniform1f(u.scale, p.scale);
+			if (u.turbAmp) gl.uniform1f(u.turbAmp, p.turbAmp);
+			if (u.turbIter) gl.uniform1f(u.turbIter, p.turbIter);
+			if (u.warp) gl.uniform1f(u.warp, p.warp);
+			if (u.fringeFreq) gl.uniform1f(u.fringeFreq, p.fringeFreq);
+			if (u.iter) gl.uniform1f(u.iter, p.iter);
+			if (u.bandSpread) gl.uniform1f(u.bandSpread, p.bandSpread);
+			if (u.noise) gl.uniform1f(u.noise, p.noise);
+			if (u.bumpStrength) gl.uniform1f(u.bumpStrength, p.bumpStrength);
+			if (u.ambient) gl.uniform1f(u.ambient, p.ambient);
+			if (u.saturation) gl.uniform1f(u.saturation, p.saturation);
+			if (u.exposure) gl.uniform1f(u.exposure, p.exposure);
+
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 			animRef.current = requestAnimationFrame(render);
 		};
@@ -267,13 +324,14 @@ export default function Holo({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => {
+			cancelled = true;
 			cancelAnimationFrame(animRef.current);
 			gl.deleteBuffer(buffer);
 			gl.deleteProgram(program);
 			gl.deleteShader(vertexShader);
 			gl.deleteShader(fragmentShader);
 		};
-	}, [ambient, bandSpread, bumpStrength, exposure, fringeFreq, iter, noise, saturation, scale, seed, speed, turbAmp, turbIter, warp]);
+	}, []);
 
 	return (
 		<canvas

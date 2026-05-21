@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import {
 	buildLogoGradientHeightmapPixels,
@@ -432,6 +432,42 @@ export default function LogoGradient({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animationFrameRef = useRef<number>(0);
 
+	const propsRef = useRef({
+		imageSrc,
+		colors,
+		colorBack,
+		seed,
+		speed,
+		motionMode,
+		angle,
+		scale,
+		turbAmp,
+		turbFreq,
+		turbIter,
+		waveFreq,
+		bend,
+		contour,
+	});
+
+	useLayoutEffect(() => {
+		propsRef.current = {
+			imageSrc,
+			colors,
+			colorBack,
+			seed,
+			speed,
+			motionMode,
+			angle,
+			scale,
+			turbAmp,
+			turbFreq,
+			turbIter,
+			waveFreq,
+			bend,
+			contour,
+		};
+	});
+
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
@@ -490,45 +526,26 @@ export default function LogoGradient({
 		gl.enableVertexAttribArray(positionLocation);
 		gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-		const resolutionLocation = gl.getUniformLocation(program, "u_resolution");
-		const timeLocation = gl.getUniformLocation(program, "u_time");
-		const pixelRatioLocation = gl.getUniformLocation(program, "u_pixelRatio");
-		const colorBackLocation = gl.getUniformLocation(program, "u_colorBack");
-		const colorsLocation = gl.getUniformLocation(program, "u_colors[0]");
-		const colorsLengthLocation = gl.getUniformLocation(program, "u_colors_length");
-		const heightmapLocation = gl.getUniformLocation(program, "u_image_heightmap");
-
-		gl.uniform1f(gl.getUniformLocation(program, "u_seed"), seed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_speed"), speed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_motionMode"), motionMode);
-		gl.uniform1f(gl.getUniformLocation(program, "u_angle"), angle);
-		gl.uniform1f(gl.getUniformLocation(program, "u_scale"), scale);
-		gl.uniform1f(gl.getUniformLocation(program, "u_turbAmp"), turbAmp);
-		gl.uniform1f(gl.getUniformLocation(program, "u_turbFreq"), turbFreq);
-		gl.uniform1f(gl.getUniformLocation(program, "u_turbIter"), turbIter);
-		gl.uniform1f(gl.getUniformLocation(program, "u_waveFreq"), waveFreq);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bend"), bend);
-		gl.uniform1f(gl.getUniformLocation(program, "u_contour"), contour);
-
-		const [backgroundRed, backgroundGreen, backgroundBlue, backgroundAlpha] = hexToRgba(colorBack);
-		if (colorBackLocation) {
-			gl.uniform4f(
-				colorBackLocation,
-				backgroundRed,
-				backgroundGreen,
-				backgroundBlue,
-				backgroundAlpha,
-			);
-		}
-
-		const palette = getPalette(colors);
-		if (colorsLocation) {
-			gl.uniform4fv(colorsLocation, buildUniformColorData(palette));
-		}
-
-		if (colorsLengthLocation) {
-			gl.uniform1i(colorsLengthLocation, palette.length);
-		}
+		const u = {
+			resolution: gl.getUniformLocation(program, "u_resolution"),
+			time: gl.getUniformLocation(program, "u_time"),
+			pixelRatio: gl.getUniformLocation(program, "u_pixelRatio"),
+			heightmap: gl.getUniformLocation(program, "u_image_heightmap"),
+			colorBack: gl.getUniformLocation(program, "u_colorBack"),
+			colors: gl.getUniformLocation(program, "u_colors[0]"),
+			colorsLength: gl.getUniformLocation(program, "u_colors_length"),
+			seed: gl.getUniformLocation(program, "u_seed"),
+			speed: gl.getUniformLocation(program, "u_speed"),
+			motionMode: gl.getUniformLocation(program, "u_motionMode"),
+			angle: gl.getUniformLocation(program, "u_angle"),
+			scale: gl.getUniformLocation(program, "u_scale"),
+			turbAmp: gl.getUniformLocation(program, "u_turbAmp"),
+			turbFreq: gl.getUniformLocation(program, "u_turbFreq"),
+			turbIter: gl.getUniformLocation(program, "u_turbIter"),
+			waveFreq: gl.getUniformLocation(program, "u_waveFreq"),
+			bend: gl.getUniformLocation(program, "u_bend"),
+			contour: gl.getUniformLocation(program, "u_contour"),
+		};
 
 		const heightmapTexture = gl.createTexture();
 		gl.activeTexture(gl.TEXTURE0);
@@ -538,8 +555,8 @@ export default function LogoGradient({
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-		if (heightmapLocation) {
-			gl.uniform1i(heightmapLocation, 0);
+		if (u.heightmap) {
+			gl.uniform1i(u.heightmap, 0);
 		}
 
 		const placeholderHeightmap = document.createElement("canvas");
@@ -580,16 +597,32 @@ export default function LogoGradient({
 		};
 
 		let cancelled = false;
-		const image = new Image();
-		image.crossOrigin = "anonymous";
-		image.onload = () => {
-			if (cancelled) return;
-			uploadHeightmap(image);
+		let currentImageSrc: string | undefined;
+		const loadHeightmap = (src: string) => {
+			if (src === currentImageSrc) return;
+			currentImageSrc = src;
+			const image = new Image();
+			image.crossOrigin = "anonymous";
+			image.onload = () => {
+				if (cancelled) return;
+				if (currentImageSrc !== src) return;
+				uploadHeightmap(image);
+			};
+			image.src = src;
 		};
-		image.src = imageSrc ?? LOGO_GRADIENT_DEFAULT_IMAGE_SRC;
+
+		loadHeightmap(propsRef.current.imageSrc ?? LOGO_GRADIENT_DEFAULT_IMAGE_SRC);
+
+		let lastColorBack: string | undefined;
+		let lastColors: readonly string[] | undefined;
 
 		const startTime = performance.now();
 		const render = () => {
+			if (cancelled) return;
+			const p = propsRef.current;
+
+			loadHeightmap(p.imageSrc ?? LOGO_GRADIENT_DEFAULT_IMAGE_SRC);
+
 			const pixelRatio = window.devicePixelRatio || 1;
 			const width = Math.max(1, Math.round(canvas.clientWidth * pixelRatio));
 			const height = Math.max(1, Math.round(canvas.clientHeight * pixelRatio));
@@ -600,17 +633,34 @@ export default function LogoGradient({
 				gl.viewport(0, 0, width, height);
 			}
 
-			if (resolutionLocation) {
-				gl.uniform2f(resolutionLocation, width, height);
+			if (u.resolution) gl.uniform2f(u.resolution, width, height);
+			if (u.time) gl.uniform1f(u.time, (performance.now() - startTime) / 1000);
+			if (u.pixelRatio) gl.uniform1f(u.pixelRatio, pixelRatio);
+
+			if (u.colorBack && p.colorBack !== lastColorBack) {
+				const [r, g, b, a] = hexToRgba(p.colorBack);
+				gl.uniform4f(u.colorBack, r, g, b, a);
+				lastColorBack = p.colorBack;
 			}
 
-			if (timeLocation) {
-				gl.uniform1f(timeLocation, (performance.now() - startTime) / 1000);
+			if (p.colors !== lastColors) {
+				const palette = getPalette(p.colors);
+				if (u.colors) gl.uniform4fv(u.colors, buildUniformColorData(palette));
+				if (u.colorsLength) gl.uniform1i(u.colorsLength, palette.length);
+				lastColors = p.colors;
 			}
 
-			if (pixelRatioLocation) {
-				gl.uniform1f(pixelRatioLocation, pixelRatio);
-			}
+			if (u.seed) gl.uniform1f(u.seed, p.seed);
+			if (u.speed) gl.uniform1f(u.speed, p.speed);
+			if (u.motionMode) gl.uniform1f(u.motionMode, p.motionMode);
+			if (u.angle) gl.uniform1f(u.angle, p.angle);
+			if (u.scale) gl.uniform1f(u.scale, p.scale);
+			if (u.turbAmp) gl.uniform1f(u.turbAmp, p.turbAmp);
+			if (u.turbFreq) gl.uniform1f(u.turbFreq, p.turbFreq);
+			if (u.turbIter) gl.uniform1f(u.turbIter, p.turbIter);
+			if (u.waveFreq) gl.uniform1f(u.waveFreq, p.waveFreq);
+			if (u.bend) gl.uniform1f(u.bend, p.bend);
+			if (u.contour) gl.uniform1f(u.contour, p.contour);
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 			animationFrameRef.current = requestAnimationFrame(render);
@@ -622,22 +672,7 @@ export default function LogoGradient({
 			cancelled = true;
 			cancelAnimationFrame(animationFrameRef.current);
 		};
-	}, [
-		angle,
-		bend,
-		colorBack,
-		colors,
-		contour,
-		imageSrc,
-		motionMode,
-		scale,
-		seed,
-		speed,
-		turbAmp,
-		turbFreq,
-		turbIter,
-		waveFreq,
-	]);
+	}, []);
 
 	return (
 		<canvas

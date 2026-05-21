@@ -7801,6 +7801,14 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   "logo-gradient": dynamic(() => import("./demos/visual/logo-gradient-demo"), {
     ssr: false,
   }),
+  "logo-spectrum": dynamic(
+    () => import("./demos/visual/logo-spectrum-demo"),
+    { ssr: false },
+  ),
+  "logo-crystal": dynamic(
+    () => import("./demos/visual/logo-crystal-demo"),
+    { ssr: false },
+  ),
   bands: dynamic(() => import("./demos/visual/bands-demo"), { ssr: false }),
   rings: dynamic(() => import("./demos/visual/rings-demo"), { ssr: false }),
   blockify: dynamic(() => import("./demos/visual/blockify-demo"), {

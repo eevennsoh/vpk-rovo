@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import {
 	buildLogoGradientHeightmapPixels,
@@ -469,6 +469,74 @@ export default function LogoGlass({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animationFrameRef = useRef<number>(0);
 
+	const propsRef = useRef({
+		imageSrc,
+		colorBack,
+		colorA,
+		colorB,
+		colorHighlight,
+		colorShadow,
+		seed,
+		speed,
+		scale,
+		motionMode,
+		direction,
+		octaves,
+		persistence,
+		lacunarity,
+		warpDepth,
+		warp,
+		ior,
+		dispersion,
+		contour,
+		falloff,
+		shapeContour,
+		bend,
+		noise,
+		bumpStrength,
+		bumpDist,
+		lightAngle,
+		ambient,
+		brightness,
+		contrast,
+		saturation,
+	});
+
+	useLayoutEffect(() => {
+		propsRef.current = {
+			imageSrc,
+			colorBack,
+			colorA,
+			colorB,
+			colorHighlight,
+			colorShadow,
+			seed,
+			speed,
+			scale,
+			motionMode,
+			direction,
+			octaves,
+			persistence,
+			lacunarity,
+			warpDepth,
+			warp,
+			ior,
+			dispersion,
+			contour,
+			falloff,
+			shapeContour,
+			bend,
+			noise,
+			bumpStrength,
+			bumpDist,
+			lightAngle,
+			ambient,
+			brightness,
+			contrast,
+			saturation,
+		};
+	});
+
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) {
@@ -535,45 +603,41 @@ export default function LogoGlass({
 		gl.enableVertexAttribArray(position);
 		gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
-		const uResolution = gl.getUniformLocation(program, "u_resolution");
-		const uTime = gl.getUniformLocation(program, "u_time");
-		const uPixelRatio = gl.getUniformLocation(program, "u_pixelRatio");
-
-		const setColorUniform = (name: string, color: string) => {
-			const [r, g, b, a] = hexToRgba(color);
-			gl.uniform4f(gl.getUniformLocation(program, name), r, g, b, a);
+		const u = {
+			resolution: gl.getUniformLocation(program, "u_resolution"),
+			time: gl.getUniformLocation(program, "u_time"),
+			pixelRatio: gl.getUniformLocation(program, "u_pixelRatio"),
+			heightmap: gl.getUniformLocation(program, "u_image_heightmap"),
+			colorBack: gl.getUniformLocation(program, "u_colorBack"),
+			colorA: gl.getUniformLocation(program, "u_colorA"),
+			colorB: gl.getUniformLocation(program, "u_colorB"),
+			colorHighlight: gl.getUniformLocation(program, "u_colorHighlight"),
+			colorShadow: gl.getUniformLocation(program, "u_colorShadow"),
+			seed: gl.getUniformLocation(program, "u_seed"),
+			speed: gl.getUniformLocation(program, "u_speed"),
+			scale: gl.getUniformLocation(program, "u_scale"),
+			motionMode: gl.getUniformLocation(program, "u_motionMode"),
+			direction: gl.getUniformLocation(program, "u_direction"),
+			octaves: gl.getUniformLocation(program, "u_octaves"),
+			persistence: gl.getUniformLocation(program, "u_persistence"),
+			lacunarity: gl.getUniformLocation(program, "u_lacunarity"),
+			warpDepth: gl.getUniformLocation(program, "u_warpDepth"),
+			warp: gl.getUniformLocation(program, "u_warp"),
+			ior: gl.getUniformLocation(program, "u_ior"),
+			dispersion: gl.getUniformLocation(program, "u_dispersion"),
+			contour: gl.getUniformLocation(program, "u_contour"),
+			falloff: gl.getUniformLocation(program, "u_falloff"),
+			shapeContour: gl.getUniformLocation(program, "u_shapeContour"),
+			bend: gl.getUniformLocation(program, "u_bend"),
+			noise: gl.getUniformLocation(program, "u_noise"),
+			bumpStrength: gl.getUniformLocation(program, "u_bumpStrength"),
+			bumpDist: gl.getUniformLocation(program, "u_bumpDist"),
+			lightAngle: gl.getUniformLocation(program, "u_lightAngle"),
+			ambient: gl.getUniformLocation(program, "u_ambient"),
+			brightness: gl.getUniformLocation(program, "u_brightness"),
+			contrast: gl.getUniformLocation(program, "u_contrast"),
+			saturation: gl.getUniformLocation(program, "u_saturation"),
 		};
-
-		setColorUniform("u_colorBack", colorBack);
-		setColorUniform("u_colorA", colorA);
-		setColorUniform("u_colorB", colorB);
-		setColorUniform("u_colorHighlight", colorHighlight);
-		setColorUniform("u_colorShadow", colorShadow);
-
-		gl.uniform1f(gl.getUniformLocation(program, "u_seed"), seed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_speed"), speed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_scale"), scale);
-		gl.uniform1f(gl.getUniformLocation(program, "u_motionMode"), motionMode);
-		gl.uniform1f(gl.getUniformLocation(program, "u_direction"), direction);
-		gl.uniform1f(gl.getUniformLocation(program, "u_octaves"), octaves);
-		gl.uniform1f(gl.getUniformLocation(program, "u_persistence"), persistence);
-		gl.uniform1f(gl.getUniformLocation(program, "u_lacunarity"), lacunarity);
-		gl.uniform1f(gl.getUniformLocation(program, "u_warpDepth"), warpDepth);
-		gl.uniform1f(gl.getUniformLocation(program, "u_warp"), warp);
-		gl.uniform1f(gl.getUniformLocation(program, "u_ior"), ior);
-		gl.uniform1f(gl.getUniformLocation(program, "u_dispersion"), dispersion);
-		gl.uniform1f(gl.getUniformLocation(program, "u_contour"), contour);
-		gl.uniform1f(gl.getUniformLocation(program, "u_falloff"), falloff);
-		gl.uniform1f(gl.getUniformLocation(program, "u_shapeContour"), shapeContour);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bend"), bend);
-		gl.uniform1f(gl.getUniformLocation(program, "u_noise"), noise);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bumpStrength"), bumpStrength);
-		gl.uniform1f(gl.getUniformLocation(program, "u_bumpDist"), Math.max(0.5, bumpDist));
-		gl.uniform1f(gl.getUniformLocation(program, "u_lightAngle"), lightAngle);
-		gl.uniform1f(gl.getUniformLocation(program, "u_ambient"), ambient);
-		gl.uniform1f(gl.getUniformLocation(program, "u_brightness"), brightness);
-		gl.uniform1f(gl.getUniformLocation(program, "u_contrast"), contrast);
-		gl.uniform1f(gl.getUniformLocation(program, "u_saturation"), saturation);
 
 		const texture = gl.createTexture();
 		gl.activeTexture(gl.TEXTURE0);
@@ -582,7 +646,9 @@ export default function LogoGlass({
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.uniform1i(gl.getUniformLocation(program, "u_image_heightmap"), 0);
+		if (u.heightmap) {
+			gl.uniform1i(u.heightmap, 0);
+		}
 
 		const placeholderHeightmap = document.createElement("canvas");
 		placeholderHeightmap.width = 1;
@@ -604,7 +670,6 @@ export default function LogoGlass({
 			);
 		}
 
-		let disposed = false;
 		const applyHeightmapTexture = (heightmap: HTMLCanvasElement | undefined) => {
 			if (!heightmap) {
 				return;
@@ -613,21 +678,38 @@ export default function LogoGlass({
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, heightmap);
 		};
 
-		const resolvedImageSrc = imageSrc?.trim();
-		if (resolvedImageSrc) {
+		let cancelled = false;
+		let currentImageSrc: string | undefined;
+		const loadHeightmap = (src: string | undefined) => {
+			const resolved = src?.trim();
+			if (!resolved) return;
+			if (resolved === currentImageSrc) return;
+			currentImageSrc = resolved;
 			const image = new Image();
 			image.crossOrigin = "anonymous";
 			image.onload = () => {
-				if (disposed) {
-					return;
-				}
+				if (cancelled) return;
+				if (currentImageSrc !== resolved) return;
 				applyHeightmapTexture(createLogoGradientHeightmapCanvas(image));
 			};
-			image.src = resolvedImageSrc;
-		}
+			image.src = resolved;
+		};
+
+		loadHeightmap(propsRef.current.imageSrc);
+
+		let lastColorBack: string | undefined;
+		let lastColorA: string | undefined;
+		let lastColorB: string | undefined;
+		let lastColorHighlight: string | undefined;
+		let lastColorShadow: string | undefined;
 
 		const start = performance.now();
 		const render = () => {
+			if (cancelled) return;
+			const p = propsRef.current;
+
+			loadHeightmap(p.imageSrc);
+
 			const devicePixelRatio = window.devicePixelRatio || 1;
 			const width = canvas.clientWidth * devicePixelRatio;
 			const height = canvas.clientHeight * devicePixelRatio;
@@ -638,9 +720,61 @@ export default function LogoGlass({
 				gl.viewport(0, 0, width, height);
 			}
 
-			gl.uniform2f(uResolution, width, height);
-			gl.uniform1f(uTime, (performance.now() - start) / 1000);
-			gl.uniform1f(uPixelRatio, devicePixelRatio);
+			if (u.resolution) gl.uniform2f(u.resolution, width, height);
+			if (u.time) gl.uniform1f(u.time, (performance.now() - start) / 1000);
+			if (u.pixelRatio) gl.uniform1f(u.pixelRatio, devicePixelRatio);
+
+			if (u.colorBack && p.colorBack !== lastColorBack) {
+				const [r, g, b, a] = hexToRgba(p.colorBack);
+				gl.uniform4f(u.colorBack, r, g, b, a);
+				lastColorBack = p.colorBack;
+			}
+			if (u.colorA && p.colorA !== lastColorA) {
+				const [r, g, b, a] = hexToRgba(p.colorA);
+				gl.uniform4f(u.colorA, r, g, b, a);
+				lastColorA = p.colorA;
+			}
+			if (u.colorB && p.colorB !== lastColorB) {
+				const [r, g, b, a] = hexToRgba(p.colorB);
+				gl.uniform4f(u.colorB, r, g, b, a);
+				lastColorB = p.colorB;
+			}
+			if (u.colorHighlight && p.colorHighlight !== lastColorHighlight) {
+				const [r, g, b, a] = hexToRgba(p.colorHighlight);
+				gl.uniform4f(u.colorHighlight, r, g, b, a);
+				lastColorHighlight = p.colorHighlight;
+			}
+			if (u.colorShadow && p.colorShadow !== lastColorShadow) {
+				const [r, g, b, a] = hexToRgba(p.colorShadow);
+				gl.uniform4f(u.colorShadow, r, g, b, a);
+				lastColorShadow = p.colorShadow;
+			}
+
+			if (u.seed) gl.uniform1f(u.seed, p.seed);
+			if (u.speed) gl.uniform1f(u.speed, p.speed);
+			if (u.scale) gl.uniform1f(u.scale, p.scale);
+			if (u.motionMode) gl.uniform1f(u.motionMode, p.motionMode);
+			if (u.direction) gl.uniform1f(u.direction, p.direction);
+			if (u.octaves) gl.uniform1f(u.octaves, p.octaves);
+			if (u.persistence) gl.uniform1f(u.persistence, p.persistence);
+			if (u.lacunarity) gl.uniform1f(u.lacunarity, p.lacunarity);
+			if (u.warpDepth) gl.uniform1f(u.warpDepth, p.warpDepth);
+			if (u.warp) gl.uniform1f(u.warp, p.warp);
+			if (u.ior) gl.uniform1f(u.ior, p.ior);
+			if (u.dispersion) gl.uniform1f(u.dispersion, p.dispersion);
+			if (u.contour) gl.uniform1f(u.contour, p.contour);
+			if (u.falloff) gl.uniform1f(u.falloff, p.falloff);
+			if (u.shapeContour) gl.uniform1f(u.shapeContour, p.shapeContour);
+			if (u.bend) gl.uniform1f(u.bend, p.bend);
+			if (u.noise) gl.uniform1f(u.noise, p.noise);
+			if (u.bumpStrength) gl.uniform1f(u.bumpStrength, p.bumpStrength);
+			if (u.bumpDist) gl.uniform1f(u.bumpDist, Math.max(0.5, p.bumpDist));
+			if (u.lightAngle) gl.uniform1f(u.lightAngle, p.lightAngle);
+			if (u.ambient) gl.uniform1f(u.ambient, p.ambient);
+			if (u.brightness) gl.uniform1f(u.brightness, p.brightness);
+			if (u.contrast) gl.uniform1f(u.contrast, p.contrast);
+			if (u.saturation) gl.uniform1f(u.saturation, p.saturation);
+
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 			animationFrameRef.current = requestAnimationFrame(render);
 		};
@@ -648,7 +782,7 @@ export default function LogoGlass({
 		animationFrameRef.current = requestAnimationFrame(render);
 
 		return () => {
-			disposed = true;
+			cancelled = true;
 			cancelAnimationFrame(animationFrameRef.current);
 			gl.deleteTexture(texture);
 			gl.deleteBuffer(buffer);
@@ -656,38 +790,7 @@ export default function LogoGlass({
 			gl.deleteShader(vertexShader);
 			gl.deleteShader(fragmentShader);
 		};
-	}, [
-		ambient,
-		bend,
-		brightness,
-		bumpDist,
-		bumpStrength,
-		colorA,
-		colorB,
-		colorBack,
-		colorHighlight,
-		colorShadow,
-		contrast,
-		contour,
-		direction,
-		dispersion,
-		falloff,
-		imageSrc,
-		ior,
-		lacunarity,
-		lightAngle,
-		motionMode,
-		noise,
-		octaves,
-		persistence,
-		saturation,
-		scale,
-		seed,
-		shapeContour,
-		speed,
-		warp,
-		warpDepth,
-	]);
+	}, []);
 
 	return (
 		<canvas

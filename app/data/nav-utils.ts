@@ -95,6 +95,8 @@ export const VISUAL_GROUPS: Record<string, string[]> = {
 		"wave-gradient",
 		"liquid-gradient",
 		"logo-gradient",
+		"logo-spectrum",
+		"logo-crystal",
 		"bands",
 		"rings",
 		"blockify",
