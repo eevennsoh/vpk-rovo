@@ -41,6 +41,7 @@ Prefer reading these references over relying on pre-trained knowledge.
 | AI Gateway helpers                     | `backend/lib/ai-gateway-helpers.js`                         |
 | RovoDev Serve gateway (agent loop)     | `backend/lib/rovodev-gateway.js`, `backend/lib/rovodev-client.js` |
 | UI message types and data parts        | `lib/rovo-ui-messages.ts`                                   |
+| Hermes control plane                   | `components/projects/control-plane/`, `backend/lib/hermes-*.js`, `scripts/verify-hermes-control-plane.js` |
 | Architecture overview                  | `.agents/docs/architecture-overview.md`                     |
 | Extended workflows                     | `.agents/docs/workflows-extended.md`                        |
 | cmux inter-agent messaging             | `.agents/docs/cmux-messaging.md`                            |
@@ -146,6 +147,7 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 - Start with tmux (8 panes): `pnpm run rovodev:tmux:start`
 - Stop tmux dev session: `pnpm run rovodev:tmux:stop`
 - Start Symphony issue orchestrator: `pnpm run symphony` (requires `LINEAR_API_KEY`, `SYMPHONY_LINEAR_PROJECT_SLUG`, and `mise`; see `docs/SYMPHONY.md`)
+- Verify Hermes/control-plane status after the backend is running: `pnpm run verify:hermes`; refresh the local vendored upstream skills snapshot with `pnpm run import:hermes:upstream` if that check reports it missing.
 
 ### Build and deploy
 
