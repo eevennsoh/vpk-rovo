@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useState, type ReactNode } from "react";
+import { createContext, use, useCallback, useMemo, useState, type ReactNode } from "react";
 
 export type CreationMode = "skill" | "agent" | null;
 
@@ -28,11 +28,15 @@ export function CreationModeProvider({ children }: { children: ReactNode }) {
 	const setAgentCreationMode = useCallback(() => setMode("agent"), []);
 	const clearCreationMode = useCallback(() => setMode(null), []);
 
+	const state = useMemo<CreationModeState>(() => ({ mode }), [mode]);
+	const actions = useMemo<CreationModeActions>(
+		() => ({ setSkillCreationMode, setAgentCreationMode, clearCreationMode }),
+		[setSkillCreationMode, setAgentCreationMode, clearCreationMode],
+	);
+
 	return (
-		<StateContext value={{ mode }}>
-			<ActionsContext value={{ setSkillCreationMode, setAgentCreationMode, clearCreationMode }}>
-				{children}
-			</ActionsContext>
+		<StateContext value={state}>
+			<ActionsContext value={actions}>{children}</ActionsContext>
 		</StateContext>
 	);
 }
