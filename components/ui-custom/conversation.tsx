@@ -360,6 +360,10 @@ export function ConversationContent({
 		<div
 			className="min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto scrollbar-auto-hide"
 			ref={context?.scrollRef}
+			style={{
+				maskImage: "linear-gradient(to bottom, black 92%, transparent 100%)",
+				WebkitMaskImage: "linear-gradient(to bottom, black 92%, transparent 100%)",
+			}}
 		>
 			<div
 				className={cn("flex flex-col gap-8 p-4", className)}

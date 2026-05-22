@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, RefObject } from "react";
+import { useEffect, useRef, RefObject } from "react";
 
 /**
- * Hook that detects clicks outside of specified elements
+ * Hook that detects clicks outside of specified elements.
+ *
+ * Stores the refs array in a ref so the underlying `pointerdown` listener
+ * is attached once per `enabled`/`callback` change instead of every render
+ * (callers typically pass an inline `[ref1, ref2]` array, whose identity
+ * changes each render).
+ *
  * @param refs - Array of refs to elements that should not trigger the callback
  * @param callback - Function to call when click outside is detected
  * @param enabled - Whether the hook is active (default: true)
@@ -13,22 +19,32 @@ export function useClickOutside(
 	callback: () => void,
 	enabled: boolean = true
 ): void {
+	const refsRef = useRef(refs);
+	const callbackRef = useRef(callback);
+
+	useEffect(() => {
+		refsRef.current = refs;
+		callbackRef.current = callback;
+	});
+
 	useEffect(() => {
 		if (!enabled) return;
 
-		const handleClickOutside = (event: MouseEvent) => {
+		const handlePointerDown = (event: PointerEvent) => {
 			const target = event.target as Node;
-			const isOutside = refs.every(
+			const currentRefs = refsRef.current;
+			const isOutside = currentRefs.every(
 				(ref) => ref.current && !ref.current.contains(target)
 			);
 			if (isOutside) {
-				callback();
+				callbackRef.current();
 			}
 		};
 
-		document.addEventListener("mousedown", handleClickOutside);
+		document.addEventListener("pointerdown", handlePointerDown, { passive: true });
 		return () => {
-			document.removeEventListener("mousedown", handleClickOutside);
+			document.removeEventListener("pointerdown", handlePointerDown);
 		};
-	}, [refs, callback, enabled]);
+	}, [enabled]);
 }
+

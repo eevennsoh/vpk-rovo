@@ -34,7 +34,14 @@ export const TaskItemFile = ({
 export type TaskItemProps = ComponentProps<"div">;
 
 export const TaskItem = ({ children, className, ...props }: TaskItemProps) => (
-  <div className={cn("text-muted-foreground text-sm", className)} {...props}>
+  <div
+    className={cn(
+      "text-muted-foreground text-sm",
+      "transition-[opacity,transform] duration-normal ease-out data-starting-style:opacity-0 data-starting-style:-translate-y-1",
+      className
+    )}
+    {...props}
+  >
     {children}
   </div>
 );

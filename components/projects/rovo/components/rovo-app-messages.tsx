@@ -52,7 +52,7 @@ import type { RovoAppDocument } from "@/lib/rovo-app-types";
 import type { RovoAppStreamingArtifact } from "@/components/projects/rovo/lib/rovo-app-streaming-artifact";
 import { isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/rovo/data/agent-profiles";
 import Image from "next/image";
-import { Component, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Component, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnswerCard } from "@/components/blocks/answer-card/components/answer-card";
 import Heading from "@/components/blocks/shared-ui/heading";
 
@@ -273,9 +273,37 @@ function RovoAppScrollAnchorSync({
 }>) {
 	const { scrollToBottom } = useConversationContext();
 	const shouldReduceMotion = useReducedMotion();
+	const didInitialScrollRef = useRef(false);
+	const latestArgsRef = useRef({ scrollAnchorMessageId, target, scrollToBottom });
+
+	useEffect(() => {
+		latestArgsRef.current = { scrollAnchorMessageId, target, scrollToBottom };
+	});
+
+	// First-mount scroll happens synchronously before paint so long threads
+	// don't briefly show their top before jumping to the anchor. Subsequent
+	// anchor changes stay in the useEffect below to avoid blocking paint
+	// while streaming.
+	useLayoutEffect(() => {
+		if (didInitialScrollRef.current) return;
+		const { scrollAnchorMessageId: id, target: anchorTarget, scrollToBottom: scroll } = latestArgsRef.current;
+		if (!id) return;
+
+		didInitialScrollRef.current = true;
+		void scroll({
+			animation: "instant",
+			ignoreEscapes: true,
+			target: anchorTarget,
+		});
+	}, []);
 
 	useEffect(() => {
 		if (!scrollAnchorMessageId) {
+			return;
+		}
+
+		if (!didInitialScrollRef.current) {
+			didInitialScrollRef.current = true;
 			return;
 		}
 
