@@ -30,6 +30,38 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* -----------------------------------------------------------------
+   Font Fallback Metric Overrides (Finding 24 — CLS reduction)
+
+   The default --font-sans / --font-mono stacks resolve to
+   "Atlassian Sans" / "Atlassian Mono" backed by ui-* and -apple-system
+   fallbacks. Without metric overrides, swap-in of the webfont causes
+   measurable CLS on first paint.
+
+   These @font-face blocks declare named fallback families with
+   ascent/descent/line-gap overrides + size-adjust so the system font
+   renders with the same visual box as the webfont. They are referenced
+   ahead of the generic fallbacks in `app/tailwind-theme.css` to take
+   effect before the webfont loads.
+   ----------------------------------------------------------------- */
+@font-face {
+	font-family: "Atlassian Sans fallback";
+	src: local("Arial");
+	size-adjust: 103%;
+	ascent-override: 90%;
+	descent-override: 22%;
+	line-gap-override: 0%;
+}
+
+@font-face {
+	font-family: "Atlassian Mono fallback";
+	src: local("Menlo"), local("Consolas"), local("monospace");
+	size-adjust: 100%;
+	ascent-override: 90%;
+	descent-override: 22%;
+	line-gap-override: 0%;
+}
+
 @layer base {
 	/* Global border and scrollbar styles */
 	* {
@@ -41,6 +73,8 @@
 	body {
 		@apply bg-background text-foreground;
 		font: var(--ds-font-body);
+		/* Mixed-font stability — keep x-height proportional across font swaps. */
+		font-size-adjust: ex-height 0.5;
 	}
 
 	/* Global pointer cursor */
@@ -52,6 +86,8 @@
 	code,
 	kbd {
 		font-family: var(--ds-font-family-code);
+		/* Mixed-font stability for inline monospace next to body copy. */
+		font-size-adjust: ex-height 0.5;
 	}
 
 	small {
@@ -229,6 +265,22 @@
 	&[data-scrolling] {
 		scrollbar-color: color-mix(in oklab, currentColor 20%, transparent) transparent;
 	}
+}
+
+/* Content-visibility: auto (Audit Theme B) — skip rendering work for
+   subtrees that are off-screen. Browsers reserve `contain-intrinsic-size`
+   so the page layout doesn't jump as content scrolls into view.
+   Override `containIntrinsicSize` via inline `style` per usage when the
+   default 400px estimate doesn't match the real content height.
+
+   Accessibility caveat: with `content-visibility: auto`, some AT
+   configurations may exclude off-screen content from sequential focus
+   traversal. Verify keyboard-only Tab order on any surface where this
+   is applied. Don't apply to wrappers that gate visibility via
+   `aria-expanded` or `hidden` — those are already culled. */
+@utility cv-auto {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 400px;
 }
 
 /* -----------------------------------------------------------------

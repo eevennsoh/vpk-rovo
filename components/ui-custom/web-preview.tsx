@@ -304,7 +304,7 @@ export function WebPreviewBody({
 	}
 
 	return (
-		<div className="flex-1">
+		<div className="flex-1 cv-auto" style={{ containIntrinsicSize: "auto 480px" }}>
 			<iframe
 				className={cn("size-full", className)}
 				referrerPolicy="no-referrer"

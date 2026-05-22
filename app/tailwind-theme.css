@@ -235,10 +235,17 @@
 
 	/* -----------------------------------------------------------------
 	   Font Family
+
+	   Stacks place the "Atlassian Sans fallback" / "Atlassian Mono fallback"
+	   families (defined as @font-face metric overrides in app/globals.css,
+	   per Finding 24) immediately after the webfont and before the generic
+	   ui-* / system fallbacks. The webfont still wins when loaded; the
+	   override only takes effect during the brief swap window, eliminating
+	   most first-paint CLS without changing the loaded-font appearance.
 	   ----------------------------------------------------------------- */
-	--font-sans: var(--ds-font-family-body); /* "Atlassian Sans", ui-sans-serif, -apple-system, ... */
+	--font-sans: "Atlassian Sans", "Atlassian Sans fallback", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 	--font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-	--font-mono: var(--ds-font-family-code); /* "Atlassian Mono", ui-monospace, Menlo, ... */
+	--font-mono: "Atlassian Mono", "Atlassian Mono fallback", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
 	/* -----------------------------------------------------------------
 	   Font Size with Line Heights
