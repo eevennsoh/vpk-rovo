@@ -966,8 +966,8 @@ export function RovoAppMessages({
 								variants={ROVO_APP_EMPTY_STATE_CONTAINER_VARIANTS}
 							>
 								<motion.div className={cn(emptyState.illustrationClassName, "relative")} style={{ willChange: "transform, opacity" }} variants={emptyStateItemVariants}>
-									<Image alt={emptyState.alt} className={cn(emptyState.illustrationClassName, "object-contain dark:hidden [[data-color-mode=dark]_&]:hidden")} height={emptyState.height} loading="eager" src={emptyState.lightIllustrationSrc} width={emptyState.width} />
-									<Image alt={emptyState.alt} className={cn(emptyState.illustrationClassName, "hidden object-contain dark:block [[data-color-mode=dark]_&]:block")} height={emptyState.height} loading="eager" src={emptyState.darkIllustrationSrc} width={emptyState.width} />
+									<Image alt={emptyState.alt} className={cn(emptyState.illustrationClassName, "object-contain dark:hidden [[data-color-mode=dark]_&]:hidden")} height={emptyState.height} priority src={emptyState.lightIllustrationSrc} width={emptyState.width} />
+									<Image alt={emptyState.alt} className={cn(emptyState.illustrationClassName, "hidden object-contain dark:block [[data-color-mode=dark]_&]:block")} height={emptyState.height} priority src={emptyState.darkIllustrationSrc} width={emptyState.width} />
 								</motion.div>
 								<motion.div style={{ willChange: "transform, opacity" }} variants={emptyStateItemVariants}>
 									<Heading size="xlarge">{emptyState.heading}</Heading>
