@@ -133,16 +133,65 @@ function ScrubBarTrack({ className, children, ...props }: ScrubBarTrackProps) {
 
   const clampedValue = Math.min(Math.max(value, 0), duration || 0)
 
+  const seekTo = useCallback(
+    (next: number) => {
+      if (!duration) return
+      const clamped = Math.min(Math.max(next, 0), duration)
+      onScrub?.(clamped)
+    },
+    [duration, onScrub]
+  )
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!duration) return
+      const step = event.shiftKey ? 5 : 1
+      switch (event.key) {
+        case "ArrowLeft":
+        case "ArrowDown":
+          event.preventDefault()
+          seekTo(clampedValue - step)
+          break
+        case "ArrowRight":
+        case "ArrowUp":
+          event.preventDefault()
+          seekTo(clampedValue + step)
+          break
+        case "Home":
+          event.preventDefault()
+          seekTo(0)
+          break
+        case "End":
+          event.preventDefault()
+          seekTo(duration)
+          break
+        case "PageDown":
+          event.preventDefault()
+          seekTo(clampedValue - 10)
+          break
+        case "PageUp":
+          event.preventDefault()
+          seekTo(clampedValue + 10)
+          break
+        default:
+          break
+      }
+    },
+    [clampedValue, duration, seekTo]
+  )
+
 	return (
 		<div
 			ref={trackRef}
 			aria-label={props["aria-label"] ?? "Timeline scrubber"}
 			data-slot="scrub-bar-track"
 			className={cn(
-				"bg-bg-neutral relative h-2 w-full grow cursor-pointer touch-none rounded-full transition-none select-none",
+				"bg-bg-neutral relative h-2 w-full grow cursor-pointer touch-none rounded-full transition-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focused",
 				className
 			)}
       onPointerDown={handlePointerDown}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
       role="slider"
       aria-valuemin={0}
       aria-valuemax={duration || 0}

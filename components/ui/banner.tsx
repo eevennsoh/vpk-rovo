@@ -37,11 +37,15 @@ interface BannerProps
 
 function Banner({ className, variant = "warning", children, ...props }: Readonly<BannerProps>) {
 	const Icon = bannerIcons[variant ?? "warning"]
+	// Only urgent variants warrant an immediate, assertive SR announcement.
+	// Informational banners (e.g. "announcement") use `status` + polite.
+	const isUrgent = variant === "warning" || variant === "error"
 
 	return (
 		<div
 			data-slot="banner"
-			role="alert"
+			role={isUrgent ? "alert" : "status"}
+			aria-live={isUrgent ? "assertive" : "polite"}
 			className={cn(bannerVariants({ variant }), className)}
 			{...props}
 		>
