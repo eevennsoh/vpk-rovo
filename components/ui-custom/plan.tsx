@@ -77,7 +77,7 @@ export const Plan = ({ className, isStreaming = false, open, defaultOpen = false
 
 	return (
 		<PlanContext value={{ isStreaming, isOpen, setIsOpen, isContentExpanded, setIsContentExpanded }}>
-			<Collapsible data-slot="plan" open={isOpen} onOpenChange={setIsOpen} {...props} render={<Card className={cn("shadow-none", className)} />}>
+			<Collapsible data-slot="plan" open={isOpen} onOpenChange={setIsOpen} {...props} render={<Card className={cn("shadow-none", "transition-[opacity,transform] duration-normal ease-out data-starting-style:opacity-0 data-starting-style:-translate-y-1", className)} />}>
 				{children}
 			</Collapsible>
 		</PlanContext>

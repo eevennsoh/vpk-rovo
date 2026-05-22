@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 
 import { useIsMobile } from "@/components/hooks/use-mobile";
@@ -30,8 +30,7 @@ export function ChartAreaInteractive() {
 	const isMobile = useIsMobile();
 	const [timeRange, setTimeRange] = useState(isMobile ? "7d" : "90d");
 
-	const filteredData = INTERACTIVE_CHART_DATA.filter((item) => {
-		const date = new Date(item.date);
+	const filteredData = useMemo(() => {
 		const referenceDate = new Date("2024-06-30");
 		let daysToSubtract = 90;
 		if (timeRange === "30d") {
@@ -41,8 +40,11 @@ export function ChartAreaInteractive() {
 		}
 		const startDate = new Date(referenceDate);
 		startDate.setDate(startDate.getDate() - daysToSubtract);
-		return date >= startDate;
-	});
+		return INTERACTIVE_CHART_DATA.filter((item) => {
+			const date = new Date(item.date);
+			return date >= startDate;
+		});
+	}, [timeRange]);
 
 	return (
 		<Card className="@container/card h-full flex flex-col">

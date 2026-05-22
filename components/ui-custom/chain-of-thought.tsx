@@ -329,7 +329,7 @@ export const ChainOfThoughtStep = memo(
 		return (
 			<div
 				className={cn(
-					"group/cot-step fade-in-0 slide-in-from-top-2 animate-in",
+					"group/cot-step transition-all duration-medium ease-out data-starting-style:opacity-0 data-starting-style:-translate-y-2",
 					"flex gap-2 text-sm",
 					stepStatusStyles[status],
 					className

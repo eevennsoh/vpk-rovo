@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useMemo, useState } from "react";
+import { useRef, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type {
 	ConversationContextValue,
 	ConversationFollowMode,
@@ -33,6 +33,10 @@ interface UseScrollAnchorReturn {
 	scrollFollowMode: ConversationFollowMode;
 }
 
+// useLayoutEffect cannot run during SSR; fall back to useEffect on the server.
+const useIsomorphicLayoutEffect =
+	typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export function useScrollAnchor({
 	enableTargetFollow = true,
 	isGenerationActive,
@@ -41,6 +45,7 @@ export function useScrollAnchor({
 	const conversationContextRef = useRef<ConversationContextValue | null>(null);
 	const scrollSpacerRef = useRef<HTMLDivElement>(null);
 	const hasInitializedScrollRef = useRef(false);
+	const didInitialScrollRef = useRef(false);
 	const previousLatestUserMessageIdRef = useRef<string | null>(null);
 	const pendingAnchorScrollAnimationRef = useRef<ScrollToBottomOptions["animation"]>("instant");
 	const [scrollAnchorMessageId, setScrollAnchorMessageId] = useState<string | null>(null);
@@ -50,6 +55,21 @@ export function useScrollAnchor({
 		() => getLatestUserMessageId(uiMessages),
 		[uiMessages]
 	);
+
+	// First-mount scroll-to-bottom runs synchronously before paint so long
+	// threads don't briefly show their top before jumping. Subsequent scrolls
+	// stay in useEffect below to avoid blocking paint while streaming.
+	useIsomorphicLayoutEffect(() => {
+		if (didInitialScrollRef.current) return;
+		const scrollElement = conversationContextRef.current?.scrollRef.current;
+		if (!scrollElement) return;
+
+		didInitialScrollRef.current = true;
+		void conversationContextRef.current?.scrollToBottom({
+			animation: "instant",
+			ignoreEscapes: true,
+		});
+	}, []);
 
 	useEffect(() => {
 		const scrollElement = conversationContextRef.current?.scrollRef.current;
@@ -84,7 +104,14 @@ export function useScrollAnchor({
 			setScrollFollowMode("bottom");
 		}
 
-		if (!hasInitializedScrollRef.current && !shouldActivateTargetFollow) {
+		// First-mount scroll already ran in useLayoutEffect above; only run
+		// fallback scrolls for subsequent renders where target-follow is not
+		// activating.
+		if (
+			didInitialScrollRef.current &&
+			!hasInitializedScrollRef.current &&
+			!shouldActivateTargetFollow
+		) {
 			void conversationContextRef.current?.scrollToBottom({
 				animation: "instant",
 				ignoreEscapes: true,

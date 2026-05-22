@@ -54,7 +54,11 @@ export const Tool = ({
 
   return (
     <Collapsible
-      className={cn("group not-prose mb-4 w-full rounded-md border", className)}
+      className={cn(
+        "group not-prose mb-4 w-full rounded-md border",
+        "transition-[opacity,transform] duration-normal ease-out data-starting-style:opacity-0 data-starting-style:-translate-y-1",
+        className
+      )}
       onOpenChange={handleOpenChange}
       open={resolvedOpen}
       {...props}
