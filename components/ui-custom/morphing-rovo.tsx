@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, useMotionValue, useTransform, animate } from "motion/react";
-import { useEffect, useRef } from "react";
+import { motion, useMotionValue, useTransform, animate, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 
 // ---------------------------------------------------------------------------
 // Path interpolation helper
@@ -91,6 +91,30 @@ export function MorphingRovoShape({
 }: Readonly<MorphingRovoShapeProps>) {
 	const progress = useMotionValue(0);
 	const cancelledRef = useRef(false);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const reduced = useReducedMotion();
+	const [inView, setInView] = useState(false);
+	const [tabVisible, setTabVisible] = useState(
+		typeof document === "undefined" ? true : document.visibilityState === "visible",
+	);
+
+	useEffect(() => {
+		const el = containerRef.current;
+		if (!el) return;
+		const io = new IntersectionObserver(
+			([entry]) => setInView(entry.isIntersecting),
+			{ rootMargin: "200px" },
+		);
+		io.observe(el);
+		const onVis = () => setTabVisible(document.visibilityState === "visible");
+		document.addEventListener("visibilitychange", onVis);
+		return () => {
+			io.disconnect();
+			document.removeEventListener("visibilitychange", onVis);
+		};
+	}, []);
+
+	const shouldAnimate = !reduced && inView && tabVisible;
 
 	const path = useTransform(progress, [0, 1, 2, 3, 4], paths, {
 		mixer: (a: string, b: string) => lerpPaths(a, b),
@@ -108,6 +132,7 @@ export function MorphingRovoShape({
 	});
 
 	useEffect(() => {
+		if (!shouldAnimate) return;
 		cancelledRef.current = false;
 		let initialDelayTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -141,10 +166,11 @@ export function MorphingRovoShape({
 			}
 			progress.stop();
 		};
-	}, [progress, duration, ease]);
+	}, [progress, duration, ease, shouldAnimate]);
 
 	return (
 		<motion.div
+			ref={containerRef}
 			className={className}
 			style={{
 				width: size,

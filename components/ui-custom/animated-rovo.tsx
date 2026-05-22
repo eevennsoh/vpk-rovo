@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useAnimate } from "motion/react";
+import { motion, useAnimate, useReducedMotion } from "motion/react";
 import { useEffect, useState, useId, useRef } from "react";
 
 // ---------------------------------------------------------------------------
@@ -113,8 +113,33 @@ export function AnimatedRovoShape({
 	const maskId = useId();
 	const [scope, animate] = useAnimate();
 	const cancelledRef = useRef(false);
+	const containerRef = useRef<SVGSVGElement>(null);
+	const reduced = useReducedMotion();
+	const [inView, setInView] = useState(false);
+	const [tabVisible, setTabVisible] = useState(
+		typeof document === "undefined" ? true : document.visibilityState === "visible",
+	);
 
 	useEffect(() => {
+		const el = containerRef.current;
+		if (!el) return;
+		const io = new IntersectionObserver(
+			([entry]) => setInView(entry.isIntersecting),
+			{ rootMargin: "200px" },
+		);
+		io.observe(el);
+		const onVis = () => setTabVisible(document.visibilityState === "visible");
+		document.addEventListener("visibilitychange", onVis);
+		return () => {
+			io.disconnect();
+			document.removeEventListener("visibilitychange", onVis);
+		};
+	}, []);
+
+	const shouldAnimate = !reduced && inView && tabVisible;
+
+	useEffect(() => {
+		if (!shouldAnimate) return;
 		cancelledRef.current = false;
 
 		async function loop() {
@@ -130,10 +155,11 @@ export function AnimatedRovoShape({
 		return () => {
 			cancelledRef.current = true;
 		};
-	}, [animate, scope, transition]);
+	}, [animate, scope, transition, shouldAnimate]);
 
 	return (
 		<motion.svg
+			ref={containerRef}
 			width={size}
 			height={size}
 			viewBox="0 0 16 16"
@@ -175,6 +201,31 @@ function AnimatedRovoRoot({
 	children,
 }: Readonly<AnimatedRovoRootProps>) {
 	const [mounted, setMounted] = useState(false);
+	const wrapperRef = useRef<HTMLDivElement>(null);
+	const reduced = useReducedMotion();
+	const [inView, setInView] = useState(false);
+	const [tabVisible, setTabVisible] = useState(
+		typeof document === "undefined" ? true : document.visibilityState === "visible",
+	);
+
+	useEffect(() => {
+		const el = wrapperRef.current;
+		if (!el) return;
+		const io = new IntersectionObserver(
+			([entry]) => setInView(entry.isIntersecting),
+			{ rootMargin: "200px" },
+		);
+		io.observe(el);
+		const onVis = () => setTabVisible(document.visibilityState === "visible");
+		document.addEventListener("visibilitychange", onVis);
+		return () => {
+			io.disconnect();
+			document.removeEventListener("visibilitychange", onVis);
+		};
+	}, []);
+
+	const shouldAnimate = !reduced && inView && tabVisible;
+
 	const normalizedFullSpinProbability = Math.min(1, Math.max(0, fullSpinProbability));
 	const normalizedDanceDistancePercent = Math.min(100, Math.max(0, danceDistancePercent));
 	const danceOffset = size * (normalizedDanceDistancePercent / 100);
@@ -214,9 +265,9 @@ function AnimatedRovoRoot({
 		setSpinAnimation(generateSpin(0));
 	}, []);
 
-	// Reset sporadic spin when entering/leaving streaming mode
+	// Reset sporadic spin when entering/leaving streaming mode or pausing
 	useEffect(() => {
-		if (streaming) {
+		if (streaming || !shouldAnimate) {
 			setSpinAnimation({
 				rotate: 0,
 				transition: { duration: 0.3, ease: "easeInOut" },
@@ -224,10 +275,13 @@ function AnimatedRovoRoot({
 		} else if (mounted) {
 			setSpinAnimation(generateSpin(0));
 		}
-	}, [streaming, mounted]);
+	}, [streaming, mounted, shouldAnimate]);
+
+	const isResting = streaming || danceOffset === 0 || !shouldAnimate;
 
 	return (
 		<motion.div
+			ref={wrapperRef}
 			className={className}
 			style={{
 				width: size,
@@ -235,7 +289,7 @@ function AnimatedRovoRoot({
 				transformOrigin: "50% -50%",
 			}}
 			animate={
-				streaming || danceOffset === 0
+				isResting
 					? { rotate: 0, y: 0 }
 					: {
 							rotate: [15, -15, 15],
@@ -243,15 +297,15 @@ function AnimatedRovoRoot({
 						}
 			}
 			transition={
-				streaming || danceOffset === 0
+				isResting
 					? { duration: 0.3, ease: "easeOut" }
 					: { duration: 2, ease: "easeInOut", repeat: Infinity }
 			}
 		>
 			<motion.div
-				animate={mounted ? spinAnimation : { rotate: 0 }}
+				animate={mounted && shouldAnimate ? spinAnimation : { rotate: 0 }}
 				onAnimationComplete={(definition) => {
-					if (!streaming && mounted && typeof definition === "object" && definition !== null && "rotate" in definition && typeof definition.rotate === "number") {
+					if (!streaming && mounted && shouldAnimate && typeof definition === "object" && definition !== null && "rotate" in definition && typeof definition.rotate === "number") {
 						setSpinAnimation(generateSpin(definition.rotate));
 					}
 				}}

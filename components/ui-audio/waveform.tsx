@@ -8,9 +8,38 @@ import {
   useRef,
   useState,
   type HTMLAttributes,
+  type RefObject,
 } from "react"
+import { useReducedMotion } from "motion/react"
 
 import { cn } from "@/lib/utils"
+
+// File-local guard: pauses animations when off-screen, tab hidden, or reduced motion.
+function useShouldAnimateLocal(ref: RefObject<Element | null>) {
+  const reduced = useReducedMotion()
+  const [inView, setInView] = useState(false)
+  const [tabVisible, setTabVisible] = useState(
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  )
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { rootMargin: "200px" },
+    )
+    io.observe(el)
+    const onVis = () => setTabVisible(document.visibilityState === "visible")
+    document.addEventListener("visibilitychange", onVis)
+    return () => {
+      io.disconnect()
+      document.removeEventListener("visibilitychange", onVis)
+    }
+  }, [ref])
+
+  return !reduced && inView && tabVisible
+}
 
 export type WaveformProps = HTMLAttributes<HTMLDivElement> & {
   data?: number[]
@@ -197,6 +226,7 @@ export const ScrollingWaveform = ({
   const seedRef = useRef(Math.random())
   const dataIndexRef = useRef(0)
   const heightStyle = typeof height === "number" ? `${height}px` : height
+  const shouldAnimate = useShouldAnimateLocal(containerRef)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -240,6 +270,7 @@ export const ScrollingWaveform = ({
   }, [barWidth, barGap])
 
   useEffect(() => {
+    if (!shouldAnimate) return
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -363,6 +394,7 @@ export const ScrollingWaveform = ({
     fadeEdges,
     fadeWidth,
     data,
+    shouldAnimate,
   ])
 
   return (
@@ -528,8 +560,21 @@ export const MicrophoneWaveform = ({
   const processingAnimationRef = useRef<number | null>(null)
   const lastActiveDataRef = useRef<number[]>([])
   const transitionProgressRef = useRef(0)
+  const reduced = useReducedMotion()
+  const [tabVisible, setTabVisible] = useState(
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  )
 
   useEffect(() => {
+    const onVis = () => setTabVisible(document.visibilityState === "visible")
+    document.addEventListener("visibilitychange", onVis)
+    return () => document.removeEventListener("visibilitychange", onVis)
+  }, [])
+
+  const shouldAnimate = !reduced && tabVisible
+
+  useEffect(() => {
+    if (!shouldAnimate) return
     if (processing && !active) {
       let time = 0
       transitionProgressRef.current = 0
@@ -600,10 +645,10 @@ export const MicrophoneWaveform = ({
       }
       return
     }
-  }, [processing, active])
+  }, [processing, active, shouldAnimate])
 
   useEffect(() => {
-    if (!active) {
+    if (!active || !shouldAnimate) {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
       }
@@ -691,7 +736,7 @@ export const MicrophoneWaveform = ({
         cancelAnimationFrame(animationIdRef.current)
       }
     }
-  }, [active, fftSize, smoothingTimeConstant, sensitivity, onError])
+  }, [active, fftSize, smoothingTimeConstant, sensitivity, onError, shouldAnimate])
 
   return <Waveform data={data} {...props} />
 }
@@ -788,6 +833,7 @@ export const LiveMicrophoneWaveform = ({
   const setDragOffset = externalSetDragOffset ?? setInternalDragOffset
 
   const heightStyle = typeof height === "number" ? `${height}px` : height
+  const shouldAnimate = useShouldAnimateLocal(containerRef)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -1001,6 +1047,7 @@ export const LiveMicrophoneWaveform = ({
   )
 
   useEffect(() => {
+    if (!shouldAnimate) return
     if (playbackPosition === null || !audioBufferRef.current) return
 
     let animationId: number
@@ -1057,9 +1104,11 @@ export const LiveMicrophoneWaveform = ({
     barGap,
     setDragOffset,
     historyRef,
+    shouldAnimate,
   ])
 
   useEffect(() => {
+    if (!shouldAnimate) return
     const canvas = canvasRef.current
     if (!canvas) return
     if (!active && historyRef.current.length === 0 && playbackPosition === null)
@@ -1193,6 +1242,7 @@ export const LiveMicrophoneWaveform = ({
     dragOffset,
     playbackPosition,
     historyRef,
+    shouldAnimate,
   ])
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1379,6 +1429,7 @@ export const RecordingWaveform = ({
   const lastUpdateRef = useRef<number>(0)
 
   const heightStyle = typeof height === "number" ? `${height}px` : height
+  const shouldAnimate = useShouldAnimateLocal(containerRef)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -1469,6 +1520,7 @@ export const RecordingWaveform = ({
   }, [recording, fftSize, smoothingTimeConstant, onError, onRecordingComplete])
 
   useEffect(() => {
+    if (!shouldAnimate) return
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -1585,6 +1637,7 @@ export const RecordingWaveform = ({
     barGap,
     barRadius,
     barColor,
+    shouldAnimate,
   ])
 
   const handleScrub = useCallback(

@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useReducedMotion } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -50,7 +51,8 @@ function createAudioAnalyser(
  */
 export function useAudioVolume(
   mediaStream?: MediaStream | null,
-  options: AudioAnalyserOptions = { fftSize: 32, smoothingTimeConstant: 0 }
+  options: AudioAnalyserOptions = { fftSize: 32, smoothingTimeConstant: 0 },
+  paused: boolean = false,
 ) {
   const [volume, setVolume] = useState(0)
   const volumeRef = useRef(0)
@@ -71,6 +73,9 @@ export function useAudioVolume(
     if (!mediaStream) {
       setVolume(0)
       volumeRef.current = 0
+      return
+    }
+    if (paused) {
       return
     }
 
@@ -112,7 +117,7 @@ export function useAudioVolume(
         cancelAnimationFrame(frameId.current)
       }
     }
-  }, [mediaStream, memoizedOptions])
+  }, [mediaStream, memoizedOptions, paused])
 
   return volume
 }
@@ -150,7 +155,8 @@ const normalizeDb = (value: number) => {
  */
 export function useMultibandVolume(
   mediaStream?: MediaStream | null,
-  options: MultiBandVolumeOptions = {}
+  options: MultiBandVolumeOptions = {},
+  paused: boolean = false,
 ) {
   const opts = useMemo(
     () => ({ ...multibandDefaults, ...options }),
@@ -177,6 +183,9 @@ export function useMultibandVolume(
       const emptyBands = new Array(opts.bands).fill(0)
       setFrequencyBands(emptyBands)
       bandsRef.current = emptyBands
+      return
+    }
+    if (paused) {
       return
     }
 
@@ -244,7 +253,7 @@ export function useMultibandVolume(
         cancelAnimationFrame(frameId.current)
       }
     }
-  }, [mediaStream, opts])
+  }, [mediaStream, opts, paused])
 
   return frequencyBands
 }
@@ -260,7 +269,8 @@ type AnimationState =
 export const useBarAnimator = (
   state: AnimationState,
   columns: number,
-  interval: number
+  interval: number,
+  paused: boolean = false,
 ): number[] => {
   const indexRef = useRef(0)
   const [currentFrame, setCurrentFrame] = useState<number[]>([])
@@ -285,6 +295,7 @@ export const useBarAnimator = (
   }, [sequence])
 
   useEffect(() => {
+    if (paused) return
     let startTime = performance.now()
 
     const animate = (time: DOMHighResTimeStamp) => {
@@ -306,7 +317,7 @@ export const useBarAnimator = (
         cancelAnimationFrame(animationFrameId.current)
       }
     }
-  }, [interval, sequence])
+  }, [interval, sequence, paused])
 
   return currentFrame
 }
@@ -369,12 +380,51 @@ const BarVisualizerComponent = React.forwardRef<
     },
     ref
   ) => {
+    const containerRef = useRef<HTMLDivElement | null>(null)
+    const reduced = useReducedMotion()
+    const [inView, setInView] = useState(false)
+    const [tabVisible, setTabVisible] = useState(
+      typeof document === "undefined" ? true : document.visibilityState === "visible",
+    )
+
+    useEffect(() => {
+      const el = containerRef.current
+      if (!el) return
+      const io = new IntersectionObserver(
+        ([entry]) => setInView(entry.isIntersecting),
+        { rootMargin: "200px" },
+      )
+      io.observe(el)
+      const onVis = () => setTabVisible(document.visibilityState === "visible")
+      document.addEventListener("visibilitychange", onVis)
+      return () => {
+        io.disconnect()
+        document.removeEventListener("visibilitychange", onVis)
+      }
+    }, [])
+
+    const shouldAnimate = !reduced && inView && tabVisible
+    const paused = !shouldAnimate
+
+    const setRefs = (node: HTMLDivElement | null) => {
+      containerRef.current = node
+      if (typeof ref === "function") {
+        ref(node)
+      } else if (ref) {
+        (ref as React.MutableRefObject<HTMLDivElement | null>).current = node
+      }
+    }
+
     // Audio processing
-    const realVolumeBands = useMultibandVolume(mediaStream, {
-      bands: barCount,
-      loPass: 100,
-      hiPass: 200,
-    })
+    const realVolumeBands = useMultibandVolume(
+      mediaStream,
+      {
+        bands: barCount,
+        loPass: 100,
+        hiPass: 200,
+      },
+      paused,
+    )
 
     // Generate fake volume data for demo mode using refs to avoid state updates
     const fakeVolumeBandsRef = useRef<number[]>(new Array(barCount).fill(0.2))
@@ -386,6 +436,7 @@ const BarVisualizerComponent = React.forwardRef<
     // Animate fake volume bands for speaking and listening states
     useEffect(() => {
       if (!demo) return
+      if (paused) return
 
       if (state !== "speaking" && state !== "listening") {
         const bands = new Array(barCount).fill(0.2)
@@ -437,7 +488,7 @@ const BarVisualizerComponent = React.forwardRef<
           cancelAnimationFrame(fakeAnimationRef.current)
         }
       }
-    }, [demo, state, barCount])
+    }, [demo, state, barCount, paused])
 
     // Use fake or real volume data based on demo mode
     const volumeBands = useMemo(
@@ -455,12 +506,13 @@ const BarVisualizerComponent = React.forwardRef<
           ? 150
           : state === "listening"
             ? 500
-            : 1000
+            : 1000,
+      paused,
     )
 
     return (
       <div
-        ref={ref}
+        ref={setRefs}
         data-slot="bar-visualizer"
         data-state={state}
         className={cn(

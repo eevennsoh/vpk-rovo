@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef, type HTMLAttributes } from "react"
+import { useEffect, useRef, useState, type HTMLAttributes } from "react"
+import { useReducedMotion } from "motion/react"
 
 import {
   STATIC_ACTIVE_HANDOFF_DURATION_MS,
@@ -99,6 +100,30 @@ export const LiveWaveform = ({
   const heightStyle = typeof height === "number" ? `${height}px` : height
   const minBarOpacity = Math.max(0, Math.min(1, barOpacityMin))
   const maxBarOpacity = Math.max(minBarOpacity, Math.min(1, barOpacityMax))
+
+  const reduced = useReducedMotion()
+  const [inView, setInView] = useState(false)
+  const [tabVisible, setTabVisible] = useState(
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  )
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { rootMargin: "200px" },
+    )
+    io.observe(el)
+    const onVis = () => setTabVisible(document.visibilityState === "visible")
+    document.addEventListener("visibilitychange", onVis)
+    return () => {
+      io.disconnect()
+      document.removeEventListener("visibilitychange", onVis)
+    }
+  }, [])
+
+  const shouldAnimate = !reduced && inView && tabVisible
 
   const getContainerSize = () => {
     const container = containerRef.current
@@ -222,6 +247,7 @@ export const LiveWaveform = ({
   }, [active, mode])
 
   useEffect(() => {
+    if (!shouldAnimate) return
     if (processing && !active) {
       let time = 0
       transitionProgressRef.current = 0
@@ -345,7 +371,7 @@ export const LiveWaveform = ({
         fadeToIdle()
       }
     }
-  }, [processing, active, barWidth, barGap, mode])
+  }, [processing, active, barWidth, barGap, mode, shouldAnimate])
 
   // Handle microphone setup and teardown
   useEffect(() => {
@@ -462,6 +488,7 @@ export const LiveWaveform = ({
 
   // Animation loop
   useEffect(() => {
+    if (!shouldAnimate) return
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -757,6 +784,7 @@ export const LiveWaveform = ({
     fadeEdges,
     fadeWidth,
     mode,
+    shouldAnimate,
   ])
 
   return (

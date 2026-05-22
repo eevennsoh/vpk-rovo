@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useReducedMotion } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -58,6 +59,7 @@ function useAnimation(
     autoplay: boolean
     loop: boolean
     onFrame?: (index: number) => void
+    paused?: boolean
   }
 ): { frameIndex: number; isPlaying: boolean } {
   const [frameIndex, setFrameIndex] = useState(0)
@@ -67,7 +69,7 @@ function useAnimation(
   const accumulatorRef = useRef<number>(0)
 
   useEffect(() => {
-    if (!frames || frames.length === 0 || !isPlaying) {
+    if (!frames || frames.length === 0 || !isPlaying || options.paused) {
       return
     }
 
@@ -111,7 +113,7 @@ function useAnimation(
         cancelAnimationFrame(frameIdRef.current)
       }
     }
-  }, [frames, isPlaying, options.fps, options.loop, options.onFrame])
+  }, [frames, isPlaying, options.fps, options.loop, options.onFrame, options.paused])
 
   useEffect(() => {
     setFrameIndex(0)
@@ -443,12 +445,47 @@ export const Matrix = React.forwardRef<HTMLDivElement, MatrixProps>(
     },
     ref
   ) => {
+    const containerRef = useRef<HTMLDivElement | null>(null)
+    const reduced = useReducedMotion()
+    const [inView, setInView] = useState(false)
+    const [tabVisible, setTabVisible] = useState(
+      typeof document === "undefined" ? true : document.visibilityState === "visible",
+    )
+
+    useEffect(() => {
+      const el = containerRef.current
+      if (!el) return
+      const io = new IntersectionObserver(
+        ([entry]) => setInView(entry.isIntersecting),
+        { rootMargin: "200px" },
+      )
+      io.observe(el)
+      const onVis = () => setTabVisible(document.visibilityState === "visible")
+      document.addEventListener("visibilitychange", onVis)
+      return () => {
+        io.disconnect()
+        document.removeEventListener("visibilitychange", onVis)
+      }
+    }, [])
+
+    const shouldAnimate = !reduced && inView && tabVisible
+
     const { frameIndex } = useAnimation(frames, {
       fps,
       autoplay: autoplay && !pattern,
       loop,
       onFrame,
+      paused: !shouldAnimate,
     })
+
+    const setRefs = (node: HTMLDivElement | null) => {
+      containerRef.current = node
+      if (typeof ref === "function") {
+        ref(node)
+      } else if (ref) {
+        (ref as React.MutableRefObject<HTMLDivElement | null>).current = node
+      }
+    }
 
     const currentFrame = useMemo(() => {
       if (mode === "vu" && levels && levels.length > 0) {
@@ -493,7 +530,7 @@ export const Matrix = React.forwardRef<HTMLDivElement, MatrixProps>(
 
     return (
       <div
-        ref={ref}
+        ref={setRefs}
         role="img"
         aria-label={ariaLabel ?? "matrix display"}
         aria-live={isAnimating ? "polite" : undefined}

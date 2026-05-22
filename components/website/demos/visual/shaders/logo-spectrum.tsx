@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useReducedMotion } from "motion/react";
 
 import {
 	buildLogoGradientHeightmapPixels,
@@ -404,9 +405,34 @@ export default function LogoSpectrum({
 		};
 	});
 
+	const reduced = useReducedMotion();
+	const [inView, setInView] = useState(false);
+	const [tabVisible, setTabVisible] = useState(
+		typeof document === "undefined" ? true : document.visibilityState === "visible",
+	);
+
+	useEffect(() => {
+		const el = canvasRef.current;
+		if (!el) return;
+		const io = new IntersectionObserver(
+			([entry]) => setInView(entry.isIntersecting),
+			{ rootMargin: "200px" },
+		);
+		io.observe(el);
+		const onVis = () => setTabVisible(document.visibilityState === "visible");
+		document.addEventListener("visibilitychange", onVis);
+		return () => {
+			io.disconnect();
+			document.removeEventListener("visibilitychange", onVis);
+		};
+	}, []);
+
+	const shouldAnimate = !reduced && inView && tabVisible;
+
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
+		if (!shouldAnimate) return;
 
 		const gl = canvas.getContext("webgl2", {
 			alpha: true,
@@ -625,7 +651,7 @@ export default function LogoSpectrum({
 			cancelled = true;
 			cancelAnimationFrame(animationFrameRef.current);
 		};
-	}, []);
+	}, [shouldAnimate]);
 
 	return (
 		<canvas

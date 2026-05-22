@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useTexture } from "@react-three/drei"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
+import { useReducedMotion } from "motion/react"
 import * as THREE from "three"
 
 export type AgentState = null | "thinking" | "listening" | "talking"
@@ -38,10 +39,38 @@ export function Orb({
   getOutputVolume,
   className,
 }: OrbProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
+  const [inView, setInView] = useState(false)
+  const [tabVisible, setTabVisible] = useState(
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  )
+
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { rootMargin: "200px" },
+    )
+    io.observe(el)
+    const onVis = () => setTabVisible(document.visibilityState === "visible")
+    document.addEventListener("visibilitychange", onVis)
+    return () => {
+      io.disconnect()
+      document.removeEventListener("visibilitychange", onVis)
+    }
+  }, [])
+
+  const shouldAnimate = !reduced && inView && tabVisible
+  const pausedRef = useRef(!shouldAnimate)
+  pausedRef.current = !shouldAnimate
+
   return (
-    <div className={className ?? "relative h-full w-full"}>
+    <div ref={wrapperRef} className={className ?? "relative h-full w-full"}>
       <Canvas
         resize={{ debounce: resizeDebounce }}
+        frameloop={shouldAnimate ? "always" : "demand"}
         gl={{
           alpha: true,
           antialias: true,
@@ -60,6 +89,7 @@ export function Orb({
           outputVolumeRef={outputVolumeRef}
           getInputVolume={getInputVolume}
           getOutputVolume={getOutputVolume}
+          pausedRef={pausedRef}
         />
       </Canvas>
     </div>
@@ -78,6 +108,7 @@ function Scene({
   outputVolumeRef,
   getInputVolume,
   getOutputVolume,
+  pausedRef,
 }: {
   colors: [string, string]
   colorsRef?: React.RefObject<[string, string]>
@@ -90,6 +121,7 @@ function Scene({
   outputVolumeRef?: React.RefObject<number>
   getInputVolume?: () => number
   getOutputVolume?: () => number
+  pausedRef: React.RefObject<boolean>
 }) {
   const { gl } = useThree()
   const circleRef =
@@ -162,6 +194,7 @@ function Scene({
   }, [])
 
   useFrame((_, delta: number) => {
+    if (pausedRef.current) return
     const mat = circleRef.current?.material
     if (!mat) return
     const live = colorsRef?.current

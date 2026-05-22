@@ -4,6 +4,7 @@ import * as React from 'react';
 import {
   motion,
   useAnimation,
+  useReducedMotion,
   type SVGMotionProps,
   type UseInViewOptions,
   type LegacyAnimationControls,
@@ -226,6 +227,25 @@ function AnimateIcon({
     inViewMargin: animateOnViewMargin,
   });
 
+  // Pause looped animations when reduced motion is preferred or tab is hidden.
+  const reduced = useReducedMotion();
+  const [tabVisible, setTabVisible] = React.useState(
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  );
+  React.useEffect(() => {
+    const onVis = () => setTabVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+  const shouldAnimate = !reduced && tabVisible;
+  const shouldAnimateRef = React.useRef(shouldAnimate);
+  shouldAnimateRef.current = shouldAnimate;
+  React.useEffect(() => {
+    if (!shouldAnimate && loop) {
+      stopAnimation();
+    }
+  }, [shouldAnimate, loop, stopAnimation]);
+
   const startAnim = React.useCallback(
     async (anim: 'initial' | 'animate', method: 'start' | 'set' = 'start') => {
       try {
@@ -323,6 +343,10 @@ function AnimateIcon({
       }
 
       if (loop) {
+        if (!shouldAnimateRef.current) {
+          await startAnim('initial');
+          return;
+        }
         if (loopDelay > 0) {
           await new Promise<void>((resolve) => {
             loopDelayRef.current = setTimeout(() => {
