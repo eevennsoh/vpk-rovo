@@ -63,7 +63,7 @@ function TooltipContent({
 				<TooltipPrimitive.Popup
 					data-slot="tooltip-content"
 					className={cn(
-						"data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1 data-[side=inline-start]:slide-in-from-right-1 data-[side=inline-end]:slide-in-from-left-1 w-fit max-w-xs rounded-md bg-bg-neutral-bold px-3 py-1.5 text-xs text-text-inverse shadow-md outline-hidden origin-(--transform-origin) duration-fast ease-out",
+						"w-fit max-w-xs rounded-md bg-bg-neutral-bold px-3 py-1.5 text-xs text-text-inverse shadow-md outline-hidden origin-(--transform-origin) transition-[opacity,scale,translate] duration-fast ease-out data-starting-style:opacity-0 data-starting-style:scale-95 data-ending-style:opacity-0 data-ending-style:scale-95 data-[side=bottom]:data-starting-style:-translate-y-0.5 data-[side=top]:data-starting-style:translate-y-0.5 data-[side=left]:data-starting-style:translate-x-0.5 data-[side=right]:data-starting-style:-translate-x-0.5 data-[side=inline-start]:data-starting-style:translate-x-0.5 data-[side=inline-end]:data-starting-style:-translate-x-0.5 data-[side=bottom]:data-ending-style:-translate-y-0.5 data-[side=top]:data-ending-style:translate-y-0.5 data-[side=left]:data-ending-style:translate-x-0.5 data-[side=right]:data-ending-style:-translate-x-0.5 data-[side=inline-start]:data-ending-style:translate-x-0.5 data-[side=inline-end]:data-ending-style:-translate-x-0.5",
 						className
 					)}
 					{...props}
