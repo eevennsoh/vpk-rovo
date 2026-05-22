@@ -375,7 +375,6 @@ function KanbanCard({
 	tags?: readonly KanbanBoardCardTag[];
 	title: string;
 }>) {
-	const [isHovered, setIsHovered] = useState(false);
 	const isMounted = useIsMounted();
 
 	const PriorityIcon = PRIORITY_ICONS[priority];
@@ -390,24 +389,25 @@ function KanbanCard({
 			aria-pressed={showSelectionRing}
 			className={cn(
 				"relative border outline-none focus-visible:border-ring",
-				showSelectionRing ? "border-border-selected" : "border-transparent",
+				// Per-card hover handled via CSS (was onMouseEnter+setState which
+				// triggered re-renders across the column on every mouseenter).
+				showSelectionRing
+					? "border-border-selected bg-bg-selected"
+					: "border-transparent bg-surface hover:bg-bg-neutral-subtle-hovered",
+				// Entry animation for inserted cards. Matches existing codebase
+				// pattern (see `components/ui-custom/task.tsx`,
+				// `components/ui-custom/chain-of-thought.tsx`).
+				"transition-[opacity,transform,background-color,border-color] duration-normal ease-out",
+				"data-starting-style:opacity-0 data-starting-style:-translate-y-1",
 			)}
 			onClick={onClick}
 			onDragStart={onDragStart}
 			onDragEnd={onDragEnd}
-			onMouseEnter={() => setIsHovered(true)}
-			onMouseLeave={() => setIsHovered(false)}
 			style={{
-				backgroundColor: showSelectionRing
-					? token("color.background.selected")
-					: isHovered
-						? token("color.background.neutral.subtle.hovered")
-						: token("elevation.surface"),
 				borderRadius: token("radius.small"),
 				padding: token("space.150"),
 				cursor: isDragging ? "grabbing" : "grab",
 				boxShadow: token("elevation.shadow.raised"),
-				transition: "background-color 0.2s ease, border-color 0.2s ease",
 				textAlign: "left",
 				width: "100%",
 				opacity: isDragging ? 0.5 : 1,
@@ -509,12 +509,15 @@ export function KanbanBoard({
 				});
 
 		resizeObserver?.observe(scrollContainer);
-		scrollContainer.addEventListener("scroll", updateScrollAffordance, { passive: true });
+		// Use `scrollend` (Baseline 2025-09-15) so React state only updates once
+		// the user finishes scrolling, rather than re-rendering the affordance
+		// chip on every animation frame during a horizontal scroll.
+		scrollContainer.addEventListener("scrollend", updateScrollAffordance, { passive: true });
 		window.addEventListener("resize", updateScrollAffordance);
 
 		return () => {
 			resizeObserver?.disconnect();
-			scrollContainer.removeEventListener("scroll", updateScrollAffordance);
+			scrollContainer.removeEventListener("scrollend", updateScrollAffordance);
 			window.removeEventListener("resize", updateScrollAffordance);
 		};
 	}, [boardColumns]);
@@ -538,7 +541,14 @@ export function KanbanBoard({
 		onCardDrop?.(targetColumnTitle);
 	};
 
-	const buildMultiDragImage = (count: number): HTMLDivElement => {
+	// Cache the multi-drag preview DOM node once on mount. Previously this node
+	// was allocated synchronously inside `dragstart`, adding DOM work to the long
+	// task that starts a drag, and could leak if the user pressed Escape to
+	// cancel (the cached ref was only cleared by `dragend`).
+	useEffect(() => {
+		if (typeof document === "undefined") {
+			return;
+		}
 		const node = document.createElement("div");
 		node.setAttribute("aria-hidden", "true");
 		node.style.position = "fixed";
@@ -549,7 +559,6 @@ export function KanbanBoard({
 		node.style.pointerEvents = "none";
 
 		const label = document.createElement("span");
-		label.textContent = `${count} items`;
 		label.style.position = "absolute";
 		label.style.top = "18px";
 		label.style.left = "6px";
@@ -562,8 +571,13 @@ export function KanbanBoard({
 		node.appendChild(label);
 
 		document.body.appendChild(node);
-		return node;
-	};
+		dragImageRef.current = node;
+
+		return () => {
+			node.remove();
+			dragImageRef.current = null;
+		};
+	}, []);
 
 	const handleCardDragStartInternal = (
 		card: KanbanBoardCardData,
@@ -574,18 +588,17 @@ export function KanbanBoard({
 		event.dataTransfer.effectAllowed = "move";
 		event.dataTransfer.dropEffect = "move";
 		event.dataTransfer.setData("text/plain", card.code);
-		if (isMultiDrag && event.dataTransfer && selectedCardCodes) {
-			dragImageRef.current = buildMultiDragImage(selectedCardCodes.size);
+		if (isMultiDrag && selectedCardCodes && dragImageRef.current) {
+			const labelNode = dragImageRef.current.firstChild;
+			if (labelNode) {
+				labelNode.textContent = `${selectedCardCodes.size} items`;
+			}
 			event.dataTransfer.setDragImage(dragImageRef.current, 0, 0);
 		}
 		onCardDragStart?.(card, columnTitle);
 	};
 
 	const handleCardDragEndInternal = () => {
-		if (dragImageRef.current) {
-			dragImageRef.current.remove();
-			dragImageRef.current = null;
-		}
 		onCardDragEnd?.();
 	};
 
