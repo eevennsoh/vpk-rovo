@@ -52,7 +52,7 @@ function LinkSafetyDialog({
 						{url}
 					</DialogDescription>
 				</DialogHeader>
-				<div className="relative h-[70vh]">
+				<div className="cv-auto relative h-[70vh]" style={{ containIntrinsicSize: "auto 480px" }}>
 					{loading ? (
 						<div className="absolute inset-0 flex items-center justify-center">
 							<Spinner />

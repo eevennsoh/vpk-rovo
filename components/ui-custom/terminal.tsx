@@ -61,9 +61,10 @@ export function Terminal({
 		<TerminalContext value={contextValue}>
 			<div
 				className={cn(
-					"flex flex-col overflow-hidden rounded-lg border bg-zinc-950 text-zinc-100",
+					"cv-auto flex flex-col overflow-hidden rounded-lg border bg-zinc-950 text-zinc-100",
 					className
 				)}
+				style={{ containIntrinsicSize: "auto 384px" }}
 				{...props}
 			>
 				{children ?? (

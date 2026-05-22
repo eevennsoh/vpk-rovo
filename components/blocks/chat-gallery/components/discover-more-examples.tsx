@@ -88,7 +88,10 @@ interface ExamplesGridProps {
 
 function ExamplesGrid({ examples, onExampleClick, onExamplePreviewStart, onExamplePreviewEnd }: Readonly<ExamplesGridProps>) {
 	return (
-		<div className="auto-rows-[146px] grid-cols-3 gap-4 pb-6" style={{ display: "grid" }}>
+		<div
+			className="auto-rows-[146px] grid-cols-3 gap-4 pb-6 cv-auto"
+			style={{ display: "grid", containIntrinsicSize: "146px 320px" }}
+		>
 			{examples.length > 0 ? (
 				examples.map((example) => {
 					const prompt = getExamplePrompt(example);

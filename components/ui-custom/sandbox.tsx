@@ -24,13 +24,14 @@ import { getStatusBadge } from "./tool";
 
 export type SandboxRootProps = ComponentProps<typeof Collapsible>;
 
-export const Sandbox = ({ className, ...props }: SandboxRootProps) => (
+export const Sandbox = ({ className, style, ...props }: SandboxRootProps) => (
   <Collapsible
     className={cn(
-      "not-prose group mb-4 w-full overflow-hidden rounded-md border",
+      "cv-auto not-prose group mb-4 w-full overflow-hidden rounded-md border",
       className
     )}
     defaultOpen
+    style={{ containIntrinsicSize: "auto 480px", ...style }}
     {...props}
   />
 );

@@ -52,7 +52,8 @@ export function WebsiteCard({ name, href, children, className, fullWidth }: Read
 
 	return (
 		<li
-			className={`relative flex aspect-square items-center justify-center bg-surface border-r border-b border-border ${className ?? ""}`}
+			className={`cv-auto relative flex aspect-square items-center justify-center bg-surface border-r border-b border-border ${className ?? ""}`}
+			style={{ containIntrinsicSize: "auto 480px" }}
 		>
 			{/* Title positioned at top-left */}
 			<span

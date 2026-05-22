@@ -81,9 +81,10 @@ export const SchemaDisplay = ({
     <SchemaDisplayContext value={contextValue}>
       <div
         className={cn(
-          "overflow-hidden rounded-lg border bg-background",
+          "cv-auto overflow-hidden rounded-lg border bg-background",
           className
         )}
+        style={{ containIntrinsicSize: "auto 600px" }}
         {...props}
       >
         {children ?? (

@@ -423,9 +423,10 @@ export const Reasoning = memo(
 		return (
 			<ReasoningContext value={contextValue}>
 				<Collapsible
-					className={cn("not-prose mb-4", className)}
+					className={cn("cv-auto not-prose mb-4", className)}
 					onOpenChange={handleOpenChange}
 					open={isOpen}
+					style={{ containIntrinsicSize: "auto 600px" }}
 					{...props}
 				>
 					{children}

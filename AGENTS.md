@@ -132,6 +132,12 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 
 > Full token mappings, motion tokens, and common mistakes are in the `token-priority` rule (always loaded for component/CSS files).
 
+### Browser Support
+
+Allow Newly Available CSS features (Baseline 2023+) without `@supports` fallbacks.
+For Limited-Availability features (e.g. `container-type: scroll-state`, scroll-driven animations),
+treat them as progressive enhancement — degrade silently, no polyfill.
+
 ## Workflows
 
 ### Development

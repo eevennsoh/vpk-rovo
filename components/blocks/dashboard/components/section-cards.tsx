@@ -16,7 +16,11 @@ export function SectionCards() {
 				const FooterIcon = card.footerIcon
 
 				return (
-					<Card key={card.title} className="@container/card">
+					<Card
+						key={card.title}
+						className="cv-auto @container/card"
+						style={{ containIntrinsicSize: "auto 200px" }}
+					>
 						<CardHeader className="relative">
 							<CardDescription>{card.title}</CardDescription>
 							<CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
