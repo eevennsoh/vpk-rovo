@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import "./globals.css";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,9 +20,15 @@ export default function GlobalError({
 	error,
 	reset,
 }: Readonly<GlobalErrorProps>) {
+	const headingRef = useRef<HTMLHeadingElement>(null);
+
 	useEffect(() => {
 		console.error(error);
 	}, [error]);
+
+	useEffect(() => {
+		headingRef.current?.focus();
+	}, []);
 
 	return (
 		<html lang="en">
@@ -30,7 +36,9 @@ export default function GlobalError({
 				<div className="flex min-h-svh items-center justify-center px-4 py-8">
 					<Empty width="narrow" className="py-0">
 						<EmptyHeader>
-							<EmptyTitle>Something went wrong</EmptyTitle>
+							<EmptyTitle ref={headingRef} tabIndex={-1}>
+								Something went wrong
+							</EmptyTitle>
 							<EmptyDescription>
 								A critical error occurred. Please try again.
 							</EmptyDescription>

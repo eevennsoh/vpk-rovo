@@ -29,9 +29,9 @@ export default function ArtsPage() {
 					leftContent={<CategoryTabs activeCategory="arts" options={CATEGORY_TAB_OPTIONS} />}
 				/>
 
-				<main>
+				<div>
 					<HomeArtsSection artComponents={artComponents} />
-				</main>
+				</div>
 			</div>
 		</>
 	);

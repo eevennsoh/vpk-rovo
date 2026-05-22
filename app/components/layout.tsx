@@ -30,7 +30,7 @@ export default async function ComponentsLayout({
 					leftContent={<CategoryTabs options={CATEGORY_TAB_OPTIONS} />}
 				/>
 
-				<main>{children}</main>
+				<div>{children}</div>
 			</div>
 		</>
 	);

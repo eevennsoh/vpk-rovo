@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Empty,
@@ -16,15 +16,23 @@ interface ErrorProps {
 }
 
 export default function Error({ error, reset }: Readonly<ErrorProps>) {
+	const headingRef = useRef<HTMLHeadingElement>(null);
+
 	useEffect(() => {
 		console.error(error);
 	}, [error]);
+
+	useEffect(() => {
+		headingRef.current?.focus();
+	}, []);
 
 	return (
 		<div className="flex min-h-svh items-center justify-center bg-surface px-4 py-8">
 			<Empty width="narrow" className="py-0">
 				<EmptyHeader>
-					<EmptyTitle>Something went wrong</EmptyTitle>
+					<EmptyTitle ref={headingRef} tabIndex={-1}>
+						Something went wrong
+					</EmptyTitle>
 					<EmptyDescription>
 						An unexpected error occurred. You can try again or refresh the
 						page.

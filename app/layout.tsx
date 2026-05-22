@@ -236,8 +236,9 @@ ${devStylesheetGuardScript}
 				))}
 				{/* Atlassian DS-CDN Font Integration */}
 				<link rel="preconnect" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net" />
-				<link rel="preload" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net/assets/fonts/atlassian-sans/v3/AtlassianSans-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-				<link rel="preload stylesheet" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net/assets/font-rules/v5/atlassian-fonts.css" as="style" crossOrigin="anonymous" />
+				<link rel="preload" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net/assets/fonts/atlassian-sans/v3/AtlassianSans-latin.woff2" as="font" type="font/woff2" fetchPriority="high" crossOrigin="anonymous" />
+				<link rel="preload" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net/assets/font-rules/v5/atlassian-fonts.css" as="style" fetchPriority="high" crossOrigin="anonymous" />
+				<link rel="stylesheet" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net/assets/font-rules/v5/atlassian-fonts.css" fetchPriority="high" crossOrigin="anonymous" />
 				{/* Bitcount Grid Single + DotGothic16 + BBH Bartle + JetBrains Mono */}
 				<link rel="preconnect" href="https://fonts.googleapis.com" />
 				<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -245,7 +246,15 @@ ${devStylesheetGuardScript}
 			</head>
 			<body suppressHydrationWarning className="antialiased">
 				<PreHydrationScript id="vpk-pre-hydration">{preHydrationScript}</PreHydrationScript>
-				<Providers>{children}</Providers>
+				<a
+					href="#main-content"
+					className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-sm focus:bg-surface-raised focus:px-3 focus:py-2 focus:text-text focus:shadow-overlay focus:outline-2 focus:outline-offset-2 focus:outline-[color:var(--color-ring)]"
+				>
+					Skip to content
+				</a>
+				<Providers>
+					<main id="main-content">{children}</main>
+				</Providers>
 				{process.env.NODE_ENV === "development" ? <DevRootTools /> : null}
 			</body>
 		</html>

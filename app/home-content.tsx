@@ -52,7 +52,7 @@ export function HomeContent({ category, lastUpdatedAt, projectComponents, artCom
 					leftContent={<CategoryTabs activeCategory={category} options={CATEGORY_TAB_OPTIONS} />}
 				/>
 
-				<main>
+				<div>
 					{category === "ui" && (
 						<>
 							<HomeSectionHeading
@@ -172,7 +172,7 @@ export function HomeContent({ category, lastUpdatedAt, projectComponents, artCom
 							</WebsiteGrid>
 						</>
 					)}
-				</main>
+				</div>
 			</div>
 		</>
 	);
