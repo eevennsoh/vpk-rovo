@@ -2,6 +2,7 @@
 
 import { MotionConfig } from "motion/react";
 import { ThemeWrapper } from "@/components/utils/theme-wrapper";
+import { UserInvalidSync } from "@/components/utils/user-invalid-sync";
 import { SidebarProvider } from "@/app/contexts/context-sidebar";
 import * as RovoChatContext from "@/app/contexts/context-rovo-chat";
 
@@ -32,6 +33,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 			<ThemeWrapper>
 				<SidebarProvider>
 					<RovoChatContext.RovoChatProvider>
+						<UserInvalidSync />
 						{children}
 					</RovoChatContext.RovoChatProvider>
 				</SidebarProvider>
