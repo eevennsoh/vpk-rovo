@@ -23,6 +23,8 @@ if (browserRuntimeDefaults.changed) {
 
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const fs = require("fs");
 const path = require("path");
 const WebSocket = require("ws");
 const {
@@ -1320,7 +1322,70 @@ async function deleteAgentsRfpDemoHermesJobs(state) {
 	}
 }
 
-app.use(cors());
+// Baseline security headers (CSP, nosniff, HSTS, Referrer-Policy, etc.).
+// CSP directives are tuned for Next.js static export served by this Express
+// process plus AI Gateway connectivity for the chat surfaces.
+app.use(
+	helmet({
+		contentSecurityPolicy: {
+			directives: {
+				defaultSrc: ["'self'"],
+				scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+				connectSrc: [
+					"'self'",
+					"https://ai-gateway.us-east-1.staging.atl-paas.net",
+					"wss:",
+					"ws:",
+				],
+				imgSrc: ["'self'", "data:", "blob:", "https:"],
+				mediaSrc: ["'self'", "data:", "blob:", "https:"],
+				styleSrc: [
+					"'self'",
+					"'unsafe-inline'",
+					"https://fonts.googleapis.com",
+				],
+				fontSrc: [
+					"'self'",
+					"data:",
+					"https://fonts.gstatic.com",
+					"https://*.atlassian.com",
+				],
+				workerSrc: ["'self'", "blob:"],
+				frameSrc: ["'self'", "https:"],
+				objectSrc: ["'none'"],
+				baseUri: ["'self'"],
+			},
+		},
+		// Static-export HTML embeds inline JSON/scripts via Next.js; let app handle COEP.
+		crossOriginEmbedderPolicy: false,
+		// Allow same-origin and document-controlled resource loading for embedded media.
+		crossOriginResourcePolicy: { policy: "cross-origin" },
+	})
+);
+
+// CORS allowlist. Override via ALLOWED_ORIGINS (comma-separated). The default
+// covers the standard local dev ports for the Next.js frontend (3000) and
+// Express backend (8080) plus RovoDev Serve (8000).
+const ALLOWED_ORIGINS = (
+	process.env.ALLOWED_ORIGINS ??
+	"http://localhost:3000,http://localhost:8000,http://localhost:8080"
+)
+	.split(",")
+	.map((origin) => origin.trim())
+	.filter(Boolean);
+
+app.use(
+	cors({
+		origin: (origin, cb) => {
+			// Same-origin requests (no Origin header) and explicit allowlist matches pass.
+			if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+				return cb(null, true);
+			}
+			return cb(new Error(`CORS: origin ${origin} not allowed`));
+		},
+		credentials: true,
+	})
+);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.text({ limit: "50mb", type: "text/markdown" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -12845,6 +12910,9 @@ app.get("/api/web-proxy", async (req, res) => {
 		);
 
 		res.setHeader("Content-Type", contentType);
+		// Defense-in-depth: upstream Content-Type is echoed verbatim, so prevent
+		// browsers from MIME-sniffing the response into something executable.
+		res.setHeader("X-Content-Type-Options", "nosniff");
 		if (upstreamCacheControl) {
 			res.setHeader("Cache-Control", upstreamCacheControl);
 		}
@@ -15310,6 +15378,80 @@ app.get("/api/health", async (req, res) => {
 const publicPath = path.join(__dirname, "public");
 console.log(`[STARTUP] Serving static files from: ${publicPath}`);
 
+// Build a one-time `Link: rel=preload` header for the largest CSS and JS
+// chunks emitted by the Next.js static export. This lets the browser kick off
+// LCP-critical resource discovery from the very first byte of HTML instead of
+// waiting for the HTML parser to reach the <link>/<script> tags.
+const buildPreloadLinkHeader = () => {
+	try {
+		const staticRoot = path.join(publicPath, "_next", "static");
+		if (!fs.existsSync(staticRoot)) {
+			return "";
+		}
+
+		const findLargest = (dir, predicate) => {
+			let best = null;
+			const walk = (current) => {
+				let entries;
+				try {
+					entries = fs.readdirSync(current, { withFileTypes: true });
+				} catch {
+					return;
+				}
+				for (const entry of entries) {
+					const full = path.join(current, entry.name);
+					if (entry.isDirectory()) {
+						walk(full);
+						continue;
+					}
+					if (!entry.isFile() || !predicate(entry.name)) {
+						continue;
+					}
+					try {
+						const { size } = fs.statSync(full);
+						if (!best || size > best.size) {
+							best = { full, size };
+						}
+					} catch {
+						/* ignore stat failures */
+					}
+				}
+			};
+			walk(dir);
+			return best?.full ?? null;
+		};
+
+		const toHref = (absolutePath) => {
+			const rel = path.relative(publicPath, absolutePath).split(path.sep).join("/");
+			return `/${rel}`;
+		};
+
+		const cssFile = findLargest(staticRoot, (name) => name.endsWith(".css"));
+		const chunksDir = path.join(staticRoot, "chunks");
+		const jsFile = fs.existsSync(chunksDir)
+			? findLargest(chunksDir, (name) => name.endsWith(".js"))
+			: findLargest(staticRoot, (name) => name.endsWith(".js"));
+
+		const entries = [];
+		if (cssFile) {
+			entries.push(`<${toHref(cssFile)}>; rel=preload; as=style`);
+		}
+		if (jsFile) {
+			entries.push(`<${toHref(jsFile)}>; rel=preload; as=script; crossorigin`);
+		}
+
+		return entries.join(", ");
+	} catch (error) {
+		console.warn("[STARTUP] Failed to build preload Link header:", error?.message);
+		return "";
+	}
+};
+
+const PRELOAD_LINK_HEADER = buildPreloadLinkHeader();
+if (PRELOAD_LINK_HEADER) {
+	console.log(`[STARTUP] Preload Link header: ${PRELOAD_LINK_HEADER}`);
+}
+
 // Serve all static files (CSS, JS, images, etc.)
 app.use(express.static(publicPath));
 
@@ -15324,6 +15466,10 @@ app.get("/{*splat}", (req, res) => {
 		return res.status(404).json({
 			error: `API route not found: ${req.path}`,
 		});
+	}
+
+	if (PRELOAD_LINK_HEADER) {
+		res.setHeader("Link", PRELOAD_LINK_HEADER);
 	}
 
 	// Try to serve index.html for SPA routing
