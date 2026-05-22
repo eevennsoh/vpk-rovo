@@ -39,10 +39,20 @@ interface AlertProps
 		VariantProps<typeof alertVariants> {}
 
 function Alert({ className, variant, ...props }: Readonly<AlertProps>) {
+	// Gate `role="alert"` so only urgent variants trigger an immediate SR
+	// announcement. Informational/discovery/announcement variants use
+	// `status` + polite to avoid interrupting the user.
+	const isUrgent =
+		variant === "warning" ||
+		variant === "danger" ||
+		variant === "error" ||
+		variant === "destructive"
+
 	return (
 		<div
 			data-slot="alert"
-			role="alert"
+			role={isUrgent ? "alert" : "status"}
+			aria-live={isUrgent ? "assertive" : "polite"}
 			className={cn(alertVariants({ variant }), className)}
 			{...props}
 		/>

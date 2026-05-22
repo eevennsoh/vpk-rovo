@@ -86,11 +86,27 @@ function TabsTrigger({ className, ...props }: Readonly<TabsTriggerProps>) {
 
 type TabsContentProps = TabsPrimitive.Panel.Props
 
-function TabsContent({ className, ...props }: Readonly<TabsContentProps>) {
+function TabsContent({ className, keepMounted = true, ...props }: Readonly<TabsContentProps>) {
 	return (
 		<TabsPrimitive.Panel
 			data-slot="tabs-content"
+			keepMounted={keepMounted}
 			className={cn("text-sm flex-1 outline-none", className)}
+			render={(elementProps, state) => (
+				<div
+					{...elementProps}
+					// `hidden="until-found"` keeps the panel content discoverable by
+					// the browser's find-in-page (Cmd-F) while visually hidden.
+					// Baseline Newly Available (2024-08-06). Overrides Base UI's
+					// default boolean `hidden` so inactive tab content can still be
+					// searched. React's hidden prop type allows the string value.
+					hidden={
+						state.hidden
+							? ("until-found" as unknown as boolean)
+							: undefined
+					}
+				/>
+			)}
 			{...props}
 		/>
 	)

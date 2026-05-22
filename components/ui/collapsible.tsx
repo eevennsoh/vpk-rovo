@@ -21,10 +21,16 @@ type CollapsibleContentProps = Omit<CollapsiblePrimitive.Panel.Props, "render"> 
   render?: React.ReactElement
 }
 
-function CollapsibleContent({ render, ...props }: CollapsibleContentProps) {
+function CollapsibleContent({ render, hiddenUntilFound = true, ...props }: CollapsibleContentProps) {
   const Panel = CollapsiblePrimitive.Panel as React.ComponentType<CollapsibleContentProps>
   return (
-    <Panel data-slot="collapsible-content" suppressHydrationWarning render={render} {...props} />
+    <Panel
+      data-slot="collapsible-content"
+      suppressHydrationWarning
+      hiddenUntilFound={hiddenUntilFound}
+      render={render}
+      {...props}
+    />
   )
 }
 
