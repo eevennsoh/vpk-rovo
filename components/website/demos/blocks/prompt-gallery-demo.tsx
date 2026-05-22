@@ -57,7 +57,7 @@ export default function PromptGalleryDemo() {
 			<div className="flex-1 shrink min-h-[40px]" />
 			<div className="flex w-full max-w-[800px] flex-col items-center shrink-0 px-4" style={{ gap: token("space.100") }}>
 				<div>
-					<Image src="/illustration-ai/chat/light.svg" alt="Rovo Chat" width={74} height={67} />
+					<Image src="/illustration-ai/chat/light.svg" alt="Rovo Chat" width={74} height={67} priority />
 				</div>
 
 				<div style={{ marginBottom: token("space.400") }}>

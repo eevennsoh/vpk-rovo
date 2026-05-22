@@ -267,7 +267,7 @@ export default function ChatGreeting({
 										alt=""
 										width={74}
 										height={67}
-										loading="eager"
+										priority
 										className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "object-contain dark:hidden [[data-color-mode=dark]_&]:hidden")}
 									/>
 									<Image
@@ -275,7 +275,7 @@ export default function ChatGreeting({
 										alt=""
 										width={74}
 										height={67}
-										loading="eager"
+										priority
 										className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "hidden object-contain dark:block [[data-color-mode=dark]_&]:block")}
 									/>
 								</motion.div>

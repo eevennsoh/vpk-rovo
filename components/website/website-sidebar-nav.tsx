@@ -254,8 +254,8 @@ export function WebsiteSidebarNav({
 					aria-label="Go to projects"
 					className="mb-4 text-text rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
 				>
-					<Image src="/website/vpk-logo-dark.svg" alt="" width={24} height={24} className="dark:hidden" />
-					<Image src="/website/vpk-logo-light.svg" alt="" width={24} height={24} className="hidden dark:block" />
+					<Image src="/website/vpk-logo-dark.svg" alt="" width={24} height={24} priority className="dark:hidden" />
+					<Image src="/website/vpk-logo-light.svg" alt="" width={24} height={24} priority className="hidden dark:block" />
 				</Link>
 
 				{/* Toggle button */}

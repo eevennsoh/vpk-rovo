@@ -485,6 +485,7 @@ export function GenerativeCardDemoAnimated() {
 											alt="Generated content illustration"
 											width={240}
 											height={200}
+											priority
 											className="dark:hidden"
 										/>
 										<Image
@@ -492,6 +493,7 @@ export function GenerativeCardDemoAnimated() {
 											alt="Generated content illustration"
 											width={240}
 											height={200}
+											priority
 											className="hidden dark:block"
 										/>
 									</GenerativeCardPreview>
