@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, use, useCallback, useMemo, useState, type ReactNode } from "react";
 
 import type { TagColor } from "@/components/ui/tag";
 
@@ -211,35 +211,53 @@ export function WorkItemModalProvider({
 	const [isMoreFieldsOpen, setIsMoreFieldsOpen] = useState(initialMoreFieldsOpen);
 	const [isAutomationOpen, setIsAutomationOpen] = useState(initialAutomationOpen);
 
-	const state: WorkItemModalState = {
-		isDetailsOpen,
-		isMoreFieldsOpen,
-		isAutomationOpen,
-	};
+	const state = useMemo<WorkItemModalState>(
+		() => ({
+			isDetailsOpen,
+			isMoreFieldsOpen,
+			isAutomationOpen,
+		}),
+		[isDetailsOpen, isMoreFieldsOpen, isAutomationOpen],
+	);
 
-	const actions: WorkItemModalActions = {
-		toggleDetails: () => setIsDetailsOpen((prev) => !prev),
-		toggleMoreFields: () => setIsMoreFieldsOpen((prev) => !prev),
-		toggleAutomation: () => setIsAutomationOpen((prev) => !prev),
-		setDetailsOpen: setIsDetailsOpen,
-		setMoreFieldsOpen: setIsMoreFieldsOpen,
-		setAutomationOpen: setIsAutomationOpen,
-	};
+	const toggleDetails = useCallback(() => setIsDetailsOpen((prev) => !prev), []);
+	const toggleMoreFields = useCallback(() => setIsMoreFieldsOpen((prev) => !prev), []);
+	const toggleAutomation = useCallback(() => setIsAutomationOpen((prev) => !prev), []);
 
-	const meta: WorkItemModalMeta = {
-		isOpen,
-		onClose,
-		onAttachmentOpen,
-		highlightedAttachmentId,
-		highlightedAttachmentKey,
-		workItem,
-	};
+	const actions = useMemo<WorkItemModalActions>(
+		() => ({
+			toggleDetails,
+			toggleMoreFields,
+			toggleAutomation,
+			setDetailsOpen: setIsDetailsOpen,
+			setMoreFieldsOpen: setIsMoreFieldsOpen,
+			setAutomationOpen: setIsAutomationOpen,
+		}),
+		[toggleDetails, toggleMoreFields, toggleAutomation],
+	);
+
+	const meta = useMemo<WorkItemModalMeta>(
+		() => ({
+			isOpen,
+			onClose,
+			onAttachmentOpen,
+			highlightedAttachmentId,
+			highlightedAttachmentKey,
+			workItem,
+		}),
+		[isOpen, onClose, onAttachmentOpen, highlightedAttachmentId, highlightedAttachmentKey, workItem],
+	);
+
+	const contextValue = useMemo<WorkItemModalContextValue>(
+		() => ({ state, actions, meta }),
+		[state, actions, meta],
+	);
 
 	// Don't render children if modal is closed
 	if (!isOpen) return null;
 
 	return (
-		<WorkItemModalContext value={{ state, actions, meta }}>
+		<WorkItemModalContext value={contextValue}>
 			{children}
 		</WorkItemModalContext>
 	);
