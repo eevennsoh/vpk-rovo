@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const toggleVariants = cva(
-	"focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 aria-invalid:border-destructive gap-1.5 rounded-lg border border-transparent bg-clip-padding text-sm font-medium transition-all [&_svg:not([class*='size-'])]:size-4 group/toggle inline-flex items-center justify-center whitespace-nowrap outline-none select-none shrink-0 focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-(--opacity-disabled) [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:text-icon-subtle data-pressed:[&_svg]:text-icon-selected",
+	"focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 aria-invalid:border-destructive user-invalid:ring-destructive/20 user-invalid:border-destructive gap-1.5 rounded-lg border border-transparent bg-clip-padding text-sm font-medium transition-all [&_svg:not([class*='size-'])]:size-4 group/toggle inline-flex items-center justify-center whitespace-nowrap outline-none select-none shrink-0 focus-visible:ring-3 user-invalid:ring-3 disabled:pointer-events-none disabled:opacity-(--opacity-disabled) [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:text-icon-subtle data-pressed:[&_svg]:text-icon-selected",
 	{
 		variants: {
 			variant: {
