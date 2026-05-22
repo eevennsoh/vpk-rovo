@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "motion/react";
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -171,10 +172,34 @@ export default function Pixels({
 }: PixelsProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animRef = useRef<number>(0);
+	const reduced = useReducedMotion();
+	const [inView, setInView] = useState(false);
+	const [tabVisible, setTabVisible] = useState(
+		typeof document === "undefined" ? true : document.visibilityState === "visible",
+	);
+
+	useEffect(() => {
+		const el = canvasRef.current;
+		if (!el) return;
+		const io = new IntersectionObserver(
+			([entry]) => setInView(entry.isIntersecting),
+			{ rootMargin: "200px" },
+		);
+		io.observe(el);
+		const onVis = () => setTabVisible(document.visibilityState === "visible");
+		document.addEventListener("visibilitychange", onVis);
+		return () => {
+			io.disconnect();
+			document.removeEventListener("visibilitychange", onVis);
+		};
+	}, []);
+
+	const shouldAnimate = !reduced && inView && tabVisible;
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
+		if (!shouldAnimate) return;
 
 		const gl = canvas.getContext("webgl2", { antialias: false, alpha: false });
 		if (!gl) return;
@@ -249,7 +274,7 @@ export default function Pixels({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
-	}, [imageSrc, pixels, stagger, border, aberration, hueShift]);
+	}, [imageSrc, pixels, stagger, border, aberration, hueShift, shouldAnimate]);
 
 	return (
 		<canvas

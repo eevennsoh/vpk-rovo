@@ -38,7 +38,7 @@ export const AnimatedDots = memo(
 					{colors.map((color, i) => (
 						<span
 							key={i}
-							className="text-sm leading-none"
+							className="text-sm leading-none motion-reduce:animate-none"
 							style={{
 								animation: `dot-reveal ${duration}s ease-in-out infinite`,
 								animationDelay: `${i * staggerDelay}s`,

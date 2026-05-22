@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { useReducedMotion } from "motion/react";
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -187,10 +188,34 @@ export default function Particles({
 }: ParticlesProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animRef = useRef<number>(0);
+	const reduced = useReducedMotion();
+	const [inView, setInView] = useState(false);
+	const [tabVisible, setTabVisible] = useState(
+		typeof document === "undefined" ? true : document.visibilityState === "visible",
+	);
+
+	useEffect(() => {
+		const el = canvasRef.current;
+		if (!el) return;
+		const io = new IntersectionObserver(
+			([entry]) => setInView(entry.isIntersecting),
+			{ rootMargin: "200px" },
+		);
+		io.observe(el);
+		const onVis = () => setTabVisible(document.visibilityState === "visible");
+		document.addEventListener("visibilitychange", onVis);
+		return () => {
+			io.disconnect();
+			document.removeEventListener("visibilitychange", onVis);
+		};
+	}, []);
+
+	const shouldAnimate = !reduced && inView && tabVisible;
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
+		if (!shouldAnimate) return;
 
 		const gl = canvas.getContext("webgl2", { antialias: false, alpha: true, premultipliedAlpha: false });
 		if (!gl) return;
@@ -282,7 +307,7 @@ export default function Particles({
 		// loop each frame, so including it would needlessly re-init WebGL
 		// whenever the caller swaps the ref object.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [bgColor, speed, scale, layers, brightness, glow, blur, starSize, direction, blink, randomize, warp, warpDirection, tunnelRadius, fadeRadius, customColor, colorR, colorG, colorB]);
+	}, [bgColor, speed, scale, layers, brightness, glow, blur, starSize, direction, blink, randomize, warp, warpDirection, tunnelRadius, fadeRadius, customColor, colorR, colorG, colorB, shouldAnimate]);
 
 	return (
 		<canvas

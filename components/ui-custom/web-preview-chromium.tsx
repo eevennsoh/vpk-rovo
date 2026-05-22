@@ -18,6 +18,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useReducedMotion } from "motion/react";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { cn } from "@/lib/utils";
 
@@ -163,6 +164,29 @@ export function ChromiumPreviewBody({
 	const [error, setError] = useState<string | null>(null);
 	const [viewportSize, setViewportSize] = useState(DEFAULT_STATE);
 	const [screenshotVersion, setScreenshotVersion] = useState(0);
+	const reduced = useReducedMotion();
+	const [inView, setInView] = useState(false);
+	const [tabVisible, setTabVisible] = useState(
+		typeof document === "undefined" ? true : document.visibilityState === "visible",
+	);
+
+	useEffect(() => {
+		const el = containerRef.current;
+		if (!el) return;
+		const io = new IntersectionObserver(
+			([entry]) => setInView(entry.isIntersecting),
+			{ rootMargin: "200px" },
+		);
+		io.observe(el);
+		const onVis = () => setTabVisible(document.visibilityState === "visible");
+		document.addEventListener("visibilitychange", onVis);
+		return () => {
+			io.disconnect();
+			document.removeEventListener("visibilitychange", onVis);
+		};
+	}, []);
+
+	const shouldAnimate = !reduced && inView && tabVisible;
 
 	const screenshotSrc = useMemo(
 		() =>
@@ -340,6 +364,9 @@ export function ChromiumPreviewBody({
 		if (!isChromiumPreviewUrl(targetUrl)) {
 			return;
 		}
+		if (!shouldAnimate) {
+			return;
+		}
 
 		const intervalId = window.setInterval(() => {
 			void fetchState({ busy: false, refreshImage: true });
@@ -348,7 +375,7 @@ export function ChromiumPreviewBody({
 		return () => {
 			window.clearInterval(intervalId);
 		};
-	}, [fetchState, targetUrl]);
+	}, [fetchState, targetUrl, shouldAnimate]);
 
 	useEffect(() => {
 		const containerElement = containerRef.current;

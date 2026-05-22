@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useMemo, useRef } from "react"
-import { motion, useInView, UseInViewOptions } from "motion/react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
+import { motion, useInView, useReducedMotion, UseInViewOptions } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -48,6 +48,16 @@ export function ShimmeringText({
 }: ShimmeringTextProps) {
   const ref = useRef<HTMLSpanElement>(null)
   const isInView = useInView(ref, { once, margin: inViewMargin })
+  const reduced = useReducedMotion()
+  const [tabVisible, setTabVisible] = useState(
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  )
+
+  useEffect(() => {
+    const onVis = () => setTabVisible(document.visibilityState === "visible")
+    document.addEventListener("visibilitychange", onVis)
+    return () => document.removeEventListener("visibilitychange", onVis)
+  }, [])
 
   // Calculate dynamic spread based on text length
   const dynamicSpread = useMemo(() => {
@@ -55,7 +65,7 @@ export function ShimmeringText({
   }, [text, spread])
 
   // Determine if we should start animation
-  const shouldAnimate = !startOnView || isInView
+  const shouldAnimate = (!startOnView || isInView) && !reduced && tabVisible
 
   return (
     <motion.span
@@ -90,7 +100,7 @@ export function ShimmeringText({
       }
       transition={{
         backgroundPosition: {
-          repeat: repeat ? Infinity : 0,
+          repeat: shouldAnimate && repeat ? Infinity : 0,
           duration,
           delay,
           repeatDelay,
