@@ -260,6 +260,7 @@ export function WebsiteSidebarNav({
 
 				{/* Toggle button */}
 				<button
+					type="button"
 					onClick={() => setSidebarOpen(!sidebarOpen)}
 					aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
 					className="flex items-center justify-center p-2 rounded-md text-text-subtle bg-transparent border-none transition-colors hover:bg-bg-neutral hover:text-text"
@@ -314,6 +315,7 @@ export function WebsiteSidebarNav({
 								</InputGroupButton>
 							) : null}
 							<button
+								type="button"
 								onClick={() => setAdsOnly((prev) => !prev)}
 								aria-label={adsOnly ? "Show all components" : "Show ADS components only"}
 								aria-pressed={adsOnly}
@@ -385,6 +387,7 @@ export function WebsiteSidebarNav({
 									)}
 									{!isFiltering && hasItems && (
 										<button
+											type="button"
 											onClick={() => toggleSection(section.title)}
 											aria-label={sectionOpen ? `Collapse ${section.title}` : `Expand ${section.title}`}
 											className="flex items-center justify-center rounded-md text-text-subtle bg-transparent border-none transition-colors hover:bg-bg-neutral hover:text-text"
@@ -546,6 +549,7 @@ function NavGroupItem({
 						<CollapsibleTrigger
 							render={
 								<button
+									type="button"
 									aria-label={isGroupOpen ? `Collapse ${item.name}` : `Expand ${item.name}`}
 									className="flex items-center justify-center rounded-md text-text-subtle bg-transparent border-none transition-colors hover:bg-bg-neutral hover:text-text"
 									style={{ width: 36, height: 36 }}

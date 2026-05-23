@@ -191,7 +191,7 @@ const createRawTokens = (code: string): TokenizedCode => ({
 });
 
 // Synchronous highlight with callback for async results
-export const highlightCode = (
+const highlightCode = (
   code: string,
   language: BundledLanguage,
   // oxlint-disable-next-line eslint-plugin-promise(prefer-await-to-callbacks)
@@ -473,7 +473,6 @@ export function CodeBlockContent({
     <div
       className="relative overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
       data-slot="code-block-scroll-area"
-      tabIndex={0}
       title={`${language} code example`}
     >
       <CodeBlockBody
@@ -697,6 +696,7 @@ export function CodeBlockLanguageSelectorTrigger({
     <DropdownMenuTrigger
       render={
         <button
+          type="button"
           className={cn(
             "inline-flex h-7 cursor-default items-center gap-1 rounded-sm bg-transparent px-2 text-text-subtle text-xs outline-none hover:bg-bg-neutral-subtle-hovered hover:text-text",
             className

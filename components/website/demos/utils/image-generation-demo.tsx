@@ -330,7 +330,7 @@ export default function ImageGenerationDemo(): ReactElement {
 									>
 										{/* eslint-disable-next-line @next/next/no-img-element */}
 										<img
-											alt="Generated image preview"
+											alt="Generated preview"
 											className="h-12 w-12 shrink-0 rounded border object-cover"
 											src={image.url}
 										/>

@@ -293,6 +293,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
 
   return (
     <button
+      type="button"
       data-sidebar="rail"
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"
@@ -717,11 +718,9 @@ function SidebarResizeHandle({
   return (
     <div
       data-slot="sidebar-resize-handle"
-      role="separator"
-      aria-orientation="vertical"
       className={cn(
         // Named group so notch `group-hover/*` does not inherit from the outer Sidebar `group` wrapper.
-        "group/sidebar-resize absolute inset-y-0 z-20 flex w-px cursor-col-resize items-center justify-center bg-border transition-colors hover:bg-bg-selected-bold data-[active]:bg-bg-selected-bold",
+        "group/sidebar-resize absolute inset-y-0 z-20 m-0 flex w-px cursor-col-resize items-center justify-center border-0 bg-border p-0 transition-colors hover:bg-bg-selected-bold data-[active]:bg-bg-selected-bold",
         side === "left" ? "left-0" : "right-0",
         "data-[will-collapse]:bg-bg-warning-bold",
         "after:absolute after:inset-y-0 after:left-1/2 after:w-3 after:-translate-x-1/2",

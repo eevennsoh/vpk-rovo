@@ -193,16 +193,42 @@ class AssistantMessageRenderBoundary extends Component<
 	}>,
 	Readonly<{
 		hasError: boolean;
+		resetMarker: string;
 	}>
 > {
 	state = {
 		hasError: false,
+		resetMarker: getAssistantMessageRenderBoundaryResetMarker(this.props),
 	};
 
 	static getDerivedStateFromError() {
 		return {
 			hasError: true,
 		};
+	}
+
+	static getDerivedStateFromProps(
+		props: Readonly<{
+			children: ReactNode;
+			fallback: ReactNode;
+			messageId: string;
+			resetKey: string;
+		}>,
+		state: Readonly<{
+			hasError: boolean;
+			resetMarker: string;
+		}>,
+	) {
+		const resetMarker = getAssistantMessageRenderBoundaryResetMarker(props);
+
+		if (state.resetMarker !== resetMarker) {
+			return {
+				hasError: false,
+				resetMarker,
+			};
+		}
+
+		return null;
 	}
 
 	componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
@@ -213,21 +239,6 @@ class AssistantMessageRenderBoundary extends Component<
 		});
 	}
 
-	componentDidUpdate(
-		prevProps: Readonly<{
-			children: ReactNode;
-			fallback: ReactNode;
-			messageId: string;
-			resetKey: string;
-		}>,
-	) {
-		if (this.state.hasError && (prevProps.messageId !== this.props.messageId || prevProps.resetKey !== this.props.resetKey)) {
-			this.setState({
-				hasError: false,
-			});
-		}
-	}
-
 	render() {
 		if (this.state.hasError) {
 			return this.props.fallback;
@@ -235,6 +246,16 @@ class AssistantMessageRenderBoundary extends Component<
 
 		return this.props.children;
 	}
+}
+
+function getAssistantMessageRenderBoundaryResetMarker({
+	messageId,
+	resetKey,
+}: Readonly<{
+	messageId: string;
+	resetKey: string;
+}>): string {
+	return `${messageId}:${resetKey}`;
 }
 
 function computeRovoAppAnchorScrollTop(defaultTargetTop: number, scrollElement: HTMLElement, scrollSpacerRef: RefObject<HTMLDivElement | null>): number {
@@ -706,9 +727,9 @@ function AssistantMessage({
 						{sources.length > 0 ? (
 							<div className="flex flex-wrap gap-2">
 								{sources.map((source) =>
-									source.type === "source-url" && source.url ? (
-										<Button key={`${message.id}-${source.url}`} nativeButton={false} render={<a href={source.url} rel="noreferrer" target="_blank" />} size="sm" type="button" variant="outline">
-											{source.title || source.url}
+										source.type === "source-url" && source.url ? (
+											<Button key={`${message.id}-${source.url}`} nativeButton={false} render={<a aria-label={source.title || source.url} href={source.url} rel="noreferrer" target="_blank" />} size="sm" type="button" variant="outline">
+												{source.title || source.url}
 										</Button>
 									) : (
 										<Button key={`${message.id}-${source.title ?? "source"}`} size="sm" type="button" variant="outline">

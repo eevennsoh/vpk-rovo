@@ -33,7 +33,7 @@ export function GroupChatDialog() {
 							href="#"
 							className="text-muted-foreground hover:text-foreground text-sm underline underline-offset-4"
 						>
-							Learn more
+							Learn more about shared chats
 						</a>
 						<div className="flex gap-2">
 							<AlertDialogCancel>Cancel</AlertDialogCancel>

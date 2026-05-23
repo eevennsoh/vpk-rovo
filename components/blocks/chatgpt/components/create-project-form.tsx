@@ -92,6 +92,8 @@ export function CreateProjectForm() {
 										data-checked={selectedCategory === category.id}
 										render={
 											<button
+												type="button"
+												aria-label={`Toggle ${category.label} category`}
 												onClick={() => {
 													setSelectedCategory(
 														selectedCategory === category.id

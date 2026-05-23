@@ -40,6 +40,7 @@ export function WorkItemTabs({ workItem, comments, linkedItems }: Readonly<WorkI
 					{TABS.map((tab) => (
 						<button
 							key={tab}
+							type="button"
 							id={`tab-${tab}`}
 							role="tab"
 							aria-selected={activeTab === tab}

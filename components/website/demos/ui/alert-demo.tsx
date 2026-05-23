@@ -225,7 +225,7 @@ export function AlertDemoWithIcons() {
 			<Alert>
 				<Icon render={<StatusInformationIcon label="" />} label="Information" />
 				<AlertTitle>
-					Let&apos;s try one with icon, title and a <a href="#">link</a>.
+					Let&apos;s try one with icon, title and an <a href="#">alert details link</a>.
 				</AlertTitle>
 			</Alert>
 			<Alert>

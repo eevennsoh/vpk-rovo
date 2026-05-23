@@ -85,7 +85,7 @@ export default function AISummaryPanel({ defaultExpanded = true }: Readonly<AISu
 											{item.tagNumber}. {item.title}
 										</span>
 										<span className="text-sm">
-											: {item.description} You can view it <a href="#">here</a>{" "}
+											: {item.description} You can <a href="#">view the referenced result</a>{" "}
 											<Tag color="blue" shape="rounded">
 												{item.tagNumber}
 											</Tag>

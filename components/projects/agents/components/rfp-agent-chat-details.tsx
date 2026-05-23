@@ -260,6 +260,8 @@ function getActivityTimelineSteps(state: AgentsRfpDemoState): ProgressTrackerSte
 		.map((entry) => entry.step);
 }
 
+const addTriggerControl = <TriggerAddRow />;
+
 export function RfpAgentTriggerDetails({
 	onClearTrigger,
 	state,
@@ -270,7 +272,6 @@ export function RfpAgentTriggerDetails({
 	const agent = state.agent;
 	const trigger = agent?.trigger ?? null;
 	const triggerPrompt = trigger?.prompt?.trim() || RFP_DRAFTING_TRIGGER_PROMPT;
-	const addTriggerControl = <TriggerAddRow />;
 
 	return (
 		<div className="grid gap-5">

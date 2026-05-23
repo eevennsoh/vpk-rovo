@@ -22,6 +22,7 @@ export function DropdownMenuItem({
 }: Readonly<DropdownMenuItemProps>): React.ReactElement {
 	return (
 		<button
+			type="button"
 			onClick={onClick}
 			style={{
 				width: "100%",
