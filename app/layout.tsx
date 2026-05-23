@@ -180,8 +180,10 @@ export default async function RootLayout({
 
 	if (storedTheme === "light" || storedTheme === "dark") {
 		root.setAttribute("data-color-mode", storedTheme);
-	} else {
+	} else if (storedTheme === "system") {
 		${ssrAutoScript}
+	} else {
+		root.setAttribute("data-color-mode", "light");
 	}
 
 	const resolvedColorMode = root.getAttribute("data-color-mode") === "dark" ? "dark" : "light";

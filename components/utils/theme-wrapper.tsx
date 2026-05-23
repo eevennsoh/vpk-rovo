@@ -60,7 +60,7 @@ const getStoredTheme = (storageKey: string): Theme | undefined => {
 	}
 };
 
-export function ThemeWrapper({ children, defaultTheme = "system", storageKey = "ui-theme" }: Readonly<ThemeWrapperProps>) {
+export function ThemeWrapper({ children, defaultTheme = "light", storageKey = "ui-theme" }: Readonly<ThemeWrapperProps>) {
 	const [theme, setTheme] = useState<Theme>(defaultTheme);
 	const [actualTheme, setActualTheme] = useState<"light" | "dark">(defaultTheme === "dark" ? "dark" : "light");
 	const hasHydratedThemeRef = useRef(false);
