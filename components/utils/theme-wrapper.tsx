@@ -33,6 +33,20 @@ const isTheme = (value: string | null): value is Theme => {
 	return value === "light" || value === "dark" || value === "system";
 };
 
+const THEME_SYNC_MESSAGE_TYPE = "vpk:theme-sync";
+
+const broadcastThemeToFrames = (theme: Theme) => {
+	if (typeof document === "undefined") return;
+	const message = { type: THEME_SYNC_MESSAGE_TYPE, theme };
+	document.querySelectorAll("iframe").forEach((frame) => {
+		try {
+			frame.contentWindow?.postMessage(message, window.location.origin);
+		} catch {
+			// Cross-origin iframe — postMessage to a specific origin fails silently here.
+		}
+	});
+};
+
 const getStoredTheme = (storageKey: string): Theme | undefined => {
 	if (typeof window === "undefined") {
 		return undefined;
@@ -128,11 +142,41 @@ export function ThemeWrapper({ children, defaultTheme = "system", storageKey = "
 		};
 	}, [storageKey, theme]);
 
+	// Sync theme across documents.
+	// - `storage` event handles tab ↔ tab (different windows).
+	// - `message` event handles parent ↔ iframe. The `storage` event is unreliable across
+	//   the iframe boundary under our COOP/COEP headers (set in next.config.ts for
+	//   SharedArrayBuffer), so the parent posts directly into each child iframe.
+	useEffect(() => {
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key !== storageKey) return;
+			if (event.newValue && isTheme(event.newValue)) {
+				setTheme(event.newValue);
+			}
+		};
+
+		const handleMessage = (event: MessageEvent) => {
+			if (event.origin !== window.location.origin) return;
+			const data = event.data as { type?: unknown; theme?: unknown } | null;
+			if (data?.type === THEME_SYNC_MESSAGE_TYPE && typeof data.theme === "string" && isTheme(data.theme)) {
+				setTheme(data.theme);
+			}
+		};
+
+		window.addEventListener("storage", handleStorage);
+		window.addEventListener("message", handleMessage);
+		return () => {
+			window.removeEventListener("storage", handleStorage);
+			window.removeEventListener("message", handleMessage);
+		};
+	}, [storageKey]);
+
 	// Update theme and persist to localStorage
 	const updateTheme = (newTheme: Theme) => {
 		setTheme(newTheme);
 		if (typeof window !== "undefined") {
 			localStorage.setItem(storageKey, newTheme);
+			broadcastThemeToFrames(newTheme);
 		}
 	};
 
