@@ -29,6 +29,7 @@ Required local commands:
 
 ```bash
 mise --version
+pnpm --version
 ```
 
 Optional browser evidence command:
@@ -72,8 +73,9 @@ If the Elixir cache is already corrupted, remove those preserved directories
 from `SYMPHONY_UPSTREAM_DIR/elixir/` once and restart Symphony.
 
 `SYMPHONY_ENV_LOCAL_SOURCE` is optional. When set, the workspace hook copies it
-to each issue workspace as `.env.local`. The hook does not run `pnpm install`;
-workers install dependencies only when issue-specific validation requires them.
+to each issue workspace as `.env.local`. After workspace checkout and optional
+env copy, the hook runs `pnpm install` so each Symphony issue workspace starts
+with local dependencies available.
 
 ## Run
 
@@ -222,7 +224,8 @@ runs.
 
 - cloning `SYMPHONY_SOURCE_REPO_URL`,
 - checking out or creating `symphony/<issue-id>`,
-- copying `.env.local` when `SYMPHONY_ENV_LOCAL_SOURCE` is configured.
+- copying `.env.local` when `SYMPHONY_ENV_LOCAL_SOURCE` is configured,
+- running `pnpm install`.
 
 `before_remove` delegates terminal-workspace cleanup to upstream
 `mix workspace.before_remove` from the fresh Elixir checkout. The hook passes
