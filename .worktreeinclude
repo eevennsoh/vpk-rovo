@@ -1,0 +1,5 @@
+# Files copied into Claude-Code-created worktrees on creation.
+# Only paths that are BOTH listed here AND gitignored are copied.
+# Tracked files are already materialized by `git worktree add`.
+
+.env.local
