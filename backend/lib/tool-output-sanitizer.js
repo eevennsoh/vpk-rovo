@@ -11,7 +11,7 @@ const PENDING_SPEC_FENCE_PATTERN = /```spec[\s\S]*$/iu;
 /**
  * Matches a line that looks like an RFC 6902 JSON Patch targeting a spec tree.
  * Catches unfenced JSONL patches that json-render emits inline (e.g. when
- * RovoDev outputs patches without wrapping in a ```spec fence).
+ * Rovo outputs patches without wrapping in a ```spec fence).
  */
 const SPEC_PATCH_LINE_PATTERN = /^\s*\{"op"\s*:\s*"(?:add|replace|remove)"\s*,\s*"path"\s*:\s*"\/(?:root|elements|state)\b/;
 

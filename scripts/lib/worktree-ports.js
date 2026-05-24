@@ -10,10 +10,10 @@
  * - Offset = slot * SLOT_STRIDE
  * - Frontend: 3000 + offset
  * - Backend:  8080 + offset
- * - RovoDev:  8000 + offset
+ * - Rovo:     8000 + offset
  *
  * Each worktree reserves a full 20-port window so port auto-increment
- * and multi-port RovoDev pools do not overlap across worktrees.
+ * and multi-port Rovo pools do not overlap across worktrees.
  */
 
 const { execSync } = require("node:child_process");
@@ -21,7 +21,7 @@ const path = require("node:path");
 
 const FRONTEND_DEFAULT_BASE = 3000;
 const BACKEND_DEFAULT_BASE = 8080;
-const ROVODEV_DEFAULT_BASE = 8000;
+const ROVO_DEFAULT_BASE = 8000;
 const SLOT_STRIDE = 20;
 const WORKTREE_SLOT_CAPACITY = 100;
 const PORT_TARGETS = {
@@ -35,10 +35,10 @@ const PORT_TARGETS = {
 		envVar: "BACKEND_PORT",
 		label: "Backend",
 	},
-	rovodev: {
-		defaultBase: ROVODEV_DEFAULT_BASE,
-		envVar: "ROVODEV_PORT",
-		label: "RovoDev",
+	rovo: {
+		defaultBase: ROVO_DEFAULT_BASE,
+		envVar: "ROVO_PORT",
+		label: "Rovo",
 	},
 };
 
@@ -202,7 +202,7 @@ function buildPortInfo(worktreeName, offset, slot) {
 		slot,
 		frontendBase: FRONTEND_DEFAULT_BASE + offset,
 		backendBase: BACKEND_DEFAULT_BASE + offset,
-		rovodevBase: ROVODEV_DEFAULT_BASE + offset,
+		rovoBase: ROVO_DEFAULT_BASE + offset,
 	};
 }
 
@@ -275,10 +275,10 @@ function getBackendBasePort() {
 }
 
 /**
- * Get the base rovodev serve port for the current worktree
+ * Get the base rovo serve port for the current worktree
  */
-function getRovodevBasePort() {
-	return getBasePort("rovodev");
+function getRovoBasePort() {
+	return getBasePort("rovo");
 }
 
 /**
@@ -326,7 +326,7 @@ module.exports = {
 	getWorktreePortOffsetForPath,
 	getFrontendBasePort,
 	getBackendBasePort,
-	getRovodevBasePort,
+	getRovoBasePort,
 	getPortInfo,
 	getPortInfoForPath,
 	getAllWorktreePortInfo,

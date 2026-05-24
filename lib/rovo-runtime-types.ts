@@ -1,5 +1,5 @@
 export type RuntimeHealth = "ok" | "degraded" | "down";
-export type RuntimeSurfaceName = "rovodev" | "hermes";
+export type RuntimeSurfaceName = "rovo" | "hermes";
 
 export interface RuntimeSurfaceStatus {
 	name: RuntimeSurfaceName;
@@ -15,7 +15,7 @@ export interface RuntimeStatusSnapshot {
 	status: RuntimeHealth;
 	timestamp: string;
 	surfaces: {
-		rovodev: RuntimeSurfaceStatus;
+		rovo: RuntimeSurfaceStatus;
 		hermes: RuntimeSurfaceStatus;
 	};
 	degradedSurfaces: RuntimeSurfaceName[];

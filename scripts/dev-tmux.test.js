@@ -6,10 +6,10 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const {
-	findAvailableRovodevPorts,
-	waitForRovodevPortsHealthy,
+	findAvailableRovoPorts,
+	waitForRovoPortsHealthy,
 } = require("./lib/dev-tmux-ports");
-const { checkRovodevHealth } = require("./lib/rovodev-utils");
+const { checkRovoHealth } = require("./lib/rovo-utils");
 
 const repoRoot = path.resolve(__dirname, "..");
 const scriptPath = path.join(repoRoot, "scripts/dev-tmux.sh");
@@ -41,7 +41,7 @@ test("dev-tmux accepts pnpm passthrough args with a leading double dash", () => 
 		env: {
 			...process.env,
 			PATH: `${tempDir}:${process.env.PATH}`,
-			ROVODEV_BILLING_URL: "https://example.invalid",
+			ROVO_BILLING_URL: "https://example.invalid",
 		},
 	});
 
@@ -78,7 +78,7 @@ test("dev-tmux accepts explicit command with numeric pool size", () => {
 		env: {
 			...process.env,
 			PATH: `${tempDir}:${process.env.PATH}`,
-			ROVODEV_BILLING_URL: "https://example.invalid",
+			ROVO_BILLING_URL: "https://example.invalid",
 		},
 	});
 
@@ -115,7 +115,7 @@ test("dev-tmux accepts shorthand double-dash pool size syntax", () => {
 		env: {
 			...process.env,
 			PATH: `${tempDir}:${process.env.PATH}`,
-			ROVODEV_BILLING_URL: "https://example.invalid",
+			ROVO_BILLING_URL: "https://example.invalid",
 		},
 	});
 
@@ -172,7 +172,7 @@ test("dev-tmux stop invokes worktree listener cleanup", () => {
 			...process.env,
 			PATH: `${tempDir}:${process.env.PATH}`,
 			NODE_CLEANUP_LOG: cleanupLogPath,
-			ROVODEV_BILLING_URL: "https://example.invalid",
+			ROVO_BILLING_URL: "https://example.invalid",
 		},
 	});
 
@@ -185,8 +185,8 @@ test("dev-tmux stop invokes worktree listener cleanup", () => {
 	fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
-test("findAvailableRovodevPorts skips occupied reserved ports", async () => {
-	const ports = await findAvailableRovodevPorts({
+test("findAvailableRovoPorts skips occupied reserved ports", async () => {
+	const ports = await findAvailableRovoPorts({
 		basePort: 8002,
 		poolSize: 3,
 		maxTries: 6,
@@ -196,14 +196,14 @@ test("findAvailableRovodevPorts skips occupied reserved ports", async () => {
 	assert.deepEqual(ports, [8003, 8005, 8006]);
 });
 
-test("waitForRovodevPortsHealthy retries until every reserved port is healthy", async () => {
+test("waitForRovoPortsHealthy retries until every reserved port is healthy", async () => {
 	const attemptsByPort = new Map();
 
-	const results = await waitForRovodevPortsHealthy({
+	const results = await waitForRovoPortsHealthy({
 		ports: [8000, 8001],
 		maxAttempts: 4,
 		intervalMs: 0,
-		checkRovodevHealthFn: async (port) => {
+		checkRovoHealthFn: async (port) => {
 			const nextAttempt = (attemptsByPort.get(port) ?? 0) + 1;
 			attemptsByPort.set(port, nextAttempt);
 
@@ -226,24 +226,24 @@ test("waitForRovodevPortsHealthy retries until every reserved port is healthy", 
 	assert.equal(attemptsByPort.get(8001), 2);
 });
 
-test("waitForRovodevPortsHealthy surfaces the last unhealthy status on timeout", async () => {
+test("waitForRovoPortsHealthy surfaces the last unhealthy status on timeout", async () => {
 	await assert.rejects(
 		() =>
-			waitForRovodevPortsHealthy({
+			waitForRovoPortsHealthy({
 				ports: [8000],
 				maxAttempts: 2,
 				intervalMs: 0,
-				checkRovodevHealthFn: async () => ({
+				checkRovoHealthFn: async () => ({
 					healthy: false,
 					status: "unreachable",
 					mcpServers: null,
 				}),
 			}),
-		/RovoDev ports did not become healthy in time: 8000 \(unreachable\)/
+		/Rovo ports did not become healthy in time: 8000 \(unreachable\)/
 	);
 });
 
-test("checkRovodevHealth treats 401 auth responses as healthy", async () => {
+test("checkRovoHealth treats 401 auth responses as healthy", async () => {
 	const server = http.createServer((_req, res) => {
 		res.writeHead(401, { "Content-Type": "application/json" });
 		res.end(JSON.stringify({ detail: "Missing credentials" }));
@@ -254,7 +254,7 @@ test("checkRovodevHealth treats 401 auth responses as healthy", async () => {
 	assert.ok(address && typeof address === "object");
 
 	try {
-		const result = await checkRovodevHealth(address.port);
+		const result = await checkRovoHealth(address.port);
 		assert.deepEqual(result, {
 			healthy: true,
 			status: "auth-required",

@@ -35,7 +35,7 @@ export const API_ENDPOINTS = {
 	CHAT_CANCEL: `${API_BASE_URL}/api/chat-cancel`,
 	HEALTH: `${API_BASE_URL}/api/health`,
 	STATUS: `${API_BASE_URL}/api/status`,
-	STATUS_ROVODEV: `${API_BASE_URL}/api/status/rovodev`,
+	STATUS_ROVO: `${API_BASE_URL}/api/status/rovo`,
 	STATUS_HERMES: `${API_BASE_URL}/api/status/hermes`,
 	WIKI_STATUS: `${API_BASE_URL}/api/wiki/status`,
 	WIKI_MEMORIES: `${API_BASE_URL}/api/wiki/memories`,
@@ -176,7 +176,7 @@ export const API_ENDPOINTS = {
 		`${API_BASE_URL}/api/rovo/runs/${encodeURIComponent(threadId)}/cancel`,
 	rovoAppFile: (fileId: string) =>
 		`${API_BASE_URL}/api/rovo/files/${encodeURIComponent(fileId)}`,
-	statusRuntime: (runtime: "rovodev" | "hermes") =>
+	statusRuntime: (runtime: "rovo" | "hermes") =>
 		`${API_BASE_URL}/api/status/${encodeURIComponent(runtime)}`,
 	job: (jobId: string) =>
 		`${API_BASE_URL}/api/jobs/${encodeURIComponent(jobId)}`,

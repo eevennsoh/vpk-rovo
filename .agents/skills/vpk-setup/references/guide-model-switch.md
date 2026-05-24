@@ -1,8 +1,8 @@
 # AI Model Switching Guide
 
 > **Applies to: AI Gateway-backed routes only.**
-> Model switching via `.env.local` has no effect on standard RovoDev chat turns.
-> RovoDev Serve manages main chat internally.
+> Model switching via `.env.local` has no effect on standard Rovo chat turns.
+> Rovo Serve manages main chat internally.
 
 This guide explains how to switch between Claude (Bedrock), GPT, and Gemini
 (Google) models for AI Gateway-backed routes in VPK, and how to verify TTS
@@ -80,13 +80,13 @@ No code changes needed - just update the URL in `.env.local` and restart.
 Instead of switching the default model for all AI Gateway-backed routes, you
 can add **additional provider endpoints** that are used only when a request
 includes `provider: "google"` in its body. This keeps standard chat on
-RovoDev while routing specific features, such as image generation, to Gemini.
+Rovo while routing specific features, such as image generation, to Gemini.
 
 ### How It Works
 
 In this repo:
 
-- `/api/chat-sdk`: keeps standard turns on RovoDev, but certain explicit
+- `/api/chat-sdk`: keeps standard turns on Rovo, but certain explicit
   AI Gateway-backed flows can target Google when `provider: "google"` and
   `AI_GATEWAY_URL_GOOGLE` are set.
 - `/api/sound-generation`: dedicated voice route; routes to the Google synth

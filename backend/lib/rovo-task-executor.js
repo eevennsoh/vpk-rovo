@@ -4,9 +4,9 @@ const { createAIGatewayProvider } = require("./ai-gateway-provider");
 const { buildRovoAppHermesContextDescription } = require("./hermes-rovo-context");
 const {
 	WAIT_FOR_TURN_TIMEOUT_MS,
-	generateTextViaRovoDev,
+	generateTextViaRovo,
 	isChatInProgressError,
-} = require("./rovodev-gateway");
+} = require("./rovo-gateway");
 const { getNonEmptyString, parseMaybeJson } = require("./shared-utils");
 
 const aiGatewayProvider = createAIGatewayProvider({ logger: console });
@@ -41,7 +41,7 @@ async function executeRovoTask({
 	}
 
 	const hermesContextDescription = await buildHermesContextDescription(selectedSkillIds);
-	const text = await generateTextViaRovoDev({
+	const text = await generateTextViaRovo({
 		conflictPolicy: "wait-for-turn",
 		prompt: normalizedPrompt,
 		signal,
@@ -53,7 +53,7 @@ async function executeRovoTask({
 	});
 
 	return {
-		backend: "rovodev",
+		backend: "rovo",
 		hermesContextDescription,
 		text: getNonEmptyString(text) ?? "",
 	};
@@ -99,10 +99,10 @@ function parseStructuredJsonResponse(text) {
 	return parseMaybeJson(fencedMatch[1].trim());
 }
 
-async function runRovoDevBackgroundTask({
+async function runRovoBackgroundTask({
 	conflictPolicy = "wait-for-turn",
 	fallbackGenerateTextImpl,
-	generateTextImpl = generateTextViaRovoDev,
+	generateTextImpl = generateTextViaRovo,
 	parseStructuredResult,
 	prompt,
 	selectedSkillIds = [],
@@ -136,7 +136,7 @@ async function runRovoDevBackgroundTask({
 				? parseStructuredResult(responseText)
 				: null;
 		return {
-			backend: "rovodev",
+			backend: "rovo",
 			didRun: true,
 			responseText: getNonEmptyString(responseText) ?? "",
 			structuredResult,
@@ -189,5 +189,5 @@ module.exports = {
 	executeStructuredFallbackTask,
 	normalizeExecutorError,
 	parseStructuredJsonResponse,
-	runRovoDevBackgroundTask,
+	runRovoBackgroundTask,
 };

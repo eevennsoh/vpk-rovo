@@ -27,14 +27,14 @@ export interface RovoSuggestion {
 	type: "skill" | "prompt";
 }
 
-const rovodevSiteUrl =
-	process.env.NEXT_PUBLIC_ROVODEV_SITE_URL || "https://hello.atlassian.net";
+const rovoSiteUrl =
+	process.env.NEXT_PUBLIC_ROVO_SITE_URL || "https://hello.atlassian.net";
 
 const LAST_7_DAYS_SITE_SCOPE_CONTEXT = [
 	"[Work Summary Scope]",
 	"For this request, gather the user's last-7-days work activity across both Atlassian sites.",
 	'- Jira site_url: "https://product-fabric.atlassian.net"',
-	`- Confluence site_url: "${rovodevSiteUrl}"`,
+	`- Confluence site_url: "${rovoSiteUrl}"`,
 	"Choose the tools needed to fetch Jira and Confluence activity for these sites. Do not assume a fixed tool path.",
 	"If one site has no results or errors, continue with the other site and clearly report coverage and gaps.",
 	"Merge and deduplicate activity before responding.",
@@ -43,7 +43,7 @@ const LAST_7_DAYS_SITE_SCOPE_CONTEXT = [
 
 /**
  * The actual prompt sent to the AI when the "Last 7 days of work" suggestion is clicked.
- * Includes "from Jira and Confluence" so RovoDev naturally selects the right tools.
+ * Includes "from Jira and Confluence" so Rovo naturally selects the right tools.
  * The user-visible label remains short ("Last 7 days of work").
  */
 const LAST_7_DAYS_PROMPT =
@@ -63,7 +63,7 @@ const GOOGLE_CALENDAR_LIST_EVENTS_CONTEXT = [
 
 /**
  * Default suggestions shown in the chat greeting
- * Showcases RovoDev's tool coverage across Atlassian and external apps
+ * Showcases Rovo's tool coverage across Atlassian and external apps
  */
 export const defaultSuggestions: RovoSuggestion[] = [
 	{

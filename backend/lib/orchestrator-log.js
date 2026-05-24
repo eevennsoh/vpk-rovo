@@ -89,7 +89,7 @@ function createOrchestratorLog({ baseDir, logger = console }) {
 	 *
 	 * @param {object} params
 	 * @param {number} params.portIndex - The sticky port index (0-based)
-	 * @param {number} [params.rovoPort] - The resolved numeric RovoDev port
+	 * @param {number} [params.rovoPort] - The resolved numeric Rovo port
 	 * @param {string} params.userMessage - The user's message
 	 * @param {string} params.assistantResponse - The full assistant response text
 	 * @param {number} [params.summaryMaxChars] - Max chars for the response summary

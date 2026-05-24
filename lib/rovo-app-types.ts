@@ -7,7 +7,7 @@ export type RovoAppDocumentKind = "text" | "code" | "html" | "image" | "sheet" |
 export type ArtifactMode = "preview" | "edit";
 export type VoteValue = "up" | "down";
 export type RovoAppRunStatus = "queued" | "streaming" | "background";
-export type RovoAppRunBackend = "ai-gateway" | "rovodev";
+export type RovoAppRunBackend = "ai-gateway" | "rovo";
 export type RovoAppPromptMode = "default" | "plan";
 
 export interface RovoAppHermesContext {

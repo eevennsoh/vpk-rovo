@@ -483,7 +483,7 @@ const messages: ChatTimelineMessage[] = [
 		],
 	},
 	"terminal-switch": {
-		description: "A switchable interface that toggles between Rovo Chat and a RovoDev CLI terminal, demonstrating dual-mode AI interaction.",
+		description: "A switchable interface that toggles between Rovo Chat and a Rovo CLI terminal, demonstrating dual-mode AI interaction.",
 	},
 	"data-table": {
 		description: "Data table with sortable columns, status indicators, and reviewer assignments.",

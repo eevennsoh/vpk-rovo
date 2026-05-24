@@ -10,7 +10,7 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 const DEFAULT_GOOGLE_GATEWAY_URL =
 	'https://ai-gateway.us-east-1.staging.atl-paas.net/v1/google/publishers/google/v1/chat/completions';
-const DEFAULT_ROVODEV_BILLING_URL = 'https://product-fabric.atlassian.net';
+const DEFAULT_ROVO_BILLING_URL = 'https://product-fabric.atlassian.net';
 
 function getEnvValueFromText(envText, key) {
 	if (!envText || typeof envText !== 'string') {
@@ -69,7 +69,7 @@ const config = JSON.parse(fs.readFileSync('.asap-config', 'utf8'));
 const escaped = config.privateKey.replace(/\n/g, '\\n');
 const existingEnvText = fs.existsSync('.env.local') ? fs.readFileSync('.env.local', 'utf8') : '';
 const preservedGoogleUrl = getEnvValueFromText(existingEnvText, 'AI_GATEWAY_URL_GOOGLE');
-const preservedRovodevPoolSize = getEnvValueFromText(existingEnvText, 'ROVODEV_POOL_SIZE');
+const preservedRovoPoolSize = getEnvValueFromText(existingEnvText, 'ROVO_POOL_SIZE');
 const preservedOpenaiModel = getEnvValueFromText(existingEnvText, 'OPENAI_MODEL');
 const preservedGoogleImageModel = getEnvValueFromText(existingEnvText, 'GOOGLE_IMAGE_MODEL');
 const preservedGoogleTtsModel = getEnvValueFromText(existingEnvText, 'GOOGLE_TTS_MODEL');
@@ -89,12 +89,12 @@ const preservedLocalWhisperBin = getEnvValueFromText(existingEnvText, 'LOCAL_WHI
 const preservedOpenAiCompatibleSttModel = getEnvValueFromText(existingEnvText, 'OPENAI_COMPATIBLE_STT_MODEL');
 const preservedOpenAiCompatibleSttBaseUrl = getEnvValueFromText(existingEnvText, 'OPENAI_COMPATIBLE_STT_BASE_URL');
 const preservedOpenAiCompatibleSttApiKey = getEnvValueFromText(existingEnvText, 'OPENAI_COMPATIBLE_STT_API_KEY');
-const preservedSessionToken = getEnvValueFromText(existingEnvText, 'ROVODEV_SESSION_TOKEN');
+const preservedSessionToken = getEnvValueFromText(existingEnvText, 'ROVO_SESSION_TOKEN');
 const preservedDebug = getEnvValueFromText(existingEnvText, 'DEBUG');
 const preservedPort = getEnvValueFromText(existingEnvText, 'PORT');
 const preservedBackendUrl = getEnvValueFromText(existingEnvText, 'BACKEND_URL');
 const preservedPublicApiUrl = getEnvValueFromText(existingEnvText, 'NEXT_PUBLIC_API_URL');
-const preservedRovodevSiteUrl = getEnvValueFromText(existingEnvText, 'ROVODEV_BILLING_URL');
+const preservedRovoSiteUrl = getEnvValueFromText(existingEnvText, 'ROVO_BILLING_URL');
 const preservedRealtimeModel = getEnvValueFromText(existingEnvText, 'OPENAI_REALTIME_MODEL');
 const preservedRealtimeWsUrl = getEnvValueFromText(existingEnvText, 'OPENAI_REALTIME_WS_URL');
 const preservedRealtimeVoice = getEnvValueFromText(existingEnvText, 'OPENAI_REALTIME_VOICE');
@@ -102,13 +102,13 @@ const preservedRealtimeApiKey = getEnvValueFromText(existingEnvText, 'OPENAI_REA
 const resolvedGoogleGatewayUrl = isGoogleGatewayUrl(preservedGoogleUrl)
 	? preservedGoogleUrl
 	: DEFAULT_GOOGLE_GATEWAY_URL;
-const resolvedRovodevSiteUrl =
-	typeof preservedRovodevSiteUrl === 'string' && preservedRovodevSiteUrl.trim().length > 0
-		? preservedRovodevSiteUrl.trim()
-		: DEFAULT_ROVODEV_BILLING_URL;
+const resolvedRovoSiteUrl =
+	typeof preservedRovoSiteUrl === 'string' && preservedRovoSiteUrl.trim().length > 0
+		? preservedRovoSiteUrl.trim()
+		: DEFAULT_ROVO_BILLING_URL;
 
 const envContent = `# Chat routing
-# - Standard /api/chat-sdk turns require RovoDev Serve.
+# - Standard /api/chat-sdk turns require Rovo Serve.
 # - AI Gateway credentials below power gateway-backed routes such as image,
 #   sound, suggestions, plan/title metadata, and Realtime voice.
 #
@@ -170,15 +170,15 @@ ASAP_PRIVATE_KEY="${escaped}"
 ASAP_KID=${config.kid}
 ASAP_ISSUER=${config.issuer}
 
-# Default billing site for rovodev serve (override as needed)
-ROVODEV_BILLING_URL=${resolvedRovodevSiteUrl}
+# Default billing site for rovo serve (override as needed)
+ROVO_BILLING_URL=${resolvedRovoSiteUrl}
 
-# RovoDev Session Token (one-time setup — does not expire)
-# On first launch, RovoDev Serve prints a session token to the terminal.
+# Rovo Session Token (one-time setup — does not expire)
+# On first launch, Rovo Serve prints a session token to the terminal.
 # Copy it here, then restart the dev stack.
-${preservedSessionToken ? `ROVODEV_SESSION_TOKEN=${preservedSessionToken}` : '# ROVODEV_SESSION_TOKEN=<paste-token-from-rovodev-serve-output>'}
+${preservedSessionToken ? `ROVO_SESSION_TOKEN=${preservedSessionToken}` : '# ROVO_SESSION_TOKEN=<paste-token-from-rovo-serve-output>'}
 
-# RovoDev Serve pool size (number of concurrent RovoDev instances for agents team, default: 1)${preservedRovodevPoolSize ? `\nROVODEV_POOL_SIZE=${preservedRovodevPoolSize}` : '\n# ROVODEV_POOL_SIZE=1'}
+# Rovo Serve pool size (number of concurrent Rovo instances for agents team, default: 1)${preservedRovoPoolSize ? `\nROVO_POOL_SIZE=${preservedRovoPoolSize}` : '\n# ROVO_POOL_SIZE=1'}
 
 # OpenAI Realtime API (live voice conversation mode via AI Gateway)
 ${preservedRealtimeApiKey ? `OPENAI_REALTIME_API_KEY=${preservedRealtimeApiKey}` : '# OPENAI_REALTIME_API_KEY='}
@@ -192,13 +192,13 @@ ${preservedDebug ? `\nDEBUG=${preservedDebug}` : ''}${preservedPort ? `\nPORT=${
 `;
 
 fs.writeFileSync('.env.local', envContent);
-console.log('✅ Created .env.local with RovoDev chat + AI Gateway-backed route configuration');
+console.log('✅ Created .env.local with Rovo chat + AI Gateway-backed route configuration');
 console.log(`   AI_GATEWAY_USE_CASE_ID: ${useCaseId}`);
 console.log(`   AI_GATEWAY_USER_ID: ${email}`);
 console.log('   AI Gateway-assisted routes: configured');
-console.log(`   ROVODEV_BILLING_URL: ${resolvedRovodevSiteUrl}`);
-console.log(`   ROVODEV_SESSION_TOKEN: ${preservedSessionToken ? 'preserved from existing .env.local' : '⚠️  NOT SET — copy from RovoDev Serve first-launch output'}`);
-console.log('   Main chat backend: RovoDev Serve');
+console.log(`   ROVO_BILLING_URL: ${resolvedRovoSiteUrl}`);
+console.log(`   ROVO_SESSION_TOKEN: ${preservedSessionToken ? 'preserved from existing .env.local' : '⚠️  NOT SET — copy from Rovo Serve first-launch output'}`);
+console.log('   Main chat backend: Rovo Serve');
 console.log('   Google image + voice endpoints: enabled');
 console.log(`   STT_PRESET: ${preservedSttPreset || 'qwen3-asr'}`);
 console.log(`   OPENAI_REALTIME_WS_URL: ${preservedRealtimeWsUrl || 'wss://ai-gateway.us-east-1.staging.atl-paas.net/v1/openai/v1/realtime'} (via AI Gateway)`);

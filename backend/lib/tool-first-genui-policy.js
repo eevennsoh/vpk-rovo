@@ -1,5 +1,5 @@
 const { getNonEmptyString } = require("./shared-utils");
-const { isGenericIntegrationWrapperToolName } = require("./rovodev-gateway");
+const { isGenericIntegrationWrapperToolName } = require("./rovo-gateway");
 
 const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
@@ -815,7 +815,7 @@ function buildToolContextForGenui({
 function buildToolFirstTextFallback({
 	policy,
 	execution,
-	rovoDevFallback = false,
+	rovoFallback = false,
 } = {}) {
 	const domainLabels = Array.isArray(policy?.domainLabels)
 		&& policy.domainLabels.length > 0
@@ -889,8 +889,8 @@ function buildToolFirstTextFallback({
 		}
 	}
 
-	if (rovoDevFallback) {
-		message += " RovoDev tool execution was interrupted, so this response stayed in plain-text mode.";
+	if (rovoFallback) {
+		message += " Rovo tool execution was interrupted, so this response stayed in plain-text mode.";
 	}
 
 	message += " If you need a tool-grounded result, retry after resolving the issue above.";
@@ -934,7 +934,7 @@ function stripToolFirstFailureNarrative(value) {
 function buildToolFirstWarningPayload({
 	policy,
 	execution,
-	rovoDevFallback = false,
+	rovoFallback = false,
 } = {}) {
 	const domainLabels = Array.isArray(policy?.domainLabels)
 		&& policy.domainLabels.length > 0
@@ -943,7 +943,7 @@ function buildToolFirstWarningPayload({
 	const message = buildToolFirstTextFallback({
 		policy,
 		execution,
-		rovoDevFallback,
+		rovoFallback,
 	});
 	const attempts =
 		typeof execution?.attempts === "number" && Number.isFinite(execution.attempts)
@@ -972,7 +972,7 @@ function buildToolFirstWarningPayload({
 		lastRelevantToolName: getNonEmptyString(execution?.lastRelevantToolName),
 		lastRelevantErrorCategory: getNonEmptyString(execution?.lastRelevantErrorCategory),
 		lastRelevantError: getNonEmptyString(execution?.lastRelevantError),
-		rovoDevFallback: Boolean(rovoDevFallback),
+		rovoFallback: Boolean(rovoFallback),
 	};
 }
 

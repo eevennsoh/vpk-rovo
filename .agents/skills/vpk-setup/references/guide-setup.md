@@ -19,7 +19,7 @@ Complete setup guide for local development with ASAP authentication to Atlassian
 ```
 Browser → Next.js Server (port 3000) with API proxy routes
         → Express Backend (port 8080)
-        → RovoDev Serve (primary chat)
+        → Rovo Serve (primary chat)
         → AI Gateway-assisted routes (image, voice, suggestions)
 ```
 
@@ -39,7 +39,7 @@ The same code works in both environments! Next.js API routes (`/api/chat-sdk`, `
 ./.agents/skills/vpk-setup/scripts/start-dev.sh
 ```
 
-This starts RovoDev Serve (:8000), Express backend (:8080), and Next.js frontend (:3000).
+This starts Rovo Serve (:8000), Express backend (:8080), and Next.js frontend (:3000).
 
 **For AI/automated execution:** Use `./.agents/skills/vpk-setup/scripts/start-dev.sh --no-wait` to prevent the script from blocking.
 
@@ -47,10 +47,10 @@ This starts RovoDev Serve (:8000), Express backend (:8080), and Next.js frontend
 
 ### Option 2: Manual 2-Terminal Setup
 
-**Terminal 1 - RovoDev Serve:**
+**Terminal 1 - Rovo Serve:**
 
 ```bash
-pnpm run dev:rovodev
+pnpm run dev:rovo
 ```
 
 **Terminal 2 - Backend + Frontend:**
@@ -241,35 +241,35 @@ Notes:
 - Qwen presets target an OpenAI-compatible transcription endpoint (defaults to `http://localhost:8801/v1`). Override with `OPENAI_COMPATIBLE_STT_BASE_URL`.
 - Whisper presets require the `whisper` CLI on PATH.
 
-**Default RovoDev billing site (recommended):**
+**Default Rovo billing site (recommended):**
 
 ```
-ROVODEV_BILLING_URL=https://product-fabric.atlassian.net
+ROVO_BILLING_URL=https://product-fabric.atlassian.net
 ```
 
-`scripts/dev-rovodev.js` passes this value as `--site-url` to `rovodev serve`. Override this value when you need a different billing site.
+`scripts/dev-rovo.js` passes this value as `--site-url` to `rovo serve`. Override this value when you need a different billing site.
 
-**RovoDev Session Token (required, one-time setup):**
+**Rovo Session Token (required, one-time setup):**
 
-RovoDev Serve requires a session token for authentication. The backend sends it as `Authorization: Bearer <token>` on every request to Serve.
+Rovo Serve requires a session token for authentication. The backend sends it as `Authorization: Bearer <token>` on every request to Serve.
 
 ```
-ROVODEV_SESSION_TOKEN=<paste-token-from-rovodev-serve-output>
+ROVO_SESSION_TOKEN=<paste-token-from-rovo-serve-output>
 ```
 
 **How to get it:**
 
-1. Run `pnpm run rovodev` (or `acli rovodev`) for the first time
-2. RovoDev Serve prints a session token to the terminal output
-3. Copy the token and paste it into `.env.local` as `ROVODEV_SESSION_TOKEN=<token>`
+1. Run `pnpm run rovo` (or `rovo`) for the first time
+2. Rovo Serve prints a session token to the terminal output
+3. Copy the token and paste it into `.env.local` as `ROVO_SESSION_TOKEN=<token>`
 4. Restart the dev stack so the backend picks it up
 
 **Important notes:**
 
 - This is a **one-time setup** — the token does not expire or rotate
-- The supervisor passes this token to Serve as `ROVODEV_SERVE_SESSION_TOKEN` so both sides share the same secret
-- If `ROVODEV_SESSION_TOKEN` is missing, all `/v3/*` endpoints on Serve return `"Missing credentials"` (the `/healthcheck` endpoint is unauthenticated and still works)
-- If you see `"Missing credentials"` when curling port 8000 directly, remember that port 8000 is RovoDev Serve — not the VPK backend. The backend port is in `.dev-backend-port` (typically 8081)
+- The supervisor passes this token to Serve as `ROVO_SERVE_SESSION_TOKEN` so both sides share the same secret
+- If `ROVO_SESSION_TOKEN` is missing, all `/v3/*` endpoints on Serve return `"Missing credentials"` (the `/healthcheck` endpoint is unauthenticated and still works)
+- If you see `"Missing credentials"` when curling port 8000 directly, remember that port 8000 is Rovo Serve — not the VPK backend. The backend port is in `.dev-backend-port` (typically 8081)
 
 **Optional — TTS model verification (`tts-latest`):**
 
@@ -365,7 +365,7 @@ Need help? Ask in #help-ai-gateway on Slack
 
 ```bash
 # Terminal 1
-pnpm run dev:rovodev
+pnpm run dev:rovo
 
 # Terminal 2
 pnpm run dev
@@ -374,12 +374,12 @@ pnpm run dev
 **Option 3 - Concurrent:**
 
 ```bash
-pnpm run rovodev
+pnpm run rovo
 # For full pool mode:
-# pnpm run rovodev -- 6
+# pnpm run rovo -- 6
 ```
 
-**Important:** Only run one stack command at a time. Running `pnpm run rovodev` while `start-dev.sh` (or another `pnpm run rovodev`) is active will trigger lock/port conflicts.
+**Important:** Only run one stack command at a time. Running `pnpm run rovo` while `start-dev.sh` (or another `pnpm run rovo`) is active will trigger lock/port conflicts.
 
 ### Verify Everything Works
 

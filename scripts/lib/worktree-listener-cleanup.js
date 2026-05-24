@@ -5,8 +5,8 @@ function sleep(ms) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const ROVODEV_SUPERVISOR_COMMAND_PATTERN =
-	/(?:^|\s)(?:\S*\/)?node(?:\s+--[^\s]+)*\s+(?:\S*\/)?scripts\/dev-rovodev-port\.js(?:\s|$)/;
+const ROVO_SUPERVISOR_COMMAND_PATTERN =
+	/(?:^|\s)(?:\S*\/)?node(?:\s+--[^\s]+)*\s+(?:\S*\/)?scripts\/dev-rovo-port\.js(?:\s|$)/;
 
 function getUniqueSortedPids(values) {
 	return Array.from(
@@ -127,7 +127,7 @@ function findListeningPidsForWorktree({
 	);
 }
 
-function findRovodevSupervisorPidsForWorktree({
+function findRovoSupervisorPidsForWorktree({
 	worktreePath = process.cwd(),
 	listProcessInfoFn = listProcessInfo,
 	getProcessCwdFn = getProcessCwd,
@@ -137,7 +137,7 @@ function findRovodevSupervisorPidsForWorktree({
 	return getUniqueSortedPids(
 		listProcessInfoFn()
 			.filter((entry) => entry && entry.pid !== process.pid)
-			.filter((entry) => ROVODEV_SUPERVISOR_COMMAND_PATTERN.test(entry.command))
+			.filter((entry) => ROVO_SUPERVISOR_COMMAND_PATTERN.test(entry.command))
 			.filter((entry) => getProcessCwdFn(entry.pid) === normalizedWorktreePath)
 			.map((entry) => entry.pid)
 	);
@@ -159,7 +159,7 @@ async function cleanupListeningProcessesForWorktree({
 		listListeningPidsFn,
 		getProcessCwdFn,
 	});
-	const matchedSupervisorPids = findRovodevSupervisorPidsForWorktree({
+	const matchedSupervisorPids = findRovoSupervisorPidsForWorktree({
 		worktreePath: normalizedWorktreePath,
 		listProcessInfoFn,
 		getProcessCwdFn,
@@ -229,7 +229,7 @@ async function cleanupListeningProcessesForWorktree({
 module.exports = {
 	cleanupListeningProcessesForWorktree,
 	findListeningPidsForWorktree,
-	findRovodevSupervisorPidsForWorktree,
+	findRovoSupervisorPidsForWorktree,
 	getProcessCwd,
 	listProcessInfo,
 	listListeningPids,

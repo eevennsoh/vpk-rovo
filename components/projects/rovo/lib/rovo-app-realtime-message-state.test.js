@@ -87,16 +87,16 @@ test("updateRealtimeTextMessage preserves non-text parts when appending text", (
 	]);
 });
 
-test("mergeRovoAppMessages dedupes colliding ids and prefers canonical RovoDev messages", () => {
+test("mergeRovoAppMessages dedupes colliding ids and prefers canonical Rovo messages", () => {
 	const createdAt = "2026-03-13T00:00:00.000Z";
 	const mergedMessages = mergeRovoAppMessages({
-		rovodevMessages: [
+		rovoMessages: [
 			{
 				id: "shared-message",
 				role: "assistant",
 				metadata: {
 					createdAt,
-					origin: "rovodev",
+					origin: "rovo",
 					updatedAt: "2026-03-13T00:00:02.000Z",
 				},
 				parts: [{ type: "text", text: "Canonical response", state: "done" }],
@@ -119,20 +119,20 @@ test("mergeRovoAppMessages dedupes colliding ids and prefers canonical RovoDev m
 
 	assert.equal(mergedMessages.length, 1);
 	assert.equal(mergedMessages[0]?.id, "shared-message");
-	assert.equal(mergedMessages[0]?.metadata?.origin, "rovodev");
+	assert.equal(mergedMessages[0]?.metadata?.origin, "rovo");
 	assert.equal(mergedMessages[0]?.parts[0]?.text, "Canonical response");
 });
 
 test("mergeRovoAppMessages keeps a streaming realtime message until the canonical one is ready", () => {
 	const createdAt = "2026-03-13T00:00:00.000Z";
 	const mergedMessages = mergeRovoAppMessages({
-		rovodevMessages: [
+		rovoMessages: [
 			{
 				id: "shared-message",
 				role: "assistant",
 				metadata: {
 					createdAt,
-					origin: "rovodev",
+					origin: "rovo",
 					updatedAt: "2026-03-13T00:00:02.000Z",
 				},
 				parts: [{ type: "text", text: "Canonical response", state: "done" }],
@@ -161,7 +161,7 @@ test("mergeRovoAppMessages keeps a streaming realtime message until the canonica
 
 test("mergeRovoAppMessages retains hidden metadata for legacy Hermes transcript widgets", () => {
 	const mergedMessages = mergeRovoAppMessages({
-		rovodevMessages: [],
+		rovoMessages: [],
 		realtimeMessages: [
 			{
 				id: "hermes-memory-thread-1",

@@ -1,16 +1,16 @@
 "use strict";
 
-const DEFAULT_ROVO_APP_ROVODEV_STARTUP_GRACE_MS = 5_000;
-const ROVO_APP_ROVODEV_STARTUP_POLL_MS = 250;
+const DEFAULT_ROVO_APP_ROVO_STARTUP_GRACE_MS = 5_000;
+const ROVO_APP_ROVO_STARTUP_POLL_MS = 250;
 
-async function waitForRovoAppRovoDevAvailability({
+async function waitForRovoAppRovoAvailability({
 	getAvailability,
 	getPorts,
-	graceMs = DEFAULT_ROVO_APP_ROVODEV_STARTUP_GRACE_MS,
+	graceMs = DEFAULT_ROVO_APP_ROVO_STARTUP_GRACE_MS,
 	sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 } = {}) {
 	if (typeof getAvailability !== "function") {
-		throw new Error("waitForRovoAppRovoDevAvailability requires getAvailability");
+		throw new Error("waitForRovoAppRovoAvailability requires getAvailability");
 	}
 
 	const initialAvailable = await getAvailability();
@@ -24,7 +24,7 @@ async function waitForRovoAppRovoDevAvailability({
 
 	const startedAt = Date.now();
 	while (Date.now() - startedAt < graceMs) {
-		await sleep(ROVO_APP_ROVODEV_STARTUP_POLL_MS);
+		await sleep(ROVO_APP_ROVO_STARTUP_POLL_MS);
 		if (await getAvailability()) {
 			return true;
 		}
@@ -34,7 +34,7 @@ async function waitForRovoAppRovoDevAvailability({
 }
 
 module.exports = {
-	DEFAULT_ROVO_APP_ROVODEV_STARTUP_GRACE_MS,
-	ROVO_APP_ROVODEV_STARTUP_POLL_MS,
-	waitForRovoAppRovoDevAvailability,
+	DEFAULT_ROVO_APP_ROVO_STARTUP_GRACE_MS,
+	ROVO_APP_ROVO_STARTUP_POLL_MS,
+	waitForRovoAppRovoAvailability,
 };

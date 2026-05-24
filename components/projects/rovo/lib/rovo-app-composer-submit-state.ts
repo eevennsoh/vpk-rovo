@@ -9,7 +9,7 @@ export type RovoAppDirectDelegationPhase =
 	| "background";
 
 const DEFAULT_BACKGROUND_DELEGATION_LABEL =
-	"RovoDev is still working in the background.";
+	"Rovo is still working in the background.";
 
 function formatBackgroundDelegationLabel(
 	latestThinkingStatusLabel: string | null | undefined,
@@ -19,7 +19,7 @@ function formatBackgroundDelegationLabel(
 		return DEFAULT_BACKGROUND_DELEGATION_LABEL;
 	}
 
-	return `RovoDev is still working: ${normalizedLabel}${
+	return `Rovo is still working: ${normalizedLabel}${
 		/[.!?]$/u.test(normalizedLabel) ? "" : "."
 	}`;
 }

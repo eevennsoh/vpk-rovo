@@ -63,12 +63,12 @@ calls.
 
 ### Composition root
 
-- `app/old-rovo/components/canvas/RovoDevCanvasAfm.tsx` - Main composition root.
+- `app/old-rovo/components/canvas/RovoCanvasAfm.tsx` - Main composition root.
   Defines the tab map, inner toolbar, panel switching, right rail, overlays,
   and generator hook registration.
-- `app/old-rovo/components/canvas/RovoDevCanvas.tsx` - Legacy canvas sibling.
+- `app/old-rovo/components/canvas/RovoCanvas.tsx` - Legacy canvas sibling.
   Inspect before deleting if the destination has older references.
-- `app/old-rovo/components/canvas/RovoDevChat.tsx` - Legacy canvas chat sibling.
+- `app/old-rovo/components/canvas/RovoChat.tsx` - Legacy canvas chat sibling.
   Not the AFM right rail, but useful for older behavior references.
 - `app/old-rovo/components/canvas/CanvasHeader.tsx` - Legacy header sibling.
   The AFM implementation uses `afm/StagingAreaHeader.tsx` instead.
@@ -81,7 +81,7 @@ calls.
 - `app/contexts/RovoChatContext.tsx` - Chat state with per-surface message
   slices. The canvas surface is pinned to Rovo.
 - `app/contexts/RovoCanvasProviderWrapper.tsx` - Wraps the app in
-  `RovoCanvasProvider` and mounts `RovoDevCanvasAfm`.
+  `RovoCanvasProvider` and mounts `RovoCanvasAfm`.
 
 ### Modal shell in `afm/`
 
@@ -250,15 +250,15 @@ calls.
 - `app/api/rovo-chat/route.ts` - Next.js local-development proxy to
   `backend/server.js`.
 - `app/api/rovo-polish/route.ts` - Local-development proxy for the polish pass.
-- `app/api/rovodev/cancel/route.ts` - Local-development proxy for cancellation
+- `app/api/rovo/cancel/route.ts` - Local-development proxy for cancellation
   beacons.
 - `backend/server.js` - Express backend. The `/api/rovo-chat` handler routes
-  `mode: "rovo-dev"` to local `acli rovodev serve` when available, otherwise to
-  AI Gateway. It also exposes `/api/rovo-polish` and `/api/rovodev/cancel`.
-- `backend/rovodev-serve.js` - Starts or monitors local `acli rovodev serve` on
+  `mode: "rovo"` to local `rovo serve` when available, otherwise to
+  AI Gateway. It also exposes `/api/rovo-polish` and `/api/rovo/cancel`.
+- `backend/rovo-serve.js` - Starts or monitors local `rovo serve` on
   port 8765.
-- `backend/rovodev-handoff.js` - Session-based handoff bridge to the local Rovo
-  Dev CLI server.
+- `backend/rovo-handoff.js` - Session-based handoff bridge to the local Rovo
+  CLI server.
 
 ### Shared logic and prompts
 
@@ -382,7 +382,7 @@ export interface PlanStep {
 
 export interface CanvasMessage {
   id: string;
-  role: 'user' | 'rovodev';
+  role: 'user' | 'rovo';
   content: string;
   isStreaming?: boolean;
 }
@@ -542,7 +542,7 @@ copying files.
 
 ### Tab switcher and kind defaults
 
-`RovoDevCanvasAfm.tsx` defines the source of truth for canvas tabs:
+`RovoCanvasAfm.tsx` defines the source of truth for canvas tabs:
 
 - `dashboard`: Plan, Preview, HTML.
 - `agent`: Details, Preview, Surfaces.
@@ -688,7 +688,7 @@ your destination modal can reopen while an exit animation is still running.
 calls:
 
 ```ts
-navigator.sendBeacon('/api/rovodev/cancel', new Blob([JSON.stringify({})]));
+navigator.sendBeacon('/api/rovo/cancel', new Blob([JSON.stringify({})]));
 ```
 
 The backend derives the session key from IP and user agent if the body does not
@@ -714,7 +714,7 @@ Send a POST request to `/api/rovo-chat`:
 ```json
 {
   "message": "Build a project health dashboard",
-  "mode": "rovo-dev",
+  "mode": "rovo",
   "isEdit": false,
   "graphSummary": "{\"projects\":[]}",
   "conversationHistory": [],
@@ -728,7 +728,7 @@ Send a POST request to `/api/rovo-chat`:
 Required fields:
 
 - `message`: The user request or augmented edit prompt.
-- `mode`: Must be `"rovo-dev"` for canvas generation.
+- `mode`: Must be `"rovo"` for canvas generation.
 
 Common optional fields:
 
@@ -807,7 +807,7 @@ artefact registry marks the type with `skipPolish`, such as scripts.
 
 ### Cancel
 
-Send a POST request to `/api/rovodev/cancel`. The body can be empty or include a
+Send a POST request to `/api/rovo/cancel`. The body can be empty or include a
 session key:
 
 ```json
@@ -867,7 +867,7 @@ Build in this order so the canvas compiles and can be tested incrementally.
    `CustomHeader`, `StagingAreaHeader`, `LoadingScreen`, `AIFooter`,
    `FeedbackBanner`, `intl-shim`, and `messages`.
 3. Port `CanvasTabSwitcher` and the `CanvasInnerToolbar` logic from
-   `RovoDevCanvasAfm.tsx`.
+   `RovoCanvasAfm.tsx`.
 4. Port `PlanPanel` and `HtmlPanel`. Verify staged Save and Discard without AI.
 5. Stub `useDashboardGenerator()` so it writes canned `planMarkdown` and HTML.
    Verify open, close, tabs, and panels.
@@ -880,7 +880,7 @@ Build in this order so the canvas compiles and can be tested incrementally.
    pin markers, shimmer, and version drawer.
 9. Replace the stub generator with `/api/rovo-chat` and the streaming parser in
    `useDashboardGenerator.ts`.
-10. Implement `/api/rovo-polish` and `/api/rovodev/cancel`.
+10. Implement `/api/rovo-polish` and `/api/rovo/cancel`.
 11. Port agent and automation panels if the destination needs those artefact
     types.
 12. Replace fallback templates and prompt registry with destination-specific

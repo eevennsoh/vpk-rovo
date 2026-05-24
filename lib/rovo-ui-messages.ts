@@ -252,13 +252,13 @@ export interface RovoMessageMetadata {
 		| "plan-retry"
 		| "plan-task-dispatch";
 	/** Internal provenance for unified voice/chat routing */
-	origin?: "realtime" | "rovodev";
-	/** Stable timestamps for merging persisted realtime + RovoDev threads */
+	origin?: "realtime" | "rovo";
+	/** Stable timestamps for merging persisted realtime + Rovo threads */
 	createdAt?: string;
 	updatedAt?: string;
 	/** OpenAI Realtime-side identifier for correlating client/server events */
 	realtimeMessageId?: string;
-	/** Existing user message reused when GPT-Realtime delegates to RovoDev */
+	/** Existing user message reused when GPT-Realtime delegates to Rovo */
 	delegatedFromId?: string;
 	/** Mode snapped when the user submitted the prompt. */
 	submittedMode?: RovoAppPromptMode;

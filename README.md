@@ -1,6 +1,6 @@
 # VPK (Venn Prototype Kit)
 
-Next.js 16 + Express backend with RovoDev Serve for primary chat and AI Gateway
+Next.js 16 + Express backend with Rovo Serve for primary chat and AI Gateway
 for explicit helper and media routes, deployable to Atlassian Micros.
 
 ## Architecture
@@ -10,14 +10,14 @@ This project uses a dual-mode runtime:
 **Local Development (two processes):**
 
 ```text
-Browser → Next.js (:3000) → app/api/* proxy → Express (:8080) → RovoDev Serve
+Browser → Next.js (:3000) → app/api/* proxy → Express (:8080) → Rovo Serve
                                                         ↘ AI Gateway-assisted helper/media routes
 ```
 
 **Production (single process):**
 
 ```text
-Browser → Express (:8080) → serves static export + handles /api/* → RovoDev Serve
+Browser → Express (:8080) → serves static export + handles /api/* → Rovo Serve
                                                         ↘ AI Gateway-assisted helper/media routes
 ```
 
@@ -89,9 +89,9 @@ pnpm run dev              # Start frontend + backend on direct localhost ports
 portless run              # Start frontend + backend through explicit Portless routing
 pnpm run dev:frontend     # Frontend only (Next.js with Turbopack)
 pnpm run dev:backend      # Backend only (Express)
-pnpm run rovodev          # Start RovoDev Serve + backend + frontend on direct localhost ports
-portless run --script rovodev
-                          # Start RovoDev Serve + backend + frontend through explicit Portless routing
+pnpm run rovo             # Start Rovo Serve + backend + frontend on direct localhost ports
+portless run --script rovo
+                          # Start Rovo Serve + backend + frontend through explicit Portless routing
 
 # Building
 pnpm run build            # Next.js build
@@ -220,8 +220,8 @@ BACKEND_URL=http://localhost:8080       # Backend URL for dev proxy
 
 LLM routing behavior:
 
-- Default: RovoDev-first (`pnpm run rovodev` starts a single instance by default; use `pnpm run rovodev --6` for full pool)
-- Main chat: `/api/chat-sdk` requires RovoDev Serve and returns `503` if RovoDev is unavailable
+- Default: Rovo-first (`pnpm run rovo` starts a single instance by default; use `pnpm run rovo --6` for full pool)
+- Main chat: `/api/chat-sdk` requires Rovo Serve and returns `503` if Rovo is unavailable
 - AI Gateway-assisted helper/media tasks: image, sound, suggestions, titles/metadata, and Realtime voice use AI Gateway when configured
 - Inspect current routing at `GET /api/health` under `llmRouting`
 

@@ -1,7 +1,7 @@
 const RATE_LIMIT_PATTERN =
 	/429|rate[- ]?limit|too many requests|throttl/i;
 const CHAT_IN_PROGRESS_PATTERN =
-	/ROVODEV_CHAT_IN_PROGRESS(?:_TIMEOUT)?|chat(?: turn| already)? in progress|chat-turn wait timed out|still finishing (?:the )?(?:previous|another) response/i;
+	/ROVO_CHAT_IN_PROGRESS(?:_TIMEOUT)?|chat(?: turn| already)? in progress|chat-turn wait timed out|still finishing (?:the )?(?:previous|another) response/i;
 
 export const RATE_LIMIT_MAX_RETRIES = 2;
 export const RATE_LIMIT_RETRY_DELAY_MS = 10_000;

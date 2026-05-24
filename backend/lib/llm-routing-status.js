@@ -5,22 +5,22 @@ const AI_GATEWAY_ASSISTED_FEATURE_USE_CASES = [
 ]
 
 function buildLlmRoutingStatus({
-	rovoDevAvailable,
+	rovoAvailable,
 	aiGatewayConfigured,
 } = {}) {
-	const canDelegateRichTurnsToRovoDev = rovoDevAvailable === true
+	const canDelegateRichTurnsToRovo = rovoAvailable === true
 
 	return {
-		rovoDevAvailable: canDelegateRichTurnsToRovoDev,
+		rovoAvailable: canDelegateRichTurnsToRovo,
 		aiGatewayConfigured: aiGatewayConfigured === true,
 		chatSdk: {
 			backend: "ai-gateway",
-			requiresRovoDev: false,
+			requiresRovo: false,
 			aiGatewayConfigured: aiGatewayConfigured === true,
 		},
 		richToolTurns: {
-			backend: canDelegateRichTurnsToRovoDev ? "rovodev" : "ai-gateway",
-			requiresRovoDev: false,
+			backend: canDelegateRichTurnsToRovo ? "rovo" : "ai-gateway",
+			requiresRovo: false,
 		},
 		aiGatewayAssistedFeatures: {
 			configured: aiGatewayConfigured === true,

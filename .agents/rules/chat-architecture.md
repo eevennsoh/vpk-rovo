@@ -1,11 +1,11 @@
 ---
-description: AI SDK / Chat architecture — useChat, RovoDev Serve, data parts, streaming
-globs: app/contexts/context-rovo-chat.tsx, backend/server.js, backend/lib/rovodev-*.js, rovo/**
+description: AI SDK / Chat architecture — useChat, Rovo Serve, data parts, streaming
+globs: app/contexts/context-rovo-chat.tsx, backend/server.js, backend/lib/rovo-*.js, rovo/**
 alwaysApply: false
 paths:
   - app/contexts/context-rovo-chat.tsx
   - backend/server.js
-  - backend/lib/rovodev-*.js
+  - backend/lib/rovo-*.js
   - rovo/**
 ---
 
@@ -45,20 +45,20 @@ Backend streaming (`backend/server.js`):
 
 - `createUIMessageStream` + `pipeUIMessageStreamToResponse` from `ai` handle SSE streaming
 
-RovoDev Serve integration (`backend/lib/rovodev-gateway.js`):
+Rovo Serve integration (`backend/lib/rovo-gateway.js`):
 
-- **Hybrid backend selection**: Chat SDK requests default to AI Gateway unless the caller selects RovoDev. Rovo app managed runs start on AI Gateway and delegate artifact, plan, or tool-heavy turns to RovoDev when available.
-- Detection: reads `.dev-rovodev-port` file → sets `ROVODEV_PORT` env var → pings `/healthcheck`
-- Streaming: `streamViaRovoDev()` uses the V3 two-step API (`POST /v3/set_chat_message` then `GET /v3/stream_chat`)
-- Non-streaming: `generateTextViaRovoDev()` wraps streaming for title generation, suggestions, and clarification cards
-- If a request explicitly selects RovoDev and `rovodev serve` is unavailable, the backend returns 503 with instructions to restart
+- **Hybrid backend selection**: Chat SDK requests default to AI Gateway unless the caller selects Rovo. Rovo app managed runs start on AI Gateway and delegate artifact, plan, or tool-heavy turns to Rovo when available.
+- Detection: reads `.dev-rovo-port` file → sets `ROVO_PORT` env var → pings `/healthcheck`
+- Streaming: `streamViaRovo()` uses the V3 two-step API (`POST /v3/set_chat_message` then `GET /v3/stream_chat`)
+- Non-streaming: `generateTextViaRovo()` wraps streaming for title generation, suggestions, and clarification cards
+- If a request explicitly selects Rovo and `rovo serve` is unavailable, the backend returns 503 with instructions to restart
 
 Key files:
 
 - `app/contexts/context-rovo-chat.tsx` — `useChat` integration, data part handling, message transformation
 - `rovo/config.js` — system prompt builder, model config, payload construction
 - `backend/server.js` — Express streaming endpoint using `createUIMessageStream`
-- `backend/lib/rovodev-gateway.js` — RovoDev Serve streaming/text bridge
-- `backend/lib/rovodev-client.js` — Low-level V3 REST + SSE client for `rovodev serve`
+- `backend/lib/rovo-gateway.js` — Rovo Serve streaming/text bridge
+- `backend/lib/rovo-client.js` — Low-level V3 REST + SSE client for `rovo serve`
 - `backend/lib/ai-gateway-helpers.js` — AI Gateway helpers for chat, media, suggestions, and other gateway-backed flows
 - `app/api/chat-sdk/route.ts` — dev proxy forwarding to Express; `/agents` referers default to AI Gateway if no backend preference is present

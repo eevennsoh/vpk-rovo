@@ -81,13 +81,13 @@ cmux.json
 .dev-pids
 .dev-backend-port
 .dev-frontend-port
-.dev-rovodev-port
-.dev-rovodev-ports
-.dev-rovodev-token
+.dev-rovo-port
+.dev-rovo-ports
+.dev-rovo-token
 .api-routes-backup
-.rovodev/config.generated.yml
-.rovodev/config.generated.yml.lock
-.rovodev/mcp.generated.json
+.rovo/config.generated.yml
+.rovo/config.generated.yml.lock
+.rovo/mcp.generated.json
 
 # vercel
 .vercel

@@ -197,7 +197,7 @@ export const INITIAL_CONTROL_PLANE_MEMORIES: Record<ControlPlaneMemoryTarget, Co
 		{
 			id: "memory-2",
 			source: "imported",
-			text: "Keep the interactive RovoDev loop on rovodev serve for v1.",
+			text: "Keep the interactive Rovo loop on rovo serve for v1.",
 			updatedAt: "2026-04-04T14:12:00.000Z",
 		},
 		{
@@ -320,7 +320,7 @@ export const INITIAL_CONTROL_PLANE_SETTINGS: ControlPlaneSettingsState = {
 	advancedAutomation: true,
 	providerRoutes: {
 		browser: "browser-extraction",
-		chat: "rovodev-serve",
+		chat: "rovo-serve",
 		summarization: "ai-gateway",
 		vision: "ai-gateway",
 		voice: "local-realtime",

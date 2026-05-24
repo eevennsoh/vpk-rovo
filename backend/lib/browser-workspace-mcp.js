@@ -9,11 +9,11 @@ function getBrowserWorkspaceScriptPath({ repoRoot = REPO_ROOT } = {}) {
 	return path.join(repoRoot, "scripts", "browser-workspace-mcp.js")
 }
 
-function getBrowserWorkspaceAllowedRovodevMcpServerSignature({ repoRoot = REPO_ROOT } = {}) {
+function getBrowserWorkspaceAllowedRovoMcpServerSignature({ repoRoot = REPO_ROOT } = {}) {
 	return `stdio:node:${getBrowserWorkspaceScriptPath({ repoRoot })}`
 }
 
-function getBrowserWorkspaceRovodevMcpServerConfig({ repoRoot = REPO_ROOT } = {}) {
+function getBrowserWorkspaceRovoMcpServerConfig({ repoRoot = REPO_ROOT } = {}) {
 	return {
 		[BROWSER_WORKSPACE_MCP_SERVER_NAME]: {
 			args: [getBrowserWorkspaceScriptPath({ repoRoot })],
@@ -29,6 +29,6 @@ function getBrowserWorkspaceRovodevMcpServerConfig({ repoRoot = REPO_ROOT } = {}
 module.exports = {
 	BROWSER_WORKSPACE_MCP_SERVER_NAME,
 	getBrowserWorkspaceScriptPath,
-	getBrowserWorkspaceAllowedRovodevMcpServerSignature,
-	getBrowserWorkspaceRovodevMcpServerConfig,
+	getBrowserWorkspaceAllowedRovoMcpServerSignature,
+	getBrowserWorkspaceRovoMcpServerConfig,
 }

@@ -31,11 +31,11 @@ function getFunctionSource(functionName) {
 	throw new Error(`Could not parse ${functionName} source`);
 }
 
-test("compact rovo chat starts managed runs on AI Gateway without a RovoDev gate", () => {
+test("compact rovo chat starts managed runs on AI Gateway without a Rovo gate", () => {
 	const proxySource = getFunctionSource("proxyRovoAppChatRequest");
 
 	assert.match(proxySource, /createRun\(\{\s*backend:\s*"ai-gateway"/su);
-	assert.doesNotMatch(proxySource, /createRovoDevUnavailableError|resolveRovoAppPortAvailability|enqueueRun/u);
+	assert.doesNotMatch(proxySource, /createRovoUnavailableError|resolveRovoAppPortAvailability|enqueueRun/u);
 });
 
 test("RFP demo floating-chat turns stream before creating a managed run", () => {

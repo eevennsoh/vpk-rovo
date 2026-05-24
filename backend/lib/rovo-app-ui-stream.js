@@ -169,7 +169,7 @@ async function collectUiMessagesFromResponseStream({
 		// The AI SDK's createAsyncIterableStream .throw() method rethrows
 		// instead of returning { done: true }, which causes V8 to emit
 		// "generator didn't stop after athrow()" when the underlying stream
-		// errors (e.g. RovoDev disconnect mid-stream). Swallow it here —
+		// errors (e.g. Rovo disconnect mid-stream). Swallow it here —
 		// the run-level catch in startManagedRovoAppRun handles the
 		// failure via failRovoAppRun.
 		const msg = error instanceof Error ? error.message : String(error);

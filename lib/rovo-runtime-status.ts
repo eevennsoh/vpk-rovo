@@ -12,9 +12,9 @@ const SURFACE_DEFAULTS: Record<RuntimeSurfaceKey, { message: string; name: Runti
 		message: "Hermes status unavailable.",
 		name: "hermes",
 	},
-	rovodev: {
-		message: "RovoDev status unavailable.",
-		name: "rovodev",
+	rovo: {
+		message: "Rovo status unavailable.",
+		name: "rovo",
 	},
 };
 
@@ -29,7 +29,7 @@ function isRuntimeHealth(value: unknown): value is RuntimeHealth {
 }
 
 function isRuntimeSurfaceName(value: unknown): value is RuntimeSurfaceName {
-	return value === "rovodev" || value === "hermes";
+	return value === "rovo" || value === "hermes";
 }
 
 function normalizeRuntimeSurfaceStatus(
@@ -89,7 +89,7 @@ export function normalizeRuntimeStatusSnapshot(payload: unknown): RuntimeStatusS
 		: {};
 	const surfaces: RuntimeStatusSnapshot["surfaces"] = {
 		hermes: normalizeRuntimeSurfaceStatus("hermes", surfacesPayload.hermes),
-		rovodev: normalizeRuntimeSurfaceStatus("rovodev", surfacesPayload.rovodev),
+		rovo: normalizeRuntimeSurfaceStatus("rovo", surfacesPayload.rovo),
 	};
 	const derivedStatus = deriveOverallRuntimeHealth(surfaces);
 

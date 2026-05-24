@@ -29,11 +29,11 @@ app/
 backend/
   server.js                    # Express server (production runtime)
   lib/                         # Backend utilities
-    rovodev-gateway.js         # RovoDev Serve streaming/text bridge
-    rovodev-client.js          # Low-level V3 REST + SSE client for rovodev serve
-    rovodev-pool.js            # Port pool manager for concurrent RovoDev sessions
-    rovodev-port-assignment.js # Deterministic panel-to-port mapping
-    rovodev-port-recovery.js   # Graceful restart for stuck RovoDev instances
+    rovo-gateway.js            # Rovo Serve streaming/text bridge
+    rovo-client.js             # Low-level V3 REST + SSE client for rovo serve
+    rovo-pool.js               # Port pool manager for concurrent Rovo sessions
+    rovo-port-assignment.js    # Deterministic panel-to-port mapping
+    rovo-port-recovery.js      # Graceful restart for stuck Rovo instances
     orchestrator-log.js        # Cross-panel activity log (JSONL persistence)
     question-card-extractor.js # Extracts clarification cards from assistant responses
     smart-audio-routing.js     # Audio generation intent routing
@@ -87,21 +87,22 @@ public/
 .cursor/                       # Cursor config (symlinks to .agents/)
 .claude/                       # Claude config (symlinks to .agents/)
 .codex/                        # Codex config (symlinks to .agents/)
-.rovodev/                      # RovoDev config (symlinks to .agents/)
+.rovodev/                      # Legacy Rovo config (symlinks to .agents/)
+.rovo/                         # Rovo config (symlinks to .agents/)
 ```
 
 ## Environment Variables
 
-**Hybrid chat mode** — AI Gateway-backed chat requires AI Gateway credentials, while RovoDev-selected flows require RovoDev Serve plus the session token printed by `pnpm run rovodev`.
+**Hybrid chat mode** — AI Gateway-backed chat requires AI Gateway credentials, while Rovo-selected flows require Rovo Serve plus the session token printed by `pnpm run rovo`.
 
 Optional environment variables:
 
 - `DEBUG=true` - Enable verbose logging
 - `PORT=8080` - Backend server port
 - `BACKEND_URL=http://localhost:8080` - Backend URL for frontend
-- `ROVODEV_PORT` - RovoDev Serve port (auto-set by `pnpm run rovodev`; do not set manually)
-- `ROVODEV_POOL_SIZE=1` - Number of RovoDev Serve instances in pool (default 1; set `pnpm run rovodev -- 6` for full pool)
-- `ROVODEV_FORCE_CLEAN_START=true` - Kill all existing RovoDev instances before starting
+- `ROVO_PORT` - Rovo Serve port (auto-set by `pnpm run rovo`; do not set manually)
+- `ROVO_POOL_SIZE=1` - Number of Rovo Serve instances in pool (default 1; set `pnpm run rovo -- 6` for full pool)
+- `ROVO_FORCE_CLEAN_START=true` - Kill all existing Rovo instances before starting
 - `AI_GATEWAY_URL`, `AI_GATEWAY_URL_GOOGLE`, `AI_GATEWAY_USE_CASE_ID`, `AI_GATEWAY_CLOUD_ID`, `AI_GATEWAY_USER_ID`, `ASAP_*` - Configure AI Gateway-backed chat, image, sound, suggestions, and Realtime voice routes
 - `NEXT_PUBLIC_API_URL` - API URL for production builds
 
@@ -121,7 +122,7 @@ Optional environment variables:
 
 | Skill        | Command             | Type     | Purpose                                               |
 | ------------ | ------------------- | -------- | ----------------------------------------------------- |
-| Setup        | `/vpk-setup`        | Workflow | Interactive setup: asks mode (Both/RovoDev/AI Gateway), credentials, dev servers |
+| Setup        | `/vpk-setup`        | Workflow | Interactive setup: asks mode (Both/Rovo/AI Gateway), credentials, dev servers |
 | Deploy       | `/vpk-deploy`       | Workflow | Deploy to Atlassian Micros                            |
 | Design       | `/vpk-design`       | Workflow | Figma to VPK implementation with validation           |
 | Tidy         | `/vpk-tidy`         | Utility  | Refactor React components for reusability             |

@@ -10,9 +10,9 @@ const {
 	ensureFreshWikiQmdIndex,
 	getQmdSyncSummary,
 	QmdNotReadyError,
-	getQmdAllowedRovodevMcpServerSignature,
-	getQmdRovodevMcpServerConfig,
-	isQmdRovodevMcpServerAvailable,
+	getQmdAllowedRovoMcpServerSignature,
+	getQmdRovoMcpServerConfig,
+	isQmdRovoMcpServerAvailable,
 	searchWikiWithQmd,
 	syncWikiQmdIndex,
 	writeQmdSyncState,
@@ -161,10 +161,10 @@ test("searchWikiWithQmd throws when the qmd index has not been prepared", async 
 	);
 });
 
-test("getQmdRovodevMcpServerConfig returns a workspace-local stdio server", () => {
+test("getQmdRovoMcpServerConfig returns a workspace-local stdio server", () => {
 	const repoRoot = "/tmp/workspace";
-	assert.equal(getQmdAllowedRovodevMcpServerSignature(), "stdio:pnpm:exec qmd mcp");
-	assert.deepEqual(getQmdRovodevMcpServerConfig({ repoRoot }), {
+	assert.equal(getQmdAllowedRovoMcpServerSignature(), "stdio:pnpm:exec qmd mcp");
+	assert.deepEqual(getQmdRovoMcpServerConfig({ repoRoot }), {
 		qmd: {
 			args: ["exec", "qmd", "mcp"],
 			command: "pnpm",
@@ -176,11 +176,11 @@ test("getQmdRovodevMcpServerConfig returns a workspace-local stdio server", () =
 	});
 });
 
-test("isQmdRovodevMcpServerAvailable returns true only when the local qmd bootstrap succeeds", () => {
+test("isQmdRovoMcpServerAvailable returns true only when the local qmd bootstrap succeeds", () => {
 	const repoRoot = "/tmp/workspace";
 
 	assert.equal(
-		isQmdRovodevMcpServerAvailable({
+		isQmdRovoMcpServerAvailable({
 			repoRoot,
 			spawnSyncImpl: () => ({
 				status: 0,
@@ -190,7 +190,7 @@ test("isQmdRovodevMcpServerAvailable returns true only when the local qmd bootst
 	);
 
 	assert.equal(
-		isQmdRovodevMcpServerAvailable({
+		isQmdRovoMcpServerAvailable({
 			repoRoot,
 			spawnSyncImpl: () => ({
 				status: 1,

@@ -11,7 +11,7 @@ test("suppresses plan retry for stuck port assistant failures", () => {
 			parts: [
 				{
 					type: "text",
-					text: "\n\n⚠️ This request couldn't be completed — the RovoDev port is stuck. Please try again.",
+					text: "\n\n⚠️ This request couldn't be completed — the Rovo port is stuck. Please try again.",
 					state: "done",
 				},
 			],

@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 
 const { buildRuntimeStatusSnapshot } = require("./runtime-status");
 
-test("buildRuntimeStatusSnapshot derives degraded state from Hermes and RovoDev surfaces", () => {
+test("buildRuntimeStatusSnapshot derives degraded state from Hermes and Rovo surfaces", () => {
 	const snapshot = buildRuntimeStatusSnapshot({
 		hermes: {
 			available: false,
@@ -11,7 +11,7 @@ test("buildRuntimeStatusSnapshot derives degraded state from Hermes and RovoDev 
 			message: "Hermes local files are unavailable.",
 			status: "unavailable",
 		},
-		rovodev: {
+		rovo: {
 			available: true,
 			status: "ready",
 		},

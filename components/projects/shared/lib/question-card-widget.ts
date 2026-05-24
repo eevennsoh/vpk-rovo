@@ -674,7 +674,7 @@ export function buildDeferredToolResponse(
 }
 
 /**
- * Builds a system-level message to notify RovoDev that the user dismissed
+ * Builds a system-level message to notify Rovo that the user dismissed
  * a clarification question card and that execution should pause until the
  * user provides a new instruction.
  */

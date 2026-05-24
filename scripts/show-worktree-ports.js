@@ -7,8 +7,8 @@
  *   node scripts/show-worktree-ports.js watch    live dashboard (1s tick, Ctrl+C to exit)
  *
  * Main worktree is always shown. Other worktrees are shown only when they
- * have at least one of .dev-frontend-port / .dev-backend-port / .dev-rovodev-port
- * or .dev-rovodev-ports.
+ * have at least one of .dev-frontend-port / .dev-backend-port / .dev-rovo-port
+ * or .dev-rovo-ports.
  */
 
 const fs = require("node:fs");
@@ -47,8 +47,8 @@ function readPortFile(worktreePath, filename) {
 	return null;
 }
 
-function readRovodevPorts(worktreePath) {
-	const poolText = readPortFile(worktreePath, ".dev-rovodev-ports");
+function readRovoPorts(worktreePath) {
+	const poolText = readPortFile(worktreePath, ".dev-rovo-ports");
 	if (poolText) {
 		try {
 			const parsed = JSON.parse(poolText);
@@ -64,7 +64,7 @@ function readRovodevPorts(worktreePath) {
 		}
 	}
 
-	return readPortFile(worktreePath, ".dev-rovodev-port");
+	return readPortFile(worktreePath, ".dev-rovo-port");
 }
 
 function loadPortlessRoutes() {
@@ -90,8 +90,8 @@ function collectWorktreeRows(worktrees, routes) {
 	return worktrees.map((wt) => {
 		const runningFrontend = readPortFile(wt.path, ".dev-frontend-port");
 		const runningBackend = readPortFile(wt.path, ".dev-backend-port");
-		const runningRovodev = readRovodevPorts(wt.path);
-		const isRunning = Boolean(runningFrontend || runningBackend || runningRovodev);
+		const runningRovo = readRovoPorts(wt.path);
+		const isRunning = Boolean(runningFrontend || runningBackend || runningRovo);
 		return {
 			wt,
 			name: path.basename(wt.path),
@@ -99,7 +99,7 @@ function collectWorktreeRows(worktrees, routes) {
 			isRunning,
 			runningFrontend,
 			runningBackend,
-			runningRovodev,
+			runningRovo,
 			portlessUrl: findPortlessUrl(routes, runningFrontend),
 		};
 	});
@@ -128,7 +128,7 @@ function renderRows(rows, { headerSuffix, footer } = {}) {
 			isRunning,
 			runningFrontend,
 			runningBackend,
-			runningRovodev,
+			runningRovo,
 			portlessUrl,
 		} = row;
 		const branchLabel = isMain ? "(main)" : `(${wt.branch || wt.identifier})`;
@@ -138,7 +138,7 @@ function renderRows(rows, { headerSuffix, footer } = {}) {
 		console.log(`   📂 ${wt.path}`);
 		if (isRunning) {
 			console.log(
-				`   🔌 frontend=${runningFrontend || "—"}  backend=${runningBackend || "—"}  rovodev=${runningRovodev || "—"}`
+				`   🔌 frontend=${runningFrontend || "—"}  backend=${runningBackend || "—"}  rovo=${runningRovo || "—"}`
 			);
 		} else {
 			console.log("   🔌 (no active ports)");

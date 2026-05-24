@@ -68,31 +68,31 @@ fi
 
 echo "✅ Environment ready (port auto-discovery enabled: 3000-3019, 8000-8099)"
 
-# Start full stack via the rovodev script (RovoDev Serve + backend + frontend)
-echo "🤖 Starting RovoDev Serve + backend + frontend..."
+# Start full stack via the rovo script (Rovo Serve + backend + frontend)
+echo "🤖 Starting Rovo Serve + backend + frontend..."
 if [ "$NO_WAIT" = true ]; then
     # For AI/automated execution - use nohup to detach
-    nohup pnpm run rovodev > /dev/null 2>&1 &
+    nohup pnpm run rovo > /dev/null 2>&1 &
 else
-    pnpm run rovodev &
+    pnpm run rovo &
 fi
 STACK_PID=$!
 echo "   Stack PID: $STACK_PID"
 
 echo "   Waiting for port files to initialize..."
 for i in $(seq 1 20); do
-    if [ -f .dev-backend-port ] && [ -f .dev-frontend-port ] && [ -f .dev-rovodev-port ]; then
+    if [ -f .dev-backend-port ] && [ -f .dev-frontend-port ] && [ -f .dev-rovo-port ]; then
         break
     fi
     sleep 0.5
 done
 
-ROVODEV_PORT=8000
+ROVO_PORT=8000
 BACKEND_PORT=8080
 FRONTEND_PORT=3000
 
-if [ -f .dev-rovodev-port ]; then
-    ROVODEV_PORT=$(cat .dev-rovodev-port | tr -d '[:space:]')
+if [ -f .dev-rovo-port ]; then
+    ROVO_PORT=$(cat .dev-rovo-port | tr -d '[:space:]')
 fi
 
 if [ -f .dev-backend-port ]; then
@@ -105,10 +105,10 @@ fi
 
 echo ""
 echo "🎉 All services started!"
-echo "   - RovoDev Serve: http://localhost:${ROVODEV_PORT}"
+echo "   - Rovo Serve: http://localhost:${ROVO_PORT}"
 echo "   - Express Backend: http://localhost:${BACKEND_PORT}"
 echo "   - Frontend: http://localhost:${FRONTEND_PORT}"
-echo "   - Main chat backend: RovoDev Serve"
+echo "   - Main chat backend: Rovo Serve"
 echo "   - AI Gateway-backed routes: image, sound, suggestions, Realtime voice"
 echo ""
 echo "💡 Port auto-discovery: If default ports are in use, servers automatically find available ports."

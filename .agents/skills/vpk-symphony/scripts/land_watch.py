@@ -9,6 +9,8 @@ from typing import Any
 
 POLL_SECONDS = 10
 CHECKS_APPEAR_TIMEOUT_SECONDS = 120
+AGENT_REVIEW_HEADER = "[codex] Symphony Agent Review"
+AGENT_REVIEW_ALLOWED_STATUSES = {"pass", "changes-requested", "needs-human"}
 CODEX_BOTS = {
     "chatgpt-codex-connector[bot]",
     "github-actions[bot]",
@@ -191,6 +193,10 @@ REVIEWED_COMMIT_RE = re.compile(
     r"Reviewed commit:\*{0,2}\s*`?([0-9a-fA-F]{7,40})`?",
     re.IGNORECASE,
 )
+AGENT_REVIEW_STATUS_RE = re.compile(
+    r"^Status:\s*(pass|changes-requested|needs-human)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def sanitize_terminal_output(value: str) -> str:
@@ -212,6 +218,22 @@ def reviewed_commit_from_body(body: str) -> str | None:
     if not match:
         return None
     return match.group(1)
+
+
+def is_agent_review_body(body: str) -> bool:
+    return body.strip().startswith(AGENT_REVIEW_HEADER)
+
+
+def agent_review_status_from_body(body: str) -> str | None:
+    if not is_agent_review_body(body):
+        return None
+    match = AGENT_REVIEW_STATUS_RE.search(body)
+    if not match:
+        return None
+    status = match.group(1).lower()
+    if status not in AGENT_REVIEW_ALLOWED_STATUSES:
+        return None
+    return status
 
 
 def comment_matches_head(comment: dict[str, Any], head_sha: str) -> bool:
@@ -296,7 +318,7 @@ def filter_codex_comments(
     filtered: list[dict[str, Any]] = []
     for comment in codex_comments:
         body = comment.get("body") or ""
-        if is_codex_review_signal_body(body):
+        if is_codex_review_signal_body(body) or is_agent_review_body(body):
             continue
         created_time = comment_time(comment)
         if created_time is None:
@@ -379,6 +401,8 @@ def filter_human_issue_comments(comments: list[dict[str, Any]]) -> list[dict[str
         if is_codex_reply_body(body):
             continue
         if is_codex_review_body(body):
+            continue
+        if is_agent_review_body(body):
             continue
         if "@codex review" in body:
             continue
@@ -576,6 +600,39 @@ def filter_codex_review_signals(
     return filtered
 
 
+def filter_agent_review_comments(
+    comments: list[dict[str, Any]],
+    head_sha: str,
+) -> list[dict[str, Any]]:
+    return [
+        comment
+        for comment in comments
+        if agent_review_status_from_body(comment.get("body") or "") is not None
+        and comment_matches_head(comment, head_sha)
+    ]
+
+
+def filter_stale_agent_review_comments(
+    comments: list[dict[str, Any]],
+    head_sha: str,
+) -> list[dict[str, Any]]:
+    return [
+        comment
+        for comment in comments
+        if agent_review_status_from_body(comment.get("body") or "") is not None
+        and not comment_matches_head(comment, head_sha)
+    ]
+
+
+def latest_comment(comments: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not comments:
+        return None
+    return max(
+        comments,
+        key=lambda comment: comment_time(comment) or parse_time("1970-01-01T00:00:00Z"),
+    )
+
+
 def is_merge_conflicting(pr: PrInfo) -> bool:
     return pr.mergeable == "CONFLICTING" or pr.merge_state == "DIRTY"
 
@@ -621,12 +678,12 @@ def raise_on_human_feedback(
         raise SystemExit(2)
 
 
-async def wait_for_codex(
+async def wait_for_agent_review(
     pr_number: int,
     head_sha: str,
     head_created_at: datetime,
 ) -> None:
-    print("Waiting for review feedback...", flush=True)
+    print("Waiting for Symphony Agent Review pass...", flush=True)
     while True:
         (
             issue_comments,
@@ -646,19 +703,6 @@ async def wait_for_codex(
             head_sha,
         )
         bot_comments = bot_issue_comments + bot_review_comments
-        bot_reviews = filter_codex_reviews(reviews, review_floor, head_sha)
-        bot_review_signals = (
-            filter_codex_review_signals(
-                issue_comments,
-                review_floor,
-                head_sha,
-            )
-            + filter_codex_review_signals(
-                review_comments,
-                review_floor,
-                head_sha,
-            )
-        )
         raise_on_human_feedback(
             issue_comments,
             review_comments,
@@ -675,9 +719,23 @@ async def wait_for_codex(
                 print("Codex left comments. Address feedback before merge.")
                 print(body)
                 raise SystemExit(2)
-        if bot_reviews or bot_review_signals:
-            print("Codex review detected")
-            return
+        agent_reviews = filter_agent_review_comments(issue_comments, head_sha)
+        latest_agent_review = latest_comment(agent_reviews)
+        if latest_agent_review:
+            body = latest_agent_review.get("body") or ""
+            status = agent_review_status_from_body(body)
+            if status == "pass":
+                print("Symphony Agent Review passed")
+                return
+            if status == "changes-requested":
+                print("Symphony Agent Review requested changes")
+                raise SystemExit(2)
+            if status == "needs-human":
+                print("Symphony Agent Review requires human review")
+                raise SystemExit(6)
+        if filter_stale_agent_review_comments(issue_comments, head_sha):
+            print("PR head changed after Symphony Agent Review; re-review required")
+            raise SystemExit(4)
         await asyncio.sleep(POLL_SECONDS)
 
 
@@ -720,8 +778,8 @@ async def watch_pr() -> None:
     head_sha = pr.head_sha
     head_created_at = await get_commit_time(head_sha)
     checks_done = asyncio.Event()
-    codex_task = asyncio.create_task(
-        wait_for_codex(pr.number, head_sha, head_created_at),
+    agent_review_task = asyncio.create_task(
+        wait_for_agent_review(pr.number, head_sha, head_created_at),
     )
     checks_task = asyncio.create_task(wait_for_checks(head_sha, checks_done))
 
@@ -740,7 +798,7 @@ async def watch_pr() -> None:
             await asyncio.sleep(POLL_SECONDS)
 
     monitor_task = asyncio.create_task(head_monitor())
-    success_task = asyncio.gather(codex_task, checks_task)
+    success_task = asyncio.gather(agent_review_task, checks_task)
 
     done, pending = await asyncio.wait(
         [monitor_task, success_task],

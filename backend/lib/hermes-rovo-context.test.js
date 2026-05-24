@@ -39,7 +39,7 @@ test("buildRovoAppHermesContextDescription includes installed skill catalog and 
 				content: "- Prefers concise answers.",
 			},
 			work: {
-				content: "- Keep the runtime loop on RovoDev.",
+				content: "- Keep the runtime loop on Rovo.",
 			},
 		}),
 		getSkillImpl: async () => ({

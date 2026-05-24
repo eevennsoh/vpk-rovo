@@ -23,7 +23,11 @@ Playwright CLI evidence path.
    `## Codex Workpad` comment.
 3. Classify the issue before editing:
    - Answer-only issues get a concise investigation and workpad handoff.
-   - Implementation issues move through branch, validation, PR, and review.
+   - Implementation issues move through branch, validation, PR, Agent Review,
+     and guarded merge.
+   - `Agent Review` is an adversarial code review gate. It is read-only against
+     tracked repo files, but may run verification commands that leave tracked
+     files unchanged.
    - `Merging` issues are merge-only unless review evidence proves more code is
      required.
 4. Sync with `origin/main` before code edits and record the result in the

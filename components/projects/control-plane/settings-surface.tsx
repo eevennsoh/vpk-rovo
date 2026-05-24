@@ -50,7 +50,7 @@ const WIKI_JOB_METADATA: Record<(typeof WIKI_JOB_NAMES)[number], { description: 
 
 const PROVIDER_OPTIONS: Record<keyof ControlPlaneProviderRoutes, readonly string[]> = {
 	browser: ["browser-extraction", "local-browser", "ai-gateway"],
-	chat: ["rovodev-serve", "ai-gateway", "local-model"],
+	chat: ["rovo-serve", "ai-gateway", "local-model"],
 	jobs: ["embedded-hermes", "remote-hermes", "manual"],
 	summarization: ["ai-gateway", "local-summary", "manual"],
 	vision: ["ai-gateway", "browser-capture", "local-vision"],
@@ -114,7 +114,7 @@ export function SettingsSurfacePage() {
 			return [
 				{
 					detail: "Runtime status has not loaded yet.",
-					label: "RovoDev",
+					label: "Rovo",
 					tone: "warning" as const,
 					value: "loading",
 				},
@@ -129,10 +129,10 @@ export function SettingsSurfacePage() {
 
 		return [
 			{
-				detail: runtimeStatus.surfaces.rovodev.message ?? "No status message.",
-				label: "RovoDev",
-				tone: formatSurfaceHealth(runtimeStatus.surfaces.rovodev.health),
-				value: runtimeStatus.surfaces.rovodev.status,
+				detail: runtimeStatus.surfaces.rovo.message ?? "No status message.",
+				label: "Rovo",
+				tone: formatSurfaceHealth(runtimeStatus.surfaces.rovo.health),
+				value: runtimeStatus.surfaces.rovo.status,
 			},
 			{
 				detail: runtimeStatus.surfaces.hermes.message ?? "No status message.",
@@ -284,7 +284,7 @@ export function SettingsSurfacePage() {
 							<CardTitle>Provider routing</CardTitle>
 							<CardDescription>
 								Choose the default runtime for each workload family. Jobs run through the shared
-								RovoDev executor, with Hermes providing the backing capabilities.
+								Rovo executor, with Hermes providing the backing capabilities.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">

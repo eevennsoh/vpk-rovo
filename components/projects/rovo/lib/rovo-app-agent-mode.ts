@@ -42,7 +42,7 @@ function isRecoverableAgentModeSyncFailure(
 		return true;
 	}
 
-	return /Set agent mode failed \(status 404\)|RovoDev Serve is required but not available/i.test(
+	return /Set agent mode failed \(status 404\)|Rovo Serve is required but not available/i.test(
 		message,
 	);
 }

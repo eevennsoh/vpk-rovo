@@ -1,0 +1,12 @@
+{
+	"jiraProjects": [
+		{
+			"siteUrl": "https://hello.atlassian.net",
+			"cloudId": "a436116f-02ce-4520-8fbb-7301462a1674"
+		},
+		{
+			"siteUrl": "https://product-fabric.atlassian.net",
+			"cloudId": "11017b7e-9387-4edc-894d-506c2344c4e6"
+		}
+	]
+}

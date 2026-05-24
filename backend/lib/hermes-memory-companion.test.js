@@ -10,7 +10,7 @@ const {
 } = require("./hermes-memory-companion");
 const {
 	parseStructuredJsonResponse,
-	runRovoDevBackgroundTask,
+	runRovoBackgroundTask,
 } = require("./rovo-task-executor");
 
 test("buildHermesMemoryCompanionMessages asks the reviewer to decide from full-turn meaning", () => {
@@ -88,10 +88,10 @@ test("parseStructuredHermesMemoryFallback rejects malformed non-empty actions ar
 	assert.equal(parsed, null);
 });
 
-test("runRovoDevBackgroundTask parses structured fallback output", async () => {
+test("runRovoBackgroundTask parses structured fallback output", async () => {
 	let capturedInput = null;
 
-	const result = await runRovoDevBackgroundTask({
+	const result = await runRovoBackgroundTask({
 		generateTextImpl: async (input) => {
 			capturedInput = input;
 			return [

@@ -119,7 +119,7 @@ With `--port`, upstream Symphony exposes:
 Recommended Linear flow:
 
 ```text
-Backlog -> Todo -> In Progress -> Human Review -> Rework -> Human Review -> Merging -> Done
+Backlog -> Todo -> In Progress -> Agent Review -> Merging -> Done
 ```
 
 `WORKFLOW.md` is based on upstream `elixir/WORKFLOW.md` and keeps VPK-specific
@@ -129,26 +129,41 @@ customization in the YAML hooks plus the repository contract section.
 - `Todo`: worker moves the issue to `In Progress`, creates or updates the
   `## Codex Workpad`, then starts.
 - `In Progress`: worker continues from the workpad.
-- `Human Review`: waits for human action.
-- `Rework`: worker handles reviewer feedback, validates, and returns to
-  `Human Review`.
+- `Agent Review`: worker performs a fresh read-only adversarial code review of
+  the linked PR against the issue, workpad, diff, validation proof, evidence,
+  comments, and checks. Passing work moves to `Merging`; gaps move back to
+  `In Progress`; risk or ambiguity moves to `Human Review`.
+- `Human Review`: risk gate for missing proof, product ambiguity,
+  security/data concerns, UI judgment, or other human decisions.
 - `Merging`: worker follows the `vpk-symphony` landing reference and moves the
-  issue to `Done` only after GitHub reports the PR merged.
-- `Done`, `Closed`, `Canceled`, `Cancelled`, `Duplicate`: terminal.
+  issue to `Done` only after a current-head passing Symphony Agent Review,
+  green checks, clean mergeability, and GitHub-reported merge.
+- `Done`, `Canceled`, `Duplicate`: terminal.
+
+Symphony PRs should carry the `symphony` label and should not use
+`automerge:allowed`; Symphony owns the guarded merge path for this workflow.
+GitHub native auto-merge remains disabled because this repo does not rely on
+branch-protection-required checks.
 
 Workers keep exactly one active `## Codex Workpad` comment. The workpad should
 be concise and current: environment stamp, plan, acceptance criteria,
 validation, evidence, decisions, branch, PR, and handoff.
 
+`WORKFLOW.md` also includes compact phase prompts for each Linear state:
+`Todo` is kickoff, `In Progress` is implementation, `Agent Review` is fresh
+adversarial code review, `Human Review` is a waiting gate, `Merging` is guarded
+landing, and terminal states do nothing. These prompts are part of the runtime
+worker prompt, not only documentation.
+
 For UI or browser-observable changes, workers use the repo-local `vpk-symphony`
-browser evidence reference during `In Progress` or `Rework` when
+browser evidence reference during `In Progress` when
 `playwright-cli` is available. Artifacts are kept under
 `output/playwright/<issue-identifier>/` in the issue workspace and only the
 required screenshots or short WebM recordings are uploaded to Linear through the
 injected `linear_graphql` tool. The uploaded links belong in the single
 `## Codex Workpad` comment, not in separate progress comments. A before artifact
 is only required when it proves the bug or requested baseline; an after artifact
-is expected before moving app-touching work to `Human Review` when browser media
+is expected before moving app-touching work to `Agent Review` when browser media
 capture is available. Screenshot uploads should use markdown image syntax
 (`![alt text](<asset-url>)`) in the workpad so Linear renders an inline preview.
 Uploaded WebM recordings should be placed as standalone asset URLs rather than
@@ -158,8 +173,9 @@ preview when supported.
 Upstream Symphony re-dispatches an issue when a Codex turn completes while the
 issue is still in an active state. For that reason, VPK workers should not end a
 normal turn with completed or blocked work still in `In Progress`; they should
-write the handoff or blocker into the workpad and move the issue to
-`Human Review`.
+write the handoff or blocker into the workpad. Completed implementation work
+should move to `Agent Review`; human-risk blockers and answer-only work should
+move to `Human Review`.
 
 Answer-only issues, such as “explain this codebase” or operational questions,
 do not need a branch or PR. Workers should do a bounded targeted read, put the
@@ -181,8 +197,9 @@ The workflow keeps the upstream defaults visible where local choices matter:
 
 - `polling.interval_ms`: `5000`, matching the upstream sample cadence.
 - `agent.max_concurrent_agents`: `10`, matching the upstream sample.
-- `agent.max_turns`: `3`, a local cap to stop one issue from running many
-  back-to-back Codex turns without human review.
+- `agent.max_turns`: `20`, matching the upstream sample so a larger task can
+  continue through multiple Codex turns before Symphony returns control to the
+  orchestrator.
 - `agent.max_concurrent_agents_by_state.Merging`: `1`, the only local per-state
   cap, so merge work does not run in parallel across several issues.
 - `codex.command`: upstream-style `codex ... app-server` with inherited shell

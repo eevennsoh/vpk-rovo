@@ -146,7 +146,7 @@ type RealtimeMessageMutationResult =
 
 type RovoAppRealtimeShellAdapter = ReturnType<typeof useRovoApp> & {
 	appendRealtimeMessage?: (role: "user" | "assistant", content: string, options?: Record<string, unknown>) => Promise<RealtimeMessageMutationResult> | RealtimeMessageMutationResult;
-	delegateToRovodev?: (messageId: string, options?: Record<string, unknown>) => Promise<void>;
+	delegateToRovo?: (messageId: string, options?: Record<string, unknown>) => Promise<void>;
 	setRealtimeMessageContent?: (messageId: string, content: string) => Promise<void> | void;
 	submitRealtimeText?: (payload: { contextDescription?: string; hermesContext?: RovoAppHermesContext; files: FileUIPart[]; text: string }) => Promise<void>;
 	updateRealtimeMessage?: (messageId: string, contentDelta: string) => Promise<void> | void;
@@ -1160,8 +1160,8 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					const extendedRequest = request as ExtendedDelegationRequest;
 					const delegatedMessageId = extendedRequest.delegatedMessageId ?? extendedRequest.realtimeMessageId ?? extendedRequest.messageId ?? realtimeUserMessageIdRef.current;
 
-					if (delegatedMessageId && typeof c.delegateToRovodev === "function") {
-						await c.delegateToRovodev(delegatedMessageId, {
+					if (delegatedMessageId && typeof c.delegateToRovo === "function") {
+						await c.delegateToRovo(delegatedMessageId, {
 							...buildHermesPromptOptions(contextDescription),
 							conversationSummary: request.conversationSummary,
 							existingRealtimeMessageId: realtimeAssistantMessageIdRef.current ?? undefined,
@@ -1191,7 +1191,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				} catch (error) {
 					injectRealtimeContext({
 						type: "delegation_error",
-						content: error instanceof Error ? error.message : "RovoDev failed to process the delegated request.",
+						content: error instanceof Error ? error.message : "Rovo failed to process the delegated request.",
 					});
 					throw error;
 				}
@@ -1351,14 +1351,14 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		}
 	}, [chat.isVoiceMode, setChatVoiceMode, shouldChatVoiceModeBeEnabled]);
 
-	// Inject RovoDev results back into GPT session for context continuity
+	// Inject Rovo results back into GPT session for context continuity
 	useEffect(() => {
 		if (wasRealtimeStreamingRef.current && !chat.isStreaming && isRealtimeActive) {
 			const lastAssistantMessage = [...chat.messages].reverse().find((m) => m.role === "assistant");
 			if (lastAssistantMessage) {
 				const text = getMessageText(lastAssistantMessage);
 				const artifact = getMessageArtifactResult(lastAssistantMessage);
-				const summary = artifact ? `RovoDev ${artifact.action === "update" ? "updated" : "created"} artifact "${artifact.title}". ${text || ""}` : text || "RovoDev completed the task.";
+				const summary = artifact ? `Rovo ${artifact.action === "update" ? "updated" : "created"} artifact "${artifact.title}". ${text || ""}` : text || "Rovo completed the task.";
 				injectRealtimeContext({
 					type: "thread_message",
 					content: summary.slice(0, REALTIME_RESULT_SUMMARY_MAX_CHARS),

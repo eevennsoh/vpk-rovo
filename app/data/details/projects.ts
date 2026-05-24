@@ -26,7 +26,7 @@ export const PROJECT_DETAILS: Record<string, ComponentDetail> = {
 		},
 	},
 	"rovo": {
-		description: "A Vercel-style AI chat workspace with persistent thread history, local attachments, artifact editing, and RovoDev-backed streaming.",
+		description: "A Vercel-style AI chat workspace with persistent thread history, local attachments, artifact editing, and Rovo-backed streaming.",
 		importStatement: `import Rovo from "@/components/projects/rovo";`,
 		demoLayout: {
 			previewHeight: "fixed",

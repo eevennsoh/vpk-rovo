@@ -29,16 +29,16 @@ icon = "run"
 command = "pnpm run dev"
 
 [[actions]]
-name = "pnpm run rovodev"
+name = "pnpm run rovo"
 icon = "run"
-command = "pnpm run rovodev"
+command = "pnpm run rovo"
 
 [[actions]]
-name = "pnpm run rovodev:tmux:start --1"
+name = "pnpm run rovo:tmux:start --1"
 icon = "run"
-command = "pnpm run rovodev:tmux:start --1"
+command = "pnpm run rovo:tmux:start --1"
 
 [[actions]]
-name = "pnpm run rovodev:tmux:stop"
+name = "pnpm run rovo:tmux:stop"
 icon = "run"
-command = "pnpm run rovodev:tmux:stop"
+command = "pnpm run rovo:tmux:stop"

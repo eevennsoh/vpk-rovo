@@ -22,7 +22,7 @@ export function isRovoAppBackendUnavailableError(error: unknown): boolean {
 }
 
 export function getRovoAppBackendUnavailableUserMessage(): string {
-	return "Rovo can't reach the local backend. Start `pnpm run dev:backend` or `pnpm run rovodev`, then refresh.";
+	return "Rovo can't reach the local backend. Start `pnpm run dev:backend` or `pnpm run rovo`, then refresh.";
 }
 
 async function parseJsonResponse<T>(response: Response): Promise<T> {

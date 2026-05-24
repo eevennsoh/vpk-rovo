@@ -2,30 +2,30 @@
 
 ## Runtime Modes
 
-Local development has a two-process default and an optional RovoDev full stack:
+Local development has a two-process default and an optional Rovo full stack:
 
 ```text
 pnpm run dev → Express (:8080) + Next.js (:3000)
-pnpm run rovodev (default pool size: 1) → rovodev serve (:8000) + Express (:8080) + Next.js (:3000)
+pnpm run rovo (default pool size: 1) → rovo serve (:8000) + Express (:8080) + Next.js (:3000)
 
-Browser -> Next.js (:3000) -> app/api/* proxy -> Express (:8080) -> AI Gateway and/or rovodev serve (:8000)
+Browser -> Next.js (:3000) -> app/api/* proxy -> Express (:8080) -> AI Gateway and/or rovo serve (:8000)
 ```
 
 Production with static export (single process, requires `NEXT_OUTPUT=export` during build):
 
 ```text
-Browser -> Express (:8080) -> static export + /api/* -> RovoDev Serve
+Browser -> Express (:8080) -> static export + /api/* -> Rovo Serve
 ```
 
-The `rovodev` script starts all three processes concurrently (single-instance by
-default; use `pnpm run rovodev -- 6` for full pool). The `dev` script starts
+The `rovo` script starts all three processes concurrently (single-instance by
+default; use `pnpm run rovo -- 6` for full pool). The `dev` script starts
 only backend + frontend. Use `portless run` or
-`portless run --script rovodev` when you explicitly want Portless URLs such as
-`https://<branch.>vpk-rovo.localhost`. The backend auto-detects RovoDev Serve
-via `.dev-rovodev-port` (single) or `.dev-rovodev-ports` (pool) files. Chat SDK
-requests default to AI Gateway unless a caller selects RovoDev. `/api/rovo/chat`
+`portless run --script rovo` when you explicitly want Portless URLs such as
+`https://<branch.>vpk-rovo.localhost`. The backend auto-detects Rovo Serve
+via `.dev-rovo-port` (single) or `.dev-rovo-ports` (pool) files. Chat SDK
+requests default to AI Gateway unless a caller selects Rovo. `/api/rovo/chat`
 starts managed runs on AI Gateway, then delegates artifact, plan, or tool-heavy
-turns to RovoDev when available and otherwise falls back to AI Gateway.
+turns to Rovo when available and otherwise falls back to AI Gateway.
 
 ## Key Directories
 
@@ -37,10 +37,10 @@ turns to RovoDev when available and otherwise falls back to AI Gateway.
 - `components/ui/` - shared shadcn/Base UI primitives
 - `components/website/` - component documentation and demo site
 - `lib/` - shared utilities and token helpers
-- `backend/lib/` - backend utilities (plan run manager, RovoDev gateway/client/pool, generative UI, planning intent, DAG inference, team run lanes, smart routing)
+- `backend/lib/` - backend utilities (plan run manager, Rovo gateway/client/pool, generative UI, planning intent, DAG inference, team run lanes, smart routing)
 - `public/` - static assets (illustrations, product logos, third-party logos, avatars)
 - `.agents/` - canonical source for rules, skills, agents, docs, and hooks
-- `.cursor/`, `.claude/`, `.codex/`, `.rovodev/` - provider symlinks to `.agents/`
+- `.cursor/`, `.claude/`, `.codex/`, `.rovodev/`, `.rovo/` - provider symlinks to `.agents/`
 
 See `## Appendix -> Detailed Directory Structure` for expanded layout.
 
