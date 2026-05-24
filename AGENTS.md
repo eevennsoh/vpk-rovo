@@ -201,8 +201,8 @@ static export used by deployment.
 - Never import transitive pnpm dependencies directly — pnpm's strict isolation only allows imports from `package.json` direct dependencies. Use internal mechanisms (e.g., `globalThis.__PLATFORM_FEATURE_FLAGS__`) or add the package explicitly.
 - Do not remove the `@layer theme, base, components, utilities;` statement at the top of `app/globals.css` — it pre-declares cascade layer order; without it `@layer components` can declare too early (via `tailwind-theme.css`) and lose to preflight resets.
 - Theme switches via `setGlobalTheme()` from `@atlaskit/tokens` (sets `data-color-mode` + `--ds-*` vars), not Tailwind's `dark:` variant alone. Toggling the `dark` class on `<html>` won't update ADS tokens.
-- Fresh worktrees need their own `pnpm install` — `node_modules` does not share across worktrees.
-- Rovo launchers (`pnpm run rovo`, `pnpm run dev:rovo`, and `pnpm run rovo:tmux:start`) seed `.env.local` before startup: they copy the main worktree's `.env.local` first and fall back to `.env.local.example`. Copy or symlink `.env.local` manually only when running backend/frontend entrypoints outside those launchers.
+- Fresh worktrees need per-worktree `node_modules`; managed Codex and Claude Code worktrees bootstrap this automatically by copying `.env.local` when available and running `pnpm install` / `pnpm install --prefer-offline`. For manually-created worktrees, run `pnpm install` and copy or symlink `.env.local` yourself.
+- Rovo launchers (`pnpm run rovo`, `pnpm run dev:rovo`, and `pnpm run rovo:tmux:start`) also seed `.env.local` before startup: they copy the main worktree's `.env.local` first and fall back to `.env.local.example`. Copy or symlink `.env.local` manually only when running backend/frontend entrypoints outside those launchers or provider bootstrap.
 
 ## Architecture
 
