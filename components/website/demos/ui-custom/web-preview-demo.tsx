@@ -21,7 +21,7 @@ const SAMPLE_LOGS = [
 
 export function WebPreviewDemoBasic() {
 	return (
-		<WebPreview proxy defaultUrl={EXAMPLE_URL} className="h-[400px]">
+		<WebPreview defaultUrl={EXAMPLE_URL} className="h-[400px]">
 			<WebPreviewNavigation>
 				<WebPreviewNavigationButton action="back" tooltip="Back">
 					<ArrowLeft className="size-4" />
@@ -41,7 +41,7 @@ export function WebPreviewDemoBasic() {
 
 export function WebPreviewDemoWithConsole() {
 	return (
-		<WebPreview proxy defaultUrl={EXAMPLE_URL} className="h-[400px]">
+		<WebPreview defaultUrl={EXAMPLE_URL} className="h-[400px]">
 			<WebPreviewNavigation>
 				<WebPreviewNavigationButton action="back" tooltip="Back">
 					<ArrowLeft className="size-4" />
@@ -69,7 +69,7 @@ export function WebPreviewDemoFullscreen() {
 	);
 
 	return (
-		<WebPreview proxy defaultUrl={EXAMPLE_URL} className="h-[400px]">
+		<WebPreview defaultUrl={EXAMPLE_URL} className="h-[400px]">
 			<WebPreviewNavigation>
 				<WebPreviewNavigationButton action="back" tooltip="Back">
 					<ArrowLeft className="size-4" />
@@ -104,7 +104,7 @@ export function WebPreviewDemoUrlChange() {
 			<div className="text-sm text-muted-foreground">
 				Last navigated URL: <code className="rounded bg-muted px-1 py-0.5">{lastUrl}</code>
 			</div>
-			<WebPreview proxy defaultUrl={EXAMPLE_URL} onUrlChange={setLastUrl} className="h-[400px]">
+			<WebPreview defaultUrl={EXAMPLE_URL} onUrlChange={setLastUrl} className="h-[400px]">
 				<WebPreviewNavigation>
 					<WebPreviewNavigationButton action="back" tooltip="Back">
 						<ArrowLeft className="size-4" />
@@ -123,9 +123,9 @@ export function WebPreviewDemoUrlChange() {
 	);
 }
 
-export function WebPreviewDemoProxy() {
+export function WebPreviewDemoExternal() {
 	return (
-		<WebPreview proxy defaultUrl="https://www.theverge.com" className="h-[400px]">
+		<WebPreview defaultUrl="https://www.theverge.com" className="h-[400px]">
 			<WebPreviewNavigation>
 				<WebPreviewNavigationButton action="back" tooltip="Back">
 					<ArrowLeft className="size-4" />
@@ -152,7 +152,7 @@ export default function WebPreviewDemo() {
 	);
 
 	return (
-		<WebPreview proxy defaultUrl="/" onUrlChange={(url) => console.log("URL changed to:", url)} className="h-[400px]">
+		<WebPreview defaultUrl="/" onUrlChange={(url) => console.log("URL changed to:", url)} className="h-[400px]">
 			<WebPreviewNavigation>
 				<WebPreviewNavigationButton action="back" tooltip="Go back">
 					<ArrowLeft className="size-4" />

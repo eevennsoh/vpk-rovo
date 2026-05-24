@@ -24,6 +24,7 @@ if (browserRuntimeDefaults.changed) {
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const crypto = require("node:crypto");
 const fs = require("fs");
 const path = require("path");
 const WebSocket = require("ws");
@@ -1374,11 +1375,138 @@ const ALLOWED_ORIGINS = (
 	.map((origin) => origin.trim())
 	.filter(Boolean);
 
+const RUNTIME_ADMIN_TOKEN = getNonEmptyString(process.env.VPK_RUNTIME_ADMIN_TOKEN);
+const RUNTIME_ADMIN_REQUIRED =
+	process.env.NODE_ENV === "production" ||
+	process.env.VPK_REQUIRE_RUNTIME_ADMIN === "true";
+const RUNTIME_SOCKET_TOKEN_TTL_MS = 60_000;
+
+if (RUNTIME_ADMIN_REQUIRED && !RUNTIME_ADMIN_TOKEN) {
+	console.error(
+		"[STARTUP] VPK_RUNTIME_ADMIN_TOKEN is required when runtime admin protection is enabled."
+	);
+	process.exit(1);
+}
+
+function getRuntimeAdminTokenFromRequest(req) {
+	const headerToken = getNonEmptyString(req.get?.("x-vpk-runtime-admin-token"));
+	if (headerToken) {
+		return headerToken;
+	}
+
+	const authorization = getNonEmptyString(req.get?.("authorization"));
+	const bearerMatch = authorization.match(/^Bearer\s+(.+)$/i);
+	if (bearerMatch) {
+		return bearerMatch[1].trim();
+	}
+
+	return getNonEmptyString(req.query?.runtimeToken ?? req.query?.token);
+}
+
+function isRuntimeAdminTokenValid(token) {
+	if (!RUNTIME_ADMIN_TOKEN || !token) {
+		return false;
+	}
+
+	const tokenBuffer = Buffer.from(token);
+	const expectedBuffer = Buffer.from(RUNTIME_ADMIN_TOKEN);
+	if (tokenBuffer.length !== expectedBuffer.length) {
+		return false;
+	}
+
+	return Boolean(
+		crypto.timingSafeEqual(tokenBuffer, expectedBuffer)
+	);
+}
+
+function requireRuntimeAdmin(req, res, next) {
+	if (!RUNTIME_ADMIN_TOKEN && !RUNTIME_ADMIN_REQUIRED) {
+		return next();
+	}
+
+	if (isRuntimeAdminTokenValid(getRuntimeAdminTokenFromRequest(req))) {
+		return next();
+	}
+
+	return res.status(RUNTIME_ADMIN_TOKEN ? 403 : 503).json({
+		error: "Runtime admin authorization required",
+	});
+}
+
+function signRuntimeSocketTokenPayload(payload) {
+	return crypto
+		.createHmac("sha256", RUNTIME_ADMIN_TOKEN)
+		.update(payload)
+		.digest("base64url");
+}
+
+function createRuntimeSocketToken(scope) {
+	if (!RUNTIME_ADMIN_TOKEN) {
+		return "";
+	}
+
+	const payload = Buffer.from(
+		JSON.stringify({
+			scope,
+			exp: Date.now() + RUNTIME_SOCKET_TOKEN_TTL_MS,
+			nonce: crypto.randomUUID(),
+		}),
+	).toString("base64url");
+	return `${payload}.${signRuntimeSocketTokenPayload(payload)}`;
+}
+
+function isRuntimeSocketTokenValid(token, expectedScope) {
+	if (!RUNTIME_ADMIN_TOKEN || !token) {
+		return false;
+	}
+
+	const [payload, signature, ...extraParts] = token.split(".");
+	if (!payload || !signature || extraParts.length > 0) {
+		return false;
+	}
+
+	const expectedSignature = signRuntimeSocketTokenPayload(payload);
+	const signatureBuffer = Buffer.from(signature);
+	const expectedBuffer = Buffer.from(expectedSignature);
+	if (signatureBuffer.length !== expectedBuffer.length) {
+		return false;
+	}
+	if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+		return false;
+	}
+
+	try {
+		const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+		return parsed?.scope === expectedScope && Number(parsed.exp) >= Date.now();
+	} catch {
+		return false;
+	}
+}
+
+function appendRuntimeSocketToken(wsUrl, scope, paramName) {
+	const token = createRuntimeSocketToken(scope);
+	if (!token) {
+		return wsUrl;
+	}
+
+	const parsedUrl = new URL(wsUrl, "ws://127.0.0.1");
+	parsedUrl.searchParams.set(paramName, token);
+	if (/^wss?:\/\//i.test(wsUrl)) {
+		return parsedUrl.toString();
+	}
+
+	return `${parsedUrl.pathname}${parsedUrl.search}`;
+}
+
+function isAllowedOrigin(origin) {
+	return Boolean(!origin || ALLOWED_ORIGINS.includes(origin));
+}
+
 app.use(
 	cors({
 		origin: (origin, cb) => {
 			// Same-origin requests (no Origin header) and explicit allowlist matches pass.
-			if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+			if (isAllowedOrigin(origin)) {
 				return cb(null, true);
 			}
 			return cb(new Error(`CORS: origin ${origin} not allowed`));
@@ -1386,6 +1514,50 @@ app.use(
 		credentials: true,
 	})
 );
+
+function createInMemoryRateLimiter({ max, windowMs }) {
+	const buckets = new Map();
+	return (req, res, next) => {
+		const now = Date.now();
+		const key = req.ip || req.socket?.remoteAddress || "unknown";
+		const bucket = buckets.get(key);
+		if (!bucket || bucket.resetAt <= now) {
+			buckets.set(key, { count: 1, resetAt: now + windowMs });
+			return next();
+		}
+
+		bucket.count += 1;
+		if (bucket.count > max) {
+			res.setHeader("Retry-After", String(Math.ceil((bucket.resetAt - now) / 1000)));
+			return res.status(429).json({ error: "Too many requests" });
+		}
+
+		return next();
+	};
+}
+
+const aiCostRateLimit = createInMemoryRateLimiter({
+	max: 60,
+	windowMs: 60_000,
+});
+
+app.use(
+	[
+		"/api/chat-sdk",
+		"/api/rovo/suggestions",
+		"/api/sound-generation",
+		"/api/speech-transcription",
+		"/api/rovo/files/upload",
+		"/api/skills/hub/install",
+		"/api/skills/hub/install-by-id",
+	],
+	aiCostRateLimit
+);
+app.use(["/api/chat-sdk", "/api/rovo/suggestions"], express.json({ limit: "8mb" }));
+app.use(["/api/sound-generation", "/api/speech-transcription"], express.json({ limit: "12mb" }));
+app.use("/api/rovo/files/upload", express.json({ limit: "12mb" }));
+app.use("/api/skills/hub/install", express.json({ limit: "5mb" }));
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.text({ limit: "50mb", type: "text/markdown" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -4808,54 +4980,6 @@ const orchestratorLog = createOrchestratorLog({
 // Rovo-only mode - no local clarification/approval logic
 
 const IMAGE_PROXY_TIMEOUT_MS = 15_000;
-const WEB_PROXY_TIMEOUT_MS = 30_000;
-
-const WEB_PROXY_PRIVATE_IP_PATTERNS = [
-	/^localhost$/i,
-	/^127\./,
-	/^10\./,
-	/^172\.(1[6-9]|2\d|3[01])\./,
-	/^192\.168\./,
-	/^169\.254\./,
-	/\.local$/i,
-	/^\[::1\]$/,
-];
-
-function parseWebProxyTarget(value) {
-	const normalizedValue = getNonEmptyString(value);
-	if (!normalizedValue) {
-		return { error: "Missing required query parameter: url" };
-	}
-
-	let parsedUrl;
-	try {
-		parsedUrl = new URL(normalizedValue);
-	} catch {
-		return { error: "Invalid URL" };
-	}
-
-	const protocol = parsedUrl.protocol.toLowerCase();
-	if (protocol !== "https:" && protocol !== "http:") {
-		return { error: "Only http(s) URLs are supported" };
-	}
-
-	const hostname = parsedUrl.hostname.toLowerCase();
-	if (WEB_PROXY_PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(hostname))) {
-		return { error: "Private/local URLs are not allowed" };
-	}
-
-	return { targetUrl: parsedUrl };
-}
-
-function injectBaseTag(html, baseHref) {
-	const baseTag = `<base href="${baseHref}">`;
-	const headMatch = html.match(/<head(\s[^>]*)?>|<head>/i);
-	if (headMatch) {
-		const insertPos = headMatch.index + headMatch[0].length;
-		return html.slice(0, insertPos) + baseTag + html.slice(insertPos);
-	}
-	return baseTag + html;
-}
 
 function isRequiredGoogleTranslateToolCall({ toolName, toolInput } = {}) {
 	const normalizedToolName = getNonEmptyString(toolName)?.toLowerCase();
@@ -12872,78 +12996,6 @@ app.get("/api/image-proxy", async (req, res) => {
 	}
 });
 
-app.get("/api/web-proxy", async (req, res) => {
-	const rawUrl = Array.isArray(req.query.url) ? req.query.url[0] : req.query.url;
-	const { targetUrl, error } = parseWebProxyTarget(rawUrl);
-	if (error) {
-		return res.status(400).json({ error });
-	}
-
-	const abortController = new AbortController();
-	const timeoutHandle = setTimeout(() => {
-		abortController.abort();
-	}, WEB_PROXY_TIMEOUT_MS);
-
-	try {
-		const upstreamResponse = await fetch(targetUrl.toString(), {
-			method: "GET",
-			headers: {
-				Accept: "text/html,*/*",
-				"User-Agent": "VPK-WebProxy/1.0",
-			},
-			redirect: "follow",
-			signal: abortController.signal,
-		});
-
-		if (!upstreamResponse.ok) {
-			return res.status(502).json({
-				error: `Web fetch failed (${upstreamResponse.status})`,
-			});
-		}
-
-		const contentType =
-			getNonEmptyString(upstreamResponse.headers.get("content-type")) ||
-			"text/html";
-
-		const upstreamCacheControl = getNonEmptyString(
-			upstreamResponse.headers.get("cache-control")
-		);
-
-		res.setHeader("Content-Type", contentType);
-		// Defense-in-depth: upstream Content-Type is echoed verbatim, so prevent
-		// browsers from MIME-sniffing the response into something executable.
-		res.setHeader("X-Content-Type-Options", "nosniff");
-		if (upstreamCacheControl) {
-			res.setHeader("Cache-Control", upstreamCacheControl);
-		}
-
-		if (contentType.toLowerCase().includes("text/html")) {
-			const html = await upstreamResponse.text();
-			const baseHref = `${targetUrl.protocol}//${targetUrl.host}/`;
-			const modifiedHtml = injectBaseTag(html, baseHref);
-			res.setHeader("Content-Length", String(Buffer.byteLength(modifiedHtml)));
-			return res.status(200).send(modifiedHtml);
-		}
-
-		const payload = Buffer.from(await upstreamResponse.arrayBuffer());
-		res.setHeader("Content-Length", String(payload.length));
-		return res.status(200).send(payload);
-	} catch (error) {
-		console.error("[WEB-PROXY] Fetch error:", error);
-		const isAbortError =
-			typeof error === "object" &&
-			error !== null &&
-			"name" in error &&
-			error.name === "AbortError";
-
-		return res.status(isAbortError ? 504 : 502).json({
-			error: isAbortError ? "Web fetch timed out" : "Web proxy failed",
-		});
-	} finally {
-		clearTimeout(timeoutHandle);
-	}
-});
-
 function resolveBrowserWorkspaceId(request) {
 	return getNonEmptyString(request.params?.workspaceId);
 }
@@ -12982,6 +13034,8 @@ function logBrowserWorkspaceError(label, error) {
 
 	console.error(`${label}:`, error);
 }
+
+app.use("/api/browser-workspaces", requireRuntimeAdmin);
 
 app.get("/api/browser-workspaces", async (_req, res) => {
 	try {
@@ -13268,16 +13322,30 @@ app.get("/api/browser-workspaces/:workspaceId/:action", async (req, res) => {
 		}
 
 			if (action === "stream") {
+				const socketScope = `browser-preview:${workspaceId}`;
+
 				// Check mirror browsers first (Rovo browser feature)
 				const mirrorBrowser = getMirrorBrowser(workspaceId);
 				if (mirrorBrowser) {
-					return res.json(mirrorBrowser.getStreamConfig(port));
+					const streamConfig = mirrorBrowser.getStreamConfig(port);
+					return res.json({
+						...streamConfig,
+						wsUrl: appendRuntimeSocketToken(
+							streamConfig.wsUrl,
+							socketScope,
+							"previewToken",
+						),
+					});
 				}
 
 				const streamConfig = browserWorkspaceManager.getWorkspaceStream(workspaceId);
 				return res.json({
 					...streamConfig,
-					wsUrl: `ws://127.0.0.1:${port}/api/browser-workspaces/${encodeURIComponent(workspaceId)}/live`,
+					wsUrl: appendRuntimeSocketToken(
+						`ws://127.0.0.1:${port}/api/browser-workspaces/${encodeURIComponent(workspaceId)}/live`,
+						socketScope,
+						"previewToken",
+					),
 				});
 			}
 
@@ -14046,7 +14114,7 @@ app.get("/api/checkpoints", async (_req, res) => {
 	}
 });
 
-app.post("/api/checkpoints", async (req, res) => {
+app.post("/api/checkpoints", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const name = typeof req.body?.name === "string" && req.body.name.trim()
 			? req.body.name.trim()
@@ -14065,7 +14133,7 @@ app.post("/api/checkpoints", async (req, res) => {
 	}
 });
 
-app.post("/api/checkpoints/:id/rollback", async (req, res) => {
+app.post("/api/checkpoints/:id/rollback", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const checkpoint = await checkpointManager.rollback(req.params.id);
 		return res.status(200).json({ checkpoint });
@@ -14079,7 +14147,7 @@ app.post("/api/checkpoints/:id/rollback", async (req, res) => {
 	}
 });
 
-app.delete("/api/checkpoints/:id", async (req, res) => {
+app.delete("/api/checkpoints/:id", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const deleted = await checkpointManager.delete(req.params.id);
 		if (!deleted) {
@@ -14351,7 +14419,7 @@ app.get("/api/rovo/threads/:threadId/browser-workspace", async (req, res) => {
 	}
 });
 
-app.post("/api/rovo/threads/:threadId/browser-workspace", async (req, res) => {
+app.post("/api/rovo/threads/:threadId/browser-workspace", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
@@ -14378,7 +14446,7 @@ app.post("/api/rovo/threads/:threadId/browser-workspace", async (req, res) => {
 	}
 });
 
-app.delete("/api/rovo/threads/:threadId/browser-workspace", async (req, res) => {
+app.delete("/api/rovo/threads/:threadId/browser-workspace", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
@@ -14687,7 +14755,7 @@ app.get("/api/orchestrator/timeline", (req, res) => {
 	}
 });
 
-app.delete("/api/orchestrator/log", (_req, res) => {
+app.delete("/api/orchestrator/log", requireRuntimeAdmin, (_req, res) => {
 	try {
 		orchestratorLog.clear();
 		return res.json({ ok: true, message: "Orchestrator log cleared" });
@@ -14988,7 +15056,7 @@ app.delete("/api/wiki/memories/proposals/:proposalId", wikiRouteHandlers.handleW
 app.post("/api/wiki/sync", wikiRouteHandlers.handleWikiSync);
 app.use("/api/personal-graph", personalGraphRoutes);
 
-app.post("/api/jobs", async (req, res) => {
+app.post("/api/jobs", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const job = await hermesJobsProvider.createHermesJob(toHermesJobInput(req.body));
 		const linkMetadata = await persistHermesJobLink(job.id, req.body);
@@ -15013,7 +15081,7 @@ app.get("/api/jobs/:id", async (req, res) => {
 	}
 });
 
-app.patch("/api/jobs/:id", async (req, res) => {
+app.patch("/api/jobs/:id", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const hermesJobInput = toHermesJobInput(req.body);
 		const job = Object.keys(hermesJobInput).length > 0
@@ -15031,7 +15099,7 @@ app.patch("/api/jobs/:id", async (req, res) => {
 	}
 });
 
-app.delete("/api/jobs/:id", async (req, res) => {
+app.delete("/api/jobs/:id", requireRuntimeAdmin, async (req, res) => {
 	try {
 		await hermesJobsProvider.deleteHermesJob(req.params.id);
 		await hermesJobLinkManager.removeLink(req.params.id);
@@ -15041,7 +15109,7 @@ app.delete("/api/jobs/:id", async (req, res) => {
 	}
 });
 
-app.post("/api/jobs/:id/run", async (req, res) => {
+app.post("/api/jobs/:id/run", requireRuntimeAdmin, async (req, res) => {
 	try {
 		await hermesJobsProvider.performHermesJobAction(req.params.id, "run");
 		const job = await getMergedHermesJob(req.params.id);
@@ -15051,7 +15119,7 @@ app.post("/api/jobs/:id/run", async (req, res) => {
 	}
 });
 
-app.post("/api/jobs/:id/pause", async (req, res) => {
+app.post("/api/jobs/:id/pause", requireRuntimeAdmin, async (req, res) => {
 	try {
 		await hermesJobsProvider.performHermesJobAction(req.params.id, "pause");
 		const job = await getMergedHermesJob(req.params.id);
@@ -15061,7 +15129,7 @@ app.post("/api/jobs/:id/pause", async (req, res) => {
 	}
 });
 
-app.post("/api/jobs/:id/resume", async (req, res) => {
+app.post("/api/jobs/:id/resume", requireRuntimeAdmin, async (req, res) => {
 	try {
 		await hermesJobsProvider.performHermesJobAction(req.params.id, "resume");
 		const job = await getMergedHermesJob(req.params.id);
@@ -15082,6 +15150,8 @@ app.get("/api/skills", async (_req, res) => {
 		});
 	}
 });
+
+app.use("/api/skills/drafts", requireRuntimeAdmin);
 
 registerHermesSkillDraftRoutes(app, {
 	archiveSkillImpl: archiveHermesSkill,
@@ -15162,7 +15232,7 @@ app.get("/api/skills/hub/installed", async (_req, res) => {
 	}
 });
 
-app.post("/api/skills/hub/install", async (req, res) => {
+app.post("/api/skills/hub/install", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const bundle = req.body;
 		if (!bundle || typeof bundle !== "object" || !bundle.name) {
@@ -15180,7 +15250,7 @@ app.post("/api/skills/hub/install", async (req, res) => {
 	}
 });
 
-app.post("/api/skills/hub/install-by-id", async (req, res) => {
+app.post("/api/skills/hub/install-by-id", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const { identifier, category, force } = req.body || {};
 		if (!identifier || typeof identifier !== "string") {
@@ -15198,7 +15268,7 @@ app.post("/api/skills/hub/install-by-id", async (req, res) => {
 	}
 });
 
-app.delete("/api/skills/hub/uninstall/*name", async (req, res) => {
+app.delete("/api/skills/hub/uninstall/*name", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const name = getWildcardRouteValue(req.params.name);
 		if (!name) {
@@ -15242,7 +15312,7 @@ app.get("/api/skills/hub/taps", async (_req, res) => {
 	}
 });
 
-app.post("/api/skills/hub/taps", async (req, res) => {
+app.post("/api/skills/hub/taps", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const { repo, path: repoPath } = req.body || {};
 		if (!repo || typeof repo !== "string") {
@@ -15258,7 +15328,7 @@ app.post("/api/skills/hub/taps", async (req, res) => {
 	}
 });
 
-app.delete("/api/skills/hub/taps/*repo", async (req, res) => {
+app.delete("/api/skills/hub/taps/*repo", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const repo = getWildcardRouteValue(req.params.repo);
 		if (!repo) {
@@ -15311,7 +15381,7 @@ app.get("/api/skills/:category/:name/bundle", async (req, res) => {
 	}
 });
 
-app.post("/api/skills/:category/:name/toggle", async (req, res) => {
+app.post("/api/skills/:category/:name/toggle", requireRuntimeAdmin, async (req, res) => {
 	try {
 		const enabled = parseOptionalBoolean(
 			getFirstQueryValue(req.query.enabled) ?? req.body?.enabled,
@@ -15326,6 +15396,14 @@ app.post("/api/skills/:category/:name/toggle", async (req, res) => {
 			details: message,
 		});
 	}
+});
+
+app.get("/api/realtime/audio-conversation-token", requireRuntimeAdmin, (_req, res) => {
+	const token = createRuntimeSocketToken("realtime:audio-conversation");
+	return res.json({
+		token: token || null,
+		expiresInMs: token ? RUNTIME_SOCKET_TOKEN_TTL_MS : 0,
+	});
 });
 
 app.get("/healthcheck", (req, res) => {
@@ -15586,6 +15664,42 @@ server.on("error", (err) => {
 const realtimeWss = new WebSocket.Server({ noServer: true });
 const browserPreviewWss = new WebSocket.Server({ noServer: true });
 
+function getRuntimeSocketTokenFromUpgrade(requestUrl, paramName) {
+	return getNonEmptyString(
+		requestUrl.searchParams.get(paramName) ??
+			requestUrl.searchParams.get("socketToken"),
+	);
+}
+
+function rejectUpgrade(socket, statusCode, message) {
+	socket.write(
+		`HTTP/1.1 ${statusCode} ${message}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`
+	);
+	socket.destroy();
+}
+
+function verifyRuntimeSocketUpgrade(requestUrl, request, { scope, paramName }) {
+	const origin = getNonEmptyString(request.headers.origin);
+	if (origin && !isAllowedOrigin(origin)) {
+		return { ok: false, statusCode: 403, message: "Forbidden" };
+	}
+
+	if (!RUNTIME_ADMIN_TOKEN && !RUNTIME_ADMIN_REQUIRED) {
+		return { ok: true };
+	}
+
+	const socketToken = getRuntimeSocketTokenFromUpgrade(requestUrl, paramName);
+	if (isRuntimeSocketTokenValid(socketToken, scope)) {
+		return { ok: true };
+	}
+
+	return {
+		ok: false,
+		statusCode: RUNTIME_ADMIN_TOKEN ? 403 : 503,
+		message: RUNTIME_ADMIN_TOKEN ? "Forbidden" : "Service Unavailable",
+	};
+}
+
 server.on("upgrade", (request, socket, head) => {
 	const requestUrl = new URL(
 		request.url || "/",
@@ -15596,6 +15710,14 @@ server.on("upgrade", (request, socket, head) => {
 	);
 	if (browserPreviewMatch?.groups?.workspaceId) {
 		const workspaceId = decodeURIComponent(browserPreviewMatch.groups.workspaceId);
+		const verification = verifyRuntimeSocketUpgrade(requestUrl, request, {
+			scope: `browser-preview:${workspaceId}`,
+			paramName: "previewToken",
+		});
+		if (!verification.ok) {
+			rejectUpgrade(socket, verification.statusCode, verification.message);
+			return;
+		}
 		browserPreviewWss.handleUpgrade(request, socket, head, (ws) => {
 			browserPreviewWss.emit("connection", ws, request, workspaceId);
 		});
@@ -15603,6 +15725,14 @@ server.on("upgrade", (request, socket, head) => {
 	}
 
 	if (requestUrl.pathname === "/api/realtime/audio-conversation") {
+		const verification = verifyRuntimeSocketUpgrade(requestUrl, request, {
+			scope: "realtime:audio-conversation",
+			paramName: "realtimeToken",
+		});
+		if (!verification.ok) {
+			rejectUpgrade(socket, verification.statusCode, verification.message);
+			return;
+		}
 		realtimeWss.handleUpgrade(request, socket, head, (ws) => {
 			realtimeWss.emit("connection", ws, request);
 		});

@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/tooltip";
 import { ChevronDownIcon } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { API_ENDPOINTS } from "@/lib/api-config";
 import {
 	createContext,
 	useCallback,
@@ -48,7 +47,6 @@ export interface WebPreviewContextValue {
 	setUrl: (url: string) => void;
 	consoleOpen: boolean;
 	setConsoleOpen: (open: boolean) => void;
-	proxy: boolean;
 	engine: WebPreviewEngine;
 	chromiumControls: ChromiumPreviewControls;
 	setChromiumControls: (controls: ChromiumPreviewControls | null) => void;
@@ -67,7 +65,6 @@ function useWebPreview() {
 export type WebPreviewProps = ComponentProps<"div"> & {
 	defaultUrl?: string;
 	onUrlChange?: (url: string) => void;
-	proxy?: boolean;
 	engine?: WebPreviewEngine;
 };
 
@@ -77,7 +74,6 @@ export function WebPreview({
 	defaultUrl = "",
 	engine = "auto",
 	onUrlChange,
-	proxy = false,
 	...props
 }: Readonly<WebPreviewProps>) {
 	const [url, setUrl] = useState(defaultUrl);
@@ -106,7 +102,6 @@ export function WebPreview({
 			chromiumControls,
 			consoleOpen,
 			engine,
-			proxy,
 			setChromiumControls,
 			setConsoleOpen,
 			setUrl: handleUrlChange,
@@ -117,7 +112,6 @@ export function WebPreview({
 			consoleOpen,
 			engine,
 			handleUrlChange,
-			proxy,
 			setChromiumControls,
 			url,
 		]
@@ -271,7 +265,7 @@ export function WebPreviewBody({
 	src,
 	...props
 }: Readonly<WebPreviewBodyProps>) {
-	const { url, proxy, engine, setChromiumControls, setUrl } = useWebPreview();
+	const { url, engine, setChromiumControls, setUrl } = useWebPreview();
 	const rawTargetUrl = src ?? url;
 	const resolvedEngine =
 		engine === "auto"
@@ -279,15 +273,6 @@ export function WebPreviewBody({
 				? "chromium"
 				: "iframe"
 			: engine;
-
-	const resolvedSrc = useMemo(() => {
-		const raw = rawTargetUrl;
-		if (!raw) return undefined;
-		if (resolvedEngine === "iframe" && proxy && /^https?:\/\//i.test(raw)) {
-			return API_ENDPOINTS.webProxy(raw);
-		}
-		return raw;
-	}, [proxy, rawTargetUrl, resolvedEngine]);
 
 	if (resolvedEngine === "chromium" && rawTargetUrl) {
 		return (
@@ -307,12 +292,12 @@ export function WebPreviewBody({
 		<div className="flex-1 cv-auto" style={{ containIntrinsicSize: "auto 480px" }}>
 			<iframe
 				className={cn("size-full", className)}
-				referrerPolicy="no-referrer"
-				sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-presentation"
-				src={resolvedSrc || undefined}
-				title="Preview"
-				{...props}
-			/>
+					referrerPolicy="no-referrer"
+					sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-presentation"
+					src={rawTargetUrl || undefined}
+					title="Preview"
+					{...props}
+				/>
 			{loading}
 		</div>
 	);

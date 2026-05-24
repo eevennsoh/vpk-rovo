@@ -122,6 +122,7 @@ export interface UseRealtimeVoiceResult {
 
 const WS_ENDPOINT = "/api/realtime/audio-conversation";
 const WS_URL_DISCOVERY_ENDPOINT = "/api/realtime/ws-url";
+const WS_TOKEN_ENDPOINT = "/api/realtime/audio-conversation-token";
 const AUDIO_SAMPLE_RATE = 24_000;
 const RECONNECT_DELAYS = [500, 1_000, 2_000];
 const MAX_RECONNECT_ATTEMPTS = RECONNECT_DELAYS.length;
@@ -468,6 +469,32 @@ function destroyPlaybackQueue(queue: PlaybackQueue): void {
 /** Cached backend WS base URL so we only fetch once per page load. */
 let cachedWsBaseUrl: string | null = null;
 
+async function fetchRealtimeSocketToken(): Promise<string | null> {
+	try {
+		const res = await fetch(WS_TOKEN_ENDPOINT, { cache: "no-store" });
+		if (!res.ok) {
+			return null;
+		}
+
+		const data = (await res.json()) as { token?: unknown };
+		return typeof data.token === "string" && data.token.trim()
+			? data.token.trim()
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+function appendRealtimeSocketToken(url: string, token: string | null): string {
+	if (!token) {
+		return url;
+	}
+
+	const resolvedUrl = new URL(url);
+	resolvedUrl.searchParams.set("realtimeToken", token);
+	return resolvedUrl.toString();
+}
+
 /**
  * Resolve the backend WebSocket URL.
  *
@@ -477,26 +504,31 @@ let cachedWsBaseUrl: string | null = null;
  * the app directly, so same-origin works.
  */
 async function buildWsUrl(): Promise<string> {
+	let wsUrl: string | null = null;
 	if (cachedWsBaseUrl) {
-		return `${cachedWsBaseUrl}${WS_ENDPOINT}`;
-	}
-
-	try {
-		const res = await fetch(WS_URL_DISCOVERY_ENDPOINT);
-		if (res.ok) {
-			const data = (await res.json()) as { wsUrl?: string };
-			if (data.wsUrl) {
-				cachedWsBaseUrl = data.wsUrl;
-				return `${data.wsUrl}${WS_ENDPOINT}`;
+		wsUrl = `${cachedWsBaseUrl}${WS_ENDPOINT}`;
+	} else {
+		try {
+			const res = await fetch(WS_URL_DISCOVERY_ENDPOINT);
+			if (res.ok) {
+				const data = (await res.json()) as { wsUrl?: string };
+				if (data.wsUrl) {
+					cachedWsBaseUrl = data.wsUrl;
+					wsUrl = `${data.wsUrl}${WS_ENDPOINT}`;
+				}
 			}
+		} catch {
+			// Fall through to same-origin default
 		}
-	} catch {
-		// Fall through to same-origin default
 	}
 
-	// Fallback: same-origin (works in production where Express serves everything)
-	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-	return `${protocol}//${window.location.host}${WS_ENDPOINT}`;
+	if (!wsUrl) {
+		// Fallback: same-origin (works in production where Express serves everything)
+		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+		wsUrl = `${protocol}//${window.location.host}${WS_ENDPOINT}`;
+	}
+
+	return appendRealtimeSocketToken(wsUrl, await fetchRealtimeSocketToken());
 }
 
 // ---------------------------------------------------------------------------

@@ -6659,10 +6659,10 @@ const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  "web-preview-demo-proxy": dynamic(
+  "web-preview-demo-external": dynamic(
     () =>
       import("./demos/ui-custom/web-preview-demo").then((mod) => ({
-        default: mod.WebPreviewDemoProxy,
+        default: mod.WebPreviewDemoExternal,
       })),
     { ssr: false },
   ),

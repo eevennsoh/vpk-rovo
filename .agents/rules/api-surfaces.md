@@ -135,7 +135,6 @@ paths:
 - `POST /api/sound-generation` — generate sound
 - `POST /api/speech-transcription` — transcribe speech
 - `GET  /api/image-proxy` — proxy external images
-- `GET  /api/web-proxy` — proxy external web content
 
 ### Apps
 
@@ -238,7 +237,6 @@ Forward to backend. Grouped by feature:
 - `app/api/chromium-preview/snapshot/route.ts`
 - `app/api/sound-generation/route.ts`
 - `app/api/speech-transcription/route.ts`
-- `app/api/web-proxy/route.ts`
 - `app/api/apps/route.ts`
 - `app/api/apps/[slug]/route.ts`
 - `app/api/personal-graph/vault/route.ts`

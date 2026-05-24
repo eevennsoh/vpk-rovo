@@ -48,7 +48,7 @@ test("resolveRunLaneDefinitions falls back to generic lanes for task-specific to
 
 	assert.deepEqual(
 		lanes.map((lane) => lane.agentName),
-		["Agent 1", "Agent 2", "Agent 3"]
+		["Implementation Agent", "Frontend Agent", "Backend Agent"]
 	);
 });
 

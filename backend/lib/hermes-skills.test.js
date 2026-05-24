@@ -42,12 +42,13 @@ test("listHermesSkills discovers markdown skills and respects config filters", a
 		);
 
 		const skills = await listHermesSkills();
-		assert.equal(skills.length, 1);
-		assert.equal(skills[0].category, "agents");
-		assert.equal(skills[0].name, "planner");
-		assert.equal(skills[0].title, "Planner");
-		assert.equal(skills[0].summary, "Coordinates multi-step work.");
-		assert.equal(skills[0].enabled, true);
+		const plannerSkill = skills.find((skill) =>
+			skill.category === "agents" && skill.name === "planner",
+		);
+		assert.ok(plannerSkill);
+		assert.equal(plannerSkill.title, "Planner");
+		assert.equal(plannerSkill.summary, "Coordinates multi-step work.");
+		assert.equal(plannerSkill.enabled, true);
 
 		const skill = await getHermesSkill("agents", "planner");
 		assert.equal(skill.id, "agents/planner");

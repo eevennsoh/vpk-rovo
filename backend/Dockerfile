@@ -1,41 +1,26 @@
-FROM node:20-alpine AS builder
-
-WORKDIR /build
-
-COPY package*.json ./
-COPY pnpm-lock.yaml ./
-COPY tsconfig.json ./
-COPY next.config.ts ./
-COPY postcss.config.mjs ./
-
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-RUN npm install -g pnpm && pnpm install
-
-COPY rovo ./rovo
-COPY app ./app
-COPY components ./components
-COPY lib ./lib
-COPY public ./public
-
-# Build Next.js in export mode to generate static HTML
-# Remove API routes entirely (they're handled by Express in production)
-# Note: Use rm -rf, not mv, because Turbopack still processes .bak folders
-RUN rm -rf app/api && \
-    NEXT_OUTPUT=export pnpm run build
-
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
-COPY backend/package*.json ./
-RUN npm ci --omit=dev
+ENV NODE_ENV=production
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
-COPY backend/server.js ./
+COPY package.json pnpm-lock.yaml ./
+COPY backend/package.json ./backend/package.json
+RUN corepack enable && \
+    corepack prepare pnpm@11.1.2 --activate && \
+    pnpm install --prod --frozen-lockfile --config.strict-dep-builds=false && \
+    cd backend && npm install --omit=dev --package-lock=false
+
+COPY backend ./backend
+COPY lib ./lib
 COPY rovo ./rovo
+COPY scripts/lib/worktree-ports.js ./scripts/lib/worktree-ports.js
 
-# Copy the Next.js export output (static HTML files)
-COPY --from=builder /build/out ./public
+# Copy the prebuilt Next.js export output (static HTML files).
+# CI runs `pnpm run build:export` before building this runtime image.
+COPY out ./backend/public
 
 EXPOSE 8080
 
-CMD ["node", "server.js"]
+CMD ["node", "backend/server.js"]

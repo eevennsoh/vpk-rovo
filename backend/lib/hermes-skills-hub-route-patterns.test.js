@@ -12,18 +12,20 @@ function extractRoutePath(method, prefix) {
 	assert.notEqual(routeStart, -1, `Expected to find ${method.toUpperCase()} route starting with ${prefix}`);
 
 	const pathStart = routeStart + `app.${method}("`.length;
-	const pathEnd = serverSource.indexOf('", async (req, res) => {', pathStart);
+	const pathEnd = serverSource.indexOf('"', pathStart);
 	assert.notEqual(pathEnd, -1, `Expected to find route terminator for ${prefix}`);
 
 	return serverSource.slice(pathStart, pathEnd);
 }
 
 function extractRouteHandler(method, routePath) {
-	const marker = `app.${method}("${routePath}", async (req, res) => {`;
+	const marker = `app.${method}("${routePath}"`;
 	const start = serverSource.indexOf(marker);
 	assert.notEqual(start, -1, `Expected to find route handler for ${routePath}`);
 
-	const braceStart = serverSource.indexOf("{", start + marker.length - 1);
+	const arrowStart = serverSource.indexOf("=>", start + marker.length);
+	assert.notEqual(arrowStart, -1, `Expected to find route arrow function for ${routePath}`);
+	const braceStart = serverSource.indexOf("{", arrowStart);
 	let depth = 0;
 	for (let index = braceStart; index < serverSource.length; index += 1) {
 		const char = serverSource[index];

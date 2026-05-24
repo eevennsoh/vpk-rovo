@@ -198,12 +198,9 @@ export const API_ENDPOINTS = {
 	skillToggle: (category: string, name: string) =>
 		`${API_BASE_URL}/api/skills/${encodeURIComponent(category)}/${encodeURIComponent(name)}/toggle`,
 	SPEECH_TRANSCRIPTION: `${API_BASE_URL}/api/speech-transcription`,
-	WEB_PROXY: `${API_BASE_URL}/api/web-proxy`,
 	CHROMIUM_PREVIEW: `${API_BASE_URL}/api/chromium-preview`,
 	CHROMIUM_PREVIEW_STREAM: `${API_BASE_URL}/api/chromium-preview/stream`,
 	BROWSER_WORKSPACES: `${API_BASE_URL}/api/browser-workspaces`,
-	webProxy: (url: string) =>
-		`${API_BASE_URL}/api/web-proxy?url=${encodeURIComponent(url)}`,
 	browserWorkspace: (workspaceId: string) =>
 		`${API_BASE_URL}/api/browser-workspaces/${encodeURIComponent(workspaceId)}`,
 	browserWorkspaceAction: (

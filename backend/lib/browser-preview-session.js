@@ -1,8 +1,26 @@
 const jpeg = require("jpeg-js")
-const wrtc = require("@roamhq/wrtc")
 
-const { RTCPeerConnection } = wrtc
-const { RTCVideoSource, rgbaToI420 } = wrtc.nonstandard
+let wrtcBindings = null
+
+function loadWrtcBindings() {
+	if (wrtcBindings) {
+		return wrtcBindings
+	}
+
+	const wrtc = require("@roamhq/wrtc")
+	const { RTCPeerConnection } = wrtc
+	const { RTCVideoSource, rgbaToI420 } = wrtc.nonstandard ?? {}
+	if (!RTCPeerConnection || !RTCVideoSource || !rgbaToI420) {
+		throw new Error("WebRTC preview runtime is not available.")
+	}
+
+	wrtcBindings = {
+		RTCPeerConnection,
+		RTCVideoSource,
+		rgbaToI420,
+	}
+	return wrtcBindings
+}
 
 function waitForIceGatheringComplete(peerConnection) {
 	if (peerConnection.iceGatheringState === "complete") {
@@ -36,9 +54,11 @@ class BrowserPreviewSession {
 		onControlMessage,
 		onClose,
 	} = {}) {
+		const { RTCPeerConnection, RTCVideoSource, rgbaToI420 } = loadWrtcBindings()
 		this._sessionId = sessionId
 		this._onControlMessage = onControlMessage
 		this._onClose = onClose
+		this._rgbaToI420 = rgbaToI420
 		this._peerConnection = new RTCPeerConnection({
 			iceServers: [],
 		})
@@ -141,7 +161,7 @@ class BrowserPreviewSession {
 			data: new Uint8Array(Math.trunc(decoded.width * decoded.height * 1.5)),
 		}
 
-		rgbaToI420(rgbaFrame, i420Frame)
+		this._rgbaToI420(rgbaFrame, i420Frame)
 		this._videoSource.onFrame(i420Frame)
 	}
 
