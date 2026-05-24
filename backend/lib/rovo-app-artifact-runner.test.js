@@ -88,7 +88,7 @@ test("generateAndPersistRovoAppArtifact cleans up failed create shells", async (
 			fallbackTitle: "Draft",
 			latestUserMessage: "Create a plan",
 			generateArtifactText: async () => {
-				throw new Error("rovodev failed");
+				throw new Error("rovo failed");
 			},
 			inferArtifactKindFromContent: () => "text",
 			rovoAppDocumentManager: {
@@ -99,10 +99,10 @@ test("generateAndPersistRovoAppArtifact cleans up failed create shells", async (
 				cleanupCalls.push(error.message);
 			},
 		}),
-		/rovodev failed/,
+		/rovo failed/,
 	);
 
-	assert.deepEqual(cleanupCalls, ["rovodev failed"]);
+	assert.deepEqual(cleanupCalls, ["rovo failed"]);
 });
 
 test("generateAndPersistRovoAppArtifact does not run create cleanup for update failures", async () => {

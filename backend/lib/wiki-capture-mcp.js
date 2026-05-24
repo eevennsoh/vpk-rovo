@@ -9,11 +9,11 @@ function getWikiCaptureScriptPath({ repoRoot = REPO_ROOT } = {}) {
 	return path.join(repoRoot, "scripts", "wiki-capture-mcp.js")
 }
 
-function getWikiCaptureAllowedRovodevMcpServerSignature({ repoRoot = REPO_ROOT } = {}) {
+function getWikiCaptureAllowedRovoMcpServerSignature({ repoRoot = REPO_ROOT } = {}) {
 	return `stdio:node:${getWikiCaptureScriptPath({ repoRoot })}`
 }
 
-function getWikiCaptureRovodevMcpServerConfig({ repoRoot = REPO_ROOT } = {}) {
+function getWikiCaptureRovoMcpServerConfig({ repoRoot = REPO_ROOT } = {}) {
 	return {
 		[WIKI_CAPTURE_MCP_SERVER_NAME]: {
 			args: [getWikiCaptureScriptPath({ repoRoot })],
@@ -28,7 +28,7 @@ function getWikiCaptureRovodevMcpServerConfig({ repoRoot = REPO_ROOT } = {}) {
 
 module.exports = {
 	WIKI_CAPTURE_MCP_SERVER_NAME,
-	getWikiCaptureAllowedRovodevMcpServerSignature,
-	getWikiCaptureRovodevMcpServerConfig,
+	getWikiCaptureAllowedRovoMcpServerSignature,
+	getWikiCaptureRovoMcpServerConfig,
 	getWikiCaptureScriptPath,
 }

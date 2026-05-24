@@ -4,7 +4,7 @@ const test = require("node:test");
 const {
 	cleanupListeningProcessesForWorktree,
 	findListeningPidsForWorktree,
-	findRovodevSupervisorPidsForWorktree,
+	findRovoSupervisorPidsForWorktree,
 } = require("./worktree-listener-cleanup");
 
 test("findListeningPidsForWorktree only returns listeners whose cwd matches the target worktree", () => {
@@ -29,16 +29,16 @@ test("findListeningPidsForWorktree only returns listeners whose cwd matches the 
 	assert.deepEqual(matchedPids, [120, 320]);
 });
 
-test("findRovodevSupervisorPidsForWorktree only returns matching per-port supervisors in the target worktree", () => {
+test("findRovoSupervisorPidsForWorktree only returns matching per-port supervisors in the target worktree", () => {
 	const worktreePath = "/tmp/repo-a";
 
-	const matchedPids = findRovodevSupervisorPidsForWorktree({
+	const matchedPids = findRovoSupervisorPidsForWorktree({
 		worktreePath,
 		listProcessInfoFn: () => [
-			{ pid: 120, command: "node scripts/dev-rovodev-port.js 8000" },
-			{ pid: 220, command: "node scripts/dev-rovodev-port.js 8001" },
+			{ pid: 120, command: "node scripts/dev-rovo-port.js 8000" },
+			{ pid: 220, command: "node scripts/dev-rovo-port.js 8001" },
 			{ pid: 320, command: "node scripts/dev-backend.js" },
-			{ pid: 120, command: "node scripts/dev-rovodev-port.js 8000" },
+			{ pid: 120, command: "node scripts/dev-rovo-port.js 8000" },
 		],
 		getProcessCwdFn: (pid) => {
 			switch (pid) {
@@ -122,7 +122,7 @@ test("cleanupListeningProcessesForWorktree escalates only the matching listeners
 	});
 });
 
-test("cleanupListeningProcessesForWorktree also stops orphaned rovodev supervisors in the matching worktree", async () => {
+test("cleanupListeningProcessesForWorktree also stops orphaned rovo supervisors in the matching worktree", async () => {
 	const alivePids = new Set([430, 999]);
 	const killCalls = [];
 	const sleepCalls = [];
@@ -131,9 +131,9 @@ test("cleanupListeningProcessesForWorktree also stops orphaned rovodev superviso
 		worktreePath: "/tmp/repo-a",
 		listListeningPidsFn: () => [],
 		listProcessInfoFn: () => [
-			{ pid: 430, command: "node scripts/dev-rovodev-port.js 8000" },
+			{ pid: 430, command: "node scripts/dev-rovo-port.js 8000" },
 			{ pid: 440, command: "node scripts/dev-backend.js" },
-			{ pid: 999, command: "node scripts/dev-rovodev-port.js 8001" },
+			{ pid: 999, command: "node scripts/dev-rovo-port.js 8001" },
 		],
 		getProcessCwdFn: (pid) => (pid === 999 ? "/tmp/repo-b" : "/tmp/repo-a"),
 		killFn: (pid, signal) => {

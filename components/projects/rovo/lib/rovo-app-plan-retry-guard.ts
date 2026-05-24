@@ -1,7 +1,7 @@
-const STUCK_PORT_TEXT = "RovoDev port is stuck";
+const STUCK_PORT_TEXT = "Rovo port is stuck";
 const EXPIRED_CLARIFICATION_CODE = "deferred_tool_expired";
 const TOOL_FIRST_FAILURE_TEXT = "No relevant integration tool call was observed";
-const ROVODEV_UNAVAILABLE_CODE = "rovodev_unavailable";
+const ROVO_UNAVAILABLE_CODE = "rovo_unavailable";
 
 type RetryGuardMessage = {
 	parts: Array<{
@@ -42,7 +42,7 @@ export function shouldSuppressRovoAppPlanRetry(
 	const widgetErrorCode = getLatestWidgetErrorCode(message);
 	if (
 		widgetErrorCode === EXPIRED_CLARIFICATION_CODE ||
-		widgetErrorCode === ROVODEV_UNAVAILABLE_CODE
+		widgetErrorCode === ROVO_UNAVAILABLE_CODE
 	) {
 		return true;
 	}

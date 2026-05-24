@@ -4,7 +4,7 @@
  * Scans text for credential patterns (API keys, private keys, database URLs,
  * bearer tokens) and replaces matches with [REDACTED: type] placeholders.
  *
- * Used by the VPK-Rovo backend to sanitize tool results from RovoDev Serve
+ * Used by the VPK-Rovo backend to sanitize tool results from Rovo Serve
  * before they reach the frontend or are persisted.
  */
 

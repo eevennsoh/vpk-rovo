@@ -18,7 +18,7 @@ Primary locations:
 
 Provider mirrors:
 
-- `.cursor/`, `.claude/`, `.codex/`, and `.rovodev/` contain provider-specific config plus symlinks back to `.agents/`
+- `.cursor/`, `.claude/`, `.codex/`, `.rovodev/`, and `.rovo/` contain provider-specific config plus symlinks back to `.agents/`
 
 Skill types:
 

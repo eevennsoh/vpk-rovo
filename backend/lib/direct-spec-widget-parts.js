@@ -23,7 +23,7 @@ function buildDirectSpecWidgetParts({
 				payload: withCanonicalPreviewBody(widgetType, {
 					spec,
 					summary: narrative || latestUserMessage,
-					source: "direct-rovodev-spec",
+					source: "direct-rovo-spec",
 				}),
 			},
 		},

@@ -44,7 +44,7 @@ test("buildWikiMemoryExplorer returns canonical, compiled, proposal, and linked 
 				"",
 				"## Durable Memory",
 				"",
-				"- Keep the runtime loop on [[RovoDev]].",
+				"- Keep the runtime loop on [[Rovo]].",
 				"",
 				"## Recent Changes",
 				"",
@@ -74,7 +74,7 @@ test("buildWikiMemoryExplorer returns canonical, compiled, proposal, and linked 
 		),
 		fs.writeFile(
 			path.join(wikiDir, "output", "work-context.md"),
-			"# Work Context\n\n- Keep the runtime loop on RovoDev.\n",
+			"# Work Context\n\n- Keep the runtime loop on Rovo.\n",
 			"utf8",
 		),
 		fs.writeFile(
@@ -83,15 +83,15 @@ test("buildWikiMemoryExplorer returns canonical, compiled, proposal, and linked 
 			"utf8",
 		),
 		fs.writeFile(
-			path.join(wikiDir, "entities", "rovodev.md"),
+			path.join(wikiDir, "entities", "rovo.md"),
 			[
 				"---",
-				'title: "RovoDev"',
+				'title: "Rovo"',
 				'summary: "Atlassian local agent runtime loop."',
 				'tags: ["work", "agent"]',
 				"---",
 				"",
-				"# RovoDev",
+				"# Rovo",
 				"",
 				"Local agent runtime loop for development work.",
 			].join("\n"),
@@ -100,11 +100,11 @@ test("buildWikiMemoryExplorer returns canonical, compiled, proposal, and linked 
 	]);
 
 	await enqueueWikiMemoryProposal({
-		content: "Keep the runtime loop on RovoDev.",
+		content: "Keep the runtime loop on Rovo.",
 		origin: "durable_workflow",
 		reason: "The user reinforced the runtime convention for future turns.",
 		sourceThreadId: "thread-1",
-		summary: "Keep the runtime loop on RovoDev.",
+		summary: "Keep the runtime loop on Rovo.",
 		target: "memory",
 		wikiDir,
 	});

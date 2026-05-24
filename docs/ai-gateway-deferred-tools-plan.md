@@ -4,7 +4,7 @@ Status: Implemented by PR #225. Keep this as the design record for the shipped A
 
 ## Summary
 
-Build a RovoDev-compatible deferred interaction layer for AI Gateway, starting with `ask_user_questions` and `exit_plan_mode`. The goal is to remove the current AI Gateway-only `question-card` text/JSON workaround as the product contract, while still using a model-agnostic structured-output shim instead of depending on native tool calling support from any specific Gateway model.
+Build a Rovo-compatible deferred interaction layer for AI Gateway, starting with `ask_user_questions` and `exit_plan_mode`. The goal is to remove the current AI Gateway-only `question-card` text/JSON workaround as the product contract, while still using a model-agnostic structured-output shim instead of depending on native tool calling support from any specific Gateway model.
 
 ## Key Changes
 
@@ -12,7 +12,7 @@ Build a RovoDev-compatible deferred interaction layer for AI Gateway, starting w
   - `tool_name: "ask_user_questions"` with `input.questions[]`.
   - `tool_name: "exit_plan_mode"` with `input.plan`.
   - Backend generates `tool_call_id`, validates input, strips the raw envelope from assistant text, and emits existing `data-widget-data` parts.
-- Use RovoDev/acra's public question contract for `ask_user_questions`:
+- Use Rovo/acra's public question contract for `ask_user_questions`:
   - Question fields: `question`, `header`, `options`.
   - Option fields: `label`, `description`.
   - Host UI appends `Other`.
@@ -31,7 +31,7 @@ Build a RovoDev-compatible deferred interaction layer for AI Gateway, starting w
 
 - Add a small Gateway deferred-tool parser/normalizer that replaces the current AI Gateway `question-card` extractor as the preferred path, while keeping the old fenced `question-card` parser as fallback during transition.
 - Update the AI Gateway system prompt to tell models to emit deferred tool envelopes, not UI-specific question-card JSON.
-- Keep RovoDev Serve integration working while it exists, but ensure AI Gateway no longer depends on RovoDev Serve for these two interactions.
+- Keep Rovo Serve integration working while it exists, but ensure AI Gateway no longer depends on Rovo Serve for these two interactions.
 - Store pending interaction state through existing thread/message metadata where possible; do not introduce a separate persistence system unless the current thread JSON cannot support resume reliably.
 - On user submit/dismiss/approve/reject, build a synthetic tool-result message for the next Gateway request instead of calling `/v3/resume_tool_calls`.
 
@@ -49,6 +49,6 @@ Build a RovoDev-compatible deferred interaction layer for AI Gateway, starting w
 
 ## Assumptions
 
-- V1 supports `ask_user_questions` and `exit_plan_mode`; other RovoDev tools are out of scope.
+- V1 supports `ask_user_questions` and `exit_plan_mode`; other Rovo tools are out of scope.
 - Native Gateway tool calling is out of scope for V1 because model swapping must remain safe.
 - The current `question-card` fenced JSON behavior stays only as compatibility fallback, not the long-term tool contract.

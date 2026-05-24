@@ -911,13 +911,13 @@ test("regenerateMemoryDigest produces digest from wiki pages", async () => {
 	await fs.mkdir(path.join(wikiDir, "profiles"), { recursive: true });
 	await fs.mkdir(path.join(wikiDir, "work"), { recursive: true });
 	await fs.writeFile(path.join(wikiDir, "profiles", "self.md"), "# Self\n\n- Prefers concise answers.\n", "utf8");
-	await fs.writeFile(path.join(wikiDir, "work", "memory.md"), "# Work Context\n\n- Keep the runtime loop on RovoDev.\n", "utf8");
+	await fs.writeFile(path.join(wikiDir, "work", "memory.md"), "# Work Context\n\n- Keep the runtime loop on Rovo.\n", "utf8");
 
 	const result = await regenerateMemoryDigest({
 		generateTextImpl: async ({ system }) => {
 			return system.includes("profile")
 				? "# Profile Context\n\n- Prefers concise answers."
-				: "# Work Context\n\n- Keep the runtime loop on RovoDev.";
+				: "# Work Context\n\n- Keep the runtime loop on Rovo.";
 		},
 		wikiDir,
 	});
@@ -926,7 +926,7 @@ test("regenerateMemoryDigest produces digest from wiki pages", async () => {
 	const profileOutput = await fs.readFile(path.join(wikiDir, "output", "profile-context.md"), "utf8");
 	const runtimeOutput = await fs.readFile(path.join(wikiDir, "output", "work-context.md"), "utf8");
 	assert.match(profileOutput, /Prefers concise answers/u);
-	assert.match(runtimeOutput, /runtime loop on RovoDev/u);
+	assert.match(runtimeOutput, /runtime loop on Rovo/u);
 });
 
 test("regenerateMemoryDigest handles empty wiki", async () => {

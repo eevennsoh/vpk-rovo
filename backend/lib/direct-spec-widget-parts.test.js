@@ -42,7 +42,7 @@ test("buildDirectSpecWidgetParts emits widget parts and a final genui route deci
 				},
 				spec,
 				summary: "Here is the UI.",
-				source: "direct-rovodev-spec",
+				source: "direct-rovo-spec",
 			},
 		},
 	});

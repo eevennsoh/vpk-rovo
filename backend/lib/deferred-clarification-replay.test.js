@@ -39,10 +39,10 @@ const GET_CLARIFICATION_SUBMISSION_QUESTION_FINGERPRINT_SOURCE =
 	);
 const CREATE_CLARIFICATION_FALLBACK_SUBMISSION_SOURCE = extractSourceBetweenMarkers(
 	"function createClarificationFallbackSubmission({",
-	"function parseRovoDevResponseBody(rawValue) {",
+	"function parseRovoResponseBody(rawValue) {",
 );
-const PARSE_ROVODEV_RESPONSE_BODY_SOURCE = extractSourceBetweenMarkers(
-	"function parseRovoDevResponseBody(rawValue) {",
+const PARSE_ROVO_RESPONSE_BODY_SOURCE = extractSourceBetweenMarkers(
+	"function parseRovoResponseBody(rawValue) {",
 	"function isDeferredToolResponseAccepted(responseBody) {",
 );
 const IS_DEFERRED_TOOL_RESPONSE_ACCEPTED_SOURCE = extractSourceBetweenMarkers(
@@ -160,8 +160,8 @@ function createServerHelperContext({
 		CREATE_CLARIFICATION_FALLBACK_SUBMISSION_SOURCE,
 		context,
 	);
-	context.parseRovoDevResponseBody = evaluateFunctionSource(
-		PARSE_ROVODEV_RESPONSE_BODY_SOURCE,
+	context.parseRovoResponseBody = evaluateFunctionSource(
+		PARSE_ROVO_RESPONSE_BODY_SOURCE,
 		context,
 	);
 	context.isDeferredToolResponseAccepted = evaluateFunctionSource(
@@ -196,7 +196,7 @@ function createReplayHarness({
 }) {
 	const context = createServerHelperContext({ questionMetaStore });
 	const emitRequestUserInputQuestionCardCalls = [];
-	const registerPausedRovoDevToolCallCalls = [];
+	const registerPausedRovoToolCallCalls = [];
 	const updatePlanSessionCalls = [];
 	const appendPlanCardIdCalls = [];
 	const resumeCalls = [];
@@ -205,7 +205,7 @@ function createReplayHarness({
 		pausedToolCallRecord,
 		clarificationSubmission,
 		threadId: "thread-123",
-		rovoDevSessionId: "rovo-session-123",
+		rovoSessionId: "rovo-session-123",
 		sessionMode: "plan",
 		hasObservedDeferredToolRequest: false,
 		pausedToolCallHandled: false,
@@ -221,8 +221,8 @@ function createReplayHarness({
 		emitRequestUserInputQuestionCard: (payload) => {
 			emitRequestUserInputQuestionCardCalls.push(payload);
 		},
-		registerPausedRovoDevToolCall: (payload) => {
-			registerPausedRovoDevToolCallCalls.push(payload);
+		registerPausedRovoToolCall: (payload) => {
+			registerPausedRovoToolCallCalls.push(payload);
 		},
 		updatePlanSession: (threadId, payload) => {
 			updatePlanSessionCalls.push({ threadId, payload });
@@ -240,7 +240,7 @@ function createReplayHarness({
 	return {
 		context,
 		emitRequestUserInputQuestionCardCalls,
-		registerPausedRovoDevToolCallCalls,
+		registerPausedRovoToolCallCalls,
 		updatePlanSessionCalls,
 		appendPlanCardIdCalls,
 		resumeCalls,
@@ -262,9 +262,9 @@ function createReplayHarness({
 
 async function runPathAFallbackSnippet(contextOverrides = {}) {
 	const context = createServerHelperContext(contextOverrides);
-	const rovoDevResumeToolCallsCalls = [];
-	const rovoDevRequestCalls = [];
-	const replayViaRovoDevCalls = [];
+	const rovoResumeToolCallsCalls = [];
+	const rovoRequestCalls = [];
+	const replayViaRovoCalls = [];
 	const requestError = contextOverrides.requestError || null;
 	const requestResponse =
 		contextOverrides.requestResponse ??
@@ -291,15 +291,15 @@ async function runPathAFallbackSnippet(contextOverrides = {}) {
 					"What kind of app?": ["Dashboard"],
 				},
 			},
-		rovoDevRequest: async (...args) => {
-			rovoDevRequestCalls.push(args);
+		rovoRequest: async (...args) => {
+			rovoRequestCalls.push(args);
 			if (requestError) {
 				throw requestError;
 			}
 			return requestResponse;
 		},
-		rovoDevResumeToolCalls: async (...args) => {
-			rovoDevResumeToolCallsCalls.push(args);
+		rovoResumeToolCalls: async (...args) => {
+			rovoResumeToolCallsCalls.push(args);
 			return { resumed: true };
 		},
 		streamCommonOptions:
@@ -308,8 +308,8 @@ async function runPathAFallbackSnippet(contextOverrides = {}) {
 			},
 		handlePausedContinuation:
 			contextOverrides.handlePausedContinuation || (async () => ({ disconnect: false })),
-		replayViaRovoDev: async (args) => {
-			replayViaRovoDevCalls.push(args);
+		replayViaRovo: async (args) => {
+			replayViaRovoCalls.push(args);
 		},
 	});
 
@@ -331,35 +331,35 @@ async function runPathAFallbackSnippet(contextOverrides = {}) {
 
 	return {
 		result,
-		rovoDevRequestCalls,
-		rovoDevResumeToolCallsCalls,
-		replayViaRovoDevCalls,
+		rovoRequestCalls,
+		rovoResumeToolCallsCalls,
+		replayViaRovoCalls,
 	};
 }
 
 test("Path A resumes paused clarification via deny_message without queueing DeferredToolResponse", async () => {
 	const {
 		result,
-		rovoDevRequestCalls,
-		rovoDevResumeToolCallsCalls,
-		replayViaRovoDevCalls,
+		rovoRequestCalls,
+		rovoResumeToolCallsCalls,
+		replayViaRovoCalls,
 	} =
 		await runPathAFallbackSnippet();
 
-	assert.equal(rovoDevRequestCalls.length, 0);
+	assert.equal(rovoRequestCalls.length, 0);
 	assert.equal(result.setChatAccepted, false);
 	assert.equal(result.shouldUseDenyMessageFallback, true);
-	assert.equal(rovoDevResumeToolCallsCalls.length, 1);
-	assert.equal(replayViaRovoDevCalls.length, 1);
-	assert.equal(replayViaRovoDevCalls[0].port, 8001);
-	assert.equal(replayViaRovoDevCalls[0].portHandle, undefined);
+	assert.equal(rovoResumeToolCallsCalls.length, 1);
+	assert.equal(replayViaRovoCalls.length, 1);
+	assert.equal(replayViaRovoCalls[0].port, 8001);
+	assert.equal(replayViaRovoCalls[0].portHandle, undefined);
 	assert.equal(
-		replayViaRovoDevCalls[0].skipReplayUntilToolCallId,
+		replayViaRovoCalls[0].skipReplayUntilToolCallId,
 		"tool-call-123",
 	);
-	assert.equal(typeof replayViaRovoDevCalls[0].onTextDelta, "function");
-	assert.equal(typeof replayViaRovoDevCalls[0].onPausedToolCalls, "function");
-	assert.deepEqual(toPlainValue(rovoDevResumeToolCallsCalls[0]), [
+	assert.equal(typeof replayViaRovoCalls[0].onTextDelta, "function");
+	assert.equal(typeof replayViaRovoCalls[0].onPausedToolCalls, "function");
+	assert.deepEqual(toPlainValue(rovoResumeToolCallsCalls[0]), [
 		8001,
 		{
 			decisions: [
@@ -377,7 +377,7 @@ test("Path A resumes paused clarification via deny_message without queueing Defe
 });
 
 test("Path A no longer depends on set_chat_message success for clarification replay", async () => {
-	const { result, rovoDevResumeToolCallsCalls, replayViaRovoDevCalls } = await runPathAFallbackSnippet({
+	const { result, rovoResumeToolCallsCalls, replayViaRovoCalls } = await runPathAFallbackSnippet({
 		requestResponse: {
 			status: 503,
 			data: JSON.stringify({ response: "Chat message set" }),
@@ -386,32 +386,32 @@ test("Path A no longer depends on set_chat_message success for clarification rep
 
 	assert.equal(result.setChatAccepted, false);
 	assert.equal(result.shouldUseDenyMessageFallback, true);
-	assert.equal(replayViaRovoDevCalls.length, 1);
+	assert.equal(replayViaRovoCalls.length, 1);
 	assert.deepEqual(toPlainValue(result.fallbackClarificationSubmission), {
 		sessionId: "request-user-input-tool-call-123",
 		answers: {
 			"What kind of app?": ["Dashboard"],
 		},
 	});
-	assert.equal(rovoDevResumeToolCallsCalls.length, 1);
+	assert.equal(rovoResumeToolCallsCalls.length, 1);
 	assert.match(
-		rovoDevResumeToolCallsCalls[0][1].decisions[0].deny_message,
+		rovoResumeToolCallsCalls[0][1].decisions[0].deny_message,
 		/- What kind of app\?: Dashboard/u,
 	);
 });
 
 test("Path A ignores set_chat_message transport errors for paused clarification replay", async () => {
-	const { result, rovoDevResumeToolCallsCalls, replayViaRovoDevCalls } = await runPathAFallbackSnippet({
+	const { result, rovoResumeToolCallsCalls, replayViaRovoCalls } = await runPathAFallbackSnippet({
 		requestError: new Error("network down"),
 	});
 
 	assert.equal(result.setChatAccepted, false);
 	assert.equal(result.shouldUseDenyMessageFallback, true);
 	assert.equal(result.setChatFailure ?? null, null);
-	assert.equal(replayViaRovoDevCalls.length, 1);
-	assert.equal(rovoDevResumeToolCallsCalls.length, 1);
+	assert.equal(replayViaRovoCalls.length, 1);
+	assert.equal(rovoResumeToolCallsCalls.length, 1);
 	assert.match(
-		rovoDevResumeToolCallsCalls[0][1].decisions[0].deny_message,
+		rovoResumeToolCallsCalls[0][1].decisions[0].deny_message,
 		/The user answered the clarification questions\./u,
 	);
 });
@@ -487,7 +487,7 @@ test("replay duplicate suppression resumes replayed ask_user_questions with deny
 		],
 	});
 	assert.equal(harness.emitRequestUserInputQuestionCardCalls.length, 0);
-	assert.equal(harness.registerPausedRovoDevToolCallCalls.length, 0);
+	assert.equal(harness.registerPausedRovoToolCallCalls.length, 0);
 	assert.equal(harness.updatePlanSessionCalls.length, 0);
 	assert.equal(harness.context.hasObservedDeferredToolRequest, false);
 	assert.equal(harness.context.pausedToolCallHandled, false);
@@ -529,7 +529,7 @@ test("replay duplicate suppression ignores the original resumed tool call bounda
 	assert.equal(result.disconnect, false);
 	assert.equal(harness.resumeCalls.length, 0);
 	assert.equal(harness.emitRequestUserInputQuestionCardCalls.length, 0);
-	assert.equal(harness.registerPausedRovoDevToolCallCalls.length, 0);
+	assert.equal(harness.registerPausedRovoToolCallCalls.length, 0);
 	assert.equal(harness.updatePlanSessionCalls.length, 0);
 });
 
@@ -609,27 +609,27 @@ test("replay continuation emits a new clarification card for changed follow-up q
 			source: "deferred_tool_request",
 		},
 	]);
-	assert.equal(followUpHarness.registerPausedRovoDevToolCallCalls.length, 1);
+	assert.equal(followUpHarness.registerPausedRovoToolCallCalls.length, 1);
 	assert.equal(
-		followUpHarness.registerPausedRovoDevToolCallCalls[0].toolCallId,
+		followUpHarness.registerPausedRovoToolCallCalls[0].toolCallId,
 		"tool-call-789",
 	);
-	assert.equal(followUpHarness.registerPausedRovoDevToolCallCalls[0].port, 8123);
-	assert.equal(followUpHarness.registerPausedRovoDevToolCallCalls[0].handle, handle);
+	assert.equal(followUpHarness.registerPausedRovoToolCallCalls[0].port, 8123);
+	assert.equal(followUpHarness.registerPausedRovoToolCallCalls[0].handle, handle);
 	assert.equal(
-		followUpHarness.registerPausedRovoDevToolCallCalls[0].threadId,
+		followUpHarness.registerPausedRovoToolCallCalls[0].threadId,
 		"thread-123",
 	);
 	assert.equal(
-		followUpHarness.registerPausedRovoDevToolCallCalls[0].sessionId,
+		followUpHarness.registerPausedRovoToolCallCalls[0].sessionId,
 		"rovo-session-123",
 	);
 	assert.equal(
-		followUpHarness.registerPausedRovoDevToolCallCalls[0].sessionMode,
+		followUpHarness.registerPausedRovoToolCallCalls[0].sessionMode,
 		"plan",
 	);
 	assert.equal(
-		followUpHarness.registerPausedRovoDevToolCallCalls[0].kind,
+		followUpHarness.registerPausedRovoToolCallCalls[0].kind,
 		"clarification",
 	);
 	assert.deepEqual(toPlainValue(followUpHarness.updatePlanSessionCalls), [

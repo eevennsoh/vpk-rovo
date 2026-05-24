@@ -7,11 +7,17 @@ Use this reference when executing or updating the VPK-rovo Symphony workflow.
 - `Backlog`: not routed for implementation.
 - `Todo`: move to `In Progress`, create or update the workpad, then start.
 - `In Progress`: continue from the current workpad.
-- `Human Review`: wait for human action.
-- `Rework`: address reviewer feedback, validate, and return to `Human Review`.
-- `Merging`: follow `references/git/land.md`; move to `Done` only after GitHub
-  reports the PR merged.
-- `Done`, `Closed`, `Canceled`, `Cancelled`, `Duplicate`: terminal.
+- `Agent Review`: fresh read-only adversarial code review against the issue,
+  workpad, PR diff, validation proof, evidence, comments, and checks. The
+  reviewer may run read-only verification commands that leave tracked files
+  unchanged. Passing work moves to `Merging`; gaps move back to `In Progress`;
+  risk/ambiguity moves to `Human Review`.
+- `Human Review`: wait for human action on risk, ambiguity, missing proof,
+  security/data concerns, UI judgment, or answer-only handoff.
+- `Merging`: follow `references/git/land.md`; move to `Done` only after a
+  current-head passing Symphony Agent Review, green checks, clean mergeability,
+  and GitHub-reported merge.
+- `Done`, `Canceled`, `Duplicate`: terminal.
 
 ## Execution Rules
 
@@ -25,7 +31,24 @@ Use this reference when executing or updating the VPK-rovo Symphony workflow.
 6. If an issue becomes terminal while a run is active, stop implementation work
    and let cleanup/landing logic respect the terminal state.
 
+## Phase Prompts
+
+- `Todo`: kickoff worker; move to `In Progress`, create/reuse the workpad, and
+  derive plan, acceptance criteria, and validation before code edits.
+- `In Progress`: implementer; sync, implement, validate, push the same PR, and
+  move to `Agent Review` only when the completion bar is satisfied.
+- `Agent Review`: fresh adversarial code reviewer; read-only against tracked
+  files, verify the PR against the issue/workpad/diff/proof, post the
+  standardized review comment, then route by status.
+- `Human Review`: waiting gate; do not code, only react to human
+  decision/review updates when explicitly routed.
+- `Merging`: landing worker; follow `references/git/land.md`, merge only after
+  the current-head review/check/feedback gates pass, then move to `Done`.
+- Terminal states: do nothing and shut down.
+
 ## Merging Rule
 
-`Merging` is a merge-only state. Verify the attached PR, review state, branch
-divergence, and GitHub merge result before making additional code changes.
+`Merging` is a merge-only state. Verify the attached PR has a current-head
+passing Symphony Agent Review, green checks, clean mergeability, resolved review
+feedback, branch divergence is understood, and GitHub reports the merge before
+moving the issue to `Done`.

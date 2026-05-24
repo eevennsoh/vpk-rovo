@@ -1,6 +1,6 @@
 "use strict";
 
-const RUNTIME_SURFACE_NAMES = ["rovodev", "hermes"];
+const RUNTIME_SURFACE_NAMES = ["rovo", "hermes"];
 
 function normalizeRuntimeSurfaceStatus(surface) {
 	const available = surface?.available === true;
@@ -13,7 +13,7 @@ function normalizeRuntimeSurfaceStatus(surface) {
 				: "down";
 	const normalizedName = RUNTIME_SURFACE_NAMES.includes(surface?.name)
 		? surface.name
-		: "rovodev";
+		: "rovo";
 
 	return {
 		name: normalizedName,
@@ -41,15 +41,15 @@ function normalizeRuntimeSurfaceStatus(surface) {
 }
 
 function buildRuntimeStatusSnapshot(input) {
-	const rovodev = normalizeRuntimeSurfaceStatus({
-		...input?.rovodev,
-		name: "rovodev",
+	const rovo = normalizeRuntimeSurfaceStatus({
+		...input?.rovo,
+		name: "rovo",
 	});
 	const hermes = normalizeRuntimeSurfaceStatus({
 		...input?.hermes,
 		name: "hermes",
 	});
-	const degradedSurfaces = [rovodev, hermes]
+	const degradedSurfaces = [rovo, hermes]
 		.filter((surface) => surface.health !== "ok")
 		.map((surface) => surface.name);
 
@@ -63,7 +63,7 @@ function buildRuntimeStatusSnapshot(input) {
 		status,
 		timestamp: new Date().toISOString(),
 		surfaces: {
-			rovodev,
+			rovo,
 			hermes,
 		},
 		degradedSurfaces,

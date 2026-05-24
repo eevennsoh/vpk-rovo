@@ -2,7 +2,7 @@
  * Rovo configuration helpers.
  *
  * Model routing/defaults are defined in backend AI Gateway helpers.
- * This module owns RovoDev user-message formatting and the AI Gateway
+ * This module owns Rovo user-message formatting and the AI Gateway
  * personality prompt used by Chat SDK calls.
  */
 const fs = require("node:fs");
@@ -27,7 +27,7 @@ const AI_GATEWAY_PERSONALITY_FALLBACK_TEMPLATE = [
 let cachedAIGatewayPersonalityTemplate = null;
 
 /**
- * Instruction appended to every RovoDev message so the agent uses the
+ * Instruction appended to every Rovo message so the agent uses the
  * structured `ask_user_questions` tool instead of plain-text questions.
  *
  * The backend intercepts `ask_user_questions` tool calls and renders
@@ -266,8 +266,8 @@ const PLAIN_CHAT_INSTRUCTION = [
 ].join("\n");
 
 /**
- * System message sent to RovoDev when the user skips/dismisses a
- * Question Card without providing answers. RovoDev can then decide
+ * System message sent to Rovo when the user skips/dismisses a
+ * Question Card without providing answers. Rovo can then decide
  * whether to ask differently, proceed with caveats, or explain why
  * more context is needed.
  *
@@ -533,8 +533,8 @@ function buildAIGatewaySystemPrompt(options = {}) {
 }
 
 /**
- * Formats user message with conversation history for RovoDev.
- * RovoDev handles all system prompts and widget protocol.
+ * Formats user message with conversation history for Rovo.
+ * Rovo handles all system prompts and widget protocol.
  */
 function buildUserMessage(
 	message,

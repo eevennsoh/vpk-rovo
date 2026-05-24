@@ -840,10 +840,10 @@ async function ingestRawSources({
 	qmdSyncImpl,
 	wikiDir = WIKI_DIR,
 } = {}) {
-	// Default executor: use runRovoDevBackgroundTask with structured JSON parsing
+	// Default executor: use runRovoBackgroundTask with structured JSON parsing
 	const executor = executorImpl || (async ({ prompt }) => {
-		const { runRovoDevBackgroundTask, parseStructuredJsonResponse } = require("./rovo-task-executor");
-		return runRovoDevBackgroundTask({
+		const { runRovoBackgroundTask, parseStructuredJsonResponse } = require("./rovo-task-executor");
+		return runRovoBackgroundTask({
 			prompt,
 			selectedSkillIds: ["research/llm-wiki"],
 			parseStructuredResult: parseStructuredJsonResponse,

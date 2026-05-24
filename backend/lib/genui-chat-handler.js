@@ -1,8 +1,8 @@
 const {
-	generateTextViaRovoDev,
-	streamViaRovoDev,
+	generateTextViaRovo,
+	streamViaRovo,
 	WAIT_FOR_TURN_TIMEOUT_MS,
-} = require("./rovodev-gateway");
+} = require("./rovo-gateway");
 const { getGenuiSystemPrompt } = require("./genui-system-prompt");
 const {
 	getMissingChildReferences,
@@ -12,8 +12,8 @@ const {
 
 const GENUI_META_PREFIX = "[genui-meta]";
 const WEB_LOOKUP_TIMEOUT_MS = 4500;
-const DEFAULT_ROVODEV_UNAVAILABLE_MESSAGE =
-	"RovoDev Serve is required but not available. Please start RovoDev Serve with 'pnpm run rovodev' before using UI Generation.";
+const DEFAULT_ROVO_UNAVAILABLE_MESSAGE =
+	"Rovo Serve is required but not available. Please start Rovo Serve with 'pnpm run rovo' before using UI Generation.";
 
 const STRICT_RETRY_INSTRUCTION = `
 ## Retry Enforcement
@@ -309,26 +309,26 @@ function buildFailureOutput(rawText, failureType, requirementMisses = []) {
 	return `${narrative}\n\n${guidance}`;
 }
 
-function createRovoDevUnavailableError() {
-	const error = new Error(DEFAULT_ROVODEV_UNAVAILABLE_MESSAGE);
-	error.code = "ROVODEV_UNAVAILABLE";
-	error.backendSelected = "rovodev";
+function createRovoUnavailableError() {
+	const error = new Error(DEFAULT_ROVO_UNAVAILABLE_MESSAGE);
+	error.code = "ROVO_UNAVAILABLE";
+	error.backendSelected = "rovo";
 	error.failureStage = "unavailable";
 	return error;
 }
 
 /**
- * Generate assistant text via RovoDev Serve.
+ * Generate assistant text via Rovo Serve.
  *
  * Combines the system prompt and conversation messages into a single
- * message string that RovoDev Serve can process, matching the pattern
- * used by `generateTextViaRovoDev` in rovodev-gateway.js.
+ * message string that Rovo Serve can process, matching the pattern
+ * used by `generateTextViaRovo` in rovo-gateway.js.
  */
 async function generateAssistantText({
 	systemPrompt,
 	messages,
 	onTextDelta,
-	rovoDevAvailable,
+	rovoAvailable,
 }) {
 	const conversationLines = messages.map(
 		(msg) => `[${msg.role === "assistant" ? "Assistant" : "User"}]\n${msg.content}`
@@ -336,10 +336,10 @@ async function generateAssistantText({
 	const prompt = conversationLines.join("\n\n");
 	const combinedMessage = `[System Instructions]\n${systemPrompt}\n[End System Instructions]\n\n${prompt}`;
 
-	if (rovoDevAvailable) {
+	if (rovoAvailable) {
 		if (typeof onTextDelta === "function") {
 			const chunks = [];
-			await streamViaRovoDev({
+			await streamViaRovo({
 				message: combinedMessage,
 				conflictPolicy: "wait-for-turn",
 				onTextDelta: (delta) => {
@@ -350,7 +350,7 @@ async function generateAssistantText({
 			return chunks.join("");
 		}
 
-		return generateTextViaRovoDev({
+		return generateTextViaRovo({
 			system: systemPrompt,
 			prompt,
 			conflictPolicy: "wait-for-turn",
@@ -359,7 +359,7 @@ async function generateAssistantText({
 	}
 
 	// GenUI is a primary user-facing route. Do not silently fail over.
-	throw createRovoDevUnavailableError();
+	throw createRovoUnavailableError();
 }
 
 function extractRelatedTopicTexts(topics, output = []) {
@@ -538,9 +538,9 @@ async function genuiChatHandler(req, res, options = {}) {
 			layoutContext = null,
 			streamResponse = true,
 	} = req.body || {};
-	const rovoDevAvailable =
-		typeof options.isRovoDevAvailable === "function"
-			? await options.isRovoDevAvailable()
+	const rovoAvailable =
+		typeof options.isRovoAvailable === "function"
+			? await options.isRovoAvailable()
 			: true;
 	const normalizedMessages = normalizeMessages(rawMessages);
 
@@ -580,7 +580,7 @@ async function genuiChatHandler(req, res, options = {}) {
 		const baseText = await generateAssistantText({
 			systemPrompt: basePrompt,
 			messages: normalizedMessages,
-			rovoDevAvailable,
+			rovoAvailable,
 			onTextDelta:
 				streamResponse === true
 					? (delta) => {
@@ -677,7 +677,7 @@ async function genuiChatHandler(req, res, options = {}) {
 			const retryText = await generateAssistantText({
 				systemPrompt: strictRetryPrompt,
 				messages: normalizedMessages,
-				rovoDevAvailable,
+				rovoAvailable,
 			});
 			const retryAnalysis = analyzeGeneratedText(retryText);
 			logAttempt("strict-retry", retryAnalysis, requirements);
@@ -707,7 +707,7 @@ async function genuiChatHandler(req, res, options = {}) {
 				const webRetryText = await generateAssistantText({
 					systemPrompt: webRetryPrompt,
 					messages: normalizedMessages,
-					rovoDevAvailable,
+					rovoAvailable,
 				});
 				const webRetryAnalysis = analyzeGeneratedText(webRetryText);
 				logAttempt("web-retry", webRetryAnalysis, requirements);
@@ -771,11 +771,11 @@ async function genuiChatHandler(req, res, options = {}) {
 		if (!res.headersSent) {
 			const message = error instanceof Error ? error.message : String(error);
 			const backendSelected = error?.backendSelected;
-			if (error?.code === "ROVODEV_UNAVAILABLE" || backendSelected === "rovodev") {
+			if (error?.code === "ROVO_UNAVAILABLE" || backendSelected === "rovo") {
 				return res.status(503).json({
-					error: "RovoDev Serve is required but not available",
+					error: "Rovo Serve is required but not available",
 					details: message,
-					backendSelected: "rovodev",
+					backendSelected: "rovo",
 					failureStage: "unavailable",
 				});
 			}

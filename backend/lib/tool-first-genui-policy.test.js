@@ -169,7 +169,7 @@ test("buildToolFirstWarningPayload returns structured warning metadata", () => {
 	const warning = buildToolFirstWarningPayload({
 		policy,
 		execution: state,
-		rovoDevFallback: false,
+		rovoFallback: false,
 	});
 
 	assert.match(warning.message, /couldn't verify a successful/i);
@@ -180,7 +180,7 @@ test("buildToolFirstWarningPayload returns structured warning metadata", () => {
 	assert.equal(warning.relevantToolErrors, 1);
 	assert.equal(warning.lastRelevantToolName, "mcp__google_calendar__list_events");
 	assert.equal(warning.lastRelevantErrorCategory, "permission");
-	assert.equal(warning.rovoDevFallback, false);
+	assert.equal(warning.rovoFallback, false);
 });
 
 test("buildToolFirstTextFallback still produces generic failure guidance", () => {
@@ -201,7 +201,7 @@ test("buildToolFirstTextFallback still produces generic failure guidance", () =>
 	const message = buildToolFirstTextFallback({
 		policy,
 		execution: state,
-		rovoDevFallback: false,
+		rovoFallback: false,
 	});
 	assert.match(message, /couldn't verify a successful/i);
 	assert.match(message, /Last relevant tool/i);

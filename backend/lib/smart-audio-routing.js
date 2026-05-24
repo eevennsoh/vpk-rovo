@@ -433,7 +433,7 @@ function parseVoiceIntentResult(text) {
  *
  * @param {object} params
  * @param {string} params.transcript — the user's speech transcript
- * @param {boolean} params.isGenerating — whether RovoDev is currently generating
+ * @param {boolean} params.isGenerating — whether Rovo is currently generating
  * @param {string} [params.currentGenerationContext] — what's being generated
  * @param {string} [params.recentThreadSummary] — recent thread messages
  * @param {Function} params.generateText — LLM text generation function

@@ -19,7 +19,7 @@ import {
 	type RovoMessageMetadata,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
-import { shouldSendExplicitRovoDevCancel } from "@/lib/rovodev-cancel-strategy";
+import { shouldSendExplicitRovoCancel } from "@/lib/rovo-cancel-strategy";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import {
 	createRovoAppId,
@@ -89,7 +89,7 @@ import {
 import { DefaultChatTransport, type FileUIPart } from "ai";
 
 export interface SendPromptOptions {
-	backendPreference?: "rovodev" | "ai-gateway";
+	backendPreference?: "rovo" | "ai-gateway";
 	contextDescription?: string;
 	hermesContext?: RovoAppHermesContext;
 	userName?: string;
@@ -2094,7 +2094,7 @@ export function RovoChatProvider({
 		}
 
 		// Skip cancel if no stream is active — avoids sending HTTP requests to
-		// RovoDev Serve during startup before the instances are ready.
+		// Rovo Serve during startup before the instances are ready.
 		if (!isStreamingRef.current) {
 			try {
 				await stop();
@@ -2111,11 +2111,11 @@ export function RovoChatProvider({
 
 			const stoppedInTime = await waitForStreamStop();
 
-			// Belt-and-suspenders: explicitly tell the backend to cancel the RovoDev
+			// Belt-and-suspenders: explicitly tell the backend to cancel the Rovo
 			// stream only if the primary req.on("close") → AbortSignal path did
 			// not settle the turn within a short grace period.
 			if (
-				!shouldSendExplicitRovoDevCancel({
+				!shouldSendExplicitRovoCancel({
 					hasBackgroundCancelableWork: false,
 					hasUseChatTurn: true,
 					stopSettledInTime: stoppedInTime,

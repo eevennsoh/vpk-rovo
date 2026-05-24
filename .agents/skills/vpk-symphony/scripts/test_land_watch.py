@@ -28,6 +28,28 @@ def codex_comment(body, *, commit_id=None, created_at="2026-05-12T11:08:00Z"):
     return comment
 
 
+def user_comment(body, *, login="eevennsoh", created_at="2026-05-12T11:10:00Z"):
+    return {
+        "user": {"login": login, "type": "User"},
+        "body": body,
+        "created_at": created_at,
+    }
+
+
+def agent_review_comment(status, sha=HEAD_SHA, *, created_at="2026-05-12T11:10:00Z"):
+    return user_comment(
+        f"""[codex] Symphony Agent Review
+
+Status: {status}
+Reviewed commit: `{sha}`
+Validation reviewed: targeted tests passed
+Findings: none
+Risk decision: auto-merge eligible
+""",
+        created_at=created_at,
+    )
+
+
 class LandWatchReviewFreshnessTests(unittest.TestCase):
     def test_review_signal_body_commit_can_match_head_prefix(self):
         body = """
@@ -90,6 +112,65 @@ class LandWatchReviewFreshnessTests(unittest.TestCase):
         )
 
         self.assertEqual([matching], filtered)
+
+
+class LandWatchAgentReviewTests(unittest.TestCase):
+    def test_current_head_agent_review_pass_satisfies_gate(self):
+        comment = agent_review_comment("pass")
+
+        filtered = land_watch.filter_agent_review_comments([comment], HEAD_SHA)
+
+        self.assertEqual([comment], filtered)
+        self.assertEqual(
+            "pass",
+            land_watch.agent_review_status_from_body(comment["body"]),
+        )
+
+    def test_stale_agent_review_is_ignored(self):
+        current = agent_review_comment("pass")
+        stale = agent_review_comment("pass", sha=STALE_SHA)
+
+        filtered = land_watch.filter_agent_review_comments(
+            [stale, current],
+            HEAD_SHA,
+        )
+
+        self.assertEqual([current], filtered)
+
+    def test_non_pass_agent_review_statuses_do_not_permit_merge(self):
+        changes = agent_review_comment("changes-requested")
+        needs_human = agent_review_comment("needs-human")
+
+        self.assertEqual(
+            "changes-requested",
+            land_watch.agent_review_status_from_body(changes["body"]),
+        )
+        self.assertEqual(
+            "needs-human",
+            land_watch.agent_review_status_from_body(needs_human["body"]),
+        )
+        self.assertNotEqual(
+            "pass",
+            land_watch.agent_review_status_from_body(changes["body"]),
+        )
+        self.assertNotEqual(
+            "pass",
+            land_watch.agent_review_status_from_body(needs_human["body"]),
+        )
+
+    def test_agent_review_comment_is_not_human_feedback(self):
+        comment = agent_review_comment("pass")
+
+        filtered = land_watch.filter_human_issue_comments([comment])
+
+        self.assertEqual([], filtered)
+
+    def test_stale_agent_review_forces_re_review(self):
+        stale = agent_review_comment("pass", sha=STALE_SHA)
+
+        filtered = land_watch.filter_stale_agent_review_comments([stale], HEAD_SHA)
+
+        self.assertEqual([stale], filtered)
 
 
 if __name__ == "__main__":

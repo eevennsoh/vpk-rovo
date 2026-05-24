@@ -827,7 +827,7 @@ test("GET /api/wiki/memory-explorer returns the normalized explorer snapshot", a
 			filters,
 			generatedAt: "2026-04-12T00:00:00.000Z",
 			nodes: [{
-				bodyPreview: "Keep the runtime loop on RovoDev.",
+				bodyPreview: "Keep the runtime loop on Rovo.",
 				charCount: 32,
 				connectionCount: 1,
 				createdAt: null,
@@ -841,11 +841,11 @@ test("GET /api/wiki/memory-explorer returns the normalized explorer snapshot", a
 				sourceMessageId: null,
 				sourceThreadId: null,
 				status: null,
-				summary: "Keep the runtime loop on RovoDev.",
+				summary: "Keep the runtime loop on Rovo.",
 				tags: ["work", "memory"],
 				target: null,
 				title: "Work Context",
-				topics: ["runtime", "rovodev"],
+				topics: ["runtime", "rovo"],
 				updatedAt: "2026-04-12T00:00:00.000Z",
 				wikiLinks: [],
 			}],
@@ -876,7 +876,7 @@ test("GET /api/wiki/memory-explorer returns the normalized explorer snapshot", a
 
 test("POST /api/wiki/memory-explorer/brief returns generated markdown", async () => {
 	const handlers = createTestHandlers({
-		buildWikiMemoryBriefImpl: ({ title }) => `# ${title}\n\n- Keep the runtime loop on RovoDev.\n`,
+		buildWikiMemoryBriefImpl: ({ title }) => `# ${title}\n\n- Keep the runtime loop on Rovo.\n`,
 	});
 
 	await withServer((app) => {

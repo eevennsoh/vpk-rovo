@@ -38,12 +38,12 @@ if [ -f "$BACKEND_PORT_FILE" ]; then
     fi
 fi
 
-# Read rovodev port if file exists
-ROVODEV_PORT_FILE="$PROJECT_DIR/.dev-rovodev-port"
-if [ -f "$ROVODEV_PORT_FILE" ]; then
-    ROVODEV_PORT=$(cat "$ROVODEV_PORT_FILE" 2>/dev/null | tr -d '[:space:]')
-    if [ -n "$ROVODEV_PORT" ]; then
-        CONTEXT_PARTS+=("RovoDev Serve: http://localhost:$ROVODEV_PORT")
+# Read rovo port if file exists
+ROVO_PORT_FILE="$PROJECT_DIR/.dev-rovo-port"
+if [ -f "$ROVO_PORT_FILE" ]; then
+    ROVO_PORT=$(cat "$ROVO_PORT_FILE" 2>/dev/null | tr -d '[:space:]')
+    if [ -n "$ROVO_PORT" ]; then
+        CONTEXT_PARTS+=("Rovo Serve: http://localhost:$ROVO_PORT")
     fi
 fi
 

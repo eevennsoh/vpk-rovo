@@ -24,10 +24,10 @@ const ARTIFACT_ANNOTATION_CONTEXT_INSTRUCTIONS = [
 	"If steering an active artifact, preserve the annotation intent while applying the new changes.",
 ].join(" ");
 
-const ROVO_SYSTEM_INSTRUCTIONS = `You are Rovo, a collaborative AI voice assistant that bridges voice conversation with RovoDev, Atlassian's AI workspace assistant.
+const ROVO_SYSTEM_INSTRUCTIONS = `You are Rovo, a collaborative AI voice assistant that bridges voice conversation with Rovo, Atlassian's AI workspace assistant.
 
 ## Your role
-You are the voice interface. You handle casual conversation, brainstorming, and general knowledge directly. For anything requiring workspace access, data lookup, code changes, artifact creation, or Atlassian product queries, you delegate to RovoDev using the delegate_to_rovo function.
+You are the voice interface. You handle casual conversation, brainstorming, and general knowledge directly. For anything requiring workspace access, data lookup, code changes, artifact creation, or Atlassian product queries, you delegate to Rovo using the delegate_to_rovo function.
 
 ## When to delegate (call delegate_to_rovo)
 Only delegate when the user explicitly asks for a task that requires workspace access:
@@ -61,12 +61,12 @@ Exception: if the user asks to create/build/generate/write an artifact, document
 ## Delegation behavior
 1. When you decide to delegate, call delegate_to_rovo immediately — do not emit text tokens before the function call
 2. Synthesize the full conversation context into a clear prompt — don't just echo the last utterance
-3. After RovoDev returns results (injected as system context), narrate a concise summary
+3. After Rovo returns results (injected as system context), narrate a concise summary
 4. Stay aware of prior results for follow-up questions
-5. Do not say things like "I'm putting that together" or ask a follow-up yourself for explicit artifact/build requests. Delegate first and let RovoDev decide whether a clarification card or artifact preview is needed.
+5. Do not say things like "I'm putting that together" or ask a follow-up yourself for explicit artifact/build requests. Delegate first and let Rovo decide whether a clarification card or artifact preview is needed.
 
 ## Steering active generation
-When results are being generated and the user gives modification instructions ("make it bigger", "add a chart", "change the color"), delegate those as well — RovoDev will apply them as steers to the active generation.
+When results are being generated and the user gives modification instructions ("make it bigger", "add a chart", "change the color"), delegate those as well — Rovo will apply them as steers to the active generation.
 
 ## Ending the session
 When the user wants to end the voice conversation (e.g. "stop", "goodbye", "end call", "shut down", "that's all", "I'm done"), say a brief goodbye and call the end_voice_session function.
@@ -102,7 +102,7 @@ const SESSION_TOOLS = [
 		type: "function",
 		name: "delegate_to_rovo",
 		description:
-			"Delegate a task to RovoDev, Atlassian's AI assistant. " +
+			"Delegate a task to Rovo, Atlassian's AI assistant. " +
 			"Use when the user asks for anything requiring workspace access, " +
 			"data lookup, code changes, file creation, artifact generation, " +
 			"or Atlassian product queries. Synthesize the user's request " +
@@ -935,13 +935,13 @@ class RealtimeSession {
 			case OPENAI_EVENT.RESPONSE_FUNCTION_CALL_ARGUMENTS_DONE:
 				if (event.name === "delegate_to_rovo") {
 					// Send function_call_output back to OpenAI so GPT can continue
-					// speaking its verbal acknowledgment while RovoDev works
+					// speaking its verbal acknowledgment while Rovo works
 					this._sendToOpenAI({
 						type: OPENAI_EVENT.CONVERSATION_ITEM_CREATE,
 						item: {
 							type: "function_call_output",
 							call_id: event.call_id,
-							output: JSON.stringify({ status: "delegated", message: "Task sent to RovoDev for processing." }),
+							output: JSON.stringify({ status: "delegated", message: "Task sent to Rovo for processing." }),
 						},
 					});
 					this._sendToOpenAI({

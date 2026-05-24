@@ -15,7 +15,7 @@ import {
 } from "react";
 import { useRovoAppQueue } from "@/app/rovo/rovo-queue-provider";
 import { useLatestRef } from "@/lib/use-latest-ref";
-import { shouldSendExplicitRovoDevCancel } from "@/lib/rovodev-cancel-strategy";
+import { shouldSendExplicitRovoCancel } from "@/lib/rovo-cancel-strategy";
 import { toast } from "sonner";
 import {
 	appendRovoAppStreamingArtifactDelta,
@@ -393,7 +393,7 @@ function areRovoAppMessagesEqual(
 	return true;
 }
 
-function normalizeRovodevMessagesForMerge(
+function normalizeRovoMessagesForMerge(
 	messages: ReadonlyArray<RovoUIMessage>,
 	previousMessages: ReadonlyArray<RovoUIMessage>,
 ): {
@@ -421,13 +421,13 @@ function normalizeRovodevMessagesForMerge(
 					createdAt;
 		const metadata = {
 			...(message.metadata ?? {}),
-			origin: "rovodev" as const,
+			origin: "rovo" as const,
 			createdAt,
 			updatedAt,
 		};
 
 		if (
-			message.metadata?.origin !== "rovodev"
+			message.metadata?.origin !== "rovo"
 			|| message.metadata?.createdAt !== createdAt
 			|| message.metadata?.updatedAt !== updatedAt
 		) {
@@ -649,7 +649,7 @@ export interface RovoAppHookResult {
 			state?: "done" | "streaming";
 		},
 	) => Promise<string>;
-	delegateToRovodev: (
+	delegateToRovo: (
 		messageId: string,
 		options?: {
 			contextDescription?: string;
@@ -951,7 +951,7 @@ export function useRovoApp({
 	const suppressedStreamingAutoOpenDocumentIdRef = useRef<string | null>(null);
 	const isVoiceModeRef = useLatestRef(isVoiceMode);
 	const isPlanModeRef = useLatestRef(isPlanMode);
-	const rovodevMessagesRef = useRef<RovoUIMessage[]>([]);
+	const rovoMessagesRef = useRef<RovoUIMessage[]>([]);
 	const realtimeMessagesRef = useRef<RovoUIMessage[]>([]);
 	const realtimeMessagesVersionRef = useRef(0);
 	const statusRef = useRef<ChatStatus>("ready");
@@ -1569,8 +1569,8 @@ export function useRovoApp({
 		);
 
 	const {
-		messages: rovodevMessages,
-		setMessages: setRovodevMessages,
+		messages: rovoMessages,
+		setMessages: setRovoMessages,
 		sendMessage,
 		stop: stopUseChat,
 		regenerate,
@@ -1639,19 +1639,19 @@ export function useRovoApp({
 		[attachedRunStatus, handleRovoAppDataPart],
 	);
 
-	const normalizedRovodevMessages = useMemo(() => {
-		return normalizeRovodevMessagesForMerge(
-			rovodevMessages,
-			rovodevMessagesRef.current,
+	const normalizedRovoMessages = useMemo(() => {
+		return normalizeRovoMessagesForMerge(
+			rovoMessages,
+			rovoMessagesRef.current,
 		).messages;
-	}, [rovodevMessages]);
+	}, [rovoMessages]);
 
 	useEffect(() => {
-		rovodevMessagesRef.current = normalizedRovodevMessages;
-	}, [normalizedRovodevMessages]);
+		rovoMessagesRef.current = normalizedRovoMessages;
+	}, [normalizedRovoMessages]);
 	const latestSourcedPlanWidget = useMemo(() => {
-		return getLatestSourcedPlanWidget(normalizedRovodevMessages);
-	}, [normalizedRovodevMessages]);
+		return getLatestSourcedPlanWidget(normalizedRovoMessages);
+	}, [normalizedRovoMessages]);
 	const persistPlanWidgetMetadata = useCallback(
 		(options: {
 			threadId: string;
@@ -1703,7 +1703,7 @@ export function useRovoApp({
 			);
 
 			if (activeThreadIdRef.current === options.threadId) {
-				setRovodevMessages(updatedMessages);
+				setRovoMessages(updatedMessages);
 			}
 			clearPendingPlanMetadataGeneration(sourceMessageId);
 
@@ -1731,7 +1731,7 @@ export function useRovoApp({
 						&& !areRovoAppMessagesEqual(resolvedThread.messages, updatedMessages)
 					) {
 						beginThreadHydration();
-						setRovodevMessages(resolvedThread.messages);
+						setRovoMessages(resolvedThread.messages);
 						window.setTimeout(() => {
 							completeThreadHydration();
 						}, 0);
@@ -1754,16 +1754,16 @@ export function useRovoApp({
 			clearPendingPlanMetadataGeneration,
 			completeThreadHydration,
 			reconcileThreadWithLocalTitle,
-			setRovodevMessages,
+			setRovoMessages,
 		],
 	);
 
 	const messages = useMemo(() => {
 		return mergeRovoAppMessages({
 			realtimeMessages,
-			rovodevMessages: normalizedRovodevMessages,
+			rovoMessages: normalizedRovoMessages,
 		});
-	}, [normalizedRovodevMessages, realtimeMessages]);
+	}, [normalizedRovoMessages, realtimeMessages]);
 	const latestThinkingStatusLabel = useMemo(() => {
 		if (!backgroundDelegationMessageId) {
 			return null;
@@ -1826,7 +1826,7 @@ export function useRovoApp({
 			activeRunStatus,
 			backgroundDelegationLabelOverride:
 				activeRunStatus === "queued"
-					? "Queued. This thread will start when a RovoDev port is free."
+					? "Queued. This thread will start when a Rovo port is free."
 					: null,
 			hasObservedTurnComplete,
 			isAttachedActiveRun,
@@ -1929,7 +1929,7 @@ export function useRovoApp({
 			isAwaitingClarificationAnswers,
 			latestAssistantMessage,
 		} = getRovoAppPlanningArtifactsSinceBaseline(
-			normalizedRovodevMessages,
+			normalizedRovoMessages,
 			planningSession.baselineAssistantMessageId,
 		);
 
@@ -1971,7 +1971,7 @@ export function useRovoApp({
 					hasStreamStarted: false,
 					baselineAssistantMessageId:
 						getLatestRovoAppAssistantMessageId(
-							rovodevMessagesRef.current,
+							rovoMessagesRef.current,
 						),
 				};
 			});
@@ -2025,7 +2025,7 @@ export function useRovoApp({
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [
 		isStreaming,
-		normalizedRovodevMessages,
+		normalizedRovoMessages,
 		planningSession,
 		syncAgentModeForDispatch,
 		threads,
@@ -2056,7 +2056,7 @@ export function useRovoApp({
 	);
 
 	// Generate title via AI Gateway immediately after the thread is created.
-	// This bypasses RovoDev Serve and preserves the original fast title flow.
+	// This bypasses Rovo Serve and preserves the original fast title flow.
 	useEffect(() => {
 		const pendingTitleRequest = getPendingRovoAppTitleRequest({
 			pendingTitleThreadId,
@@ -2112,7 +2112,7 @@ export function useRovoApp({
 
 				persistPlanWidgetMetadata({
 					threadId,
-					messages: rovodevMessagesRef.current,
+					messages: rovoMessagesRef.current,
 					sourceMessageId,
 					title: result.title,
 					shortDescription: result.shortDescription,
@@ -2162,7 +2162,7 @@ export function useRovoApp({
 			return;
 		}
 
-		const latestAssistantMessage = [...normalizedRovodevMessages]
+		const latestAssistantMessage = [...normalizedRovoMessages]
 			.reverse()
 			.find((message) => {
 				if (
@@ -2190,7 +2190,7 @@ export function useRovoApp({
 		}
 
 		const suggestionRequest = buildSuggestedQuestionsRequest(
-			normalizedRovodevMessages,
+			normalizedRovoMessages,
 			latestAssistantMessage.id,
 		);
 		if (!suggestionRequest) {
@@ -2217,7 +2217,7 @@ export function useRovoApp({
 					return;
 				}
 
-				setRovodevMessages((currentMessages) =>
+				setRovoMessages((currentMessages) =>
 					appendSuggestedQuestionsToAssistantMessage(
 						currentMessages,
 						suggestionRequest.assistantMessageId,
@@ -2243,8 +2243,8 @@ export function useRovoApp({
 			});
 	}, [
 		isStreaming,
-		normalizedRovodevMessages,
-		setRovodevMessages,
+		normalizedRovoMessages,
+		setRovoMessages,
 		shouldSuppressLatestAssistantSuggestions,
 	]);
 
@@ -2252,7 +2252,7 @@ export function useRovoApp({
 		if (!pendingArtifactAssociationRef.current) return;
 		if (streamingArtifactMessageId) return;
 		const lastMessage =
-			normalizedRovodevMessages[normalizedRovodevMessages.length - 1];
+			normalizedRovoMessages[normalizedRovoMessages.length - 1];
 		if (lastMessage?.role === "assistant") {
 			pendingArtifactAssociationRef.current = false;
 			setStreamingArtifactMessageId(lastMessage.id);
@@ -2269,14 +2269,14 @@ export function useRovoApp({
 				});
 			}
 		}
-		}, [normalizedRovodevMessages, streamingArtifactMessageId, streamingArtifactRef]);
+		}, [normalizedRovoMessages, streamingArtifactMessageId, streamingArtifactRef]);
 
 	useEffect(() => {
 		if (!streamingArtifactMessageId) {
 			return;
 		}
 
-		const associatedMessage = normalizedRovodevMessages.find(
+		const associatedMessage = normalizedRovoMessages.find(
 			(message) => message.id === streamingArtifactMessageId && message.role === "assistant",
 		);
 		if (!associatedMessage || !getMessageArtifactResult(associatedMessage)) {
@@ -2284,7 +2284,7 @@ export function useRovoApp({
 		}
 
 		setPendingArtifactResult(null);
-	}, [normalizedRovodevMessages, streamingArtifactMessageId]);
+	}, [normalizedRovoMessages, streamingArtifactMessageId]);
 
 	useEffect(() => {
 		if (isHydratingThreadRef.current) {
@@ -2402,7 +2402,7 @@ export function useRovoApp({
 			activeThreadIdRef.current = thread.id;
 			hasHydratedActiveThreadRef.current = true;
 			setActiveThreadId(thread.id);
-			setRovodevMessages(thread.messages);
+			setRovoMessages(thread.messages);
 			replaceRealtimeMessagesState(thread.realtimeMessages ?? [], {
 				incrementVersion: false,
 			});
@@ -2450,7 +2450,7 @@ export function useRovoApp({
 			replaceRealtimeMessagesState,
 			resetObservedTurnComplete,
 			resetPendingArtifactAssociation,
-			setRovodevMessages,
+			setRovoMessages,
 		],
 	);
 
@@ -2546,7 +2546,7 @@ export function useRovoApp({
 					terminateOnError: true,
 				})) {
 					setAttachedRunStatus("streaming");
-					setRovodevMessages((previousMessages) =>
+					setRovoMessages((previousMessages) =>
 						upsertRealtimeMessage(previousMessages, streamedMessage),
 					);
 				}
@@ -2571,7 +2571,7 @@ export function useRovoApp({
 				}
 			}
 		},
-		[handleAttachedRunChunk, hydrateThreadById, setLocalThreadActiveRun, setRovodevMessages],
+		[handleAttachedRunChunk, hydrateThreadById, setLocalThreadActiveRun, setRovoMessages],
 	);
 
 	const resetToBlankChatState = useCallback((nextDraftId: string) => {
@@ -2581,7 +2581,7 @@ export function useRovoApp({
 		activeThreadIdRef.current = null;
 		hasHydratedActiveThreadRef.current = false;
 		setActiveThreadId(null);
-		setRovodevMessages([]);
+		setRovoMessages([]);
 		replaceRealtimeMessagesState([], {
 			incrementVersion: false,
 		});
@@ -2614,7 +2614,7 @@ export function useRovoApp({
 		window.setTimeout(() => {
 			completeThreadHydration();
 		}, 0);
-	}, [beginThreadHydration, clearArtifactState, clearDirectDelegationState, clearPendingPlanMetadataGeneration, clearStreamingArtifactState, completeThreadHydration, replaceRealtimeMessagesState, resetObservedTurnComplete, resetPendingArtifactAssociation, setRovodevMessages]);
+	}, [beginThreadHydration, clearArtifactState, clearDirectDelegationState, clearPendingPlanMetadataGeneration, clearStreamingArtifactState, completeThreadHydration, replaceRealtimeMessagesState, resetObservedTurnComplete, resetPendingArtifactAssociation, setRovoMessages]);
 
 	const leaveActiveThreadForBackground = useCallback(async () => {
 		const threadId = activeThreadIdRef.current;
@@ -2631,7 +2631,7 @@ export function useRovoApp({
 		const transitionPlan = buildRovoAppActiveThreadTransitionPlan({
 			activeDocumentId,
 			isStreaming: hasActiveTurn,
-			messages: rovodevMessagesRef.current,
+			messages: rovoMessagesRef.current,
 			realtimeMessages: realtimeMessagesRef.current,
 			threadId,
 			visibility: threadVisibility,
@@ -2981,14 +2981,14 @@ export function useRovoApp({
 				text,
 			});
 
-			setRovodevMessages((previousMessages) => [...previousMessages, message]);
+			setRovoMessages((previousMessages) => [...previousMessages, message]);
 			return { message, messageId };
 		},
-		[setRovodevMessages],
+		[setRovoMessages],
 	);
 
 	const getActivePendingPlanReview = useCallback(() => {
-		return getLatestPendingPlanWidget(rovodevMessagesRef.current);
+		return getLatestPendingPlanWidget(rovoMessagesRef.current);
 	}, []);
 
 	const releaseCompletedUseChatTurnIfNeeded = useCallback(async () => {
@@ -3068,7 +3068,7 @@ export function useRovoApp({
 					retryUsed: false,
 					baselineAssistantMessageId:
 						getLatestRovoAppAssistantMessageId(
-							rovodevMessagesRef.current,
+							rovoMessagesRef.current,
 						),
 				});
 			} else {
@@ -3192,7 +3192,7 @@ export function useRovoApp({
 						retryUsed: false,
 						baselineAssistantMessageId:
 							getLatestRovoAppAssistantMessageId(
-								rovodevMessagesRef.current,
+								rovoMessagesRef.current,
 							),
 					});
 				} else {
@@ -3216,7 +3216,7 @@ export function useRovoApp({
 						});
 				} catch (sendError) {
 					// Pre-stream failure: roll back the optimistic user message
-					setRovodevMessages((prev) => prev.filter((m) => m.id !== messageId));
+					setRovoMessages((prev) => prev.filter((m) => m.id !== messageId));
 					setLocalThreadActiveRun(threadId, null);
 					setAttachedRunStatus(null);
 					throw sendError;
@@ -3242,7 +3242,7 @@ export function useRovoApp({
 			resetPendingArtifactAssociation,
 			sendMessage,
 				setLocalThreadActiveRun,
-				setRovodevMessages,
+				setRovoMessages,
 				stopUseChat,
 				streamingArtifact,
 				streamingArtifactRef,
@@ -3382,7 +3382,7 @@ export function useRovoApp({
 				isPlanModeRef.current || Boolean(questionCard.deferredToolCallId);
 			const promptText = buildClarificationSummaryPrompt(questionCard, answers);
 			hasObservedTurnCompleteRef.current = true;
-			setRovodevMessages((previousMessages) => {
+			setRovoMessages((previousMessages) => {
 				const resolved = markClarificationToolResolved(previousMessages);
 				return appendTurnCompleteToLastAssistantMessage(resolved).messages;
 			});
@@ -3430,7 +3430,7 @@ export function useRovoApp({
 							hasStreamStarted: false,
 							baselineAssistantMessageId:
 								getLatestRovoAppAssistantMessageId(
-									rovodevMessagesRef.current,
+									rovoMessagesRef.current,
 								),
 						}
 						: {
@@ -3440,7 +3440,7 @@ export function useRovoApp({
 							retryUsed: false,
 							baselineAssistantMessageId:
 								getLatestRovoAppAssistantMessageId(
-									rovodevMessagesRef.current,
+									rovoMessagesRef.current,
 								),
 						},
 				);
@@ -3463,7 +3463,7 @@ export function useRovoApp({
 			releaseCompletedUseChatTurnIfNeeded,
 			resetPendingArtifactAssociation,
 			sendMessage,
-			setRovodevMessages,
+			setRovoMessages,
 			syncAgentModeForDispatch,
 		],
 	);
@@ -3522,7 +3522,7 @@ export function useRovoApp({
 			const dismissPrompt = buildClarificationDismissPrompt(questionCard);
 
 			hasObservedTurnCompleteRef.current = true;
-			setRovodevMessages((previousMessages) => {
+			setRovoMessages((previousMessages) => {
 				const resolved = markClarificationToolResolved(
 					previousMessages,
 					"Clarification dismissed.",
@@ -3578,7 +3578,7 @@ export function useRovoApp({
 							hasStreamStarted: false,
 							baselineAssistantMessageId:
 								getLatestRovoAppAssistantMessageId(
-									rovodevMessagesRef.current,
+									rovoMessagesRef.current,
 								),
 						}
 						: {
@@ -3588,7 +3588,7 @@ export function useRovoApp({
 							retryUsed: false,
 							baselineAssistantMessageId:
 								getLatestRovoAppAssistantMessageId(
-									rovodevMessagesRef.current,
+									rovoMessagesRef.current,
 								),
 						},
 				);
@@ -3611,7 +3611,7 @@ export function useRovoApp({
 			releaseCompletedUseChatTurnIfNeeded,
 			resetPendingArtifactAssociation,
 			sendMessage,
-			setRovodevMessages,
+			setRovoMessages,
 			syncAgentModeForDispatch,
 		],
 	);
@@ -3872,7 +3872,7 @@ export function useRovoApp({
 					body: JSON.stringify({
 						id: threadId,
 						messages: [
-							...rovodevMessagesRef.current,
+							...rovoMessagesRef.current,
 							...realtimeMessagesRef.current,
 						],
 						artifactContext: resolvedArtifactContext ?? undefined,
@@ -3895,7 +3895,7 @@ export function useRovoApp({
 							conversationSummary: options?.conversationSummary,
 						},
 						recentHistory: buildRecentHistory([
-							...rovodevMessagesRef.current,
+							...rovoMessagesRef.current,
 							...realtimeMessagesRef.current,
 						]),
 						visibility: threadVisibility,
@@ -3942,7 +3942,7 @@ export function useRovoApp({
 									streamedMessage.metadata?.createdAt ??
 									new Date().toISOString(),
 								delegatedFromId: messageId,
-								origin: "rovodev",
+								origin: "rovo",
 								realtimeMessageId:
 									streamedMessage.metadata?.realtimeMessageId ??
 									existingMessage?.metadata?.realtimeMessageId ??
@@ -3974,7 +3974,7 @@ export function useRovoApp({
 				setInputError(errorMessage);
 				await appendRealtimeMessage("assistant", errorMessage, {
 					metadata: {
-						origin: "rovodev",
+						origin: "rovo",
 						delegatedFromId: messageId,
 					},
 				});
@@ -4083,7 +4083,7 @@ export function useRovoApp({
 					!canDispatchRovoAppQueuedAction({
 						action: nextQueuedAction,
 						hasPendingClarification:
-							getLatestQuestionCardPayload(rovodevMessagesRef.current) !== null,
+							getLatestQuestionCardPayload(rovoMessagesRef.current) !== null,
 						hasPendingPlanApproval:
 							getActivePendingPlanReview() !== null,
 					})
@@ -4162,7 +4162,7 @@ export function useRovoApp({
 
 
 
-	const delegateToRovodev = useCallback(
+	const delegateToRovo = useCallback(
 		async (
 				messageId: string,
 				options?: {
@@ -4344,7 +4344,7 @@ export function useRovoApp({
 					}
 
 					const shouldRequestExplicitCancel = hadActiveTurn
-						? shouldSendExplicitRovoDevCancel({
+						? shouldSendExplicitRovoCancel({
 								hasBackgroundCancelableWork,
 								hasUseChatTurn,
 								stopSettledInTime: stoppedInTime,
@@ -4389,7 +4389,7 @@ export function useRovoApp({
 					const interruptedAt = new Date().toISOString();
 					let didMarkInterruptedReply = false;
 					if (hasUseChatTurn || hasBackgroundCancelableWork) {
-						setRovodevMessages((previousMessages) => {
+						setRovoMessages((previousMessages) => {
 							const result = markLastRovoAppAssistantMessageInterrupted(
 								previousMessages,
 								{
@@ -4437,7 +4437,7 @@ export function useRovoApp({
 			mutateRealtimeMessagesState,
 			requestExplicitCancel,
 			setLocalThreadActiveRun,
-			setRovodevMessages,
+			setRovoMessages,
 			stopUseChat,
 			useChatStatus,
 			waitForActiveTurnToStop,
@@ -4732,12 +4732,12 @@ export function useRovoApp({
 				return;
 			}
 
-			const messageIndex = normalizedRovodevMessages.findIndex((message) => message.id === messageId);
+			const messageIndex = normalizedRovoMessages.findIndex((message) => message.id === messageId);
 			if (messageIndex === -1) {
 				return;
 			}
 
-			const updatedMessages = normalizedRovodevMessages
+			const updatedMessages = normalizedRovoMessages
 				.slice(0, messageIndex + 1)
 				.map((message, index) => {
 					if (index !== messageIndex) {
@@ -4750,7 +4750,7 @@ export function useRovoApp({
 					};
 				});
 			beginThreadHydration();
-			setRovodevMessages(updatedMessages);
+			setRovoMessages(updatedMessages);
 			window.setTimeout(() => {
 				completeThreadHydration();
 				resetPendingArtifactAssociation();
@@ -4759,7 +4759,7 @@ export function useRovoApp({
 			}, 0);
 			setEditingMessageId(null);
 		},
-		[beginThreadHydration, completeThreadHydration, regenerate, resetObservedTurnComplete, resetPendingArtifactAssociation, normalizedRovodevMessages, setRovodevMessages],
+		[beginThreadHydration, completeThreadHydration, regenerate, resetObservedTurnComplete, resetPendingArtifactAssociation, normalizedRovoMessages, setRovoMessages],
 	);
 
 	const regenerateLatest = useCallback(() => {
@@ -4780,7 +4780,7 @@ export function useRovoApp({
 				? currentThread.title
 				: deriveThreadTitle(getMessageText(messages.find((message) => message.role === "user") ?? { parts: [] }));
 			const nextPersistKey = buildRovoAppThreadPersistKey({
-				messages: normalizedRovodevMessages,
+				messages: normalizedRovoMessages,
 				realtimeMessages,
 				visibility: threadVisibility,
 				activeDocumentId,
@@ -4794,7 +4794,7 @@ export function useRovoApp({
 		let cancelled = false;
 		const realtimeRequestVersion = realtimeMessagesVersionRef.current;
 			const nextThreadUpdate: Parameters<typeof updateRovoAppThread>[1] = {
-				messages: normalizedRovodevMessages,
+				messages: normalizedRovoMessages,
 				realtimeMessages,
 				visibility: threadVisibility,
 				activeDocumentId,
@@ -4831,7 +4831,7 @@ export function useRovoApp({
 						shouldReplaceRovoAppRouteAfterPersistence({
 							pendingThreadId: pendingRouteThreadIdRef.current,
 							thread: resolvedThread,
-							messages: normalizedRovodevMessages,
+							messages: normalizedRovoMessages,
 							realtimeMessages,
 							visibility: threadVisibility,
 							activeDocumentId,
@@ -4842,9 +4842,9 @@ export function useRovoApp({
 					pendingRouteReadyRef.current = true;
 					flushPendingRouteReplacement(resolvedThread.id);
 				}
-				if (!areRovoAppMessagesEqual(resolvedThread.messages, normalizedRovodevMessages)) {
+				if (!areRovoAppMessagesEqual(resolvedThread.messages, normalizedRovoMessages)) {
 					beginThreadHydration();
-					setRovodevMessages(resolvedThread.messages);
+					setRovoMessages(resolvedThread.messages);
 					window.setTimeout(() => {
 						completeThreadHydration();
 					}, 0);
@@ -4876,7 +4876,7 @@ export function useRovoApp({
 
 				const recoveryState = {
 					activeDocumentId,
-					messages: normalizedRovodevMessages,
+					messages: normalizedRovoMessages,
 					realtimeMessages,
 					threadId: activeThreadId,
 					title: nextTitle,
@@ -4946,10 +4946,10 @@ export function useRovoApp({
 		realtimeMessages,
 		replaceRealtimeMessagesState,
 		flushPendingRouteReplacement,
-		normalizedRovodevMessages,
+		normalizedRovoMessages,
 		pendingTitleThreadId,
 		reconcileThreadWithLocalTitle,
-		setRovodevMessages,
+		setRovoMessages,
 		threadVisibility,
 		threads,
 	]);
@@ -5099,7 +5099,7 @@ export function useRovoApp({
 		votes,
 		voteOnMessage,
 			appendRealtimeMessage,
-			delegateToRovodev,
+			delegateToRovo,
 		setRealtimeMessageContent,
 		updateRealtimeMessage,
 	};

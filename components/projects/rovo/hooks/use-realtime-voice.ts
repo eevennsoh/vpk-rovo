@@ -72,7 +72,7 @@ export interface UseRealtimeVoiceOptions {
 	} | string) => void;
 	/** Current chat messages for thread context. */
 	chatMessages: RovoUIMessage[];
-	/** Whether RovoDev is currently generating. */
+	/** Whether Rovo is currently generating. */
 	isGenerating?: boolean;
 }
 

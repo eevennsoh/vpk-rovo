@@ -14,9 +14,9 @@
 			"port": 8080
 		},
 		{
-			"name": "rovodev",
+			"name": "rovo",
 			"runtimeExecutable": "pnpm",
-			"runtimeArgs": ["run", "dev:rovodev"],
+			"runtimeArgs": ["run", "dev:rovo"],
 			"port": 8000
 		},
 		{
@@ -26,9 +26,9 @@
 			"port": 3000
 		},
 		{
-			"name": "rovodev-stack (all three)",
+			"name": "rovo-stack (all three)",
 			"runtimeExecutable": "pnpm",
-			"runtimeArgs": ["run", "rovodev"],
+			"runtimeArgs": ["run", "rovo"],
 			"port": 3000
 		}
 	]

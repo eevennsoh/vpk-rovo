@@ -10,7 +10,7 @@ const {
 	getFrontendBasePort,
 	inferWorktreeKind,
 	getPortInfoForPath,
-	getRovodevBasePort,
+	getRovoBasePort,
 	getWorktreePortOffsetForPath,
 } = require("./worktree-ports");
 
@@ -156,7 +156,7 @@ test("worktree port helpers keep main first and assign linked worktree slots by 
 			slot: 1,
 			frontendBase: 3020,
 			backendBase: 8100,
-			rovodevBase: 8020,
+			rovoBase: 8020,
 		});
 		assert.deepEqual(worktreeBInfo, {
 			worktreeName: "feature-b",
@@ -164,7 +164,7 @@ test("worktree port helpers keep main first and assign linked worktree slots by 
 			slot: 2,
 			frontendBase: 3040,
 			backendBase: 8120,
-			rovodevBase: 8040,
+			rovoBase: 8040,
 		});
 	} finally {
 		fixture.cleanup();
@@ -182,7 +182,7 @@ test("getPortInfoForPath falls back to main defaults for unknown paths", () => {
 			slot: 0,
 			frontendBase: 3000,
 			backendBase: 8080,
-			rovodevBase: 8000,
+			rovoBase: 8000,
 		});
 	} finally {
 		fs.rmSync(tempDir, { recursive: true, force: true });
@@ -192,16 +192,16 @@ test("getPortInfoForPath falls back to main defaults for unknown paths", () => {
 test("base port helpers honor explicit environment overrides", () => {
 	const originalPort = process.env.PORT;
 	const originalBackendPort = process.env.BACKEND_PORT;
-	const originalRovodevPort = process.env.ROVODEV_PORT;
+	const originalRovoPort = process.env.ROVO_PORT;
 
 	process.env.PORT = "4100";
 	process.env.BACKEND_PORT = "9100";
-	process.env.ROVODEV_PORT = "9200";
+	process.env.ROVO_PORT = "9200";
 
 	try {
 		assert.equal(getFrontendBasePort(), 4100);
 		assert.equal(getBackendBasePort(), 9100);
-		assert.equal(getRovodevBasePort(), 9200);
+		assert.equal(getRovoBasePort(), 9200);
 	} finally {
 		if (originalPort === undefined) {
 			delete process.env.PORT;
@@ -215,10 +215,10 @@ test("base port helpers honor explicit environment overrides", () => {
 			process.env.BACKEND_PORT = originalBackendPort;
 		}
 
-		if (originalRovodevPort === undefined) {
-			delete process.env.ROVODEV_PORT;
+		if (originalRovoPort === undefined) {
+			delete process.env.ROVO_PORT;
 		} else {
-			process.env.ROVODEV_PORT = originalRovodevPort;
+			process.env.ROVO_PORT = originalRovoPort;
 		}
 	}
 });

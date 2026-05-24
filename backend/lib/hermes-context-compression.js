@@ -6,7 +6,7 @@
  * system messages and the most recent N messages (tail) verbatim.
  *
  * Used by the VPK-Rovo backend to keep conversation context within limits
- * when injecting history into RovoDev Serve prompts.
+ * when injecting history into Rovo Serve prompts.
  */
 
 const SUMMARY_HEADER = "# Conversation Summary";

@@ -1,6 +1,6 @@
 # Port Selection and 409 Recovery
 
-How the RovoDev pool behaves in multiport mode.
+How the Rovo pool behaves in multiport mode.
 
 ## Runtime Model
 
@@ -10,7 +10,7 @@ Stuck / unhealthy port  → mark unhealthy, quarantine briefly, fail over
 Background helper turn  → avoid the active interactive port when possible
 ```
 
-Each `rovodev serve` instance is still single-threaded for chat. A second turn on the same instance while the previous one is active returns HTTP 409.
+Each `rovo serve` instance is still single-threaded for chat. A second turn on the same instance while the previous one is active returns HTTP 409.
 
 ## What Changed
 
@@ -18,7 +18,7 @@ Each `rovodev serve` instance is still single-threaded for chat. A second turn o
 
 The worktree detector now reads actual `.git` metadata instead of assuming only paths containing `/worktrees/` are linked worktrees. A linked checkout like `plan-mode` therefore resolves to its own base slot instead of falling back to `8000`.
 
-Each worktree slot now spans 20 ports per service family. That means one worktree can use a 6-port RovoDev pool and still leave room for port auto-increment without overlapping the next worktree's reserved range.
+Each worktree slot now spans 20 ports per service family. That means one worktree can use a 6-port Rovo pool and still leave room for port auto-increment without overlapping the next worktree's reserved range.
 
 ### 2. The pool is sticky, not round-robin
 
@@ -34,7 +34,7 @@ Follow-up text generation that happens alongside an interactive turn can pass `a
 
 ### 5. Release still uses a readiness gate
 
-Released ports enter cooldown and are probed before they become available again. That prevents immediate reacquire while rovodev serve is still clearing the prior turn.
+Released ports enter cooldown and are probed before they become available again. That prevents immediate reacquire while rovo serve is still clearing the prior turn.
 
 ## Request Flow
 
@@ -50,7 +50,7 @@ Released ports enter cooldown and are probed before they become available again.
 Check `/api/health` for both:
 
 - `worktreePorts`
-- `rovoDevPool`
+- `rovoPool`
 
 The pool payload includes each port's `status` and `quarantinedUntil` timestamp when applicable.
 

@@ -39,7 +39,7 @@ function createMockResponse() {
 	}
 }
 
-test("genui chat returns 503 when RovoDev is unavailable", async () => {
+test("genui chat returns 503 when Rovo is unavailable", async () => {
 	const response = createMockResponse()
 
 	await genuiChatHandler(
@@ -56,16 +56,16 @@ test("genui chat returns 503 when RovoDev is unavailable", async () => {
 		},
 		response,
 		{
-			isRovoDevAvailable: async () => false,
+			isRovoAvailable: async () => false,
 		},
 	)
 
 	assert.equal(response.statusCode, 503)
 	assert.deepEqual(response.jsonBody, {
-		error: "RovoDev Serve is required but not available",
+		error: "Rovo Serve is required but not available",
 		details:
-			"RovoDev Serve is required but not available. Please start RovoDev Serve with 'pnpm run rovodev' before using UI Generation.",
-		backendSelected: "rovodev",
+			"Rovo Serve is required but not available. Please start Rovo Serve with 'pnpm run rovo' before using UI Generation.",
+		backendSelected: "rovo",
 		failureStage: "unavailable",
 	})
 })

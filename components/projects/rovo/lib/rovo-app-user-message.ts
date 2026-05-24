@@ -20,7 +20,7 @@ export function createRovoAppUserMessage({
 		id,
 		role: "user",
 		metadata: {
-			origin: "rovodev",
+			origin: "rovo",
 			createdAt,
 			updatedAt: createdAt,
 			...(metadata ?? {}),

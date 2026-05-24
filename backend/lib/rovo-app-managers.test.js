@@ -33,7 +33,7 @@ test("rovo app thread manager persists and lists thread metadata", async () => {
 		},
 		activeRun: {
 			id: "run-1",
-			backend: "rovodev",
+			backend: "rovo",
 			status: "queued",
 			portIndex: 1,
 			rovoPort: 8001,
@@ -52,7 +52,7 @@ test("rovo app thread manager persists and lists thread metadata", async () => {
 	assert.deepEqual(createdThread.hermesContext?.selectedSkillIds, ["research/llm-wiki"]);
 	assert.deepEqual(createdThread.hermesContext?.autoSelectedSkillIds, ["research/arxiv"]);
 	assert.deepEqual(createdThread.hermesContext?.pendingDraftIds, ["draft-1"]);
-	assert.equal(createdThread.activeRun?.backend, "rovodev");
+	assert.equal(createdThread.activeRun?.backend, "rovo");
 	assert.equal(createdThread.activeRun?.status, "queued");
 	assert.equal(createdThread.activeRun?.rovoPort, 8001);
 	assert.equal(createdThread.activeRun?.sessionId, "session-1");

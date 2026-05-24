@@ -24,7 +24,7 @@ test("buildWikiQueryContextDescription excludes profile and work collections fro
 	);
 	await fs.writeFile(
 		path.join(wikiDir, "work", "context.md"),
-		"# Work Context\n\n- Keep the runtime loop on RovoDev.\n",
+		"# Work Context\n\n- Keep the runtime loop on Rovo.\n",
 		"utf8",
 	);
 	await fs.writeFile(
@@ -59,5 +59,5 @@ test("buildWikiQueryContextDescription excludes profile and work collections fro
 
 	assert.match(context, /Rovo/u);
 	assert.doesNotMatch(context, /Prefers concise answers/u);
-	assert.doesNotMatch(context, /Keep the runtime loop on RovoDev/u);
+	assert.doesNotMatch(context, /Keep the runtime loop on Rovo/u);
 });

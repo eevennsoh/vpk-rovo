@@ -1,17 +1,17 @@
 # VPK (Venn Prototype Kit)
 
 > Provider-neutral project context for AI coding assistants (Cursor, Claude Code, Codex, and others).
-> Canonical source: `AGENTS.md`. `CLAUDE.md` symlinks here. Provider dirs (`.cursor/`, `.claude/`, `.codex/`, `.rovodev/`) contain provider-specific config plus symlinks back to `.agents/`.
+> Canonical source: `AGENTS.md`. `CLAUDE.md` symlinks here. Provider dirs (`.cursor/`, `.claude/`, `.codex/`, `.rovodev/`, `.rovo/`) contain provider-specific config plus symlinks back to `.agents/`.
 
-Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel), AI Gateway, and RovoDev Serve integration.
+Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel), AI Gateway, and Rovo Serve integration.
 
 ## Start Here
 
 - Read this file top-to-bottom once. For details, use the Documentation Index.
 - Quick start:
   - `pnpm install`
-  - `pnpm run rovodev`
-- Local development usually starts frontend + backend with `pnpm run dev`; `pnpm run rovodev` adds RovoDev Serve for flows that explicitly select or delegate to RovoDev.
+  - `pnpm run rovo`
+- Local development usually starts frontend + backend with `pnpm run dev`; `pnpm run rovo` adds Rovo Serve for flows that explicitly select or delegate to Rovo.
 - Production runtime uses one Express process serving static export plus `/api/*`.
 - Primary frontend edits are in `components/projects/`, `components/blocks/`, `components/arts/`, `components/website/` (component docs and demos), and `app/` route files.
 - Backend/API edits are in `backend/server.js`, `backend/lib/*.js`, and nested `app/api/**/route.ts` handlers (dev proxy and route-local adapters).
@@ -39,7 +39,7 @@ Prefer reading these references over relying on pre-trained knowledge.
 | Repo-local agent creation              | `.agents/skills/agent-creator/SKILL.md`                     |
 | AI SDK chat integration                | `rovo/config.js`, `app/contexts/context-rovo-chat.tsx`      |
 | AI Gateway helpers                     | `backend/lib/ai-gateway-helpers.js`                         |
-| RovoDev Serve gateway (agent loop)     | `backend/lib/rovodev-gateway.js`, `backend/lib/rovodev-client.js` |
+| Rovo Serve gateway (agent loop)        | `backend/lib/rovo-gateway.js`, `backend/lib/rovo-client.js` |
 | UI message types and data parts        | `lib/rovo-ui-messages.ts`                                   |
 | Hermes control plane                   | `components/projects/control-plane/`, `backend/lib/hermes-*.js`, `scripts/verify-hermes-control-plane.js` |
 | Architecture overview                  | `.agents/docs/architecture-overview.md`                     |
@@ -79,7 +79,7 @@ If instructions overlap, use this precedence:
 ### Rule Sources
 
 - Canonical source: `.agents/rules/`
-- Provider symlinks: `.cursor/rules/`, `.claude/rules/`, `.codex/rules/`, `.rovodev/rules/`
+- Provider symlinks: `.cursor/rules/`, `.claude/rules/`, `.codex/rules/`, `.rovodev/rules/`, `.rovo/rules/`
 - Cursor-only format: `.agents/rules/*.mdc`
 
 ### Non-negotiable Defaults
@@ -143,15 +143,15 @@ treat them as progressive enhancement — degrade silently, no polyfill.
 ### Development
 
 - Install dependencies: `pnpm install`
-- First-time RovoDev bootstrap: run `pnpm run rovodev` (or `acli rovodev`) once, copy the printed `ROVODEV_SESSION_TOKEN` into `.env.local`, then restart the stack
-- Start everything: `pnpm run rovodev` (starts 1 rovodev serve instance + backend + frontend; use `pnpm run rovodev -- 6` for full pool)
-- Start frontend + backend only: `pnpm run dev` (AI Gateway-backed chat works when credentials are configured; RovoDev-selected flows still need RovoDev Serve)
-- Start through explicit Portless routing: `portless run` or `portless run --script rovodev`
-- Start RovoDev Serve only: `pnpm run dev:rovodev`
+- First-time Rovo bootstrap: run `pnpm run rovo` (or `rovo`) once, copy the printed `ROVO_SESSION_TOKEN` into `.env.local`, then restart the stack
+- Start everything: `pnpm run rovo` (starts 1 rovo serve instance + backend + frontend; use `pnpm run rovo -- 6` for full pool)
+- Start frontend + backend only: `pnpm run dev` (AI Gateway-backed chat works when credentials are configured; Rovo-selected flows still need Rovo Serve)
+- Start through explicit Portless routing: `portless run` or `portless run --script rovo`
+- Start Rovo Serve only: `pnpm run dev:rovo`
 - Start frontend only: `pnpm run dev:frontend`
 - Start backend only: `pnpm run dev:backend`
-- Start with tmux (8 panes): `pnpm run rovodev:tmux:start`
-- Stop tmux dev session: `pnpm run rovodev:tmux:stop`
+- Start with tmux (8 panes): `pnpm run rovo:tmux:start`
+- Stop tmux dev session: `pnpm run rovo:tmux:stop`
 - Start Symphony issue orchestrator: `pnpm run symphony` (requires `LINEAR_API_KEY`, `SYMPHONY_LINEAR_PROJECT_SLUG`, and `mise`; see `docs/SYMPHONY.md`)
 - Verify Hermes/control-plane status after the backend is running: `pnpm run verify:hermes`; refresh the local vendored upstream skills snapshot with `pnpm run import:hermes:upstream` if that check reports it missing.
 
@@ -186,27 +186,27 @@ static export used by deployment.
 
 - When running inside cmux, use `/cmux` skill + `cmux read-screen` to scrape terminal output from dev server panes before guessing at errors.
 - Workflow:
-  1. `cmux list-panes` / `cmux list-pane-surfaces` — find the pane running the failing process (backend, frontend, rovodev serve).
+  1. `cmux list-panes` / `cmux list-pane-surfaces` — find the pane running the failing process (backend, frontend, rovo serve).
   2. `cmux read-screen --surface surface:N --scrollback --lines 200` — capture recent terminal output.
   3. Analyze the captured logs to identify the actual error before proposing a fix.
 - Prefer this over re-running commands or reading log files — the terminal pane already has the live output.
-- Outside cmux, fall back to reading `.dev-rovodev-port` / `.dev-rovodev-ports`, `.dev-frontend-port`, and `.dev-backend-port` and checking process output manually.
+- Outside cmux, fall back to reading `.dev-rovo-port` / `.dev-rovo-ports`, `.dev-frontend-port`, and `.dev-backend-port` and checking process output manually.
 
 ## Gotchas
 
 - Worktree ports are deterministic; check with `pnpm ports` or keep a live dashboard open with `pnpm ports watch`.
-- Runtime port files: `.dev-rovodev-port`, `.dev-rovodev-ports`, `.dev-frontend-port`, `.dev-backend-port`
+- Runtime port files: `.dev-rovo-port`, `.dev-rovo-ports`, `.dev-frontend-port`, `.dev-backend-port`
 - Dev API calls traverse Next.js proxy then Express; debug both layers.
 - No directories are excluded from TypeScript type-checking (only `node_modules`). All errors are visible and trackable.
 - Never import transitive pnpm dependencies directly — pnpm's strict isolation only allows imports from `package.json` direct dependencies. Use internal mechanisms (e.g., `globalThis.__PLATFORM_FEATURE_FLAGS__`) or add the package explicitly.
 - Do not remove the `@layer theme, base, components, utilities;` statement at the top of `app/globals.css` — it pre-declares cascade layer order; without it `@layer components` can declare too early (via `tailwind-theme.css`) and lose to preflight resets.
 - Theme switches via `setGlobalTheme()` from `@atlaskit/tokens` (sets `data-color-mode` + `--ds-*` vars), not Tailwind's `dark:` variant alone. Toggling the `dark` class on `<html>` won't update ADS tokens.
 - Fresh worktrees need their own `pnpm install` — `node_modules` does not share across worktrees.
-- RovoDev launchers (`pnpm run rovodev`, `pnpm run dev:rovodev`, and `pnpm run rovodev:tmux:start`) seed `.env.local` before startup: they copy the main worktree's `.env.local` first and fall back to `.env.local.example`. Copy or symlink `.env.local` manually only when running backend/frontend entrypoints outside those launchers.
+- Rovo launchers (`pnpm run rovo`, `pnpm run dev:rovo`, and `pnpm run rovo:tmux:start`) seed `.env.local` before startup: they copy the main worktree's `.env.local` first and fall back to `.env.local.example`. Copy or symlink `.env.local` manually only when running backend/frontend entrypoints outside those launchers.
 
 ## Architecture
 
-Two runtime modes: **dev** (Next.js proxy + Express, with optional RovoDev Serve for selected chat/tool flows) and **prod** (single Express process serving static export). Key dirs: `app/` (routes), `components/` (UI), `backend/` (API), `rovo/` (AI config). See `.agents/docs/architecture-overview.md` for full details before making architectural changes.
+Two runtime modes: **dev** (Next.js proxy + Express, with optional Rovo Serve for selected chat/tool flows) and **prod** (single Express process serving static export). Key dirs: `app/` (routes), `components/` (UI), `backend/` (API), `rovo/` (AI config). See `.agents/docs/architecture-overview.md` for full details before making architectural changes.
 
 > API endpoints and chat architecture load as contextual rules when editing backend or chat files.
 > See `.agents/rules/api-surfaces.md` and `.agents/rules/chat-architecture.md`.
@@ -240,10 +240,10 @@ The following `.agents/rules/` files load automatically when editing matching fi
 | --- | --- | --- |
 | `token-priority.md` | `components/**/*.tsx`, `app/**/*.tsx`, `*.css` | Token selection, theming, motion tokens |
 | `component-architecture.md` | `components/**/*.tsx`, `app/contexts/**/*.tsx` | Context pattern, compound components, CVA |
-| `chat-architecture.md` | `context-rovo-chat.tsx`, `backend/server.js`, `rovodev-*.js`, `rovo/**` | AI SDK, useChat, RovoDev, data parts |
+| `chat-architecture.md` | `context-rovo-chat.tsx`, `backend/server.js`, `rovo-*.js`, `rovo/**` | AI SDK, useChat, Rovo, data parts |
 | `api-surfaces.md` | `backend/server.js`, `app/api/**/*.ts`, `backend/lib/*.js` | All endpoint listings |
 | `gotchas-ui.md` | `components/**/*.tsx` | Base UI menus, Popover, Toggle, Sonner |
-| `gotchas-chat.md` | `context-rovo-chat.tsx`, `rovodev-*.js` | RovoDev mode, session, message deletion |
+| `gotchas-chat.md` | `context-rovo-chat.tsx`, `rovo-*.js` | Rovo mode, session, message deletion |
 | `gotchas-react.md` | `**/*.tsx` | State updates, derived state, CSS gap |
 | `motion-base-ui.md` | `*.tsx`, `*.jsx` | Animating Base UI with Motion |
 | `motion-react.md` | `*.tsx`, `*.jsx` | Motion for React patterns |
@@ -259,11 +259,11 @@ The following `.agents/rules/` files load automatically when editing matching fi
 |---------|---------|-------------|-----------|
 | Next.js Frontend | `pnpm run dev:frontend` | 3000 | Yes |
 | Express Backend | `pnpm run dev:backend` | 8080 | Yes |
-| RovoDev Serve | `pnpm run dev:rovodev` | 8000 | Only for RovoDev-selected chat/tool flows |
+| Rovo Serve | `pnpm run dev:rovo` | 8000 | Only for Rovo-selected chat/tool flows |
 
 Start frontend + backend together: `pnpm run dev`
-Start all three locally when the RovoDev CLI is available: `pnpm run rovodev`
-Use `portless run` or `portless run --script rovodev` when you specifically want Portless URLs.
+Start all three locally when the Rovo CLI is available: `pnpm run rovo`
+Use `portless run` or `portless run --script rovo` when you specifically want Portless URLs.
 
 ### Running checks
 
@@ -274,11 +274,11 @@ Use `portless run` or `portless run --script rovodev` when you specifically want
 
 ### Non-obvious caveats
 
-- The `.env.local` file is created from `.env.local.example` on first setup. The dev servers (backend + frontend) start without AI Gateway credentials; the UI renders fully, but AI Gateway-backed chat/media return config errors and RovoDev-selected flows still need `ROVODEV_SESSION_TOKEN` plus RovoDev Serve.
+- The `.env.local` file is created from `.env.local.example` on first setup. The dev servers (backend + frontend) start without AI Gateway credentials; the UI renders fully, but AI Gateway-backed chat/media return config errors and Rovo-selected flows still need `ROVO_SESSION_TOKEN` plus Rovo Serve.
 - Backend port is written to `.dev-backend-port`, frontend to `.dev-frontend-port` at startup — these are useful for verifying which ports are in use.
-- `pnpm run dev` starts both backend and frontend via `concurrently`; do not run `pnpm run rovodev` at the same time or you'll get port conflicts.
+- `pnpm run dev` starts both backend and frontend via `concurrently`; do not run `pnpm run rovo` at the same time or you'll get port conflicts.
 - The `pnpm install` warning about ignored build scripts (better-sqlite3, node-llama-cpp) is expected and does not affect the application — these are transitive deps from optional features.
 - Health endpoint: `curl http://localhost:8080/api/health` — returns JSON with service status and auth config summary.
-- The `rovodev` CLI (RovoDev Serve) is not available in cloud VMs — use `pnpm run dev` instead of `pnpm run rovodev`. RovoDev-selected chat/tool flows won't work without RovoDev, but AI Gateway-backed chat, UI, component docs, and non-chat API routes can still function when credentials and egress are available.
+- The `rovo` CLI (Rovo Serve) is not available in cloud VMs — use `pnpm run dev` instead of `pnpm run rovo`. Rovo-selected chat/tool flows won't work without Rovo, but AI Gateway-backed chat, UI, component docs, and non-chat API routes can still function when credentials and egress are available.
 - AI Gateway endpoints require outbound HTTPS to `ai-gateway.us-east-1.staging.atl-paas.net`. If the cloud VM has restricted egress, gateway-backed chat/helper/media features return config or request errors gracefully.
 - When writing `ASAP_PRIVATE_KEY` to `.env.local`, the value already includes surrounding double quotes and literal `\n` escape sequences — do not add extra quotes around it or you'll get "Maximum call stack size exceeded" from Next.js env parsing.

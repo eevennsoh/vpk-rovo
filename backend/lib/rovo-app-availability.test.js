@@ -2,12 +2,12 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
-	waitForRovoAppRovoDevAvailability,
+	waitForRovoAppRovoAvailability,
 } = require("./rovo-app-availability");
 
 test("returns immediately when availability is already true", async () => {
 	let calls = 0;
-	const result = await waitForRovoAppRovoDevAvailability({
+	const result = await waitForRovoAppRovoAvailability({
 		getAvailability: async () => {
 			calls += 1;
 			return true;
@@ -24,7 +24,7 @@ test("returns immediately when availability is already true", async () => {
 
 test("returns false immediately when no ports are registered", async () => {
 	let calls = 0;
-	const result = await waitForRovoAppRovoDevAvailability({
+	const result = await waitForRovoAppRovoAvailability({
 		getAvailability: async () => {
 			calls += 1;
 			return false;
@@ -42,7 +42,7 @@ test("returns false immediately when no ports are registered", async () => {
 test("waits through startup grace period and succeeds when availability flips true", async () => {
 	let calls = 0;
 	let polls = 0;
-	const result = await waitForRovoAppRovoDevAvailability({
+	const result = await waitForRovoAppRovoAvailability({
 		getAvailability: async () => {
 			calls += 1;
 			return calls >= 3;

@@ -21,7 +21,7 @@ test("createRovoAppUserMessage seeds a visible user turn with files and text", (
 	});
 
 	assert.equal(message.role, "user");
-	assert.equal(message.metadata?.origin, "rovodev");
+	assert.equal(message.metadata?.origin, "rovo");
 	assert.equal(message.metadata?.createdAt, "2026-03-18T00:00:00.000Z");
 	assert.equal(message.parts[0].type, "file");
 	assert.deepEqual(message.parts[1], {

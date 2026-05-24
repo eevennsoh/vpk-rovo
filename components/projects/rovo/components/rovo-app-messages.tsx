@@ -483,13 +483,13 @@ function WidgetErrorCard({
 }>) {
 	const [showDetails, setShowDetails] = useState(false);
 	const code = widgetError.data.code;
-	const isUnavailable = code === "ROVODEV_UNAVAILABLE";
-	const isBusy = code === "ROVODEV_BUSY";
+	const isUnavailable = code === "ROVO_UNAVAILABLE";
+	const isBusy = code === "ROVO_BUSY";
 
 	const friendlyMessage = isUnavailable
-		? "RovoDev is currently unavailable. Please try again later."
+		? "Rovo is currently unavailable. Please try again later."
 		: isBusy
-			? "All RovoDev instances are busy. Your request will be retried shortly."
+			? "All Rovo instances are busy. Your request will be retried shortly."
 			: widgetError.data.message;
 
 	const borderClass = isBusy ? "border-warning" : "border-danger";
@@ -564,7 +564,7 @@ function AssistantMessage({
 	const routeDecision: RoutingDecision | null = getLatestRouteDecision(message);
 
 	// Widget type determines rendering path: "question-card" and "plan" widgets
-	// render regardless of routing presentation (they come from RovoDev tool calls
+	// render regardless of routing presentation (they come from Rovo tool calls
 	// during clarification flows where presentation is "text"). GenUI widgets
 	// only render when the routing decision says "genui_card".
 	const widgetType = widget?.data.type ?? null;

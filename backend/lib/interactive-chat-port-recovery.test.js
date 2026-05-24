@@ -53,12 +53,12 @@ test("buildInteractiveStuckPortFailureMessage prefers recovery detail when avail
 		buildInteractiveStuckPortFailureMessage({
 			recoveryError: "Timed out waiting for replacement process",
 		}),
-		"This request couldn't be completed — the RovoDev port is stuck. Automatic recovery failed: Timed out waiting for replacement process",
+		"This request couldn't be completed — the Rovo port is stuck. Automatic recovery failed: Timed out waiting for replacement process",
 	);
 	assert.equal(
 		buildInteractiveStuckPortFailureMessage({
 			retriedRecovery: true,
 		}),
-		"This request couldn't be completed after recovering the RovoDev port. Please try again.",
+		"This request couldn't be completed after recovering the Rovo port. Please try again.",
 	);
 });

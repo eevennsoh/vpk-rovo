@@ -110,11 +110,11 @@ function getQmdSyncStatePath({ dbPath = getWorkspaceQmdDbPath() } = {}) {
 	return path.join(path.dirname(dbPath), DEFAULT_QMD_SYNC_STATE_FILENAME);
 }
 
-function getQmdAllowedRovodevMcpServerSignature() {
+function getQmdAllowedRovoMcpServerSignature() {
 	return "stdio:pnpm:exec qmd mcp";
 }
 
-function getQmdRovodevMcpServerConfig({ repoRoot = REPO_ROOT } = {}) {
+function getQmdRovoMcpServerConfig({ repoRoot = REPO_ROOT } = {}) {
 	return {
 		qmd: {
 			args: ["exec", "qmd", "mcp"],
@@ -127,7 +127,7 @@ function getQmdRovodevMcpServerConfig({ repoRoot = REPO_ROOT } = {}) {
 	};
 }
 
-function isQmdRovodevMcpServerAvailable({
+function isQmdRovoMcpServerAvailable({
 	repoRoot = REPO_ROOT,
 	spawnSyncImpl = spawnSync,
 } = {}) {
@@ -615,10 +615,10 @@ module.exports = {
 	QmdNotReadyError,
 	buildQmdConfig,
 	ensureFreshWikiQmdIndex,
-	getQmdAllowedRovodevMcpServerSignature,
+	getQmdAllowedRovoMcpServerSignature,
 	getQmdCollectionDefinitions,
-	getQmdRovodevMcpServerConfig,
-	isQmdRovodevMcpServerAvailable,
+	getQmdRovoMcpServerConfig,
+	isQmdRovoMcpServerAvailable,
 	getQmdSyncStatePath,
 	getQmdSyncSummary,
 	getWorkspaceQmdCacheDir,

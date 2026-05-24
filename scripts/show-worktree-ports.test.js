@@ -43,12 +43,12 @@ function createGitWorktreeFixture() {
 	}
 }
 
-test("ports CLI treats the recorded RovoDev pool file as an active port contract", () => {
+test("ports CLI treats the recorded Rovo pool file as an active port contract", () => {
 	const fixture = createGitWorktreeFixture();
 
 	try {
 		fs.writeFileSync(
-			path.join(fixture.worktreePath, ".dev-rovodev-ports"),
+			path.join(fixture.worktreePath, ".dev-rovo-ports"),
 			JSON.stringify([8020, 8021]),
 			"utf8",
 		);
@@ -59,7 +59,7 @@ test("ports CLI treats the recorded RovoDev pool file as an active port contract
 		});
 
 		assert.match(output, /feature-pool/);
-		assert.match(output, /rovodev=8020, 8021/);
+		assert.match(output, /rovo=8020, 8021/);
 	} finally {
 		fixture.cleanup();
 	}

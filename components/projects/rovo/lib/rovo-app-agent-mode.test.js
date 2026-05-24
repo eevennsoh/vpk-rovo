@@ -81,12 +81,12 @@ test("syncRovoAppAgentModeForDispatch applies the mode when the backend succeeds
 	]);
 });
 
-test("syncRovoAppAgentModeForDispatch skips unavailable RovoDev preflight failures", async () => {
+test("syncRovoAppAgentModeForDispatch skips unavailable Rovo preflight failures", async () => {
 	const result = await syncRovoAppAgentModeForDispatch(async () => ({
 		ok: false,
 		status: 503,
 		json: async () => ({
-			error: "RovoDev Serve is required but not available",
+			error: "Rovo Serve is required but not available",
 		}),
 	}), "default");
 

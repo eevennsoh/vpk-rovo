@@ -11,7 +11,7 @@ description: This skill should be used when the user asks to "set up", "get star
 # VPK Setup - Initial Repository Setup
 
 **Goal:** Get the prototype running locally with the default required runtime:
-RovoDev Serve as the primary chat backend, plus AI Gateway-backed image/TTS
+Rovo Serve as the primary chat backend, plus AI Gateway-backed image/TTS
 routes, suggestions, and the current env-driven STT preset block used by
 Rovo App live voice mode.
 
@@ -21,8 +21,8 @@ Rovo App live voice mode.
 2. **Install dependencies** → `pnpm install` (skip if `node_modules` already exists)
 3. **Collect AI Gateway credentials** → Ask for use case ID and Atlassian email
 4. **Configure AI Gateway + Voice STT** → Generate ASAP keys and create `.env.local` with Google endpoint values and the current STT preset block
-5. **Set RovoDev Session Token** → First launch of `pnpm run rovodev` prints a session token; copy it to `ROVODEV_SESSION_TOKEN` in `.env.local` (one-time, does not expire)
-6. **Start servers** → Ask permission, then `pnpm run rovodev` (single RovoDev Serve + backend + frontend by default)
+5. **Set Rovo Session Token** → First launch of `pnpm run rovo` prints a session token; copy it to `ROVO_SESSION_TOKEN` in `.env.local` (one-time, does not expire)
+6. **Start servers** → Ask permission, then `pnpm run rovo` (single Rovo Serve + backend + frontend by default)
 7. **Verify** → http://localhost:3000 (or the port shown in terminal output)
 
 ## Preflight Cleanup (when node_modules exists)
@@ -44,32 +44,32 @@ This prevents common issues:
 - `Failed to restore task data (corrupted database or bug)`
 - `ArrayLengthMismatch` Turbopack errors
 
-**Important:** Always ask the user for permission before starting dev servers. Ask a concise user-facing question to confirm they want to start, then run `pnpm run rovodev`. If the user needs the full pool (6 instances), they can use `pnpm run rovodev -- 6` instead.
+**Important:** Always ask the user for permission before starting dev servers. Ask a concise user-facing question to confirm they want to start, then run `pnpm run rovo`. If the user needs the full pool (6 instances), they can use `pnpm run rovo -- 6` instead.
 
 ## Runtime Topology
 
 ### Always-On Default
 
-`pnpm run rovodev` starts all three processes with a single RovoDev instance by default:
+`pnpm run rovo` starts all three processes with a single Rovo instance by default:
 
 ```text
-rovodev serve (:8000) + Express (:8080) + Next.js (:3000)
+rovo serve (:8000) + Express (:8080) + Next.js (:3000)
 ```
 
-RovoDev Serve handles primary chat. AI Gateway-backed routes handle image,
+Rovo Serve handles primary chat. AI Gateway-backed routes handle image,
 sound, suggestions, and Realtime transport when configured. Google endpoint
 variables are used for `provider: "google"` image and TTS routes.
-RovoDev billing site is set via `ROVODEV_BILLING_URL` in `.env.local` (required, no hardcoded fallback).
+Rovo billing site is set via `ROVO_BILLING_URL` in `.env.local` (required, no hardcoded fallback).
 
-For the full pool (6 instances, needed for agent team parallel runs), use `pnpm run rovodev -- 6` instead.
+For the full pool (6 instances, needed for agent team parallel runs), use `pnpm run rovo -- 6` instead.
 
 ### Multiport / tmux Mode
 
-`pnpm run rovodev:tmux:start` starts a tmux session with 8 panes: frontend, backend, and 6 rovodev serve ports.
+`pnpm run rovo:tmux:start` starts a tmux session with 8 panes: frontend, backend, and 6 rovo serve ports.
 
-Session naming is worktree-aware by default: `vpk-dev-<worktree>` (or `vpk-dev-main` in the main worktree), so multiple worktrees can run tmux mode in parallel without session-name collisions. You can override the name with `ROVODEV_TMUX_SESSION`, or change the prefix with `ROVODEV_TMUX_SESSION_PREFIX`.
+Session naming is worktree-aware by default: `vpk-dev-<worktree>` (or `vpk-dev-main` in the main worktree), so multiple worktrees can run tmux mode in parallel without session-name collisions. You can override the name with `ROVO_TMUX_SESSION`, or change the prefix with `ROVO_TMUX_SESSION_PREFIX`.
 
-Port reservation is also worktree-unique across active git worktrees (no overlap). Each worktree receives a dedicated 20-port slot per service family, leaving room for port auto-increment and 6-port RovoDev pools without colliding with another worktree.
+Port reservation is also worktree-unique across active git worktrees (no overlap). Each worktree receives a dedicated 20-port slot per service family, leaving room for port auto-increment and 6-port Rovo pools without colliding with another worktree.
 
 ```text
 Primary interactive thread → sticky preferred port
@@ -77,16 +77,16 @@ On failure / stuck turn     → fail over to another healthy pool port
 Background helper turns     → avoid the active interactive port when alternatives exist
 ```
 
-Multiport mode is sticky by default, not round-robin. Sequential turns usually reuse the same healthy port; extra ports are mainly for concurrency and failover. A post-stream readiness gate prevents immediate reacquire while rovodev serve clears its turn state. See [Port Isolation Guide](references/guide-ports.md) for details.
+Multiport mode is sticky by default, not round-robin. Sequential turns usually reuse the same healthy port; extra ports are mainly for concurrency and failover. A post-stream readiness gate prevents immediate reacquire while rovo serve clears its turn state. See [Port Isolation Guide](references/guide-ports.md) for details.
 
-### RovoDev Instance Reuse
+### Rovo Instance Reuse
 
-`pnpm run rovodev` (single-instance default) and `pnpm run rovodev -- 6` (full pool) are designed for repeated use without resetting your `~/.rovodev/config.yaml`:
+`pnpm run rovo` (single-instance default) and `pnpm run rovo -- 6` (full pool) are designed for repeated use without resetting your `~/.rovo/config.yaml`:
 
 - **Healthy instances are reused** — if a previous pool is still running and healthy, it's kept as-is
 - **Only unhealthy instances are stopped** — stale/crashed processes are gracefully terminated (SIGTERM with SIGKILL fallback)
-- **`rovodev:setup` is a true one-off** — run it once to approve MCP servers; those approvals persist in `~/.rovodev/config.yaml`. In serve mode, all approved MCP tools auto-execute without per-call permission prompts
-- **Force clean start is opt-in** — set `ROVODEV_FORCE_CLEAN_START=true` only if you need to kill all instances and start fresh
+- **`rovo:setup` is a true one-off** — run it once to approve MCP servers; those approvals persist in `~/.rovo/config.yaml`. In serve mode, all approved MCP tools auto-execute without per-call permission prompts
+- **Force clean start is opt-in** — set `ROVO_FORCE_CLEAN_START=true` only if you need to kill all instances and start fresh
 
 ## AI Gateway Credential Setup
 
@@ -172,16 +172,16 @@ ASAP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY
 ASAP_KID=your-use-case-id/1234567890
 ASAP_ISSUER=your-use-case-id
 
-# Default billing site for rovodev serve (override if needed)
-ROVODEV_BILLING_URL=https://product-fabric.atlassian.net
+# Default billing site for rovo serve (override if needed)
+ROVO_BILLING_URL=https://product-fabric.atlassian.net
 
-# RovoDev Session Token (one-time setup — does not expire)
-# On first launch, RovoDev Serve prints a session token to the terminal.
+# Rovo Session Token (one-time setup — does not expire)
+# On first launch, Rovo Serve prints a session token to the terminal.
 # Copy it here, then restart the dev stack.
-ROVODEV_SESSION_TOKEN=<paste-token-from-rovodev-serve-output>
+ROVO_SESSION_TOKEN=<paste-token-from-rovo-serve-output>
 
-# RovoDev pool size (plan parallel runs, default: 1)
-# ROVODEV_POOL_SIZE=1
+# Rovo pool size (plan parallel runs, default: 1)
+# ROVO_POOL_SIZE=1
 
 # OpenAI Realtime API (live voice conversation mode via AI Gateway)
 OPENAI_REALTIME_MODEL=gpt-4o-realtime-preview
@@ -193,11 +193,11 @@ OPENAI_REALTIME_VOICE=alloy
 
 | Variable | Required | Purpose |
 | -------- | -------- | ------- |
-| `ROVODEV_BILLING_URL` | Yes | Billing site URL for `rovodev serve` (default: `https://product-fabric.atlassian.net`) |
-| `ROVODEV_SESSION_TOKEN` | Yes | Shared secret authenticating backend ↔ RovoDev Serve. One-time setup — does not expire or rotate. Copy from Serve's first-launch output. |
-| `ROVODEV_POOL_SIZE` | Optional | Concurrent RovoDev instances for agents team (default: 1) |
-| `ROVODEV_FORCE_CLEAN_START` | Optional | Set `true` to kill all RovoDev instances on startup (default: `false` — reuses healthy instances) |
-| `ROVODEV_PORT` | Optional | Explicit RovoDev Serve port override (normally auto-managed via `.dev-rovodev-port`) |
+| `ROVO_BILLING_URL` | Yes | Billing site URL for `rovo serve` (default: `https://product-fabric.atlassian.net`) |
+| `ROVO_SESSION_TOKEN` | Yes | Shared secret authenticating backend ↔ Rovo Serve. One-time setup — does not expire or rotate. Copy from Serve's first-launch output. |
+| `ROVO_POOL_SIZE` | Optional | Concurrent Rovo instances for agents team (default: 1) |
+| `ROVO_FORCE_CLEAN_START` | Optional | Set `true` to kill all Rovo instances on startup (default: `false` — reuses healthy instances) |
+| `ROVO_PORT` | Optional | Explicit Rovo Serve port override (normally auto-managed via `.dev-rovo-port`) |
 | `AI_GATEWAY_URL` | Yes | Default model endpoint (Bedrock/OpenAI/Google) |
 | `AI_GATEWAY_URL_GOOGLE` | Yes | Google endpoint for `provider: "google"` requests + TTS route |
 | `AI_GATEWAY_USE_CASE_ID` | Yes | Your AI Gateway use case ID |
@@ -236,7 +236,7 @@ OPENAI_REALTIME_VOICE=alloy
 
 ## Speech-to-Text Preset Switching
 
-Rovo App chat model selection is no longer exposed in the frontend. Chat stays on RovoDev Serve, while live voice transcription is selected entirely through `.env.local`.
+Rovo App chat model selection is no longer exposed in the frontend. Chat stays on Rovo Serve, while live voice transcription is selected entirely through `.env.local`.
 
 Switch STT by updating only:
 
@@ -258,7 +258,7 @@ Notes:
 ## Model Switching (AI Gateway-backed Routes)
 
 Model switching via `.env.local` applies only to AI Gateway-backed routes such
-as image, audio, suggestions, and explicit gateway-driven tools. RovoDev Serve
+as image, audio, suggestions, and explicit gateway-driven tools. Rovo Serve
 manages standard chat internally, and Rovo App live voice STT is controlled
 separately via `STT_PRESET`.
 
@@ -268,7 +268,7 @@ separately via `STT_PRESET`.
 | **GPT** | `gpt-5.2-2025-12-11` | `/v1/openai/v1/chat/completions` |
 | **Gemini** | `gemini-3-pro-image-preview` | `/v1/google/publishers/google/v1/chat/completions` |
 
-Update `AI_GATEWAY_URL` in `.env.local` then restart with `pnpm run rovodev`.
+Update `AI_GATEWAY_URL` in `.env.local` then restart with `pnpm run rovo`.
 
 For full model switching details, see [references/guide-model-switch.md](references/guide-model-switch.md).
 
@@ -281,11 +281,11 @@ For full model switching details, see [references/guide-model-switch.md](referen
 - [ ] Atlas CLI installed, YubiKey enrolled
 - [ ] **ASAP credentials generated (timestamp generated ONCE)**
 - [ ] `.env.local` created via `create-env-local.js`
-- [ ] `ROVODEV_BILLING_URL` is set (default: `https://product-fabric.atlassian.net`)
-- [ ] `ROVODEV_SESSION_TOKEN` is set (copy from RovoDev Serve first-launch output — one-time setup)
+- [ ] `ROVO_BILLING_URL` is set (default: `https://product-fabric.atlassian.net`)
+- [ ] `ROVO_SESSION_TOKEN` is set (copy from Rovo Serve first-launch output — one-time setup)
 - [ ] Google endpoints enabled in `.env.local`
 - [ ] `GOOGLE_STT_MODEL` and `STT_PRESET` are set in `.env.local`
-- [ ] Dev servers started with `pnpm run rovodev`
+- [ ] Dev servers started with `pnpm run rovo`
 - [ ] Health check passes at http://localhost:8080/api/health
 - [ ] Chat responds at http://localhost:3000
 
@@ -293,35 +293,35 @@ For full model switching details, see [references/guide-model-switch.md](referen
 
 | Issue | Quick Fix |
 | ----- | --------- |
-| Chat returns 503 | RovoDev Serve not running — use `pnpm run rovodev` to start all processes |
+| Chat returns 503 | Rovo Serve not running — use `pnpm run rovo` to start all processes |
 | Auth errors during ASAP save | `atlas upgrade` |
 | "EADDRINUSE" error | Servers auto-find available ports (3001+/8081+). If still failing, run with `--force-kill`: `./.agents/skills/vpk-setup/scripts/start-dev.sh --force-kill` |
 | Next.js lock error | Remove stale lock: `rm -f .next/dev/lock` then restart |
 | Turbopack cache corrupted | Clear cache: `rm -rf .next` then restart |
-| Zombie processes blocking ports | `ROVODEV_FORCE_CLEAN_START=true pnpm run rovodev` (graceful SIGTERM then SIGKILL fallback) |
-| Config keeps resetting (`~/.rovodev/config.yaml`) | Ensure you're using `pnpm run rovodev` (not `rovodev:setup`); setup is a one-off |
+| Zombie processes blocking ports | `ROVO_FORCE_CLEAN_START=true pnpm run rovo` (graceful SIGTERM then SIGKILL fallback) |
+| Config keeps resetting (`~/.rovo/config.yaml`) | Ensure you're using `pnpm run rovo` (not `rovo:setup`); setup is a one-off |
 | Frontend 500 (providers) | Ensure `components/providers.tsx` matches import casing |
 | "ASAP_PRIVATE_KEY: MISSING" | Check .env.local format - private key must be quoted and escaped |
-| "Missing credentials" from RovoDev Serve | `ROVODEV_SESSION_TOKEN` not set in `.env.local`. Copy the token from Serve's first-launch output (one-time setup, does not expire). Restart the dev stack after setting it. |
-| "Missing credentials" when curling port 8000 | Port 8000 is RovoDev Serve (not the VPK backend). Use `curl -H "Authorization: Bearer $ROVODEV_SESSION_TOKEN" http://localhost:8000/...` or use the backend port from `.dev-backend-port` instead. |
-| No AI response (RovoDev) | Verify `pnpm run rovodev` is running and RovoDev Serve started successfully |
+| "Missing credentials" from Rovo Serve | `ROVO_SESSION_TOKEN` not set in `.env.local`. Copy the token from Serve's first-launch output (one-time setup, does not expire). Restart the dev stack after setting it. |
+| "Missing credentials" when curling port 8000 | Port 8000 is Rovo Serve (not the VPK backend). Use `curl -H "Authorization: Bearer $ROVO_SESSION_TOKEN" http://localhost:8000/...` or use the backend port from `.dev-backend-port` instead. |
+| No AI response (Rovo) | Verify `pnpm run rovo` is running and Rovo Serve started successfully |
 | No AI response (AI Gateway-backed route) | Verify the AI Gateway URLs, ASAP credentials, and use case fields are set in `.env.local` |
 | **Mismatched ASAP KID** | **You generated timestamp twice! Regenerate with single timestamp** |
 | "Model Id [X] not found" | Model not whitelisted. Run `atlas ml aigateway usecase view --id YOUR-USE-CASE-ID -e stg-west` |
 | Bedrock 403 while OpenAI works | Pull latest branch and confirm `backend/lib/ai-gateway-helpers.js` does **not** rewrite Bedrock URL; restart backend |
 | Want to switch models | See [Model Switching Guide](references/guide-model-switch.md) |
 | Rovo App voice mode 500 | Restart the backend so it picks up the latest `.env.local`. If using `STT_PRESET=qwen3-asr` or `qwen3-0.6b`, ensure an OpenAI-compatible transcription backend is available at `OPENAI_COMPATIBLE_STT_BASE_URL` (defaults to `http://localhost:8801/v1`) |
-| Stale AI context / wrong answers | RovoDev session may be corrupted — restart with `pnpm run rovodev` |
+| Stale AI context / wrong answers | Rovo session may be corrupted — restart with `pnpm run rovo` |
 | 409 "chat already in progress" | Background tasks may be using pinned panel ports — check that `PINNED_PORT_COUNT` matches your panel count. See [Port Isolation Guide](references/guide-ports.md) |
-| 409 on first prompt (tmux) | Watch the affected RovoDev pane. The fixed-port supervisor should restart the child automatically if recovery kills it. |
-| Port stays unhealthy after recovery (tmux) | Check the specific RovoDev pane for repeated restart failures, then restart `pnpm run rovodev:tmux:start` if the underlying `rovodev serve` command cannot come back healthy. |
+| 409 on first prompt (tmux) | Watch the affected Rovo pane. The fixed-port supervisor should restart the child automatically if recovery kills it. |
+| Port stays unhealthy after recovery (tmux) | Check the specific Rovo pane for repeated restart failures, then restart `pnpm run rovo:tmux:start` if the underlying `rovo serve` command cannot come back healthy. |
 
 ### Port Auto-Discovery
 
 VPK dev servers automatically find available ports if defaults are in use:
 
 - **Frontend**: Tries ports 3000+ (configurable via `PORT` env var)
-- **RovoDev Serve**: Tries ports 8000+ (worktree-aware)
+- **Rovo Serve**: Tries ports 8000+ (worktree-aware)
 - **Backend**: Tries ports 8080+ (configurable via `BACKEND_PORT` env var)
 
 **Worktree-aware:** Each git worktree gets a deterministic port range based on its name, preventing conflicts when running multiple worktrees simultaneously.
@@ -330,11 +330,11 @@ VPK dev servers automatically find available ports if defaults are in use:
 pnpm ports  # Show port assignments for all worktrees
 ```
 
-The actual ports are written to `.dev-rovodev-port`, `.dev-frontend-port`, and `.dev-backend-port` at runtime. Agent-browser and other tools read these files to determine the correct localhost URLs for the current worktree.
+The actual ports are written to `.dev-rovo-port`, `.dev-frontend-port`, and `.dev-backend-port` at runtime. Agent-browser and other tools read these files to determine the correct localhost URLs for the current worktree.
 
 ## Next Steps
 
-- **Develop locally:** Run `pnpm run rovodev` in your terminal (Ctrl+C to stop)
+- **Develop locally:** Run `pnpm run rovo` in your terminal (Ctrl+C to stop)
 - **Ready to deploy?** Use `/vpk-deploy` to create a permanent, shareable URL
 - **Make changes:** Edit code, test locally, then commit and `/vpk-deploy` again
 

@@ -243,10 +243,10 @@ function normalizeActiveRun(rawActiveRun, updatedAtFallback) {
 			? rawActiveRun.rovoPort
 			: null;
 	const backend =
-		rawActiveRun.backend === "rovodev" || rawActiveRun.backend === "ai-gateway"
+		rawActiveRun.backend === "rovo" || rawActiveRun.backend === "ai-gateway"
 			? rawActiveRun.backend
 			: rovoPort !== null
-				? "rovodev"
+				? "rovo"
 				: "ai-gateway";
 
 	return {

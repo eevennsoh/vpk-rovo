@@ -77,7 +77,7 @@ test("does not recover missing thread failures when there is no local thread sta
 test("does not recover unrelated persistence failures even when local state exists", () => {
 	const state = {
 		activeDocumentId: "doc-1",
-		messages: [createMessage("rovodev-1", "user", "Make a plan")],
+		messages: [createMessage("rovo-1", "user", "Make a plan")],
 		realtimeMessages: [],
 		threadId: "thread-1",
 		title: "Make a plan",
@@ -100,7 +100,7 @@ test("buildRecoverableRovoAppThreadInput preserves realtime messages and active 
 	assert.deepEqual(
 		buildRecoverableRovoAppThreadInput({
 			activeDocumentId: "doc-1",
-			messages: [createMessage("rovodev-1", "user", "Make a plan")],
+			messages: [createMessage("rovo-1", "user", "Make a plan")],
 			realtimeMessages,
 			threadId: "thread-1",
 			title: "Make a plan",
@@ -109,7 +109,7 @@ test("buildRecoverableRovoAppThreadInput preserves realtime messages and active 
 		{
 			activeDocumentId: "doc-1",
 			id: "thread-1",
-			messages: [createMessage("rovodev-1", "user", "Make a plan")],
+			messages: [createMessage("rovo-1", "user", "Make a plan")],
 			realtimeMessages,
 			title: "Make a plan",
 			visibility: "public",

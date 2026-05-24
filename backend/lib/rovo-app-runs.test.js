@@ -41,15 +41,15 @@ function createMockResponse() {
 test("run manager replays buffered chunks to late subscribers and returns to background when detached", () => {
 	const manager = createRovoAppRunManager();
 	const run = manager.createRun({
-		backend: "rovodev",
+		backend: "rovo",
 		threadId: "thread-1",
 		requestBody: { id: "thread-1", messages: [] },
 	});
-	assert.equal(run.backend, "rovodev");
+	assert.equal(run.backend, "rovo");
 
 	manager.enqueueRun(run.threadId);
 	manager.markRunStarted(run.threadId, {
-		backend: "rovodev",
+		backend: "rovo",
 		portIndex: 1,
 		rovoPort: 8001,
 		status: "background",
@@ -59,7 +59,7 @@ test("run manager replays buffered chunks to late subscribers and returns to bac
 	const firstSubscriber = createMockResponse();
 	const firstSubscriberId = manager.attachSubscriber(run.threadId, firstSubscriber);
 	assert.ok(firstSubscriberId);
-	assert.equal(manager.getRun(run.threadId)?.backend, "rovodev");
+	assert.equal(manager.getRun(run.threadId)?.backend, "rovo");
 	assert.equal(manager.getRun(run.threadId)?.status, "streaming");
 	assert.deepEqual(firstSubscriber.writes, ["data: first\n\n"]);
 
@@ -95,16 +95,16 @@ test("cancelRun aborts the active run and clears queued entries", () => {
 	assert.deepEqual(manager.listQueuedThreadIds(), []);
 });
 
-test("setRunBackend records backend ownership and clears RovoDev port for AI Gateway runs", () => {
+test("setRunBackend records backend ownership and clears Rovo port for AI Gateway runs", () => {
 	const manager = createRovoAppRunManager();
 	const run = manager.createRun({
-		backend: "rovodev",
+		backend: "rovo",
 		threadId: "thread-3",
 		requestBody: { id: "thread-3", messages: [] },
 	});
 
 	manager.markRunStarted(run.threadId, {
-		backend: "rovodev",
+		backend: "rovo",
 		portIndex: 0,
 		rovoPort: 8000,
 		status: "streaming",

@@ -74,7 +74,7 @@ const {
 const {
 	runHermesSkillCompanionReview,
 } = require("./lib/hermes-skill-companion");
-const { executeRovoTask, runRovoDevBackgroundTask } = require("./lib/rovo-task-executor");
+const { executeRovoTask, runRovoBackgroundTask } = require("./lib/rovo-task-executor");
 const { syncHermesJobResultsToRovoThreads } = require("./lib/hermes-rovo-job-sync");
 const { buildRuntimeStatusSnapshot } = require("./lib/runtime-status");
 const { redactSecrets, detectSecrets } = require("./lib/hermes-secret-redaction");
@@ -164,18 +164,18 @@ const {
 } = require("./lib/work-item-vpk-html-report-generator");
 const { genuiChatHandler } = require("./lib/genui-chat-handler");
 const {
-	streamViaRovoDev,
-	replayViaRovoDev,
-	generateTextViaRovoDev,
+	streamViaRovo,
+	replayViaRovo,
+	generateTextViaRovo,
 	isChatInProgressError,
 	initPool,
 	WAIT_FOR_TURN_TIMEOUT_MS,
-} = require("./lib/rovodev-gateway");
-const { classifyRovoDevHealthCheck } = require("./lib/rovodev-health");
+} = require("./lib/rovo-gateway");
+const { classifyRovoHealthCheck } = require("./lib/rovo-health");
 const {
-	ensureRovoDevSession,
-	getCurrentRovoDevSession,
-} = require("./lib/rovodev-session");
+	ensureRovoSession,
+	getCurrentRovoSession,
+} = require("./lib/rovo-session");
 const { createAIGatewayProvider } = require("./lib/ai-gateway-provider");
 const {
 	buildLlmRoutingStatus,
@@ -293,11 +293,11 @@ const {
 	isUnsupportedModalitiesError,
 } = require("./lib/image-generation-routing");
 const {
-	healthCheck: rovoDevHealthCheck,
-	cancelChat: rovoDevCancelChat,
-	resumeToolCalls: rovoDevResumeToolCalls,
-} = require("./lib/rovodev-client");
-const { setAgentMode, getAgentMode } = require("./lib/rovodev-agent-mode");
+	healthCheck: rovoHealthCheck,
+	cancelChat: rovoCancelChat,
+	resumeToolCalls: rovoResumeToolCalls,
+} = require("./lib/rovo-client");
+const { setAgentMode, getAgentMode } = require("./lib/rovo-agent-mode");
 const {
 	splitDirectMediaTextForStreaming,
 	stripDirectMediaFences,
@@ -326,7 +326,7 @@ const {
 const {
 	shouldReplaceActiveRunForRequest,
 } = require("./lib/rovo-app-run-continuation");
-const { createRovoDevPool } = require("./lib/rovodev-pool");
+const { createRovoPool } = require("./lib/rovo-pool");
 const { createOrchestratorLog } = require("./lib/orchestrator-log");
 const {
 	generateSuggestedQuestionsViaAIGateway,
@@ -341,14 +341,14 @@ const {
 } = require("./lib/genui-description-summary");
 const {
 	createListeningPidReader,
-	restartRovoDevPort,
-	DEFAULT_RECOVERY_TIMEOUT_MS: DEFAULT_ROVODEV_PORT_RECOVERY_TIMEOUT_MS,
-} = require("./lib/rovodev-port-recovery");
+	restartRovoPort,
+	DEFAULT_RECOVERY_TIMEOUT_MS: DEFAULT_ROVO_PORT_RECOVERY_TIMEOUT_MS,
+} = require("./lib/rovo-port-recovery");
 const {
-	resolveRovoDevPorts,
-} = require("./lib/rovodev-port-discovery");
+	resolveRovoPorts,
+} = require("./lib/rovo-port-discovery");
 const {
-	getRovodevBasePort,
+	getRovoBasePort,
 } = require("../scripts/lib/worktree-ports");
 const {
 	getEnvVars,
@@ -517,24 +517,24 @@ const wikiRouteHandlers = createWikiRouteHandlers({
 	},
 });
 
-// ─── RovoDev Serve Detection ─────────────────────────────────────────────────
-// When `pnpm run rovodev` is used, `dev-rovodev.js` writes the serve port to
-// `.dev-rovodev-port`. The backend reads this file to decide whether to route
-// chat traffic through the local RovoDev agent loop instead of AI Gateway.
+// ─── Rovo Serve Detection ─────────────────────────────────────────────────
+// When `pnpm run rovo` is used, `dev-rovo.js` writes the serve port to
+// `.dev-rovo-port`. The backend reads this file to decide whether to route
+// chat traffic through the local Rovo agent loop instead of AI Gateway.
 
-const ROVODEV_PORT_FILE = path.join(__dirname, "..", ".dev-rovodev-port");
-const ROVODEV_PORTS_FILE = path.join(__dirname, "..", ".dev-rovodev-ports");
-const ROVODEV_PORT_SEARCH_MAX_TRIES = Number.parseInt(process.env.PORT_SEARCH_MAX ?? "20", 10);
+const ROVO_PORT_FILE = path.join(__dirname, "..", ".dev-rovo-port");
+const ROVO_PORTS_FILE = path.join(__dirname, "..", ".dev-rovo-ports");
+const ROVO_PORT_SEARCH_MAX_TRIES = Number.parseInt(process.env.PORT_SEARCH_MAX ?? "20", 10);
 
 /** Cached availability state — refreshed on each request via the port file. */
-let _rovoDevAvailable = false;
-let _rovoDevChecked = false;
-let _rovoDevLastRefresh = 0;
-/** @type {import("./lib/rovodev-pool") | null} */
-let _rovoDevPool = null;
+let _rovoAvailable = false;
+let _rovoChecked = false;
+let _rovoLastRefresh = 0;
+/** @type {import("./lib/rovo-pool") | null} */
+let _rovoPool = null;
 
 /**
- * Poll a RovoDev port until it's ready for new requests.
+ * Poll a Rovo port until it's ready for new requests.
  * Uses a non-destructive healthcheck probe (no state mutation, no cancellation).
  * Resolves when ready; rejects if the port doesn't become ready within the
  * probe window (READY_PROBE_INTERVAL_MS × READY_PROBE_MAX_ATTEMPTS).
@@ -543,14 +543,14 @@ let _rovoDevPool = null;
  * @returns {Promise<void>}
  */
 async function waitForPortReady(port) {
-	// Always wait the minimum cooldown first — RovoDev Serve needs a brief
+	// Always wait the minimum cooldown first — Rovo Serve needs a brief
 	// moment after the SSE stream closes before it can accept new requests.
 	await new Promise((resolve) => setTimeout(resolve, POST_STREAM_COOLDOWN_MS));
 
 	for (let attempt = 0; attempt < READY_PROBE_MAX_ATTEMPTS; attempt++) {
 		try {
-			const health = await rovoDevHealthCheck(port);
-			const classifiedHealth = classifyRovoDevHealthCheck(health);
+			const health = await rovoHealthCheck(port);
+			const classifiedHealth = classifyRovoHealthCheck(health);
 			if (classifiedHealth.ready) {
 				return;
 			}
@@ -578,36 +578,36 @@ async function waitForPortReady(port) {
 }
 
 /**
- * Check whether a RovoDev Serve instance is reachable.
- * Reads the port files written by `dev-rovodev.js` and pings health endpoints.
+ * Check whether a Rovo Serve instance is reachable.
+ * Reads the port files written by `dev-rovo.js` and pings health endpoints.
  * Creates/updates the pool with all healthy ports.
  */
-async function refreshRovoDevAvailability() {
+async function refreshRovoAvailability() {
 	try {
-		const { ports, source } = await resolveRovoDevPorts({
-			portFile: ROVODEV_PORT_FILE,
-			portsFile: ROVODEV_PORTS_FILE,
-			envPort: process.env.ROVODEV_PORT,
-			basePort: getRovodevBasePort(),
-			maxTries: ROVODEV_PORT_SEARCH_MAX_TRIES,
-			healthCheck: rovoDevHealthCheck,
-			classifyHealthCheck: classifyRovoDevHealthCheck,
+		const { ports, source } = await resolveRovoPorts({
+			portFile: ROVO_PORT_FILE,
+			portsFile: ROVO_PORTS_FILE,
+			envPort: process.env.ROVO_PORT,
+			basePort: getRovoBasePort(),
+			maxTries: ROVO_PORT_SEARCH_MAX_TRIES,
+			healthCheck: rovoHealthCheck,
+			classifyHealthCheck: classifyRovoHealthCheck,
 			persistDiscoveredPorts: true,
 		});
 		if (ports.length === 0) {
-			if (_rovoDevPool) {
-				_rovoDevPool.shutdown();
-				_rovoDevPool = null;
+			if (_rovoPool) {
+				_rovoPool.shutdown();
+				_rovoPool = null;
 				initPool(null);
 			}
-			_rovoDevAvailable = false;
-			_rovoDevChecked = true;
+			_rovoAvailable = false;
+			_rovoChecked = true;
 			return false;
 		}
 
 		if (source === "discovered") {
 			console.warn(
-				`[ROVODEV] Rediscovered healthy RovoDev port files from live serve instance(s): ${ports.join(", ")}`
+				`[ROVO] Rediscovered healthy Rovo port files from live serve instance(s): ${ports.join(", ")}`
 			);
 		}
 
@@ -615,15 +615,15 @@ async function refreshRovoDevAvailability() {
 		const healthyPorts = [];
 		for (const port of ports) {
 			try {
-				const health = await rovoDevHealthCheck(port);
-				const classifiedHealth = classifyRovoDevHealthCheck(health);
+				const health = await rovoHealthCheck(port);
+				const classifiedHealth = classifyRovoHealthCheck(health);
 				if (classifiedHealth.ready) {
 					healthyPorts.push(port);
 					continue;
 				}
 
 				if (classifiedHealth.terminal) {
-					console.warn("[ROVODEV] Port health requires attention", {
+					console.warn("[ROVO] Port health requires attention", {
 						port,
 						status: classifiedHealth.status,
 						reason: classifiedHealth.reason,
@@ -632,96 +632,96 @@ async function refreshRovoDevAvailability() {
 					continue;
 				}
 
-				debugLog("ROVODEV", `Port ${port} health check returned ${classifiedHealth.status || "unknown"}`, {
+				debugLog("ROVO", `Port ${port} health check returned ${classifiedHealth.status || "unknown"}`, {
 					status: classifiedHealth.status,
 					reason: classifiedHealth.reason,
 				});
 			} catch (healthCheckErr) {
-				debugLog("ROVODEV", `Port ${port} health check failed`, {
+				debugLog("ROVO", `Port ${port} health check failed`, {
 					error: healthCheckErr.message,
 				});
 			}
 		}
 
 		if (healthyPorts.length === 0) {
-			if (_rovoDevPool) {
-				_rovoDevPool.shutdown();
-				_rovoDevPool = null;
+			if (_rovoPool) {
+				_rovoPool.shutdown();
+				_rovoPool = null;
 				initPool(null);
 			}
-			_rovoDevAvailable = false;
-			_rovoDevChecked = true;
+			_rovoAvailable = false;
+			_rovoChecked = true;
 			return false;
 		}
 
 		// Set the env var for backward compat (first healthy port)
-		process.env.ROVODEV_PORT = String(healthyPorts[0]);
+		process.env.ROVO_PORT = String(healthyPorts[0]);
 
-		if (_rovoDevPool) {
+		if (_rovoPool) {
 			// In-place update: preserves busy handles instead of destroying them
-			_rovoDevPool.updatePorts(healthyPorts);
+			_rovoPool.updatePorts(healthyPorts);
 		} else {
-			_rovoDevPool = createRovoDevPool(healthyPorts, {
+			_rovoPool = createRovoPool(healthyPorts, {
 				waitForReady: waitForPortReady,
 				onPortAvailable: () => {
 					void startNextQueuedRovoAppRun();
 				},
 			});
-			initPool(_rovoDevPool);
+			initPool(_rovoPool);
 		}
 
 		if (healthyPorts.length === 1) {
-			console.log(`[ROVODEV] Serve available on port ${healthyPorts[0]}`);
+			console.log(`[ROVO] Serve available on port ${healthyPorts[0]}`);
 		} else {
-			console.log(`[ROVODEV] Pool initialized: ${healthyPorts.length} ports (${healthyPorts.join(", ")})`);
+			console.log(`[ROVO] Pool initialized: ${healthyPorts.length} ports (${healthyPorts.join(", ")})`);
 		}
 
-		_rovoDevAvailable = true;
-		_rovoDevChecked = true;
+		_rovoAvailable = true;
+		_rovoChecked = true;
 		return true;
 	} catch (err) {
-		_rovoDevAvailable = false;
-		_rovoDevChecked = true;
-		debugLog("ROVODEV", "Not available", { error: err.message });
+		_rovoAvailable = false;
+		_rovoChecked = true;
+		debugLog("ROVO", "Not available", { error: err.message });
 		return false;
 	}
 }
 
 /**
- * Returns true if RovoDev Serve is available. Uses cached result if already checked,
+ * Returns true if Rovo Serve is available. Uses cached result if already checked,
  * otherwise performs a fresh check. The port file is re-read on each call to detect
- * if RovoDev was started or stopped since last check.
+ * if Rovo was started or stopped since last check.
  * 
  * Periodically refreshes the pool to pick up newly available ports.
  */
-async function isRovoDevAvailable() {
+async function isRovoAvailable() {
 	const fs = require("fs");
-	const portsFileExists = fs.existsSync(ROVODEV_PORTS_FILE);
-	const portFileExists = fs.existsSync(ROVODEV_PORT_FILE);
+	const portsFileExists = fs.existsSync(ROVO_PORTS_FILE);
+	const portFileExists = fs.existsSync(ROVO_PORT_FILE);
 
 	if (!portsFileExists && !portFileExists) {
-		if (_rovoDevAvailable) {
-			console.warn("[ROVODEV] Port files removed — attempting RovoDev rediscovery");
+		if (_rovoAvailable) {
+			console.warn("[ROVO] Port files removed — attempting Rovo rediscovery");
 		}
-		_rovoDevChecked = false;
+		_rovoChecked = false;
 	}
 
 	// If the port file appeared or we haven't checked yet, do a fresh health check
-	if (!_rovoDevChecked || !_rovoDevAvailable) {
-		return refreshRovoDevAvailability();
+	if (!_rovoChecked || !_rovoAvailable) {
+		return refreshRovoAvailability();
 	}
 
 	// Periodically refresh pool to pick up newly healthy ports (every 60 seconds)
 	const now = Date.now();
-	if (!_rovoDevLastRefresh) {
-		_rovoDevLastRefresh = now;
+	if (!_rovoLastRefresh) {
+		_rovoLastRefresh = now;
 	}
-	if (now - _rovoDevLastRefresh > 60000) {
-		_rovoDevLastRefresh = now;
-		return refreshRovoDevAvailability();
+	if (now - _rovoLastRefresh > 60000) {
+		_rovoLastRefresh = now;
+		return refreshRovoAvailability();
 	}
 
-	return _rovoDevAvailable;
+	return _rovoAvailable;
 }
 
 const app = express();
@@ -747,7 +747,7 @@ const TOOL_FIRST_GATE_SKIP_SOURCES = new Set([
 const INTERACTIVE_CHAT_STUCK_PORT_RECOVERY_RETRY_ATTEMPTS = 1;
 const INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_MAX_ATTEMPTS = 2;
 const INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_TIMEOUT_MS =
-	DEFAULT_ROVODEV_PORT_RECOVERY_TIMEOUT_MS;
+	DEFAULT_ROVO_PORT_RECOVERY_TIMEOUT_MS;
 const POST_STREAM_COOLDOWN_MS = 500;
 const READY_PROBE_INTERVAL_MS = 100;
 const READY_PROBE_MAX_ATTEMPTS = 20; // 100ms × 20 = 2s max
@@ -797,20 +797,20 @@ function classifyAIGatewayFailureStage(error) {
 	return "request";
 }
 
-function createRovoDevUnavailableError() {
+function createRovoUnavailableError() {
 	const error = new Error(
-		"RovoDev Serve is required but not available. " +
-		"Please start RovoDev Serve with 'pnpm run rovodev' before using this feature."
+		"Rovo Serve is required but not available. " +
+		"Please start Rovo Serve with 'pnpm run rovo' before using this feature."
 	);
-	error.code = "ROVODEV_UNAVAILABLE";
-	error.backendSelected = "rovodev";
+	error.code = "ROVO_UNAVAILABLE";
+	error.backendSelected = "rovo";
 	error.failureStage = "unavailable";
 	return error;
 }
 
-function isRovoDevConnectionFailure(error) {
+function isRovoConnectionFailure(error) {
 	const message = error instanceof Error ? error.message : String(error ?? "");
-	return /RovoDev connection failed|ECONNREFUSED|EHOSTUNREACH|Request timed out/i.test(message);
+	return /Rovo connection failed|ECONNREFUSED|EHOSTUNREACH|Request timed out/i.test(message);
 }
 
 function normalizeAIGatewayError(error) {
@@ -823,46 +823,46 @@ function normalizeAIGatewayError(error) {
 /**
  * Resolve which backend to use.
  *
- * @param {{ backendPreference?: "rovodev" | "ai-gateway" }} [opts]
- * @returns {Promise<{ backend: "rovodev" | "ai-gateway" | null; rovoDevAvailable: boolean }>}
+ * @param {{ backendPreference?: "rovo" | "ai-gateway" }} [opts]
+ * @returns {Promise<{ backend: "rovo" | "ai-gateway" | null; rovoAvailable: boolean }>}
  */
-async function resolvePreferredBackend({ backendPreference = "rovodev" } = {}) {
+async function resolvePreferredBackend({ backendPreference = "rovo" } = {}) {
 	if (backendPreference === "ai-gateway") {
 		return {
 			backend: "ai-gateway",
-			rovoDevAvailable: false,
+			rovoAvailable: false,
 		};
 	}
 
-	const rovoDevAvailable = await isRovoDevAvailable();
+	const rovoAvailable = await isRovoAvailable();
 
-	if (rovoDevAvailable) {
+	if (rovoAvailable) {
 		return {
-			backend: "rovodev",
-			rovoDevAvailable,
+			backend: "rovo",
+			rovoAvailable,
 		};
 	}
 
 	return {
 		backend: null,
-		rovoDevAvailable,
+		rovoAvailable,
 	};
 }
 
-async function isRovoDevBackendAvailableForDelegation() {
+async function isRovoBackendAvailableForDelegation() {
 	try {
-		return await isRovoDevAvailable();
+		return await isRovoAvailable();
 	} catch {
 		return false;
 	}
 }
 
-function shouldDelegateRovoAppTurnToRovoDev({
+function shouldDelegateRovoAppTurnToRovo({
 	isPlanModeActive = false,
 	requestBody,
 	routingDecision,
 }) {
-	if (requestBody?.backendPreference === "rovodev") {
+	if (requestBody?.backendPreference === "rovo") {
 		return true;
 	}
 
@@ -894,36 +894,36 @@ async function resolveRovoAppTurnBackendPreference({
 	requestBody,
 	routingDecision,
 }) {
-	if (!shouldDelegateRovoAppTurnToRovoDev({ isPlanModeActive, requestBody, routingDecision })) {
+	if (!shouldDelegateRovoAppTurnToRovo({ isPlanModeActive, requestBody, routingDecision })) {
 		return "ai-gateway";
 	}
 
-	return (await isRovoDevBackendAvailableForDelegation())
-		? "rovodev"
+	return (await isRovoBackendAvailableForDelegation())
+		? "rovo"
 		: "ai-gateway";
 }
 
 function sendGatewayErrorResponse(res, error, fallbackErrorMessage) {
-	if (error && error.code === "ROVODEV_UNAVAILABLE") {
+	if (error && error.code === "ROVO_UNAVAILABLE") {
 		return res.status(503).json({
-			error: "RovoDev Serve is required but not available",
+			error: "Rovo Serve is required but not available",
 			details: error.message,
-			backendSelected: "rovodev",
+			backendSelected: "rovo",
 			failureStage: "unavailable",
 		});
 	}
 
 	if (
 		error &&
-		(error.code === "ROVODEV_CHAT_IN_PROGRESS_TIMEOUT" ||
+		(error.code === "ROVO_CHAT_IN_PROGRESS_TIMEOUT" ||
 			isChatInProgressError(error))
 	) {
 		return res.status(409).json({
-			error: "RovoDev chat turn is still in progress",
+			error: "Rovo chat turn is still in progress",
 			details:
 				"Another request is still finishing for this chat session. Please wait a moment and try again.",
-			code: "ROVODEV_CHAT_IN_PROGRESS",
-			backendSelected: "rovodev",
+			code: "ROVO_CHAT_IN_PROGRESS",
+			backendSelected: "rovo",
 			failureStage: "stream",
 		});
 	}
@@ -1365,7 +1365,7 @@ app.use(
 
 // CORS allowlist. Override via ALLOWED_ORIGINS (comma-separated). The default
 // covers the standard local dev ports for the Next.js frontend (3000) and
-// Express backend (8080) plus RovoDev Serve (8000).
+// Express backend (8080) plus Rovo Serve (8000).
 const ALLOWED_ORIGINS = (
 	process.env.ALLOWED_ORIGINS ??
 	"http://localhost:3000,http://localhost:8000,http://localhost:8080"
@@ -1443,12 +1443,12 @@ async function generateTextViaGateway({
 	provider,
 	gatewayUrl,
 	signal,
-	backendPreference = "rovodev",
+	backendPreference = "rovo",
 }) {
 	const backendSelection = await resolvePreferredBackend({ backendPreference });
-	if (backendSelection.backend === "rovodev") {
-		debugLog("GENERATE", "Routing through RovoDev Serve");
-		return await generateTextViaRovoDev({
+	if (backendSelection.backend === "rovo") {
+		debugLog("GENERATE", "Routing through Rovo Serve");
+		return await generateTextViaRovo({
 			system,
 			prompt,
 			conflictPolicy: "wait-for-turn",
@@ -1458,7 +1458,7 @@ async function generateTextViaGateway({
 	}
 
 	if (backendSelection.backend !== "ai-gateway") {
-		throw createRovoDevUnavailableError();
+		throw createRovoUnavailableError();
 	}
 
 	debugLog("GENERATE", "Routing through AI Gateway");
@@ -1478,7 +1478,7 @@ async function generateTextViaGateway({
 	}
 }
 
-function buildRovoDevTextGenerationMessage({ system, prompt }) {
+function buildRovoTextGenerationMessage({ system, prompt }) {
 	let fullMessage = "";
 	if (system) {
 		fullMessage += `[System Instructions]\n${system}\n[End System Instructions]\n\n`;
@@ -1496,7 +1496,7 @@ async function streamTextViaGateway({
 	provider,
 	gatewayUrl,
 	signal,
-	backendPreference = "rovodev",
+	backendPreference = "rovo",
 	onTextDelta,
 }) {
 	const backendSelection = await resolvePreferredBackend({ backendPreference });
@@ -1512,10 +1512,10 @@ async function streamTextViaGateway({
 		}
 	};
 
-	if (backendSelection.backend === "rovodev") {
-		debugLog("STREAM_GENERATE", "Routing through RovoDev Serve");
-		await streamViaRovoDev({
-			message: buildRovoDevTextGenerationMessage({ system, prompt }),
+	if (backendSelection.backend === "rovo") {
+		debugLog("STREAM_GENERATE", "Routing through Rovo Serve");
+		await streamViaRovo({
+			message: buildRovoTextGenerationMessage({ system, prompt }),
 			onTextDelta: handleTextDelta,
 			conflictPolicy: "wait-for-turn",
 			timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
@@ -1525,7 +1525,7 @@ async function streamTextViaGateway({
 	}
 
 	if (backendSelection.backend !== "ai-gateway") {
-		throw createRovoDevUnavailableError();
+		throw createRovoUnavailableError();
 	}
 
 	debugLog("STREAM_GENERATE", "Routing through AI Gateway");
@@ -2057,7 +2057,7 @@ const hermesJobsProvider = createHermesJobsProvider({
 			selectedSkillIds,
 			system: [
 				"[Hermes Job Runner]",
-				"You are executing a scheduled Hermes job through the shared RovoDev executor.",
+				"You are executing a scheduled Hermes job through the shared Rovo executor.",
 				job?.name ? `Job name: ${job.name}` : null,
 				"Complete the requested work using the same tool-capable runtime used by interactive Rovo chat.",
 				"[End Hermes Job Runner]",
@@ -2509,7 +2509,7 @@ async function generateRovoAppArtifactText({
 	conversationHistory,
 	contextDescription,
 	provider,
-	backendPreference = "rovodev",
+	backendPreference = "rovo",
 	signal,
 	onTextDelta,
 }) {
@@ -2586,12 +2586,12 @@ async function generateRovoAppArtifactText({
 			return streamArtifactText();
 		}
 
-		console.warn("[FUTURE-CHAT] Artifact generation hit pending deferred tool request; clearing RovoDev chat state and retrying once.");
+		console.warn("[FUTURE-CHAT] Artifact generation hit pending deferred tool request; clearing Rovo chat state and retrying once.");
 		try {
-			await rovoDevCancelChat();
+			await rovoCancelChat();
 		} catch (cancelError) {
 			console.warn(
-				"[FUTURE-CHAT] Failed to cancel stale RovoDev chat state before retry:",
+				"[FUTURE-CHAT] Failed to cancel stale Rovo chat state before retry:",
 				cancelError instanceof Error ? cancelError.message : cancelError,
 			);
 		}
@@ -3250,7 +3250,7 @@ async function syncRovoAppThreadSession(threadId, rovoPort, { thread: providedTh
 		"Rovo";
 
 	const existingSessionId = getNonEmptyString(currentThread.sessionId);
-	const sessionRecord = await ensureRovoDevSession(rovoPort, {
+	const sessionRecord = await ensureRovoSession(rovoPort, {
 		sessionId: existingSessionId,
 		customTitle,
 		timeoutMs: 5_000,
@@ -3297,9 +3297,9 @@ async function syncRovoAppThreadSessionFromCurrentPort(
 
 	let sessionRecord = null;
 	try {
-		sessionRecord = await getCurrentRovoDevSession(rovoPort, { timeoutMs: 5_000 });
+		sessionRecord = await getCurrentRovoSession(rovoPort, { timeoutMs: 5_000 });
 	} catch (error) {
-		console.warn("[FUTURE-CHAT] Failed to read current RovoDev session; falling back to ensure session:", {
+		console.warn("[FUTURE-CHAT] Failed to read current Rovo session; falling back to ensure session:", {
 			threadId,
 			port: rovoPort,
 			error: error instanceof Error ? error.message : String(error),
@@ -3310,7 +3310,7 @@ async function syncRovoAppThreadSessionFromCurrentPort(
 	}
 	const nextSessionId = getNonEmptyString(sessionRecord?.sessionId);
 	if (!nextSessionId) {
-		console.warn("[FUTURE-CHAT] Current RovoDev session response did not include a session id; falling back to ensure session:", {
+		console.warn("[FUTURE-CHAT] Current Rovo session response did not include a session id; falling back to ensure session:", {
 			threadId,
 			port: rovoPort,
 		});
@@ -3753,7 +3753,7 @@ async function executeRovoAppManagedRun(run) {
 				autoSelectedHermesSkillIds = await resolveAmbiguousAutoSelectedSkillIds({
 					promptText: latestUserMessage,
 					rankedCandidates: rankedCandidates.slice(0, 5),
-					runBackgroundTaskImpl: runRovoDevBackgroundTask,
+					runBackgroundTaskImpl: runRovoBackgroundTask,
 				});
 			} catch (error) {
 				console.warn("[HERMES] Failed to disambiguate auto-selected Hermes skills:", error instanceof Error ? error.message : String(error));
@@ -4121,7 +4121,7 @@ async function executeRovoAppManagedRun(run) {
 
 async function startManagedRovoAppRun(run) {
 	const markedRun = rovoAppRunManager.markRunStarted(run.threadId, {
-		backend: run.backend === "rovodev" ? "rovodev" : "ai-gateway",
+		backend: run.backend === "rovo" ? "rovo" : "ai-gateway",
 		portIndex: null,
 		rovoPort: null,
 		status: rovoAppRunManager.hasSubscribers(run.threadId) ? "streaming" : "background",
@@ -4504,7 +4504,7 @@ async function proxyRovoAppChatRequest(req, res) {
 	let existingRun = rovoAppRunManager.getRun(threadId);
 	if (shouldReplaceActiveRunForRequest({ existingRun, requestBody })) {
 		if (typeof existingRun?.rovoPort === "number" && existingRun.rovoPort > 0) {
-			await rovoDevCancelChat(existingRun.rovoPort, { timeoutMs: 3_000 }).catch(() => {});
+			await rovoCancelChat(existingRun.rovoPort, { timeoutMs: 3_000 }).catch(() => {});
 		}
 		rovoAppRunManager.cancelRun(threadId);
 		await clearRovoAppRunState(threadId);
@@ -4639,7 +4639,7 @@ function buildRovoAppActiveRunPayload(run, thread) {
 
 	return {
 		id: run.id,
-		backend: run.backend === "rovodev" ? "rovodev" : "ai-gateway",
+		backend: run.backend === "rovo" ? "rovo" : "ai-gateway",
 		status: run.status,
 		portIndex: null,
 		rovoPort:
@@ -4703,8 +4703,8 @@ async function persistRovoAppRunMessagesSnapshot(threadId, messages) {
 }
 
 function resolveRovoAppPortAvailability() {
-	const poolStatus = _rovoDevPool?.getStatus?.();
-	if (!_rovoDevPool) {
+	const poolStatus = _rovoPool?.getStatus?.();
+	if (!_rovoPool) {
 		return null;
 	}
 
@@ -4805,7 +4805,7 @@ const orchestratorLog = createOrchestratorLog({
 	logger: console,
 });
 
-// RovoDev-only mode - no local clarification/approval logic
+// Rovo-only mode - no local clarification/approval logic
 
 const IMAGE_PROXY_TIMEOUT_MS = 15_000;
 const WEB_PROXY_TIMEOUT_MS = 30_000;
@@ -5211,8 +5211,8 @@ const _requestUserInputQuestionMetaStore = new Map();
 /** @type {Map<string, { toolCallId: string; port: number; threadId: string | null; kind: "clarification" | "plan-approval"; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
 const _activeDeferredToolCallStore = new Map();
 /** @type {Map<string, { toolCallId: string; port: number; handle: { port: number; release: () => void; releaseAsUnhealthy?: () => void }; threadId: string | null; sessionId: string | null; sessionMode: "persistent" | "ephemeral"; kind: "clarification" | "plan-approval"; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
-const _pausedRovoDevToolCallStore = new Map();
-const PAUSED_ROVODEV_TOOL_CALL_TTL_MS = 15 * 60_000;
+const _pausedRovoToolCallStore = new Map();
+const PAUSED_ROVO_TOOL_CALL_TTL_MS = 15 * 60_000;
 
 
 function clearActiveDeferredToolCall(toolCallId) {
@@ -5255,13 +5255,13 @@ function registerActiveDeferredToolCall({
 		threadId: getNonEmptyString(threadId),
 		kind: kind === "plan-approval" ? "plan-approval" : "clarification",
 		createdAt: now,
-		expiresAt: now + PAUSED_ROVODEV_TOOL_CALL_TTL_MS,
+		expiresAt: now + PAUSED_ROVO_TOOL_CALL_TTL_MS,
 		expiryTimer: null,
 	};
 
 	record.expiryTimer = setTimeout(() => {
 		clearActiveDeferredToolCall(normalizedToolCallId);
-	}, PAUSED_ROVODEV_TOOL_CALL_TTL_MS);
+	}, PAUSED_ROVO_TOOL_CALL_TTL_MS);
 	if (typeof record.expiryTimer?.unref === "function") {
 		record.expiryTimer.unref();
 	}
@@ -5270,18 +5270,18 @@ function registerActiveDeferredToolCall({
 	return record;
 }
 
-function detachPausedRovoDevToolCall(toolCallId) {
+function detachPausedRovoToolCall(toolCallId) {
 	const normalizedToolCallId = getNonEmptyString(toolCallId);
 	if (!normalizedToolCallId) {
 		return null;
 	}
 
-	const record = _pausedRovoDevToolCallStore.get(normalizedToolCallId) || null;
+	const record = _pausedRovoToolCallStore.get(normalizedToolCallId) || null;
 	if (!record) {
 		return null;
 	}
 
-	_pausedRovoDevToolCallStore.delete(normalizedToolCallId);
+	_pausedRovoToolCallStore.delete(normalizedToolCallId);
 	if (record.expiryTimer) {
 		clearTimeout(record.expiryTimer);
 		record.expiryTimer = null;
@@ -5290,7 +5290,7 @@ function detachPausedRovoDevToolCall(toolCallId) {
 	return record;
 }
 
-function releasePausedRovoDevToolCallHandle(record, {
+function releasePausedRovoToolCallHandle(record, {
 	unhealthy = false,
 	unhealthyReason = "paused tool cleanup failed",
 } = {}) {
@@ -5298,7 +5298,7 @@ function releasePausedRovoDevToolCallHandle(record, {
 		try {
 			record.handle?.release?.();
 		} catch (error) {
-			console.warn("[ROVODEV-PAUSE] Failed to release reserved port handle:", error);
+			console.warn("[ROVO-PAUSE] Failed to release reserved port handle:", error);
 		}
 	};
 	const releaseHandleAsUnhealthy = () => {
@@ -5309,7 +5309,7 @@ function releasePausedRovoDevToolCallHandle(record, {
 			}
 			record.handle?.release?.();
 		} catch (error) {
-			console.warn("[ROVODEV-PAUSE] Failed to release unhealthy reserved port handle:", error);
+			console.warn("[ROVO-PAUSE] Failed to release unhealthy reserved port handle:", error);
 		}
 	};
 
@@ -5321,35 +5321,35 @@ function releasePausedRovoDevToolCallHandle(record, {
 	releaseHandle();
 }
 
-function clearPausedRovoDevToolCall(toolCallId, { cancel = false } = {}) {
+function clearPausedRovoToolCall(toolCallId, { cancel = false } = {}) {
 	const normalizedToolCallId = getNonEmptyString(toolCallId);
-	const record = detachPausedRovoDevToolCall(normalizedToolCallId);
+	const record = detachPausedRovoToolCall(normalizedToolCallId);
 	if (!record) {
 		return null;
 	}
 
 	if (cancel) {
 		void cancelPausedDeferredToolCallRecord(record, {
-			cancelChat: rovoDevCancelChat,
+			cancelChat: rovoCancelChat,
 			waitForReady: waitForPortReady,
 			onReleaseError: (error) => {
-				console.warn("[ROVODEV-PAUSE] Failed to release reserved port handle:", error);
+				console.warn("[ROVO-PAUSE] Failed to release reserved port handle:", error);
 			},
 		}).catch((error) => {
-			console.warn("[ROVODEV-PAUSE] Failed to cancel paused tool call:", {
+			console.warn("[ROVO-PAUSE] Failed to cancel paused tool call:", {
 				toolCallId: normalizedToolCallId,
 				port: record.port,
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});
 	} else {
-		releasePausedRovoDevToolCallHandle(record);
+		releasePausedRovoToolCallHandle(record);
 	}
 
 	return record;
 }
 
-function registerPausedRovoDevToolCall({
+function registerPausedRovoToolCall({
 	toolCallId,
 	port,
 	handle,
@@ -5363,7 +5363,7 @@ function registerPausedRovoDevToolCall({
 		return null;
 	}
 
-	clearPausedRovoDevToolCall(normalizedToolCallId, { cancel: true });
+	clearPausedRovoToolCall(normalizedToolCallId, { cancel: true });
 
 	const now = Date.now();
 	const record = {
@@ -5375,28 +5375,28 @@ function registerPausedRovoDevToolCall({
 		sessionMode: sessionMode === "ephemeral" ? "ephemeral" : "persistent",
 		kind: kind === "plan-approval" ? "plan-approval" : "clarification",
 		createdAt: now,
-		expiresAt: now + PAUSED_ROVODEV_TOOL_CALL_TTL_MS,
+		expiresAt: now + PAUSED_ROVO_TOOL_CALL_TTL_MS,
 		expiryTimer: null,
 	};
 
 	record.expiryTimer = setTimeout(() => {
-		console.info("[ROVODEV-PAUSE] Expiring paused tool call reservation", {
+		console.info("[ROVO-PAUSE] Expiring paused tool call reservation", {
 			toolCallId: normalizedToolCallId,
 			port,
 			kind: record.kind,
 		});
-		clearPausedRovoDevToolCall(normalizedToolCallId, { cancel: true });
-	}, PAUSED_ROVODEV_TOOL_CALL_TTL_MS);
+		clearPausedRovoToolCall(normalizedToolCallId, { cancel: true });
+	}, PAUSED_ROVO_TOOL_CALL_TTL_MS);
 	if (typeof record.expiryTimer?.unref === "function") {
 		record.expiryTimer.unref();
 	}
 
-	_pausedRovoDevToolCallStore.set(normalizedToolCallId, record);
+	_pausedRovoToolCallStore.set(normalizedToolCallId, record);
 	return record;
 }
 
-function takePausedRovoDevToolCall(toolCallId) {
-	return detachPausedRovoDevToolCall(toolCallId);
+function takePausedRovoToolCall(toolCallId) {
+	return detachPausedRovoToolCall(toolCallId);
 }
 
 /**
@@ -5583,7 +5583,7 @@ function buildApprovalSummary(approvalSubmission) {
 	} else {
 		lines.push(
 			"This approval applies to the existing generated plan. Continue from it.",
-			"Stay in the current RovoDev Serve execution loop.",
+			"Stay in the current Rovo Serve execution loop.",
 			"Maintain a single evolving update_todo list for implementation progress.",
 			"Do not ask clarification questions again unless the user explicitly requests a new plan.",
 			"Do not restate the plan as a fresh request or generate a new preview unless the user explicitly asks for one."
@@ -5997,7 +5997,7 @@ async function handleChatSdkRequest(req, res) {
 			sessionMode: rawSessionMode,
 		} = req.body || {};
 		const backendPreference =
-			rawBackendPreference === "ai-gateway" || rawBackendPreference === "rovodev"
+			rawBackendPreference === "ai-gateway" || rawBackendPreference === "rovo"
 				? rawBackendPreference
 				: "ai-gateway";
 		const clientTimeZone = normalizeClientTimeZone(rawClientTimeZone);
@@ -6013,7 +6013,7 @@ async function handleChatSdkRequest(req, res) {
 			? rawSessionId.trim()
 			: null;
 		const sessionMode = rawSessionMode === "ephemeral" ? "ephemeral" : "persistent";
-		const rovoDevSessionId = sessionId && sessionMode !== "ephemeral"
+		const rovoSessionId = sessionId && sessionMode !== "ephemeral"
 			? sessionId
 			: null;
 		const requestOrigin =
@@ -6069,17 +6069,17 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			getToolCallIdFromApprovalSubmission(approvalSubmission, rawApproval);
 		const hasPausedClarificationToolCall =
 			Boolean(clarificationToolCallId) &&
-			_pausedRovoDevToolCallStore.has(clarificationToolCallId);
+			_pausedRovoToolCallStore.has(clarificationToolCallId);
 		let hasPausedApprovalToolCall =
 			Boolean(approvalToolCallId) &&
-			_pausedRovoDevToolCallStore.has(approvalToolCallId);
+			_pausedRovoToolCallStore.has(approvalToolCallId);
 
 		if (approvalSubmission) {
 			console.info("[DEBUG-PLAN-APPROVAL] Approval store lookup", {
 				approvalToolCallId,
 				hasPausedApprovalToolCall,
-				storeSize: _pausedRovoDevToolCallStore.size,
-				storeKeys: [..._pausedRovoDevToolCallStore.keys()],
+				storeSize: _pausedRovoToolCallStore.size,
+				storeKeys: [..._pausedRovoToolCallStore.keys()],
 				submissionDecision: approvalSubmission.decision,
 				rawToolCallId: rawApproval?.toolCallId,
 				rawDeferredToolCallId: rawApproval?.deferredToolCallId,
@@ -6337,7 +6337,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 		// AI Gateway-minted clarification toolCallIds have no paused-tool-call
 		// counterpart by design (the gateway path doesn't pause-and-resume;
 		// answers are injected as context for the next turn). Skip the
-		// RovoDev-shaped expired gate for these so legitimate submissions
+		// Rovo-shaped expired gate for these so legitimate submissions
 		// aren't rejected as "expired".
 		const isAIGatewayClarificationToolCallId =
 			isAIGatewayDeferredToolCallId(clarificationToolCallId);
@@ -6363,7 +6363,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					? activeRequests.get(threadId)?.port
 					: null;
 			if (typeof activeRequestPort === "number" && activeRequestPort > 0) {
-				await rovoDevCancelChat(activeRequestPort, { timeoutMs: 3_000 }).catch(() => {});
+				await rovoCancelChat(activeRequestPort, { timeoutMs: 3_000 }).catch(() => {});
 				activeRequests.delete(threadId);
 			}
 
@@ -6371,7 +6371,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			return;
 		}
 
-		// ── Local model shortcut (bypasses RovoDev and all smart routing) ──
+		// ── Local model shortcut (bypasses Rovo and all smart routing) ──
 		if (isLocalModelRequest(provider, rawModel)) {
 			console.info("[CHAT-SDK] Routing through local MLX model", { provider, model: rawModel });
 			const stream = createUIMessageStream({
@@ -6554,7 +6554,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						let requiredToolResultPreview = null;
 						let requiredToolErrorText = null;
 
-						await streamViaRovoDev({
+						await streamViaRovo({
 							message: executionPrompt,
 							onTextDelta: (delta) => {
 								if (typeof delta === "string" && delta.length > 0) {
@@ -7157,7 +7157,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 		// Inject the user's clarification answers as a structured
 		// [ask_user_questions Result] block into the system context so the
-		// model can ground its follow-up. Fires for both RovoDev (when no
+		// model can ground its follow-up. Fires for both Rovo (when no
 		// paused tool call exists for the V3 resume path to handle it) and
 		// AI Gateway (which has no paused-tool-call concept and always
 		// needs the injection). The `submitClarification` client flow
@@ -7367,7 +7367,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				let smartIntentResult = null;
 				if (smartRoutingActive && !isStrictToolFirstTurn) {
 					// Honor Layer 1 routing decision for genui via genuiHint.
-					// Image/audio detection is handled by RovoDev via genui-media skill
+					// Image/audio detection is handled by Rovo via genui-media skill
 					// and backend fence interception — no pre-classification needed.
 					if (genuiHint) {
 						smartIntentResult = {
@@ -7945,8 +7945,8 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 		// ── Output Routing: Media bypass pre-classification (BE-002, BE-003) ──
 		// Use lightweight regex pre-classification to detect obvious media
-		// generation intents BEFORE sending to RovoDev. This avoids the
-		// RovoDev round-trip for clear-cut image/audio requests.
+		// generation intents BEFORE sending to Rovo. This avoids the
+		// Rovo round-trip for clear-cut image/audio requests.
 		if (
 			mediaPreClassification.intent &&
 			!isStrictToolFirstTurn
@@ -7958,7 +7958,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			});
 
 			if (mediaPreClassification.intent === "image") {
-				// BE-002: Route image queries to AI Gateway (bypass RovoDev)
+				// BE-002: Route image queries to AI Gateway (bypass Rovo)
 				const {
 					imagePrompt: mediaBypassImagePrompt,
 					systemInstruction: mediaBypassImageSystem,
@@ -8173,7 +8173,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					return;
 				}
 
-				// BE-003: Route audio queries to AI Gateway (bypass RovoDev)
+				// BE-003: Route audio queries to AI Gateway (bypass Rovo)
 				const stream = createUIMessageStream({
 					execute: async ({ writer }) => {
 						const audioWidgetId = `widget-audio-bypass-${Date.now()}`;
@@ -8458,7 +8458,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					// Show the thinking trace immediately so the user gets
 					// feedback during the buffering window (the entire gateway
 					// streaming duration — no token-by-token UX on this path).
-					// Uses the same data-thinking-status protocol the RovoDev
+					// Uses the same data-thinking-status protocol the Rovo
 					// branch uses, so the existing thinking-trace renderer
 					// picks it up unchanged.
 					writer.write({
@@ -8662,17 +8662,17 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 		const backendSelection = await resolvePreferredBackend();
 
-		if (backendSelection.backend !== "rovodev") {
+		if (backendSelection.backend !== "rovo") {
 			return sendGatewayErrorResponse(
 				res,
-				createRovoDevUnavailableError(),
+				createRovoUnavailableError(),
 				"Failed to stream chat response"
 			);
 		}
 
 		const { abortController, cleanup } = createAbortControllerFromRequest(req, res, {
 			onAbort: () => {
-				console.log("[CHAT-SDK] Client disconnected, aborting RovoDev stream");
+				console.log("[CHAT-SDK] Client disconnected, aborting Rovo stream");
 			},
 		});
 		let didCleanupAbortTracking = false;
@@ -8757,7 +8757,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				let assistantText = "";
 				let unsuppressedAssistantText = "";
 				let widgetType = null;
-				let resolvedRovoDevPort = null;
+				let resolvedRovoPort = null;
 				let hasEmittedQuestionCard = false;
 				let hasEmittedPlanWidget = false;
 				let hasEmittedGenuiWidget = false;
@@ -8776,7 +8776,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						let hasObservedDeferredToolRequest = false;
 					// ── Output Routing: Two-step GenUI state ──
 					// Track whether non-question-card tool calls were observed during
-					// the RovoDev stream. When true, post-stream processing triggers
+					// the Rovo stream. When true, post-stream processing triggers
 					// the two-step GenUI flow (BE-001).
 					let hasObservedActionableToolCall = false;
 					let hasObservedRelevantActionableToolCall = false;
@@ -10029,7 +10029,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						}
 						if (!hasMarkedFirstRovoTextDelta) {
 							hasMarkedFirstRovoTextDelta = true;
-							stageTrace.mark("first_rovodev_text_delta", {
+							stageTrace.mark("first_rovo_text_delta", {
 								chars: delta.length,
 							});
 						}
@@ -10039,9 +10039,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						processTextBuffer(false);
 					};
 
-					// RovoDev Serve: route through the local agent loop
-					console.log("[CHAT-SDK] Routing through RovoDev Serve");
-					stageTrace.mark("rovodev_stream_start", {
+					// Rovo Serve: route through the local agent loop
+					console.log("[CHAT-SDK] Routing through Rovo Serve");
+					stageTrace.mark("rovo_stream_start", {
 						conflictPolicy: "wait-for-turn",
 					});
 					// Emit data-thinking-status lazily — only when the LLM
@@ -10113,7 +10113,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 						const pausedToolCallRecord =
 							pausedContinuationToolCallId && currentToolFirstAttempt === 1
-								? takePausedRovoDevToolCall(pausedContinuationToolCallId)
+								? takePausedRovoToolCall(pausedContinuationToolCallId)
 								: null;
 						if (pausedContinuationToolCallId) {
 							console.info("[DEBUG-PLAN-APPROVAL] Paused tool call record", {
@@ -10152,10 +10152,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										toolName,
 									});
 									if (
-										typeof resolvedRovoDevPort === "number" &&
-										resolvedRovoDevPort > 0
+										typeof resolvedRovoPort === "number" &&
+										resolvedRovoPort > 0
 									) {
-										void rovoDevCancelChat(resolvedRovoDevPort, {
+										void rovoCancelChat(resolvedRovoPort, {
 											timeoutMs: 3_000,
 										}).catch(() => {});
 									}
@@ -10208,7 +10208,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										return;
 									}
 
-									// Handle deferred tool requests (e.g., ask_user_questions from RovoDev)
+									// Handle deferred tool requests (e.g., ask_user_questions from Rovo)
 									if (toolCall.isDeferredToolRequest === true) {
 										hasObservedDeferredToolRequest = true;
 										if (isRequestUserInputTool(toolCall.toolName) && toolCall.toolInput) {
@@ -10428,29 +10428,29 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									hasObservedDeferredToolRequest = true;
 									if (
 										toolCall.toolCallId &&
-										typeof resolvedRovoDevPort === "number" &&
-										resolvedRovoDevPort > 0
+										typeof resolvedRovoPort === "number" &&
+										resolvedRovoPort > 0
 									) {
 										registerActiveDeferredToolCall({
 											toolCallId: toolCall.toolCallId,
-											port: resolvedRovoDevPort,
+											port: resolvedRovoPort,
 											threadId,
 											kind: isExitPlanModeTool(toolCall.toolName)
 												? "plan-approval"
 												: "clarification",
 										});
 									}
-									if (threadId && typeof resolvedRovoDevPort === "number" && resolvedRovoDevPort > 0) {
+									if (threadId && typeof resolvedRovoPort === "number" && resolvedRovoPort > 0) {
 										try {
 											await syncRovoAppThreadSessionFromCurrentPort(
 												threadId,
-												resolvedRovoDevPort,
+												resolvedRovoPort,
 												{ sessionMode },
 											);
 										} catch (error) {
 											console.warn("[FUTURE-CHAT] Failed to sync thread session on deferred tool request:", {
 												threadId,
-												port: resolvedRovoDevPort,
+												port: resolvedRovoPort,
 												error: error instanceof Error ? error.message : String(error),
 											});
 										}
@@ -10494,7 +10494,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											rawEvent,
 											control,
 											threadId,
-											sessionId: rovoDevSessionId,
+											sessionId: rovoSessionId,
 											sessionMode,
 											isRequestUserInputTool,
 											isExitPlanModeTool,
@@ -10502,7 +10502,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												syncRovoAppThreadSessionFromCurrentPort,
 											emitRequestUserInputQuestionCard,
 											emitExitPlanWidget: maybeEmitExitPlanWidget,
-											registerPausedToolCall: registerPausedRovoDevToolCall,
+											registerPausedToolCall: registerPausedRovoToolCall,
 										});
 									if (replayDeferredToolResult.handled) {
 										if (replayDeferredToolResult.hasObservedDeferredToolRequest) {
@@ -10537,7 +10537,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								conflictPolicy: "wait-for-turn",
 								onPortAcquired: (acquiredPort) => {
 									if (typeof acquiredPort === "number" && acquiredPort > 0) {
-										resolvedRovoDevPort = acquiredPort;
+										resolvedRovoPort = acquiredPort;
 										if (threadId) {
 											activeRequests.set(threadId, { port: acquiredPort, abortController });
 											void syncRovoAppThreadSessionFromCurrentPort(
@@ -10717,7 +10717,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										kind: pausedToolCallRecord.kind,
 										port: pausedToolCallRecord.port,
 									});
-									await rovoDevResumeToolCalls(pausedToolCallRecord.port, {
+									await rovoResumeToolCalls(pausedToolCallRecord.port, {
 										decisions: resumeDecisions,
 									});
 									console.info("[DEBUG-PLAN-APPROVAL] Resume tool calls sent successfully", {
@@ -10728,7 +10728,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									});
 
 									await Promise.race([
-										replayViaRovoDev({
+										replayViaRovo({
 											port: pausedToolCallRecord.port,
 											portHandle: pausedToolCallRecord.handle,
 											onTextDelta: streamCommonOptions.onTextDelta,
@@ -10763,7 +10763,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 														rawEvent,
 														control,
 														threadId,
-														sessionId: rovoDevSessionId,
+														sessionId: rovoSessionId,
 														sessionMode,
 														isRequestUserInputTool,
 														isExitPlanModeTool,
@@ -10771,7 +10771,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 															syncRovoAppThreadSessionFromCurrentPort,
 														emitRequestUserInputQuestionCard,
 														emitExitPlanWidget: maybeEmitExitPlanWidget,
-														registerPausedToolCall: registerPausedRovoDevToolCall,
+														registerPausedToolCall: registerPausedRovoToolCall,
 													});
 												if (replayDeferredToolResult.handled) {
 													if (
@@ -10814,7 +10814,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								} finally {
 									if (!pausedToolCallHandled) {
 										if (!replayCompleted) {
-											await rovoDevCancelChat(pausedToolCallRecord.port, {
+											await rovoCancelChat(pausedToolCallRecord.port, {
 												timeoutMs: 3_000,
 											}).catch(() => {});
 										}
@@ -10822,9 +10822,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									}
 								}
 							} else {
-								await streamViaRovoDev({
+								await streamViaRovo({
 									message: activeAttemptMessage,
-									sessionId: rovoDevSessionId || undefined,
+									sessionId: rovoSessionId || undefined,
 									...streamCommonOptions,
 									// Plan approval fresh turns may hit a port with a
 									// still-paused chat from the plan generation step.
@@ -10835,7 +10835,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										conflictPolicy: "cancel-and-retry",
 										cancelConflictTurn: async (port) => {
 											try {
-												await rovoDevResumeToolCalls(port, {
+												await rovoResumeToolCalls(port, {
 													decisions: [{
 														tool_call_id: approvalToolCallId,
 														deny_message: "Plan approval superseded — starting fresh build turn.",
@@ -10844,30 +10844,30 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											} catch {
 												// Resume may fail if the tool call ID doesn't match — that's OK
 											}
-											await rovoDevCancelChat(port, { timeoutMs: 5_000 });
+											await rovoCancelChat(port, { timeoutMs: 5_000 });
 										},
 									} : {}),
 								});
 							}
-						} catch (rovoDevStreamError) {
-							if (rovoDevStreamError?.code === "ROVODEV_PORT_STUCK") {
+						} catch (rovoStreamError) {
+							if (rovoStreamError?.code === "ROVO_PORT_STUCK") {
 								// Port is stuck — try a single in-place restart and rerun
 								// the exact request once before surfacing a user-facing
 								// failure. This keeps rapid retry/new-thread flows from
 								// dying before ask_user_questions can run.
 								const recoveryPort =
-									rovoDevStreamError.port ||
-									resolvedRovoDevPort;
+									rovoStreamError.port ||
+									resolvedRovoPort;
 								let recoveryResult = null;
 
 								if (typeof recoveryPort === "number" && recoveryPort > 0) {
 									try {
-										recoveryResult = await restartRovoDevPort({
+										recoveryResult = await restartRovoPort({
 											port: recoveryPort,
-											cancelChat: rovoDevCancelChat,
-											healthCheck: rovoDevHealthCheck,
+											cancelChat: rovoCancelChat,
+											healthCheck: rovoHealthCheck,
 											getListeningPidsForPort,
-											refreshAvailability: refreshRovoDevAvailability,
+											refreshAvailability: refreshRovoAvailability,
 											timeoutMs: INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_TIMEOUT_MS,
 										});
 										console.info("[CHAT-SDK] Port stuck recovery result", {
@@ -10907,7 +10907,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										type: "data-thinking-status",
 										data: {
 											label: "Recovered stuck port, retrying",
-											content: `RovoDev port ${recoveryPort} restarted successfully.`,
+											content: `Rovo port ${recoveryPort} restarted successfully.`,
 											activity: "results",
 											source: "backend",
 										},
@@ -10940,11 +10940,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									})}`
 								);
 								shouldContinueToolFirstRetry = false;
-							} else if (rovoDevStreamError?.code === "ROVODEV_CHAT_IN_PROGRESS_TIMEOUT") {
+							} else if (rovoStreamError?.code === "ROVO_CHAT_IN_PROGRESS_TIMEOUT") {
 								streamTimedOut = true;
 								const resolvedRecoveryPort =
-									typeof resolvedRovoDevPort === "number" && resolvedRovoDevPort > 0
-										? resolvedRovoDevPort
+									typeof resolvedRovoPort === "number" && resolvedRovoPort > 0
+										? resolvedRovoPort
 										: null;
 								const canForceRecoverPort =
 									typeof resolvedRecoveryPort === "number" &&
@@ -10954,12 +10954,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								if (canForceRecoverPort) {
 									forcePortRecoveryAttemptCount += 1;
 
-									const recoveryResult = await restartRovoDevPort({
+									const recoveryResult = await restartRovoPort({
 										port: resolvedRecoveryPort,
-										cancelChat: rovoDevCancelChat,
-										healthCheck: rovoDevHealthCheck,
+										cancelChat: rovoCancelChat,
+										healthCheck: rovoHealthCheck,
 										getListeningPidsForPort,
-										refreshAvailability: refreshRovoDevAvailability,
+										refreshAvailability: refreshRovoAvailability,
 										timeoutMs: INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_TIMEOUT_MS,
 									});
 									console.info("[CHAT-SDK] Forced per-port recovery result", {
@@ -10975,7 +10975,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											type: "data-thinking-status",
 											data: {
 												label: "Recovered stuck port, retrying",
-												content: `RovoDev port ${resolvedRecoveryPort} restarted successfully.`,
+												content: `Rovo port ${resolvedRecoveryPort} restarted successfully.`,
 												activity: "results",
 												source: "backend",
 											},
@@ -10991,7 +10991,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												typeof recoveryResult.error === "string" &&
 												recoveryResult.error.trim().length > 0
 													? recoveryResult.error.trim()
-													: `Failed to recover RovoDev port ${resolvedRecoveryPort}.`,
+													: `Failed to recover Rovo port ${resolvedRecoveryPort}.`,
 											activity: "results",
 											source: "backend",
 										},
@@ -11001,7 +11001,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								writer.write({
 									type: "data-thinking-status",
 									data: {
-										label: "RovoDev turn wait timed out",
+										label: "Rovo turn wait timed out",
 										content:
 											"Automatic recovery timed out while waiting for the previous turn to clear.",
 										activity: "results",
@@ -11013,9 +11013,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								);
 							} else {
 								const errorMessage =
-									rovoDevStreamError instanceof Error
-										? rovoDevStreamError.message
-										: String(rovoDevStreamError ?? "");
+									rovoStreamError instanceof Error
+										? rovoStreamError.message
+										: String(rovoStreamError ?? "");
 								const shouldRetryAsDeferredToolResponse =
 									!hasRetriedAsDeferredToolResponse &&
 									clarificationSubmission &&
@@ -11047,7 +11047,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									}
 								}
 
-								throw rovoDevStreamError;
+								throw rovoStreamError;
 							}
 						}
 
@@ -11176,8 +11176,8 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					return;
 				}
 
-				// ── Phase 2: Direct RovoDev spec detection ──
-				// When enabled, check if RovoDev already emitted a valid
+				// ── Phase 2: Direct Rovo spec detection ──
+				// When enabled, check if Rovo already emitted a valid
 				// ```spec fence in its text output. If found, emit it as a
 				// GenUI widget directly — skipping the second-pass GenUI
 				// LLM call entirely.
@@ -11224,15 +11224,15 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								writer.write(part);
 							}
 							hasEmittedGenuiWidget = true;
-							console.info("[DIRECT-SPEC] Emitted GenUI widget from RovoDev spec fence", {
+							console.info("[DIRECT-SPEC] Emitted GenUI widget from Rovo spec fence", {
 								elementCount: Object.keys(directSpecResult.spec.elements || {}).length,
 								narrativeLength: (directSpecResult.narrative || "").length,
 							});
 						}
 					}
 
-					// ── Phase 3: Direct RovoDev media fence detection ──
-					// When enabled, check if RovoDev emitted ```image or
+					// ── Phase 3: Direct Rovo media fence detection ──
+					// When enabled, check if Rovo emitted ```image or
 					// ```audio fences. If found, emit them as artifact
 					// widgets so the backend can route to the appropriate
 					// generation service (AI Gateway / TTS).
@@ -11291,7 +11291,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 													payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_IMAGE, {
 														images: [...generatedImages],
 														prompt: imagePayload.prompt || latestUserMessage,
-														source: "direct-rovodev-image",
+														source: "direct-rovo-image",
 													}),
 												},
 											});
@@ -11315,7 +11315,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								id: imageWidgetId,
 								data: { type: SMART_WIDGET_TYPE_IMAGE, loading: false },
 							});
-							console.info("[DIRECT-IMAGE] Processed image fence from RovoDev", {
+							console.info("[DIRECT-IMAGE] Processed image fence from Rovo", {
 								prompt: (imagePayload.prompt || "").slice(0, 80),
 							});
 						} catch (parseError) {
@@ -11360,7 +11360,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											),
 											mimeType: synthesisResult.contentType,
 											transcript: audioPayload.text,
-											source: "direct-rovodev-audio",
+											source: "direct-rovo-audio",
 										}),
 									},
 								});
@@ -11381,7 +11381,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								id: audioWidgetId,
 								data: { type: SMART_WIDGET_TYPE_AUDIO, loading: false },
 							});
-							console.info("[DIRECT-AUDIO] Processed audio fence from RovoDev", {
+							console.info("[DIRECT-AUDIO] Processed audio fence from Rovo", {
 								textLength: (audioPayload.text || "").length,
 							});
 						} catch (parseError) {
@@ -11647,7 +11647,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						!planExecutionActive &&
 						shouldAttemptGenui
 					) {
-						// Single-pass GenUI: RovoDev emits ```spec blocks directly.
+						// Single-pass GenUI: Rovo emits ```spec blocks directly.
 						// Phase 2 (direct spec detection above) already caught any
 						// spec fence in the response. If we reach here, no spec was
 						// emitted — try the generic catalog-based GenUI path.
@@ -11661,10 +11661,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							},
 						});
 
-						console.info("[OUTPUT-ROUTING] Single-pass GenUI: no spec fence from RovoDev, trying generic GenUI", {
+						console.info("[OUTPUT-ROUTING] Single-pass GenUI: no spec fence from Rovo, trying generic GenUI", {
 							hasActionableTools: hasObservedActionableToolCall,
 							taskLikeRequest: isTaskLikeRequest,
-							rovodevTextLength: trimmedAssistantText.length,
+							rovoTextLength: trimmedAssistantText.length,
 							toolObservationCount: toolObservationEntries.length,
 							forceCardFirst: shouldForceCardFirstGenui,
 						});
@@ -12027,7 +12027,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										const warningText = buildToolFirstTextFallback({
 											policy: toolFirstPolicy,
 											execution: toolFirstExecutionState,
-											rovoDevFallback: false,
+											rovoFallback: false,
 										});
 										const toolFirstWarningPrefix =
 											assistantText.trim().length > 0 ? "\n\n" : "";
@@ -12102,8 +12102,8 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								toolFirstExecutionState,
 								{
 									policy: toolFirstPolicy,
-									resolvedPort: typeof resolvedRovoDevPort === "number"
-										? resolvedRovoDevPort
+									resolvedPort: typeof resolvedRovoPort === "number"
+										? resolvedRovoPort
 										: null,
 									durationMs: workSummaryDurationMs,
 								}
@@ -12133,17 +12133,17 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				}
 
 				let syncedThread = null;
-				if (threadId && typeof resolvedRovoDevPort === "number" && resolvedRovoDevPort > 0) {
+				if (threadId && typeof resolvedRovoPort === "number" && resolvedRovoPort > 0) {
 					try {
 						syncedThread = await syncRovoAppThreadSessionFromCurrentPort(
 							threadId,
-							resolvedRovoDevPort,
+							resolvedRovoPort,
 							{ sessionMode },
 						);
 					} catch (error) {
 						console.warn("[FUTURE-CHAT] Failed to sync thread session at turn completion:", {
 							threadId,
-							port: resolvedRovoDevPort,
+							port: resolvedRovoPort,
 							error: error instanceof Error ? error.message : String(error),
 						});
 					}
@@ -12353,9 +12353,9 @@ app.post("/api/chat-cancel", async (req, res) => {
 		}
 
 		if (typeof resolvedPort === "number") {
-			await rovoDevCancelChat(resolvedPort);
+			await rovoCancelChat(resolvedPort);
 		} else {
-			await rovoDevCancelChat();
+			await rovoCancelChat();
 		}
 
 		if (threadId) {
@@ -12395,7 +12395,7 @@ app.post("/api/rovo/cancel-deferred-tool", async (req, res) => {
 		const activeDeferredToolCall = clearActiveDeferredToolCall(toolCallId);
 		if (activeDeferredToolCall) {
 			await cancelActiveDeferredToolCallRecord(activeDeferredToolCall, {
-				cancelChat: rovoDevCancelChat,
+				cancelChat: rovoCancelChat,
 				waitForReady: waitForPortReady,
 			});
 			if (activeDeferredToolCall.threadId) {
@@ -12414,13 +12414,13 @@ app.post("/api/rovo/cancel-deferred-tool", async (req, res) => {
 			});
 		}
 
-		const pausedToolCall = detachPausedRovoDevToolCall(toolCallId);
+		const pausedToolCall = detachPausedRovoToolCall(toolCallId);
 		if (pausedToolCall) {
 			await cancelPausedDeferredToolCallRecord(pausedToolCall, {
-				cancelChat: rovoDevCancelChat,
+				cancelChat: rovoCancelChat,
 				waitForReady: waitForPortReady,
 				onReleaseError: (error) => {
-					console.warn("[ROVODEV-PAUSE] Failed to release reserved port handle:", error);
+					console.warn("[ROVO-PAUSE] Failed to release reserved port handle:", error);
 				},
 			});
 			if (pausedToolCall.threadId && pausedToolCall.kind === "plan-approval") {
@@ -12446,7 +12446,7 @@ app.post("/api/rovo/cancel-deferred-tool", async (req, res) => {
 });
 
 // ── Agent Mode Toggle ──
-// Allows the frontend to get/set the agent mode on a specific RovoDev
+// Allows the frontend to get/set the agent mode on a specific Rovo
 // session (default, ask).
 app.post("/api/agent-mode", async (req, res) => {
 	try {
@@ -12459,11 +12459,11 @@ app.post("/api/agent-mode", async (req, res) => {
 			return res.status(400).json({ error: `Invalid mode: ${mode}. Must be one of: ${validModes.join(", ")}` });
 		}
 
-		const rovoDevAvailable = await isRovoDevAvailable();
-		if (!rovoDevAvailable) {
-			const unavailableError = createRovoDevUnavailableError();
+		const rovoAvailable = await isRovoAvailable();
+		if (!rovoAvailable) {
+			const unavailableError = createRovoUnavailableError();
 			return res.status(503).json({
-				error: "RovoDev Serve is required but not available",
+				error: "Rovo Serve is required but not available",
 				details: unavailableError.message,
 			});
 		}
@@ -12479,11 +12479,11 @@ app.post("/api/agent-mode", async (req, res) => {
 
 app.get("/api/agent-mode", async (req, res) => {
 	try {
-		const rovoDevAvailable = await isRovoDevAvailable();
-		if (!rovoDevAvailable) {
+		const rovoAvailable = await isRovoAvailable();
+		if (!rovoAvailable) {
 			return res.status(200).json({
 				mode: "default",
-				message: "RovoDev Serve is not available; default agent mode assumed",
+				message: "Rovo Serve is not available; default agent mode assumed",
 			});
 		}
 
@@ -12493,15 +12493,15 @@ app.get("/api/agent-mode", async (req, res) => {
 		} catch (agentModeError) {
 			const msg = agentModeError instanceof Error ? agentModeError.message : String(agentModeError);
 			if (msg.includes("status 404")) {
-				// RovoDev Serve version doesn't support agent mode — return default
-				console.info("[AGENT-MODE] Agent mode not supported by this RovoDev version, returning default");
-				return res.status(200).json({ mode: "default", message: "Agent mode not supported by this RovoDev version" });
+				// Rovo Serve version doesn't support agent mode — return default
+				console.info("[AGENT-MODE] Agent mode not supported by this Rovo version, returning default");
+				return res.status(200).json({ mode: "default", message: "Agent mode not supported by this Rovo version" });
 			}
-			if (isRovoDevConnectionFailure(agentModeError)) {
-				console.info("[AGENT-MODE] RovoDev unavailable while reading agent mode, returning default");
+			if (isRovoConnectionFailure(agentModeError)) {
+				console.info("[AGENT-MODE] Rovo unavailable while reading agent mode, returning default");
 				return res.status(200).json({
 					mode: "default",
-					message: "RovoDev Serve is not available; default agent mode assumed",
+					message: "Rovo Serve is not available; default agent mode assumed",
 				});
 			}
 			throw agentModeError;
@@ -12514,7 +12514,7 @@ app.get("/api/agent-mode", async (req, res) => {
 
 // ── Output Routing: Question Card skip notification (BE-008) ──
 // When the user dismisses/skips a Question Card, the frontend sends a
-// notification here. The backend forwards a system message to RovoDev
+// notification here. The backend forwards a system message to Rovo
 // so it can decide how to respond (e.g., explain what info is needed
 // or proceed with default assumptions).
 app.post("/api/chat-sdk/skip-question", async (req, res) => {
@@ -12561,14 +12561,14 @@ app.post("/api/chat-sdk/skip-question", async (req, res) => {
 			questionTitle: typeof questionTitle === "string" ? questionTitle : undefined,
 		});
 
-		// Stream the skip notification to RovoDev and return RovoDev's response
+		// Stream the skip notification to Rovo and return Rovo's response
 		const stream = createUIMessageStream({
 			execute: async ({ writer }) => {
 				const textId = `skip-question-response-${Date.now()}`;
 				let textStarted = false;
 
 				try {
-					await streamViaRovoDev({
+					await streamViaRovo({
 						message: userMessageText,
 						sessionId: typeof sessionId === "string" ? sessionId : undefined,
 						onTextDelta: (delta) => {
@@ -12590,10 +12590,10 @@ app.post("/api/chat-sdk/skip-question", async (req, res) => {
 					});
 				} catch (error) {
 					console.error(
-						"[OUTPUT-ROUTING] Skip notification RovoDev error:",
+						"[OUTPUT-ROUTING] Skip notification Rovo error:",
 						error instanceof Error ? error.message : error
 					);
-					// If RovoDev fails, provide a fallback response
+					// If Rovo fails, provide a fallback response
 					if (!textStarted) {
 						writer.write({ type: "text-start", id: textId });
 						textStarted = true;
@@ -12644,7 +12644,7 @@ app.post("/api/chat-sdk/skip-question", async (req, res) => {
 
 app.post("/api/genui-chat", (req, res) =>
 	genuiChatHandler(req, res, {
-		isRovoDevAvailable,
+		isRovoAvailable,
 	})
 );
 
@@ -14319,7 +14319,7 @@ app.post("/api/rovo/runs/:threadId/cancel", async (req, res) => {
 		}
 
 		if (typeof run.rovoPort === "number" && run.rovoPort > 0) {
-			await rovoDevCancelChat(run.rovoPort).catch(() => {});
+			await rovoCancelChat(run.rovoPort).catch(() => {});
 		}
 
 		rovoAppRunManager.cancelRun(threadId);
@@ -14399,7 +14399,7 @@ app.delete("/api/rovo/threads/:threadId", async (req, res) => {
 		const activeRun = rovoAppRunManager.getRun(threadId);
 		if (activeRun) {
 			if (typeof activeRun.rovoPort === "number" && activeRun.rovoPort > 0) {
-				await rovoDevCancelChat(activeRun.rovoPort).catch(() => {});
+				await rovoCancelChat(activeRun.rovoPort).catch(() => {});
 			}
 			rovoAppRunManager.cancelRun(threadId);
 		}
@@ -14783,25 +14783,25 @@ app.post("/api/standup", async (req, res) => {
 
 // ─── Hermes Status / Skills / Jobs ──────────────────────────────────────────
 
-app.get("/api/status/rovodev", async (_req, res) => {
+app.get("/api/status/rovo", async (_req, res) => {
 	try {
-		const available = await isRovoDevAvailable();
-		const port = parseOptionalInteger(process.env.ROVODEV_PORT);
+		const available = await isRovoAvailable();
+		const port = parseOptionalInteger(process.env.ROVO_PORT);
 		return res.json(
 			buildRuntimeStatusSnapshot({
-				rovodev: {
+				rovo: {
 					available,
 					message: available
-						? "RovoDev Serve is ready for interactive chat."
-						: "RovoDev Serve is unavailable.",
+						? "Rovo Serve is ready for interactive chat."
+						: "Rovo Serve is unavailable.",
 					status: available ? "ready" : "unavailable",
 					url: typeof port === "number" ? `http://localhost:${port}` : null,
 				},
-			}).surfaces.rovodev,
+			}).surfaces.rovo,
 		);
 	} catch (error) {
 		return res.status(500).json({
-			error: "Failed to check RovoDev status",
+			error: "Failed to check Rovo status",
 			details: error instanceof Error ? error.message : String(error),
 		});
 	}
@@ -14833,13 +14833,13 @@ app.get("/api/status/hermes", async (_req, res) => {
 
 app.get("/api/status", async (_req, res) => {
 	try {
-		const [rovoDevAvailable, hermesStatus] = await Promise.all([
-			isRovoDevAvailable(),
+		const [rovoAvailable, hermesStatus] = await Promise.all([
+			isRovoAvailable(),
 			getHermesRuntimeStatus({
 				jobsProvider: hermesJobsProvider,
 			}),
 		]);
-		const port = parseOptionalInteger(process.env.ROVODEV_PORT);
+		const port = parseOptionalInteger(process.env.ROVO_PORT);
 		return res.json(
 			buildRuntimeStatusSnapshot({
 				hermes: {
@@ -14849,12 +14849,12 @@ app.get("/api/status", async (_req, res) => {
 					status: hermesStatus.status ?? (hermesStatus.available ? "ready" : "unavailable"),
 					url: hermesStatus.baseUrl ?? null,
 				},
-				rovodev: {
-					available: rovoDevAvailable,
-					message: rovoDevAvailable
-						? "RovoDev Serve is ready for interactive chat."
-						: "RovoDev Serve is unavailable.",
-					status: rovoDevAvailable ? "ready" : "unavailable",
+				rovo: {
+					available: rovoAvailable,
+					message: rovoAvailable
+						? "Rovo Serve is ready for interactive chat."
+						: "Rovo Serve is unavailable.",
+					status: rovoAvailable ? "ready" : "unavailable",
 					url: typeof port === "number" ? `http://localhost:${port}` : null,
 				},
 			}),
@@ -15338,19 +15338,19 @@ app.get("/api/health", async (req, res) => {
 	debugLog("HEALTH", "Processing health check");
 
 	const key = process.env.ASAP_PRIVATE_KEY;
-	const rovoDevAvailable = await isRovoDevAvailable();
+	const rovoAvailable = await isRovoAvailable();
 	const envVars = getEnvVars();
 	const aiGatewayConfigured = hasGatewayUrlConfigured(envVars);
 	const llmRouting = buildLlmRoutingStatus({
-		rovoDevAvailable,
+		rovoAvailable,
 		aiGatewayConfigured,
 	});
 
 	debugLog("HEALTH", "Auth configuration", {
 		hasAsapKey: !!key,
-		rovoDevAvailable,
+		rovoAvailable,
 		chatSdkBackend: llmRouting.chatSdk.backend,
-		chatSdkRequiresRovoDev: llmRouting.chatSdk.requiresRovoDev,
+		chatSdkRequiresRovo: llmRouting.chatSdk.requiresRovo,
 		aiGatewayConfigured,
 	});
 
@@ -15360,14 +15360,14 @@ app.get("/api/health", async (req, res) => {
 		timestamp: new Date().toISOString(),
 		authMethod: "ASAP",
 		debugMode: DEBUG,
-		rovoDevMode: rovoDevAvailable,
+		rovoMode: rovoAvailable,
 		llmRouting: {
 			...llmRouting,
 			aiGatewayConfig: getAIGatewayConfigReport(envVars),
 		},
 		envCheck: {
 			ASAP_PRIVATE_KEY: key ? "SET" : "MISSING",
-			ROVODEV_PORT: process.env.ROVODEV_PORT ? "SET" : "MISSING",
+			ROVO_PORT: process.env.ROVO_PORT ? "SET" : "MISSING",
 		},
 	};
 
@@ -15514,8 +15514,8 @@ const server = app.listen(port, "0.0.0.0", async () => {
 	console.log(`  ASAP_KID: ${process.env.ASAP_KID ? "SET" : "MISSING"}`);
 	console.log(`  ASAP_PRIVATE_KEY: ${process.env.ASAP_PRIVATE_KEY ? "SET" : "MISSING"}`);
 
-	// Check for RovoDev Serve at startup
-	const rovoDevReady = await refreshRovoDevAvailability();
+	// Check for Rovo Serve at startup
+	const rovoReady = await refreshRovoAvailability();
 	try {
 		const wikiJobProvisioning = await ensureWikiJobs(hermesJobsProvider);
 		console.log(
@@ -15530,16 +15530,16 @@ const server = app.listen(port, "0.0.0.0", async () => {
 	hermesJobsProvider.startJobTicker?.();
 	const aiGatewayConfigured = hasGatewayUrlConfigured(getEnvVars());
 	const llmRouting = buildLlmRoutingStatus({
-		rovoDevAvailable: rovoDevReady,
+		rovoAvailable: rovoReady,
 		aiGatewayConfigured,
 	});
 	const chatBackendLabel = describeChatBackend(llmRouting);
 	console.log(`\n🤖 Chat Backend: ${chatBackendLabel}`);
-	if (rovoDevReady && _rovoDevPool) {
-		const poolStatus = _rovoDevPool.getStatus();
-		console.log(`  ROVODEV_POOL: ${poolStatus.total} ports (${poolStatus.ports.map((p) => p.port).join(", ")})`);
-	} else if (rovoDevReady) {
-		console.log(`  ROVODEV_PORT: ${process.env.ROVODEV_PORT}`);
+	if (rovoReady && _rovoPool) {
+		const poolStatus = _rovoPool.getStatus();
+		console.log(`  ROVO_POOL: ${poolStatus.total} ports (${poolStatus.ports.map((p) => p.port).join(", ")})`);
+	} else if (rovoReady) {
+		console.log(`  ROVO_PORT: ${process.env.ROVO_PORT}`);
 	}
 	console.log(
 		`  INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_MAX_ATTEMPTS: ${INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_MAX_ATTEMPTS}`
@@ -15711,18 +15711,18 @@ process.on("unhandledRejection", (reason, promise) => {
 	process.exit(1);
 });
 
-// Graceful shutdown — clean up RovoDev pool
+// Graceful shutdown — clean up Rovo pool
 process.on("SIGINT", () => {
 	hermesJobsProvider.stopJobTicker?.();
-	if (_rovoDevPool) {
-		_rovoDevPool.shutdown();
+	if (_rovoPool) {
+		_rovoPool.shutdown();
 	}
 	process.exit(0);
 });
 process.on("SIGTERM", () => {
 	hermesJobsProvider.stopJobTicker?.();
-	if (_rovoDevPool) {
-		_rovoDevPool.shutdown();
+	if (_rovoPool) {
+		_rovoPool.shutdown();
 	}
 	process.exit(0);
 });

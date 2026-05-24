@@ -28,14 +28,14 @@ export interface ReplaceRealtimeMessageOptions {
 
 interface MergeRovoAppMessagesOptions {
 	realtimeMessages: ReadonlyArray<RovoUIMessage>;
-	rovodevMessages: ReadonlyArray<RovoUIMessage>;
+	rovoMessages: ReadonlyArray<RovoUIMessage>;
 }
 
 interface RovoAppMessageEntry {
 	index: number;
 	message: RovoUIMessage;
 	timestamp: number | null;
-	type: "realtime" | "rovodev";
+	type: "realtime" | "rovo";
 }
 
 function applyMetadataPatch(
@@ -194,7 +194,7 @@ function shouldReplaceRovoAppMessageEntry(
 	}
 
 	if (existingEntry.type !== candidateEntry.type) {
-		return candidateEntry.type === "rovodev";
+		return candidateEntry.type === "rovo";
 	}
 
 	return true;
@@ -202,14 +202,14 @@ function shouldReplaceRovoAppMessageEntry(
 
 export function mergeRovoAppMessages({
 	realtimeMessages,
-	rovodevMessages,
+	rovoMessages,
 }: MergeRovoAppMessagesOptions): RovoUIMessage[] {
 	const entries: RovoAppMessageEntry[] = [
-		...rovodevMessages.map((message, index) => ({
+		...rovoMessages.map((message, index) => ({
 			index,
 			message,
 			timestamp: getMessageTimestamp(message),
-			type: "rovodev" as const,
+			type: "rovo" as const,
 		})),
 		...realtimeMessages.map((message, index) => ({
 			index,
@@ -230,7 +230,7 @@ export function mergeRovoAppMessages({
 			return 1;
 		}
 		if (left.type !== right.type) {
-			return left.type === "rovodev" ? -1 : 1;
+			return left.type === "rovo" ? -1 : 1;
 		}
 		return left.index - right.index;
 	});

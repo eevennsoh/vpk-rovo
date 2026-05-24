@@ -59,7 +59,7 @@ Phase 2e: integration
 | --- | --- | --- | --- |
 | 1 | `twg context user me` returns relationship names we don't yet have a `VaultEdgeKind` for. | High | A logs unknown kinds and drops the edge; we add kinds intentionally rather than auto-coercing. Captured as a known partial-fan-out case in tests. |
 | 2 | `data.relationshipSummary.targets` lacks a `url` for some entity types (e.g. people, focus areas). | High | Inspector "open" button only shows when `externalUrl != null`. For people, fall back to a `mailto:` or no link. |
-| 3 | AI SDK `streamText` over `ai-gateway-provider` has different tool-roundtrip semantics than RovoDev did. | Medium | Spike before D: write a 30-line throwaway script that calls `aiGatewayProvider.streamText` with a trivial tool, confirms multiple roundtrips, and SSE shape matches `DefaultChatTransport`. If gap, write a custom transport on the client. |
+| 3 | AI SDK `streamText` over `ai-gateway-provider` has different tool-roundtrip semantics than Rovo did. | Medium | Spike before D: write a 30-line throwaway script that calls `aiGatewayProvider.streamText` with a trivial tool, confirms multiple roundtrips, and SSE shape matches `DefaultChatTransport`. If gap, write a custom transport on the client. |
 | 4 | Streaming response body shape from Express must match what AI SDK `useChat` expects. | Medium | Use AI SDK's `result.toDataStreamResponse()` if available in the installed version, or replicate its SSE protocol. Confirmed by mocking the gateway in the chat handler test and asserting the wire format. |
 | 5 | Search-vs-chat heuristic on prompt input misroutes ("what" as a search query). | Medium | Make the heuristic a single function with unit tests; expose an explicit "Ask" button beside the input that overrides the routing. Default routing is best-effort, the button is the escape hatch. |
 | 6 | `twg` CLI not on `PATH` for the Express child process. | Low | Resolve `twg` via `process.env.PATH` on adapter init; on `ENOENT`, surface a clear error pointing to `~/.local/bin/twg` and the install script. |
@@ -95,7 +95,7 @@ This spike output feeds the Phase 3 task description for D.
 ## Out of scope (explicit)
 
 - Running `twg` from the Next.js Route Handler layer.
-- Importing or reusing `rovodev-*.js`.
+- Importing or reusing `rovo-*.js`.
 - Recursive fan-out beyond the first relationship hop.
 - Multi-site support (we use whatever `twg` resolves from `auth.conf`).
 - Background refresh or push notifications.

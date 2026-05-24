@@ -58,7 +58,7 @@ test("releases the composer once direct delegation is established", () => {
 		{
 			backgroundArtifactLabel: null,
 			backgroundDelegationLabel:
-				"RovoDev is still working: Generating results.",
+				"Rovo is still working: Generating results.",
 			composerStatus: "ready",
 			hasBackgroundDelegation: true,
 		},
@@ -75,7 +75,7 @@ test("uses a fallback label while background delegation has not emitted thinking
 		{
 			backgroundArtifactLabel: null,
 			backgroundDelegationLabel:
-				"RovoDev is still working in the background.",
+				"Rovo is still working in the background.",
 			composerStatus: "ready",
 			hasBackgroundDelegation: true,
 		},
@@ -168,14 +168,14 @@ test("shows queued background work when an active run is waiting for a free port
 		resolveRovoAppComposerSubmitState({
 			activeRunStatus: "queued",
 			backgroundDelegationLabelOverride:
-				"Queued. This thread will start when a RovoDev port is free.",
+				"Queued. This thread will start when a Rovo port is free.",
 			useChatStatus: "ready",
 			delegationPhase: "idle",
 		}),
 		{
 			backgroundArtifactLabel: null,
 			backgroundDelegationLabel:
-				"Queued. This thread will start when a RovoDev port is free.",
+				"Queued. This thread will start when a Rovo port is free.",
 			composerStatus: "ready",
 			hasBackgroundDelegation: true,
 		},

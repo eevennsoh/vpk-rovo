@@ -14,7 +14,7 @@ cmux identify                  # returns your workspace/surface refs
 cmux tree                      # full layout — scan workspace names for agent keywords
 ```
 
-Scan `cmux tree` output for workspaces named "CODEX", "CLAUDE", "ROVODEV", or similar. These are all AI agent workspaces — any of them can be a peer for task dispatch and messaging. Extract workspace refs dynamically — never hardcode them.
+Scan `cmux tree` output for workspaces named "CODEX", "CLAUDE", "ROVO", or similar. These are all AI agent workspaces — any of them can be a peer for task dispatch and messaging. Extract workspace refs dynamically — never hardcode them.
 
 Known agent types:
 
@@ -22,7 +22,7 @@ Known agent types:
 | --- | --- |
 | CLAUDE | `vpk-claude-gw` |
 | CODEX | `vpk-codex` |
-| ROVODEV | `vpk-rovodev` |
+| ROVO | `vpk-rovo` |
 
 If a needed peer agent isn't running, spawn it:
 
@@ -31,7 +31,7 @@ cmux new-workspace --name "<AGENT-NAME>" --cwd /Users/esoh/Documents/Labs/VPK-ro
   --command "<spawn-command>"
 ```
 
-Then re-run `cmux tree` to get the new workspace's ref. See `.rovodev/skills/codex/SKILL.md` for Codex-specific flags.
+Then re-run `cmux tree` to get the new workspace's ref. See `.rovo/skills/codex/SKILL.md` for Codex-specific flags.
 
 To dispatch a task to a running agent workspace, use `cmux send` followed by `send-key Enter` (the send command types text but does not submit it):
 
@@ -128,7 +128,7 @@ cmux wait-for -S "setup-complete"
 ## Rules
 
 - **No hardcoded refs.** Always discover workspace/surface refs via `cmux tree` at runtime.
-- **Auto-spawn if missing.** If you need a peer agent and none exists, use `cmux new-workspace` to create one. See `.rovodev/skills/codex/SKILL.md` for Codex CLI usage.
+- **Auto-spawn if missing.** If you need a peer agent and none exists, use `cmux new-workspace` to create one. See `.rovo/skills/codex/SKILL.md` for Codex CLI usage.
 - **Use `cmux send`** to type prompts into a peer agent's terminal for task dispatch.
 - Always include `agent` name in the `<from>` element so messages are attributable.
 - Use `cmux notify` as the signaling channel — don't rely on polling `list-buffers`.

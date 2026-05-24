@@ -6,18 +6,18 @@ const path = require("node:path")
 
 const {
 	WIKI_CAPTURE_MCP_SERVER_NAME,
-	getWikiCaptureAllowedRovodevMcpServerSignature,
-	getWikiCaptureRovodevMcpServerConfig,
+	getWikiCaptureAllowedRovoMcpServerSignature,
+	getWikiCaptureRovoMcpServerConfig,
 } = require("./wiki-capture-mcp")
 
 test("wiki capture MCP config points at the workspace-local stdio server", () => {
 	const repoRoot = "/tmp/workspace"
 
 	assert.equal(
-		getWikiCaptureAllowedRovodevMcpServerSignature({ repoRoot }),
+		getWikiCaptureAllowedRovoMcpServerSignature({ repoRoot }),
 		`stdio:node:${path.join(repoRoot, "scripts", "wiki-capture-mcp.js")}`,
 	)
-	assert.deepEqual(getWikiCaptureRovodevMcpServerConfig({ repoRoot }), {
+	assert.deepEqual(getWikiCaptureRovoMcpServerConfig({ repoRoot }), {
 		[WIKI_CAPTURE_MCP_SERVER_NAME]: {
 			args: [path.join(repoRoot, "scripts", "wiki-capture-mcp.js")],
 			command: "node",

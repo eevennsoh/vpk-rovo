@@ -3,7 +3,7 @@
  *
  * Detects destructive command patterns (rm -rf, sudo, DROP TABLE, etc.)
  * in tool call arguments before execution. Used by the VPK-Rovo backend
- * to flag or pause dangerous operations from RovoDev Serve tool calls.
+ * to flag or pause dangerous operations from Rovo Serve tool calls.
  */
 
 /**

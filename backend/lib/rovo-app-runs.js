@@ -18,7 +18,7 @@ function createRovoAppRunManager({ logger = console } = {}) {
 		const now = toIsoDate();
 		const run = {
 			id: `rovo-app-run-${randomUUID()}`,
-			backend: backend === "rovodev" ? "rovodev" : "ai-gateway",
+			backend: backend === "rovo" ? "rovo" : "ai-gateway",
 			threadId,
 			requestBody,
 			requestedPortIndex:
@@ -54,7 +54,7 @@ function createRovoAppRunManager({ logger = console } = {}) {
 		return Array.from(runs.values()).map((run) => ({
 			threadId: run.threadId,
 			id: run.id,
-			backend: run.backend === "rovodev" ? "rovodev" : "ai-gateway",
+			backend: run.backend === "rovo" ? "rovo" : "ai-gateway",
 			status: run.status,
 			startedAt: Date.parse(run.startedAt),
 			updatedAt: run.updatedAt,
@@ -98,7 +98,7 @@ function createRovoAppRunManager({ logger = console } = {}) {
 			typeof rovoPort === "number" && Number.isInteger(rovoPort) && rovoPort > 0
 				? rovoPort
 				: null;
-		if (backend === "rovodev" || backend === "ai-gateway") {
+		if (backend === "rovo" || backend === "ai-gateway") {
 			run.backend = backend;
 		}
 		run.startedAt = now;
@@ -148,7 +148,7 @@ function createRovoAppRunManager({ logger = console } = {}) {
 			return null;
 		}
 
-		if (backend !== "rovodev" && backend !== "ai-gateway") {
+		if (backend !== "rovo" && backend !== "ai-gateway") {
 			return run;
 		}
 

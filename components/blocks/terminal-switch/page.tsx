@@ -20,9 +20,9 @@ import { Terminal, TerminalHeader, TerminalContent } from "@/components/ui-custo
 type ViewMode = "chat" | "terminal";
 
 // ---------------------------------------------------------------------------
-// Textual Dark theme palette (from acli rovodev TUI)
+// Textual Dark theme palette (from rovo TUI)
 // Source: https://github.com/Textualize/textual — textual-dark theme
-// TCSS: rovodev_tui/style.tcss
+// TCSS: rovo_tui/style.tcss
 // ---------------------------------------------------------------------------
 const TD = {
 	primary: "#0178D4",
@@ -38,9 +38,9 @@ const TD = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Brand colors from rovodev_tui/constants.py
+// Brand colors from Rovo TUI constants
 // ---------------------------------------------------------------------------
-// Brand color from rovodev_tui/constants.py: BRAND_COLOR = "#50FA7B"
+// Brand color from Rovo TUI constants: BRAND_COLOR = "#50FA7B"
 
 // ---------------------------------------------------------------------------
 // ANSI helpers using 24-bit true color

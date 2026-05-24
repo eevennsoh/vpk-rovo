@@ -69,7 +69,7 @@ test("ingestQueuedWikiMemoryProposals updates canonical pages, marks proposals i
 	const qmdCalls = [];
 
 	await enqueueWikiMemoryProposal({
-		content: "Keep the runtime loop on RovoDev.",
+		content: "Keep the runtime loop on Rovo.",
 		target: "memory",
 		wikiDir,
 	});
@@ -91,7 +91,7 @@ test("ingestQueuedWikiMemoryProposals updates canonical pages, marks proposals i
 					"",
 					"## Durable Memory",
 					"",
-					"- Keep the runtime loop on RovoDev.",
+					"- Keep the runtime loop on Rovo.",
 					"",
 					"## Recent Changes",
 					"",
@@ -100,7 +100,7 @@ test("ingestQueuedWikiMemoryProposals updates canonical pages, marks proposals i
 			}
 
 			if (system.includes("compile work context")) {
-				return "# Work Context\n\n- Keep the runtime loop on RovoDev.";
+				return "# Work Context\n\n- Keep the runtime loop on Rovo.";
 			}
 
 			return "# Profile Context\n\n- No profile context yet.";
@@ -117,7 +117,7 @@ test("ingestQueuedWikiMemoryProposals updates canonical pages, marks proposals i
 	assert.equal(qmdCalls[0].collectionName, "wiki-work");
 
 	const canonicalPage = await fs.readFile(path.join(wikiDir, "work", "context.md"), "utf8");
-	assert.match(canonicalPage, /Keep the runtime loop on RovoDev/u);
+	assert.match(canonicalPage, /Keep the runtime loop on Rovo/u);
 
 	const proposals = await listWikiMemoryProposals({ wikiDir });
 	assert.equal(proposals[0].status, "ingested");
@@ -133,7 +133,7 @@ test("buildWikiMemoryContextDescription reads compiled artifacts", async () => {
 		generateTextImpl: async ({ system }) => {
 			return system.includes("profile")
 				? "# Profile Context\n\n- Prefers concise answers."
-				: "# Work Context\n\n- Keep the runtime loop on RovoDev.";
+				: "# Work Context\n\n- Keep the runtime loop on Rovo.";
 		},
 		wikiDir,
 	});
@@ -141,7 +141,7 @@ test("buildWikiMemoryContextDescription reads compiled artifacts", async () => {
 	const description = await buildWikiMemoryContextDescription({ wikiDir });
 	assert.match(description, /\[Hermes Memory\]/u);
 	assert.match(description, /Prefers concise answers/u);
-	assert.match(description, /runtime loop on RovoDev/u);
+	assert.match(description, /runtime loop on Rovo/u);
 });
 
 test("getCanonicalWikiMemoryDocuments parses canonical durable memory blocks from wiki pages", async () => {
@@ -170,7 +170,7 @@ test("getCanonicalWikiMemoryDocuments parses canonical durable memory blocks fro
 			"",
 			"## Durable Memory",
 			"",
-			"- Keep the runtime loop on RovoDev.",
+			"- Keep the runtime loop on Rovo.",
 			"",
 			"**External browsing constraints:**",
 			"- External site screenshots are blocked.",
@@ -187,7 +187,7 @@ test("getCanonicalWikiMemoryDocuments parses canonical durable memory blocks fro
 
 	assert.equal(documents.work.title, "Work Context");
 	assert.equal(documents.work.blocks.length, 2);
-	assert.match(documents.work.blocks[0].content, /runtime loop on RovoDev/u);
+	assert.match(documents.work.blocks[0].content, /runtime loop on Rovo/u);
 	assert.match(documents.work.blocks[1].content, /External browsing constraints/u);
 	assert.equal(documents.work.blocks[0].id.startsWith("work-"), true);
 	assert.equal(documents.work.canonicalPath, path.join(wikiDir, "work", "context.md"));
@@ -360,7 +360,7 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 	const wikiDir = await fs.mkdtemp(path.join(os.tmpdir(), "wiki-memory-provider-delete-ingested-"));
 
 	await enqueueWikiMemoryProposal({
-		content: "Keep the runtime loop on RovoDev.",
+		content: "Keep the runtime loop on Rovo.",
 		target: "memory",
 		wikiDir,
 	});
@@ -373,13 +373,13 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 	await ingestQueuedWikiMemoryProposals({
 		generateTextImpl: async ({ prompt, system }) => {
 			if (system.includes("maintain the canonical work context")) {
-				if (prompt.includes("External screenshots are blocked.") && prompt.includes("Keep the runtime loop on RovoDev.")) {
+				if (prompt.includes("External screenshots are blocked.") && prompt.includes("Keep the runtime loop on Rovo.")) {
 					return [
 						"# Work Context",
 						"",
 						"## Durable Memory",
 						"",
-						"- Keep the runtime loop on RovoDev.",
+						"- Keep the runtime loop on Rovo.",
 						"",
 						"- External screenshots are blocked.",
 						"",
@@ -394,7 +394,7 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 					"",
 					"## Durable Memory",
 					"",
-					"- Keep the runtime loop on RovoDev.",
+					"- Keep the runtime loop on Rovo.",
 					"",
 					"## Recent Changes",
 					"",
@@ -404,8 +404,8 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 
 			if (system.includes("compile work context")) {
 				return prompt.includes("External screenshots are blocked.")
-					? "# Work Context\n\n- Keep the runtime loop on RovoDev.\n- External screenshots are blocked."
-					: "# Work Context\n\n- Keep the runtime loop on RovoDev.";
+					? "# Work Context\n\n- Keep the runtime loop on Rovo.\n- External screenshots are blocked."
+					: "# Work Context\n\n- Keep the runtime loop on Rovo.";
 			}
 
 			return "# Profile Context\n\n- No profile context yet.";
@@ -426,7 +426,7 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 					"",
 					"## Durable Memory",
 					"",
-					"- Keep the runtime loop on RovoDev.",
+					"- Keep the runtime loop on Rovo.",
 					"",
 					"## Recent Changes",
 					"",
@@ -435,7 +435,7 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 			}
 
 			if (system.includes("compile work context")) {
-				return "# Work Context\n\n- Keep the runtime loop on RovoDev.";
+				return "# Work Context\n\n- Keep the runtime loop on Rovo.";
 			}
 
 			return "# Profile Context\n\n- No profile context yet.";
@@ -448,14 +448,14 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 
 	const proposalsAfterDelete = await listWikiMemoryProposals({ wikiDir });
 	assert.equal(proposalsAfterDelete.length, 1);
-	assert.match(proposalsAfterDelete[0].content, /runtime loop on RovoDev/u);
+	assert.match(proposalsAfterDelete[0].content, /runtime loop on Rovo/u);
 
 	const canonicalPage = await fs.readFile(path.join(wikiDir, "work", "context.md"), "utf8");
-	assert.match(canonicalPage, /Keep the runtime loop on RovoDev/u);
+	assert.match(canonicalPage, /Keep the runtime loop on Rovo/u);
 	assert.doesNotMatch(canonicalPage, /External screenshots are blocked/u);
 
 	const runtimeContext = await fs.readFile(path.join(wikiDir, "output", "work-context.md"), "utf8");
-	assert.match(runtimeContext, /Keep the runtime loop on RovoDev/u);
+	assert.match(runtimeContext, /Keep the runtime loop on Rovo/u);
 	assert.doesNotMatch(runtimeContext, /External screenshots are blocked/u);
 });
 
@@ -463,7 +463,7 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 	const wikiDir = await fs.mkdtemp(path.join(os.tmpdir(), "wiki-memory-provider-force-sync-"));
 
 	await enqueueWikiMemoryProposal({
-		content: "Keep the runtime loop on RovoDev.",
+		content: "Keep the runtime loop on Rovo.",
 		target: "memory",
 		wikiDir,
 	});
@@ -482,7 +482,7 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 						"",
 						"## Durable Memory",
 						"",
-						"- Keep the runtime loop on RovoDev.",
+						"- Keep the runtime loop on Rovo.",
 						"",
 						"- External screenshots are blocked.",
 						"",
@@ -495,7 +495,7 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 						"",
 						"## Durable Memory",
 						"",
-						"- Keep the runtime loop on RovoDev.",
+						"- Keep the runtime loop on Rovo.",
 						"",
 						"## Recent Changes",
 						"",
@@ -505,8 +505,8 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 
 			if (system.includes("compile work context")) {
 				return prompt.includes("External screenshots are blocked.")
-					? "# Work Context\n\n- Keep the runtime loop on RovoDev.\n- External screenshots are blocked."
-					: "# Work Context\n\n- Keep the runtime loop on RovoDev.";
+					? "# Work Context\n\n- Keep the runtime loop on Rovo.\n- External screenshots are blocked."
+					: "# Work Context\n\n- Keep the runtime loop on Rovo.";
 			}
 
 			return "# Profile Context\n\n- No profile context yet.";
@@ -529,7 +529,7 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 						"",
 						"## Durable Memory",
 						"",
-						"- Keep the runtime loop on RovoDev.",
+						"- Keep the runtime loop on Rovo.",
 						"",
 						"- External screenshots are blocked.",
 						"",
@@ -542,7 +542,7 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 						"",
 						"## Durable Memory",
 						"",
-						"- Keep the runtime loop on RovoDev.",
+						"- Keep the runtime loop on Rovo.",
 						"",
 						"## Recent Changes",
 						"",
@@ -552,8 +552,8 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 
 			if (system.includes("compile work context")) {
 				return prompt.includes("External screenshots are blocked.")
-					? "# Work Context\n\n- Keep the runtime loop on RovoDev.\n- External screenshots are blocked."
-					: "# Work Context\n\n- Keep the runtime loop on RovoDev.";
+					? "# Work Context\n\n- Keep the runtime loop on Rovo.\n- External screenshots are blocked."
+					: "# Work Context\n\n- Keep the runtime loop on Rovo.";
 			}
 
 			return "# Profile Context\n\n- No profile context yet.";
@@ -562,10 +562,10 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 	});
 
 	const canonicalPage = await fs.readFile(path.join(wikiDir, "work", "context.md"), "utf8");
-	assert.match(canonicalPage, /Keep the runtime loop on RovoDev/u);
+	assert.match(canonicalPage, /Keep the runtime loop on Rovo/u);
 	assert.doesNotMatch(canonicalPage, /External screenshots are blocked/u);
 
 	const runtimeContext = await fs.readFile(path.join(wikiDir, "output", "work-context.md"), "utf8");
-	assert.match(runtimeContext, /Keep the runtime loop on RovoDev/u);
+	assert.match(runtimeContext, /Keep the runtime loop on Rovo/u);
 	assert.doesNotMatch(runtimeContext, /External screenshots are blocked/u);
 });
