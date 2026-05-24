@@ -8,6 +8,25 @@ const {
 	sortRovoAppArtifacts,
 } = require("./rovo-app-artifacts.ts");
 
+function createArtifactDocument({
+	id,
+	title,
+	updatedAt,
+	createdAt = updatedAt,
+	versions = [],
+}) {
+	return {
+		id,
+		threadId: "thread-1",
+		title,
+		kind: "text",
+		sourceMessageId: null,
+		createdAt,
+		updatedAt,
+		versions,
+	};
+}
+
 test("returns null when a thread has no artifacts", () => {
 	assert.equal(getRovoAppPrimaryArtifact([], null), null);
 });
@@ -15,26 +34,18 @@ test("returns null when a thread has no artifacts", () => {
 test("returns the newest artifact when no artifact is currently open", () => {
 	const primaryArtifact = getRovoAppPrimaryArtifact(
 		[
-			{
+			createArtifactDocument({
 				id: "artifact-older",
-				threadId: "thread-1",
 				title: "Older artifact",
-				kind: "text",
-				sourceMessageId: null,
 				createdAt: "2026-03-08T05:00:00.000Z",
 				updatedAt: "2026-03-08T05:05:00.000Z",
-				versions: [],
-			},
-			{
+			}),
+			createArtifactDocument({
 				id: "artifact-newer",
-				threadId: "thread-1",
 				title: "Newest artifact",
-				kind: "text",
-				sourceMessageId: null,
 				createdAt: "2026-03-08T05:10:00.000Z",
 				updatedAt: "2026-03-08T05:15:00.000Z",
-				versions: [],
-			},
+			}),
 		],
 		null,
 	);
@@ -45,26 +56,18 @@ test("returns the newest artifact when no artifact is currently open", () => {
 test("prefers the currently open artifact when it still exists", () => {
 	const primaryArtifact = getRovoAppPrimaryArtifact(
 		[
-			{
+			createArtifactDocument({
 				id: "artifact-older",
-				threadId: "thread-1",
 				title: "Older artifact",
-				kind: "text",
-				sourceMessageId: null,
 				createdAt: "2026-03-08T05:00:00.000Z",
 				updatedAt: "2026-03-08T05:05:00.000Z",
-				versions: [],
-			},
-			{
+			}),
+			createArtifactDocument({
 				id: "artifact-newer",
-				threadId: "thread-1",
 				title: "Newest artifact",
-				kind: "text",
-				sourceMessageId: null,
 				createdAt: "2026-03-08T05:10:00.000Z",
 				updatedAt: "2026-03-08T05:15:00.000Z",
-				versions: [],
-			},
+			}),
 		],
 		"artifact-older",
 	);
@@ -74,36 +77,24 @@ test("prefers the currently open artifact when it still exists", () => {
 
 test("sorts artifacts newest-first for the reopen menu", () => {
 	const artifacts = sortRovoAppArtifacts([
-		{
+		createArtifactDocument({
 			id: "artifact-middle",
-			threadId: "thread-1",
 			title: "Middle artifact",
-			kind: "text",
-			sourceMessageId: null,
 			createdAt: "2026-03-08T05:06:00.000Z",
 			updatedAt: "2026-03-08T05:10:00.000Z",
-			versions: [],
-		},
-		{
+		}),
+		createArtifactDocument({
 			id: "artifact-oldest",
-			threadId: "thread-1",
 			title: "Oldest artifact",
-			kind: "text",
-			sourceMessageId: null,
 			createdAt: "2026-03-08T05:00:00.000Z",
 			updatedAt: "2026-03-08T05:05:00.000Z",
-			versions: [],
-		},
-		{
+		}),
+		createArtifactDocument({
 			id: "artifact-newest",
-			threadId: "thread-1",
 			title: "Newest artifact",
-			kind: "text",
-			sourceMessageId: null,
 			createdAt: "2026-03-08T05:12:00.000Z",
 			updatedAt: "2026-03-08T05:15:00.000Z",
-			versions: [],
-		},
+		}),
 	]);
 
 	assert.deepEqual(
@@ -114,36 +105,24 @@ test("sorts artifacts newest-first for the reopen menu", () => {
 
 test("sorts artifacts with one timestamp parse per artifact", () => {
 	const documents = [
-		{
+		createArtifactDocument({
 			id: "artifact-middle",
-			threadId: "thread-1",
 			title: "Middle artifact",
-			kind: "text",
-			sourceMessageId: null,
 			createdAt: "2026-03-08T05:06:00.000Z",
 			updatedAt: "2026-03-08T05:10:00.000Z",
-			versions: [],
-		},
-		{
+		}),
+		createArtifactDocument({
 			id: "artifact-oldest",
-			threadId: "thread-1",
 			title: "Oldest artifact",
-			kind: "text",
-			sourceMessageId: null,
 			createdAt: "2026-03-08T05:00:00.000Z",
 			updatedAt: "2026-03-08T05:05:00.000Z",
-			versions: [],
-		},
-		{
+		}),
+		createArtifactDocument({
 			id: "artifact-newest",
-			threadId: "thread-1",
 			title: "Newest artifact",
-			kind: "text",
-			sourceMessageId: null,
 			createdAt: "2026-03-08T05:12:00.000Z",
 			updatedAt: "2026-03-08T05:15:00.000Z",
-			versions: [],
-		},
+		}),
 	];
 	const originalParse = Date.parse;
 	let parseCalls = 0;
