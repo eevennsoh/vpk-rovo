@@ -34,6 +34,7 @@ hooks:
       cp "$SYMPHONY_ENV_LOCAL_SOURCE" .env.local
       chmod 600 .env.local
     fi
+    pnpm install
   before_remove: |
     set -e
     issue_identifier="$(basename "$PWD")"

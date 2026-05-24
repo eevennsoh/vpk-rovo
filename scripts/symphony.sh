@@ -14,6 +14,7 @@ Required configuration:
 
 Required local commands:
   mise                            Builds and runs upstream Symphony Elixir
+  pnpm                            Installs dependencies in each issue workspace
 
 Optional configuration:
   LINEAR_ASSIGNEE                 Limit polling to a Linear assignee id/email, or "me"
