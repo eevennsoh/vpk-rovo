@@ -130,6 +130,7 @@ secrets*
 .gsd/runtime/
 .gsd/worktrees/
 .claude/worktrees/
+.claude/hooks/state/*.log
 .gsd/parallel/
 .gsd/auto.lock
 .gsd/metrics.json
