@@ -213,6 +213,15 @@ Two runtime modes: **dev** (Next.js proxy + Express, with optional Rovo Serve fo
 
 ## Behavioral Rules
 
+### Execution Discipline
+
+- Surface assumptions before coding when the request has multiple plausible interpretations; ask only when a reasonable, low-risk assumption is not available.
+- Prefer the smallest complete change that solves the stated problem. Do not add speculative features, configuration, abstractions, or error handling that the request does not require.
+- Keep edits surgical: every changed line should trace back to the user's request, required verification, or cleanup caused by your own change.
+- Match existing local style and patterns, even when a different pattern would be preferable in isolation.
+- For multi-step tasks, define brief success criteria before editing and loop until they are verified.
+- If you notice unrelated dead code, stale comments, or refactor opportunities, mention them separately instead of changing them.
+
 ### Code Quality
 
 - Verify exact file location before UI edits by searching for distinctive text/classes.
