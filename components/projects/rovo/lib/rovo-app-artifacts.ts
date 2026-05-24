@@ -39,9 +39,13 @@ export function getRovoAppArtifactTypeLabel(
 export function sortRovoAppArtifacts(
 	documents: ReadonlyArray<RovoAppDocument>,
 ): RovoAppDocument[] {
-	return [...documents].sort((left, right) => {
-		return getDocumentTimestamp(right) - getDocumentTimestamp(left);
-	});
+	return documents
+		.map((document) => ({
+			document,
+			updatedAtMs: getDocumentTimestamp(document),
+		}))
+		.sort((left, right) => right.updatedAtMs - left.updatedAtMs)
+		.map(({ document }) => document);
 }
 
 export function getRovoAppPrimaryArtifact(

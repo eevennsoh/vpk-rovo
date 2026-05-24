@@ -112,6 +112,59 @@ test("sorts artifacts newest-first for the reopen menu", () => {
 	);
 });
 
+test("sorts artifacts with one timestamp parse per artifact", () => {
+	const documents = [
+		{
+			id: "artifact-middle",
+			threadId: "thread-1",
+			title: "Middle artifact",
+			kind: "text",
+			sourceMessageId: null,
+			createdAt: "2026-03-08T05:06:00.000Z",
+			updatedAt: "2026-03-08T05:10:00.000Z",
+			versions: [],
+		},
+		{
+			id: "artifact-oldest",
+			threadId: "thread-1",
+			title: "Oldest artifact",
+			kind: "text",
+			sourceMessageId: null,
+			createdAt: "2026-03-08T05:00:00.000Z",
+			updatedAt: "2026-03-08T05:05:00.000Z",
+			versions: [],
+		},
+		{
+			id: "artifact-newest",
+			threadId: "thread-1",
+			title: "Newest artifact",
+			kind: "text",
+			sourceMessageId: null,
+			createdAt: "2026-03-08T05:12:00.000Z",
+			updatedAt: "2026-03-08T05:15:00.000Z",
+			versions: [],
+		},
+	];
+	const originalParse = Date.parse;
+	let parseCalls = 0;
+	Date.parse = (value) => {
+		parseCalls += 1;
+		return originalParse(value);
+	};
+
+	try {
+		const artifacts = sortRovoAppArtifacts(documents);
+
+		assert.deepEqual(
+			artifacts.map((artifact) => artifact.id),
+			["artifact-newest", "artifact-middle", "artifact-oldest"],
+		);
+		assert.equal(parseCalls, documents.length);
+	} finally {
+		Date.parse = originalParse;
+	}
+});
+
 test("labels text artifacts as documents by default", () => {
 	assert.equal(getRovoAppArtifactKindLabel("text"), "Document");
 });
