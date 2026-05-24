@@ -20,6 +20,7 @@
 		"ports": "node scripts/show-worktree-ports.js",
 		"qmd:sync-wiki": "node scripts/sync-wiki-qmd.js",
 		"verify:hermes": "node scripts/verify-hermes-control-plane.js",
+		"verify:lockfile": "node scripts/verify-pnpm-lockfile.js",
 		"import:hermes:upstream": "node scripts/import-hermes-upstream-skills.js",
 		"sync:rovo:skills": "node scripts/sync-rovo-skills.js",
 		"generate:prompt": "node --experimental-strip-types scripts/generate-catalog-prompt.js",

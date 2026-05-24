@@ -32,6 +32,9 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Verify lockfile registries
+        run: node scripts/verify-pnpm-lockfile.js
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
