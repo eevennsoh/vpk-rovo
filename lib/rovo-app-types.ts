@@ -9,6 +9,7 @@ export type VoteValue = "up" | "down";
 export type RovoAppRunStatus = "queued" | "streaming" | "background";
 export type RovoAppRunBackend = "ai-gateway" | "rovo";
 export type RovoAppPromptMode = "default" | "plan";
+export type RovoAppCreationMode = "agent" | "skill";
 
 export interface RovoAppHermesContext {
 	selectedSkillIds: string[];
@@ -107,6 +108,7 @@ export interface RovoAppQueuedPromptAction
 	kind: "prompt";
 	files: ReadonlyArray<FileUIPart>;
 	contextDescription?: string;
+	creationMode?: RovoAppCreationMode;
 	hermesContext?: RovoAppHermesContext;
 	/** Snapshotted composer mode for this specific prompt. */
 	mode: RovoAppPromptMode;

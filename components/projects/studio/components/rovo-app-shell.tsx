@@ -59,11 +59,11 @@ import { parseClickyResponse } from "@/components/projects/studio/lib/clicky-poi
 import { useSidebarResize } from "@/components/projects/studio/hooks/use-sidebar-resize";
 import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
-import { getLatestDataPart, getLatestUserMessageId, getMessageArtifactResult, getMessageInterruption, getMessageText } from "@/lib/rovo-ui-messages";
+import { getLatestDataPart, getLatestUserMessageId, getMessageAgentResult, getMessageArtifactResult, getMessageInterruption, getMessageText, type RovoDataParts } from "@/lib/rovo-ui-messages";
 import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
 import { QuestionCardShortcutsFooter } from "@/components/projects/shared/components/question-card-shortcuts-footer";
-import { getLatestQuestionCardPayload, type ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
+import { getLatestQuestionCardPayload, type ClarificationAnswers, type ParsedQuestionCardPayload } from "@/components/projects/shared/lib/question-card-widget";
 import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
 import { getLatestPendingPlanWidget, type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
@@ -71,7 +71,7 @@ import { approveSkillDraft, fetchWikiStatus, fetchSkillDraftDetail, fetchSkillDr
 import type { HermesSkillDraftDetail, HermesSkillDraftSummary, HermesSkillSummary, WikiStatus } from "@/lib/rovo-runtime-types";
 import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
 import { useRovoSelectedAgent } from "@/app/contexts";
-import { getRovoAgentPromptContext, isRovoAgentProfile } from "@/components/projects/studio/data/agent-profiles";
+import { getRovoAgentPromptContext, isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/studio/data/agent-profiles";
 
 interface RovoAppShellProps {
 	embedded?: boolean;
@@ -83,7 +83,7 @@ const ROVO_APP_SIDEBAR_MOTION_FALLBACK_MS = 200;
 const ROVO_APP_SIDEBAR_MIN_WIDTH = 240;
 const ROVO_APP_SIDEBAR_MAX_WIDTH = 480;
 
-const DEFAULT_COMPOSER_PLACEHOLDER = "Describe what it should do";
+const DEFAULT_COMPOSER_PLACEHOLDER = "Describe the agent you want to build";
 const REALTIME_THREAD_SUMMARY_MAX_MESSAGES = 10;
 const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
 const ROVO_APP_SPLIT_CHAT_PANEL_ID = "rovo-app-chat-pane";
@@ -119,264 +119,264 @@ const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<HomeStarterTemplate>>> = {
 	analyze: [
 		{
-			description: "Turn notes, links, or raw work into the signal that matters.",
+			description: "Cluster research, links, and notes into useful signal.",
 			iconSrc: "/avatar-agent/teamwork-agents/progress-tracker.svg",
 			layoutClassName: "lg:col-start-1 lg:row-start-1",
-			prompt: "Analyze this work and identify the key themes, risks, opportunities, and recommended next steps.",
-			title: "Analyze a workstream",
+			prompt: "Build an agent that analyzes workstreams, clusters notes and links into themes, and recommends risks, opportunities, and next steps.",
+			title: "Build an analysis agent",
 		},
 		{
-			description: "Check work for gaps, regressions, and unclear assumptions.",
+			description: "Turn customer input into themes and opportunities.",
 			iconSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
 			layoutClassName: "sm:col-span-2 sm:row-span-2 lg:col-start-2 lg:row-start-1",
-			prompt: "Review this proposal for risks, missing context, edge cases, and concrete improvements.",
-			title: "Review a proposal",
+			prompt: "Build a feedback analysis agent that clusters customer feedback, extracts themes and sentiment, and recommends product opportunities.",
+			title: "Build a feedback agent",
 		},
 		{
-			description: "Condense long context into decisions and follow-ups.",
+			description: "Track owners, blockers, dependencies, and readiness.",
 			iconSrc: "/avatar-agent/service-agents/ops-guide.svg",
 			layoutClassName: "sm:row-span-2 lg:col-start-4 lg:row-start-1",
-			prompt: "Summarize this into key points, decisions, open questions, and action items.",
-			title: "Summarize context",
+			prompt: "Build a delivery readiness agent that tracks owners, dependencies, blockers, launch risks, and the shortest path to progress.",
+			title: "Build a readiness agent",
 		},
 		{
-			description: "Draft a doc, plan, message, or artifact from sparse notes.",
+			description: "Watch metrics and explain meaningful movement.",
 			iconSrc: "/avatar-agent/product-agents/wildcard-6.svg",
 			layoutClassName: "sm:row-span-2 lg:col-start-5 lg:row-start-1",
-			prompt: "Create a clear first draft from these notes, with structure, headings, and practical next steps.",
-			title: "Create a first draft",
+			prompt: "Build a metrics insight agent that monitors product signals, explains meaningful changes, and recommends follow-up investigation.",
+			title: "Build a metrics agent",
 		},
 		{
-			description: "Explore directions before committing to a plan.",
+			description: "Map dependencies before they turn into blockers.",
 			iconSrc: "/avatar-agent/service-agents/wildcard-1.svg",
 			layoutClassName: "lg:col-start-1 lg:row-start-2",
-			prompt: "Brainstorm several strong approaches for this problem, then compare the tradeoffs and recommend one.",
-			title: "Brainstorm approaches",
+			prompt: "Build a dependency mapping agent that finds owners, blockers, linked work, sequencing risks, and the next step for each item.",
+			title: "Build a dependency agent",
 		},
 		{
-			description: "Map dependencies, owners, and blockers across work.",
+			description: "Separate weak assumptions from reliable evidence.",
 			iconSrc: "/avatar-agent/teamwork-agents/blocker-checker.svg",
 			layoutClassName: "sm:col-span-2",
-			prompt: "Map the current work into dependencies, owners, blockers, and the shortest path to progress.",
-			title: "Map dependencies",
+			prompt: "Build an evidence review agent that separates facts, assumptions, unknowns, and confidence levels before recommending action.",
+			title: "Build an evidence agent",
 		},
 		{
-			description: "Prepare concise feedback before sharing.",
+			description: "Find patterns in support, sales, and product notes.",
 			iconSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
 			layoutClassName: "",
-			prompt: "Rewrite this as constructive feedback with the strongest points first and clear suggested changes.",
-			title: "Sharpen feedback",
+			prompt: "Build an account signal agent that scans customer-facing notes for recurring needs, blockers, risks, and expansion opportunities.",
+			title: "Build a signal agent",
 		},
 		{
-			description: "Turn loose context into an ordered action list.",
+			description: "Turn raw context into ranked product signal.",
 			iconSrc: "/avatar-agent/teamwork-agents/work-organizer.svg",
 			layoutClassName: "sm:col-span-2",
-			prompt: "Turn this context into an ordered action list with owners, dependencies, and the next step for each item.",
-			title: "Organize next steps",
+			prompt: "Build a prioritization insight agent that ranks themes by customer impact, confidence, effort, and urgency.",
+			title: "Build a priority agent",
 		},
 	],
 	brainstorm: [
 		{
-			description: "Generate several viable paths, compare them, and pick a direction.",
+			description: "Generate paths, compare tradeoffs, and pick a direction.",
 			iconSrc: "/avatar-agent/service-agents/wildcard-1.svg",
 			layoutClassName: "lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2",
-			prompt: "Brainstorm several strong approaches for this problem, group them by strategy, compare the tradeoffs, and recommend the best path.",
-			title: "Explore options",
+			prompt: "Build a brainstorming agent that generates strong approaches, groups them by strategy, compares tradeoffs, and recommends the best path.",
+			title: "Build a brainstorming agent",
 		},
 		{
-			description: "Compare upside, cost, risk, reversibility, and team fit.",
+			description: "Help teams choose between competing paths.",
 			iconSrc: "/avatar-agent/product-agents/wildcard-2.svg",
 			layoutClassName: "lg:col-start-3 lg:col-span-2 lg:row-start-1",
-			prompt: "Compare these options by upside, cost, risk, reversibility, and team fit, then recommend one with a concise rationale.",
-			title: "Compare tradeoffs",
+			prompt: "Build a tradeoff facilitation agent that compares options by upside, cost, risk, reversibility, and team fit, then recommends one.",
+			title: "Build a tradeoff agent",
 		},
 		{
-			description: "Find hidden constraints before they shape the answer.",
+			description: "Find hidden constraints before planning starts.",
 			iconSrc: "/avatar-agent/dev-agents/code-planner.svg",
 			layoutClassName: "lg:col-start-5 lg:row-start-1",
-			prompt: "Identify the assumptions and constraints in this problem, then explain which ones should change the plan.",
-			title: "Surface constraints",
+			prompt: "Build a constraints scout agent that identifies assumptions, dependencies, constraints, and the decisions they should change.",
+			title: "Build a constraints agent",
 		},
 		{
-			description: "Stress-test the idea against weak signals and edge cases.",
+			description: "Stress-test ideas against failure modes.",
 			iconSrc: "/avatar-agent/teamwork-agents/customer-insights.svg",
 			layoutClassName: "lg:col-start-3 lg:col-span-2 lg:row-start-2",
-			prompt: "Stress-test this idea by listing likely failure modes, weak assumptions, and what evidence would change the recommendation.",
-			title: "Test assumptions",
+			prompt: "Build an assumption-testing agent that lists likely failure modes, weak assumptions, and the evidence that would change the recommendation.",
+			title: "Build a test agent",
 		},
 		{
-			description: "Turn exploration into a clear next move.",
+			description: "Turn exploration into a first experiment.",
 			iconSrc: "/avatar-agent/service-agents/service-request-helper.svg",
 			layoutClassName: "lg:col-start-5 lg:row-start-2",
-			prompt: "Synthesize these brainstorm notes into a recommended direction, the first experiment, and the decision criteria for moving forward.",
-			title: "Recommend a path",
+			prompt: "Build an experiment planner agent that turns ideas into experiments, success criteria, decision points, and next steps.",
+			title: "Build an experiment agent",
 		},
 		{
-			description: "Push beyond the obvious options and edge cases.",
+			description: "Push beyond obvious options and edge cases.",
 			iconSrc: "/avatar-agent/service-agents/wildcard-4.svg",
 			layoutClassName: "sm:col-span-2",
-			prompt: "Generate less obvious approaches, edge cases, and adjacent opportunities for this problem, then group them by usefulness.",
-			title: "Expand the field",
+			prompt: "Build an opportunity explorer agent that finds non-obvious approaches, edge cases, adjacent opportunities, and useful patterns.",
+			title: "Build an opportunity agent",
 		},
 		{
-			description: "Define how the team should choose between ideas.",
+			description: "Define how a team should choose between ideas.",
 			iconSrc: "/avatar-agent/dev-agents/basic-coding-agent-template.svg",
 			layoutClassName: "",
-			prompt: "Create decision criteria for choosing between these ideas, including must-haves, nice-to-haves, risks, and disqualifiers.",
-			title: "Set criteria",
+			prompt: "Build a decision-criteria agent that defines must-haves, nice-to-haves, risks, disqualifiers, and comparison rubrics.",
+			title: "Build a criteria agent",
 		},
 	],
 	review: [
 		{
-			description: "Check assumptions, risks, and missing dependencies.",
+			description: "Review changes for correctness, maintainability, and tests.",
 			iconSrc: "/avatar-agent/service-agents/service-triage.svg",
 			layoutClassName: "lg:col-start-1 lg:row-start-1 lg:row-span-2",
-			prompt: "Review this for hidden assumptions, risks, missing dependencies, and anything that would block execution.",
-			title: "Audit assumptions",
+			prompt: "Build a code review agent that checks diffs for bugs, regressions, maintainability issues, and missing tests, then returns concise findings.",
+			title: "Build a code review agent",
 		},
 		{
-			description: "Find gaps, regressions, and unclear decisions before sharing.",
+			description: "Check proposals for risks and missing context.",
 			iconSrc: "/avatar-agent/dev-agents/code-vulnerability-scanner-npm-yarn.svg",
 			layoutClassName: "lg:col-start-2 lg:col-span-2 lg:row-start-1 lg:row-span-2",
-			prompt: "Review this proposal for risks, missing context, edge cases, regressions, and concrete improvements.",
-			title: "Review a proposal",
+			prompt: "Build a proposal review agent that checks drafts for risks, missing context, edge cases, unclear assumptions, and concrete improvements.",
+			title: "Build a proposal agent",
 		},
 		{
-			description: "Separate critical blockers from follow-up concerns.",
+			description: "Separate blockers from follow-up concerns.",
 			iconSrc: "/avatar-agent/product-agents/wildcard-3.svg",
 			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-1",
-			prompt: "Scan this work for risks and blockers, rank them by severity, and separate must-fix issues from follow-up improvements.",
-			title: "Prioritize risks",
+			prompt: "Build a risk review agent that ranks blockers by severity and separates must-fix issues from follow-up improvements.",
+			title: "Build a risk agent",
 		},
 		{
 			description: "Make feedback direct, useful, and easy to act on.",
 			iconSrc: "/avatar-agent/teamwork-agents/decision-director.svg",
 			layoutClassName: "lg:col-start-4 lg:row-start-2",
-			prompt: "Rewrite this as constructive feedback with the strongest points first, clear suggested changes, and a respectful tone.",
-			title: "Sharpen feedback",
+			prompt: "Build a feedback coach agent that rewrites critique into direct, respectful, actionable feedback with the strongest points first.",
+			title: "Build a feedback coach",
 		},
 		{
-			description: "Check whether the work is ready for a decision.",
+			description: "Check whether work is ready for a decision.",
 			iconSrc: "/avatar-agent/dev-agents/unit-test-creator.svg",
 			layoutClassName: "lg:col-start-5 lg:row-start-2",
-			prompt: "Assess whether this is ready for a decision, identify open questions, and recommend what must happen before approval.",
-			title: "Check readiness",
+			prompt: "Build a decision readiness agent that identifies open questions, missing evidence, approval blockers, and what must happen next.",
+			title: "Build a readiness reviewer",
 		},
 		{
-			description: "Review the experience for usability and access gaps.",
+			description: "Review experiences for usability and access gaps.",
 			iconSrc: "/avatar-agent/dev-agents/code-accessibility-checker.svg",
 			layoutClassName: "sm:col-span-2",
-			prompt: "Review this experience for usability, accessibility, unclear states, and interaction gaps that could block users.",
-			title: "Check experience gaps",
+			prompt: "Build a UX review agent that checks experiences for usability, accessibility, unclear states, and interaction gaps.",
+			title: "Build a UX review agent",
 		},
 		{
-			description: "Find rollout risks before the work leaves draft mode.",
+			description: "Find rollout risks before work ships.",
 			iconSrc: "/avatar-agent/service-agents/wildcard-5.svg",
 			layoutClassName: "",
-			prompt: "Review this rollout plan for operational risks, support gaps, monitoring needs, and rollback considerations.",
-			title: "Review rollout risks",
+			prompt: "Build a rollout review agent that checks operational risks, support gaps, monitoring needs, rollback paths, and launch readiness.",
+			title: "Build a rollout agent",
 		},
 	],
 	summarize: [
 		{
-			description: "Condense dense context into what leaders need to know.",
+			description: "Turn meetings into decisions, owners, and follow-ups.",
 			iconSrc: "/avatar-agent/product-agents/wildcard-4.svg",
 			layoutClassName: "lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2",
-			prompt: "Summarize this for a leadership audience with key points, decisions, risks, and recommended next steps.",
-			title: "Executive summary",
+			prompt: "Build a meeting insights agent that summarizes transcripts into decisions, open questions, owners, due dates, and follow-up messages.",
+			title: "Build a meeting agent",
 		},
 		{
-			description: "Extract decisions, owners, open questions, and action items.",
+			description: "Condense dense context for leadership updates.",
 			iconSrc: "/avatar-agent/service-agents/rca-agent.svg",
 			layoutClassName: "lg:col-start-3 lg:row-start-1 lg:row-span-2",
-			prompt: "Summarize this into decisions, owners, action items, open questions, and deadlines.",
-			title: "Decisions and actions",
+			prompt: "Build an executive summary agent that condenses dense context into key points, decisions, risks, recommendations, and next steps.",
+			title: "Build a briefing agent",
 		},
 		{
-			description: "Turn meeting notes into a concise team recap.",
+			description: "Extract decisions, owners, and open questions.",
 			iconSrc: "/avatar-agent/teamwork-agents/transcript-insights-reporter.svg",
 			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-1",
-			prompt: "Turn these meeting notes into a concise recap with discussion themes, decisions, action items, and follow-ups.",
-			title: "Meeting recap",
+			prompt: "Build a decisions agent that extracts decisions, owners, action items, open questions, deadlines, and follow-up messages.",
+			title: "Build a decisions agent",
 		},
 		{
-			description: "Highlight the questions that still need answers.",
+			description: "Highlight what still needs an answer.",
 			iconSrc: "/avatar-agent/dev-agents/code-documentation-writer.svg",
 			layoutClassName: "lg:col-start-4 lg:row-start-2",
-			prompt: "Summarize the open questions, unresolved decisions, and missing context that need follow-up.",
-			title: "Open questions",
+			prompt: "Build an open-questions agent that finds unresolved decisions, missing context, owner gaps, and the clearest follow-up asks.",
+			title: "Build a questions agent",
 		},
 		{
-			description: "Package context into a stakeholder-ready update.",
+			description: "Package progress into stakeholder-ready updates.",
 			iconSrc: "/avatar-agent/product-agents/wildcard-5.svg",
 			layoutClassName: "lg:col-start-5 lg:row-start-2",
-			prompt: "Write a stakeholder update that summarizes progress, decisions, risks, and next steps in a concise format.",
-			title: "Stakeholder update",
+			prompt: "Build a stakeholder update agent that summarizes progress, decisions, risks, and next steps in a concise update format.",
+			title: "Build an update agent",
 		},
 		{
-			description: "Adapt the summary for a specific reader or team.",
+			description: "Adapt summaries for a specific reader or team.",
 			iconSrc: "/avatar-agent/teamwork-agents/global-translator.svg",
 			layoutClassName: "sm:col-span-2",
-			prompt: "Rewrite this summary for the target audience, preserving decisions and actions while adjusting detail and tone.",
-			title: "Audience summary",
+			prompt: "Build an audience summary agent that adapts updates for executives, engineers, support, or customers while preserving decisions and actions.",
+			title: "Build an audience agent",
 		},
 		{
-			description: "Convert progress into a short release-style recap.",
+			description: "Convert progress into a release-style recap.",
 			iconSrc: "/avatar-agent/dev-agents/deployment-summarizer.svg",
 			layoutClassName: "",
-			prompt: "Summarize this progress as a short release-style recap with shipped changes, known risks, and next steps.",
-			title: "Release recap",
+			prompt: "Build a release recap agent that summarizes shipped changes, known risks, customer impact, and next steps.",
+			title: "Build a release recap agent",
 		},
 	],
 	create: [
 		{
-			description: "Draft a document with structure, headings, and next steps.",
+			description: "Sort requests, ask for missing details, and recommend priority.",
 			iconSrc: "/avatar-agent/service-agents/wildcard-2.svg",
 			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-1 lg:row-span-2",
-			prompt: "Create a clear first draft from these notes, with structure, headings, practical next steps, and a concise opening.",
-			title: "Create a first draft",
+			prompt: "Build an agent that triages incoming work requests, asks for missing details, assigns priority, and recommends the next action.",
+			title: "Build a triage agent",
+		},
+		{
+			description: "Shape goals, requirements, risks, and acceptance criteria.",
+			iconSrc: "/avatar-agent/teamwork-agents/work-item-planner.svg",
+			layoutClassName: "lg:col-start-1 lg:row-start-1 lg:row-span-2",
+			prompt: "Build a product requirements agent that turns rough ideas into goals, scope, risks, acceptance criteria, and the first implementation plan.",
+			title: "Build a PRD agent",
+		},
+		{
+			description: "Answer policy and process questions from trusted context.",
+			iconSrc: "/avatar-agent/product-agents/wildcard-6.svg",
+			layoutClassName: "lg:col-start-2 lg:col-span-2 lg:row-start-1",
+			prompt: "Build a knowledge base agent that answers policy and process questions, cites the relevant source context, and flags missing information.",
+			title: "Build a knowledge agent",
+		},
+		{
+			description: "Draft release notes from shipped work and stakeholder notes.",
+			iconSrc: "/avatar-agent/dev-agents/code-standardizer.svg",
+			layoutClassName: "lg:col-start-2 lg:row-start-2",
+			prompt: "Build a release notes agent that turns shipped tickets and product notes into clear release notes for customers and internal stakeholders.",
+			title: "Build a release notes agent",
 		},
 		{
 			description: "Convert intent into milestones, owners, and sequencing.",
-			iconSrc: "/avatar-agent/teamwork-agents/work-item-planner.svg",
-			layoutClassName: "lg:col-start-1 lg:row-start-1 lg:row-span-2",
-			prompt: "Create an execution plan with milestones, owners, sequencing, dependencies, and the first three actions.",
-			title: "Create an action plan",
-		},
-		{
-			description: "Write a crisp update, request, or announcement.",
-			iconSrc: "/avatar-agent/product-agents/wildcard-6.svg",
-			layoutClassName: "lg:col-start-2 lg:col-span-2 lg:row-start-1",
-			prompt: "Create a concise message from this context that states the purpose, key details, ask, and next step.",
-			title: "Draft a message",
-		},
-		{
-			description: "Shape rough notes into a brief or outline.",
-			iconSrc: "/avatar-agent/dev-agents/code-standardizer.svg",
-			layoutClassName: "lg:col-start-2 lg:row-start-2",
-			prompt: "Create a structured brief or outline from these notes, including goals, audience, scope, and success criteria.",
-			title: "Build an outline",
-		},
-		{
-			description: "Turn a request into a practical checklist or spec.",
 			iconSrc: "/avatar-agent/service-agents/wildcard-3.svg",
 			layoutClassName: "lg:col-start-3 lg:row-start-2",
-			prompt: "Create a practical checklist or lightweight spec from this request, including acceptance criteria and edge cases.",
-			title: "Write a checklist",
+			prompt: "Build a planning agent that creates milestones, owners, sequencing, dependencies, acceptance criteria, and the first three actions.",
+			title: "Build a planning agent",
 		},
 		{
-			description: "Shape the request into requirements and success criteria.",
+			description: "Turn requests into practical checklists or specs.",
 			iconSrc: "/avatar-agent/teamwork-agents/product-requirements-guide.svg",
 			layoutClassName: "sm:col-span-2",
-			prompt: "Create a product requirements draft with goals, non-goals, user needs, acceptance criteria, and open questions.",
-			title: "Draft requirements",
+			prompt: "Build a checklist agent that turns requests into practical specs, required inputs, acceptance criteria, edge cases, and validation steps.",
+			title: "Build a checklist agent",
 		},
 		{
-			description: "Create a workflow from the goal and constraints.",
+			description: "Create workflows from goals and constraints.",
 			iconSrc: "/avatar-agent/teamwork-agents/workflow-builder.svg",
 			layoutClassName: "",
-			prompt: "Create a workflow for this goal with stages, handoffs, required inputs, outputs, and likely failure points.",
-			title: "Build a workflow",
+			prompt: "Build a workflow agent that creates stages, handoffs, required inputs, outputs, owners, and likely failure points.",
+			title: "Build a workflow agent",
 		},
 	],
 };
@@ -528,6 +528,111 @@ function mergeContextDescriptions(...parts: Array<string | null | undefined>): s
 	const mergedParts = parts.map((part) => part?.trim()).filter((part): part is string => Boolean(part));
 
 	return mergedParts.length > 0 ? mergedParts.join("\n\n") : undefined;
+}
+
+function getNonEmptyString(value: unknown): string | null {
+	return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function buildStudioAgentCreationContext(originalBrief: string): string {
+	return [
+		"[Studio agent creation context]",
+		"Source: /studio prompt input",
+		"Original user brief:",
+		originalBrief.trim(),
+		"Clarification rule: Ask clarifying questions only when required agent profile details are missing. Use the existing ask_user_questions/question-card flow; do not create a separate Q&A format.",
+		"Structured result rule: When the agent profile is ready, emit a structured data-agent-result with action \"create\", a stable agent id, display name, description or summary, instructions/context, and conversation starters. Keep assistant prose concise.",
+		"[End Studio agent creation context]",
+	].join("\n");
+}
+
+function buildStudioAgentCreationContinuationContext(): string {
+	return [
+		"[Studio agent creation context]",
+		"Source: /studio prompt input clarification answer",
+		"The user has answered the clarification questions for the agent they want to build.",
+		"Clarification rule: If required profile details are still missing, ask another concise question-card round using the existing ask_user_questions flow.",
+		"Structured result rule: Otherwise, create the reusable custom agent now and emit a structured data-agent-result with action \"create\", a stable agent id, display name, description or summary, instructions/context, and conversation starters.",
+		"[End Studio agent creation context]",
+	].join("\n");
+}
+
+function normalizeStudioAgentResult(agentResult: RovoDataParts["agent-result"]): RovoAgentProfile | null {
+	const id = getNonEmptyString(agentResult.agentId);
+	const name = getNonEmptyString(agentResult.name);
+	const summary = getNonEmptyString(agentResult.summary);
+	const description = getNonEmptyString(agentResult.description) ?? summary;
+	const conversationStarters = Array.isArray(agentResult.conversationStarters)
+		? agentResult.conversationStarters.map((starter) => starter.trim()).filter(Boolean).slice(0, 4)
+		: [];
+
+	if (!id || !name || !description || conversationStarters.length === 0) {
+		return null;
+	}
+
+	const contextDescription = [
+		"[Selected Studio-generated agent]",
+		`Agent: ${name}`,
+		"Source: /studio agent creation result",
+		`Description: ${description}`,
+		summary ? `Summary: ${summary}` : null,
+		conversationStarters.length > 0 ? `Conversation starters: ${conversationStarters.join(" | ")}` : null,
+		"Answer as this selected generated agent while using the existing Studio chat capabilities and available context.",
+		"[End selected Studio-generated agent]",
+	]
+		.filter((line): line is string => Boolean(line))
+		.join("\n");
+
+	return {
+		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-1.svg",
+		byline: "Generated in Studio",
+		contextDescription,
+		description,
+		id,
+		name,
+		starters: conversationStarters.map((starter, index) => ({
+			id: `${id}-starter-${index + 1}`,
+			label: starter,
+			prompt: starter,
+			type: "prompt",
+		})),
+	};
+}
+
+type StudioAgentRegistrationResult =
+	| string
+	| {
+			id?: string | null;
+	  }
+	| RovoAgentProfile
+	| null
+	| undefined
+	| void;
+
+type StudioAgentRegistryContext = ReturnType<typeof useRovoSelectedAgent> & {
+	registerCreatedAgentFromResult?: (
+		agentResult: RovoDataParts["agent-result"],
+		options?: { preserveCurrentThread?: boolean; select?: boolean; sourceKey?: string }
+	) => RovoAgentProfile | null;
+	registerAgentResult?: (agentResult: RovoDataParts["agent-result"], normalizedAgent?: RovoAgentProfile) => StudioAgentRegistrationResult;
+	registerSessionAgent?: (agent: RovoAgentProfile, options?: { source?: string; result?: RovoDataParts["agent-result"] }) => StudioAgentRegistrationResult;
+	selectAgent: (agentId: string, options?: { preserveCurrentThread?: boolean }) => void;
+};
+
+type StudioSubmitPromptPayload = Parameters<ReturnType<typeof useRovoApp>["submitPrompt"]>[0] & {
+	creationMode?: "agent";
+};
+
+function resolveRegisteredStudioAgentId(result: StudioAgentRegistrationResult, fallbackAgentId: string): string {
+	if (typeof result === "string" && result.trim().length > 0) {
+		return result.trim();
+	}
+
+	if (result && typeof result === "object" && typeof result.id === "string" && result.id.trim().length > 0) {
+		return result.id.trim();
+	}
+
+	return fallbackAgentId;
 }
 
 type RealtimeInjectContextPayload = {
@@ -705,7 +810,8 @@ function resolveRealtimeSessionIdentity(realtime: RealtimeVoiceShellResult, acti
 export function RovoAppShell({ embedded = false, initialThreadId = null }: Readonly<RovoAppShellProps>) {
 	const router = useRouter();
 	const nav = useTopNavigation();
-	const { selectedAgent } = useRovoSelectedAgent();
+	const studioAgentRegistry = useRovoSelectedAgent() as StudioAgentRegistryContext;
+	const { selectedAgent } = studioAgentRegistry;
 	const selectedAgentContextDescription = getRovoAgentPromptContext(selectedAgent);
 	const isCustomAgentSelected = !isRovoAgentProfile(selectedAgent);
 	const [viewportWidthPx, setViewportWidthPx] = useState<number | null>(null);
@@ -865,6 +971,52 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		[selectedHermesSkillIds, selectedAgentContextDescription],
 	);
 
+	const handleStudioAgentResultSelect = useCallback(
+		(agentResult: RovoDataParts["agent-result"], options?: { sourceMessageId?: string; sourceKey?: string }): boolean => {
+			const normalizedAgent = normalizeStudioAgentResult(agentResult);
+			if (!normalizedAgent) {
+				return false;
+			}
+
+			const sourceKey = options?.sourceKey
+				?? (options?.sourceMessageId
+					? `studio-agent-result:${chat.activeThreadId ?? chat.runtimeThreadId}:${options.sourceMessageId}:${agentResult.agentId}`
+					: undefined);
+
+			if (typeof studioAgentRegistry.registerCreatedAgentFromResult === "function") {
+				return Boolean(studioAgentRegistry.registerCreatedAgentFromResult(agentResult, {
+					preserveCurrentThread: true,
+					select: true,
+					sourceKey,
+				}));
+			}
+
+			// Fallback integration point for older Worker C drafts: use session-agent
+			// registration plus preserve-current-thread selection when available.
+			let didRegisterAgent = false;
+			let registrationResult: StudioAgentRegistrationResult = null;
+			if (typeof studioAgentRegistry.registerAgentResult === "function") {
+				didRegisterAgent = true;
+				registrationResult = studioAgentRegistry.registerAgentResult(agentResult, normalizedAgent);
+			} else if (typeof studioAgentRegistry.registerSessionAgent === "function") {
+				didRegisterAgent = true;
+				registrationResult = studioAgentRegistry.registerSessionAgent(normalizedAgent, {
+					result: agentResult,
+					source: "/studio",
+				});
+			}
+
+			if (!didRegisterAgent) {
+				return false;
+			}
+
+			const agentId = resolveRegisteredStudioAgentId(registrationResult, normalizedAgent.id);
+			studioAgentRegistry.selectAgent(agentId, { preserveCurrentThread: true });
+			return true;
+		},
+		[chat.activeThreadId, chat.runtimeThreadId, studioAgentRegistry],
+	);
+
 	// Bridge the global sidebar context (TopNavigation toggle) with the local
 	// shadcn SidebarProvider so the nav bar button controls the thread sidebar.
 	const globalSidebar = useGlobalSidebar();
@@ -993,6 +1145,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const injectedRealtimeThreadContextKeyRef = useRef<string | null>(null);
 	const injectedRealtimeArtifactContextKeyRef = useRef<string | null>(null);
 	const pendingTypedScrollAnchorRef = useRef(false);
+	const isDefaultAgentHomeStateRef = useRef(false);
+	const studioAgentCreationThreadKeysRef = useRef<Set<string>>(new Set());
+	const handledAgentResultKeysRef = useRef<Set<string>>(new Set());
 	const previousTypedAnchorUserMessageIdRef = useRef<string | null>(null);
 	const typedScrollAnchorSourceRef = useRef<TypedScrollAnchorSource>("none");
 	const realtimeTypedResponseStartedRef = useRef(false);
@@ -1030,6 +1185,24 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	// Question card / clarification support
 	const activeQuestionCard = useMemo(() => getLatestQuestionCardPayload(chat.messages), [chat.messages]);
 	const { acceptPlanReview, submitClarification } = chat;
+	const getStudioAgentCreationClarificationOptions = useCallback(() => {
+		const isStudioAgentCreationThread =
+			studioAgentCreationThreadKeysRef.current.has(chat.runtimeThreadId) ||
+			(chat.activeThreadId ? studioAgentCreationThreadKeysRef.current.has(chat.activeThreadId) : false);
+
+		return isStudioAgentCreationThread
+			? {
+				contextDescription: buildStudioAgentCreationContinuationContext(),
+				creationMode: "agent" as const,
+			}
+			: undefined;
+	}, [chat.activeThreadId, chat.runtimeThreadId]);
+	const handleCancelClarificationQuestionSet = useCallback(
+		(questionCard: ParsedQuestionCardPayload) => {
+			return chat.cancelClarificationQuestionSet(questionCard, getStudioAgentCreationClarificationOptions());
+		},
+		[chat, getStudioAgentCreationClarificationOptions],
+	);
 	const {
 		shouldShowQuestionCard: shouldShowQuestionCardRaw,
 		activeQuestionCardKey,
@@ -1037,16 +1210,20 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		dismissQuestionCard,
 	} = useDismissibleCards({
 		activeQuestionCard,
-		onDismissQuestionCard: chat.cancelClarificationQuestionSet,
+		onDismissQuestionCard: handleCancelClarificationQuestionSet,
 	});
 	const isDeferredQuestionCard = Boolean(activeQuestionCard?.deferredToolCallId);
 	const shouldShowQuestionCard = shouldShowQuestionCardRaw && (!chat.isStreaming || isDeferredQuestionCard);
 	const handleClarificationSubmit = useCallback(
 		(answers: ClarificationAnswers) => {
 			if (!activeQuestionCard) return;
-			void submitClarification(activeQuestionCard, answers);
+			void submitClarification(
+				activeQuestionCard,
+				answers,
+				getStudioAgentCreationClarificationOptions(),
+			);
 		},
-		[activeQuestionCard, submitClarification],
+		[activeQuestionCard, getStudioAgentCreationClarificationOptions, submitClarification],
 	);
 	const handleBuildPlan = useCallback(
 		(planWidget: ParsedPlanWidgetPayload) => {
@@ -1828,7 +2005,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		async ({ files, text }: { files: FileUIPart[]; text: string }) => {
 			const realtimeChat = chatRef.current as RovoAppRealtimeShellAdapter;
 			const realtimeVoice = realtime as RealtimeVoiceShellResult;
-			const contextDescription = annotationContextRef.current ?? undefined;
+			const shouldStartStudioAgentCreation = isDefaultAgentHomeStateRef.current && !isRealtimeActive;
+			const studioAgentCreationContext = shouldStartStudioAgentCreation ? buildStudioAgentCreationContext(text) : undefined;
+			const contextDescription = mergeContextDescriptions(annotationContextRef.current, studioAgentCreationContext);
 			const hermesPromptOptions = buildHermesPromptOptions(contextDescription);
 			const shouldClearHermesSkillSelection = Boolean(hermesPromptOptions.hermesContext);
 			const latestUserMessageIdBeforeSubmit = getLatestUserMessageId(chat.messages);
@@ -1901,10 +2080,18 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 			queueTypedScrollAnchor("standard", latestUserMessageIdBeforeSubmit);
 			try {
-				await realtimeChat.submitPrompt({
+				if (shouldStartStudioAgentCreation) {
+					studioAgentCreationThreadKeysRef.current.add(chat.runtimeThreadId);
+					if (chat.activeThreadId) {
+						studioAgentCreationThreadKeysRef.current.add(chat.activeThreadId);
+					}
+				}
+				const submitPrompt = realtimeChat.submitPrompt as (payload: StudioSubmitPromptPayload) => Promise<void>;
+				await submitPrompt({
 					...hermesPromptOptions,
 					files,
 					text,
+					...(shouldStartStudioAgentCreation ? { creationMode: "agent" as const } : {}),
 				});
 				if (shouldClearHermesSkillSelection) {
 					clearHermesSkillSelection();
@@ -1929,7 +2116,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			setOptimisticUserMessage,
 			buildHermesPromptOptions,
 			clearHermesSkillSelection,
+			chat.activeThreadId,
 			chat.shouldQueueNextSubmission,
+			chat.runtimeThreadId,
 		],
 	);
 
@@ -1959,6 +2148,39 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			return message.role === "user" || message.role === "assistant";
 		});
 	}, [displayMessages]);
+	useEffect(() => {
+		if (studioAgentCreationThreadKeysRef.current.has(chat.runtimeThreadId) && chat.activeThreadId) {
+			studioAgentCreationThreadKeysRef.current.add(chat.activeThreadId);
+		}
+	}, [chat.activeThreadId, chat.runtimeThreadId]);
+	useEffect(() => {
+		if (
+			!studioAgentCreationThreadKeysRef.current.has(chat.runtimeThreadId) &&
+			(!chat.activeThreadId || !studioAgentCreationThreadKeysRef.current.has(chat.activeThreadId))
+		) {
+			return;
+		}
+
+		for (const message of chat.messages) {
+			const agentResult = getMessageAgentResult(message);
+			if (!agentResult) {
+				continue;
+			}
+
+			const agentResultKey = `${chat.runtimeThreadId}:${message.id}:${agentResult.agentId}:${agentResult.action}`;
+			if (handledAgentResultKeysRef.current.has(agentResultKey)) {
+				continue;
+			}
+
+			if (handleStudioAgentResultSelect(agentResult, { sourceMessageId: message.id })) {
+				handledAgentResultKeysRef.current.add(agentResultKey);
+				studioAgentCreationThreadKeysRef.current.delete(chat.runtimeThreadId);
+				if (chat.activeThreadId) {
+					studioAgentCreationThreadKeysRef.current.delete(chat.activeThreadId);
+				}
+			}
+		}
+	}, [chat.activeThreadId, chat.messages, chat.runtimeThreadId, handleStudioAgentResultSelect]);
 	const timelineItems = useMemo(() => {
 		return deriveRovoAppTimelineItems(displayMessages);
 	}, [displayMessages]);
@@ -2128,6 +2350,8 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	});
 	const hasActiveThreadRun = typeof chat.activeThreadId === "string" && chat.backgroundStreamThreadIds.has(chat.activeThreadId);
 	const showHomeState = !chat.isLoadingThread && !isArtifactOpen && !hasActiveThreadRun && visibleMessages.length === 0;
+	const isDefaultAgentHomeState = showHomeState && !isCustomAgentSelected;
+	isDefaultAgentHomeStateRef.current = isDefaultAgentHomeState;
 	const shouldReduceMotion = useReducedMotion();
 	const shouldShowTimelineNavigator = !showHomeState && !isArtifactOpen && timelineItems.length > 1;
 	const composerPreviewState = resolveRovoAppComposerPlaceholder({
@@ -2496,6 +2720,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					onOpenArtifactFromCard={handleOpenArtifactFromCard}
 					onOpenBrowserPreview={handleOpenBrowserPreview}
 					onOpenPlanPreview={handleOpenPlanPreview}
+					onAgentResultSelect={handleStudioAgentResultSelect}
 					onRegisterArtifactCard={handleRegisterArtifactCard}
 					onRegenerate={chat.regenerateLatest}
 					onScrollActiveUserMessageChange={handleScrollActiveTimelineChange}
@@ -2515,7 +2740,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				/>
 			</ViewTransition>
 
-			{showHomeState && !isCustomAgentSelected ? (
+			{isDefaultAgentHomeState ? (
 				<motion.div
 					className="z-10 mx-auto mb-5 w-[90%] px-3"
 					initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}

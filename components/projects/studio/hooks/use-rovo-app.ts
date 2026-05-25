@@ -119,6 +119,7 @@ import {
 	type RovoAppQueuedAction,
 	type RovoAppQueuedDelegationAction,
 	type RovoAppQueuedPromptAction,
+	type RovoAppCreationMode,
 	type RovoAppRunStatus,
 	type RovoAppThread,
 	type RovoAppVisibility,
@@ -312,6 +313,15 @@ const PLAN_MODE_POST_CLARIFICATION_CONTEXT = [
 	"[End POST-CLARIFICATION]",
 ].join(" ");
 
+const AGENT_CREATION_POST_CLARIFICATION_CONTEXT = [
+	"[POST-CLARIFICATION — Studio Agent Creation]",
+	"The user has answered clarification questions for a Studio agent creation request.",
+	"Use the answers to finish a reusable session-local agent profile.",
+	"If required profile fields are still missing, ask another concise question-card round.",
+	"Otherwise, emit the required structured agent result for selection in Studio.",
+	"[End POST-CLARIFICATION]",
+].join(" ");
+
 const PLAN_MODE_RETRY_PROMPT = [
 	"The previous response did not include a plan widget with tasks.",
 	"If you still need essential details, you may ask clarification questions. Otherwise, generate the plan.",
@@ -328,6 +338,31 @@ interface RovoAppPlanningSession {
 	hasStreamStarted: boolean;
 	retryUsed: boolean;
 	baselineAssistantMessageId: string | null;
+}
+
+interface RovoAppClarificationSubmitOptions {
+	contextDescription?: string;
+	creationMode?: RovoAppCreationMode;
+}
+
+function resolveClarificationContextDescription({
+	contextDescription,
+	creationMode,
+	wasPlanModeActive,
+}: {
+	contextDescription?: string;
+	creationMode?: RovoAppCreationMode;
+	wasPlanModeActive: boolean;
+}): string | undefined {
+	if (contextDescription?.trim()) {
+		return contextDescription.trim();
+	}
+
+	if (creationMode === "agent") {
+		return AGENT_CREATION_POST_CLARIFICATION_CONTEXT;
+	}
+
+	return wasPlanModeActive ? PLAN_MODE_POST_CLARIFICATION_CONTEXT : undefined;
 }
 
 const VOICE_MODE_CONTEXT = [
@@ -609,15 +644,16 @@ export interface RovoAppHookResult {
 	planExecutionTracker: RovoAppPlanExecutionTrackerViewModel | null;
 	status: ChatStatus;
 	stop: () => Promise<void>;
-	cancelClarificationQuestionSet: (questionCard: ParsedQuestionCardPayload) => Promise<boolean>;
-	submitClarification: (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers) => Promise<void>;
-	submitClarificationDismiss: (questionCard: ParsedQuestionCardPayload) => Promise<void>;
+	cancelClarificationQuestionSet: (questionCard: ParsedQuestionCardPayload, options?: RovoAppClarificationSubmitOptions) => Promise<boolean>;
+	submitClarification: (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers, options?: RovoAppClarificationSubmitOptions) => Promise<void>;
+	submitClarificationDismiss: (questionCard: ParsedQuestionCardPayload, options?: RovoAppClarificationSubmitOptions) => Promise<void>;
 	acceptPlanReview: (planWidget: ParsedPlanWidgetPayload) => Promise<void>;
 	submitPlanApproval: (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => Promise<void>;
 	submitPrompt: (payload: {
 		text: string;
 		files: FileUIPart[];
 		contextDescription?: string;
+		creationMode?: RovoAppCreationMode;
 		hermesContext?: RovoAppHermesContext;
 	}) => Promise<void>;
 	suggestedPrompt: (text: string) => Promise<void>;
@@ -1165,6 +1201,10 @@ export function useRovoApp({
 						typeof body?.isPlanMode === "boolean"
 							? body.isPlanMode
 							: isPlanModeRef.current;
+					const requestedCreationMode =
+						body?.creationMode === "agent" || body?.creationMode === "skill"
+							? body.creationMode
+							: undefined;
 					const existingContextDescription =
 						typeof body?.contextDescription === "string" &&
 						body.contextDescription.trim()
@@ -1244,6 +1284,9 @@ export function useRovoApp({
 							origin: body?.origin === "voice" ? "voice" : "text",
 							recentHistory: buildRecentHistory(messages),
 							isPlanMode: requestedPlanMode,
+							...(requestedCreationMode
+								? { creationMode: requestedCreationMode }
+								: {}),
 						},
 					};
 				},
@@ -3112,6 +3155,7 @@ export function useRovoApp({
 				text,
 				files,
 				contextDescription,
+				creationMode,
 				hermesContext,
 				messageMetadata,
 				mode,
@@ -3119,6 +3163,7 @@ export function useRovoApp({
 				text: string;
 				files: FileUIPart[];
 				contextDescription?: string;
+				creationMode?: RovoAppCreationMode;
 				hermesContext?: RovoAppHermesContext;
 				messageMetadata?: RovoUIMessage["metadata"];
 				mode: RovoAppPromptMode;
@@ -3209,6 +3254,7 @@ export function useRovoApp({
 								id: threadId,
 								artifactContext: resolvedArtifactContext ?? undefined,
 								contextDescription,
+								...(creationMode ? { creationMode } : {}),
 								hermesContext,
 								isPlanMode: mode === "plan",
 								streamingArtifact: streamingArtifactPayload,
@@ -3254,6 +3300,7 @@ export function useRovoApp({
 	const enqueuePromptAction = useCallback(
 			({
 				contextDescription,
+				creationMode,
 				hermesContext,
 				files,
 				messageMetadata,
@@ -3262,6 +3309,7 @@ export function useRovoApp({
 				threadId,
 			}: {
 				contextDescription?: string;
+				creationMode?: RovoAppCreationMode;
 				hermesContext?: RovoAppHermesContext;
 				files: ReadonlyArray<FileUIPart>;
 				messageMetadata?: RovoUIMessage["metadata"];
@@ -3277,6 +3325,7 @@ export function useRovoApp({
 					kind: "prompt",
 					files: [...files],
 					contextDescription,
+					creationMode,
 					hermesContext,
 					messageMetadata,
 					mode,
@@ -3292,11 +3341,13 @@ export function useRovoApp({
 				text,
 				files,
 				contextDescription,
+				creationMode,
 				hermesContext,
 			}: {
 				text: string;
 				files: FileUIPart[];
 				contextDescription?: string;
+				creationMode?: RovoAppCreationMode;
 				hermesContext?: RovoAppHermesContext;
 			}) => {
 			setInputError(null);
@@ -3326,6 +3377,7 @@ export function useRovoApp({
 			if (shouldEnqueue) {
 					enqueuePromptAction({
 						contextDescription,
+						creationMode,
 						hermesContext,
 						files,
 						messageMetadata: promptMessageMetadata,
@@ -3341,6 +3393,7 @@ export function useRovoApp({
 					text: trimmedText,
 					files,
 					contextDescription,
+					creationMode,
 					hermesContext,
 					messageMetadata: promptMessageMetadata,
 					mode: promptMode,
@@ -3371,15 +3424,15 @@ export function useRovoApp({
 	);
 
 	const submitClarification = useCallback(
-		async (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers) => {
+		async (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers, options?: RovoAppClarificationSubmitOptions) => {
 			const submission = createClarificationSubmission(questionCard, answers);
-			// Use isPlanModeRef as the primary signal, but also check whether
-			// the question card was emitted during a plan-mode turn (indicated
-			// by the presence of a deferredToolCallId, which only happens when
-			// ask_user_questions is called via the plan-mode deferred tool
-			// flow).
-			const wasPlanModeActive =
-				isPlanModeRef.current || Boolean(questionCard.deferredToolCallId);
+			const creationMode = options?.creationMode;
+			const wasPlanModeActive = !creationMode && isPlanModeRef.current;
+			const contextDescription = resolveClarificationContextDescription({
+				contextDescription: options?.contextDescription,
+				creationMode,
+				wasPlanModeActive,
+			});
 			const promptText = buildClarificationSummaryPrompt(questionCard, answers);
 			hasObservedTurnCompleteRef.current = true;
 			setRovoMessages((previousMessages) => {
@@ -3404,15 +3457,14 @@ export function useRovoApp({
 
 			const deferredToolCallId = questionCard.deferredToolCallId;
 			const deferredToolResponse = buildDeferredToolResponse(questionCard, answers);
-			const body: Record<string, unknown> = {
-				id: threadId,
-				isPlanMode: wasPlanModeActive || undefined,
-				contextDescription: wasPlanModeActive
-					? PLAN_MODE_POST_CLARIFICATION_CONTEXT
-					: undefined,
-				clarification: {
-					...submission,
-					status: "answered",
+				const body: Record<string, unknown> = {
+					id: threadId,
+					isPlanMode: wasPlanModeActive || undefined,
+					contextDescription,
+					...(creationMode ? { creationMode } : {}),
+					clarification: {
+						...submission,
+						status: "answered",
 					toolCallId: deferredToolCallId ?? submission.toolCallId,
 					deferredToolCallId: deferredToolCallId ?? submission.deferredToolCallId,
 				},
@@ -3469,8 +3521,15 @@ export function useRovoApp({
 	);
 
 	const submitClarificationDismiss = useCallback(
-		async (questionCard: ParsedQuestionCardPayload) => {
+		async (questionCard: ParsedQuestionCardPayload, options?: RovoAppClarificationSubmitOptions) => {
 			const dismissPrompt = buildClarificationDismissPrompt(questionCard);
+			const creationMode = options?.creationMode;
+			const wasPlanModeActive = !creationMode && isPlanModeRef.current;
+			const contextDescription = resolveClarificationContextDescription({
+				contextDescription: options?.contextDescription,
+				creationMode,
+				wasPlanModeActive,
+			});
 			await releaseCompletedUseChatTurnIfNeeded();
 			await waitForChatSendSettled({
 				statusRef: useChatStatusRef,
@@ -3486,23 +3545,31 @@ export function useRovoApp({
 			});
 			resetPendingArtifactAssociation();
 			markLocalThreadRunPending(threadId);
-			await sendMessage(
-				{
-					text: dismissPrompt,
+				await sendMessage(
+					{
+						text: dismissPrompt,
 					files: [],
 					messageId,
-					metadata: message.metadata,
-				},
-				{ body: { id: threadId } },
-			);
-		},
-		[
-			appendLocalUserMessage,
-			ensureThread,
-			markLocalThreadRunPending,
-			releaseCompletedUseChatTurnIfNeeded,
-			resetPendingArtifactAssociation,
-			sendMessage,
+						metadata: message.metadata,
+					},
+					{
+						body: {
+							id: threadId,
+							isPlanMode: wasPlanModeActive || undefined,
+							contextDescription,
+							...(creationMode ? { creationMode } : {}),
+						},
+					},
+				);
+			},
+			[
+				appendLocalUserMessage,
+				ensureThread,
+				isPlanModeRef,
+				markLocalThreadRunPending,
+				releaseCompletedUseChatTurnIfNeeded,
+				resetPendingArtifactAssociation,
+				sendMessage,
 		],
 	);
 
@@ -3514,11 +3581,16 @@ export function useRovoApp({
 	 * user's next instructions" response.
 	 */
 	const submitDeferredClarificationDismiss = useCallback(
-		async (questionCard: ParsedQuestionCardPayload) => {
+		async (questionCard: ParsedQuestionCardPayload, options?: RovoAppClarificationSubmitOptions) => {
 			const emptyAnswers: ClarificationAnswers = {};
 			const submission = createClarificationSubmission(questionCard, emptyAnswers);
-			const wasPlanModeActive =
-				isPlanModeRef.current || Boolean(questionCard.deferredToolCallId);
+			const creationMode = options?.creationMode;
+			const wasPlanModeActive = !creationMode && isPlanModeRef.current;
+			const contextDescription = resolveClarificationContextDescription({
+				contextDescription: options?.contextDescription,
+				creationMode,
+				wasPlanModeActive,
+			});
 			const dismissPrompt = buildClarificationDismissPrompt(questionCard);
 
 			hasObservedTurnCompleteRef.current = true;
@@ -3550,9 +3622,8 @@ export function useRovoApp({
 			const body: Record<string, unknown> = {
 				id: threadId,
 				isPlanMode: wasPlanModeActive || undefined,
-				contextDescription: wasPlanModeActive
-					? PLAN_MODE_POST_CLARIFICATION_CONTEXT
-					: undefined,
+				contextDescription,
+				...(creationMode ? { creationMode } : {}),
 				clarification: {
 					...submission,
 					status: "dismissed",
@@ -3617,18 +3688,18 @@ export function useRovoApp({
 	);
 
 	const cancelClarificationQuestionSet = useCallback(
-		async (questionCard: ParsedQuestionCardPayload) => {
+		async (questionCard: ParsedQuestionCardPayload, options?: RovoAppClarificationSubmitOptions) => {
 			const toolCallId =
 				questionCard.deferredToolCallId ?? questionCard.toolCallId ?? null;
 			if (!toolCallId) {
-				await submitClarificationDismiss(questionCard);
+				await submitClarificationDismiss(questionCard, options);
 				return true;
 			}
 
 			// Resume the deferred tool call with an explicit dismiss result so the
 			// paused ask_user_questions call resolves cleanly without implying the
 			// user wants best-effort execution to continue.
-			await submitDeferredClarificationDismiss(questionCard);
+			await submitDeferredClarificationDismiss(questionCard, options);
 			return true;
 		},
 		[submitClarificationDismiss, submitDeferredClarificationDismiss],
@@ -4125,6 +4196,7 @@ export function useRovoApp({
 								text: nextAction.text,
 								files: [...nextAction.files],
 								contextDescription: nextAction.contextDescription,
+								creationMode: nextAction.creationMode,
 								hermesContext: nextAction.hermesContext,
 								messageMetadata: nextAction.messageMetadata,
 								mode: nextAction.mode,

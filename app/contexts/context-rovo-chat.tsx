@@ -16,6 +16,7 @@ import {
 	createAssistantTextMessage,
 	getLatestDataPart,
 	getMessageText,
+	type RovoDataParts,
 	type RovoMessageMetadata,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
@@ -73,6 +74,7 @@ import {
 	mergeHermesSkillIds,
 	VPK_HTML_SKILL_ID,
 } from "@/lib/work-item-report-intent";
+import type { RovoSuggestion } from "@/lib/rovo-suggestions";
 import {
 	isRateLimitError,
 	isChatInProgressError,
@@ -669,12 +671,30 @@ function createAssistantThinkingStatusMessage(
 
 export type ChatSurface = "floating" | "sidebar";
 
+export interface SelectAgentOptions {
+	preserveCurrentThread?: boolean;
+}
+
+export interface RegisterCreatedAgentOptions extends SelectAgentOptions {
+	select?: boolean;
+	sourceKey?: string;
+}
+
+interface SessionAgentEntry {
+	profile: RovoAgentProfile;
+	resultKey: string;
+}
+
 interface RovoChatContextType {
 	selectedAgentId: string;
 	selectedAgent: RovoAgentProfile;
 	selectableAgents: readonly AgentSelectorAgent[];
 	isCustomAgentSelected: boolean;
-	selectAgent: (agentId: string) => void;
+	selectAgent: (agentId: string, options?: SelectAgentOptions) => void;
+	registerCreatedAgentFromResult: (
+		agentResult: RovoDataParts["agent-result"],
+		options?: RegisterCreatedAgentOptions
+	) => RovoAgentProfile | null;
 	resetAgentToRovo: () => void;
 	chatSurface: ChatSurface | null;
 	openChat: (surface: ChatSurface) => void;
@@ -806,6 +826,273 @@ function toAgentSelectorAgent(agent: Pick<RovoAgentProfile, "avatarSrc" | "bylin
 	};
 }
 
+const SESSION_AGENT_DEFAULT_ID = "session-agent";
+const SESSION_AGENT_DEFAULT_NAME = "Untitled agent";
+const SESSION_AGENT_DEFAULT_BYLINE = "Generated agent";
+const SESSION_AGENT_DEFAULT_AVATAR_SRC = "/avatar-agent/teamwork-agents/wildcard-1.svg";
+
+type AgentResultPayload = RovoDataParts["agent-result"] & Record<string, unknown>;
+
+function getNonEmptyString(value: unknown): string | null {
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+function getPayloadString(
+	payload: Record<string, unknown>,
+	keys: ReadonlyArray<string>
+): string | null {
+	for (const key of keys) {
+		const value = getNonEmptyString(payload[key]);
+		if (value) {
+			return value;
+		}
+	}
+
+	return null;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getAgentResultStarterLabel(value: unknown): string | null {
+	const directLabel = getNonEmptyString(value);
+	if (directLabel) {
+		return directLabel;
+	}
+
+	if (!isPlainRecord(value)) {
+		return null;
+	}
+
+	return getPayloadString(value, ["label", "prompt", "text", "title"]);
+}
+
+function getAgentResultStarterLabels(payload: AgentResultPayload): readonly string[] {
+	const rawStarters = payload.conversationStarters ?? payload.starters ?? payload.suggestions;
+	if (!Array.isArray(rawStarters)) {
+		return [];
+	}
+
+	const seenLabels = new Set<string>();
+	const labels: string[] = [];
+	for (const rawStarter of rawStarters) {
+		const label = getAgentResultStarterLabel(rawStarter);
+		if (!label) {
+			continue;
+		}
+
+		const normalizedLabel = label.toLowerCase();
+		if (seenLabels.has(normalizedLabel)) {
+			continue;
+		}
+
+		seenLabels.add(normalizedLabel);
+		labels.push(label);
+	}
+
+	return labels;
+}
+
+function getPayloadStringArray(
+	payload: Record<string, unknown>,
+	keys: ReadonlyArray<string>
+): readonly string[] {
+	for (const key of keys) {
+		const value = payload[key];
+		if (!Array.isArray(value)) {
+			continue;
+		}
+
+		return value
+			.map(getNonEmptyString)
+			.filter((item): item is string => item !== null);
+	}
+
+	return [];
+}
+
+function normalizeGeneratedAgentId(value: string): string {
+	const normalized = value
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9_-]+/gu, "-")
+		.replace(/-+/gu, "-")
+		.replace(/^-|-$/gu, "");
+
+	return normalized || SESSION_AGENT_DEFAULT_ID;
+}
+
+function getSuffixedSessionAgentId(
+	baseId: string,
+	reservedIds: ReadonlySet<string>
+): string {
+	if (!reservedIds.has(baseId)) {
+		return baseId;
+	}
+
+	let suffix = 2;
+	while (reservedIds.has(`${baseId}-${suffix}`)) {
+		suffix += 1;
+	}
+
+	return `${baseId}-${suffix}`;
+}
+
+function getSuffixedSessionAgentName(
+	baseName: string,
+	reservedNames: ReadonlySet<string>
+): string {
+	if (!reservedNames.has(baseName.toLowerCase())) {
+		return baseName;
+	}
+
+	let suffix = 2;
+	while (reservedNames.has(`${baseName} ${suffix}`.toLowerCase())) {
+		suffix += 1;
+	}
+
+	return `${baseName} ${suffix}`;
+}
+
+function createSessionAgentStarter(
+	agentId: string,
+	label: string,
+	index: number
+): RovoSuggestion {
+	return {
+		id: `${agentId}-starter-${index + 1}`,
+		label,
+		prompt: label,
+		type: "skill",
+	};
+}
+
+function createSessionAgentContextDescription(input: {
+	description?: string;
+	instructions?: string;
+	payload: AgentResultPayload;
+	profile: Pick<RovoAgentProfile, "byline" | "name" | "starters">;
+}): string {
+	const tools = getPayloadStringArray(input.payload, ["tools", "skills"]);
+	const trigger = getPayloadString(input.payload, ["trigger"]);
+	const guardrail = getPayloadString(input.payload, ["guardrail", "constraints"]);
+	const starterLabels = input.profile.starters.map((starter) => starter.prompt ?? starter.label);
+
+	return [
+		"[Selected session-created agent]",
+		`Agent: ${input.profile.name}`,
+		`Byline: ${input.profile.byline}`,
+		input.description ? `Description: ${input.description}` : null,
+		input.instructions ? `Instructions: ${input.instructions}` : null,
+		trigger ? `Trigger: ${trigger}` : null,
+		tools.length > 0 ? `Tools: ${tools.join(", ")}` : null,
+		guardrail ? `Guardrail: ${guardrail}` : null,
+		starterLabels.length > 0 ? "Conversation starters:" : null,
+		...starterLabels.map((starter) => `- ${starter}`),
+		"Answer as this selected session-created agent while using the existing Rovo chat capabilities and available context.",
+		"[End selected session-created agent]",
+	]
+		.filter((line): line is string => Boolean(line))
+		.join("\n");
+}
+
+function getCreatedAgentResultKey(payload: AgentResultPayload): string {
+	return JSON.stringify({
+		agentId: getPayloadString(payload, ["agentId", "id"]),
+		name: getPayloadString(payload, ["name", "agentName", "title"]),
+		byline: getPayloadString(payload, ["byline", "sourceLabel", "generatedBy", "source"]),
+		description: getPayloadString(payload, ["description", "summary", "shortDescription"]),
+		instructions: getPayloadString(payload, ["instructions", "contextDescription", "context", "systemPrompt", "prompt"]),
+		starters: getAgentResultStarterLabels(payload),
+		avatarSrc: getPayloadString(payload, ["avatarSrc", "avatarUrl", "iconSrc"]),
+	});
+}
+
+function createSessionAgentEntryFromResult(params: {
+	agentResult: RovoDataParts["agent-result"];
+	sessionAgentEntries: readonly SessionAgentEntry[];
+	sourceKey?: string;
+	staticAgentProfiles: readonly RovoAgentProfile[];
+}): SessionAgentEntry | null {
+	if (params.agentResult.action !== "create") {
+		return null;
+	}
+
+	const payload = params.agentResult as AgentResultPayload;
+	const payloadResultKey = getCreatedAgentResultKey(payload);
+	const resultKey = params.sourceKey
+		? `${params.sourceKey}:${payloadResultKey}`
+		: payloadResultKey;
+	const existingEntry = params.sessionAgentEntries.find(
+		(entry) => entry.resultKey === resultKey
+	);
+	if (existingEntry) {
+		return existingEntry;
+	}
+
+	const baseName =
+		getPayloadString(payload, ["name", "agentName", "title"]) ??
+		SESSION_AGENT_DEFAULT_NAME;
+	const baseId = normalizeGeneratedAgentId(
+		getPayloadString(payload, ["agentId", "id"]) ?? baseName
+	);
+	const reservedProfiles = [
+		...params.staticAgentProfiles,
+		getRovoAgentProfile(ROVO_AGENT_ID),
+		...params.sessionAgentEntries.map((entry) => entry.profile),
+	];
+	const reservedIds = new Set(reservedProfiles.map((profile) => profile.id));
+	const reservedNames = new Set(
+		reservedProfiles.map((profile) => profile.name.toLowerCase())
+	);
+	const id = getSuffixedSessionAgentId(baseId, reservedIds);
+	const name = getSuffixedSessionAgentName(baseName, reservedNames);
+	const description =
+		getPayloadString(payload, ["description", "summary", "shortDescription"]) ??
+		undefined;
+	const byline =
+		getPayloadString(payload, ["byline", "sourceLabel", "generatedBy", "source"]) ??
+		SESSION_AGENT_DEFAULT_BYLINE;
+	const avatarSrc =
+		getPayloadString(payload, ["avatarSrc", "avatarUrl", "iconSrc"]) ??
+		SESSION_AGENT_DEFAULT_AVATAR_SRC;
+	const instructions =
+		getPayloadString(payload, ["instructions", "contextDescription", "context", "systemPrompt", "prompt"]) ??
+		undefined;
+	const starters = getAgentResultStarterLabels(payload).map((starter, index) =>
+		createSessionAgentStarter(id, starter, index)
+	);
+	const profile: RovoAgentProfile = {
+		id,
+		name,
+		byline,
+		avatarSrc,
+		description,
+		starters,
+		contextDescription: createSessionAgentContextDescription({
+			description,
+			instructions,
+			payload,
+			profile: {
+				byline,
+				name,
+				starters,
+			},
+		}),
+	};
+
+	return {
+		profile,
+		resultKey,
+	};
+}
+
 export function RovoChatProvider({
 	agentProfiles,
 	autoSelectAgentId,
@@ -830,6 +1117,7 @@ export function RovoChatProvider({
 	const [threadsLoaded, setThreadsLoaded] = useState(false);
 	const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 	const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+	const [sessionAgentEntries, setSessionAgentEntries] = useState<SessionAgentEntry[]>([]);
 
 	const errorCounterRef = useRef(0);
 	const queueIdRef = useRef(0);
@@ -862,14 +1150,25 @@ export function RovoChatProvider({
 	const isMediaGeneratingRef = useRef(false);
 	const mediaGenerationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const suggestionsAbortControllerRef = useRef<AbortController | null>(null);
+	const sessionAgentEntriesRef = useRef<SessionAgentEntry[]>([]);
+	const staticAgentProfiles = useMemo(
+		() => agentProfiles ?? ROVO_AGENT_PROFILES,
+		[agentProfiles]
+	);
 	const agentProfileById = useMemo(() => {
-		const profiles = agentProfiles ?? ROVO_AGENT_PROFILES;
+		const profiles = [
+			...staticAgentProfiles,
+			...sessionAgentEntries.map((entry) => entry.profile),
+		];
 		return new Map(profiles.map((agent) => [agent.id, agent]));
-	}, [agentProfiles]);
+	}, [sessionAgentEntries, staticAgentProfiles]);
 	const selectableAgents = useMemo<readonly AgentSelectorAgent[]>(() => {
-		const agents = agentProfiles ?? ROVO_AGENT_SELECTOR_AGENTS;
-		return agents.map(toAgentSelectorAgent);
-	}, [agentProfiles]);
+		const staticAgents = agentProfiles ?? ROVO_AGENT_SELECTOR_AGENTS;
+		return [
+			...staticAgents.map(toAgentSelectorAgent),
+			...sessionAgentEntries.map((entry) => toAgentSelectorAgent(entry.profile)),
+		];
+	}, [agentProfiles, sessionAgentEntries]);
 	const selectedAgent = useMemo(
 		() => agentProfileById.get(selectedAgentId) ?? getRovoAgentProfile(selectedAgentId),
 		[agentProfileById, selectedAgentId],
@@ -881,6 +1180,10 @@ export function RovoChatProvider({
 	const maybeFinalizeAndProcessRef = useRef<() => void>(() => {});
 	const processNextPromptRef = useRef<() => Promise<void>>(async () => {});
 	const sendChatMessageRef = useRef<(promptItem: QueuedPromptItem) => Promise<void>>(async () => {});
+
+	useEffect(() => {
+		sessionAgentEntriesRef.current = sessionAgentEntries;
+	}, [sessionAgentEntries]);
 
 	useEffect(() => {
 		if (agentProfiles && !agentProfileById.has(selectedAgentId)) {
@@ -2341,15 +2644,50 @@ export function RovoChatProvider({
 		setMessages,
 	]);
 
-	const selectAgent = useCallback((agentId: string) => {
+	const selectAgent = useCallback((agentId: string, options?: SelectAgentOptions) => {
 		const nextAgent = agentProfileById.get(agentId) ?? getRovoAgentProfile(agentId);
 		if (nextAgent.id === selectedAgentId) {
 			return;
 		}
 
 		setSelectedAgentId(nextAgent.id);
-		resetChat();
+		if (!options?.preserveCurrentThread) {
+			resetChat();
+		}
 	}, [agentProfileById, resetChat, selectedAgentId]);
+
+	const registerCreatedAgentFromResult = useCallback(
+		(
+			agentResult: RovoDataParts["agent-result"],
+			options?: RegisterCreatedAgentOptions
+		) => {
+				const entry = createSessionAgentEntryFromResult({
+					agentResult,
+					sessionAgentEntries: sessionAgentEntriesRef.current,
+					sourceKey: options?.sourceKey,
+					staticAgentProfiles,
+				});
+			if (!entry) {
+				return null;
+			}
+
+			if (!sessionAgentEntriesRef.current.some((item) => item.resultKey === entry.resultKey)) {
+				const nextEntries = [...sessionAgentEntriesRef.current, entry];
+				sessionAgentEntriesRef.current = nextEntries;
+				setSessionAgentEntries(nextEntries);
+			}
+
+			if (options?.select && entry.profile.id !== selectedAgentId) {
+				setSelectedAgentId(entry.profile.id);
+				if (!options.preserveCurrentThread) {
+					resetChat();
+				}
+			}
+
+			return entry.profile;
+		},
+		[resetChat, selectedAgentId, staticAgentProfiles]
+	);
 
 	const resetAgentToRovo = useCallback(() => {
 		if (selectedAgentId === ROVO_AGENT_ID) {
@@ -2396,6 +2734,7 @@ export function RovoChatProvider({
 			selectableAgents,
 			isCustomAgentSelected,
 			selectAgent,
+			registerCreatedAgentFromResult,
 			resetAgentToRovo,
 			chatSurface,
 			openChat,
@@ -2451,6 +2790,7 @@ export function RovoChatProvider({
 			selectableAgents,
 			isCustomAgentSelected,
 			selectAgent,
+			registerCreatedAgentFromResult,
 			resetAgentToRovo,
 			chatSurface,
 			openChat,
@@ -2522,6 +2862,7 @@ export function useRovoSelectedAgent() {
 		selectableAgents,
 		isCustomAgentSelected,
 		selectAgent,
+		registerCreatedAgentFromResult,
 		resetAgentToRovo,
 	} = useRovoChat();
 
@@ -2531,6 +2872,7 @@ export function useRovoSelectedAgent() {
 		selectableAgents,
 		isCustomAgentSelected,
 		selectAgent,
+		registerCreatedAgentFromResult,
 		resetAgentToRovo,
 	};
 }

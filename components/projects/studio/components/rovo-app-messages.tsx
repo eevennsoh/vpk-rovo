@@ -11,6 +11,7 @@ import { AdsReasoningTrigger, Reasoning, ReasoningContent } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { InlineEdit } from "@/components/ui/inline-edit";
+import { AgentResultCard } from "@/components/projects/sidebar-chat/components/agent-result-card";
 import { getRovoAppInterruptionLabel } from "@/lib/rovo-app-interruptions";
 import { resolveRovoAppMessageArtifactDisplay, resolveRovoAppOrphanArtifactDisplay, type RovoAppPendingArtifactResult } from "@/components/projects/studio/lib/rovo-app-message-artifacts";
 import {
@@ -34,12 +35,14 @@ import {
 	getAllDataParts,
 	getMessageInterruption,
 	getLatestDataPart,
+	getMessageAgentResult,
 	getLatestRouteDecision,
 	getMessageReasoning,
 	getMessageSources,
 	getMessageText,
 	hasTurnCompleteSignal,
 	isMessageTextStreaming,
+	type RovoDataParts,
 	type RoutingDecision,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
@@ -71,6 +74,7 @@ interface RovoAppMessagesProps {
 	onOpenArtifactFromCard: (documentId: string, element: HTMLElement) => void;
 	onOpenBrowserPreview?: () => void;
 	onOpenPlanPreview?: (planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => void;
+	onAgentResultSelect?: (agent: RovoDataParts["agent-result"], options?: { sourceMessageId?: string }) => void;
 	onRegisterArtifactCard: (documentId: string, element: HTMLElement) => void;
 	onRegenerate: () => void;
 	onScrollActiveUserMessageChange?: (messageId: string | null) => void;
@@ -903,6 +907,7 @@ export function RovoAppMessages({
 	onOpenArtifactFromCard,
 	onOpenBrowserPreview,
 	onOpenPlanPreview,
+	onAgentResultSelect,
 	onRegisterArtifactCard,
 	onRegenerate,
 	onScrollActiveUserMessageChange,
@@ -1067,6 +1072,7 @@ export function RovoAppMessages({
 					const resolvedArtifactDisplay = artifactDisplay ?? fallbackArtifactDisplay;
 					const shouldHideSuggestions = message.id !== lastAssistantMessageId || shouldSuppressLatestAssistantSuggestions;
 					const suggestions = shouldHideSuggestions ? [] : (getLatestDataPart(message, "data-suggested-questions")?.data.questions ?? []);
+					const agentResult = getMessageAgentResult(message);
 
 					const messagePlanWidget = (() => {
 						const widget = getLatestDataPart(message, "data-widget-data");
@@ -1133,6 +1139,16 @@ export function RovoAppMessages({
 								planBuildDisabledReason={planBuildDisabledReason}
 								voteValue={votes[message.id]}
 							/>
+								{agentResult ? (
+									<AgentResultCard
+										agent={agentResult}
+										onSelectAgent={
+											onAgentResultSelect
+												? (agent) => onAgentResultSelect(agent, { sourceMessageId: message.id })
+												: undefined
+										}
+									/>
+								) : null}
 							<AssistantSuggestionPills messageId={message.id} onSelectSuggestion={onSelectSuggestion} suggestions={suggestions} />
 						</Fragment>
 					);

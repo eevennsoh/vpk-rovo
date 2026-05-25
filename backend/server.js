@@ -234,6 +234,15 @@ const {
 	createRouteDecisionPart,
 } = require("./lib/route-decision");
 const {
+	AGENT_RESULT_STREAM_PREFIX,
+	buildCreationModeContextPrefix,
+	buildMissingStudioAgentResultFailureParts,
+	extractStudioAgentResultFromText,
+	findJsonObjectEndIndex: findStudioAgentJsonObjectEndIndex,
+	normalizeStudioAgentResult,
+	shouldSurfaceMissingStudioAgentResultFailure,
+} = require("./lib/studio-agent-result");
+const {
 	RFP_DEMO_REPORT_PREVIEW_SUMMARY,
 	RFP_DEMO_REPORT_TITLE,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
@@ -6136,17 +6145,13 @@ async function handleChatSdkRequest(req, res) {
 		});
 		const hasQueuedPrompts = Boolean(rawHasQueuedPrompts);
 
-		// If creationMode is set, prepend generic creation guidance to contextDescription.
+		// If creationMode is set, prepend creation guidance to contextDescription.
 		let contextDescription = rawContextDescription;
 		if (creationMode === "skill" || creationMode === "agent") {
-			const prefix = `[${creationMode.toUpperCase()} CREATION MODE]
-You are in ${creationMode} creation mode. Help the user create a new ${creationMode} definition file.
-This is a local ${creationMode} definition - not a Confluence page, Jira ticket, or any Atlassian product content.
-Ask clarifying questions when required fields are missing.
-Return a complete, production-ready definition that can be persisted directly.
-Once ready, call POST /api/plan/${creationMode}s to persist it.
-[END ${creationMode.toUpperCase()} CREATION MODE]`;
-			contextDescription = contextDescription ? `${prefix}\n\n${contextDescription}` : prefix;
+			const prefix = buildCreationModeContextPrefix(creationMode);
+			if (prefix) {
+				contextDescription = contextDescription ? `${prefix}\n\n${contextDescription}` : prefix;
+			}
 		}
 
 		const latestVisibleUserMessage = getLatestVisibleUserMessage(messages);
@@ -8680,6 +8685,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						}
 					}
 
+					const agentResultExtraction =
+						creationMode === "agent" && !questionCardPayload && !planWidgetPayload
+							? extractStudioAgentResultFromText(bufferedText)
+							: null;
+					if (agentResultExtraction) {
+						visibleText = agentResultExtraction.cleanedText;
+					}
+
 					if (visibleText && visibleText.length > 0) {
 						writer.write({ type: "text-start", id: textId });
 						writer.write({
@@ -8723,6 +8736,26 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							origin: requestOrigin,
 							reason: "intent_clarification",
 						}));
+					}
+
+					if (agentResultExtraction?.payload) {
+						writer.write({
+							type: "data-agent-result",
+							id: `studio-agent-result-${Date.now()}`,
+							data: agentResultExtraction.payload,
+						});
+					} else if (
+						shouldSurfaceMissingStudioAgentResultFailure({
+							creationMode,
+							hasAgentResult: false,
+							hasDeferredToolRequest: Boolean(questionCardPayload),
+							hasPlanWidget: Boolean(planWidgetPayload),
+							hasQuestionCard: Boolean(questionCardPayload),
+						})
+					) {
+						for (const part of buildMissingStudioAgentResultFailureParts()) {
+							writer.write(part);
+						}
 					}
 
 					if (planWidgetPayload) {
@@ -8811,20 +8844,26 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					const widgetDataPrefix = "WIDGET_DATA:";
 					const thinkingStatusPrefix = "THINKING_STATUS:";
 				const agentExecutionPrefix = "AGENT_EXECUTION:";
+				const agentResultPrefix = AGENT_RESULT_STREAM_PREFIX;
 				const partialMarkerBufferLength =
 						Math.max(
 							widgetLoadingPrefix.length,
 							widgetDataPrefix.length,
 							thinkingStatusPrefix.length,
-							agentExecutionPrefix.length
+							agentExecutionPrefix.length,
+							creationMode === "agent" ? agentResultPrefix.length : 0
 						) - 1;
 					let hasMarkedFirstUiEvent = false;
 					let hasMarkedFirstWrittenTextDelta = false;
 					let hasMarkedTurnComplete = false;
+					let hasEmittedAgentResult = false;
 					let hasMarkedFirstRovoTextDelta = false;
 					const writeStreamPart = writer.write.bind(writer);
 					writer.write = (part) => {
 						const eventType = getNonEmptyString(part?.type) || "unknown";
+						if (eventType === "data-agent-result") {
+							hasEmittedAgentResult = true;
+						}
 						if (!hasMarkedFirstUiEvent) {
 							hasMarkedFirstUiEvent = true;
 							stageTrace.mark("first_chat_sdk_sse_event", {
@@ -8855,6 +8894,8 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				let textStarted = false;
 				let assistantText = "";
 				let unsuppressedAssistantText = "";
+				let rawAgentCreationAssistantText = "";
+				let shouldEmitMissingStudioAgentResultFailure = false;
 				let widgetType = null;
 				let resolvedRovoPort = null;
 				let hasEmittedQuestionCard = false;
@@ -9760,8 +9801,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					const dataIndex = value.indexOf(widgetDataPrefix);
 					const thinkingIndex = value.indexOf(thinkingStatusPrefix);
 					const agentExecIndex = value.indexOf(agentExecutionPrefix);
+					const agentResultIndex =
+						creationMode === "agent" ? value.indexOf(agentResultPrefix) : -1;
 					let minIndex = -1;
-					for (const idx of [loadingIndex, dataIndex, thinkingIndex, agentExecIndex]) {
+					for (const idx of [loadingIndex, dataIndex, thinkingIndex, agentExecIndex, agentResultIndex]) {
 						if (idx !== -1 && (minIndex === -1 || idx < minIndex)) {
 							minIndex = idx;
 						}
@@ -9976,6 +10019,68 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							continue;
 						}
 
+						if (creationMode === "agent" && textBuffer.startsWith(agentResultPrefix)) {
+							let jsonStartIndex = agentResultPrefix.length;
+							while (
+								jsonStartIndex < textBuffer.length &&
+								/\s/.test(textBuffer[jsonStartIndex])
+							) {
+								jsonStartIndex += 1;
+							}
+
+							if (jsonStartIndex >= textBuffer.length) {
+								if (isFinalChunk) {
+									emitTextDelta(textBuffer);
+									textBuffer = "";
+								}
+								return;
+							}
+
+							if (textBuffer[jsonStartIndex] !== "{") {
+								const invalidPrefix = textBuffer.slice(0, jsonStartIndex);
+								emitTextDelta(invalidPrefix);
+								textBuffer = textBuffer.slice(jsonStartIndex);
+								continue;
+							}
+
+							const jsonEndIndex = findStudioAgentJsonObjectEndIndex(
+								textBuffer,
+								jsonStartIndex
+							);
+							if (jsonEndIndex === -1) {
+								if (isFinalChunk) {
+									emitTextDelta(textBuffer);
+									textBuffer = "";
+								}
+								return;
+							}
+
+							const jsonPayload = textBuffer.slice(
+								jsonStartIndex,
+								jsonEndIndex + 1
+							);
+							textBuffer = textBuffer
+								.slice(jsonEndIndex + 1)
+								.replace(/^[\r\n\t ]+/, "");
+
+							try {
+								const normalizedAgentResult = normalizeStudioAgentResult(
+									JSON.parse(jsonPayload)
+								);
+								if (normalizedAgentResult) {
+									writer.write({
+										type: "data-agent-result",
+										id: `studio-agent-result-${Date.now()}`,
+										data: normalizedAgentResult,
+									});
+								}
+							} catch (error) {
+								console.error("Failed to parse agent-result payload:", error);
+							}
+
+							continue;
+						}
+
 						if (textBuffer.startsWith(thinkingStatusPrefix)) {
 							let jsonStartIndex = thinkingStatusPrefix.length;
 							while (
@@ -10134,6 +10239,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						}
 
 						emitLazyThinkingStatus();
+						if (creationMode === "agent") {
+							rawAgentCreationAssistantText += delta;
+						}
 						textBuffer += delta;
 						processTextBuffer(false);
 					};
@@ -10151,11 +10259,15 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					const emitLazyThinkingStatus = () => {
 						if (hasEmittedThinkingStatus) return;
 						hasEmittedThinkingStatus = true;
+						const isAgentCreationTurn = creationMode === "agent";
 						writer.write({
 							type: "data-thinking-status",
 							data: {
-								label: "Working",
-								activity: "results",
+								label: isAgentCreationTurn ? "Designing agent" : "Working",
+								content: isAgentCreationTurn
+									? "Reviewing the brief, checking missing profile details, and shaping the Studio agent."
+									: undefined,
+								activity: isAgentCreationTurn ? "data" : "results",
 								source: "backend",
 							},
 						});
@@ -11275,6 +11387,31 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					return;
 				}
 
+				if (
+					shouldSurfaceMissingStudioAgentResultFailure({
+						creationMode,
+						hasAgentResult: hasEmittedAgentResult,
+						hasDeferredToolRequest: hasObservedDeferredToolRequest,
+						hasPlanWidget: hasEmittedPlanWidget,
+						hasQuestionCard: hasEmittedQuestionCard,
+					})
+				) {
+					const agentResultExtraction = extractStudioAgentResultFromText(
+						rawAgentCreationAssistantText ||
+							unsuppressedAssistantText ||
+							assistantText
+					);
+					if (agentResultExtraction?.payload) {
+						writer.write({
+							type: "data-agent-result",
+							id: `studio-agent-result-${Date.now()}`,
+							data: agentResultExtraction.payload,
+						});
+					} else {
+						shouldEmitMissingStudioAgentResultFailure = true;
+					}
+				}
+
 				// ── Phase 2: Direct Rovo spec detection ──
 				// When enabled, check if Rovo already emitted a valid
 				// ```spec fence in its text output. If found, emit it as a
@@ -12217,6 +12354,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 					if (textStarted) {
 						writer.write({ type: "text-end", id: textId });
+					}
+
+					if (shouldEmitMissingStudioAgentResultFailure) {
+						for (const part of buildMissingStudioAgentResultFailureParts()) {
+							writer.write(part);
+						}
 					}
 
 				if (pendingQuestionCardLoadingWidgetId) {
