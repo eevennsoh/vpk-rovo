@@ -32,7 +32,6 @@ test("runtime-control mutations require runtime admin authorization", () => {
 		["post", "/api/skills/hub/install-by-id"],
 		["post", "/api/skills/hub/taps"],
 		["post", "/api/skills/:category/:name/toggle"],
-		["get", "/api/realtime/audio-conversation-token"],
 	]) {
 		assertRouteUsesRuntimeAdmin(method, routePath);
 	}
@@ -41,6 +40,19 @@ test("runtime-control mutations require runtime admin authorization", () => {
 	assert.match(serverSource, /app\.use\("\/api\/skills\/drafts", requireRuntimeAdmin\);/u);
 	assert.match(serverSource, /app\.delete\("\/api\/skills\/hub\/uninstall\/\*name", requireRuntimeAdmin/u);
 	assert.match(serverSource, /app\.delete\("\/api\/skills\/hub\/taps\/\*repo", requireRuntimeAdmin/u);
+});
+
+test("realtime token minting is reachable through the runtime socket origin gate", () => {
+	assert.doesNotMatch(
+		serverSource,
+		/app\.get\("\/api\/realtime\/audio-conversation-token", requireRuntimeAdmin/u,
+	);
+	assert.match(
+		serverSource,
+		/app\.get\("\/api\/realtime\/audio-conversation-token", requireRuntimeSocketTokenRequester/u,
+	);
+	assert.match(serverSource, /function requireRuntimeSocketTokenRequester/u);
+	assert.match(serverSource, /createRuntimeSocketToken\("realtime:audio-conversation"\)/u);
 });
 
 test("runtime admin fails closed in production when token is missing", () => {
@@ -52,7 +64,9 @@ test("runtime admin fails closed in production when token is missing", () => {
 test("websocket upgrades validate origin and runtime token before upgrade", () => {
 	assert.match(serverSource, /function createRuntimeSocketToken/u);
 	assert.match(serverSource, /function verifyRuntimeSocketUpgrade/u);
-	assert.match(serverSource, /origin && !isAllowedOrigin\(origin\)/u);
+	assert.match(serverSource, /function isAllowedRuntimeSocketOrigin/u);
+	assert.match(serverSource, /isRuntimeSocketOriginAllowed\(origin, request\.headers\.host, ALLOWED_ORIGINS\)/u);
+	assert.match(serverSource, /!isAllowedRuntimeSocketOrigin\(origin, request\)/u);
 	assert.match(serverSource, /isRuntimeSocketTokenValid\(socketToken, scope\)/u);
 	assert.match(serverSource, /previewToken/u);
 	assert.match(serverSource, /realtimeToken/u);

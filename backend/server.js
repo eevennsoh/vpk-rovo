@@ -94,6 +94,12 @@ const { registerHermesSkillDraftRoutes } = require("./lib/hermes-skill-draft-rou
 const { resolveAmbiguousAutoSelectedSkillIds } = require("./lib/hermes-skill-disambiguation");
 const { createAbortControllerFromRequest } = require("./lib/http-request-abort");
 const {
+	appendRuntimeSocketToken: appendRuntimeSocketTokenWithOptions,
+	createRuntimeSocketToken: createRuntimeSocketTokenWithOptions,
+	isAllowedRuntimeSocketOrigin: isRuntimeSocketOriginAllowed,
+	isRuntimeSocketTokenValid: isRuntimeSocketTokenValidWithOptions,
+} = require("./lib/runtime-socket-security");
+const {
 	buildImageProxyRequestHeaders,
 	deriveAtlassianImageCandidatesFromUrl,
 	extractAtlassianImageCandidatesFromHtml,
@@ -1433,73 +1439,42 @@ function requireRuntimeAdmin(req, res, next) {
 	});
 }
 
-function signRuntimeSocketTokenPayload(payload) {
-	return crypto
-		.createHmac("sha256", RUNTIME_ADMIN_TOKEN)
-		.update(payload)
-		.digest("base64url");
-}
-
 function createRuntimeSocketToken(scope) {
-	if (!RUNTIME_ADMIN_TOKEN) {
-		return "";
-	}
-
-	const payload = Buffer.from(
-		JSON.stringify({
-			scope,
-			exp: Date.now() + RUNTIME_SOCKET_TOKEN_TTL_MS,
-			nonce: crypto.randomUUID(),
-		}),
-	).toString("base64url");
-	return `${payload}.${signRuntimeSocketTokenPayload(payload)}`;
+	return createRuntimeSocketTokenWithOptions(scope, {
+		runtimeAdminToken: RUNTIME_ADMIN_TOKEN,
+		ttlMs: RUNTIME_SOCKET_TOKEN_TTL_MS,
+	});
 }
 
 function isRuntimeSocketTokenValid(token, expectedScope) {
-	if (!RUNTIME_ADMIN_TOKEN || !token) {
-		return false;
-	}
-
-	const [payload, signature, ...extraParts] = token.split(".");
-	if (!payload || !signature || extraParts.length > 0) {
-		return false;
-	}
-
-	const expectedSignature = signRuntimeSocketTokenPayload(payload);
-	const signatureBuffer = Buffer.from(signature);
-	const expectedBuffer = Buffer.from(expectedSignature);
-	if (signatureBuffer.length !== expectedBuffer.length) {
-		return false;
-	}
-	if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
-		return false;
-	}
-
-	try {
-		const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-		return parsed?.scope === expectedScope && Number(parsed.exp) >= Date.now();
-	} catch {
-		return false;
-	}
+	return isRuntimeSocketTokenValidWithOptions(token, expectedScope, {
+		runtimeAdminToken: RUNTIME_ADMIN_TOKEN,
+	});
 }
 
 function appendRuntimeSocketToken(wsUrl, scope, paramName) {
-	const token = createRuntimeSocketToken(scope);
-	if (!token) {
-		return wsUrl;
-	}
-
-	const parsedUrl = new URL(wsUrl, "ws://127.0.0.1");
-	parsedUrl.searchParams.set(paramName, token);
-	if (/^wss?:\/\//i.test(wsUrl)) {
-		return parsedUrl.toString();
-	}
-
-	return `${parsedUrl.pathname}${parsedUrl.search}`;
+	return appendRuntimeSocketTokenWithOptions(wsUrl, scope, paramName, {
+		runtimeAdminToken: RUNTIME_ADMIN_TOKEN,
+		ttlMs: RUNTIME_SOCKET_TOKEN_TTL_MS,
+	});
 }
 
 function isAllowedOrigin(origin) {
 	return Boolean(!origin || ALLOWED_ORIGINS.includes(origin));
+}
+
+function isAllowedRuntimeSocketOrigin(origin, request) {
+	return isRuntimeSocketOriginAllowed(origin, request.headers.host, ALLOWED_ORIGINS);
+}
+
+function requireRuntimeSocketTokenRequester(req, res, next) {
+	if (isAllowedRuntimeSocketOrigin(req.get?.("origin"), req)) {
+		return next();
+	}
+
+	return res.status(403).json({
+		error: "Runtime socket token origin is not allowed",
+	});
 }
 
 app.use(
@@ -15398,7 +15373,7 @@ app.post("/api/skills/:category/:name/toggle", requireRuntimeAdmin, async (req, 
 	}
 });
 
-app.get("/api/realtime/audio-conversation-token", requireRuntimeAdmin, (_req, res) => {
+app.get("/api/realtime/audio-conversation-token", requireRuntimeSocketTokenRequester, (_req, res) => {
 	const token = createRuntimeSocketToken("realtime:audio-conversation");
 	return res.json({
 		token: token || null,
@@ -15680,7 +15655,7 @@ function rejectUpgrade(socket, statusCode, message) {
 
 function verifyRuntimeSocketUpgrade(requestUrl, request, { scope, paramName }) {
 	const origin = getNonEmptyString(request.headers.origin);
-	if (origin && !isAllowedOrigin(origin)) {
+	if (!isAllowedRuntimeSocketOrigin(origin, request)) {
 		return { ok: false, statusCode: 403, message: "Forbidden" };
 	}
 
