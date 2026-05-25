@@ -120,14 +120,14 @@ const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
 	{
 		category: "analyze",
 		description: "Turn notes, links, or raw work into the signal that matters.",
-		iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png`,
+		iconSrc: "/avatar-agent/teamwork-agents/progress-tracker.svg",
 		prompt: "Analyze this work and identify the key themes, risks, opportunities, and recommended next steps.",
 		title: "Analyze a workstream",
 	},
 	{
 		category: "review",
 		description: "Check work for gaps, regressions, and unclear assumptions.",
-		iconSrc: `${RICH_ICON_ROOT}/checklist/standard.svg`,
+		iconSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
 		prompt: "Review this proposal for risks, missing context, edge cases, and concrete improvements.",
 		size: "large",
 		title: "Review a proposal",
@@ -135,7 +135,7 @@ const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
 	{
 		category: "summarize",
 		description: "Condense long context into decisions and follow-ups.",
-		iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg`,
+		iconSrc: "/avatar-agent/teamwork-agents/meeting-insights-reporter.svg",
 		prompt: "Summarize this into key points, decisions, open questions, and action items.",
 		size: "tall",
 		title: "Summarize context",
@@ -143,7 +143,7 @@ const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
 	{
 		category: "create",
 		description: "Draft a doc, plan, message, or artifact from sparse notes.",
-		iconSrc: `${RICH_ICON_ROOT}/design/standard.png`,
+		iconSrc: "/avatar-agent/teamwork-agents/release-notes-drafter.svg",
 		prompt: "Create a clear first draft from these notes, with structure, headings, and practical next steps.",
 		size: "tall",
 		title: "Create a first draft",
@@ -151,14 +151,14 @@ const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
 	{
 		category: "brainstorm",
 		description: "Explore directions before committing to a plan.",
-		iconSrc: `${RICH_ICON_ROOT}/lightbulb/standard.svg`,
+		iconSrc: "/avatar-agent/teamwork-agents/brainstorm-facilitator.svg",
 		prompt: "Brainstorm several strong approaches for this problem, then compare the tradeoffs and recommend one.",
 		title: "Brainstorm approaches",
 	},
 	{
 		category: "analyze",
 		description: "Map dependencies, owners, and blockers across work.",
-		iconSrc: `${RICH_ICON_ROOT}/integration/standard.png`,
+		iconSrc: "/avatar-agent/teamwork-agents/blocker-checker.svg",
 		prompt: "Map the current work into dependencies, owners, blockers, and the shortest path to progress.",
 		size: "wide",
 		title: "Map dependencies",
@@ -166,14 +166,14 @@ const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
 	{
 		category: "review",
 		description: "Prepare concise feedback before sharing.",
-		iconSrc: `${RICH_ICON_ROOT}/voice-and-tone/standard.svg`,
+		iconSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
 		prompt: "Rewrite this as constructive feedback with the strongest points first and clear suggested changes.",
 		title: "Sharpen feedback",
 	},
 	{
 		category: "create",
 		description: "Convert intent into a practical execution plan.",
-		iconSrc: `${RICH_ICON_ROOT}/project-management/standard.png`,
+		iconSrc: "/avatar-agent/teamwork-agents/work-item-planner.svg",
 		prompt: "Create an execution plan with milestones, owners, sequencing, and the first three actions.",
 		title: "Create an action plan",
 	},
@@ -275,14 +275,14 @@ function HomeStarterBento({
 									template.size === "large" && "sm:col-span-2 sm:row-span-2",
 								)}
 							>
-								<span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-bg-neutral transition-opacity duration-fast ease-out group-hover:opacity-90">
+								<span className="inline-flex size-8 shrink-0 items-center justify-center transition-opacity duration-fast ease-out group-hover:opacity-90">
 									<Image
 										alt=""
 										aria-hidden
-										className="size-4 object-contain"
-										height={16}
+										className="size-8 object-contain"
+										height={32}
 										src={template.iconSrc}
-										width={16}
+										width={32}
 									/>
 								</span>
 								<span className="mt-3 block text-sm font-semibold leading-5 text-text">
