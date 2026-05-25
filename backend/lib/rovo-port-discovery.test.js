@@ -49,6 +49,35 @@ test("resolveRovoPorts reuses recorded ports without probing the worktree range"
 	assert.equal(healthCheckCalls, 0);
 });
 
+test("resolveRovoPorts rejects partially invalid recorded port pools", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "rovo-port-discovery-"));
+	const portFile = path.join(tempDir, ".dev-rovo-port");
+	const portsFile = path.join(tempDir, ".dev-rovo-ports");
+	fs.writeFileSync(portFile, "8014");
+	fs.writeFileSync(portsFile, JSON.stringify([8012, "8013"]));
+
+	let healthCheckCalls = 0;
+	const result = await resolveRovoPorts({
+		portFile,
+		portsFile,
+		envPort: "8000",
+		basePort: 8000,
+		maxTries: 5,
+		healthCheck: async () => {
+			healthCheckCalls += 1;
+			return { status: "healthy" };
+		},
+		classifyHealthCheck: (health) => ({ ready: health.status === "healthy" }),
+		persistDiscoveredPorts: true,
+	});
+
+	assert.deepEqual(result, {
+		ports: [8014],
+		source: "recorded",
+	});
+	assert.equal(healthCheckCalls, 0);
+});
+
 test("resolveRovoPorts rediscovers healthy ports and restores missing port files", async () => {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "rovo-port-recovery-"));
 	const portFile = path.join(tempDir, ".dev-rovo-port");
