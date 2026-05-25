@@ -308,10 +308,19 @@ export function WebsiteSidebarNav({
 							placeholder="Search..."
 							className="[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden"
 						/>
-						<InputGroupAddon align="inline-end">
-							{isSearching ? (
-								<InputGroupButton onClick={() => setSearchQuery("")} aria-label="Clear search">
-									<Icon render={<CrossIcon label="" size="small" />} label="Clear search" />
+							<InputGroupAddon align="inline-end" className="gap-1">
+								{isSearching ? (
+									<InputGroupButton
+										onClick={() => setSearchQuery("")}
+										aria-label="Clear search"
+										size="icon-xs"
+										shape="circle"
+									>
+										<Icon
+											render={<CrossIcon label="" size="small" />}
+											label="Clear search"
+											className="text-icon-subtlest [&_svg]:size-3"
+										/>
 								</InputGroupButton>
 							) : null}
 							<button

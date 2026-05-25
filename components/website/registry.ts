@@ -333,6 +333,10 @@ const UI_CUSTOM_DEMO: Record<string, ComponentType> = {
     () => import("./demos/ui-custom/rovo-generation-demo"),
     { ssr: false },
   ),
+  "rovo-illustration": dynamic(
+    () => import("./demos/ui-custom/rovo-illustration-demo"),
+    { ssr: false },
+  ),
 };
 
 const UI_VARIANT_DEMOS: Record<string, ComponentType> = {

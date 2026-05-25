@@ -50,7 +50,6 @@ const STUDIO_SIDEBAR_NAV_SECTIONS: ReadonlyArray<StudioSidebarNavSection> = [
 			},
 			{
 				icon: <ChartTrendUpIcon label="" />,
-				isSelected: true,
 				label: "Insights",
 			},
 		],
@@ -77,6 +76,7 @@ const STUDIO_SIDEBAR_NAV_SECTIONS: ReadonlyArray<StudioSidebarNavSection> = [
 			},
 			{
 				icon: <AiAgentIcon label="" />,
+				isSelected: true,
 				label: "Agents",
 			},
 			{

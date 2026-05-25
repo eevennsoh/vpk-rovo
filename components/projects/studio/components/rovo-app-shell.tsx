@@ -3,6 +3,7 @@
 import type { FileUIPart } from "ai";
 import { motion, useReducedMotion } from "motion/react";
 import { type CSSProperties, startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArtifactPanel } from "@/components/ui-custom/artifact";
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
@@ -47,12 +48,6 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import AiGenerativeTextSummaryIcon from "@atlaskit/icon/core/ai-generative-text-summary";
-import AiSparkleIcon from "@atlaskit/icon/core/ai-sparkle";
-import ChartTrendUpIcon from "@atlaskit/icon/core/chart-trend-up";
-import EyeOpenIcon from "@atlaskit/icon/core/eye-open";
-import LightbulbIcon from "@atlaskit/icon/core/lightbulb";
-import PageIcon from "@atlaskit/icon/core/page";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
 import { Footer } from "@/components/ui/footer";
@@ -96,7 +91,7 @@ const ROVO_APP_SPLIT_ARTIFACT_PANEL_ID = "rovo-app-artifact-pane";
 type HomeStarterCategory = "all" | "analyze" | "brainstorm" | "review" | "summarize" | "create";
 
 interface HomeStarterCategoryOption {
-	icon?: typeof SearchIcon;
+	iconSrc?: string;
 	id: HomeStarterCategory;
 	label: string;
 }
@@ -104,48 +99,43 @@ interface HomeStarterCategoryOption {
 interface HomeStarterTemplate {
 	category: Exclude<HomeStarterCategory, "all">;
 	description: string;
-	icon: typeof SearchIcon;
+	iconSrc: string;
 	prompt: string;
-	size?: "wide" | "tall";
+	size?: "wide" | "tall" | "large";
 	title: string;
 }
 
+const RICH_ICON_ROOT = "/illustration/rich-icon";
+
 const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "all", label: "All" },
-	{ id: "analyze", label: "Analyze", icon: ChartTrendUpIcon },
-	{ id: "brainstorm", label: "Brainstorm", icon: LightbulbIcon },
-	{ id: "review", label: "Review", icon: EyeOpenIcon },
-	{ id: "summarize", label: "Summarize", icon: AiGenerativeTextSummaryIcon },
-	{ id: "create", label: "Create", icon: AiSparkleIcon },
+	{ id: "analyze", label: "Analyze", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png` },
+	{ id: "brainstorm", label: "Brainstorm", iconSrc: `${RICH_ICON_ROOT}/lightbulb/standard.svg` },
+	{ id: "review", label: "Review", iconSrc: `${RICH_ICON_ROOT}/checklist/standard.svg` },
+	{ id: "summarize", label: "Summarize", iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg` },
+	{ id: "create", label: "Create", iconSrc: `${RICH_ICON_ROOT}/design/standard.png` },
 ];
 
 const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
 	{
 		category: "analyze",
 		description: "Turn notes, links, or raw work into the signal that matters.",
-		icon: ChartTrendUpIcon,
+		iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png`,
 		prompt: "Analyze this work and identify the key themes, risks, opportunities, and recommended next steps.",
 		title: "Analyze a workstream",
 	},
 	{
-		category: "brainstorm",
-		description: "Explore directions before committing to a plan.",
-		icon: LightbulbIcon,
-		prompt: "Brainstorm several strong approaches for this problem, then compare the tradeoffs and recommend one.",
-		title: "Brainstorm approaches",
-	},
-	{
 		category: "review",
 		description: "Check work for gaps, regressions, and unclear assumptions.",
-		icon: EyeOpenIcon,
+		iconSrc: `${RICH_ICON_ROOT}/checklist/standard.svg`,
 		prompt: "Review this proposal for risks, missing context, edge cases, and concrete improvements.",
-		size: "wide",
+		size: "large",
 		title: "Review a proposal",
 	},
 	{
 		category: "summarize",
 		description: "Condense long context into decisions and follow-ups.",
-		icon: AiGenerativeTextSummaryIcon,
+		iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg`,
 		prompt: "Summarize this into key points, decisions, open questions, and action items.",
 		size: "tall",
 		title: "Summarize context",
@@ -153,15 +143,22 @@ const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
 	{
 		category: "create",
 		description: "Draft a doc, plan, message, or artifact from sparse notes.",
-		icon: PageIcon,
+		iconSrc: `${RICH_ICON_ROOT}/design/standard.png`,
 		prompt: "Create a clear first draft from these notes, with structure, headings, and practical next steps.",
 		size: "tall",
 		title: "Create a first draft",
 	},
 	{
+		category: "brainstorm",
+		description: "Explore directions before committing to a plan.",
+		iconSrc: `${RICH_ICON_ROOT}/lightbulb/standard.svg`,
+		prompt: "Brainstorm several strong approaches for this problem, then compare the tradeoffs and recommend one.",
+		title: "Brainstorm approaches",
+	},
+	{
 		category: "analyze",
 		description: "Map dependencies, owners, and blockers across work.",
-		icon: SearchIcon,
+		iconSrc: `${RICH_ICON_ROOT}/integration/standard.png`,
 		prompt: "Map the current work into dependencies, owners, blockers, and the shortest path to progress.",
 		size: "wide",
 		title: "Map dependencies",
@@ -169,14 +166,14 @@ const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
 	{
 		category: "review",
 		description: "Prepare concise feedback before sharing.",
-		icon: EyeOpenIcon,
+		iconSrc: `${RICH_ICON_ROOT}/voice-and-tone/standard.svg`,
 		prompt: "Rewrite this as constructive feedback with the strongest points first and clear suggested changes.",
 		title: "Sharpen feedback",
 	},
 	{
 		category: "create",
 		description: "Convert intent into a practical execution plan.",
-		icon: AiSparkleIcon,
+		iconSrc: `${RICH_ICON_ROOT}/project-management/standard.png`,
 		prompt: "Create an execution plan with milestones, owners, sequencing, and the first three actions.",
 		title: "Create an action plan",
 	},
@@ -222,9 +219,8 @@ function HomeStarterBento({
 
 	return (
 		<div className="w-full">
-			<div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+			<div className="no-scrollbar flex gap-2 overflow-x-auto">
 				{HOME_STARTER_CATEGORIES.map((category) => {
-					const Icon = category.icon;
 					const isActive = activeCategory === category.id;
 
 					return (
@@ -243,7 +239,16 @@ function HomeStarterBento({
 									: "border-border bg-background text-text-subtle hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 							)}
 						>
-							{Icon ? <Icon label="" size="small" /> : null}
+							{category.iconSrc ? (
+								<Image
+									alt=""
+									aria-hidden
+									className="size-4 object-contain"
+									height={16}
+									src={category.iconSrc}
+									width={16}
+								/>
+							) : null}
 							{category.label}
 						</button>
 					);
@@ -251,10 +256,8 @@ function HomeStarterBento({
 			</div>
 
 			<div className="relative mt-4">
-				<div className="grid auto-rows-[112px] grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+				<div className="grid auto-rows-[112px] grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
 					{visibleTemplates.map((template) => {
-						const Icon = template.icon;
-
 						return (
 							<button
 								key={template.title}
@@ -269,10 +272,18 @@ function HomeStarterBento({
 									"group flex min-h-0 flex-col items-start rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:border-border-selected hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
 									template.size === "wide" && "sm:col-span-2",
 									template.size === "tall" && "sm:row-span-2",
+									template.size === "large" && "sm:col-span-2 sm:row-span-2",
 								)}
 							>
-								<span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-bg-neutral text-icon-subtle transition-colors duration-fast ease-out group-hover:text-icon-selected">
-									<Icon label="" size="small" />
+								<span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-bg-neutral transition-opacity duration-fast ease-out group-hover:opacity-90">
+									<Image
+										alt=""
+										aria-hidden
+										className="size-4 object-contain"
+										height={16}
+										src={template.iconSrc}
+										width={16}
+									/>
 								</span>
 								<span className="mt-3 block text-sm font-semibold leading-5 text-text">
 									{template.title}
@@ -289,9 +300,10 @@ function HomeStarterBento({
 						<Button
 							type="button"
 							aria-label="Show more prompt starters"
-							variant="secondary"
-							size="sm"
-							className="pointer-events-auto rounded-full shadow-sm"
+							variant="ghost"
+							size="xs"
+							className="pointer-events-auto h-7 rounded-full border-0 bg-surface px-3 text-sm leading-5 font-normal text-text-subtle hover:bg-surface-hovered"
+							style={{ boxShadow: token("elevation.shadow.overlay") }}
 							onClick={() => setShowAll(true)}
 						>
 							Show more
@@ -2304,6 +2316,22 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				/>
 			</ViewTransition>
 
+			{showHomeState && !isCustomAgentSelected ? (
+				<motion.div
+					className="z-10 mx-auto mb-5 w-[90%] px-3"
+					initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.25 }}
+					style={{ willChange: "transform, opacity" }}
+				>
+					<HomeStarterBento
+						onSelect={handleGallerySelect}
+						onPreviewStart={handleGalleryPreviewStart}
+						onPreviewEnd={handleGalleryPreviewEnd}
+					/>
+				</motion.div>
+			) : null}
+
 			<div
 				ref={composerDockRef}
 				className={cn(
@@ -2368,21 +2396,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 										totalDrafts={pendingThreadSkillDrafts.length}
 									/>
 								</div>
-							) : null}
-							{showHomeState && !isCustomAgentSelected ? (
-								<motion.div
-									className="mb-5"
-									initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.25 }}
-									style={{ willChange: "transform, opacity" }}
-								>
-									<HomeStarterBento
-										onSelect={handleGallerySelect}
-										onPreviewStart={handleGalleryPreviewStart}
-										onPreviewEnd={handleGalleryPreviewEnd}
-									/>
-								</motion.div>
 							) : null}
 							<motion.div
 								initial={showHomeState && !shouldReduceMotion ? { opacity: 0, y: 20 } : false}
