@@ -344,6 +344,7 @@ export const PROJECT_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	projectComponent("rovo-button", "Rovo Button"),
 	projectComponent("search", "Search"),
 	projectComponent("sidebar-chat", "Sidebar Chat"),
+	projectComponent("studio", "Studio"),
 ]);
 
 export const ART_COMPONENTS: ComponentEntry[] = sortEntriesByName([

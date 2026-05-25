@@ -17,7 +17,7 @@ import AppSwitcherIcon from "@atlaskit/icon/core/app-switcher";
 import SidebarCollapseIcon from "@atlaskit/icon/core/sidebar-collapse";
 import SidebarExpandIcon from "@atlaskit/icon/core/sidebar-expand";
 
-type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search" | "studio";
 
 interface LeftNavigationProps {
 	product: Product;

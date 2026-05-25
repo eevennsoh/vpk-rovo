@@ -48,4 +48,11 @@ export const PROJECT_DETAILS: Record<string, ComponentDetail> = {
 	"sidebar-chat": {
 		description: "A sliding chat panel with message bubbles, greeting view, and integrated composer for conversational AI interfaces.",
 	},
+	"studio": {
+		description: "A Studio project template forked from the Rovo chat workspace for future template design customization.",
+		importStatement: `import Studio from "@/components/projects/studio";`,
+		demoLayout: {
+			previewHeight: "fixed",
+		},
+	},
 };

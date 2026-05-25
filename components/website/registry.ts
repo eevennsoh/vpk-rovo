@@ -7135,6 +7135,9 @@ const PROJECT_DEMOS: Record<string, ComponentType> = {
   "sidebar-chat": dynamic(() => import("./demos/projects/sidebar-chat-demo"), {
     ssr: false,
   }),
+  studio: dynamic(() => import("./demos/projects/studio-demo"), {
+    ssr: false,
+  }),
 };
 
 const ARTS_DEMOS: Record<string, ComponentType> = {

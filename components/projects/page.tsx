@@ -20,7 +20,7 @@ import { useSidebarResize } from "@/components/projects/rovo/hooks/use-sidebar-r
 import { useSidebar } from "@/app/contexts/context-sidebar";
 import { useRovoChat } from "@/app/contexts";
 
-type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search" | "studio";
 
 interface AppLayoutProps {
 	product: Product;
