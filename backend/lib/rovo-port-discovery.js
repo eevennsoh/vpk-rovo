@@ -24,11 +24,9 @@ function readRecordedRovoPorts({
 		try {
 			const parsed = JSON.parse(fsModule.readFileSync(portsFile, "utf8").trim());
 			if (Array.isArray(parsed) && parsed.length > 0) {
-				const validPorts = parsed
-					.map((port) => parsePositiveInteger(port))
-					.filter((port) => typeof port === "number");
-				if (validPorts.length > 0) {
-					return validPorts;
+				const ports = parsed.map((port) => parsePositiveInteger(port));
+				if (ports.every((port) => typeof port === "number")) {
+					return ports;
 				}
 			}
 		} catch {
