@@ -16,6 +16,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { Worker } = require("node:worker_threads");
 const { getAllWorktreePortInfo } = require("./lib/worktree-ports");
+const { probePortAlive } = require("./lib/port-liveness");
 
 const SEPARATOR = "━".repeat(70);
 const WATCH_INTERVAL_MS = 1000;
@@ -57,14 +58,15 @@ function readRovoPorts(worktreePath) {
 				parsed.length > 0 &&
 				parsed.every((port) => Number.isInteger(port) && port > 0)
 			) {
-				return parsed.join(", ");
+				return parsed.map(String);
 			}
 		} catch {
 			// Fall back to the legacy single-port file.
 		}
 	}
 
-	return readPortFile(worktreePath, ".dev-rovo-port");
+	const single = readPortFile(worktreePath, ".dev-rovo-port");
+	return single ? [single] : [];
 }
 
 function loadPortlessRoutes() {
@@ -86,27 +88,49 @@ function findPortlessUrl(routes, frontendPort) {
 	return route?.hostname ? `https://${route.hostname}` : null;
 }
 
-function collectWorktreeRows(worktrees, routes) {
-	return worktrees.map((wt) => {
-		const runningFrontend = readPortFile(wt.path, ".dev-frontend-port");
-		const runningBackend = readPortFile(wt.path, ".dev-backend-port");
-		const runningRovo = readRovoPorts(wt.path);
-		const isRunning = Boolean(runningFrontend || runningBackend || runningRovo);
-		return {
-			wt,
-			name: path.basename(wt.path),
-			isMain: Boolean(wt.isMain),
-			isRunning,
-			runningFrontend,
-			runningBackend,
-			runningRovo,
-			portlessUrl: findPortlessUrl(routes, runningFrontend),
-		};
-	});
+async function probeOrNull(port) {
+	if (!port) return null;
+	const alive = await probePortAlive(port);
+	return alive ? port : null;
+}
+
+async function collectWorktreeRows(worktrees, routes) {
+	return Promise.all(
+		worktrees.map(async (wt) => {
+			const recordedFrontend = readPortFile(wt.path, ".dev-frontend-port");
+			const recordedBackend = readPortFile(wt.path, ".dev-backend-port");
+			const recordedRovo = readRovoPorts(wt.path);
+
+			const [runningFrontend, runningBackend, runningRovoPorts] = await Promise.all([
+				probeOrNull(recordedFrontend),
+				probeOrNull(recordedBackend),
+				Promise.all(recordedRovo.map(probeOrNull)).then((results) =>
+					results.filter((value) => value !== null),
+				),
+			]);
+
+			const runningRovo = runningRovoPorts.length > 0 ? runningRovoPorts.join(", ") : null;
+			const hasRecordedPorts = Boolean(
+				recordedFrontend || recordedBackend || recordedRovo.length > 0,
+			);
+			const isRunning = Boolean(runningFrontend || runningBackend || runningRovo);
+			return {
+				wt,
+				name: path.basename(wt.path),
+				isMain: Boolean(wt.isMain),
+				hasRecordedPorts,
+				isRunning,
+				runningFrontend,
+				runningBackend,
+				runningRovo,
+				portlessUrl: findPortlessUrl(routes, runningFrontend),
+			};
+		}),
+	);
 }
 
 function filterRowsForDisplay(rows) {
-	return rows.filter((row) => row.isMain || row.isRunning);
+	return rows.filter((row) => row.isMain || row.hasRecordedPorts);
 }
 
 function renderRows(rows, { headerSuffix, footer } = {}) {
@@ -156,17 +180,17 @@ function renderRows(rows, { headerSuffix, footer } = {}) {
 	}
 }
 
-function snapshot() {
+async function snapshot() {
 	const worktrees = getAllWorktreePortInfo();
 	const routes = loadPortlessRoutes();
-	const rows = collectWorktreeRows(worktrees, routes);
+	const rows = await collectWorktreeRows(worktrees, routes);
 	return filterRowsForDisplay(rows);
 }
 
-function main() {
+async function main() {
 	let rows;
 	try {
-		rows = snapshot();
+		rows = await snapshot();
 	} catch (error) {
 		console.error(`Failed to enumerate worktrees: ${error.message}`);
 		process.exit(1);
@@ -174,7 +198,7 @@ function main() {
 	renderRows(rows);
 }
 
-function runWatch() {
+async function runWatch() {
 	let frameIndex = 0;
 	let tickCount = 0;
 	let lastRows = [];
@@ -182,22 +206,26 @@ function runWatch() {
 	let refreshInFlight = false;
 
 	try {
-		lastRows = snapshot();
+		lastRows = await snapshot();
 	} catch (error) {
 		lastError = error;
 	}
 
 	const worker = new Worker(SNAPSHOT_WORKER_SCRIPT, { eval: true });
-	worker.on("message", (result) => {
-		refreshInFlight = false;
+	worker.on("message", async (result) => {
 		if (result.ok) {
-			const routes = loadPortlessRoutes();
-			const rows = collectWorktreeRows(result.data, routes);
-			lastRows = filterRowsForDisplay(rows);
-			lastError = null;
+			try {
+				const routes = loadPortlessRoutes();
+				const rows = await collectWorktreeRows(result.data, routes);
+				lastRows = filterRowsForDisplay(rows);
+				lastError = null;
+			} catch (error) {
+				lastError = error;
+			}
 		} else {
 			lastError = new Error(result.message);
 		}
+		refreshInFlight = false;
 	});
 	worker.on("error", (error) => {
 		refreshInFlight = false;
@@ -242,12 +270,18 @@ function runWatch() {
 
 const subcommand = process.argv[2];
 if (subcommand === "watch") {
-	runWatch();
+	runWatch().catch((error) => {
+		console.error(error.message);
+		process.exit(1);
+	});
 } else if (subcommand && subcommand !== "once") {
 	console.error(
 		`Unknown subcommand: ${subcommand}. Use \`pnpm ports\` or \`pnpm ports watch\`.`
 	);
 	process.exit(2);
 } else {
-	main();
+	main().catch((error) => {
+		console.error(error.message);
+		process.exit(1);
+	});
 }
