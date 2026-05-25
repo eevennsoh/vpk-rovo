@@ -34,7 +34,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/react": "^3.0.174",
-		"@atlaskit/icon": "^34.3.0",
+		"@atlaskit/icon": "^35.0.0",
 		"@atlaskit/icon-lab": "^6.6.0",
 		"@atlaskit/logo": "^20.1.0",
 		"@atlaskit/tokens": "^13.0.2",
