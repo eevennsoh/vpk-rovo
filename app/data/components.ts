@@ -395,6 +395,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("slice", "Slice", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("smear", "Smear", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("threshold", "Threshold", "@/components/website/demos/visual/shader-lab-effect-demo"),
+	visualComponent("voxel", "Voxel", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("particles", "Particles", "@/components/website/demos/visual/shaders/particles"),
 	visualComponent("pattern-tile", "Pattern Tile", "@/components/website/demos/visual/pattern-tile"),
 	visualComponent("pattern", "Pattern", "@/components/website/demos/visual/shader-lab-effect-demo"),

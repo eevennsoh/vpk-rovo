@@ -7785,6 +7785,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   threshold: dynamic(() => import("./demos/visual/threshold-demo"), {
     ssr: false,
   }),
+  voxel: dynamic(() => import("./demos/visual/voxel-demo"), {
+    ssr: false,
+  }),
   particles: dynamic(() => import("./demos/visual/particles-demo"), {
     ssr: false,
   }),
