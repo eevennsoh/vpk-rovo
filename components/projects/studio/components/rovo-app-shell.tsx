@@ -414,7 +414,7 @@ function HomeStarterBento({
 	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>("analyze");
 	const [browseOpen, setBrowseOpen] = useState(false);
 	const templates = HOME_STARTER_VIEWS[activeCategory];
-	const visibleTemplates = templates.slice(0, 4);
+	const visibleTemplates = templates.slice(0, 5);
 	const canShowMore = templates.length > visibleTemplates.length;
 
 	return (
