@@ -82,7 +82,7 @@ const ROVO_APP_SIDEBAR_MOTION_FALLBACK_MS = 200;
 const ROVO_APP_SIDEBAR_MIN_WIDTH = 240;
 const ROVO_APP_SIDEBAR_MAX_WIDTH = 480;
 
-const DEFAULT_COMPOSER_PLACEHOLDER = "Ask, @mention, or / for skills";
+const DEFAULT_COMPOSER_PLACEHOLDER = "Describe what it should do";
 const REALTIME_THREAD_SUMMARY_MAX_MESSAGES = 10;
 const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
 const ROVO_APP_SPLIT_CHAT_PANEL_ID = "rovo-app-chat-pane";
@@ -91,6 +91,7 @@ const ROVO_APP_SPLIT_ARTIFACT_PANEL_ID = "rovo-app-artifact-pane";
 type HomeStarterCategory = "all" | "analyze" | "brainstorm" | "review" | "summarize" | "create";
 
 interface HomeStarterCategoryOption {
+	iconClassName?: string;
 	iconSrc?: string;
 	id: HomeStarterCategory;
 	label: string;
@@ -109,11 +110,11 @@ const RICH_ICON_ROOT = "/illustration/rich-icon";
 
 const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "all", label: "All" },
-	{ id: "analyze", label: "Analyze", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png` },
-	{ id: "brainstorm", label: "Brainstorm", iconSrc: `${RICH_ICON_ROOT}/lightbulb/standard.svg` },
-	{ id: "review", label: "Review", iconSrc: `${RICH_ICON_ROOT}/checklist/standard.svg` },
-	{ id: "summarize", label: "Summarize", iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg` },
-	{ id: "create", label: "Create", iconSrc: `${RICH_ICON_ROOT}/design/standard.png` },
+	{ id: "analyze", label: "Analyze", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.14]" },
+	{ id: "brainstorm", label: "Brainstorm", iconSrc: `${RICH_ICON_ROOT}/lightbulb/standard.svg`, iconClassName: "-translate-y-px scale-[1.08]" },
+	{ id: "review", label: "Review", iconSrc: `${RICH_ICON_ROOT}/checklist/standard.svg`, iconClassName: "-translate-x-0.5 -translate-y-0.5 scale-[0.92]" },
+	{ id: "summarize", label: "Summarize", iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg`, iconClassName: "translate-y-px scale-[1.08]" },
+	{ id: "create", label: "Create", iconSrc: `${RICH_ICON_ROOT}/design/standard.png`, iconClassName: "translate-x-px scale-[1.12]" },
 ];
 
 const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
@@ -219,7 +220,7 @@ function HomeStarterBento({
 
 	return (
 		<div className="w-full">
-			<div className="no-scrollbar flex justify-center gap-2 overflow-x-auto">
+			<div className="no-scrollbar -mx-1 flex justify-center gap-2 overflow-x-auto px-1 py-1">
 				{HOME_STARTER_CATEGORIES.map((category) => {
 					const isActive = activeCategory === category.id;
 
@@ -240,14 +241,15 @@ function HomeStarterBento({
 							)}
 						>
 							{category.iconSrc ? (
-								<Image
-									alt=""
-									aria-hidden
-									className="size-6 object-contain"
-									height={24}
-									src={category.iconSrc}
-									width={24}
-								/>
+								<span aria-hidden className="inline-flex size-6 shrink-0 items-center justify-center">
+									<Image
+										alt=""
+										className={cn("size-6 object-contain", category.iconClassName)}
+										height={24}
+										src={category.iconSrc}
+										width={24}
+									/>
+								</span>
 							) : null}
 							{category.label}
 						</button>

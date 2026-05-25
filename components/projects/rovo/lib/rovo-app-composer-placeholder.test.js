@@ -8,7 +8,7 @@ const {
 test("resolveRovoAppComposerPlaceholder uses the preview prompt while the home state is visible", () => {
 	assert.deepEqual(
 		resolveRovoAppComposerPlaceholder({
-			defaultPlaceholder: "Ask, @mention, or / for skills",
+			defaultPlaceholder: "Describe what it should do",
 			previewPrompt: "Summarize this page into key points.",
 			showHomeState: true,
 		}),
@@ -22,13 +22,13 @@ test("resolveRovoAppComposerPlaceholder uses the preview prompt while the home s
 test("resolveRovoAppComposerPlaceholder drops stale preview text once the home state closes", () => {
 	assert.deepEqual(
 		resolveRovoAppComposerPlaceholder({
-			defaultPlaceholder: "Ask, @mention, or / for skills",
+			defaultPlaceholder: "Describe what it should do",
 			previewPrompt: "Draft release notes for this update.",
 			showHomeState: false,
 		}),
 		{
 			activePreviewPrompt: null,
-			placeholder: "Ask, @mention, or / for skills",
+			placeholder: "Describe what it should do",
 		},
 	);
 });

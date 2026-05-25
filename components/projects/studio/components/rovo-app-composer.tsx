@@ -128,7 +128,7 @@ function RovoAppComposerInner({
 	onToggleClicky,
 	onTogglePlanMode,
 	onToggleRealtimeVoice,
-	placeholder = "Ask, @mention, or / for skills",
+	placeholder = "Describe what it should do",
 	planExecutionTracker = null,
 	prefillText,
 	previewPrompt = null,
