@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { ArtifactPanel } from "@/components/ui-custom/artifact";
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
-import { RovoAppHeader } from "@/components/projects/studio/components/rovo-app-header";
 import { RovoAppBrowserArtifact } from "@/components/projects/studio/components/rovo-app-browser-artifact";
 import { RovoAppComposer } from "@/components/projects/studio/components/rovo-app-composer";
 import { RovoAppMessages } from "@/components/projects/studio/components/rovo-app-messages";
@@ -22,7 +21,6 @@ import { formatAnnotationsForVoiceContext } from "@/components/ui-custom/lib/art
 import type { ArtifactAnnotation } from "@/components/ui-custom/lib/artifact-annotations";
 import { useRovoApp } from "@/components/projects/studio/hooks/use-rovo-app";
 import { useHmrReloadSuppression } from "@/components/projects/studio/hooks/use-hmr-reload-suppression";
-import { getRovoAppArtifactKindLabel, getRovoAppArtifactTypeLabel, sortRovoAppArtifacts } from "@/components/projects/studio/lib/rovo-app-artifacts";
 import {
 	buildRovoAppBrowserArtifactKey,
 	shouldAutoOpenRovoAppBrowserArtifact,
@@ -40,8 +38,6 @@ import { type DelegationRequest, useRealtimeVoice } from "@/components/projects/
 import type { VoiceButtonState } from "@/components/ui-audio/voice-button";
 import type { ConversationFollowMode } from "@/components/ui-custom/conversation";
 import { useSidebar as useGlobalSidebar } from "@/app/contexts/context-sidebar";
-import PromptGallery from "@/components/blocks/prompt-gallery/page";
-import { DEFAULT_PROMPT_GALLERY_SUGGESTIONS } from "@/components/blocks/prompt-gallery/data/suggestions";
 import { LeftNavigation } from "@/components/blocks/top-navigation/components/left-navigation";
 import { RightNavigation } from "@/components/blocks/top-navigation/components/right-navigation";
 import SearchSuggestionsPanel from "@/components/blocks/top-navigation/components/search-suggestions-panel";
@@ -51,6 +47,12 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import AiGenerativeTextSummaryIcon from "@atlaskit/icon/core/ai-generative-text-summary";
+import AiSparkleIcon from "@atlaskit/icon/core/ai-sparkle";
+import ChartTrendUpIcon from "@atlaskit/icon/core/chart-trend-up";
+import EyeOpenIcon from "@atlaskit/icon/core/eye-open";
+import LightbulbIcon from "@atlaskit/icon/core/lightbulb";
+import PageIcon from "@atlaskit/icon/core/page";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
 import { Footer } from "@/components/ui/footer";
@@ -85,12 +87,100 @@ const ROVO_APP_SIDEBAR_MOTION_FALLBACK_MS = 200;
 const ROVO_APP_SIDEBAR_MIN_WIDTH = 240;
 const ROVO_APP_SIDEBAR_MAX_WIDTH = 480;
 
-const HOME_SUGGESTIONS = DEFAULT_PROMPT_GALLERY_SUGGESTIONS.slice(0, 3);
 const DEFAULT_COMPOSER_PLACEHOLDER = "Ask, @mention, or / for skills";
 const REALTIME_THREAD_SUMMARY_MAX_MESSAGES = 10;
 const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
 const ROVO_APP_SPLIT_CHAT_PANEL_ID = "rovo-app-chat-pane";
 const ROVO_APP_SPLIT_ARTIFACT_PANEL_ID = "rovo-app-artifact-pane";
+
+type HomeStarterCategory = "all" | "analyze" | "brainstorm" | "review" | "summarize" | "create";
+
+interface HomeStarterCategoryOption {
+	icon?: typeof SearchIcon;
+	id: HomeStarterCategory;
+	label: string;
+}
+
+interface HomeStarterTemplate {
+	category: Exclude<HomeStarterCategory, "all">;
+	description: string;
+	icon: typeof SearchIcon;
+	prompt: string;
+	size?: "wide" | "tall";
+	title: string;
+}
+
+const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
+	{ id: "all", label: "All" },
+	{ id: "analyze", label: "Analyze", icon: ChartTrendUpIcon },
+	{ id: "brainstorm", label: "Brainstorm", icon: LightbulbIcon },
+	{ id: "review", label: "Review", icon: EyeOpenIcon },
+	{ id: "summarize", label: "Summarize", icon: AiGenerativeTextSummaryIcon },
+	{ id: "create", label: "Create", icon: AiSparkleIcon },
+];
+
+const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
+	{
+		category: "analyze",
+		description: "Turn notes, links, or raw work into the signal that matters.",
+		icon: ChartTrendUpIcon,
+		prompt: "Analyze this work and identify the key themes, risks, opportunities, and recommended next steps.",
+		title: "Analyze a workstream",
+	},
+	{
+		category: "brainstorm",
+		description: "Explore directions before committing to a plan.",
+		icon: LightbulbIcon,
+		prompt: "Brainstorm several strong approaches for this problem, then compare the tradeoffs and recommend one.",
+		title: "Brainstorm approaches",
+	},
+	{
+		category: "review",
+		description: "Check work for gaps, regressions, and unclear assumptions.",
+		icon: EyeOpenIcon,
+		prompt: "Review this proposal for risks, missing context, edge cases, and concrete improvements.",
+		size: "wide",
+		title: "Review a proposal",
+	},
+	{
+		category: "summarize",
+		description: "Condense long context into decisions and follow-ups.",
+		icon: AiGenerativeTextSummaryIcon,
+		prompt: "Summarize this into key points, decisions, open questions, and action items.",
+		size: "tall",
+		title: "Summarize context",
+	},
+	{
+		category: "create",
+		description: "Draft a doc, plan, message, or artifact from sparse notes.",
+		icon: PageIcon,
+		prompt: "Create a clear first draft from these notes, with structure, headings, and practical next steps.",
+		size: "tall",
+		title: "Create a first draft",
+	},
+	{
+		category: "analyze",
+		description: "Map dependencies, owners, and blockers across work.",
+		icon: SearchIcon,
+		prompt: "Map the current work into dependencies, owners, blockers, and the shortest path to progress.",
+		size: "wide",
+		title: "Map dependencies",
+	},
+	{
+		category: "review",
+		description: "Prepare concise feedback before sharing.",
+		icon: EyeOpenIcon,
+		prompt: "Rewrite this as constructive feedback with the strongest points first and clear suggested changes.",
+		title: "Sharpen feedback",
+	},
+	{
+		category: "create",
+		description: "Convert intent into a practical execution plan.",
+		icon: AiSparkleIcon,
+		prompt: "Create an execution plan with milestones, owners, sequencing, and the first three actions.",
+		title: "Create an action plan",
+	},
+];
 
 function parseCssDurationMs(value: string): number | null {
 	const trimmedValue = value.trim();
@@ -111,6 +201,106 @@ function parseCssDurationMs(value: string): number | null {
 
 	const numericDuration = Number.parseFloat(trimmedValue);
 	return Number.isFinite(numericDuration) ? numericDuration : null;
+}
+
+function HomeStarterBento({
+	onPreviewEnd,
+	onPreviewStart,
+	onSelect,
+}: Readonly<{
+	onPreviewEnd: () => void;
+	onPreviewStart: (prompt: string) => void;
+	onSelect: (prompt: string) => void;
+}>) {
+	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>("all");
+	const [showAll, setShowAll] = useState(false);
+	const filteredTemplates = activeCategory === "all"
+		? HOME_STARTER_TEMPLATES
+		: HOME_STARTER_TEMPLATES.filter((template) => template.category === activeCategory);
+	const visibleTemplates = showAll ? filteredTemplates : filteredTemplates.slice(0, 5);
+	const canShowMore = filteredTemplates.length > visibleTemplates.length;
+
+	return (
+		<div className="w-full">
+			<div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+				{HOME_STARTER_CATEGORIES.map((category) => {
+					const Icon = category.icon;
+					const isActive = activeCategory === category.id;
+
+					return (
+						<button
+							key={category.id}
+							type="button"
+							aria-pressed={isActive}
+							onClick={() => {
+								setActiveCategory(category.id);
+								setShowAll(false);
+							}}
+							className={cn(
+								"inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-medium leading-5 outline-none transition-colors duration-fast ease-out focus-visible:ring-3 focus-visible:ring-ring/50",
+								isActive
+									? "border-border-selected bg-bg-selected text-text-selected"
+									: "border-border bg-background text-text-subtle hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
+							)}
+						>
+							{Icon ? <Icon label="" size="small" /> : null}
+							{category.label}
+						</button>
+					);
+				})}
+			</div>
+
+			<div className="relative mt-4">
+				<div className="grid auto-rows-[112px] grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+					{visibleTemplates.map((template) => {
+						const Icon = template.icon;
+
+						return (
+							<button
+								key={template.title}
+								type="button"
+								aria-label={`Use prompt starter: ${template.title}`}
+								onClick={() => onSelect(template.prompt)}
+								onMouseEnter={() => onPreviewStart(template.prompt)}
+								onMouseLeave={onPreviewEnd}
+								onFocus={() => onPreviewStart(template.prompt)}
+								onBlur={onPreviewEnd}
+								className={cn(
+									"group flex min-h-0 flex-col items-start rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:border-border-selected hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
+									template.size === "wide" && "sm:col-span-2",
+									template.size === "tall" && "sm:row-span-2",
+								)}
+							>
+								<span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-bg-neutral text-icon-subtle transition-colors duration-fast ease-out group-hover:text-icon-selected">
+									<Icon label="" size="small" />
+								</span>
+								<span className="mt-3 block text-sm font-semibold leading-5 text-text">
+									{template.title}
+								</span>
+								<span className="mt-1 line-clamp-2 text-sm leading-5 text-text-subtle">
+									{template.description}
+								</span>
+							</button>
+						);
+					})}
+				</div>
+				{canShowMore ? (
+					<div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-linear-to-t from-background via-background/85 to-transparent pt-12 pb-1">
+						<Button
+							type="button"
+							aria-label="Show more prompt starters"
+							variant="secondary"
+							size="sm"
+							className="pointer-events-auto rounded-full shadow-sm"
+							onClick={() => setShowAll(true)}
+						>
+							Show more
+						</Button>
+					</div>
+				) : null}
+			</div>
+		</div>
+	);
 }
 
 function getCssDurationTokenMs(tokenName: string, fallbackMs: number): number {
@@ -2000,32 +2190,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		[shellSize.width],
 	);
 
-	const sortedArtifacts = sortRovoAppArtifacts(chat.documents);
-	const artifactMenuItems = (() => {
-		const items = sortedArtifacts.map((artifact) => ({
-			id: artifact.id,
-			typeLabel: getRovoAppArtifactTypeLabel(artifact),
-			title: artifact.title,
-		}));
-		const seenIds = new Set(items.map((item) => item.id));
-
-		for (let index = chat.messages.length - 1; index >= 0; index--) {
-			const artifactResult = getMessageArtifactResult(chat.messages[index]);
-			if (!artifactResult || seenIds.has(artifactResult.documentId)) {
-				continue;
-			}
-
-			seenIds.add(artifactResult.documentId);
-			items.push({
-				id: artifactResult.documentId,
-				typeLabel: getRovoAppArtifactKindLabel(artifactResult.kind),
-				title: artifactResult.title,
-			});
-		}
-
-		return items;
-	})();
-
 	const handleCloseArtifactPane = useCallback(() => {
 		if (!workspaceDocument) {
 			return;
@@ -2205,6 +2369,21 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 									/>
 								</div>
 							) : null}
+							{showHomeState && !isCustomAgentSelected ? (
+								<motion.div
+									className="mb-5"
+									initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.25 }}
+									style={{ willChange: "transform, opacity" }}
+								>
+									<HomeStarterBento
+										onSelect={handleGallerySelect}
+										onPreviewStart={handleGalleryPreviewStart}
+										onPreviewEnd={handleGalleryPreviewEnd}
+									/>
+								</motion.div>
+							) : null}
 							<motion.div
 								initial={showHomeState && !shouldReduceMotion ? { opacity: 0, y: 20 } : false}
 								animate={{ opacity: 1, y: 0 }}
@@ -2289,26 +2468,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						</>
 					)}
 				</div>
-
-				{showHomeState && !isCustomAgentSelected ? (
-					<motion.div
-						initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.3 }}
-						style={{ willChange: "transform, opacity" }}
-					>
-						<ViewTransition exit="slide-down" default="none">
-							<PromptGallery
-								className="mt-5"
-								items={HOME_SUGGESTIONS}
-								onSelect={handleGallerySelect}
-								onExpandChange={setGalleryExpanded}
-								onPreviewStart={handleGalleryPreviewStart}
-								onPreviewEnd={handleGalleryPreviewEnd}
-							/>
-						</ViewTransition>
-					</motion.div>
-				) : null}
 			</div>
 		</>
 	);
@@ -2479,15 +2638,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						<RightNavigation product="studio" windowWidth={nav.windowWidth} onToggleChat={nav.toggleChat} onToggleTheme={nav.toggleTheme} />
 					</div>
 				) : null}
-				<RovoAppHeader
-					artifactMenuItems={artifactMenuItems}
-					isArtifactOpen={isArtifactOpen}
-					onNewChat={() => {
-						setOptimisticUserMessage(null);
-						void chat.openNewChat();
-					}}
-					onOpenDocument={(documentId) => void chat.openDocument(documentId)}
-				/>
 				<main ref={shellRef} className="relative flex min-h-0 min-w-0 flex-1 bg-background px-3 text-foreground">
 					<RovoAppShellPaneLayout
 						artifactOrigin={artifactOrigin}
