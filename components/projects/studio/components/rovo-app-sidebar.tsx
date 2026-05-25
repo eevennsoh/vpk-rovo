@@ -1,9 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { ControlledChatHistoryPanel } from "@/components/projects/sidebar-chat/components/chat-history-drawer";
+import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
+import AppsIcon from "@atlaskit/icon/core/apps";
+import ChartTrendUpIcon from "@atlaskit/icon/core/chart-trend-up";
+import PersonAvatarIcon from "@atlaskit/icon/core/person-avatar";
+import ToolsIcon from "@atlaskit/icon/core/tools";
+import SkillIcon from "@atlaskit/icon-lab/core/skill";
+import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
 import { token } from "@/lib/tokens";
 import { Sidebar, SidebarContent } from "@/components/ui/sidebar";
+import { SidebarNavItem } from "@/components/ui/sidebar-nav-item";
 import type { RovoAppThread } from "@/lib/rovo-app-types";
 import { cn } from "@/lib/utils";
 
@@ -23,25 +30,111 @@ interface RovoAppSidebarProps {
 	topOffset?: boolean;
 }
 
+interface StudioSidebarNavItem {
+	icon: React.ReactNode;
+	isSelected?: boolean;
+	label: string;
+}
+
+interface StudioSidebarNavSection {
+	items: ReadonlyArray<StudioSidebarNavItem>;
+	title?: string;
+}
+
+const STUDIO_SIDEBAR_NAV_SECTIONS: ReadonlyArray<StudioSidebarNavSection> = [
+	{
+		items: [
+			{
+				icon: <PersonAvatarIcon label="" />,
+				label: "For you",
+			},
+			{
+				icon: <ChartTrendUpIcon label="" />,
+				isSelected: true,
+				label: "Insights",
+			},
+		],
+	},
+	{
+		title: "Browse",
+		items: [
+			{
+				icon: <ToolsIcon label="" />,
+				label: "Tools",
+			},
+			{
+				icon: <TeamworkGraphIcon label="" />,
+				label: "Teamwork Graph",
+			},
+		],
+	},
+	{
+		title: "Build",
+		items: [
+			{
+				icon: <AppsIcon label="" />,
+				label: "Apps",
+			},
+			{
+				icon: <AiAgentIcon label="" />,
+				label: "Agents",
+			},
+			{
+				icon: <SkillIcon label="" />,
+				label: "Skills",
+			},
+		],
+	},
+];
+
+function StudioSidebarNavItem({ icon, isSelected = false, label }: Readonly<StudioSidebarNavItem>) {
+	return (
+		<SidebarNavItem
+			label={label}
+			leading={icon}
+			leadingSize="medium"
+			isSelected={isSelected}
+		/>
+	);
+}
+
+function StudioSidebarNavigation() {
+	return (
+		<nav aria-label="Studio" className="flex shrink-0 flex-col gap-3">
+			<div className="flex flex-col gap-3">
+				{STUDIO_SIDEBAR_NAV_SECTIONS.map((section, sectionIndex) => (
+					<div
+						key={section.title ?? `section-${sectionIndex}`}
+						className="flex flex-col gap-1"
+					>
+						{section.title ? (
+							<div className="px-1.5 text-xs font-semibold leading-4 text-text-subtlest">
+								{section.title}
+							</div>
+						) : null}
+						<div className="flex flex-col">
+							{section.items.map((item) => (
+								<StudioSidebarNavItem
+									key={item.label}
+									{...item}
+								/>
+							))}
+						</div>
+					</div>
+				))}
+			</div>
+		</nav>
+	);
+}
+
 export function RovoAppSidebar({
-	activeThreadId,
-	onCancelThreadRun,
 	hoverOpen = false,
 	isResizing,
-	onDeleteThread,
-	onNewChat,
 	onSidebarMouseEnter,
 	onSidebarMouseLeave,
-	onSelectThread,
 	resizeHandle,
-	threads,
-	threadsLoaded = true,
 	topOffset = false,
 }: Readonly<RovoAppSidebarProps>) {
-	const handleNewChat = React.useCallback(() => {
-		onNewChat();
-	}, [onNewChat]);
-
 	return (
 		<Sidebar
 			aria-label="Studio navigation"
@@ -61,16 +154,7 @@ export function RovoAppSidebar({
 			variant="inset"
 		>
 			<SidebarContent className="gap-3 overflow-hidden bg-sidebar px-3">
-				<ControlledChatHistoryPanel
-					activeThreadId={activeThreadId}
-					cancelThreadRun={onCancelThreadRun}
-					className="min-h-0 flex-1"
-					deleteThread={onDeleteThread}
-					onNewChat={handleNewChat}
-					selectThread={onSelectThread}
-					threads={threads}
-					threadsLoaded={threadsLoaded}
-				/>
+				<StudioSidebarNavigation />
 			</SidebarContent>
 		</Sidebar>
 	);
