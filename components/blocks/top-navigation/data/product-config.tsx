@@ -6,9 +6,10 @@ import {
 	ConfluenceIcon,
 	ProjectsIcon,
 	SearchIcon as SearchLogo,
+	StudioIcon,
 } from "@/components/ui/logo";
 
-type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search" | "studio";
 
 interface ProductConfig {
 	Icon: typeof HomeIcon;
@@ -30,5 +31,6 @@ export const PRODUCT_CONFIG: Record<Product, ProductConfig> = {
 	jira: { Icon: JiraIcon, name: "Jira" },
 	confluence: { Icon: ConfluenceIcon, name: "Confluence" },
 	rovo: { Icon: VpkRovoIcon as typeof HomeIcon, name: "Rovo" },
+	studio: { Icon: StudioIcon, name: "Studio" },
 	home: { Icon: HomeIcon, name: "Home" },
 } as const;

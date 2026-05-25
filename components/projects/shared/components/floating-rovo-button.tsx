@@ -9,7 +9,7 @@ import { useRovoChat } from "@/app/contexts";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
-type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search" | "studio";
 export type FloatingRovoButtonOnboardingStatus = "idle" | "creating" | "created";
 
 export interface FloatingRovoButtonSuggestion {
@@ -489,7 +489,7 @@ export default function FloatingRovoButton({
 	const onboardingOpen = Boolean(onboarding && (onboarding.open ?? internalOnboardingOpen));
 	const shouldOpenOnboardingFromButton = Boolean(onboarding && (onboarding.openOnButtonClick ?? true));
 	const resolvedAriaLabel = ariaLabel ?? (shouldOpenOnboardingFromButton ? "Open onboarding" : "Open Rovo");
-	const shouldRenderSurface = (shouldShowButton || onboardingOpen) && !(embedded || product === "rovo");
+	const shouldRenderSurface = (shouldShowButton || onboardingOpen) && !(embedded || product === "rovo" || product === "studio");
 
 	useEffect(() => {
 		if (onboardingId) {
@@ -504,7 +504,7 @@ export default function FloatingRovoButton({
 		onboarding?.onOpenChange?.(open);
 	}, [onboarding]);
 
-	if (!forceVisible && (embedded || product === "rovo")) {
+	if (!forceVisible && (embedded || product === "rovo" || product === "studio")) {
 		return null;
 	}
 
