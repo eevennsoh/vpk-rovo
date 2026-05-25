@@ -9,7 +9,7 @@ import { getCategoryDisplayName } from "@/lib/project-page-title";
 import type { PreviewCategory } from "./preview-types";
 
 interface PreviewCategoryPageProps {
-	params: Promise<{ slug: string }>;
+	slug: string;
 	category: PreviewCategory;
 }
 
@@ -46,11 +46,9 @@ function PreviewCategoryLoadingFallback({
 }
 
 export function RenderPreviewCategoryPage({
-	params,
+	slug,
 	category,
 }: Readonly<PreviewCategoryPageProps>) {
-	const { slug } = use(params);
-
 	return (
 		<Suspense fallback={<PreviewCategoryLoadingFallback category={category} />}>
 			<ResolvedPreviewCategoryPage slug={slug} category={category} />

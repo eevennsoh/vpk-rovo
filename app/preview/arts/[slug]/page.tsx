@@ -1,11 +1,16 @@
-"use client";
-
 import { RenderPreviewCategoryPage } from "@/app/preview/_shared/render-preview-category-page";
+import { getPreviewStaticParams } from "@/app/preview/_shared/preview-static-params";
 
 interface PreviewTemplatePageProps {
 	params: Promise<{ slug: string }>;
 }
 
-export default function PreviewTemplatePage({ params }: PreviewTemplatePageProps) {
-	return <RenderPreviewCategoryPage params={params} category="arts" />;
+export function generateStaticParams() {
+	return getPreviewStaticParams("arts");
+}
+
+export default async function PreviewTemplatePage({ params }: PreviewTemplatePageProps) {
+	const { slug } = await params;
+
+	return <RenderPreviewCategoryPage slug={slug} category="arts" />;
 }

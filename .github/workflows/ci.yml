@@ -16,8 +16,9 @@ concurrency:
 
 jobs:
   validate:
-    name: Lint and typecheck
+    name: Lint, test, build, and smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Check out repository
@@ -43,3 +44,27 @@ jobs:
 
       - name: Run typecheck
         run: pnpm run typecheck
+
+      - name: Run deterministic JS unit tests
+        run: pnpm run test:unit:js
+
+      - name: Run Next.js build
+        run: pnpm run build
+
+      - name: Run static export build
+        run: pnpm run build:export
+
+      - name: Build production Docker image
+        run: docker build -f backend/Dockerfile -t vpk-rovo-ci .
+
+      - name: Smoke production Docker image
+        run: |
+          docker run --rm -d --name vpk-rovo-ci -e VPK_RUNTIME_ADMIN_TOKEN=ci-smoke-token -p 8080:8080 vpk-rovo-ci
+          trap 'docker logs vpk-rovo-ci || true; docker stop vpk-rovo-ci || true' EXIT
+          for i in {1..45}; do
+            if curl -fsS http://127.0.0.1:8080/api/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1

@@ -1,15 +1,17 @@
-"use client";
-
-import { use } from "react";
 import RovoPage from "@/components/projects/rovo/page";
 
 interface RovoAppCatchAllPageProps {
 	params: Promise<{ id?: string[] }>;
 }
 
-export default function RovoAppCatchAllPage({
+export function generateStaticParams() {
+	return [{ id: [] }];
+}
+
+export default async function RovoAppCatchAllPage({
 	params,
 }: Readonly<RovoAppCatchAllPageProps>) {
-	const { id } = use(params);
+	const { id } = await params;
+
 	return <RovoPage initialThreadId={id?.[0] ?? null} />;
 }

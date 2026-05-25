@@ -1,0 +1,12 @@
+.git
+.next
+node_modules
+backend/node_modules
+.pnpm-store
+.venv
+output
+backend/data
+.env
+.env.*
+.api-routes-backup
+.rovo-skills-detail-route-backup

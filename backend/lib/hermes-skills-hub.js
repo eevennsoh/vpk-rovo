@@ -354,7 +354,19 @@ function createTapsManager(tapsPath) {
  * @param {string} [extra]
  */
 async function appendAuditLog(action, skillName, source, trustLevel, verdict, extra = "") {
-	const logPath = getAuditLogPath();
+	return appendAuditLogToPath(getAuditLogPath(), action, skillName, source, trustLevel, verdict, extra);
+}
+
+/**
+ * @param {string} logPath
+ * @param {string} action
+ * @param {string} skillName
+ * @param {string} source
+ * @param {string} trustLevel
+ * @param {string} verdict
+ * @param {string} [extra]
+ */
+async function appendAuditLogToPath(logPath, action, skillName, source, trustLevel, verdict, extra = "") {
 	await fs.mkdir(path.dirname(logPath), { recursive: true });
 	const timestamp = new Date().toISOString().replace(/\.\d+Z$/, "Z");
 	const parts = [timestamp, action, skillName, `${source}:${trustLevel}`, verdict];
@@ -385,6 +397,47 @@ function bundleContentHash(files) {
 	return `sha256:${h.digest("hex").slice(0, 16)}`;
 }
 
+const SKILL_SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+function validateSkillSlug(value, label) {
+	if (typeof value !== "string" || !value.trim()) {
+		return { valid: false, error: `${label} is empty` };
+	}
+
+	const trimmed = value.trim();
+	if (
+		trimmed.includes("/") ||
+		trimmed.includes("\\") ||
+		trimmed === "." ||
+		trimmed === ".." ||
+		!SKILL_SLUG_PATTERN.test(trimmed)
+	) {
+		return { valid: false, error: `${label} contains invalid path characters` };
+	}
+
+	return { valid: true, value: trimmed };
+}
+
+function requireSkillSlug(value, label) {
+	const validation = validateSkillSlug(value, label);
+	if (!validation.valid) {
+		throw new Error(validation.error);
+	}
+
+	return validation.value;
+}
+
+function resolveContainedPath(rootDir, ...segments) {
+	const resolvedRoot = path.resolve(rootDir);
+	const targetPath = path.resolve(resolvedRoot, ...segments);
+	const relativePath = path.relative(resolvedRoot, targetPath);
+	if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+		throw new Error(`Rejected path traversal: ${segments.join("/")}`);
+	}
+
+	return targetPath;
+}
+
 // ---------------------------------------------------------------------------
 // Validate skill bundle (backward-compatible with legacy array format)
 // ---------------------------------------------------------------------------
@@ -400,6 +453,18 @@ function validateSkillBundle(bundle) {
 
 	if (typeof bundle.name !== "string" || !bundle.name.trim()) {
 		return { valid: false, error: "Bundle name is empty" };
+	}
+
+	const nameValidation = validateSkillSlug(bundle.name, "Bundle name");
+	if (!nameValidation.valid) {
+		return { valid: false, error: nameValidation.error };
+	}
+
+	if (bundle.category !== undefined) {
+		const categoryValidation = validateSkillSlug(bundle.category, "Bundle category");
+		if (!categoryValidation.valid) {
+			return { valid: false, error: categoryValidation.error };
+		}
 	}
 
 	// Support both legacy array format and new dict format
@@ -421,6 +486,11 @@ function validateSkillBundle(bundle) {
 		}
 		if (path.isAbsolute(file.path)) {
 			return { valid: false, error: `Rejected absolute path in file: ${file.path}` };
+		}
+		try {
+			resolveContainedPath(".", file.path);
+		} catch {
+			return { valid: false, error: `Rejected path traversal in file: ${file.path}` };
 		}
 	}
 
@@ -522,7 +592,10 @@ async function unifiedSearch(query, sources, options = {}) {
  * @param {{ skillsDir: string }} options
  */
 function createSkillsHubClient({ skillsDir }) {
-	const lockFile = createHubLockFile();
+	const hubDir = path.join(skillsDir, ".hub");
+	const lockFile = createHubLockFile(path.join(hubDir, "lock.json"));
+	const auditLogPath = path.join(hubDir, "audit.log");
+	const appendClientAuditLog = (...args) => appendAuditLogToPath(auditLogPath, ...args);
 
 	/**
 	 * Install a skill from a validated bundle (legacy array format).
@@ -535,10 +608,10 @@ function createSkillsHubClient({ skillsDir }) {
 		}
 
 		const category = typeof bundle.category === "string" && bundle.category.trim()
-			? bundle.category.trim()
+			? requireSkillSlug(bundle.category, "Bundle category")
 			: DEFAULT_CATEGORY;
-		const name = bundle.name.trim();
-		const skillDir = path.join(skillsDir, category, name);
+		const name = requireSkillSlug(bundle.name, "Bundle name");
+		const skillDir = resolveContainedPath(skillsDir, category, name);
 
 		// Support both legacy array and dict formats
 		const files = Array.isArray(bundle.files)
@@ -546,7 +619,7 @@ function createSkillsHubClient({ skillsDir }) {
 			: Object.entries(bundle.files).map(([p, c]) => ({ path: p, content: c }));
 
 		for (const file of files) {
-			const filePath = path.join(skillDir, file.path);
+			const filePath = resolveContainedPath(skillDir, file.path);
 			await fs.mkdir(path.dirname(filePath), { recursive: true });
 			await fs.writeFile(filePath, file.content, "utf8");
 		}
@@ -566,7 +639,7 @@ function createSkillsHubClient({ skillsDir }) {
 			files: files.map((f) => f.path),
 		});
 
-		await appendAuditLog("INSTALL", name, "hub", "community", "accepted");
+		await appendClientAuditLog("INSTALL", name, "hub", "community", "accepted");
 
 		return { installed: true, path: skillDir, name, category };
 	}
@@ -597,37 +670,46 @@ function createSkillsHubClient({ skillsDir }) {
 			throw new Error(`Could not fetch '${identifier}' from any source.`);
 		}
 
-		// Check if already installed
-		const existing = await lockFile.getInstalled(bundle.name);
-		if (existing && !force) {
-			throw new Error(`'${bundle.name}' is already installed at ${existing.installPath}. Use force to reinstall.`);
+		const validation = validateSkillBundle(bundle);
+		if (!validation.valid) {
+			throw new Error(validation.error);
 		}
 
-		const category = requestedCategory || DEFAULT_CATEGORY;
-		const skillDir = path.join(skillsDir, category, bundle.name);
+		const name = requireSkillSlug(bundle.name, "Bundle name");
+
+		// Check if already installed
+		const existing = await lockFile.getInstalled(name);
+		if (existing && !force) {
+			throw new Error(`'${name}' is already installed at ${existing.installPath}. Use force to reinstall.`);
+		}
+
+		const category = requestedCategory
+			? requireSkillSlug(requestedCategory, "Requested category")
+			: DEFAULT_CATEGORY;
+		const skillDir = resolveContainedPath(skillsDir, category, name);
 
 		// Write files
 		for (const [relPath, content] of Object.entries(bundle.files)) {
-			const filePath = path.join(skillDir, relPath);
+			const filePath = resolveContainedPath(skillDir, relPath);
 			await fs.mkdir(path.dirname(filePath), { recursive: true });
 			await fs.writeFile(filePath, content, "utf8");
 		}
 
 		// Record provenance
 		await lockFile.recordInstall({
-			name: bundle.name,
+			name,
 			source: bundle.source,
 			identifier: bundle.identifier,
 			trustLevel: bundle.trustLevel,
 			contentHash: bundleContentHash(bundle.files),
-			installPath: `${category}/${bundle.name}`,
+			installPath: `${category}/${name}`,
 			files: Object.keys(bundle.files),
 			metadata: bundle.metadata,
 		});
 
-		await appendAuditLog("INSTALL", bundle.name, bundle.source, bundle.trustLevel, "accepted", bundle.identifier);
+		await appendClientAuditLog("INSTALL", name, bundle.source, bundle.trustLevel, "accepted", bundle.identifier);
 
-		return { installed: true, path: skillDir, name: bundle.name, category };
+		return { installed: true, path: skillDir, name, category };
 	}
 
 	/**
@@ -835,7 +917,7 @@ function createSkillsHubClient({ skillsDir }) {
 		}
 
 		await lockFile.recordUninstall(name);
-		await appendAuditLog("UNINSTALL", name, entry.source || "hub", entry.trustLevel || "community", "n/a", "user_request");
+		await appendClientAuditLog("UNINSTALL", name, entry.source || "hub", entry.trustLevel || "community", "n/a", "user_request");
 
 		return { success: true, message: `Uninstalled '${name}' from ${entry.installPath}` };
 	}

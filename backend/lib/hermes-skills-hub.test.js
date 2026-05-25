@@ -71,6 +71,27 @@ test("validateSkillBundle rejects empty name", () => {
 	assert.equal(result.valid, false);
 });
 
+test("validateSkillBundle rejects path-like skill names and categories", () => {
+	const badName = validateSkillBundle({
+		name: "../evil",
+		files: [
+			{ path: "SKILL.md", content: "# Skill" },
+		],
+	});
+	assert.equal(badName.valid, false);
+	assert.match(badName.error, /Bundle name/u);
+
+	const badCategory = validateSkillBundle({
+		name: "good-skill",
+		category: "community/../../evil",
+		files: [
+			{ path: "SKILL.md", content: "# Skill" },
+		],
+	});
+	assert.equal(badCategory.valid, false);
+	assert.match(badCategory.error, /Bundle category/u);
+});
+
 test("createSkillsHubClient.installFromBundle writes files", async () => {
 	await withTempDir(async (dir) => {
 		const client = createSkillsHubClient({ skillsDir: dir });
@@ -117,6 +138,23 @@ test("createSkillsHubClient.installFromBundle rejects invalid bundle", async () 
 		} catch (error) {
 			assert.ok(error.message.includes("path traversal"));
 		}
+	});
+});
+
+test("createSkillsHubClient.installFromBundle keeps skill path inside skillsDir", async () => {
+	await withTempDir(async (dir) => {
+		const client = createSkillsHubClient({ skillsDir: dir });
+		const bundle = {
+			name: "nested/escape",
+			files: [
+				{ path: "SKILL.md", content: "# Skill" },
+			],
+		};
+
+		await assert.rejects(
+			() => client.installFromBundle(bundle),
+			/Bundle name/u,
+		);
 	});
 });
 

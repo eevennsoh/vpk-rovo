@@ -5,10 +5,13 @@
 	"packageManager": "pnpm@11.1.2+sha512.415a1cc25974731e75455c1468371be74c5aa5fb7621b50d4056d222451609f11412f23fd602e6169f1e060466641f798597e1be961a10688836a67b16569499",
 	"scripts": {
 		"dev": "concurrently --kill-others-on-fail -n backend,frontend -c yellow,green \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
-		"build": "next build",
+		"build": "next build --webpack",
 		"start": "next start",
 		"lint": "eslint",
 		"typecheck": "tsc --noEmit",
+		"test:unit:js": "node scripts/run-js-unit-tests.mjs",
+		"build:export": "node scripts/build-static-export.mjs",
+		"ci:verify": "pnpm run lint && pnpm run typecheck && pnpm run test:unit:js && pnpm run build && pnpm run build:export",
 		"deploy:micros": "./scripts/dev-deploy-fast.sh",
 		"dev:backend": "node scripts/dev-backend.js",
 		"dev:frontend": "node scripts/dev-frontend.js",
@@ -155,6 +158,20 @@
 		"typescript": "^6.0.3"
 	},
 	"pnpm": {
+		"ignoredBuiltDependencies": [
+			"@google/genai",
+			"agent-browser",
+			"better-sqlite3",
+			"msw",
+			"node-llama-cpp",
+			"protobufjs",
+			"sharp",
+			"tree-sitter-go",
+			"tree-sitter-javascript",
+			"tree-sitter-python",
+			"tree-sitter-rust",
+			"tree-sitter-typescript"
+		],
 		"overrides": {
 			"@hono/node-server": "^1.19.10",
 			"dompurify": "^3.3.2",

@@ -52,7 +52,7 @@ function generateAsapToken() {
 		throw new Error("ASAP_PRIVATE_KEY not found in environment");
 	}
 
-	debugLog("AUTH", `Processing ASAP_PRIVATE_KEY (length: ${privateKey.length}, starts with: ${privateKey.slice(0, 30)})`);
+	debugLog("AUTH", `Processing ASAP_PRIVATE_KEY (length: ${privateKey.length})`);
 
 	if (privateKey.trim().startsWith("data:")) {
 		debugLog("AUTH", "Detected data URI format, attempting to decode...");
@@ -83,7 +83,7 @@ function generateAsapToken() {
 	}
 
 	if (!privateKey.startsWith("-----BEGIN")) {
-		throw new Error(`ASAP_PRIVATE_KEY is not in valid PEM format. Got: ${privateKey.slice(0, 50)}...`);
+		throw new Error("ASAP_PRIVATE_KEY is not in valid PEM format");
 	}
 
 	const issuer = process.env.ASAP_ISSUER || process.env.AI_GATEWAY_USE_CASE_ID;
