@@ -258,7 +258,7 @@ function HomeStarterBento({
 			</div>
 
 			<div className="relative mt-6">
-				<div className="grid auto-rows-[112px] grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+				<div className="grid auto-rows-[144px] grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
 					{visibleTemplates.map((template) => {
 						return (
 							<button
