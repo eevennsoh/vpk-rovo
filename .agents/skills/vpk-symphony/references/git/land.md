@@ -5,7 +5,7 @@
 - Ensure the PR is conflict-free with main.
 - Require a current-head passing Symphony Agent Review.
 - Keep CI green and fix failures when they occur.
-- Squash-merge the PR once checks pass.
+- Merge the PR with a merge commit once checks pass.
 - Do not yield to the user until the PR is merged; keep the watcher loop running
   unless blocked.
 - Clean up merged issue branches when GitHub does not auto-delete them.
@@ -33,18 +33,18 @@
 9. Ensure review comments (human, bot, or Symphony Agent Review) are
    acknowledged and any required fixes are handled before merging.
 10. When Agent Review passed, all checks are green, and review feedback is
-    addressed, squash-merge using the PR title/body for the merge subject/body,
-    then clean up the branch when safe.
+    addressed, merge using a merge commit and clean up the branch when safe.
 11. **Context guard:** Before implementing review feedback, confirm it does not
     conflict with the user’s stated intent or task context. If it conflicts,
-    respond inline with a justification and ask the user before changing code.
+    respond inline with a justification and either proceed with the safer
+    task-aligned choice or move to `Human Review` only for super-risk cases.
 12. **Pushback template:** When disagreeing, reply inline with: acknowledge +
     rationale + offer alternative.
-13. **Ambiguity gate:** When ambiguity blocks progress, use the clarification
-    flow (assign PR to current GH user, mention them, wait for response). Do not
-    implement until ambiguity is resolved.
-    - If you are confident you know better than the reviewer, you may proceed
-      without asking the user, but reply inline with your rationale.
+13. **Ambiguity gate:** When ambiguity blocks progress, make the best
+    source-grounded decision, document the rationale, and proceed. Move to
+    `Human Review` only for security/privacy exposure, data loss, irreversible
+    schema or migration changes, destructive production behavior, or missing
+    permissions/secrets.
 14. **Per-comment mode:** For each review comment, choose one of: accept,
     clarify, or push back. Reply inline (or in the issue thread for Codex
     reviews) stating the mode before changing code.
@@ -88,8 +88,8 @@ if ! gh pr checks --watch; then
   exit 1
 fi
 
-# Squash-merge
-gh pr merge --squash --subject "$pr_title" --body "$pr_body"
+# Merge with a merge commit
+gh pr merge --merge --delete-branch --subject "$pr_title" --body "$pr_body"
 ```
 
 ## Async Watch Helper
@@ -126,10 +126,10 @@ Exit codes:
 - Do not treat older `## Codex Review` comments as the merge approval signal.
   The required approval is a current-head `[codex] Symphony Agent Review`
   comment with `Status: pass`.
-- Do not enable GitHub native auto-merge; this repo has no required checks so
-  GitHub auto-merge can skip tests. "Auto-merge" means Symphony itself moves a
-  passing `Agent Review` issue into `Merging` and runs this guarded landing
-  flow.
+- Do not enable GitHub native auto-merge; this repo currently has no
+  branch-protection-required checks for `main`. "Auto-merge" means Symphony
+  itself moves a passing `Agent Review` issue into `Merging` and runs this
+  guarded landing flow.
 - If the remote PR branch advanced due to your own prior force-push or merge,
   avoid redundant merges; re-run the formatter locally if needed and
   `git push --force-with-lease`.
@@ -151,8 +151,8 @@ Exit codes:
 
 - Only `Status: pass` for the current PR head permits merge. `changes-requested`
   sends the Linear issue back to `In Progress`; `needs-human` sends it to
-  `Human Review`. If the PR head changes after Agent Review, move the issue
-  back to `Agent Review`.
+  `Human Review` only for super-risk or blocked-access decisions. If the PR
+  head changes after Agent Review, move the issue back to `Agent Review`.
 
 - Codex reviews now arrive as issue comments posted by GitHub Actions. They
   start with `## Codex Review — <persona>` and include the reviewer’s

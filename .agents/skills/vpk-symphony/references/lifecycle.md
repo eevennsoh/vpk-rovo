@@ -11,9 +11,10 @@ Use this reference when executing or updating the VPK-rovo Symphony workflow.
   workpad, PR diff, validation proof, evidence, comments, and checks. The
   reviewer may run read-only verification commands that leave tracked files
   unchanged. Passing work moves to `Merging`; gaps move back to `In Progress`;
-  risk/ambiguity moves to `Human Review`.
-- `Human Review`: wait for human action on risk, ambiguity, missing proof,
-  security/data concerns, UI judgment, or answer-only handoff.
+  super-risk moves to `Human Review`.
+- `Human Review`: wait for human action only on security/privacy exposure, data
+  loss, irreversible schema or migration changes, destructive production
+  behavior, or missing permissions/secrets.
 - `Merging`: follow `references/git/land.md`; move to `Done` only after a
   current-head passing Symphony Agent Review, green checks, clean mergeability,
   and GitHub-reported merge.
@@ -23,7 +24,8 @@ Use this reference when executing or updating the VPK-rovo Symphony workflow.
 
 1. Fetch fresh Linear issue details before planning.
 2. Reuse the active `## Codex Workpad` comment if it exists.
-3. Classify answer-only issues before creating branches or PRs.
+3. Classify answer-only issues before creating branches or PRs; write the
+   answer to the workpad and move them to `Done`.
 4. Keep project-specific context in issue descriptions and comments, not in the
    shared workflow files.
 5. Do not advance dependent work until the previous PR is actually merged to the
@@ -40,8 +42,8 @@ Use this reference when executing or updating the VPK-rovo Symphony workflow.
 - `Agent Review`: fresh adversarial code reviewer; read-only against tracked
   files, verify the PR against the issue/workpad/diff/proof, post the
   standardized review comment, then route by status.
-- `Human Review`: waiting gate; do not code, only react to human
-  decision/review updates when explicitly routed.
+- `Human Review`: narrow waiting gate; do not code, only react to super-risk or
+  blocked-access decision updates when explicitly routed.
 - `Merging`: landing worker; follow `references/git/land.md`, merge only after
   the current-head review/check/feedback gates pass, then move to `Done`.
 - Terminal states: do nothing and shut down.
@@ -50,5 +52,5 @@ Use this reference when executing or updating the VPK-rovo Symphony workflow.
 
 `Merging` is a merge-only state. Verify the attached PR has a current-head
 passing Symphony Agent Review, green checks, clean mergeability, resolved review
-feedback, branch divergence is understood, and GitHub reports the merge before
-moving the issue to `Done`.
+feedback, branch divergence is understood, and GitHub reports the merge commit
+before moving the issue to `Done`.

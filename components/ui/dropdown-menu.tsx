@@ -26,7 +26,7 @@ export const dropdownStyles = {
   selectableItem:
     "data-[highlighted]:bg-bg-neutral-subtle-hovered data-[highlighted]:text-text data-disabled:pointer-events-none data-disabled:text-text-disabled relative flex w-full cursor-default items-center rounded-sm py-2 pr-3 pl-8 text-sm leading-5 outline-none select-none active:bg-bg-neutral-subtle-pressed [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   checkedState:
-    "data-checked:bg-bg-selected data-checked:data-[highlighted]:bg-bg-selected-hovered data-checked:active:bg-bg-selected-pressed",
+    "data-checked:bg-bg-selected data-checked:text-text-selected data-checked:data-[highlighted]:bg-bg-selected-hovered data-checked:data-[highlighted]:text-text-selected data-checked:active:bg-bg-selected-pressed",
   label: "text-text-subtle px-3 py-2 text-xs leading-4 font-medium",
   separator: "bg-border mx-1 my-1 h-px",
   indicator:

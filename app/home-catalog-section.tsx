@@ -145,7 +145,7 @@ export function HomeCatalogSection({
 								title={component.name}
 								className="h-full w-full border-0"
 								loading="lazy"
-								sandbox="allow-scripts"
+								sandbox="allow-same-origin allow-scripts"
 							/>
 						</WebsiteCard>
 					))

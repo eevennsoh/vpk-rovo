@@ -22,7 +22,8 @@ Playwright CLI evidence path.
 2. Fetch fresh Linear issue details and use exactly one active
    `## Codex Workpad` comment.
 3. Classify the issue before editing:
-   - Answer-only issues get a concise investigation and workpad handoff.
+   - Answer-only issues get a concise investigation, workpad handoff, and
+     terminal `Done` status.
    - Implementation issues move through branch, validation, PR, Agent Review,
      and guarded merge.
    - `Agent Review` is an adversarial code review gate. It is read-only against
@@ -34,8 +35,8 @@ Playwright CLI evidence path.
    workpad.
 5. Keep validation tied to the issue acceptance criteria. For visible UI or
    browser-observable behavior, follow the browser evidence policy.
-6. Land only after GitHub reports the PR merged, then move the Linear issue to
-   `Done`.
+6. Land with a merge commit only after GitHub reports the PR merged, then move
+   the Linear issue to `Done`.
 
 ## References
 

@@ -134,18 +134,19 @@ customization in the YAML hooks plus the repository contract section.
 - `Agent Review`: worker performs a fresh read-only adversarial code review of
   the linked PR against the issue, workpad, diff, validation proof, evidence,
   comments, and checks. Passing work moves to `Merging`; gaps move back to
-  `In Progress`; risk or ambiguity moves to `Human Review`.
-- `Human Review`: risk gate for missing proof, product ambiguity,
-  security/data concerns, UI judgment, or other human decisions.
+  `In Progress`; super-risk moves to `Human Review`.
+- `Human Review`: risk gate for security/privacy exposure, data loss,
+  irreversible schema or migration changes, destructive production behavior, or
+  missing permissions/secrets.
 - `Merging`: worker follows the `vpk-symphony` landing reference and moves the
   issue to `Done` only after a current-head passing Symphony Agent Review,
-  green checks, clean mergeability, and GitHub-reported merge.
+  green checks, clean mergeability, and GitHub-reported merge commit.
 - `Done`, `Canceled`, `Duplicate`: terminal.
 
-Symphony PRs should carry the `symphony` label and should not use
+Symphony PRs should carry the `symphony` label and should not require
 `automerge:allowed`; Symphony owns the guarded merge path for this workflow.
-GitHub native auto-merge remains disabled because this repo does not rely on
-branch-protection-required checks.
+GitHub native auto-merge remains disabled because this repo currently has no
+branch-protection-required checks for `main`.
 
 Workers keep exactly one active `## Codex Workpad` comment. The workpad should
 be concise and current: environment stamp, plan, acceptance criteria,
@@ -153,9 +154,9 @@ validation, evidence, decisions, branch, PR, and handoff.
 
 `WORKFLOW.md` also includes compact phase prompts for each Linear state:
 `Todo` is kickoff, `In Progress` is implementation, `Agent Review` is fresh
-adversarial code review, `Human Review` is a waiting gate, `Merging` is guarded
-landing, and terminal states do nothing. These prompts are part of the runtime
-worker prompt, not only documentation.
+adversarial code review, `Human Review` is a narrow super-risk waiting gate,
+`Merging` is guarded landing, and terminal states do nothing. These prompts are
+part of the runtime worker prompt, not only documentation.
 
 For UI or browser-observable changes, workers use the repo-local `vpk-symphony`
 browser evidence reference during `In Progress` when
@@ -176,12 +177,12 @@ Upstream Symphony re-dispatches an issue when a Codex turn completes while the
 issue is still in an active state. For that reason, VPK workers should not end a
 normal turn with completed or blocked work still in `In Progress`; they should
 write the handoff or blocker into the workpad. Completed implementation work
-should move to `Agent Review`; human-risk blockers and answer-only work should
-move to `Human Review`.
+should move to `Agent Review`; super-risk blockers move to `Human Review`; and
+answer-only work should move to `Done`.
 
 Answer-only issues, such as “explain this codebase” or operational questions,
 do not need a branch or PR. Workers should do a bounded targeted read, put the
-answer in the workpad handoff, and move the issue to `Human Review`.
+answer in the workpad handoff, and move the issue to `Done`.
 
 Validation is issue-specific. Workers should prefer the narrowest proof that
 covers the touched behavior. Run dependency installation, `pnpm run lint`,
