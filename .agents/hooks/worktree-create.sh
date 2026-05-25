@@ -67,6 +67,10 @@ else
 	exit 1
 fi
 
+if [ -z "$WORKTREE_REF" ] && [ -n "$NAME" ]; then
+	WORKTREE_REF="claude/$NAME"
+fi
+
 mkdir -p "$(dirname "$WORKTREE_DIR")"
 
 # Step 1: create the worktree. If the directory already exists as a registered

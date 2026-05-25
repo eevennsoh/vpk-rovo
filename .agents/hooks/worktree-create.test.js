@@ -116,7 +116,7 @@ test("WorktreeCreate creates the requested worktree while keeping stdout path-on
 	assert.equal(branch.stdout.trim(), "claude/agent-worktree");
 });
 
-test("WorktreeCreate still accepts the worktree when dependency installation fails", (t) => {
+test("WorktreeCreate creates a named branch when worktree_ref is omitted", (t) => {
 	const { repoRoot, tempRoot } = createTempGitRepo(t);
 	const { binDir, recordPath } = createPnpmStub(tempRoot, 23);
 	const worktreeDir = path.join(tempRoot, "install-fails-worktree");
@@ -139,4 +139,7 @@ test("WorktreeCreate still accepts the worktree when dependency installation fai
 	assert.match(result.stderr, /pnpm install failed/u);
 	assert.equal(fs.readFileSync(recordPath, "utf8"), "install --prefer-offline\n");
 	assert.ok(fs.existsSync(path.join(worktreeDir, "README.md")));
+
+	const branch = run("git", ["branch", "--show-current"], { cwd: worktreeDir });
+	assert.equal(branch.stdout.trim(), "claude/install-fails-worktree");
 });
