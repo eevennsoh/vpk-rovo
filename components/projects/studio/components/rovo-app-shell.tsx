@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { ArtifactPanel } from "@/components/ui-custom/artifact";
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
+import { BrowseAgentsDialog } from "@/components/projects/studio/components/rovo-app-agents-directory";
 import { RovoAppBrowserArtifact } from "@/components/projects/studio/components/rovo-app-browser-artifact";
 import { RovoAppComposer } from "@/components/projects/studio/components/rovo-app-composer";
 import { RovoAppMessages } from "@/components/projects/studio/components/rovo-app-messages";
@@ -411,10 +412,10 @@ function HomeStarterBento({
 	onSelect: (prompt: string) => void;
 }>) {
 	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>("analyze");
-	const [showAll, setShowAll] = useState(false);
+	const [browseOpen, setBrowseOpen] = useState(false);
 	const templates = HOME_STARTER_VIEWS[activeCategory];
-	const visibleTemplates = showAll ? templates : templates.slice(0, 5);
-	const canShowMore = !showAll && templates.length > visibleTemplates.length;
+	const visibleTemplates = templates.slice(0, 5);
+	const canShowMore = templates.length > visibleTemplates.length;
 
 	return (
 		<div className="w-full">
@@ -429,7 +430,6 @@ function HomeStarterBento({
 							aria-pressed={isActive}
 							onClick={() => {
 								setActiveCategory(category.id);
-								setShowAll(false);
 							}}
 							className={cn(
 								"inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-medium leading-5 outline-none transition-colors duration-fast ease-out focus-visible:ring-3 focus-visible:ring-ring/50",
@@ -497,18 +497,19 @@ function HomeStarterBento({
 					<div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-linear-to-t from-background via-background/85 to-transparent pt-12 pb-1">
 						<Button
 							type="button"
-							aria-label="Show more prompt starters"
+							aria-label="Browse all agents"
 							variant="ghost"
 							size="xs"
 							className="pointer-events-auto h-7 rounded-full border-0 bg-surface px-3 text-sm leading-5 font-normal text-text-subtle hover:bg-surface-hovered"
 							style={{ boxShadow: token("elevation.shadow.overlay") }}
-							onClick={() => setShowAll(true)}
+							onClick={() => setBrowseOpen(true)}
 						>
-							Show more
+							Browse all
 						</Button>
 					</div>
 				) : null}
 			</div>
+			<BrowseAgentsDialog open={browseOpen} onOpenChange={setBrowseOpen} />
 		</div>
 	);
 }
