@@ -2901,6 +2901,10 @@ function quote(value: string): string {
 	return '"' + value + '"';
 }
 
+function formatStringUnion(values: readonly string[]): string {
+	return values.map(quote).join(" | ");
+}
+
 function formatDefaultValue(value: ShaderLabParameterValue): string {
 	if (typeof value === "string") return quote(value);
 	if (Array.isArray(value)) return JSON.stringify(value);
@@ -2909,7 +2913,7 @@ function formatDefaultValue(value: ShaderLabParameterValue): string {
 
 function formatParamType(param: ShaderLabEffectParamDefinition): string {
 	if (param.type === "select" && param.options?.length) {
-		return param.options.map((option) => quote(option.value)).join(" | ");
+		return formatStringUnion(param.options.map((option) => option.value));
 	}
 
 	switch (param.type) {
@@ -2947,10 +2951,10 @@ export function createShaderLabEffectPropDocs(layerType: ShaderLabRuntimeLayerTy
 	return [
 		{ name: "layerType", type: quote(layerType), default: quote(layerType), description: "Selects the Shader Lab " + definition.label + " layer." },
 		{ name: "opacity", type: "number", default: "1", description: "Layer opacity." },
-		{ name: "blendMode", type: SHADER_LAB_BLEND_MODES.map((mode) => quote(mode)).join(" | "), default: quote("normal"), description: "Shader Lab layer blend mode." },
-		{ name: "compositeMode", type: quote("filter") + " | " + quote("mask"), default: quote("filter"), description: "Whether the effect filters the source or is composited as a mask." },
-		{ name: "maskSource", type: SHADER_LAB_MASK_SOURCES.map((source) => quote(source)).join(" | "), default: quote("luminance"), description: "Source channel used when compositeMode is mask." },
-		{ name: "maskMode", type: quote("multiply") + " | " + quote("stencil"), default: quote("multiply"), description: "Mask compositing behavior used when compositeMode is mask." },
+		{ name: "blendMode", type: formatStringUnion(SHADER_LAB_BLEND_MODES), default: quote("normal"), description: "Shader Lab layer blend mode." },
+		{ name: "compositeMode", type: formatStringUnion(SHADER_LAB_COMPOSITE_MODES), default: quote("filter"), description: "Whether the effect filters the source or is composited as a mask." },
+		{ name: "maskSource", type: formatStringUnion(SHADER_LAB_MASK_SOURCES), default: quote("luminance"), description: "Source channel used when compositeMode is mask." },
+		{ name: "maskMode", type: formatStringUnion(SHADER_LAB_MASK_MODES), default: quote("multiply"), description: "Mask compositing behavior used when compositeMode is mask." },
 		{ name: "maskInvert", type: "boolean", default: "false", description: "Inverts the layer mask when compositeMode is mask." },
 		{ name: "hue", type: "number", default: "0", description: "Layer hue rotation in degrees." },
 		{ name: "saturation", type: "number", default: "1", description: "Layer saturation multiplier." },
