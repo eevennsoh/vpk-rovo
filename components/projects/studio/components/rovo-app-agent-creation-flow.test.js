@@ -26,7 +26,8 @@ test("RovoAppShell starts Studio agent creation only from the default-agent home
 });
 
 test("Studio home starters frame agent building instead of generic one-off tasks", () => {
-	assert.match(SHELL_SOURCE, /type HomeStarterCategory = "all" \| "teamwork" \| "product" \| "dev" \| "knowledge" \| "operations";/u);
+	assert.match(SHELL_SOURCE, /type HomeStarterCategory = "analyze" \| "brainstorm" \| "review" \| "summarize" \| "create";/u);
+	assert.match(SHELL_SOURCE, /const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<HomeStarterTemplate>>>/u);
 	assert.match(SHELL_SOURCE, /title: "Build a triage agent"/u);
 	assert.match(SHELL_SOURCE, /title: "Build a code review agent"/u);
 	assert.match(SHELL_SOURCE, /title: "Build a meeting agent"/u);

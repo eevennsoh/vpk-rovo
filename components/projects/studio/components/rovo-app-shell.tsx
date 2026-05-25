@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { ArtifactPanel } from "@/components/ui-custom/artifact";
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
+import { BrowseAgentsDialog } from "@/components/projects/studio/components/rovo-app-agents-directory";
 import { RovoAppBrowserArtifact } from "@/components/projects/studio/components/rovo-app-browser-artifact";
 import { RovoAppComposer } from "@/components/projects/studio/components/rovo-app-composer";
 import { RovoAppMessages } from "@/components/projects/studio/components/rovo-app-messages";
@@ -88,7 +89,7 @@ const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
 const ROVO_APP_SPLIT_CHAT_PANEL_ID = "rovo-app-chat-pane";
 const ROVO_APP_SPLIT_ARTIFACT_PANEL_ID = "rovo-app-artifact-pane";
 
-type HomeStarterCategory = "all" | "teamwork" | "product" | "dev" | "knowledge" | "operations";
+type HomeStarterCategory = "analyze" | "brainstorm" | "review" | "summarize" | "create";
 
 interface HomeStarterCategoryOption {
 	iconClassName?: string;
@@ -98,87 +99,287 @@ interface HomeStarterCategoryOption {
 }
 
 interface HomeStarterTemplate {
-	category: Exclude<HomeStarterCategory, "all">;
 	description: string;
 	iconSrc: string;
+	layoutClassName: string;
 	prompt: string;
-	size?: "wide" | "tall" | "large";
 	title: string;
 }
 
 const RICH_ICON_ROOT = "/illustration/rich-icon";
 
 const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
-	{ id: "all", label: "All" },
-	{ id: "teamwork", label: "Teamwork", iconSrc: `${RICH_ICON_ROOT}/community/standard.svg`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.1]" },
-	{ id: "product", label: "Product", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.14]" },
-	{ id: "dev", label: "Dev", iconSrc: `${RICH_ICON_ROOT}/software/standard.png`, iconClassName: "translate-y-px scale-[1.05]" },
-	{ id: "knowledge", label: "Knowledge", iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg`, iconClassName: "translate-y-px scale-[1.08]" },
-	{ id: "operations", label: "Operations", iconSrc: `${RICH_ICON_ROOT}/checklist/standard.svg`, iconClassName: "-translate-x-0.5 -translate-y-0.5 scale-[0.92]" },
+	{ id: "analyze", label: "Analyze", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.14]" },
+	{ id: "brainstorm", label: "Brainstorm", iconSrc: `${RICH_ICON_ROOT}/lightbulb/standard.svg`, iconClassName: "-translate-y-px scale-[1.08]" },
+	{ id: "review", label: "Review", iconSrc: `${RICH_ICON_ROOT}/checklist/standard.svg`, iconClassName: "-translate-x-0.5 -translate-y-0.5 scale-[0.92]" },
+	{ id: "summarize", label: "Summarize", iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg`, iconClassName: "translate-y-px scale-[1.08]" },
+	{ id: "create", label: "Create", iconSrc: `${RICH_ICON_ROOT}/design/standard.png`, iconClassName: "translate-x-px scale-[1.12]" },
 ];
 
-const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
-	{
-		category: "operations",
-		description: "Sort requests, ask for missing details, and recommend priority.",
-		iconSrc: "/avatar-agent/teamwork-agents/progress-tracker.svg",
-		prompt: "Build an agent that triages incoming work requests, asks for missing details, assigns priority, and recommends the next action.",
-		title: "Build a triage agent",
-	},
-	{
-		category: "dev",
-		description: "Review changes for correctness, maintainability, and tests.",
-		iconSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
-		prompt: "Build a code review agent that checks diffs for bugs, regressions, maintainability issues, and missing tests, then returns concise findings.",
-		size: "large",
-		title: "Build a code review agent",
-	},
-	{
-		category: "teamwork",
-		description: "Turn meetings into decisions, owners, and follow-ups.",
-		iconSrc: "/avatar-agent/teamwork-agents/meeting-insights-reporter.svg",
-		prompt: "Build a meeting insights agent that summarizes transcripts into decisions, open questions, owners, due dates, and follow-up messages.",
-		size: "tall",
-		title: "Build a meeting agent",
-	},
-	{
-		category: "teamwork",
-		description: "Draft release notes from shipped work and stakeholder notes.",
-		iconSrc: "/avatar-agent/teamwork-agents/release-notes-drafter.svg",
-		prompt: "Build a release notes agent that turns shipped tickets and product notes into clear release notes for customers and internal stakeholders.",
-		size: "tall",
-		title: "Build a release notes agent",
-	},
-	{
-		category: "product",
-		description: "Cluster customer feedback and turn it into product signal.",
-		iconSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
-		prompt: "Build a feedback analysis agent that clusters customer feedback, extracts themes and sentiment, and recommends product opportunities.",
-		title: "Build a feedback agent",
-	},
-	{
-		category: "operations",
-		description: "Track owners, blockers, dependencies, and readiness gaps.",
-		iconSrc: "/avatar-agent/teamwork-agents/blocker-checker.svg",
-		prompt: "Build a delivery readiness agent that tracks owners, dependencies, blockers, launch risks, and the shortest path to progress.",
-		size: "wide",
-		title: "Build a readiness agent",
-	},
-	{
-		category: "knowledge",
-		description: "Answer policy and process questions from trusted context.",
-		iconSrc: "/avatar-agent/teamwork-agents/product-requirements-guide.svg",
-		prompt: "Build a knowledge base agent that answers policy and process questions, cites the relevant source context, and flags missing information.",
-		title: "Build a knowledge agent",
-	},
-	{
-		category: "product",
-		description: "Shape goals, requirements, risks, and acceptance criteria.",
-		iconSrc: "/avatar-agent/teamwork-agents/work-item-planner.svg",
-		prompt: "Build a product requirements agent that turns rough ideas into goals, scope, risks, acceptance criteria, and the first implementation plan.",
-		title: "Build a PRD agent",
-	},
-];
+const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<HomeStarterTemplate>>> = {
+	analyze: [
+		{
+			description: "Cluster research, links, and notes into useful signal.",
+			iconSrc: "/avatar-agent/teamwork-agents/progress-tracker.svg",
+			layoutClassName: "lg:col-start-1 lg:row-start-1",
+			prompt: "Build an agent that analyzes workstreams, clusters notes and links into themes, and recommends risks, opportunities, and next steps.",
+			title: "Build an analysis agent",
+		},
+		{
+			description: "Turn customer input into themes and opportunities.",
+			iconSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
+			layoutClassName: "sm:col-span-2 sm:row-span-2 lg:col-start-2 lg:row-start-1",
+			prompt: "Build a feedback analysis agent that clusters customer feedback, extracts themes and sentiment, and recommends product opportunities.",
+			title: "Build a feedback agent",
+		},
+		{
+			description: "Track owners, blockers, dependencies, and readiness.",
+			iconSrc: "/avatar-agent/service-agents/ops-guide.svg",
+			layoutClassName: "sm:row-span-2 lg:col-start-4 lg:row-start-1",
+			prompt: "Build a delivery readiness agent that tracks owners, dependencies, blockers, launch risks, and the shortest path to progress.",
+			title: "Build a readiness agent",
+		},
+		{
+			description: "Watch metrics and explain meaningful movement.",
+			iconSrc: "/avatar-agent/product-agents/wildcard-6.svg",
+			layoutClassName: "sm:row-span-2 lg:col-start-5 lg:row-start-1",
+			prompt: "Build a metrics insight agent that monitors product signals, explains meaningful changes, and recommends follow-up investigation.",
+			title: "Build a metrics agent",
+		},
+		{
+			description: "Map dependencies before they turn into blockers.",
+			iconSrc: "/avatar-agent/service-agents/wildcard-1.svg",
+			layoutClassName: "lg:col-start-1 lg:row-start-2",
+			prompt: "Build a dependency mapping agent that finds owners, blockers, linked work, sequencing risks, and the next step for each item.",
+			title: "Build a dependency agent",
+		},
+		{
+			description: "Separate weak assumptions from reliable evidence.",
+			iconSrc: "/avatar-agent/teamwork-agents/blocker-checker.svg",
+			layoutClassName: "sm:col-span-2",
+			prompt: "Build an evidence review agent that separates facts, assumptions, unknowns, and confidence levels before recommending action.",
+			title: "Build an evidence agent",
+		},
+		{
+			description: "Find patterns in support, sales, and product notes.",
+			iconSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
+			layoutClassName: "",
+			prompt: "Build an account signal agent that scans customer-facing notes for recurring needs, blockers, risks, and expansion opportunities.",
+			title: "Build a signal agent",
+		},
+		{
+			description: "Turn raw context into ranked product signal.",
+			iconSrc: "/avatar-agent/teamwork-agents/work-organizer.svg",
+			layoutClassName: "sm:col-span-2",
+			prompt: "Build a prioritization insight agent that ranks themes by customer impact, confidence, effort, and urgency.",
+			title: "Build a priority agent",
+		},
+	],
+	brainstorm: [
+		{
+			description: "Generate paths, compare tradeoffs, and pick a direction.",
+			iconSrc: "/avatar-agent/service-agents/wildcard-1.svg",
+			layoutClassName: "lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2",
+			prompt: "Build a brainstorming agent that generates strong approaches, groups them by strategy, compares tradeoffs, and recommends the best path.",
+			title: "Build a brainstorming agent",
+		},
+		{
+			description: "Help teams choose between competing paths.",
+			iconSrc: "/avatar-agent/product-agents/wildcard-2.svg",
+			layoutClassName: "lg:col-start-3 lg:col-span-2 lg:row-start-1",
+			prompt: "Build a tradeoff facilitation agent that compares options by upside, cost, risk, reversibility, and team fit, then recommends one.",
+			title: "Build a tradeoff agent",
+		},
+		{
+			description: "Find hidden constraints before planning starts.",
+			iconSrc: "/avatar-agent/dev-agents/code-planner.svg",
+			layoutClassName: "lg:col-start-5 lg:row-start-1",
+			prompt: "Build a constraints scout agent that identifies assumptions, dependencies, constraints, and the decisions they should change.",
+			title: "Build a constraints agent",
+		},
+		{
+			description: "Stress-test ideas against failure modes.",
+			iconSrc: "/avatar-agent/teamwork-agents/customer-insights.svg",
+			layoutClassName: "lg:col-start-3 lg:col-span-2 lg:row-start-2",
+			prompt: "Build an assumption-testing agent that lists likely failure modes, weak assumptions, and the evidence that would change the recommendation.",
+			title: "Build a test agent",
+		},
+		{
+			description: "Turn exploration into a first experiment.",
+			iconSrc: "/avatar-agent/service-agents/service-request-helper.svg",
+			layoutClassName: "lg:col-start-5 lg:row-start-2",
+			prompt: "Build an experiment planner agent that turns ideas into experiments, success criteria, decision points, and next steps.",
+			title: "Build an experiment agent",
+		},
+		{
+			description: "Push beyond obvious options and edge cases.",
+			iconSrc: "/avatar-agent/service-agents/wildcard-4.svg",
+			layoutClassName: "sm:col-span-2",
+			prompt: "Build an opportunity explorer agent that finds non-obvious approaches, edge cases, adjacent opportunities, and useful patterns.",
+			title: "Build an opportunity agent",
+		},
+		{
+			description: "Define how a team should choose between ideas.",
+			iconSrc: "/avatar-agent/dev-agents/basic-coding-agent-template.svg",
+			layoutClassName: "",
+			prompt: "Build a decision-criteria agent that defines must-haves, nice-to-haves, risks, disqualifiers, and comparison rubrics.",
+			title: "Build a criteria agent",
+		},
+	],
+	review: [
+		{
+			description: "Review changes for correctness, maintainability, and tests.",
+			iconSrc: "/avatar-agent/service-agents/service-triage.svg",
+			layoutClassName: "lg:col-start-1 lg:row-start-1 lg:row-span-2",
+			prompt: "Build a code review agent that checks diffs for bugs, regressions, maintainability issues, and missing tests, then returns concise findings.",
+			title: "Build a code review agent",
+		},
+		{
+			description: "Check proposals for risks and missing context.",
+			iconSrc: "/avatar-agent/dev-agents/code-vulnerability-scanner-npm-yarn.svg",
+			layoutClassName: "lg:col-start-2 lg:col-span-2 lg:row-start-1 lg:row-span-2",
+			prompt: "Build a proposal review agent that checks drafts for risks, missing context, edge cases, unclear assumptions, and concrete improvements.",
+			title: "Build a proposal agent",
+		},
+		{
+			description: "Separate blockers from follow-up concerns.",
+			iconSrc: "/avatar-agent/product-agents/wildcard-3.svg",
+			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-1",
+			prompt: "Build a risk review agent that ranks blockers by severity and separates must-fix issues from follow-up improvements.",
+			title: "Build a risk agent",
+		},
+		{
+			description: "Make feedback direct, useful, and easy to act on.",
+			iconSrc: "/avatar-agent/teamwork-agents/decision-director.svg",
+			layoutClassName: "lg:col-start-4 lg:row-start-2",
+			prompt: "Build a feedback coach agent that rewrites critique into direct, respectful, actionable feedback with the strongest points first.",
+			title: "Build a feedback coach",
+		},
+		{
+			description: "Check whether work is ready for a decision.",
+			iconSrc: "/avatar-agent/dev-agents/unit-test-creator.svg",
+			layoutClassName: "lg:col-start-5 lg:row-start-2",
+			prompt: "Build a decision readiness agent that identifies open questions, missing evidence, approval blockers, and what must happen next.",
+			title: "Build a readiness reviewer",
+		},
+		{
+			description: "Review experiences for usability and access gaps.",
+			iconSrc: "/avatar-agent/dev-agents/code-accessibility-checker.svg",
+			layoutClassName: "sm:col-span-2",
+			prompt: "Build a UX review agent that checks experiences for usability, accessibility, unclear states, and interaction gaps.",
+			title: "Build a UX review agent",
+		},
+		{
+			description: "Find rollout risks before work ships.",
+			iconSrc: "/avatar-agent/service-agents/wildcard-5.svg",
+			layoutClassName: "",
+			prompt: "Build a rollout review agent that checks operational risks, support gaps, monitoring needs, rollback paths, and launch readiness.",
+			title: "Build a rollout agent",
+		},
+	],
+	summarize: [
+		{
+			description: "Turn meetings into decisions, owners, and follow-ups.",
+			iconSrc: "/avatar-agent/product-agents/wildcard-4.svg",
+			layoutClassName: "lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2",
+			prompt: "Build a meeting insights agent that summarizes transcripts into decisions, open questions, owners, due dates, and follow-up messages.",
+			title: "Build a meeting agent",
+		},
+		{
+			description: "Condense dense context for leadership updates.",
+			iconSrc: "/avatar-agent/service-agents/rca-agent.svg",
+			layoutClassName: "lg:col-start-3 lg:row-start-1 lg:row-span-2",
+			prompt: "Build an executive summary agent that condenses dense context into key points, decisions, risks, recommendations, and next steps.",
+			title: "Build a briefing agent",
+		},
+		{
+			description: "Extract decisions, owners, and open questions.",
+			iconSrc: "/avatar-agent/teamwork-agents/transcript-insights-reporter.svg",
+			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-1",
+			prompt: "Build a decisions agent that extracts decisions, owners, action items, open questions, deadlines, and follow-up messages.",
+			title: "Build a decisions agent",
+		},
+		{
+			description: "Highlight what still needs an answer.",
+			iconSrc: "/avatar-agent/dev-agents/code-documentation-writer.svg",
+			layoutClassName: "lg:col-start-4 lg:row-start-2",
+			prompt: "Build an open-questions agent that finds unresolved decisions, missing context, owner gaps, and the clearest follow-up asks.",
+			title: "Build a questions agent",
+		},
+		{
+			description: "Package progress into stakeholder-ready updates.",
+			iconSrc: "/avatar-agent/product-agents/wildcard-5.svg",
+			layoutClassName: "lg:col-start-5 lg:row-start-2",
+			prompt: "Build a stakeholder update agent that summarizes progress, decisions, risks, and next steps in a concise update format.",
+			title: "Build an update agent",
+		},
+		{
+			description: "Adapt summaries for a specific reader or team.",
+			iconSrc: "/avatar-agent/teamwork-agents/global-translator.svg",
+			layoutClassName: "sm:col-span-2",
+			prompt: "Build an audience summary agent that adapts updates for executives, engineers, support, or customers while preserving decisions and actions.",
+			title: "Build an audience agent",
+		},
+		{
+			description: "Convert progress into a release-style recap.",
+			iconSrc: "/avatar-agent/dev-agents/deployment-summarizer.svg",
+			layoutClassName: "",
+			prompt: "Build a release recap agent that summarizes shipped changes, known risks, customer impact, and next steps.",
+			title: "Build a release recap agent",
+		},
+	],
+	create: [
+		{
+			description: "Sort requests, ask for missing details, and recommend priority.",
+			iconSrc: "/avatar-agent/service-agents/wildcard-2.svg",
+			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-1 lg:row-span-2",
+			prompt: "Build an agent that triages incoming work requests, asks for missing details, assigns priority, and recommends the next action.",
+			title: "Build a triage agent",
+		},
+		{
+			description: "Shape goals, requirements, risks, and acceptance criteria.",
+			iconSrc: "/avatar-agent/teamwork-agents/work-item-planner.svg",
+			layoutClassName: "lg:col-start-1 lg:row-start-1 lg:row-span-2",
+			prompt: "Build a product requirements agent that turns rough ideas into goals, scope, risks, acceptance criteria, and the first implementation plan.",
+			title: "Build a PRD agent",
+		},
+		{
+			description: "Answer policy and process questions from trusted context.",
+			iconSrc: "/avatar-agent/product-agents/wildcard-6.svg",
+			layoutClassName: "lg:col-start-2 lg:col-span-2 lg:row-start-1",
+			prompt: "Build a knowledge base agent that answers policy and process questions, cites the relevant source context, and flags missing information.",
+			title: "Build a knowledge agent",
+		},
+		{
+			description: "Draft release notes from shipped work and stakeholder notes.",
+			iconSrc: "/avatar-agent/dev-agents/code-standardizer.svg",
+			layoutClassName: "lg:col-start-2 lg:row-start-2",
+			prompt: "Build a release notes agent that turns shipped tickets and product notes into clear release notes for customers and internal stakeholders.",
+			title: "Build a release notes agent",
+		},
+		{
+			description: "Convert intent into milestones, owners, and sequencing.",
+			iconSrc: "/avatar-agent/service-agents/wildcard-3.svg",
+			layoutClassName: "lg:col-start-3 lg:row-start-2",
+			prompt: "Build a planning agent that creates milestones, owners, sequencing, dependencies, acceptance criteria, and the first three actions.",
+			title: "Build a planning agent",
+		},
+		{
+			description: "Turn requests into practical checklists or specs.",
+			iconSrc: "/avatar-agent/teamwork-agents/product-requirements-guide.svg",
+			layoutClassName: "sm:col-span-2",
+			prompt: "Build a checklist agent that turns requests into practical specs, required inputs, acceptance criteria, edge cases, and validation steps.",
+			title: "Build a checklist agent",
+		},
+		{
+			description: "Create workflows from goals and constraints.",
+			iconSrc: "/avatar-agent/teamwork-agents/workflow-builder.svg",
+			layoutClassName: "",
+			prompt: "Build a workflow agent that creates stages, handoffs, required inputs, outputs, owners, and likely failure points.",
+			title: "Build a workflow agent",
+		},
+	],
+};
 
 function parseCssDurationMs(value: string): number | null {
 	const trimmedValue = value.trim();
@@ -210,13 +411,11 @@ function HomeStarterBento({
 	onPreviewStart: (prompt: string) => void;
 	onSelect: (prompt: string) => void;
 }>) {
-	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>("all");
-	const [showAll, setShowAll] = useState(false);
-	const filteredTemplates = activeCategory === "all"
-		? HOME_STARTER_TEMPLATES
-		: HOME_STARTER_TEMPLATES.filter((template) => template.category === activeCategory);
-	const visibleTemplates = showAll ? filteredTemplates : filteredTemplates.slice(0, 5);
-	const canShowMore = filteredTemplates.length > visibleTemplates.length;
+	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>("analyze");
+	const [browseOpen, setBrowseOpen] = useState(false);
+	const templates = HOME_STARTER_VIEWS[activeCategory];
+	const visibleTemplates = templates.slice(0, 4);
+	const canShowMore = templates.length > visibleTemplates.length;
 
 	return (
 		<div className="w-full">
@@ -231,7 +430,6 @@ function HomeStarterBento({
 							aria-pressed={isActive}
 							onClick={() => {
 								setActiveCategory(category.id);
-								setShowAll(false);
 							}}
 							className={cn(
 								"inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-medium leading-5 outline-none transition-colors duration-fast ease-out focus-visible:ring-3 focus-visible:ring-ring/50",
@@ -272,9 +470,7 @@ function HomeStarterBento({
 								onBlur={onPreviewEnd}
 								className={cn(
 									"group flex min-h-0 flex-col items-start rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:border-border-selected hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
-									template.size === "wide" && "sm:col-span-2",
-									template.size === "tall" && "sm:row-span-2",
-									template.size === "large" && "sm:col-span-2 sm:row-span-2",
+									template.layoutClassName,
 								)}
 							>
 								<span className="inline-flex size-8 shrink-0 items-center justify-center transition-opacity duration-fast ease-out group-hover:opacity-90">
@@ -301,18 +497,19 @@ function HomeStarterBento({
 					<div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-linear-to-t from-background via-background/85 to-transparent pt-12 pb-1">
 						<Button
 							type="button"
-							aria-label="Show more prompt starters"
+							aria-label="Browse all agents"
 							variant="ghost"
 							size="xs"
 							className="pointer-events-auto h-7 rounded-full border-0 bg-surface px-3 text-sm leading-5 font-normal text-text-subtle hover:bg-surface-hovered"
 							style={{ boxShadow: token("elevation.shadow.overlay") }}
-							onClick={() => setShowAll(true)}
+							onClick={() => setBrowseOpen(true)}
 						>
-							Show more
+							Browse all
 						</Button>
 					</div>
 				) : null}
 			</div>
+			<BrowseAgentsDialog open={browseOpen} onOpenChange={setBrowseOpen} />
 		</div>
 	);
 }
