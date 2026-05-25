@@ -88,7 +88,7 @@ const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
 const ROVO_APP_SPLIT_CHAT_PANEL_ID = "rovo-app-chat-pane";
 const ROVO_APP_SPLIT_ARTIFACT_PANEL_ID = "rovo-app-artifact-pane";
 
-type HomeStarterCategory = "all" | "analyze" | "brainstorm" | "review" | "summarize" | "create";
+type HomeStarterCategory = "analyze" | "brainstorm" | "review" | "summarize" | "create";
 
 interface HomeStarterCategoryOption {
 	iconClassName?: string;
@@ -98,18 +98,16 @@ interface HomeStarterCategoryOption {
 }
 
 interface HomeStarterTemplate {
-	category: Exclude<HomeStarterCategory, "all">;
 	description: string;
 	iconSrc: string;
+	layoutClassName: string;
 	prompt: string;
-	size?: "wide" | "tall" | "large";
 	title: string;
 }
 
 const RICH_ICON_ROOT = "/illustration/rich-icon";
 
 const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
-	{ id: "all", label: "All" },
 	{ id: "analyze", label: "Analyze", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.14]" },
 	{ id: "brainstorm", label: "Brainstorm", iconSrc: `${RICH_ICON_ROOT}/lightbulb/standard.svg`, iconClassName: "-translate-y-px scale-[1.08]" },
 	{ id: "review", label: "Review", iconSrc: `${RICH_ICON_ROOT}/checklist/standard.svg`, iconClassName: "-translate-x-0.5 -translate-y-0.5 scale-[0.92]" },
@@ -117,68 +115,193 @@ const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "create", label: "Create", iconSrc: `${RICH_ICON_ROOT}/design/standard.png`, iconClassName: "translate-x-px scale-[1.12]" },
 ];
 
-const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
-	{
-		category: "analyze",
-		description: "Turn notes, links, or raw work into the signal that matters.",
-		iconSrc: "/avatar-agent/teamwork-agents/progress-tracker.svg",
-		prompt: "Analyze this work and identify the key themes, risks, opportunities, and recommended next steps.",
-		title: "Analyze a workstream",
-	},
-	{
-		category: "review",
-		description: "Check work for gaps, regressions, and unclear assumptions.",
-		iconSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
-		prompt: "Review this proposal for risks, missing context, edge cases, and concrete improvements.",
-		size: "large",
-		title: "Review a proposal",
-	},
-	{
-		category: "summarize",
-		description: "Condense long context into decisions and follow-ups.",
-		iconSrc: "/avatar-agent/teamwork-agents/meeting-insights-reporter.svg",
-		prompt: "Summarize this into key points, decisions, open questions, and action items.",
-		size: "tall",
-		title: "Summarize context",
-	},
-	{
-		category: "create",
-		description: "Draft a doc, plan, message, or artifact from sparse notes.",
-		iconSrc: "/avatar-agent/teamwork-agents/release-notes-drafter.svg",
-		prompt: "Create a clear first draft from these notes, with structure, headings, and practical next steps.",
-		size: "tall",
-		title: "Create a first draft",
-	},
-	{
-		category: "brainstorm",
-		description: "Explore directions before committing to a plan.",
-		iconSrc: "/avatar-agent/teamwork-agents/brainstorm-facilitator.svg",
-		prompt: "Brainstorm several strong approaches for this problem, then compare the tradeoffs and recommend one.",
-		title: "Brainstorm approaches",
-	},
-	{
-		category: "analyze",
-		description: "Map dependencies, owners, and blockers across work.",
-		iconSrc: "/avatar-agent/teamwork-agents/blocker-checker.svg",
-		prompt: "Map the current work into dependencies, owners, blockers, and the shortest path to progress.",
-		size: "wide",
-		title: "Map dependencies",
-	},
-	{
-		category: "review",
-		description: "Prepare concise feedback before sharing.",
-		iconSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
-		prompt: "Rewrite this as constructive feedback with the strongest points first and clear suggested changes.",
-		title: "Sharpen feedback",
-	},
-	{
-		category: "create",
-		description: "Convert intent into a practical execution plan.",
-		iconSrc: "/avatar-agent/teamwork-agents/work-item-planner.svg",
-		prompt: "Create an execution plan with milestones, owners, sequencing, and the first three actions.",
-		title: "Create an action plan",
-	},
-];
+const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<HomeStarterTemplate>>> = {
+	analyze: [
+		{
+			description: "Turn notes, links, or raw work into the signal that matters.",
+			iconSrc: "/avatar-agent/teamwork-agents/progress-tracker.svg",
+			layoutClassName: "lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2",
+			prompt: "Analyze this work and identify the key themes, risks, opportunities, and recommended next steps.",
+			title: "Analyze a workstream",
+		},
+		{
+			description: "Explore directions before committing to a plan.",
+			iconSrc: "/avatar-agent/teamwork-agents/brainstorm-facilitator.svg",
+			layoutClassName: "lg:col-start-3 lg:col-span-2 lg:row-start-1",
+			prompt: "Brainstorm several strong approaches for this problem, then compare the tradeoffs and recommend one.",
+			title: "Brainstorm approaches",
+		},
+		{
+			description: "Check work for gaps, regressions, and unclear assumptions.",
+			iconSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
+			layoutClassName: "lg:col-start-5 lg:row-start-1",
+			prompt: "Review this proposal for risks, missing context, edge cases, and concrete improvements.",
+			title: "Review a proposal",
+		},
+		{
+			description: "Condense long context into decisions and follow-ups.",
+			iconSrc: "/avatar-agent/teamwork-agents/meeting-insights-reporter.svg",
+			layoutClassName: "lg:col-start-3 lg:row-start-2",
+			prompt: "Summarize this into key points, decisions, open questions, and action items.",
+			title: "Summarize context",
+		},
+		{
+			description: "Draft a doc, plan, message, or artifact from sparse notes.",
+			iconSrc: "/avatar-agent/teamwork-agents/release-notes-drafter.svg",
+			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-2",
+			prompt: "Create a clear first draft from these notes, with structure, headings, and practical next steps.",
+			title: "Create a first draft",
+		},
+	],
+	brainstorm: [
+		{
+			description: "Generate several viable paths, compare them, and pick a direction.",
+			iconSrc: "/avatar-agent/teamwork-agents/brainstorm-facilitator.svg",
+			layoutClassName: "lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2",
+			prompt: "Brainstorm several strong approaches for this problem, group them by strategy, compare the tradeoffs, and recommend the best path.",
+			title: "Explore options",
+		},
+		{
+			description: "Compare upside, cost, risk, reversibility, and team fit.",
+			iconSrc: "/avatar-agent/teamwork-agents/decision-director.svg",
+			layoutClassName: "lg:col-start-3 lg:col-span-2 lg:row-start-1",
+			prompt: "Compare these options by upside, cost, risk, reversibility, and team fit, then recommend one with a concise rationale.",
+			title: "Compare tradeoffs",
+		},
+		{
+			description: "Find hidden constraints before they shape the answer.",
+			iconSrc: "/avatar-agent/teamwork-agents/readiness-checker.svg",
+			layoutClassName: "lg:col-start-5 lg:row-start-1",
+			prompt: "Identify the assumptions and constraints in this problem, then explain which ones should change the plan.",
+			title: "Surface constraints",
+		},
+		{
+			description: "Stress-test the idea against weak signals and edge cases.",
+			iconSrc: "/avatar-agent/teamwork-agents/customer-insights.svg",
+			layoutClassName: "lg:col-start-3 lg:col-span-2 lg:row-start-2",
+			prompt: "Stress-test this idea by listing likely failure modes, weak assumptions, and what evidence would change the recommendation.",
+			title: "Test assumptions",
+		},
+		{
+			description: "Turn exploration into a clear next move.",
+			iconSrc: "/avatar-agent/teamwork-agents/work-item-planner.svg",
+			layoutClassName: "lg:col-start-5 lg:row-start-2",
+			prompt: "Synthesize these brainstorm notes into a recommended direction, the first experiment, and the decision criteria for moving forward.",
+			title: "Recommend a path",
+		},
+	],
+	review: [
+		{
+			description: "Check assumptions, risks, and missing dependencies.",
+			iconSrc: "/avatar-agent/teamwork-agents/readiness-checker.svg",
+			layoutClassName: "lg:col-start-1 lg:row-start-1 lg:row-span-2",
+			prompt: "Review this for hidden assumptions, risks, missing dependencies, and anything that would block execution.",
+			title: "Audit assumptions",
+		},
+		{
+			description: "Find gaps, regressions, and unclear decisions before sharing.",
+			iconSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
+			layoutClassName: "lg:col-start-2 lg:col-span-2 lg:row-start-1 lg:row-span-2",
+			prompt: "Review this proposal for risks, missing context, edge cases, regressions, and concrete improvements.",
+			title: "Review a proposal",
+		},
+		{
+			description: "Separate critical blockers from follow-up concerns.",
+			iconSrc: "/avatar-agent/dev-agents/code-vulnerability-scanner-npm-yarn.svg",
+			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-1",
+			prompt: "Scan this work for risks and blockers, rank them by severity, and separate must-fix issues from follow-up improvements.",
+			title: "Prioritize risks",
+		},
+		{
+			description: "Make feedback direct, useful, and easy to act on.",
+			iconSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
+			layoutClassName: "lg:col-start-4 lg:row-start-2",
+			prompt: "Rewrite this as constructive feedback with the strongest points first, clear suggested changes, and a respectful tone.",
+			title: "Sharpen feedback",
+		},
+		{
+			description: "Check whether the work is ready for a decision.",
+			iconSrc: "/avatar-agent/teamwork-agents/decision-director.svg",
+			layoutClassName: "lg:col-start-5 lg:row-start-2",
+			prompt: "Assess whether this is ready for a decision, identify open questions, and recommend what must happen before approval.",
+			title: "Check readiness",
+		},
+	],
+	summarize: [
+		{
+			description: "Condense dense context into what leaders need to know.",
+			iconSrc: "/avatar-agent/teamwork-agents/team-recap.svg",
+			layoutClassName: "lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2",
+			prompt: "Summarize this for a leadership audience with key points, decisions, risks, and recommended next steps.",
+			title: "Executive summary",
+		},
+		{
+			description: "Extract decisions, owners, open questions, and action items.",
+			iconSrc: "/avatar-agent/teamwork-agents/meeting-insights-reporter.svg",
+			layoutClassName: "lg:col-start-3 lg:row-start-1 lg:row-span-2",
+			prompt: "Summarize this into decisions, owners, action items, open questions, and deadlines.",
+			title: "Decisions and actions",
+		},
+		{
+			description: "Turn meeting notes into a concise team recap.",
+			iconSrc: "/avatar-agent/teamwork-agents/transcript-insights-reporter.svg",
+			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-1",
+			prompt: "Turn these meeting notes into a concise recap with discussion themes, decisions, action items, and follow-ups.",
+			title: "Meeting recap",
+		},
+		{
+			description: "Highlight the questions that still need answers.",
+			iconSrc: "/avatar-agent/teamwork-agents/diagram-creator.svg",
+			layoutClassName: "lg:col-start-4 lg:row-start-2",
+			prompt: "Summarize the open questions, unresolved decisions, and missing context that need follow-up.",
+			title: "Open questions",
+		},
+		{
+			description: "Package context into a stakeholder-ready update.",
+			iconSrc: "/avatar-agent/dev-agents/deployment-summarizer.svg",
+			layoutClassName: "lg:col-start-5 lg:row-start-2",
+			prompt: "Write a stakeholder update that summarizes progress, decisions, risks, and next steps in a concise format.",
+			title: "Stakeholder update",
+		},
+	],
+	create: [
+		{
+			description: "Draft a document with structure, headings, and next steps.",
+			iconSrc: "/avatar-agent/teamwork-agents/release-notes-drafter.svg",
+			layoutClassName: "lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2",
+			prompt: "Create a clear first draft from these notes, with structure, headings, practical next steps, and a concise opening.",
+			title: "Create a first draft",
+		},
+		{
+			description: "Convert intent into milestones, owners, and sequencing.",
+			iconSrc: "/avatar-agent/teamwork-agents/work-item-planner.svg",
+			layoutClassName: "lg:col-start-3 lg:row-start-1 lg:row-span-2",
+			prompt: "Create an execution plan with milestones, owners, sequencing, dependencies, and the first three actions.",
+			title: "Create an action plan",
+		},
+		{
+			description: "Write a crisp update, request, or announcement.",
+			iconSrc: "/avatar-agent/teamwork-agents/social-media-writer.svg",
+			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-1",
+			prompt: "Create a concise message from this context that states the purpose, key details, ask, and next step.",
+			title: "Draft a message",
+		},
+		{
+			description: "Shape rough notes into a brief or outline.",
+			iconSrc: "/avatar-agent/teamwork-agents/product-requirements-guide.svg",
+			layoutClassName: "lg:col-start-4 lg:row-start-2",
+			prompt: "Create a structured brief or outline from these notes, including goals, audience, scope, and success criteria.",
+			title: "Build an outline",
+		},
+		{
+			description: "Turn a request into a practical checklist or spec.",
+			iconSrc: "/avatar-agent/teamwork-agents/work-organizer.svg",
+			layoutClassName: "lg:col-start-5 lg:row-start-2",
+			prompt: "Create a practical checklist or lightweight spec from this request, including acceptance criteria and edge cases.",
+			title: "Write a checklist",
+		},
+	],
+};
 
 function parseCssDurationMs(value: string): number | null {
 	const trimmedValue = value.trim();
@@ -210,13 +333,8 @@ function HomeStarterBento({
 	onPreviewStart: (prompt: string) => void;
 	onSelect: (prompt: string) => void;
 }>) {
-	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>("all");
-	const [showAll, setShowAll] = useState(false);
-	const filteredTemplates = activeCategory === "all"
-		? HOME_STARTER_TEMPLATES
-		: HOME_STARTER_TEMPLATES.filter((template) => template.category === activeCategory);
-	const visibleTemplates = showAll ? filteredTemplates : filteredTemplates.slice(0, 5);
-	const canShowMore = filteredTemplates.length > visibleTemplates.length;
+	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>("analyze");
+	const templates = HOME_STARTER_VIEWS[activeCategory];
 
 	return (
 		<div className="w-full">
@@ -229,10 +347,7 @@ function HomeStarterBento({
 							key={category.id}
 							type="button"
 							aria-pressed={isActive}
-							onClick={() => {
-								setActiveCategory(category.id);
-								setShowAll(false);
-							}}
+							onClick={() => setActiveCategory(category.id)}
 							className={cn(
 								"inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-medium leading-5 outline-none transition-colors duration-fast ease-out focus-visible:ring-3 focus-visible:ring-ring/50",
 								isActive
@@ -259,7 +374,7 @@ function HomeStarterBento({
 
 			<div className="relative mt-6">
 				<div className="grid auto-rows-[144px] grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-					{visibleTemplates.map((template) => {
+					{templates.map((template) => {
 						return (
 							<button
 								key={template.title}
@@ -272,9 +387,7 @@ function HomeStarterBento({
 								onBlur={onPreviewEnd}
 								className={cn(
 									"group flex min-h-0 flex-col items-start rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:border-border-selected hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
-									template.size === "wide" && "sm:col-span-2",
-									template.size === "tall" && "sm:row-span-2",
-									template.size === "large" && "sm:col-span-2 sm:row-span-2",
+									template.layoutClassName,
 								)}
 							>
 								<span className="inline-flex size-8 shrink-0 items-center justify-center transition-opacity duration-fast ease-out group-hover:opacity-90">
@@ -297,21 +410,6 @@ function HomeStarterBento({
 						);
 					})}
 				</div>
-				{canShowMore ? (
-					<div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-linear-to-t from-background via-background/85 to-transparent pt-12 pb-1">
-						<Button
-							type="button"
-							aria-label="Show more prompt starters"
-							variant="ghost"
-							size="xs"
-							className="pointer-events-auto h-7 rounded-full border-0 bg-surface px-3 text-sm leading-5 font-normal text-text-subtle hover:bg-surface-hovered"
-							style={{ boxShadow: token("elevation.shadow.overlay") }}
-							onClick={() => setShowAll(true)}
-						>
-							Show more
-						</Button>
-					</div>
-				) : null}
 			</div>
 		</div>
 	);
