@@ -158,8 +158,19 @@ export type RovoDataParts = {
 	"agent-result": {
 		agentId: string;
 		name: string;
+		byline?: string;
+		sourceLabel?: string;
 		description?: string;
+		instructions?: string;
+		contextDescription?: string;
 		conversationStarters?: string[];
+		avatarSrc?: string;
+		avatarFallback?: {
+			initials?: string;
+			backgroundColor?: string;
+			iconName?: string;
+			label?: string;
+		};
 		assignedColumn?: string;
 		summary: string;
 		trigger?: string;

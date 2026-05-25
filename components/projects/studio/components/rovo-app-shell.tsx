@@ -58,11 +58,11 @@ import { parseClickyResponse } from "@/components/projects/studio/lib/clicky-poi
 import { useSidebarResize } from "@/components/projects/studio/hooks/use-sidebar-resize";
 import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
-import { getLatestDataPart, getLatestUserMessageId, getMessageArtifactResult, getMessageInterruption, getMessageText } from "@/lib/rovo-ui-messages";
+import { getLatestDataPart, getLatestUserMessageId, getMessageAgentResult, getMessageArtifactResult, getMessageInterruption, getMessageText, type RovoDataParts } from "@/lib/rovo-ui-messages";
 import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
 import { QuestionCardShortcutsFooter } from "@/components/projects/shared/components/question-card-shortcuts-footer";
-import { getLatestQuestionCardPayload, type ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
+import { getLatestQuestionCardPayload, type ClarificationAnswers, type ParsedQuestionCardPayload } from "@/components/projects/shared/lib/question-card-widget";
 import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
 import { getLatestPendingPlanWidget, type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
@@ -70,7 +70,7 @@ import { approveSkillDraft, fetchWikiStatus, fetchSkillDraftDetail, fetchSkillDr
 import type { HermesSkillDraftDetail, HermesSkillDraftSummary, HermesSkillSummary, WikiStatus } from "@/lib/rovo-runtime-types";
 import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
 import { useRovoSelectedAgent } from "@/app/contexts";
-import { getRovoAgentPromptContext, isRovoAgentProfile } from "@/components/projects/studio/data/agent-profiles";
+import { getRovoAgentPromptContext, isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/studio/data/agent-profiles";
 
 interface RovoAppShellProps {
 	embedded?: boolean;
@@ -82,13 +82,13 @@ const ROVO_APP_SIDEBAR_MOTION_FALLBACK_MS = 200;
 const ROVO_APP_SIDEBAR_MIN_WIDTH = 240;
 const ROVO_APP_SIDEBAR_MAX_WIDTH = 480;
 
-const DEFAULT_COMPOSER_PLACEHOLDER = "Describe what it should do";
+const DEFAULT_COMPOSER_PLACEHOLDER = "Describe the agent you want to build";
 const REALTIME_THREAD_SUMMARY_MAX_MESSAGES = 10;
 const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
 const ROVO_APP_SPLIT_CHAT_PANEL_ID = "rovo-app-chat-pane";
 const ROVO_APP_SPLIT_ARTIFACT_PANEL_ID = "rovo-app-artifact-pane";
 
-type HomeStarterCategory = "all" | "analyze" | "brainstorm" | "review" | "summarize" | "create";
+type HomeStarterCategory = "all" | "teamwork" | "product" | "dev" | "knowledge" | "operations";
 
 interface HomeStarterCategoryOption {
 	iconClassName?: string;
@@ -110,73 +110,73 @@ const RICH_ICON_ROOT = "/illustration/rich-icon";
 
 const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "all", label: "All" },
-	{ id: "analyze", label: "Analyze", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.14]" },
-	{ id: "brainstorm", label: "Brainstorm", iconSrc: `${RICH_ICON_ROOT}/lightbulb/standard.svg`, iconClassName: "-translate-y-px scale-[1.08]" },
-	{ id: "review", label: "Review", iconSrc: `${RICH_ICON_ROOT}/checklist/standard.svg`, iconClassName: "-translate-x-0.5 -translate-y-0.5 scale-[0.92]" },
-	{ id: "summarize", label: "Summarize", iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg`, iconClassName: "translate-y-px scale-[1.08]" },
-	{ id: "create", label: "Create", iconSrc: `${RICH_ICON_ROOT}/design/standard.png`, iconClassName: "translate-x-px scale-[1.12]" },
+	{ id: "teamwork", label: "Teamwork", iconSrc: `${RICH_ICON_ROOT}/community/standard.svg`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.1]" },
+	{ id: "product", label: "Product", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.14]" },
+	{ id: "dev", label: "Dev", iconSrc: `${RICH_ICON_ROOT}/software/standard.png`, iconClassName: "translate-y-px scale-[1.05]" },
+	{ id: "knowledge", label: "Knowledge", iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg`, iconClassName: "translate-y-px scale-[1.08]" },
+	{ id: "operations", label: "Operations", iconSrc: `${RICH_ICON_ROOT}/checklist/standard.svg`, iconClassName: "-translate-x-0.5 -translate-y-0.5 scale-[0.92]" },
 ];
 
 const HOME_STARTER_TEMPLATES: ReadonlyArray<HomeStarterTemplate> = [
 	{
-		category: "analyze",
-		description: "Turn notes, links, or raw work into the signal that matters.",
+		category: "operations",
+		description: "Sort requests, ask for missing details, and recommend priority.",
 		iconSrc: "/avatar-agent/teamwork-agents/progress-tracker.svg",
-		prompt: "Analyze this work and identify the key themes, risks, opportunities, and recommended next steps.",
-		title: "Analyze a workstream",
+		prompt: "Build an agent that triages incoming work requests, asks for missing details, assigns priority, and recommends the next action.",
+		title: "Build a triage agent",
 	},
 	{
-		category: "review",
-		description: "Check work for gaps, regressions, and unclear assumptions.",
+		category: "dev",
+		description: "Review changes for correctness, maintainability, and tests.",
 		iconSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
-		prompt: "Review this proposal for risks, missing context, edge cases, and concrete improvements.",
+		prompt: "Build a code review agent that checks diffs for bugs, regressions, maintainability issues, and missing tests, then returns concise findings.",
 		size: "large",
-		title: "Review a proposal",
+		title: "Build a code review agent",
 	},
 	{
-		category: "summarize",
-		description: "Condense long context into decisions and follow-ups.",
+		category: "teamwork",
+		description: "Turn meetings into decisions, owners, and follow-ups.",
 		iconSrc: "/avatar-agent/teamwork-agents/meeting-insights-reporter.svg",
-		prompt: "Summarize this into key points, decisions, open questions, and action items.",
+		prompt: "Build a meeting insights agent that summarizes transcripts into decisions, open questions, owners, due dates, and follow-up messages.",
 		size: "tall",
-		title: "Summarize context",
+		title: "Build a meeting agent",
 	},
 	{
-		category: "create",
-		description: "Draft a doc, plan, message, or artifact from sparse notes.",
+		category: "teamwork",
+		description: "Draft release notes from shipped work and stakeholder notes.",
 		iconSrc: "/avatar-agent/teamwork-agents/release-notes-drafter.svg",
-		prompt: "Create a clear first draft from these notes, with structure, headings, and practical next steps.",
+		prompt: "Build a release notes agent that turns shipped tickets and product notes into clear release notes for customers and internal stakeholders.",
 		size: "tall",
-		title: "Create a first draft",
+		title: "Build a release notes agent",
 	},
 	{
-		category: "brainstorm",
-		description: "Explore directions before committing to a plan.",
-		iconSrc: "/avatar-agent/teamwork-agents/brainstorm-facilitator.svg",
-		prompt: "Brainstorm several strong approaches for this problem, then compare the tradeoffs and recommend one.",
-		title: "Brainstorm approaches",
-	},
-	{
-		category: "analyze",
-		description: "Map dependencies, owners, and blockers across work.",
-		iconSrc: "/avatar-agent/teamwork-agents/blocker-checker.svg",
-		prompt: "Map the current work into dependencies, owners, blockers, and the shortest path to progress.",
-		size: "wide",
-		title: "Map dependencies",
-	},
-	{
-		category: "review",
-		description: "Prepare concise feedback before sharing.",
+		category: "product",
+		description: "Cluster customer feedback and turn it into product signal.",
 		iconSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
-		prompt: "Rewrite this as constructive feedback with the strongest points first and clear suggested changes.",
-		title: "Sharpen feedback",
+		prompt: "Build a feedback analysis agent that clusters customer feedback, extracts themes and sentiment, and recommends product opportunities.",
+		title: "Build a feedback agent",
 	},
 	{
-		category: "create",
-		description: "Convert intent into a practical execution plan.",
+		category: "operations",
+		description: "Track owners, blockers, dependencies, and readiness gaps.",
+		iconSrc: "/avatar-agent/teamwork-agents/blocker-checker.svg",
+		prompt: "Build a delivery readiness agent that tracks owners, dependencies, blockers, launch risks, and the shortest path to progress.",
+		size: "wide",
+		title: "Build a readiness agent",
+	},
+	{
+		category: "knowledge",
+		description: "Answer policy and process questions from trusted context.",
+		iconSrc: "/avatar-agent/teamwork-agents/product-requirements-guide.svg",
+		prompt: "Build a knowledge base agent that answers policy and process questions, cites the relevant source context, and flags missing information.",
+		title: "Build a knowledge agent",
+	},
+	{
+		category: "product",
+		description: "Shape goals, requirements, risks, and acceptance criteria.",
 		iconSrc: "/avatar-agent/teamwork-agents/work-item-planner.svg",
-		prompt: "Create an execution plan with milestones, owners, sequencing, and the first three actions.",
-		title: "Create an action plan",
+		prompt: "Build a product requirements agent that turns rough ideas into goals, scope, risks, acceptance criteria, and the first implementation plan.",
+		title: "Build a PRD agent",
 	},
 ];
 
@@ -331,6 +331,111 @@ function mergeContextDescriptions(...parts: Array<string | null | undefined>): s
 	const mergedParts = parts.map((part) => part?.trim()).filter((part): part is string => Boolean(part));
 
 	return mergedParts.length > 0 ? mergedParts.join("\n\n") : undefined;
+}
+
+function getNonEmptyString(value: unknown): string | null {
+	return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function buildStudioAgentCreationContext(originalBrief: string): string {
+	return [
+		"[Studio agent creation context]",
+		"Source: /studio prompt input",
+		"Original user brief:",
+		originalBrief.trim(),
+		"Clarification rule: Ask clarifying questions only when required agent profile details are missing. Use the existing ask_user_questions/question-card flow; do not create a separate Q&A format.",
+		"Structured result rule: When the agent profile is ready, emit a structured data-agent-result with action \"create\", a stable agent id, display name, description or summary, instructions/context, and conversation starters. Keep assistant prose concise.",
+		"[End Studio agent creation context]",
+	].join("\n");
+}
+
+function buildStudioAgentCreationContinuationContext(): string {
+	return [
+		"[Studio agent creation context]",
+		"Source: /studio prompt input clarification answer",
+		"The user has answered the clarification questions for the agent they want to build.",
+		"Clarification rule: If required profile details are still missing, ask another concise question-card round using the existing ask_user_questions flow.",
+		"Structured result rule: Otherwise, create the reusable custom agent now and emit a structured data-agent-result with action \"create\", a stable agent id, display name, description or summary, instructions/context, and conversation starters.",
+		"[End Studio agent creation context]",
+	].join("\n");
+}
+
+function normalizeStudioAgentResult(agentResult: RovoDataParts["agent-result"]): RovoAgentProfile | null {
+	const id = getNonEmptyString(agentResult.agentId);
+	const name = getNonEmptyString(agentResult.name);
+	const summary = getNonEmptyString(agentResult.summary);
+	const description = getNonEmptyString(agentResult.description) ?? summary;
+	const conversationStarters = Array.isArray(agentResult.conversationStarters)
+		? agentResult.conversationStarters.map((starter) => starter.trim()).filter(Boolean).slice(0, 4)
+		: [];
+
+	if (!id || !name || !description || conversationStarters.length === 0) {
+		return null;
+	}
+
+	const contextDescription = [
+		"[Selected Studio-generated agent]",
+		`Agent: ${name}`,
+		"Source: /studio agent creation result",
+		`Description: ${description}`,
+		summary ? `Summary: ${summary}` : null,
+		conversationStarters.length > 0 ? `Conversation starters: ${conversationStarters.join(" | ")}` : null,
+		"Answer as this selected generated agent while using the existing Studio chat capabilities and available context.",
+		"[End selected Studio-generated agent]",
+	]
+		.filter((line): line is string => Boolean(line))
+		.join("\n");
+
+	return {
+		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-1.svg",
+		byline: "Generated in Studio",
+		contextDescription,
+		description,
+		id,
+		name,
+		starters: conversationStarters.map((starter, index) => ({
+			id: `${id}-starter-${index + 1}`,
+			label: starter,
+			prompt: starter,
+			type: "prompt",
+		})),
+	};
+}
+
+type StudioAgentRegistrationResult =
+	| string
+	| {
+			id?: string | null;
+	  }
+	| RovoAgentProfile
+	| null
+	| undefined
+	| void;
+
+type StudioAgentRegistryContext = ReturnType<typeof useRovoSelectedAgent> & {
+	registerCreatedAgentFromResult?: (
+		agentResult: RovoDataParts["agent-result"],
+		options?: { preserveCurrentThread?: boolean; select?: boolean; sourceKey?: string }
+	) => RovoAgentProfile | null;
+	registerAgentResult?: (agentResult: RovoDataParts["agent-result"], normalizedAgent?: RovoAgentProfile) => StudioAgentRegistrationResult;
+	registerSessionAgent?: (agent: RovoAgentProfile, options?: { source?: string; result?: RovoDataParts["agent-result"] }) => StudioAgentRegistrationResult;
+	selectAgent: (agentId: string, options?: { preserveCurrentThread?: boolean }) => void;
+};
+
+type StudioSubmitPromptPayload = Parameters<ReturnType<typeof useRovoApp>["submitPrompt"]>[0] & {
+	creationMode?: "agent";
+};
+
+function resolveRegisteredStudioAgentId(result: StudioAgentRegistrationResult, fallbackAgentId: string): string {
+	if (typeof result === "string" && result.trim().length > 0) {
+		return result.trim();
+	}
+
+	if (result && typeof result === "object" && typeof result.id === "string" && result.id.trim().length > 0) {
+		return result.id.trim();
+	}
+
+	return fallbackAgentId;
 }
 
 type RealtimeInjectContextPayload = {
@@ -508,7 +613,8 @@ function resolveRealtimeSessionIdentity(realtime: RealtimeVoiceShellResult, acti
 export function RovoAppShell({ embedded = false, initialThreadId = null }: Readonly<RovoAppShellProps>) {
 	const router = useRouter();
 	const nav = useTopNavigation();
-	const { selectedAgent } = useRovoSelectedAgent();
+	const studioAgentRegistry = useRovoSelectedAgent() as StudioAgentRegistryContext;
+	const { selectedAgent } = studioAgentRegistry;
 	const selectedAgentContextDescription = getRovoAgentPromptContext(selectedAgent);
 	const isCustomAgentSelected = !isRovoAgentProfile(selectedAgent);
 	const [viewportWidthPx, setViewportWidthPx] = useState<number | null>(null);
@@ -668,6 +774,52 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		[selectedHermesSkillIds, selectedAgentContextDescription],
 	);
 
+	const handleStudioAgentResultSelect = useCallback(
+		(agentResult: RovoDataParts["agent-result"], options?: { sourceMessageId?: string; sourceKey?: string }): boolean => {
+			const normalizedAgent = normalizeStudioAgentResult(agentResult);
+			if (!normalizedAgent) {
+				return false;
+			}
+
+			const sourceKey = options?.sourceKey
+				?? (options?.sourceMessageId
+					? `studio-agent-result:${chat.activeThreadId ?? chat.runtimeThreadId}:${options.sourceMessageId}:${agentResult.agentId}`
+					: undefined);
+
+			if (typeof studioAgentRegistry.registerCreatedAgentFromResult === "function") {
+				return Boolean(studioAgentRegistry.registerCreatedAgentFromResult(agentResult, {
+					preserveCurrentThread: true,
+					select: true,
+					sourceKey,
+				}));
+			}
+
+			// Fallback integration point for older Worker C drafts: use session-agent
+			// registration plus preserve-current-thread selection when available.
+			let didRegisterAgent = false;
+			let registrationResult: StudioAgentRegistrationResult = null;
+			if (typeof studioAgentRegistry.registerAgentResult === "function") {
+				didRegisterAgent = true;
+				registrationResult = studioAgentRegistry.registerAgentResult(agentResult, normalizedAgent);
+			} else if (typeof studioAgentRegistry.registerSessionAgent === "function") {
+				didRegisterAgent = true;
+				registrationResult = studioAgentRegistry.registerSessionAgent(normalizedAgent, {
+					result: agentResult,
+					source: "/studio",
+				});
+			}
+
+			if (!didRegisterAgent) {
+				return false;
+			}
+
+			const agentId = resolveRegisteredStudioAgentId(registrationResult, normalizedAgent.id);
+			studioAgentRegistry.selectAgent(agentId, { preserveCurrentThread: true });
+			return true;
+		},
+		[chat.activeThreadId, chat.runtimeThreadId, studioAgentRegistry],
+	);
+
 	// Bridge the global sidebar context (TopNavigation toggle) with the local
 	// shadcn SidebarProvider so the nav bar button controls the thread sidebar.
 	const globalSidebar = useGlobalSidebar();
@@ -796,6 +948,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const injectedRealtimeThreadContextKeyRef = useRef<string | null>(null);
 	const injectedRealtimeArtifactContextKeyRef = useRef<string | null>(null);
 	const pendingTypedScrollAnchorRef = useRef(false);
+	const isDefaultAgentHomeStateRef = useRef(false);
+	const studioAgentCreationThreadKeysRef = useRef<Set<string>>(new Set());
+	const handledAgentResultKeysRef = useRef<Set<string>>(new Set());
 	const previousTypedAnchorUserMessageIdRef = useRef<string | null>(null);
 	const typedScrollAnchorSourceRef = useRef<TypedScrollAnchorSource>("none");
 	const realtimeTypedResponseStartedRef = useRef(false);
@@ -833,6 +988,24 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	// Question card / clarification support
 	const activeQuestionCard = useMemo(() => getLatestQuestionCardPayload(chat.messages), [chat.messages]);
 	const { acceptPlanReview, submitClarification } = chat;
+	const getStudioAgentCreationClarificationOptions = useCallback(() => {
+		const isStudioAgentCreationThread =
+			studioAgentCreationThreadKeysRef.current.has(chat.runtimeThreadId) ||
+			(chat.activeThreadId ? studioAgentCreationThreadKeysRef.current.has(chat.activeThreadId) : false);
+
+		return isStudioAgentCreationThread
+			? {
+				contextDescription: buildStudioAgentCreationContinuationContext(),
+				creationMode: "agent" as const,
+			}
+			: undefined;
+	}, [chat.activeThreadId, chat.runtimeThreadId]);
+	const handleCancelClarificationQuestionSet = useCallback(
+		(questionCard: ParsedQuestionCardPayload) => {
+			return chat.cancelClarificationQuestionSet(questionCard, getStudioAgentCreationClarificationOptions());
+		},
+		[chat, getStudioAgentCreationClarificationOptions],
+	);
 	const {
 		shouldShowQuestionCard: shouldShowQuestionCardRaw,
 		activeQuestionCardKey,
@@ -840,16 +1013,20 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		dismissQuestionCard,
 	} = useDismissibleCards({
 		activeQuestionCard,
-		onDismissQuestionCard: chat.cancelClarificationQuestionSet,
+		onDismissQuestionCard: handleCancelClarificationQuestionSet,
 	});
 	const isDeferredQuestionCard = Boolean(activeQuestionCard?.deferredToolCallId);
 	const shouldShowQuestionCard = shouldShowQuestionCardRaw && (!chat.isStreaming || isDeferredQuestionCard);
 	const handleClarificationSubmit = useCallback(
 		(answers: ClarificationAnswers) => {
 			if (!activeQuestionCard) return;
-			void submitClarification(activeQuestionCard, answers);
+			void submitClarification(
+				activeQuestionCard,
+				answers,
+				getStudioAgentCreationClarificationOptions(),
+			);
 		},
-		[activeQuestionCard, submitClarification],
+		[activeQuestionCard, getStudioAgentCreationClarificationOptions, submitClarification],
 	);
 	const handleBuildPlan = useCallback(
 		(planWidget: ParsedPlanWidgetPayload) => {
@@ -1631,7 +1808,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		async ({ files, text }: { files: FileUIPart[]; text: string }) => {
 			const realtimeChat = chatRef.current as RovoAppRealtimeShellAdapter;
 			const realtimeVoice = realtime as RealtimeVoiceShellResult;
-			const contextDescription = annotationContextRef.current ?? undefined;
+			const shouldStartStudioAgentCreation = isDefaultAgentHomeStateRef.current && !isRealtimeActive;
+			const studioAgentCreationContext = shouldStartStudioAgentCreation ? buildStudioAgentCreationContext(text) : undefined;
+			const contextDescription = mergeContextDescriptions(annotationContextRef.current, studioAgentCreationContext);
 			const hermesPromptOptions = buildHermesPromptOptions(contextDescription);
 			const shouldClearHermesSkillSelection = Boolean(hermesPromptOptions.hermesContext);
 			const latestUserMessageIdBeforeSubmit = getLatestUserMessageId(chat.messages);
@@ -1704,10 +1883,18 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 			queueTypedScrollAnchor("standard", latestUserMessageIdBeforeSubmit);
 			try {
-				await realtimeChat.submitPrompt({
+				if (shouldStartStudioAgentCreation) {
+					studioAgentCreationThreadKeysRef.current.add(chat.runtimeThreadId);
+					if (chat.activeThreadId) {
+						studioAgentCreationThreadKeysRef.current.add(chat.activeThreadId);
+					}
+				}
+				const submitPrompt = realtimeChat.submitPrompt as (payload: StudioSubmitPromptPayload) => Promise<void>;
+				await submitPrompt({
 					...hermesPromptOptions,
 					files,
 					text,
+					...(shouldStartStudioAgentCreation ? { creationMode: "agent" as const } : {}),
 				});
 				if (shouldClearHermesSkillSelection) {
 					clearHermesSkillSelection();
@@ -1732,7 +1919,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			setOptimisticUserMessage,
 			buildHermesPromptOptions,
 			clearHermesSkillSelection,
+			chat.activeThreadId,
 			chat.shouldQueueNextSubmission,
+			chat.runtimeThreadId,
 		],
 	);
 
@@ -1762,6 +1951,39 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			return message.role === "user" || message.role === "assistant";
 		});
 	}, [displayMessages]);
+	useEffect(() => {
+		if (studioAgentCreationThreadKeysRef.current.has(chat.runtimeThreadId) && chat.activeThreadId) {
+			studioAgentCreationThreadKeysRef.current.add(chat.activeThreadId);
+		}
+	}, [chat.activeThreadId, chat.runtimeThreadId]);
+	useEffect(() => {
+		if (
+			!studioAgentCreationThreadKeysRef.current.has(chat.runtimeThreadId) &&
+			(!chat.activeThreadId || !studioAgentCreationThreadKeysRef.current.has(chat.activeThreadId))
+		) {
+			return;
+		}
+
+		for (const message of chat.messages) {
+			const agentResult = getMessageAgentResult(message);
+			if (!agentResult) {
+				continue;
+			}
+
+			const agentResultKey = `${chat.runtimeThreadId}:${message.id}:${agentResult.agentId}:${agentResult.action}`;
+			if (handledAgentResultKeysRef.current.has(agentResultKey)) {
+				continue;
+			}
+
+			if (handleStudioAgentResultSelect(agentResult, { sourceMessageId: message.id })) {
+				handledAgentResultKeysRef.current.add(agentResultKey);
+				studioAgentCreationThreadKeysRef.current.delete(chat.runtimeThreadId);
+				if (chat.activeThreadId) {
+					studioAgentCreationThreadKeysRef.current.delete(chat.activeThreadId);
+				}
+			}
+		}
+	}, [chat.activeThreadId, chat.messages, chat.runtimeThreadId, handleStudioAgentResultSelect]);
 	const timelineItems = useMemo(() => {
 		return deriveRovoAppTimelineItems(displayMessages);
 	}, [displayMessages]);
@@ -1931,6 +2153,8 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	});
 	const hasActiveThreadRun = typeof chat.activeThreadId === "string" && chat.backgroundStreamThreadIds.has(chat.activeThreadId);
 	const showHomeState = !chat.isLoadingThread && !isArtifactOpen && !hasActiveThreadRun && visibleMessages.length === 0;
+	const isDefaultAgentHomeState = showHomeState && !isCustomAgentSelected;
+	isDefaultAgentHomeStateRef.current = isDefaultAgentHomeState;
 	const shouldReduceMotion = useReducedMotion();
 	const shouldShowTimelineNavigator = !showHomeState && !isArtifactOpen && timelineItems.length > 1;
 	const composerPreviewState = resolveRovoAppComposerPlaceholder({
@@ -2299,6 +2523,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					onOpenArtifactFromCard={handleOpenArtifactFromCard}
 					onOpenBrowserPreview={handleOpenBrowserPreview}
 					onOpenPlanPreview={handleOpenPlanPreview}
+					onAgentResultSelect={handleStudioAgentResultSelect}
 					onRegisterArtifactCard={handleRegisterArtifactCard}
 					onRegenerate={chat.regenerateLatest}
 					onScrollActiveUserMessageChange={handleScrollActiveTimelineChange}
@@ -2318,7 +2543,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				/>
 			</ViewTransition>
 
-			{showHomeState && !isCustomAgentSelected ? (
+			{isDefaultAgentHomeState ? (
 				<motion.div
 					className="z-10 mx-auto mb-5 w-[90%] px-3"
 					initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}

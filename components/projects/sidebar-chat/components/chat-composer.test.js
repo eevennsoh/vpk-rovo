@@ -164,7 +164,7 @@ test("compact chat merges selected custom agent context before queueing prompts"
 	assert.match(context, /autoSelectAgentId\?: string;/u);
 	assert.match(context, /const autoSelectedAgentIdRef = useRef<string \| null>\(null\);/u);
 	assert.match(context, /const selectableAgents = useMemo<readonly AgentSelectorAgent\[\]>/u);
-	assert.match(context, /selectAgent: \(agentId: string\) => void;/u);
+	assert.match(context, /selectAgent: \(agentId: string, options\?: SelectAgentOptions\) => void;/u);
 	assert.match(context, /resetAgentToRovo: \(\) => void;/u);
 	assert.match(context, /const nextAgent = agentProfileById\.get\(autoSelectAgentId\);/u);
 	assert.match(context, /function mergeSelectedAgentPromptOptions/u);
@@ -174,6 +174,32 @@ test("compact chat merges selected custom agent context before queueing prompts"
 		context.slice(sendPromptIndex),
 		/mergeSendPromptOptions\(\s*defaultPromptOptions,\s*mergeSelectedAgentPromptOptions\(options, selectedAgent\)\s*\)/u,
 	);
+});
+
+test("compact chat registers session-created agents from agent result payloads", () => {
+	const context = readProjectFile("app/contexts/context-rovo-chat.tsx");
+
+	assert.match(context, /interface SessionAgentEntry \{[\s\S]*profile: RovoAgentProfile;[\s\S]*resultKey: string;[\s\S]*\}/u);
+	assert.match(context, /const \[sessionAgentEntries, setSessionAgentEntries\] = useState<SessionAgentEntry\[\]>\(\[\]\);/u);
+	assert.match(context, /const sessionAgentEntriesRef = useRef<SessionAgentEntry\[\]>\(\[\]\);/u);
+	assert.match(context, /function createSessionAgentEntryFromResult\(params: \{[\s\S]*agentResult: RovoDataParts\["agent-result"\];[\s\S]*\}\): SessionAgentEntry \| null/u);
+	assert.match(context, /sourceKey\?: string;/u);
+	assert.match(context, /const payloadResultKey = getCreatedAgentResultKey\(payload\);/u);
+	assert.match(context, /const resultKey = params\.sourceKey[\s\S]*\? `\$\{params\.sourceKey\}:\$\{payloadResultKey\}`[\s\S]*: payloadResultKey;/u);
+	assert.match(context, /params\.sessionAgentEntries\.find\(\s*\(entry\) => entry\.resultKey === resultKey\s*\)/u);
+	assert.match(context, /\.\.\.staticAgentProfiles,[\s\S]*\.\.\.sessionAgentEntries\.map\(\(entry\) => entry\.profile\)/u);
+	assert.match(context, /\.\.\.staticAgents\.map\(toAgentSelectorAgent\),[\s\S]*\.\.\.sessionAgentEntries\.map\(\(entry\) => toAgentSelectorAgent\(entry\.profile\)\)/u);
+	assert.match(context, /registerCreatedAgentFromResult: \([\s\S]*agentResult: RovoDataParts\["agent-result"\],[\s\S]*options\?: RegisterCreatedAgentOptions[\s\S]*\) => RovoAgentProfile \| null;/u);
+	assert.match(context, /sourceKey: options\?\.sourceKey,/u);
+});
+
+test("compact chat suffixes duplicate session-created agent ids and names", () => {
+	const context = readProjectFile("app/contexts/context-rovo-chat.tsx");
+
+	assert.match(context, /function getSuffixedSessionAgentId\([\s\S]*reservedIds: ReadonlySet<string>[\s\S]*\): string \{[\s\S]*let suffix = 2;[\s\S]*while \(reservedIds\.has\(`\$\{baseId\}-\$\{suffix\}`\)\) \{[\s\S]*return `\$\{baseId\}-\$\{suffix\}`;/u);
+	assert.match(context, /function getSuffixedSessionAgentName\([\s\S]*reservedNames: ReadonlySet<string>[\s\S]*\): string \{[\s\S]*let suffix = 2;[\s\S]*while \(reservedNames\.has\(`\$\{baseName\} \$\{suffix\}`\.toLowerCase\(\)\)\) \{[\s\S]*return `\$\{baseName\} \$\{suffix\}`;/u);
+	assert.match(context, /const id = getSuffixedSessionAgentId\(baseId, reservedIds\);/u);
+	assert.match(context, /const name = getSuffixedSessionAgentName\(baseName, reservedNames\);/u);
 });
 
 test("compact chat resets the visible conversation when switching agents", () => {
@@ -187,11 +213,24 @@ test("compact chat resets the visible conversation when switching agents", () =>
 	assert.ok(resetAgentToRovoIndex > selectAgentIndex);
 	assert.match(
 		context.slice(selectAgentIndex, resetAgentToRovoIndex),
-		/if \(nextAgent\.id === selectedAgentId\) \{[\s\S]*return;[\s\S]*\}[\s\S]*setSelectedAgentId\(nextAgent\.id\);[\s\S]*resetChat\(\);/u,
+		/if \(nextAgent\.id === selectedAgentId\) \{[\s\S]*return;[\s\S]*\}[\s\S]*setSelectedAgentId\(nextAgent\.id\);[\s\S]*if \(!options\?\.preserveCurrentThread\) \{[\s\S]*resetChat\(\);[\s\S]*\}/u,
 	);
 	assert.match(
 		context.slice(resetAgentToRovoIndex),
 		/if \(selectedAgentId === ROVO_AGENT_ID\) \{[\s\S]*return;[\s\S]*\}[\s\S]*setSelectedAgentId\(ROVO_AGENT_ID\);[\s\S]*resetChat\(\);/u,
+	);
+});
+
+test("compact chat can select a created agent while preserving the current thread", () => {
+	const context = readProjectFile("app/contexts/context-rovo-chat.tsx");
+	const registerIndex = context.indexOf("const registerCreatedAgentFromResult = useCallback(");
+	const resetAgentToRovoIndex = context.indexOf("const resetAgentToRovo = useCallback(", registerIndex);
+
+	assert.ok(registerIndex > -1);
+	assert.ok(resetAgentToRovoIndex > registerIndex);
+	assert.match(
+		context.slice(registerIndex, resetAgentToRovoIndex),
+		/if \(options\?\.select && entry\.profile\.id !== selectedAgentId\) \{[\s\S]*setSelectedAgentId\(entry\.profile\.id\);[\s\S]*if \(!options\.preserveCurrentThread\) \{[\s\S]*resetChat\(\);[\s\S]*\}/u,
 	);
 });
 
