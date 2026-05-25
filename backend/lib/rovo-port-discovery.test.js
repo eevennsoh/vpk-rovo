@@ -54,7 +54,7 @@ test("resolveRovoPorts rejects partially invalid recorded port pools", async () 
 	const portFile = path.join(tempDir, ".dev-rovo-port");
 	const portsFile = path.join(tempDir, ".dev-rovo-ports");
 	fs.writeFileSync(portFile, "8014");
-	fs.writeFileSync(portsFile, JSON.stringify([8012, "not-a-port"]));
+	fs.writeFileSync(portsFile, JSON.stringify([8012, "8013"]));
 
 	let healthCheckCalls = 0;
 	const result = await resolveRovoPorts({

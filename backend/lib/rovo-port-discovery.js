@@ -2,8 +2,12 @@
 
 const fs = require("node:fs");
 
+function isPositiveInteger(value) {
+	return Number.isInteger(value) && value > 0;
+}
+
 function parsePositiveInteger(value) {
-	if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+	if (isPositiveInteger(value)) {
 		return value;
 	}
 
@@ -24,9 +28,8 @@ function readRecordedRovoPorts({
 		try {
 			const parsed = JSON.parse(fsModule.readFileSync(portsFile, "utf8").trim());
 			if (Array.isArray(parsed) && parsed.length > 0) {
-				const ports = parsed.map((port) => parsePositiveInteger(port));
-				if (ports.every((port) => typeof port === "number")) {
-					return ports;
+				if (parsed.every(isPositiveInteger)) {
+					return parsed;
 				}
 			}
 		} catch {
