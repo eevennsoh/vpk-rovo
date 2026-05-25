@@ -3,9 +3,9 @@
 import * as React from "react";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import AppsIcon from "@atlaskit/icon/core/apps";
+import AutomationIcon from "@atlaskit/icon/core/automation";
 import ChartTrendUpIcon from "@atlaskit/icon/core/chart-trend-up";
 import PersonAvatarIcon from "@atlaskit/icon/core/person-avatar";
-import ToolsIcon from "@atlaskit/icon/core/tools";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
 import { token } from "@/lib/tokens";
@@ -58,8 +58,8 @@ const STUDIO_SIDEBAR_NAV_SECTIONS: ReadonlyArray<StudioSidebarNavSection> = [
 		title: "Browse",
 		items: [
 			{
-				icon: <ToolsIcon label="" />,
-				label: "Tools",
+				icon: <SkillIcon label="" />,
+				label: "Skills",
 			},
 			{
 				icon: <TeamworkGraphIcon label="" />,
@@ -80,8 +80,8 @@ const STUDIO_SIDEBAR_NAV_SECTIONS: ReadonlyArray<StudioSidebarNavSection> = [
 				label: "Agents",
 			},
 			{
-				icon: <SkillIcon label="" />,
-				label: "Skills",
+				icon: <AutomationIcon label="" />,
+				label: "Automation",
 			},
 		],
 	},

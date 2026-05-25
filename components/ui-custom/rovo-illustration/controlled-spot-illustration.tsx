@@ -11,7 +11,6 @@ import SpotIllustration, {
   ILLUS_HOLD_DURATION,
   ILLUS_EXIT_DURATION,
   CHAT_ENTER_DURATION,
-  CHAT_EXIT_DURATION,
   easeOutCubic,
   processIllustrationSvg,
   getSpotIllustrationUrl,

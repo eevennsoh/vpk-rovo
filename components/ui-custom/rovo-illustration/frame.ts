@@ -57,7 +57,8 @@ export function computeFrame(time: number, illusId: string, pr: number): FrameSt
   let mosaicLayerOpacity = 1, mosaicTX = 0, mosaicTY = 0;
   let mosaicScale = 1;
   let overlapOpacity = 1, overlapScale = 1, overlapTX = 0, overlapTY = 0;
-  let greyClipTX = 0, greyClipTY = 0, greyClipScale = 1;
+  let greyClipTX = 0, greyClipTY = 0;
+  const greyClipScale = 1;
   let telescopeAngle = 0;
   const mosaicRotation = (t * 3) % 360;
 

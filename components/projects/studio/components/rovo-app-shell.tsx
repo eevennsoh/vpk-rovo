@@ -219,7 +219,7 @@ function HomeStarterBento({
 
 	return (
 		<div className="w-full">
-			<div className="no-scrollbar flex gap-2 overflow-x-auto">
+			<div className="no-scrollbar flex justify-center gap-2 overflow-x-auto">
 				{HOME_STARTER_CATEGORIES.map((category) => {
 					const isActive = activeCategory === category.id;
 
@@ -243,10 +243,10 @@ function HomeStarterBento({
 								<Image
 									alt=""
 									aria-hidden
-									className="size-4 object-contain"
-									height={16}
+									className="size-6 object-contain"
+									height={24}
 									src={category.iconSrc}
-									width={16}
+									width={24}
 								/>
 							) : null}
 							{category.label}
@@ -255,7 +255,7 @@ function HomeStarterBento({
 				})}
 			</div>
 
-			<div className="relative mt-4">
+			<div className="relative mt-6">
 				<div className="grid auto-rows-[112px] grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
 					{visibleTemplates.map((template) => {
 						return (

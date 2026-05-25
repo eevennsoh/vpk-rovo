@@ -452,6 +452,7 @@ export function getSpotIllustrationUrl(id: string, theme: "light" | "dark", base
 let _illusClipCounter = 0;
 
 export function applyOverlapClipPath(_svgEl: SVGSVGElement): void {
+  void _svgEl;
 }
 
 export function processIllustrationSvg(svgText: string, illusId: string): string {
@@ -787,7 +788,8 @@ export default function SpotIllustration({ size = CANVAS_SIZE, loop = true, clas
     let illusGreyTX = 0, illusGreyTY = 0, illusMosaicTX = 0, illusMosaicTY = 0;
     let illusOverlapTX = 0, illusOverlapTY = 0;
     let illusOverlapScale = 1;
-    let illusGreyClipTX = 0, illusGreyClipTY = 0, illusGreyClipScale = 1;
+    let illusGreyClipTX = 0, illusGreyClipTY = 0;
+    const illusGreyClipScale = 1;
     let illusMosaicScale = 1;
     let illusTelescopeAngle = 0;
     const cycleIdsNow = cycleIdsRef.current;
