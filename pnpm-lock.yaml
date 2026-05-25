@@ -388,8 +388,8 @@ importers:
         specifier: ^5.2.1
         version: 5.2.1
       helmet:
-        specifier: ^8.1.0
-        version: 8.1.0
+        specifier: ^8.2.0
+        version: 8.2.0
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
@@ -5399,8 +5399,8 @@ packages:
     resolution: {integrity: sha512-Ox1pJVrDCyGHMG9CFg1tmrRUMRPRsAWYc/PinY0XzJU4K7y7vjNoLKIQ7BR5UJMCxNN8EM1MNDmHWA/B3aZUuw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/hex-rgb/-/hex-rgb-4.3.0.tgz}
     engines: {node: '>=6'}
 
-  helmet@8.1.0:
-    resolution: {integrity: sha512-jOiHyAZsmnr8LqoPGmCjYAaiuWwjAPLgY8ZX2XrmHawt99/u1y6RgrZMTeoPfpUbV96HOalYgz1qzkRbw54Pmg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/helmet/-/helmet-8.1.0.tgz}
+  helmet@8.2.0:
+    resolution: {integrity: sha512-DRgTIUgnWcJ62KyarxxziuqYxKGnR6Rgg19BlbucN/dpmJbl1XOit6qvoOX0ZT+HhWe5OUVhU/a1zpGyc1xA0Q==, tarball: https://packages.atlassian.com/api/npm/npm-remote/helmet/-/helmet-8.2.0.tgz}
     engines: {node: '>=18.0.0'}
 
   hls.js@1.6.16:
@@ -14333,7 +14333,7 @@ snapshots:
 
   hex-rgb@4.3.0: {}
 
-  helmet@8.1.0: {}
+  helmet@8.2.0: {}
 
   hls.js@1.6.16: {}
 
