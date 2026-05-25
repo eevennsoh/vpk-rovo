@@ -141,14 +141,14 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		},
 		{
 			description: "Draft a doc, plan, message, or artifact from sparse notes.",
-			iconSrc: "/avatar-agent/product-agents/wildcard-1.svg",
+			iconSrc: "/avatar-agent/product-agents/wildcard-6.svg",
 			layoutClassName: "sm:row-span-2 lg:col-start-5 lg:row-start-1",
 			prompt: "Create a clear first draft from these notes, with structure, headings, and practical next steps.",
 			title: "Create a first draft",
 		},
 		{
 			description: "Explore directions before committing to a plan.",
-			iconSrc: "/avatar-agent/teamwork-agents/brainstorm-facilitator.svg",
+			iconSrc: "/avatar-agent/service-agents/wildcard-1.svg",
 			layoutClassName: "lg:col-start-1 lg:row-start-2",
 			prompt: "Brainstorm several strong approaches for this problem, then compare the tradeoffs and recommend one.",
 			title: "Brainstorm approaches",
@@ -414,7 +414,7 @@ function HomeStarterBento({
 	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>("analyze");
 	const [browseOpen, setBrowseOpen] = useState(false);
 	const templates = HOME_STARTER_VIEWS[activeCategory];
-	const visibleTemplates = templates.slice(0, 5);
+	const visibleTemplates = templates.slice(0, 4);
 	const canShowMore = templates.length > visibleTemplates.length;
 
 	return (
