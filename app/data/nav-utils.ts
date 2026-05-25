@@ -91,6 +91,7 @@ export const VISUAL_GROUPS: Record<string, string[]> = {
 		"slice",
 		"smear",
 		"threshold",
+		"voxel",
 		"particles",
 		"wave-gradient",
 		"liquid-gradient",

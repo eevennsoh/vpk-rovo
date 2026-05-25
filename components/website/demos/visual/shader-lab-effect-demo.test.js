@@ -62,6 +62,7 @@ const SHADER_LAB_EFFECT_COUNTS = {
 	slice: 7,
 	smear: 5,
 	threshold: 4,
+	voxel: 10,
 };
 
 const SHADER_LAB_SOURCE_COUNTS = {
@@ -86,6 +87,14 @@ function parseDefinitions() {
 	return JSON.parse(match[1]);
 }
 
+function parseStringTupleConst(name) {
+	const match = DEFINITIONS_SOURCE.match(
+		new RegExp(`export const ${name} = \\[([\\s\\S]*?)\\] as const`, "u"),
+	);
+	assert.ok(match, `${name} tuple should be parseable`);
+	return [...match[1].matchAll(/"([^"]+)"/gu)].map(([, value]) => value);
+}
+
 function countSourceParams(sourceType) {
 	const start = DEFINITIONS_SOURCE.indexOf(`"${sourceType}":`);
 	assert.notEqual(start, -1, sourceType);
@@ -96,6 +105,17 @@ function countSourceParams(sourceType) {
 	const paramsBody = DEFINITIONS_SOURCE.slice(paramsStart, paramsEnd);
 	return (paramsBody.match(/\n\t\t\t(?:\{ key:|\{\n\t\t\t\tkey:)/g) ?? []).length;
 }
+
+test("Shader Lab catalog coverage tracks every runtime layer type", () => {
+	assert.deepEqual(
+		Object.keys(SHADER_LAB_EFFECT_COUNTS).sort(),
+		parseStringTupleConst("SHADER_LAB_RUNTIME_EFFECT_TYPES").sort(),
+	);
+	assert.deepEqual(
+		Object.keys(SHADER_LAB_SOURCE_COUNTS).sort(),
+		parseStringTupleConst("SHADER_LAB_RUNTIME_SOURCE_TYPES").sort(),
+	);
+});
 
 test("remaining Shader Lab effects are wired into the visual catalog", () => {
 	for (const effectType of Object.keys(SHADER_LAB_EFFECT_COUNTS)) {
