@@ -35,4 +35,4 @@ Keep the workpad compact and current:
 
 For explanation, triage, codebase-tour, or operational-guidance tickets with no
 requested repo change, write the answer in the workpad handoff, move the issue
-to `Human Review`, and do not create a branch, commit, PR, or follow-up issue.
+to `Done`, and do not create a branch, commit, PR, or follow-up issue.

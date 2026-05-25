@@ -111,7 +111,7 @@ Work only in the provided repository copy. Do not touch any other path.
 
 ## Prerequisite: Linear MCP or `linear_graphql` tool is available
 
-The agent should be able to talk to Linear, either via a configured Linear MCP server or injected `linear_graphql` tool. If none are present, stop and ask the user to configure Linear.
+The agent should be able to talk to Linear, either via a configured Linear MCP server or injected `linear_graphql` tool. If none are present, use the blocked-access escape hatch with the exact missing capability and unblock action.
 
 ## Execution rules
 
@@ -121,7 +121,7 @@ The agent should be able to talk to Linear, either via a configured Linear MCP s
    answer, triage, codebase tour, or operational guidance and does not request a
    repository change, treat it as answer-only work: use a small targeted
    investigation, write the answer in the workpad `Handoff`, move the issue to
-   `Human Review`, and do not create a branch, commit, PR, or follow-up issue.
+   `Done`, and do not create a branch, commit, PR, or follow-up issue.
 3. If the current state is `Todo`, move it to `In Progress` before code changes.
 4. Record a compact environment stamp in the workpad:
    `<host>:<abs-workdir>@<short-sha>`.
@@ -155,16 +155,16 @@ The agent should be able to talk to Linear, either via a configured Linear MCP s
     blocker and exact unblock action in the workpad.
 13. Before ending a normal turn, move the issue out of active states unless it
     truly requires another worker pass. Completed implementation work goes to
-    `Agent Review`; answer-only work and human-risk blockers go to
-    `Human Review`; merged work goes to `Done`; blocked work records the blocker
-    and exact unblock action in the workpad.
+    `Agent Review`; answer-only work and merged work go to `Done`; super-risk
+    blockers go to `Human Review`; blocked work records the blocker and exact
+    unblock action in the workpad.
 14. In `Agent Review`, perform an adversarial code review of the linked PR
     against the issue, workpad, diff, checks, validation proof, evidence,
     comments, and review state without editing tracked repo files. You may run
     read-only verification commands that leave tracked files unchanged. Post the
     standardized Symphony Agent Review PR comment, then move passing work to
-    `Merging`, correctness gaps back to `In Progress`, and
-    ambiguity/risk/human-judgment cases to `Human Review`.
+    `Merging`, correctness gaps back to `In Progress`, and only super-risk
+    cases to `Human Review`.
 15. In `Merging`, verify the PR has a current-head passing Symphony Agent Review,
     is current with `origin/main`, required checks are green when reported, and
     review feedback is resolved. Merge only after those gates pass; otherwise
@@ -203,9 +203,10 @@ The agent should be able to talk to Linear, either via a configured Linear MCP s
   against the issue, workpad, diff, validation, evidence, comments, and checks.
   The reviewer may run read-only verification commands that leave tracked files
   unchanged. Passing work moves to `Merging`; gaps move back to `In Progress`;
-  risk/ambiguity moves to `Human Review`.
-- `Human Review` -> risk gate for missing proof, product ambiguity,
-  security/data concerns, UI judgment, or other human decisions.
+  super-risk moves to `Human Review`.
+- `Human Review` -> risk gate for security/privacy exposure, data loss,
+  irreversible schema or migration changes, destructive production behavior, or
+  missing permissions/secrets.
 - `Merging` -> approved by Agent Review or Human Review; execute the
   `vpk-symphony` landing flow (do not call `gh pr merge` directly).
 - `Done` -> terminal state; no further action required.
@@ -243,22 +244,22 @@ the issue, workpad, linked PR, diff, current head SHA, checks, validation proof,
 evidence, and comments. You may run read-only verification that leaves tracked
 files unchanged. Post the standardized Symphony Agent Review PR comment, then
 route `pass` to `Merging`, `changes-requested` to `In Progress`, and
-`needs-human` to `Human Review`.
+`needs-human` to `Human Review` only for super-risk or blocked-access decisions.
 
 ### Human Review
 
 Act as a waiting gate, not an implementer. Do not code or change ticket content.
 Poll for human decision/review updates only when this state is explicitly routed
-to you. If feedback requires changes, move the issue to `In Progress`; if
-approved, move it to `Merging`.
+to you for a super-risk or blocked-access decision. If feedback requires
+changes, move the issue to `In Progress`; if approved, move it to `Merging`.
 
 ### Merging
 
 Act as the landing worker. Do not start new feature work. Follow
 `.agents/skills/vpk-symphony/references/git/land.md`, require a current-head
-passing Symphony Agent Review, verify checks/mergeability/feedback, squash-merge
-only after the gates pass, verify GitHub reports merged, clean up safely, then
-move the issue to `Done`.
+passing Symphony Agent Review, verify checks/mergeability/feedback, merge with a
+merge commit only after the gates pass, verify GitHub reports merged, clean up
+safely, then move the issue to `Done`.
 
 ### Done or terminal
 
@@ -274,7 +275,7 @@ Do nothing and shut down.
      - If PR is already attached, start by reviewing all open PR comments and deciding required changes vs explicit pushback responses.
    - `In Progress` -> continue execution flow from current scratchpad comment.
    - `Agent Review` -> run the read-only Agent Review flow.
-   - `Human Review` -> wait and poll for human decision/review updates.
+   - `Human Review` -> wait and poll for super-risk or blocked-access decision updates.
    - `Merging` -> on entry, open and follow `.agents/skills/vpk-symphony/references/git/land.md`; do not call `gh pr merge` directly.
    - `Done`, `Canceled`, `Duplicate` -> do nothing and shut down.
 4. Check whether a PR already exists for the current branch and whether it is closed.
@@ -370,8 +371,8 @@ Use this only when completion is blocked by missing required tools or missing au
 7.  Before every `git push` attempt, run the required validation for your scope and confirm it passes; if it fails, address issues and rerun until green, then commit and push changes.
 8.  Attach PR URL to the issue (prefer attachment; use the workpad comment only if attachment is unavailable).
     - Ensure the GitHub PR has label `symphony` (add it if missing).
-    - Do not add `automerge:allowed`; Symphony owns the merge path for
-      Symphony PRs.
+    - Do not add or require `automerge:allowed`; Symphony owns the merge path
+      for Symphony PRs.
 9.  Merge latest `origin/main` into branch, resolve conflicts, and rerun checks.
 10. Update the workpad comment with final checklist status and validation notes.
     - Mark completed plan/acceptance/validation checklist items as checked.
@@ -424,12 +425,14 @@ Use this only when completion is blocked by missing required tools or missing au
 8. If status is `changes-requested`, move the issue back to `In Progress` and
    keep the workpad current with the concrete gaps.
 9. If status is `needs-human`, move the issue to `Human Review` with the
-   specific risk, missing proof, ambiguity, or human judgment needed.
+   specific security/privacy, data-loss, irreversible migration, destructive
+   production, or permissions/secrets decision needed.
 10. When Agent Review identifies a repeated process gap, record it concisely in
    the workpad; do not expand the current task just to improve the process.
 11. When the issue is in `Human Review`, do not code or change ticket content.
-   Poll for human updates as needed; if feedback requires changes, move the
-   issue back to `In Progress`; if approved, move it to `Merging`.
+   Poll for super-risk or blocked-access decision updates as needed; if
+   feedback requires changes, move the issue back to `In Progress`; if
+   approved, move it to `Merging`.
 12. When the issue is in `Merging`, open and follow
    `.agents/skills/vpk-symphony/references/git/land.md`, then run the landing
    loop until the PR is merged. Do not call `gh pr merge` directly outside that
@@ -443,8 +446,8 @@ Use this only when completion is blocked by missing required tools or missing au
 - Validation/tests are green for the latest commit.
 - PR feedback sweep is complete and no actionable comments remain.
 - PR checks are green, branch is pushed, and PR is linked on the issue.
-- Required PR metadata is present (`symphony` label, no `automerge:allowed`
-  label).
+- Required PR metadata is present (`symphony` label; `automerge:allowed` is
+  neither required nor meaningful for Symphony PRs).
 - If app-touching, runtime validation requirements from `App runtime validation (required)` are complete, including browser media capture only when available.
 
 ## App runtime validation (required)
@@ -507,7 +510,8 @@ Recommended workpad evidence format:
 - If out-of-scope improvements are found, record them in the workpad rather than
   expanding current scope.
 - Do not move implementation work to `Agent Review` unless the `Completion bar before Agent Review` is satisfied.
-- In `Human Review`, do not make changes; wait and poll.
+- In `Human Review`, do not make changes; wait and poll for the super-risk or
+  blocked-access decision.
 - If state is terminal (`Done`), do nothing and shut down.
 - Keep issue text concise, specific, and reviewer-oriented.
 - If blocked and no workpad exists yet, add one blocker comment describing blocker, impact, and next unblock action.
