@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 interface RovoAppSidebarProps {
 	activeThreadId: string | null;
+	agentCreationThreadIds?: ReadonlySet<string>;
 	onCancelThreadRun: (threadId: string) => Promise<void>;
 	hoverOpen?: boolean;
 	isResizing?: boolean;
@@ -32,6 +33,7 @@ interface RovoAppSidebarProps {
 
 interface StudioSidebarNavItem {
 	icon: React.ReactNode;
+	isExpanded?: boolean;
 	isSelected?: boolean;
 	label: string;
 }
@@ -87,18 +89,40 @@ const STUDIO_SIDEBAR_NAV_SECTIONS: ReadonlyArray<StudioSidebarNavSection> = [
 	},
 ];
 
-function StudioSidebarNavItem({ icon, isSelected = false, label }: Readonly<StudioSidebarNavItem>) {
+interface ActiveStudioAgentCreationThread {
+	id: string;
+	title: string;
+}
+
+function getAgentCreationThreadTitle(thread: RovoAppThread | null): string {
+	const title = thread?.title.trim();
+
+	if (title && title !== "New chat") {
+		return title;
+	}
+
+	return "Agent creation";
+}
+
+function StudioSidebarNavItem({ icon, isExpanded, isSelected = false, label }: Readonly<StudioSidebarNavItem>) {
 	return (
 		<SidebarNavItem
 			label={label}
 			leading={icon}
 			leadingSize="medium"
+			isExpanded={isExpanded}
 			isSelected={isSelected}
 		/>
 	);
 }
 
-function StudioSidebarNavigation() {
+function StudioSidebarNavigation({
+	activeAgentCreationThread,
+	onSelectAgentCreationThread,
+}: Readonly<{
+	activeAgentCreationThread: ActiveStudioAgentCreationThread | null;
+	onSelectAgentCreationThread?: (threadId: string) => void;
+}>) {
 	return (
 		<nav aria-label="Studio" className="flex shrink-0 flex-col gap-3">
 			<div className="flex flex-col gap-3">
@@ -113,12 +137,32 @@ function StudioSidebarNavigation() {
 							</div>
 						) : null}
 						<div className="flex flex-col">
-							{section.items.map((item) => (
-								<StudioSidebarNavItem
-									key={item.label}
-									{...item}
-								/>
-							))}
+							{section.items.map((item) => {
+								const isAgentsItem = item.label === "Agents";
+								const shouldShowAgentCreationThread = isAgentsItem && activeAgentCreationThread !== null;
+
+								return (
+									<React.Fragment key={item.label}>
+										<StudioSidebarNavItem
+											{...item}
+											isExpanded={shouldShowAgentCreationThread ? true : item.isExpanded}
+											isSelected={shouldShowAgentCreationThread ? false : item.isSelected}
+										/>
+										{shouldShowAgentCreationThread ? (
+											<div className="mt-0.5 pl-7">
+												<SidebarNavItem
+													label={activeAgentCreationThread.title}
+													leading={<AiAgentIcon label="" />}
+													leadingSize="small"
+													isSelected
+													onClick={() => onSelectAgentCreationThread?.(activeAgentCreationThread.id)}
+													className="min-h-7"
+												/>
+											</div>
+										) : null}
+									</React.Fragment>
+								);
+							})}
 						</div>
 					</div>
 				))}
@@ -128,13 +172,30 @@ function StudioSidebarNavigation() {
 }
 
 export function RovoAppSidebar({
+	activeThreadId,
+	agentCreationThreadIds,
 	hoverOpen = false,
 	isResizing,
+	onSelectThread,
 	onSidebarMouseEnter,
 	onSidebarMouseLeave,
 	resizeHandle,
+	threads,
 	topOffset = false,
 }: Readonly<RovoAppSidebarProps>) {
+	const activeAgentCreationThread = React.useMemo<ActiveStudioAgentCreationThread | null>(() => {
+		if (!activeThreadId || !agentCreationThreadIds?.has(activeThreadId)) {
+			return null;
+		}
+
+		const activeThread = threads.find((thread) => thread.id === activeThreadId) ?? null;
+
+		return {
+			id: activeThreadId,
+			title: getAgentCreationThreadTitle(activeThread),
+		};
+	}, [activeThreadId, agentCreationThreadIds, threads]);
+
 	return (
 		<Sidebar
 			aria-label="Studio navigation"
@@ -154,7 +215,12 @@ export function RovoAppSidebar({
 			variant="inset"
 		>
 			<SidebarContent className="gap-3 overflow-hidden bg-sidebar px-3">
-				<StudioSidebarNavigation />
+				<StudioSidebarNavigation
+					activeAgentCreationThread={activeAgentCreationThread}
+					onSelectAgentCreationThread={(threadId) => {
+						void onSelectThread(threadId);
+					}}
+				/>
 			</SidebarContent>
 		</Sidebar>
 	);
