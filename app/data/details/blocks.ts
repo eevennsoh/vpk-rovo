@@ -1,6 +1,57 @@
 import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const BLOCK_DETAILS: Record<string, ComponentDetail> = {
+	"agent-card": {
+		description: "Figma-matched Rovo agent profile card with cover art, avatar attribution, partner byline, description, and default edit/chat actions.",
+		importStatement: `import { AgentCard } from "@/components/blocks/agent-card";`,
+		usage: `import { AgentCard } from "@/components/blocks/agent-card";
+
+<AgentCard
+  name="Task Improver"
+  partnerName="Atlassian"
+  description="Proactively assists by automatically suggesting subtasks when you start adding one and providing comment summaries."
+/>`,
+		props: [
+			{
+				name: "name",
+				type: "string",
+				default: '"Task Improver"',
+				description: "Agent name shown in the card header.",
+			},
+			{
+				name: "partnerName",
+				type: "string",
+				default: '"Atlassian"',
+				description: "Partner or creator name shown below the agent name.",
+			},
+			{
+				name: "description",
+				type: "string",
+				description: "Agent summary copy shown in the body.",
+			},
+			{
+				name: "avatarSrc",
+				type: "string",
+				default: '"/avatar-agent/teamwork-agents/blocker-checker.svg"',
+				description: "Agent avatar asset.",
+			},
+			{
+				name: "coverSrc",
+				type: "string",
+				description: "Cover artwork asset. Defaults to the avatar asset.",
+			},
+			{
+				name: "onEdit",
+				type: "() => void",
+				description: "Called when the Edit action is selected.",
+			},
+			{
+				name: "onChat",
+				type: "() => void",
+				description: "Called when the Chat with agent action is selected.",
+			},
+		],
+	},
 	"mermaid-diagram": {
 		description: "Dedicated Mermaid diagram block rendered through Streamdown’s Mermaid plugin so fenced mermaid content becomes an interactive SVG diagram instead of a plain code block.",
 		usage: `import MermaidDiagram from "@/components/blocks/mermaid-diagram/page";
