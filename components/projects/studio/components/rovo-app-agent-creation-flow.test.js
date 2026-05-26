@@ -57,7 +57,8 @@ test("Studio agent results use guarded session-agent registration with preserve-
 	assert.match(SHELL_SOURCE, /studioAgentRegistry\.selectAgent\(agentId, \{ preserveCurrentThread: true \}\);/u);
 	assert.match(SHELL_SOURCE, /const agentResult = getMessageAgentResult\(message\);/u);
 	assert.match(SHELL_SOURCE, /if \(handleStudioAgentResultSelect\(agentResult, \{ sourceMessageId: message\.id \}\)\) \{[\s\S]*handledAgentResultKeysRef\.current\.add\(agentResultKey\);/u);
-	assert.match(SHELL_SOURCE, /studioAgentCreationThreadKeysRef\.current\.delete\(chat\.runtimeThreadId\);/u);
+	assert.match(SHELL_SOURCE, /const unmarkStudioAgentCreationThread = useCallback[\s\S]*studioAgentCreationThreadKeysRef\.current\.delete\(threadId\);/u);
+	assert.match(SHELL_SOURCE, /unmarkStudioAgentCreationThread\(chat\.runtimeThreadId\);/u);
 });
 
 test("RovoAppMessages renders the shared /agents-style agent result card", () => {
