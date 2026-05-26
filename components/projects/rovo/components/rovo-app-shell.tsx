@@ -48,9 +48,7 @@ import SearchSuggestionsPanel from "@/components/blocks/top-navigation/component
 import { useTopNavigation } from "@/components/blocks/top-navigation/hooks/use-top-navigation";
 import { ROVO_APP_SEPARATOR_LINE_OFFSET_PX, TOP_NAV_PADDING_PX } from "@/components/blocks/top-navigation/layout-constants";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
 import { Footer } from "@/components/ui/footer";
@@ -335,13 +333,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const selectedHermesSkills = useMemo(
 		() => selectedHermesSkillIds.map((skillId) => availableHermesSkills.find((skill) => skill.id === skillId) ?? null).filter((skill): skill is HermesSkillSummary => skill !== null),
 		[selectedHermesSkillIds, availableHermesSkills],
-	);
-	const autoSelectedHermesSkills = useMemo(
-		() =>
-			(activeThreadRecord?.hermesContext?.autoSelectedSkillIds ?? [])
-				.map((skillId) => availableHermesSkills.find((skill) => skill.id === skillId) ?? null)
-				.filter((skill): skill is HermesSkillSummary => skill !== null),
-		[activeThreadRecord?.hermesContext?.autoSelectedSkillIds, availableHermesSkills],
 	);
 	const pendingThreadSkillDrafts = useMemo(() => {
 		const pendingDraftIdSet = new Set(activeThreadRecord?.hermesContext?.pendingDraftIds ?? []);
@@ -2211,38 +2202,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 								transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.2 }}
 								style={{ willChange: "transform, opacity" }}
 							>
-								{autoSelectedHermesSkills.length > 0 || pendingThreadSkillDrafts.length > 0 ? (
-									<div className="mb-3">
-										<Card size="sm">
-											<CardHeader className="pb-2">
-												<CardTitle>Hermes turn state</CardTitle>
-												<CardDescription>Server-resolved skills and Hermes draft-review state for this thread.</CardDescription>
-											</CardHeader>
-											<CardContent className="space-y-3">
-												{autoSelectedHermesSkills.length > 0 ? (
-													<div className="space-y-2">
-														<div className="text-xs font-medium uppercase tracking-wide text-text-subtlest">Auto-loaded on the last turn</div>
-														<div className="flex flex-wrap gap-2">
-															{autoSelectedHermesSkills.map((skill) => (
-																<Badge key={skill.id} variant="neutral">
-																	{skill.title}
-																</Badge>
-															))}
-														</div>
-													</div>
-												) : null}
-												{pendingThreadSkillDrafts.length > 0 ? (
-													<div className="space-y-2">
-														<div className="text-xs font-medium uppercase tracking-wide text-text-subtlest">Pending inline review</div>
-														<div className="text-sm text-text-subtle">
-															{pendingThreadSkillDrafts.length} draft{pendingThreadSkillDrafts.length === 1 ? "" : "s"} waiting for approval in this thread.
-														</div>
-													</div>
-												) : null}
-											</CardContent>
-										</Card>
-									</div>
-								) : null}
 								<RovoAppComposer
 									key={chat.runtimeThreadId}
 									artifactTitle={workspaceDocument?.title ?? null}

@@ -10,10 +10,13 @@ test("Rovo app empty state switches greeting and illustrations for Max mode", ()
 	assert.match(MESSAGES_SOURCE, /import \{ AnimatePresence, motion, useReducedMotion \} from "motion\/react";/u);
 	assert.match(MESSAGES_SOURCE, /isMaxMode\?: boolean;/u);
 	assert.match(MESSAGES_SOURCE, /const emptyState = isMaxMode \? ROVO_APP_EMPTY_STATE\.max : ROVO_APP_EMPTY_STATE\.default;/u);
+	assert.match(MESSAGES_SOURCE, /heading: "How can I help\?"/u);
 	assert.match(MESSAGES_SOURCE, /heading: "Let's plan your next move"/u);
-	assert.match(MESSAGES_SOURCE, /default: \{[\s\S]*illustrationClassName: "h-\[110px\] w-\[110px\]"/u);
-	assert.match(MESSAGES_SOURCE, /rovoIllustrationId: "ai"/u);
-	assert.match(MESSAGES_SOURCE, /<ControlledRovoIllustration illusId=\{emptyState\.rovoIllustrationId\} size=\{emptyState\.rovoIllustrationSize\} \/>/u);
+	assert.match(MESSAGES_SOURCE, /default: \{[\s\S]*illustrationClassName: "h-\[67px\] w-\[74px\]"/u);
+	assert.match(MESSAGES_SOURCE, /lightIllustrationSrc: "\/illustration-ai\/chat\/light\.svg"/u);
+	assert.match(MESSAGES_SOURCE, /darkIllustrationSrc: "\/illustration-ai\/chat\/dark\.svg"/u);
+	assert.doesNotMatch(MESSAGES_SOURCE, /rovoIllustrationId: "ai"/u);
+	assert.doesNotMatch(MESSAGES_SOURCE, /<ControlledRovoIllustration/u);
 	assert.match(MESSAGES_SOURCE, /max: \{[\s\S]*illustrationClassName: "h-\[67px\] w-\[74px\]"/u);
 	assert.match(MESSAGES_SOURCE, /lightIllustrationSrc: "\/illustration-ai\/max\/light\.gif"/u);
 	assert.match(MESSAGES_SOURCE, /darkIllustrationSrc: "\/illustration-ai\/max\/dark\.gif"/u);
