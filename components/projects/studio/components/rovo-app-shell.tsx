@@ -60,6 +60,8 @@ import { useSidebarResize } from "@/components/projects/studio/hooks/use-sidebar
 import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import { getLatestDataPart, getLatestUserMessageId, getMessageAgentResult, getMessageArtifactResult, getMessageInterruption, getMessageText, type RovoDataParts } from "@/lib/rovo-ui-messages";
+import { getRovoAppArtifactKindLabel, getRovoAppArtifactTypeLabel, sortRovoAppArtifacts } from "@/components/projects/rovo/lib/rovo-app-artifacts";
+import { RovoAppHeader } from "@/components/projects/studio/components/rovo-app-header";
 import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
 import { QuestionCardShortcutsFooter } from "@/components/projects/shared/components/question-card-shortcuts-footer";
@@ -2285,6 +2287,31 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	}, [chat.selectedVersionId, workspaceDocument]);
 	const isArtifactOpen = chat.panelState !== "closed";
 
+	const artifactMenuItems = useMemo(() => {
+		const items = sortRovoAppArtifacts(chat.documents).map((artifact) => ({
+			id: artifact.id,
+			typeLabel: getRovoAppArtifactTypeLabel(artifact),
+			title: artifact.title,
+		}));
+		const seenIds = new Set(items.map((item) => item.id));
+
+		for (let index = chat.messages.length - 1; index >= 0; index--) {
+			const artifactResult = getMessageArtifactResult(chat.messages[index]);
+			if (!artifactResult || seenIds.has(artifactResult.documentId)) {
+				continue;
+			}
+
+			seenIds.add(artifactResult.documentId);
+			items.push({
+				id: artifactResult.documentId,
+				typeLabel: getRovoAppArtifactKindLabel(artifactResult.kind),
+				title: artifactResult.title,
+			});
+		}
+
+		return items;
+	}, [chat.documents, chat.messages]);
+
 	// Derive the latest browser state from message data parts
 	const latestBrowserArtifact = useMemo(() => {
 		let browserState = null;
@@ -3075,6 +3102,15 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						<RightNavigation product="studio" windowWidth={nav.windowWidth} onToggleChat={nav.toggleChat} onToggleTheme={nav.toggleTheme} />
 					</div>
 				) : null}
+				<RovoAppHeader
+					artifactMenuItems={artifactMenuItems}
+					isArtifactOpen={isArtifactOpen}
+					onNewChat={() => {
+						setOptimisticUserMessage(null);
+						void chat.openNewChat();
+					}}
+					onOpenDocument={(documentId) => void chat.openDocument(documentId)}
+				/>
 				<main ref={shellRef} className="relative flex min-h-0 min-w-0 flex-1 bg-background px-3 text-foreground">
 					<RovoAppShellPaneLayout
 						artifactOrigin={artifactOrigin}
