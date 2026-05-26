@@ -840,7 +840,7 @@ function StreamingArtifactMessage({
 	versionNumber?: number;
 }>) {
 	return (
-		<div className="group/message fade-in w-full animate-in duration-200" data-role="assistant" data-testid="message-assistant-streaming-artifact">
+		<div className="group/message fade-in w-full animate-in duration-medium" data-role="assistant" data-testid="message-assistant-streaming-artifact">
 			<div className="flex w-full items-start gap-2 md:gap-3">
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
 					<ArtifactCard
@@ -875,7 +875,7 @@ function AssistantSuggestionPills({
 	}
 
 	return (
-		<div className="fade-in mb-6 w-full animate-in duration-200" data-role="assistant-suggestions">
+		<div className="fade-in mb-6 w-full animate-in duration-medium" data-role="assistant-suggestions">
 			<div className="flex w-full items-start gap-2 md:gap-3">
 				<div aria-hidden className="size-8 shrink-0" />
 				<div className="flex min-w-0 flex-1 justify-end">
