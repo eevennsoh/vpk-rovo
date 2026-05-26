@@ -7,8 +7,6 @@ import {
 	listRovoAppThreads,
 } from "@/components/projects/studio/lib/api";
 
-const ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS = 15_000;
-
 export interface UseRovoAppThreadListResult {
 	deleteThread: (threadId: string) => Promise<void>;
 	refreshThreads: () => Promise<void>;
@@ -20,12 +18,17 @@ export function useRovoAppThreadList(): UseRovoAppThreadListResult {
 	const [threads, setThreads] = useState<RovoAppThread[]>([]);
 	const [threadsLoaded, setThreadsLoaded] = useState(false);
 	const mountedRef = useRef(true);
+	const lastSerializedRef = useRef<string>("");
 
 	const refreshThreads = useCallback(async () => {
 		try {
 			const result = await listRovoAppThreads();
 			if (mountedRef.current) {
-				setThreads(result);
+				const nextSerialized = JSON.stringify(result);
+				if (nextSerialized !== lastSerializedRef.current) {
+					lastSerializedRef.current = nextSerialized;
+					setThreads(result);
+				}
 				setThreadsLoaded(true);
 			}
 		} catch {
@@ -49,11 +52,6 @@ export function useRovoAppThreadList(): UseRovoAppThreadListResult {
 				void refreshThreads();
 			}
 		};
-		const intervalId = window.setInterval(() => {
-			if (document.visibilityState === "visible") {
-				void refreshThreads();
-			}
-		}, ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS);
 
 		window.addEventListener("focus", handleFocus);
 		document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -61,7 +59,6 @@ export function useRovoAppThreadList(): UseRovoAppThreadListResult {
 		return () => {
 			mountedRef.current = false;
 			window.clearTimeout(initialRefreshId);
-			window.clearInterval(intervalId);
 			window.removeEventListener("focus", handleFocus);
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};

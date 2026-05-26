@@ -18,7 +18,7 @@ This skill has only two workflows:
 
 Treat these prompt forms as explicit routing:
 
-- `vpk-git --merge <PR number | branch | worktree path>` -> run **PR merge back**.
+- `vpk-git --merge <PR number | branch | worktree path>` -> run **PR merge back**. Accepts a comma- or space-separated list (e.g. `--merge 303 304 305`) for batch merge-back; route into the **Batch Merge Back** subsection.
 - `vpk-git --clean <PR number | branch | worktree path | scope>` -> run **Clean up**.
 
 Examples:
@@ -63,6 +63,22 @@ If GitHub reads fail because `GITHUB_TOKEN` is invalid while keyring auth is ava
    - Use `gh pr merge <number> --merge --delete-branch` when the PR is ready and branch deletion is safe.
    - Sync local `main` after the remote merge.
    - Verify `git status --short --branch`, `git rev-parse main`, and `git rev-parse origin/main`.
+
+### Batch Merge Back
+
+Triggered by prompts that list more than one target, e.g. `merge PRs 303, 304, 305 back to main` or `vpk-git --merge 303 304 305`.
+
+1. Parse the full list of PR numbers / branches / worktree paths up front. Echo the parsed list to the user before touching anything.
+2. Inspect every target once via `gh pr view ... --json mergeStateStatus,reviewDecision,statusCheckRollup,baseRefName,headRefName` and group them:
+   - Ready to merge cleanly.
+   - Needs rebase / conflict resolution against current `origin/main`.
+   - Blocked (failing checks, draft, missing review) — leave for the user.
+3. Stash unrelated edits on the persistent `main` checkout **once**, not per PR. Restore unstaged at the end.
+4. Merge ready PRs sequentially in the order the user gave (or ascending PR number if unspecified). After each merge:
+   - `git fetch origin && git -C <main-checkout> pull --ff-only origin main` so the next PR rebases against the freshly merged tip.
+   - If a later PR was "ready" but now conflicts because of a previous merge, surface the conflict and pause — do not auto-resolve across PRs.
+5. After the final merge in the batch, run a single sync + verification pass (`git status --short --branch`, `git rev-parse main`, `git rev-parse origin/main`) and report a one-line status per target: merged / skipped (with reason) / failed.
+6. Branch deletion uses `--delete-branch` per PR as in the single-target flow. Do not bulk-delete branches outside the merged set in this workflow — that is the **Clean Up** workflow's job.
 
 ## Clean Up
 

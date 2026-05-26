@@ -356,27 +356,60 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	}, [activeThreadRecord?.hermesContext?.recentMemoryProposalIds, activeThreadRecord?.id, wikiMemoryStatus?.recentProposals]);
 	const activePendingSkillDraft = pendingThreadSkillDrafts[activePendingSkillDraftIndex] ?? pendingThreadSkillDrafts[0] ?? null;
 
-	useEffect(() => {
-		let cancelled = false;
-
-		async function loadHermesSurfaceData() {
-			const [memoryResult, skillsResult, draftsResult] = await Promise.allSettled([fetchWikiStatus(), fetchSkills(), fetchSkillDrafts("pending")]);
-			if (cancelled) {
-				return;
-			}
-
-			setWikiMemoryStatus(memoryResult.status === "fulfilled" ? memoryResult.value : null);
-			setAvailableHermesSkills(skillsResult.status === "fulfilled" ? skillsResult.value : []);
-			setSkillDrafts(draftsResult.status === "fulfilled" ? draftsResult.value : []);
+	const hermesSurfaceMountedRef = useRef(true);
+	const hermesSurfaceLastSerializedRef = useRef({ memory: "", skills: "", drafts: "" });
+	const loadHermesSurfaceData = useCallback(async () => {
+		if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+			return;
+		}
+		const [memoryResult, skillsResult, draftsResult] = await Promise.allSettled([fetchWikiStatus(), fetchSkills(), fetchSkillDrafts("pending")]);
+		if (!hermesSurfaceMountedRef.current) {
+			return;
 		}
 
-		void loadHermesSurfaceData();
-		const intervalId = window.setInterval(loadHermesSurfaceData, 30_000);
-		return () => {
-			cancelled = true;
-			window.clearInterval(intervalId);
-		};
+		const nextMemory = memoryResult.status === "fulfilled" ? memoryResult.value : null;
+		const nextSkills = skillsResult.status === "fulfilled" ? skillsResult.value : [];
+		const nextDrafts = draftsResult.status === "fulfilled" ? draftsResult.value : [];
+
+		const memoryKey = JSON.stringify(nextMemory);
+		if (memoryKey !== hermesSurfaceLastSerializedRef.current.memory) {
+			hermesSurfaceLastSerializedRef.current.memory = memoryKey;
+			setWikiMemoryStatus(nextMemory);
+		}
+		const skillsKey = JSON.stringify(nextSkills);
+		if (skillsKey !== hermesSurfaceLastSerializedRef.current.skills) {
+			hermesSurfaceLastSerializedRef.current.skills = skillsKey;
+			setAvailableHermesSkills(nextSkills);
+		}
+		const draftsKey = JSON.stringify(nextDrafts);
+		if (draftsKey !== hermesSurfaceLastSerializedRef.current.drafts) {
+			hermesSurfaceLastSerializedRef.current.drafts = draftsKey;
+			setSkillDrafts(nextDrafts);
+		}
 	}, []);
+
+	useEffect(() => {
+		hermesSurfaceMountedRef.current = true;
+		void loadHermesSurfaceData();
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === "visible") {
+				void loadHermesSurfaceData();
+			}
+		};
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+		return () => {
+			hermesSurfaceMountedRef.current = false;
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+		};
+	}, [loadHermesSurfaceData]);
+
+	const hermesWasStreamingRef = useRef(false);
+	useEffect(() => {
+		if (hermesWasStreamingRef.current && !chat.isStreaming) {
+			void loadHermesSurfaceData();
+		}
+		hermesWasStreamingRef.current = chat.isStreaming;
+	}, [chat.isStreaming, loadHermesSurfaceData]);
 
 	useEffect(() => {
 		const previousThreadId = previousActiveThreadIdRef.current;

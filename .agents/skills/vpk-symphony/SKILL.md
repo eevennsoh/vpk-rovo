@@ -3,7 +3,7 @@ name: vpk-symphony
 description: Repo-local VPK-rovo Symphony workflow for Linear issue execution, Codex Workpad updates, raw linear_graphql operations, git sync/commit/push/land flow, stuck-run debugging, and Playwright CLI browser evidence. Use whenever working on VPK-rovo Symphony issues, updating WORKFLOW.md or docs/SYMPHONY.md, diagnosing Symphony runs, syncing or landing Symphony PRs, or capturing Symphony UI evidence.
 ---
 
-# VPK Symphony
+# vpk-symphony
 
 ## Overview
 
