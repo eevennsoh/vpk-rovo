@@ -2498,6 +2498,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	});
 	const hasActiveThreadRun = typeof chat.activeThreadId === "string" && chat.backgroundStreamThreadIds.has(chat.activeThreadId);
 	const showHomeState = !chat.isLoadingThread && !isArtifactOpen && !hasActiveThreadRun && visibleMessages.length === 0;
+	const shouldShowChatHeader = visibleMessages.length > 0 || hasActiveThreadRun || chat.isStreaming;
 	const isDefaultAgentHomeState = showHomeState && !isCustomAgentSelected;
 	isDefaultAgentHomeStateRef.current = isDefaultAgentHomeState;
 	const shouldReduceMotion = useReducedMotion();
@@ -3258,15 +3259,17 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						<RightNavigation product="studio" windowWidth={nav.windowWidth} onToggleChat={nav.toggleChat} onToggleTheme={nav.toggleTheme} />
 					</div>
 				) : null}
-				<RovoAppHeader
-					artifactMenuItems={artifactMenuItems}
-					isArtifactOpen={isArtifactOpen}
-					onNewChat={() => {
-						setOptimisticUserMessage(null);
-						void chat.openNewChat();
-					}}
-					onOpenDocument={(documentId) => void chat.openDocument(documentId)}
-				/>
+				{shouldShowChatHeader ? (
+					<RovoAppHeader
+						artifactMenuItems={artifactMenuItems}
+						isArtifactOpen={isArtifactOpen}
+						onNewChat={() => {
+							setOptimisticUserMessage(null);
+							void chat.openNewChat();
+						}}
+						onOpenDocument={(documentId) => void chat.openDocument(documentId)}
+					/>
+				) : null}
 				<main ref={shellRef} className="relative flex min-h-0 min-w-0 flex-1 bg-background px-3 text-foreground">
 					<RovoAppShellPaneLayout
 						agentConfigPane={agentConfigPane}
