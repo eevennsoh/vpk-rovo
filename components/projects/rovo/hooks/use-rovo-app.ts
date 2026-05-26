@@ -369,8 +369,13 @@ function replaceRovoAppHistoryPath(path: string): void {
 	window.history.replaceState(null, "", path);
 }
 
+interface RovoAppRefreshThreadsOptions {
+	reportBackendUnavailable?: boolean;
+}
+
 const EXPLICIT_CANCEL_DEBOUNCE_MS = 750;
 const ACTIVE_TURN_STOP_TIMEOUT_MS = 1_200;
+const ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS = 15_000;
 
 function areRovoAppMessagesEqual(
 	left: ReadonlyArray<RovoUIMessage>,
@@ -588,7 +593,7 @@ export interface RovoAppHookResult {
 	openArtifactFromMessage: (message: RovoUIMessage) => Promise<void>;
 	openNewChat: () => Promise<void>;
 	regenerateLatest: () => void;
-	refreshThreads: () => Promise<void>;
+	refreshThreads: (options?: RovoAppRefreshThreadsOptions) => Promise<void>;
 	removeQueuedPrompt: (id: string) => void;
 	runtimeThreadId: string;
 	saveArtifactDraft: () => Promise<void>;
@@ -2365,7 +2370,8 @@ export function useRovoApp({
 		setPanelState((prev) => prev === "closed" ? "preview" : prev);
 	}, [documents, isStreaming, visibleArtifactDocumentId]);
 
-	const refreshThreads = useCallback(async () => {
+	const refreshThreads = useCallback(async (options: RovoAppRefreshThreadsOptions = {}) => {
+		const reportBackendUnavailable = options.reportBackendUnavailable ?? true;
 		try {
 			const nextThreads = await listRovoAppThreads();
 			const resolvedThreads = nextThreads.map((thread) =>
@@ -2386,7 +2392,9 @@ export function useRovoApp({
 		} catch (error) {
 			if (isRovoAppBackendUnavailableError(error)) {
 				setThreads([]);
-				setInputError(getRovoAppBackendUnavailableUserMessage());
+				if (reportBackendUnavailable) {
+					setInputError(getRovoAppBackendUnavailableUserMessage());
+				}
 				setThreadsLoaded(true);
 				return;
 			}
@@ -2785,23 +2793,23 @@ export function useRovoApp({
 	const loadThreadRef = useLatestRef(loadThread);
 
 	useEffect(() => {
-		void refreshThreads();
+		void refreshThreads({ reportBackendUnavailable: false });
 	}, [refreshThreads]);
 
 	useEffect(() => {
 		const handleFocus = () => {
-			void refreshThreads();
+			void refreshThreads({ reportBackendUnavailable: false });
 		};
 		const handleVisibilityChange = () => {
 			if (document.visibilityState === "visible") {
-				void refreshThreads();
+				void refreshThreads({ reportBackendUnavailable: false });
 			}
 		};
 		const intervalId = window.setInterval(() => {
 			if (document.visibilityState === "visible") {
-				void refreshThreads();
+				void refreshThreads({ reportBackendUnavailable: false });
 			}
-		}, 3000);
+		}, ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS);
 
 		window.addEventListener("focus", handleFocus);
 		document.addEventListener("visibilitychange", handleVisibilityChange);
