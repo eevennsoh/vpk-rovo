@@ -6,7 +6,12 @@
 
 // Chat contexts
 export { RovoChatProvider, useRovoChat, useRovoSelectedAgent } from "./context-rovo-chat";
-export type { QueuedPromptItem, SendPromptOptions } from "./context-rovo-chat";
+export type {
+	QueuedPromptItem,
+	SendPromptOptions,
+	StudioAgentPublishStatus,
+	StudioSessionAgentEntry,
+} from "./context-rovo-chat";
 
 // Modal contexts
 export {

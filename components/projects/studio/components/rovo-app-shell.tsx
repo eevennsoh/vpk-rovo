@@ -14,7 +14,8 @@ import { RovoAppComposer } from "@/components/projects/studio/components/rovo-ap
 import { RovoAppMessages } from "@/components/projects/studio/components/rovo-app-messages";
 import { RovoAppHermesMemoryBar } from "@/components/projects/studio/components/rovo-app-hermes-memory-bar";
 import { RovoAppHermesSkillDraftBar } from "@/components/projects/studio/components/rovo-app-hermes-skill-draft-bar";
-import { RovoAppShellPaneLayout } from "@/components/projects/studio/components/rovo-app-shell-pane-layout";
+import { RovoAppAgentConfigPanel } from "@/components/projects/studio/components/rovo-app-agent-config-panel";
+import { RovoAppShellPaneLayout, type AgentConfigCompactTab } from "@/components/projects/studio/components/rovo-app-shell-pane-layout";
 import { RovoAppSidebar } from "@/components/projects/studio/components/rovo-app-sidebar";
 import { type RovoAppSteeringPhase } from "@/components/projects/studio/components/rovo-app-steering-lane";
 import { SmoothGradientWaveform } from "@/components/blocks/visual-waveform/smooth-gradient-waveform";
@@ -90,6 +91,7 @@ const REALTIME_THREAD_SUMMARY_MAX_MESSAGES = 10;
 const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
 const ROVO_APP_SPLIT_CHAT_PANEL_ID = "rovo-app-chat-pane";
 const ROVO_APP_SPLIT_ARTIFACT_PANEL_ID = "rovo-app-artifact-pane";
+const ROVO_APP_SPLIT_AGENT_CONFIG_PANEL_ID = "rovo-app-agent-config-pane";
 
 type HomeStarterCategory = "analyze" | "brainstorm" | "review" | "summarize" | "create";
 
@@ -994,6 +996,13 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		[selectedHermesSkillIds, selectedAgentContextDescription],
 	);
 
+	const [activeAgentConfig, setActiveAgentConfig] = useState<{
+		profileId: string;
+		sourceMessageId: string | null;
+	} | null>(null);
+	const [agentConfigCompactTab, setAgentConfigCompactTab] =
+		useState<AgentConfigCompactTab>("config");
+
 	const handleStudioAgentResultSelect = useCallback(
 		(agentResult: RovoDataParts["agent-result"], options?: { sourceMessageId?: string; sourceKey?: string }): boolean => {
 			const normalizedAgent = normalizeStudioAgentResult(agentResult);
@@ -1007,11 +1016,20 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					: undefined);
 
 			if (typeof studioAgentRegistry.registerCreatedAgentFromResult === "function") {
-				return Boolean(studioAgentRegistry.registerCreatedAgentFromResult(agentResult, {
+				const registered = studioAgentRegistry.registerCreatedAgentFromResult(agentResult, {
 					preserveCurrentThread: true,
 					select: true,
 					sourceKey,
-				}));
+				});
+				if (!registered) {
+					return false;
+				}
+				setActiveAgentConfig({
+					profileId: registered.id,
+					sourceMessageId: options?.sourceMessageId ?? null,
+				});
+				setAgentConfigCompactTab("config");
+				return true;
 			}
 
 			// Fallback integration point for older Worker C drafts: use session-agent
@@ -1035,10 +1053,60 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 			const agentId = resolveRegisteredStudioAgentId(registrationResult, normalizedAgent.id);
 			studioAgentRegistry.selectAgent(agentId, { preserveCurrentThread: true });
+			setActiveAgentConfig({
+				profileId: agentId,
+				sourceMessageId: options?.sourceMessageId ?? null,
+			});
+			setAgentConfigCompactTab("config");
 			return true;
 		},
 		[chat.activeThreadId, chat.runtimeThreadId, studioAgentRegistry],
 	);
+
+	const handleCloseAgentConfigPane = useCallback(() => {
+		setActiveAgentConfig(null);
+	}, []);
+
+	const handleUpdateAgentDraft = useCallback(
+		(profileId: string, patch: Partial<RovoDataParts["agent-result"]>) => {
+			studioAgentRegistry.updateSessionAgentDraft?.(profileId, patch);
+		},
+		[studioAgentRegistry],
+	);
+
+	const handleCommitAgentPublishReady = useCallback(
+		(profileId: string) => {
+			studioAgentRegistry.commitSessionAgentPublishReady?.(profileId);
+		},
+		[studioAgentRegistry],
+	);
+
+	const handlePublishAgent = useCallback(
+		(profileId: string) => {
+			studioAgentRegistry.publishSessionAgent?.(profileId);
+		},
+		[studioAgentRegistry],
+	);
+
+	const activeSessionAgentEntry = useMemo(() => {
+		if (!activeAgentConfig) {
+			return null;
+		}
+		const entries = studioAgentRegistry.sessionAgentEntries;
+		if (!Array.isArray(entries)) {
+			return null;
+		}
+		return entries.find((entry) => entry.profile.id === activeAgentConfig.profileId) ?? null;
+	}, [activeAgentConfig, studioAgentRegistry.sessionAgentEntries]);
+	const shouldShowAgentConfigPane = Boolean(activeSessionAgentEntry);
+
+	// When the active agent disappears (e.g. provider remounts), clear the
+	// config pane so we don't keep a stale reference around.
+	useEffect(() => {
+		if (activeAgentConfig && !activeSessionAgentEntry) {
+			setActiveAgentConfig(null);
+		}
+	}, [activeAgentConfig, activeSessionAgentEntry]);
 
 	// Bridge the global sidebar context (TopNavigation toggle) with the local
 	// shadcn SidebarProvider so the nav bar button controls the thread sidebar.
@@ -2492,14 +2560,17 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	});
 	const artifactSplitChatPaneWidthRef = useRef<number | null>(null);
 	const artifactLayout = getRovoAppShellLayout(shellSize.width);
-	const shouldSplitArtifactPane = isArtifactOpen && artifactLayout.mode === "split";
-	const splitChatPaneMaxSize = shouldSplitArtifactPane
+	const isAgentConfigOverlayActive = shouldShowAgentConfigPane && artifactLayout.mode !== "split";
+	const shouldSplitArtifactPane = !shouldShowAgentConfigPane && isArtifactOpen && artifactLayout.mode === "split";
+	const splitChatPaneMaxSize = shouldSplitArtifactPane || (shouldShowAgentConfigPane && !isAgentConfigOverlayActive)
 		? Math.min(ROVO_APP_MAX_CHAT_PANE_WIDTH, Math.max(ROVO_APP_MIN_CHAT_PANE_WIDTH, shellSize.width - ROVO_APP_MIN_ARTIFACT_PANE_WIDTH))
 		: ROVO_APP_MAX_CHAT_PANE_WIDTH;
-	const splitChatPaneDefaultSize = shouldSplitArtifactPane
+	const splitChatPaneDefaultSize = shouldSplitArtifactPane || (shouldShowAgentConfigPane && !isAgentConfigOverlayActive)
 		? clamp(artifactSplitChatPaneWidthRef.current ?? artifactLayout.chatPaneWidth ?? ROVO_APP_MIN_CHAT_PANE_WIDTH, ROVO_APP_MIN_CHAT_PANE_WIDTH, splitChatPaneMaxSize)
 		: ROVO_APP_MIN_CHAT_PANE_WIDTH;
-	const splitArtifactPaneDefaultSize = shouldSplitArtifactPane ? Math.max(ROVO_APP_MIN_ARTIFACT_PANE_WIDTH, shellSize.width - splitChatPaneDefaultSize) : ROVO_APP_MIN_ARTIFACT_PANE_WIDTH;
+	const splitArtifactPaneDefaultSize = shouldSplitArtifactPane || (shouldShowAgentConfigPane && !isAgentConfigOverlayActive)
+		? Math.max(ROVO_APP_MIN_ARTIFACT_PANE_WIDTH, shellSize.width - splitChatPaneDefaultSize)
+		: ROVO_APP_MIN_ARTIFACT_PANE_WIDTH;
 
 	useEffect(() => {
 		if (!isRealtimeActive) {
@@ -2730,6 +2801,16 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		chat.hideArtifactPane();
 	}, [browserArtifactKey, chat]);
 
+	const agentConfigPane = activeSessionAgentEntry ? (
+		<RovoAppAgentConfigPanel
+			entry={activeSessionAgentEntry}
+			onClose={handleCloseAgentConfigPane}
+			onCommitPublishReady={handleCommitAgentPublishReady}
+			onPublish={handlePublishAgent}
+			onUpdateDraft={handleUpdateAgentDraft}
+		/>
+	) : null;
+
 	const artifactPane = (() => {
 		if (!isArtifactOpen) {
 			return null;
@@ -2788,7 +2869,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			<ViewTransition key={chat.runtimeThreadId} enter="fade-in" exit="fade-out" default="none">
 				<RovoAppMessages
 					activeDocumentId={chat.activeDocument?.id ?? null}
-					compact={isArtifactOpen}
+					compact={isArtifactOpen || shouldShowAgentConfigPane}
 					extraHorizontalPaddingWhenCompact
 					isMaxMode={chat.isPlanMode}
 					documents={chat.documents}
@@ -2841,7 +2922,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				className={cn(
 					"z-10 mx-auto flex min-w-0 w-full flex-col gap-3 overflow-visible",
 					!showHomeState && "sticky bottom-0 bg-background/90 backdrop-blur",
-					isArtifactOpen ? "max-w-none px-3" : "max-w-[800px]",
+					isArtifactOpen || shouldShowAgentConfigPane ? "max-w-none px-3" : "max-w-[800px]",
 				)}
 			>
 				{realtimeStatusMessage ? <div className="px-1 text-text-subtle text-xs">{realtimeStatusMessage}</div> : null}
@@ -2946,7 +3027,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 									autoFocus={!embedded}
 									backgroundArtifactLabel={chat.backgroundArtifactLabel}
 									composerStatus={chat.composerStatus}
-									compact={isArtifactOpen}
+									compact={isArtifactOpen || shouldShowAgentConfigPane}
 									errorMessage={chat.inputError}
 									galleryExpanded={galleryExpanded}
 									isPlanMode={chat.isPlanMode}
@@ -2991,6 +3072,27 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 	const chatPaneContainer = (
 		<div className="overscroll-behavior-contain relative z-10 flex h-full min-w-0 flex-1 flex-col touch-pan-y bg-background">
+			{shouldShowAgentConfigPane && activeSessionAgentEntry ? (
+				<div
+					className="absolute left-3 top-3 z-20 hidden items-center gap-2 rounded-md border border-border bg-surface px-2 py-1 text-xs md:flex"
+					data-testid="chat-agent-testing-chrome"
+				>
+					<Badge
+						variant={
+							activeSessionAgentEntry.publishStatus === "published"
+								? "success"
+								: "primary"
+						}
+					>
+						{activeSessionAgentEntry.publishStatus === "published"
+							? "Published"
+							: "Testing"}
+					</Badge>
+					<span className="max-w-[180px] truncate text-text-subtle">
+						{activeSessionAgentEntry.profile.name}
+					</span>
+				</div>
+			) : null}
 			{shouldShowTimelineNavigator ? (
 				<ChatTimelineNavigator
 					activeItemId={activeTimelineMessageId}
@@ -3167,6 +3269,16 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				/>
 				<main ref={shellRef} className="relative flex min-h-0 min-w-0 flex-1 bg-background px-3 text-foreground">
 					<RovoAppShellPaneLayout
+						agentConfigPane={agentConfigPane}
+						agentConfigPanelId={ROVO_APP_SPLIT_AGENT_CONFIG_PANEL_ID}
+						agentConfigCompact={
+							shouldShowAgentConfigPane && isAgentConfigOverlayActive
+								? {
+									activeTab: agentConfigCompactTab,
+									onChangeTab: setAgentConfigCompactTab,
+								}
+								: undefined
+						}
 						artifactOrigin={artifactOrigin}
 						artifactPane={artifactPane}
 						artifactPanelId={ROVO_APP_SPLIT_ARTIFACT_PANEL_ID}
@@ -3175,6 +3287,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						minArtifactPaneWidth={ROVO_APP_MIN_ARTIFACT_PANE_WIDTH}
 						minChatPaneWidth={ROVO_APP_MIN_CHAT_PANE_WIDTH}
 						onArtifactSplitLayoutChanged={handleArtifactSplitLayoutChanged}
+						shouldShowAgentConfigPane={shouldShowAgentConfigPane}
 						shouldSplitArtifactPane={shouldSplitArtifactPane}
 						shellSize={shellSize}
 						splitArtifactPaneDefaultSize={splitArtifactPaneDefaultSize}
