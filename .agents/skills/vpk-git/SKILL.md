@@ -1,6 +1,6 @@
 ---
 name: vpk-git
-description: Use for VPK-rovo git work in exactly two cases: PR merge-back and cleanup. PR merge-back covers ad hoc requests to merge a PR, branch, or worktree back to local/remote main while preserving unrelated edits and syncing final state. Cleanup covers deleting merged PR source branches, closing explicitly abandoned PRs, pruning stale refs, and safely removing clean landed worktrees/branches. Use it whenever the user says "merge this PR back to main", "land this worktree", "delete the branch after merge", "delete/close this PR", "clean up VPK worktrees/branches", "vpk-git --merge", or "vpk-git --clean."
+description: "Use for VPK-rovo git work in exactly two cases: PR merge-back and cleanup. PR merge-back covers ad hoc requests to merge a PR, branch, or worktree back to local/remote main while preserving unrelated edits and syncing final state. Cleanup covers deleting merged PR source branches, closing explicitly abandoned PRs, pruning stale refs, and safely removing clean landed worktrees/branches. Use it whenever the user says \"merge this PR back to main\", \"land this worktree\", \"delete the branch after merge\", \"delete/close this PR\", \"clean up VPK worktrees/branches\", \"vpk-git --merge\", or \"vpk-git --clean.\""
 ---
 
 # VPK Git
