@@ -1,30 +1,38 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import AppsIcon from "@atlaskit/icon/core/apps";
 import AutomationIcon from "@atlaskit/icon/core/automation";
 import ChartTrendUpIcon from "@atlaskit/icon/core/chart-trend-up";
+import MenuIcon from "@atlaskit/icon/core/menu";
 import PersonAvatarIcon from "@atlaskit/icon/core/person-avatar";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
 import { token } from "@/lib/tokens";
 import { Sidebar, SidebarContent } from "@/components/ui/sidebar";
 import { SidebarNavItem } from "@/components/ui/sidebar-nav-item";
+import type { StudioSessionAgentEntry } from "@/app/contexts/context-rovo-chat";
+import { getStudioSidebarRecentAgents, type StudioSidebarRecentAgentItem } from "@/components/projects/studio/lib/studio-sidebar-recent-agents";
 import type { RovoAppThread } from "@/lib/rovo-app-types";
 import { cn } from "@/lib/utils";
 
 interface RovoAppSidebarProps {
 	activeThreadId: string | null;
-	agentCreationThreadIds?: ReadonlySet<string>;
+	agentCreationThreads?: ReadonlyArray<StudioAgentCreationThread>;
+	selectedAgentId?: string;
+	sessionAgentEntries?: ReadonlyArray<StudioSessionAgentEntry>;
 	onCancelThreadRun: (threadId: string) => Promise<void>;
 	hoverOpen?: boolean;
 	isResizing?: boolean;
 	onDeleteThread: (threadId: string) => Promise<void>;
 	onNewChat: () => void;
+	onSelectAgent?: (agentId: string) => void;
 	onSidebarMouseEnter?: () => void;
 	onSidebarMouseLeave?: () => void;
 	onSelectThread: (threadId: string) => Promise<void>;
+	onViewAllAgents?: () => void;
 	resizeHandle?: React.ReactNode;
 	threads: ReadonlyArray<RovoAppThread>;
 	threadsLoaded?: boolean;
@@ -89,19 +97,10 @@ const STUDIO_SIDEBAR_NAV_SECTIONS: ReadonlyArray<StudioSidebarNavSection> = [
 	},
 ];
 
-interface ActiveStudioAgentCreationThread {
+interface StudioAgentCreationThread {
 	id: string;
+	lastTouchedAt: number;
 	title: string;
-}
-
-function getAgentCreationThreadTitle(thread: RovoAppThread | null): string {
-	const title = thread?.title.trim();
-
-	if (title && title !== "New chat") {
-		return title;
-	}
-
-	return "Agent creation";
 }
 
 function StudioSidebarNavItem({ icon, isExpanded, isSelected = false, label }: Readonly<StudioSidebarNavItem>) {
@@ -116,13 +115,76 @@ function StudioSidebarNavItem({ icon, isExpanded, isSelected = false, label }: R
 	);
 }
 
-function StudioSidebarNavigation({
-	activeAgentCreationThread,
-	onSelectAgentCreationThread,
+function StudioSidebarAgentAvatar({
+	label = "",
+	size = "small",
+	src,
 }: Readonly<{
-	activeAgentCreationThread: ActiveStudioAgentCreationThread | null;
-	onSelectAgentCreationThread?: (threadId: string) => void;
+	label?: string;
+	size?: "small" | "medium";
+	src: string;
 }>) {
+	return (
+		<Image
+			alt={label}
+			aria-hidden={label ? undefined : true}
+			className={cn(size === "small" ? "size-4" : "size-5", "object-contain")}
+			height={16}
+			src={src}
+			width={16}
+		/>
+	);
+}
+
+function getRecentAgentItemSelected(
+	item: StudioSidebarRecentAgentItem,
+	activeThreadId: string | null,
+	selectedAgentId?: string,
+): boolean {
+	if (item.kind === "wip") {
+		return item.id === activeThreadId;
+	}
+
+	return item.id === selectedAgentId;
+}
+
+function StudioSidebarNavigation({
+	activeThreadId,
+	agentCreationThreads = [],
+	onSelectAgent,
+	onSelectAgentCreationThread,
+	onViewAllAgents,
+	selectedAgentId,
+	sessionAgentEntries = [],
+}: Readonly<{
+	activeThreadId: string | null;
+	agentCreationThreads?: ReadonlyArray<StudioAgentCreationThread>;
+	onSelectAgent?: (agentId: string) => void;
+	onSelectAgentCreationThread?: (threadId: string) => void;
+	onViewAllAgents?: () => void;
+	selectedAgentId?: string;
+	sessionAgentEntries?: ReadonlyArray<StudioSessionAgentEntry>;
+}>) {
+	const recentAgents = React.useMemo(() => getStudioSidebarRecentAgents([
+		...agentCreationThreads.map((thread) => ({
+			id: thread.id,
+			kind: "wip" as const,
+			label: thread.title,
+			lastTouchedAt: thread.lastTouchedAt,
+		})),
+		...sessionAgentEntries.map((entry) => ({
+			avatarSrc: entry.profile.avatarSrc,
+			id: entry.profile.id,
+			kind: "agent" as const,
+			label: entry.profile.name,
+			lastTouchedAt: entry.lastTouchedAt,
+		})),
+	]), [agentCreationThreads, sessionAgentEntries]);
+	const hasRecentAgents = recentAgents.items.length > 0;
+	const hasSelectedRecentAgent = recentAgents.items.some((item) =>
+		getRecentAgentItemSelected(item, activeThreadId, selectedAgentId)
+	);
+
 	return (
 		<nav aria-label="Studio" className="flex shrink-0 flex-col gap-3">
 			<div className="flex flex-col gap-3">
@@ -139,25 +201,52 @@ function StudioSidebarNavigation({
 						<div className="flex flex-col">
 							{section.items.map((item) => {
 								const isAgentsItem = item.label === "Agents";
-								const shouldShowAgentCreationThread = isAgentsItem && activeAgentCreationThread !== null;
+								const shouldShowRecentAgents = isAgentsItem && hasRecentAgents;
 
 								return (
 									<React.Fragment key={item.label}>
 										<StudioSidebarNavItem
 											{...item}
-											isExpanded={shouldShowAgentCreationThread ? true : item.isExpanded}
-											isSelected={shouldShowAgentCreationThread ? false : item.isSelected}
+											isExpanded={shouldShowRecentAgents ? true : item.isExpanded}
+											isSelected={shouldShowRecentAgents && hasSelectedRecentAgent ? false : item.isSelected}
 										/>
-										{shouldShowAgentCreationThread ? (
-											<div className="mt-0.5 pl-7">
-												<SidebarNavItem
-													label={activeAgentCreationThread.title}
-													leading={<AiAgentIcon label="" />}
-													leadingSize="small"
-													isSelected
-													onClick={() => onSelectAgentCreationThread?.(activeAgentCreationThread.id)}
-													className="min-h-7"
-												/>
+										{shouldShowRecentAgents ? (
+											<div className="mt-0.5 flex flex-col gap-0.5 pl-7">
+												<div className="px-1.5 text-xs font-semibold leading-4 text-text-subtlest">
+													Recent
+												</div>
+												{recentAgents.items.map((recentAgent) => (
+													<SidebarNavItem
+														key={`${recentAgent.kind}:${recentAgent.id}`}
+														label={recentAgent.label}
+														leading={
+															recentAgent.avatarSrc ? (
+																<StudioSidebarAgentAvatar src={recentAgent.avatarSrc} />
+															) : (
+																<AiAgentIcon label="" />
+															)
+														}
+														leadingSize="small"
+														isSelected={getRecentAgentItemSelected(recentAgent, activeThreadId, selectedAgentId)}
+														onClick={() => {
+															if (recentAgent.kind === "wip") {
+																onSelectAgentCreationThread?.(recentAgent.id);
+															} else {
+																onSelectAgent?.(recentAgent.id);
+															}
+														}}
+														className="min-h-7"
+													/>
+												))}
+												{recentAgents.showViewAll ? (
+													<SidebarNavItem
+														label="View all agents"
+														leading={<MenuIcon label="" />}
+														leadingSize="small"
+														onClick={onViewAllAgents}
+														className="min-h-7"
+													/>
+												) : null}
 											</div>
 										) : null}
 									</React.Fragment>
@@ -173,29 +262,19 @@ function StudioSidebarNavigation({
 
 export function RovoAppSidebar({
 	activeThreadId,
-	agentCreationThreadIds,
+	agentCreationThreads,
 	hoverOpen = false,
 	isResizing,
+	selectedAgentId,
 	onSelectThread,
+	onSelectAgent,
 	onSidebarMouseEnter,
 	onSidebarMouseLeave,
+	onViewAllAgents,
 	resizeHandle,
-	threads,
+	sessionAgentEntries,
 	topOffset = false,
 }: Readonly<RovoAppSidebarProps>) {
-	const activeAgentCreationThread = React.useMemo<ActiveStudioAgentCreationThread | null>(() => {
-		if (!activeThreadId || !agentCreationThreadIds?.has(activeThreadId)) {
-			return null;
-		}
-
-		const activeThread = threads.find((thread) => thread.id === activeThreadId) ?? null;
-
-		return {
-			id: activeThreadId,
-			title: getAgentCreationThreadTitle(activeThread),
-		};
-	}, [activeThreadId, agentCreationThreadIds, threads]);
-
 	return (
 		<Sidebar
 			aria-label="Studio navigation"
@@ -216,10 +295,15 @@ export function RovoAppSidebar({
 		>
 			<SidebarContent className="gap-3 overflow-hidden bg-sidebar px-3">
 				<StudioSidebarNavigation
-					activeAgentCreationThread={activeAgentCreationThread}
+					activeThreadId={activeThreadId}
+					agentCreationThreads={agentCreationThreads}
+					onSelectAgent={onSelectAgent}
 					onSelectAgentCreationThread={(threadId) => {
 						void onSelectThread(threadId);
 					}}
+					onViewAllAgents={onViewAllAgents}
+					selectedAgentId={selectedAgentId}
+					sessionAgentEntries={sessionAgentEntries}
 				/>
 			</SidebarContent>
 		</Sidebar>

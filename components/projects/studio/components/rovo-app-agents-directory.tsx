@@ -4,8 +4,10 @@ import { useMemo } from "react";
 
 import {
 	AgentBrowserDialog,
+	type AgentBrowserAgent,
 	type AgentBrowserSidebarGroup,
 } from "@/components/blocks/agent-browser";
+import type { StudioSessionAgentEntry } from "@/app/contexts/context-rovo-chat";
 import { ROVO_AGENT_PROFILES } from "@/components/projects/studio/data/agent-profiles";
 
 const STUDIO_SIDEBAR_GROUPS: readonly AgentBrowserSidebarGroup[] = [
@@ -29,21 +31,37 @@ const STUDIO_SIDEBAR_GROUPS: readonly AgentBrowserSidebarGroup[] = [
 ];
 
 interface BrowseAgentsDialogProps {
+	onSelectAgent?: (agent: AgentBrowserAgent) => void;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	sessionAgentEntries?: readonly StudioSessionAgentEntry[];
 }
 
-export function BrowseAgentsDialog({ open, onOpenChange }: Readonly<BrowseAgentsDialogProps>) {
+export function BrowseAgentsDialog({
+	onSelectAgent,
+	open,
+	onOpenChange,
+	sessionAgentEntries = [],
+}: Readonly<BrowseAgentsDialogProps>) {
 	const agents = useMemo(
 		() =>
-			ROVO_AGENT_PROFILES.map((profile) => ({
-				id: profile.id,
-				name: profile.name,
-				byline: profile.byline,
-				avatarSrc: profile.avatarSrc,
-				description: profile.description,
-			})),
-		[],
+			[
+				...ROVO_AGENT_PROFILES.map((profile) => ({
+					id: profile.id,
+					name: profile.name,
+					byline: profile.byline,
+					avatarSrc: profile.avatarSrc,
+					description: profile.description,
+				})),
+				...sessionAgentEntries.map((entry) => ({
+					id: entry.profile.id,
+					name: entry.profile.name,
+					byline: entry.profile.byline,
+					avatarSrc: entry.profile.avatarSrc,
+					description: entry.profile.description,
+				})),
+			],
+		[sessionAgentEntries],
 	);
 
 	return (
@@ -51,6 +69,7 @@ export function BrowseAgentsDialog({ open, onOpenChange }: Readonly<BrowseAgents
 			open={open}
 			onOpenChange={onOpenChange}
 			agents={agents}
+			onSelectAgent={onSelectAgent}
 			sidebarGroups={STUDIO_SIDEBAR_GROUPS}
 		/>
 	);
