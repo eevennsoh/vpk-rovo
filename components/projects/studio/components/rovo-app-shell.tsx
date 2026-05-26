@@ -1147,11 +1147,46 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const pendingTypedScrollAnchorRef = useRef(false);
 	const isDefaultAgentHomeStateRef = useRef(false);
 	const studioAgentCreationThreadKeysRef = useRef<Set<string>>(new Set());
+	const [studioAgentCreationThreadIds, setStudioAgentCreationThreadIds] = useState<ReadonlySet<string>>(() => new Set());
 	const handledAgentResultKeysRef = useRef<Set<string>>(new Set());
 	const previousTypedAnchorUserMessageIdRef = useRef<string | null>(null);
 	const typedScrollAnchorSourceRef = useRef<TypedScrollAnchorSource>("none");
 	const realtimeTypedResponseStartedRef = useRef(false);
 	const speechStartedAtRef = useRef<string | null>(null);
+
+	const markStudioAgentCreationThread = useCallback((threadId: string | null) => {
+		if (!threadId) {
+			return;
+		}
+
+		studioAgentCreationThreadKeysRef.current.add(threadId);
+		setStudioAgentCreationThreadIds((currentThreadIds) => {
+			if (currentThreadIds.has(threadId)) {
+				return currentThreadIds;
+			}
+
+			const nextThreadIds = new Set(currentThreadIds);
+			nextThreadIds.add(threadId);
+			return nextThreadIds;
+		});
+	}, []);
+
+	const unmarkStudioAgentCreationThread = useCallback((threadId: string | null) => {
+		if (!threadId) {
+			return;
+		}
+
+		studioAgentCreationThreadKeysRef.current.delete(threadId);
+		setStudioAgentCreationThreadIds((currentThreadIds) => {
+			if (!currentThreadIds.has(threadId)) {
+				return currentThreadIds;
+			}
+
+			const nextThreadIds = new Set(currentThreadIds);
+			nextThreadIds.delete(threadId);
+			return nextThreadIds;
+		});
+	}, []);
 
 	const handleGalleryPreviewStart = useCallback((prompt: string) => {
 		setPreviewPrompt(prompt);
@@ -2081,10 +2116,8 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			queueTypedScrollAnchor("standard", latestUserMessageIdBeforeSubmit);
 			try {
 				if (shouldStartStudioAgentCreation) {
-					studioAgentCreationThreadKeysRef.current.add(chat.runtimeThreadId);
-					if (chat.activeThreadId) {
-						studioAgentCreationThreadKeysRef.current.add(chat.activeThreadId);
-					}
+					markStudioAgentCreationThread(chat.runtimeThreadId);
+					markStudioAgentCreationThread(chat.activeThreadId);
 				}
 				const submitPrompt = realtimeChat.submitPrompt as (payload: StudioSubmitPromptPayload) => Promise<void>;
 				await submitPrompt({
@@ -2116,6 +2149,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			setOptimisticUserMessage,
 			buildHermesPromptOptions,
 			clearHermesSkillSelection,
+			markStudioAgentCreationThread,
 			chat.activeThreadId,
 			chat.shouldQueueNextSubmission,
 			chat.runtimeThreadId,
@@ -2150,9 +2184,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	}, [displayMessages]);
 	useEffect(() => {
 		if (studioAgentCreationThreadKeysRef.current.has(chat.runtimeThreadId) && chat.activeThreadId) {
-			studioAgentCreationThreadKeysRef.current.add(chat.activeThreadId);
+			markStudioAgentCreationThread(chat.activeThreadId);
 		}
-	}, [chat.activeThreadId, chat.runtimeThreadId]);
+	}, [chat.activeThreadId, chat.runtimeThreadId, markStudioAgentCreationThread]);
 	useEffect(() => {
 		if (
 			!studioAgentCreationThreadKeysRef.current.has(chat.runtimeThreadId) &&
@@ -2174,13 +2208,11 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 			if (handleStudioAgentResultSelect(agentResult, { sourceMessageId: message.id })) {
 				handledAgentResultKeysRef.current.add(agentResultKey);
-				studioAgentCreationThreadKeysRef.current.delete(chat.runtimeThreadId);
-				if (chat.activeThreadId) {
-					studioAgentCreationThreadKeysRef.current.delete(chat.activeThreadId);
-				}
+				unmarkStudioAgentCreationThread(chat.runtimeThreadId);
+				unmarkStudioAgentCreationThread(chat.activeThreadId);
 			}
 		}
-	}, [chat.activeThreadId, chat.messages, chat.runtimeThreadId, handleStudioAgentResultSelect]);
+	}, [chat.activeThreadId, chat.messages, chat.runtimeThreadId, handleStudioAgentResultSelect, unmarkStudioAgentCreationThread]);
 	const timelineItems = useMemo(() => {
 		return deriveRovoAppTimelineItems(displayMessages);
 	}, [displayMessages]);
@@ -2938,6 +2970,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			<SidebarProvider className={cn(embedded ? "h-full" : "h-svh", "overflow-hidden")} defaultOpen={!embedded} onOpenChange={chat.setSidebarOpen} open={chat.sidebarOpen} style={rovoAppSidebarStyle}>
 			<RovoAppSidebar
 				activeThreadId={chat.activeThreadId}
+				agentCreationThreadIds={studioAgentCreationThreadIds}
 				hoverOpen={isHoverOpen}
 				isResizing={sidebarResize.isResizing}
 				onCancelThreadRun={async (threadId) => {
