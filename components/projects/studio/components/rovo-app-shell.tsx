@@ -111,6 +111,8 @@ interface HomeStarterTemplate {
 }
 
 const RICH_ICON_ROOT = "/illustration/rich-icon";
+const HOME_STARTER_DEFAULT_CATEGORY: HomeStarterCategory = "analyze";
+const HOME_STARTER_TAB_PROGRESS_DURATION_MS = 4_500;
 
 const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "analyze", label: "Analyze", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.14]" },
@@ -119,6 +121,13 @@ const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "summarize", label: "Summarize", iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg`, iconClassName: "translate-y-px scale-[1.08]" },
 	{ id: "create", label: "Create", iconSrc: `${RICH_ICON_ROOT}/design/standard.png`, iconClassName: "translate-x-px scale-[1.12]" },
 ];
+
+function getNextHomeStarterCategory(category: HomeStarterCategory): HomeStarterCategory {
+	const currentCategoryIndex = HOME_STARTER_CATEGORIES.findIndex((option) => option.id === category);
+	const nextCategoryIndex = currentCategoryIndex === -1 ? 0 : (currentCategoryIndex + 1) % HOME_STARTER_CATEGORIES.length;
+
+	return HOME_STARTER_CATEGORIES[nextCategoryIndex]?.id ?? HOME_STARTER_DEFAULT_CATEGORY;
+}
 
 const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<HomeStarterTemplate>>> = {
 	analyze: [
@@ -415,12 +424,103 @@ function HomeStarterBento({
 	onPreviewStart: (prompt: string) => void;
 	onSelect: (prompt: string) => void;
 }>) {
-	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>("analyze");
+	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>(HOME_STARTER_DEFAULT_CATEGORY);
 	const [browseOpen, setBrowseOpen] = useState(false);
+	const [isTemplateFocused, setIsTemplateFocused] = useState(false);
+	const [isTemplateHovered, setIsTemplateHovered] = useState(false);
 	const shouldReduceMotion = useReducedMotion();
+	const focusedTemplatePromptRef = useRef<string | null>(null);
+	const hoveredTemplatePromptRef = useRef<string | null>(null);
+	const tabProgressBarRef = useRef<HTMLSpanElement | null>(null);
+	const tabProgressRef = useRef(0);
 	const templates = HOME_STARTER_VIEWS[activeCategory];
 	const visibleTemplates = templates.slice(0, 5);
 	const canShowMore = templates.length > visibleTemplates.length;
+	const isProgressPaused = isTemplateFocused || isTemplateHovered;
+	const setHomeStarterTabProgress = useCallback((progress: number) => {
+		const nextProgress = clamp(progress, 0, 1);
+
+		tabProgressRef.current = nextProgress;
+		tabProgressBarRef.current?.style.setProperty("--home-starter-tab-progress", String(nextProgress));
+	}, []);
+	const setTabProgressBarNode = useCallback((node: HTMLSpanElement | null) => {
+		tabProgressBarRef.current = node;
+
+		if (node) {
+			node.style.setProperty("--home-starter-tab-progress", String(tabProgressRef.current));
+		}
+	}, []);
+	const selectHomeStarterCategory = useCallback((category: HomeStarterCategory) => {
+		setHomeStarterTabProgress(0);
+		setActiveCategory(category);
+	}, [setHomeStarterTabProgress]);
+	const advanceHomeStarterCategory = useCallback(() => {
+		setHomeStarterTabProgress(0);
+		setActiveCategory((currentCategory) => getNextHomeStarterCategory(currentCategory));
+	}, [setHomeStarterTabProgress]);
+	const handleTemplateMouseEnter = useCallback((prompt: string) => {
+		hoveredTemplatePromptRef.current = prompt;
+		setIsTemplateHovered(true);
+		onPreviewStart(prompt);
+	}, [onPreviewStart]);
+	const handleTemplateMouseLeave = useCallback(() => {
+		hoveredTemplatePromptRef.current = null;
+		setIsTemplateHovered(false);
+
+		if (focusedTemplatePromptRef.current) {
+			onPreviewStart(focusedTemplatePromptRef.current);
+		} else {
+			onPreviewEnd();
+		}
+	}, [onPreviewEnd, onPreviewStart]);
+	const handleTemplateFocus = useCallback((prompt: string) => {
+		focusedTemplatePromptRef.current = prompt;
+		setIsTemplateFocused(true);
+		onPreviewStart(prompt);
+	}, [onPreviewStart]);
+	const handleTemplateBlur = useCallback(() => {
+		focusedTemplatePromptRef.current = null;
+		setIsTemplateFocused(false);
+
+		if (hoveredTemplatePromptRef.current) {
+			onPreviewStart(hoveredTemplatePromptRef.current);
+		} else {
+			onPreviewEnd();
+		}
+	}, [onPreviewEnd, onPreviewStart]);
+
+	useEffect(() => {
+		if (shouldReduceMotion || isProgressPaused) {
+			return;
+		}
+
+		let animationFrameId = 0;
+		let previousFrameTime: number | null = null;
+
+		const tick = (frameTime: number) => {
+			if (previousFrameTime === null) {
+				previousFrameTime = frameTime;
+			}
+
+			const elapsedMs = Math.min(frameTime - previousFrameTime, 100);
+			previousFrameTime = frameTime;
+			const nextProgress = tabProgressRef.current + elapsedMs / HOME_STARTER_TAB_PROGRESS_DURATION_MS;
+
+			if (nextProgress >= 1) {
+				advanceHomeStarterCategory();
+			} else {
+				setHomeStarterTabProgress(nextProgress);
+			}
+
+			animationFrameId = window.requestAnimationFrame(tick);
+		};
+
+		animationFrameId = window.requestAnimationFrame(tick);
+
+		return () => {
+			window.cancelAnimationFrame(animationFrameId);
+		};
+	}, [advanceHomeStarterCategory, isProgressPaused, setHomeStarterTabProgress, shouldReduceMotion]);
 
 	return (
 		<div className="w-full">
@@ -434,39 +534,41 @@ function HomeStarterBento({
 							type="button"
 							aria-pressed={isActive}
 							onClick={() => {
-								setActiveCategory(category.id);
+								selectHomeStarterCategory(category.id);
 							}}
 							className={cn(
-								"relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-medium leading-5 outline-none transition-colors duration-fast ease-out focus-visible:ring-3 focus-visible:ring-ring/50",
+								"relative isolate inline-flex h-8 shrink-0 items-center overflow-hidden rounded-md border px-3 text-sm font-medium leading-5 outline-none transition-[border-color,color,box-shadow] duration-fast ease-out focus-visible:ring-3 focus-visible:ring-ring/50",
 								isActive
-									? "border-border-selected text-text-selected"
+									? "border-border-selected bg-bg-selected text-text-selected"
 									: "border-border bg-background text-text-subtle hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 							)}
 						>
 							{isActive ? (
-								<motion.span
+								<span
+									ref={setTabProgressBarNode}
 									aria-hidden
-									className="absolute inset-0 -z-10 rounded-md bg-bg-selected"
-									layoutId="studioStarterTabPill"
-									transition={
-										shouldReduceMotion
-											? { duration: 0 }
-											: { type: "spring", stiffness: 500, damping: 38, mass: 0.6 }
-									}
+									className="pointer-events-none absolute inset-0 z-0 w-full bg-bg-selected-hovered"
+									style={{
+										transform: "scaleX(var(--home-starter-tab-progress, 0))",
+										transformOrigin: "left center",
+										willChange: "transform",
+									}}
 								/>
 							) : null}
-							{category.iconSrc ? (
-								<span aria-hidden className="inline-flex size-6 shrink-0 items-center justify-center">
-									<Image
-										alt=""
-										className={cn("size-6 object-contain", category.iconClassName)}
-										height={24}
-										src={category.iconSrc}
-										width={24}
-									/>
-								</span>
-							) : null}
-							{category.label}
+							<span className="relative z-[2] inline-flex items-center gap-1.5">
+								{category.iconSrc ? (
+									<span aria-hidden className="inline-flex size-6 shrink-0 items-center justify-center">
+										<Image
+											alt=""
+											className={cn("size-6 object-contain", category.iconClassName)}
+											height={24}
+											src={category.iconSrc}
+											width={24}
+										/>
+									</span>
+								) : null}
+								<span>{category.label}</span>
+							</span>
 						</button>
 					);
 				})}
@@ -476,7 +578,7 @@ function HomeStarterBento({
 				<AnimatePresence mode="wait" initial={false}>
 					<motion.div
 						key={activeCategory}
-						className="grid grid-cols-1 gap-3 auto-rows-[144px] sm:grid-cols-2 lg:grid-cols-5"
+						className="relative z-0 grid grid-cols-1 gap-3 auto-rows-[144px] sm:grid-cols-2 lg:grid-cols-5"
 						initial={shouldReduceMotion ? false : "hidden"}
 						animate="visible"
 						exit={shouldReduceMotion ? undefined : "exit"}
@@ -497,12 +599,12 @@ function HomeStarterBento({
 									type="button"
 									aria-label={`Use prompt starter: ${template.title}`}
 									onClick={() => onSelect(template.prompt)}
-									onMouseEnter={() => onPreviewStart(template.prompt)}
-									onMouseLeave={onPreviewEnd}
-									onFocus={() => onPreviewStart(template.prompt)}
-									onBlur={onPreviewEnd}
+									onMouseEnter={() => handleTemplateMouseEnter(template.prompt)}
+									onMouseLeave={handleTemplateMouseLeave}
+									onFocus={() => handleTemplateFocus(template.prompt)}
+									onBlur={handleTemplateBlur}
 									className={cn(
-										"group flex min-h-0 flex-col items-start overflow-hidden rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-selected hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
+										"group flex min-h-0 flex-col items-start overflow-hidden rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-bold hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
 										template.layoutClassName,
 									)}
 									variants={{
@@ -541,7 +643,7 @@ function HomeStarterBento({
 					</motion.div>
 				</AnimatePresence>
 				{canShowMore ? (
-					<div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-linear-to-t from-background via-background/85 to-transparent pt-12 pb-1">
+					<div className="pointer-events-none absolute inset-x-0 -bottom-px z-10 flex justify-center bg-linear-to-t from-background via-background/95 to-transparent pt-24 pb-2">
 						<Button
 							type="button"
 							aria-label="Browse all agents"

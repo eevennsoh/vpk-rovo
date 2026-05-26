@@ -513,7 +513,7 @@ function getRealtimeConfig() {
 		: "wss://ai-gateway.us-east-1.staging.atl-paas.net/v1/openai/v1/realtime";
 	return {
 		apiKey,
-		model: process.env.OPENAI_REALTIME_MODEL || "gpt-4o-realtime-preview",
+		model: process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-2",
 		wsUrl: process.env.OPENAI_REALTIME_WS_URL || defaultWsUrl,
 		voice: process.env.OPENAI_REALTIME_VOICE || "alloy",
 	};

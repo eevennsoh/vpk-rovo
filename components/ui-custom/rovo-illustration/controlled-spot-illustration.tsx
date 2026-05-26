@@ -21,6 +21,8 @@ import { getEmbeddedSpotIllustrationSvg } from "./assets.generated";
 
 const ENTER_END = ILLUS_ENTER_DURATION;
 const HOLD_END = ILLUS_ENTER_DURATION + ILLUS_HOLD_DURATION;
+const MOSAIC_IDLE_ROTATION_DEGREES_PER_SECOND = 30;
+const MOSAIC_IDLE_ROAM_SPEED = 1.25;
 
 export type ControlledSpotIllustrationPhase = "enter" | "idle" | "exit" | "done";
 type Frame = ReturnType<typeof computeFrame>;
@@ -30,12 +32,13 @@ function computeIdleFrame(idleT: number, totalT: number, illusId: string, pr: nu
   const motion = ILLUS_MOTION[illusId];
   const rotConfig = ILLUS_ROTATE_GROUP[illusId];
   const out: Frame = { ...base };
-  out.mosaicRotation = (totalT * 3) % 360;
+  out.mosaicRotation = (totalT * MOSAIC_IDLE_ROTATION_DEGREES_PER_SECOND) % 360;
   if (motion?.idleMosaicRoam) {
     const { ax, ay, period } = motion.idleMosaicRoam;
+    const roamT = idleT * MOSAIC_IDLE_ROAM_SPEED;
     const ramp = easeOutCubic(Math.min(1, idleT / 0.8));
-    out.mosaicTX = ax * Math.sin(idleT * 2 * Math.PI / period) * ramp;
-    out.mosaicTY = ay * Math.sin(idleT * 2 * Math.PI / period * 0.7 + 0.5) * ramp;
+    out.mosaicTX = ax * Math.sin(roamT * 2 * Math.PI / period) * ramp;
+    out.mosaicTY = ay * Math.sin(roamT * 2 * Math.PI / period * 0.7 + 0.5) * ramp;
     if (motion?.overlapTrack === 'mosaic') {
       out.overlapTX = out.mosaicTX;
       out.overlapTY = out.mosaicTY;

@@ -7,6 +7,7 @@ const {
 	ROVO_SYSTEM_INSTRUCTIONS,
 	SESSION_STATE,
 } = require("./openai-realtime");
+const { getRealtimeConfig } = require("./ai-gateway-helpers");
 
 function createReadySession() {
 	const openaiMessages = [];
@@ -50,6 +51,21 @@ function assertSystemMessage(openaiMessage, expectedText) {
 	assert.equal(openaiMessage.item?.content?.[0]?.type, "input_text");
 	assert.equal(openaiMessage.item?.content?.[0]?.text, expectedText);
 }
+
+test("realtime config defaults to the current realtime model", () => {
+	const previousModel = process.env.OPENAI_REALTIME_MODEL;
+	delete process.env.OPENAI_REALTIME_MODEL;
+
+	try {
+		assert.equal(getRealtimeConfig().model, "gpt-realtime-2");
+	} finally {
+		if (previousModel === undefined) {
+			delete process.env.OPENAI_REALTIME_MODEL;
+		} else {
+			process.env.OPENAI_REALTIME_MODEL = previousModel;
+		}
+	}
+});
 
 test("system instructions include artifact annotation guidance", () => {
 	assert.match(
