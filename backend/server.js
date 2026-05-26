@@ -243,6 +243,12 @@ const {
 	shouldSurfaceMissingStudioAgentResultFailure,
 } = require("./lib/studio-agent-result");
 const {
+	buildStudioAgentCreationTrace,
+} = require("./lib/studio-agent-trace");
+const {
+	writeThinkingTraceSteps: writeGenericThinkingTraceSteps,
+} = require("./lib/thinking-trace-writer");
+const {
 	RFP_DEMO_REPORT_PREVIEW_SUMMARY,
 	RFP_DEMO_REPORT_TITLE,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
@@ -8565,14 +8571,45 @@ async function handleChatSdkRequest(req, res) {
 					// Uses the same data-thinking-status protocol the Rovo
 					// branch uses, so the existing thinking-trace renderer
 					// picks it up unchanged.
+					//
+					// For Studio agent creation we additionally play a scripted,
+					// contextual chain-of-thought trace in parallel with the
+					// gateway call. The AI Gateway path has no real tool harness,
+					// so without this the `<AssistantThinkingTrace>` collapsible
+					// body stays empty (the trigger shows but
+					// `isThinkingStatusActive` only flips true when at least
+					// one `data-thinking-event` part arrives). The trace is
+					// derived from the user's prompt + prior Q&A so it reflects
+					// the actual brief rather than a canned sequence.
+					const isAgentCreationTurn = creationMode === "agent";
 					writer.write({
 						type: "data-thinking-status",
 						data: {
-							label: "Working",
+							label: isAgentCreationTurn ? "Designing agent" : "Working",
+							content: isAgentCreationTurn
+								? "Reviewing the brief, checking missing profile details, and shaping the Studio agent."
+								: undefined,
 							activity: "data",
 							source: "backend",
 						},
 					});
+
+					const scriptedTracePromise = isAgentCreationTurn
+						? writeGenericThinkingTraceSteps(
+								writer,
+								buildStudioAgentCreationTrace({
+									userPrompt: latestUserMessage,
+									messages: gatewayMessages,
+									contextDescription: effectiveContextWithPortBinding,
+								}),
+								{ signal: abortController.signal },
+						  ).catch((traceError) => {
+								console.warn(
+									"[CHAT-SDK] Scripted agent-creation trace failed:",
+									traceError?.message || traceError,
+								);
+						  })
+						: Promise.resolve();
 
 					// Buffer all deltas server-side instead of streaming them.
 					// `context-rovo-chat.tsx` (used by /agents' sidebar-chat) does
@@ -8583,7 +8620,7 @@ async function handleChatSdkRequest(req, res) {
 					// an AI Gateway turn; acceptable for the typical short
 					// clarification response. If/when context-rovo-chat learns
 					// to honor data-clear, we can revert to streamed deltas.
-					await streamTextViaGateway({
+					const gatewayCallPromise = streamTextViaGateway({
 						system: gatewaySystem || undefined,
 						prompt: latestUserMessage,
 						messages: gatewayMessages,
@@ -8598,6 +8635,8 @@ async function handleChatSdkRequest(req, res) {
 							}
 						},
 					});
+
+					await Promise.all([gatewayCallPromise, scriptedTracePromise]);
 
 					// Post-process: prefer the model-agnostic deferred-tool
 					// envelope, then keep the legacy question-card/prose

@@ -15,10 +15,14 @@ const MESSAGES_SOURCE = fs.readFileSync(
 test("RovoAppShell starts Studio agent creation only from the default-agent home composer", () => {
 	assert.match(SHELL_SOURCE, /const DEFAULT_COMPOSER_PLACEHOLDER = "Describe the agent you want to build";/u);
 	assert.match(SHELL_SOURCE, /function buildStudioAgentCreationContext\(originalBrief: string\): string/u);
-	assert.match(SHELL_SOURCE, /"Source: \/studio prompt input"/u);
+	assert.match(SHELL_SOURCE, /\[Studio Agent Creation Request\]/u);
+	assert.match(SHELL_SOURCE, /"Source: \/studio prompt input\."/u);
 	assert.match(SHELL_SOURCE, /"Original user brief:"/u);
-	assert.match(SHELL_SOURCE, /Clarification rule: Ask clarifying questions only when required agent profile details are missing/u);
-	assert.match(SHELL_SOURCE, /Structured result rule: When the agent profile is ready, emit a structured data-agent-result/u);
+	assert.match(SHELL_SOURCE, /Required agent profile fields/u);
+	assert.match(SHELL_SOURCE, /- agentId: stable kebab-case slug/u);
+	assert.match(SHELL_SOURCE, /- conversationStarters: 2.{1,3}4 starter prompts/u);
+	assert.match(SHELL_SOURCE, /Clarification rule: Use the existing ask_user_questions\/question-card flow/u);
+	assert.match(SHELL_SOURCE, /Expected output: build the agent profile now and emit exactly one structured AGENT_RESULT marker/u);
 	assert.match(SHELL_SOURCE, /const isDefaultAgentHomeState = showHomeState && !isCustomAgentSelected;/u);
 	assert.match(SHELL_SOURCE, /const shouldStartStudioAgentCreation = isDefaultAgentHomeStateRef\.current && !isRealtimeActive;/u);
 	assert.match(SHELL_SOURCE, /\.\.\.\(shouldStartStudioAgentCreation \? \{ creationMode: "agent" as const \} : \{\}\)/u);
@@ -61,7 +65,9 @@ test("RovoAppMessages renders the shared /agents-style agent result card", () =>
 
 test("Studio clarification answers keep agent creation mode active", () => {
 	assert.match(SHELL_SOURCE, /function buildStudioAgentCreationContinuationContext\(\): string/u);
-	assert.match(SHELL_SOURCE, /Source: \/studio prompt input clarification answer/u);
+	assert.match(SHELL_SOURCE, /Source: \/studio prompt input clarification answer\./u);
+	assert.match(SHELL_SOURCE, /Trigger: The user has answered the clarification questions/u);
+	assert.match(SHELL_SOURCE, /Expected output: otherwise, create the reusable custom agent now and emit exactly one structured AGENT_RESULT marker/u);
 	assert.match(SHELL_SOURCE, /const getStudioAgentCreationClarificationOptions = useCallback/u);
 	assert.match(SHELL_SOURCE, /creationMode: "agent" as const/u);
 	assert.match(SHELL_SOURCE, /submitClarification\([\s\S]*activeQuestionCard,[\s\S]*answers,[\s\S]*getStudioAgentCreationClarificationOptions\(\),/u);

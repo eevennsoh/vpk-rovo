@@ -455,8 +455,8 @@ function HomeStarterBento({
 				})}
 			</div>
 
-			<div className="relative mt-6">
-				<div className="grid auto-rows-[144px] grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+			<div className="@container/bento relative mt-6">
+				<div className="grid grid-cols-1 gap-3 [grid-auto-rows:minmax(144px,auto)] sm:grid-cols-2 lg:grid-cols-5">
 					{visibleTemplates.map((template) => {
 						return (
 							<button
@@ -486,7 +486,7 @@ function HomeStarterBento({
 								<span className="mt-3 block text-sm font-semibold leading-5 text-text">
 									{template.title}
 								</span>
-								<span className="mt-1 line-clamp-2 text-sm leading-5 text-text-subtle">
+								<span className="mt-1 line-clamp-2 text-sm leading-5 text-text-subtle @4xl/bento:line-clamp-none">
 									{template.description}
 								</span>
 							</button>
@@ -536,24 +536,45 @@ function getNonEmptyString(value: unknown): string | null {
 
 function buildStudioAgentCreationContext(originalBrief: string): string {
 	return [
-		"[Studio agent creation context]",
-		"Source: /studio prompt input",
+		"[Studio Agent Creation Request]",
+		"Source: /studio prompt input.",
+		"Surface: Studio home composer.",
+		"Trigger: User submitted a free-form brief describing the agent they want to build.",
 		"Original user brief:",
 		originalBrief.trim(),
-		"Clarification rule: Ask clarifying questions only when required agent profile details are missing. Use the existing ask_user_questions/question-card flow; do not create a separate Q&A format.",
-		"Structured result rule: When the agent profile is ready, emit a structured data-agent-result with action \"create\", a stable agent id, display name, description or summary, instructions/context, and conversation starters. Keep assistant prose concise.",
-		"[End Studio agent creation context]",
+		"Required agent profile fields (infer reasonable values from the brief; only ask clarifying questions if the brief truly cannot be turned into a workable profile):",
+		"- agentId: stable kebab-case slug",
+		"- name: short display name",
+		"- byline: one-line tagline (e.g. \"Generated agent\")",
+		"- description: 1–2 sentence summary of what the agent does",
+		"- instructions: how the agent should behave and what context it uses",
+		"- conversationStarters: 2–4 starter prompts (strings)",
+		"- avatarFallback: { initials: 2-letter shorthand derived from the name }",
+		"- action: \"create\"",
+		"Clarification rule: Use the existing ask_user_questions/question-card flow when needed; do not invent a separate Q&A format.",
+		"Expected output: build the agent profile now and emit exactly one structured AGENT_RESULT marker on its own line OUTSIDE any code fence. Do not wrap the marker, its JSON, or the surrounding response inside ``` fences (no ```markdown, ```json, or other fences around the result). Keep assistant prose brief.",
+		"[End Studio Agent Creation Request]",
 	].join("\n");
 }
 
 function buildStudioAgentCreationContinuationContext(): string {
 	return [
-		"[Studio agent creation context]",
-		"Source: /studio prompt input clarification answer",
-		"The user has answered the clarification questions for the agent they want to build.",
-		"Clarification rule: If required profile details are still missing, ask another concise question-card round using the existing ask_user_questions flow.",
-		"Structured result rule: Otherwise, create the reusable custom agent now and emit a structured data-agent-result with action \"create\", a stable agent id, display name, description or summary, instructions/context, and conversation starters.",
-		"[End Studio agent creation context]",
+		"[Studio Agent Creation Request]",
+		"Source: /studio prompt input clarification answer.",
+		"Surface: Studio home composer.",
+		"Trigger: The user has answered the clarification questions for the agent they want to build.",
+		"Required agent profile fields (fill from the brief + clarification answers):",
+		"- agentId: stable kebab-case slug",
+		"- name: short display name",
+		"- byline: one-line tagline (e.g. \"Generated agent\")",
+		"- description: 1–2 sentence summary of what the agent does",
+		"- instructions: how the agent should behave and what context it uses",
+		"- conversationStarters: 2–4 starter prompts (strings)",
+		"- avatarFallback: { initials: 2-letter shorthand derived from the name }",
+		"- action: \"create\"",
+		"Clarification rule: If required profile fields are still missing, ask another concise question-card round using the existing ask_user_questions flow.",
+		"Expected output: otherwise, create the reusable custom agent now and emit exactly one structured AGENT_RESULT marker on its own line OUTSIDE any code fence. Do not wrap the marker, its JSON, or the surrounding response inside ``` fences (no ```markdown, ```json, or other fences around the result). Keep assistant prose brief.",
+		"[End Studio Agent Creation Request]",
 	].join("\n");
 }
 
