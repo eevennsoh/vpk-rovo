@@ -783,6 +783,7 @@ const activeRequests = new Map();
 const getListeningPidsForPort = createListeningPidReader();
 
 function getAIGatewayConfigReport(envVars = getEnvVars()) {
+	const realtimeConfig = getRealtimeConfig();
 	return {
 		AI_GATEWAY_URL: envVars.AI_GATEWAY_URL ? "SET" : "MISSING",
 		AI_GATEWAY_URL_GOOGLE: envVars.AI_GATEWAY_URL_GOOGLE ? "SET" : "MISSING",
@@ -792,6 +793,9 @@ function getAIGatewayConfigReport(envVars = getEnvVars()) {
 		ASAP_ISSUER: process.env.ASAP_ISSUER ? "SET" : "MISSING",
 		ASAP_KID: process.env.ASAP_KID ? "SET" : "MISSING",
 		ASAP_PRIVATE_KEY: process.env.ASAP_PRIVATE_KEY ? "SET" : "MISSING",
+		OPENAI_REALTIME_MODEL: realtimeConfig.model,
+		OPENAI_REALTIME_WS_URL: realtimeConfig.wsUrl ? "SET" : "MISSING",
+		OPENAI_REALTIME_VOICE: realtimeConfig.voice,
 	};
 }
 
