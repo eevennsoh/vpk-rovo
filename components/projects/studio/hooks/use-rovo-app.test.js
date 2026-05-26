@@ -31,10 +31,25 @@ test("passive Rovo app thread refresh is quiet and not a 3-second poll", () => {
 		assert.doesNotMatch(source, /void refreshThreads\(\{ reportBackendUnavailable: false \}\);[\s\S]{0,160}\}, 3000\);/u);
 	}
 
-	for (const source of [THREAD_LIST_SOURCE, ROVO_THREAD_LIST_SOURCE]) {
-		assert.match(source, /const ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS = 15_000;/u);
-		assert.doesNotMatch(source, /setInterval\([\s\S]*,\s*3000\);/u);
-	}
+	assert.doesNotMatch(THREAD_LIST_SOURCE, /setInterval\(/u);
+	assert.match(THREAD_LIST_SOURCE, /document\.addEventListener\("visibilitychange", handleVisibilityChange\);/u);
+	assert.match(ROVO_THREAD_LIST_SOURCE, /const ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS = 15_000;/u);
+	assert.doesNotMatch(ROVO_THREAD_LIST_SOURCE, /setInterval\([\s\S]*,\s*3000\);/u);
+});
+
+test("Studio thread list keeps its serialized refresh cache aligned with optimistic deletes", () => {
+	assert.match(
+		THREAD_LIST_SOURCE,
+		/function serializeRovoAppThreads\(threads: ReadonlyArray<RovoAppThread>\): string \{\s*return JSON\.stringify\(threads\);\s*\}/u,
+	);
+	assert.match(
+		THREAD_LIST_SOURCE,
+		/const nextSerialized = serializeRovoAppThreads\(result\);/u,
+	);
+	assert.match(
+		THREAD_LIST_SOURCE,
+		/setThreads\(\(prev\) => \{\s*const nextThreads = prev\.filter\(\(t\) => t\.id !== threadId\);\s*lastSerializedRef\.current = serializeRovoAppThreads\(nextThreads\);\s*return nextThreads;\s*\}\);/u,
+	);
 });
 
 test("Studio queued prompt actions preserve explicit creation mode", () => {

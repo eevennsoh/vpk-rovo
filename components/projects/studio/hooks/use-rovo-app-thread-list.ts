@@ -7,6 +7,10 @@ import {
 	listRovoAppThreads,
 } from "@/components/projects/studio/lib/api";
 
+function serializeRovoAppThreads(threads: ReadonlyArray<RovoAppThread>): string {
+	return JSON.stringify(threads);
+}
+
 export interface UseRovoAppThreadListResult {
 	deleteThread: (threadId: string) => Promise<void>;
 	refreshThreads: () => Promise<void>;
@@ -24,7 +28,7 @@ export function useRovoAppThreadList(): UseRovoAppThreadListResult {
 		try {
 			const result = await listRovoAppThreads();
 			if (mountedRef.current) {
-				const nextSerialized = JSON.stringify(result);
+				const nextSerialized = serializeRovoAppThreads(result);
 				if (nextSerialized !== lastSerializedRef.current) {
 					lastSerializedRef.current = nextSerialized;
 					setThreads(result);
@@ -65,7 +69,11 @@ export function useRovoAppThreadList(): UseRovoAppThreadListResult {
 	}, [refreshThreads]);
 
 	const deleteThread = useCallback(async (threadId: string) => {
-		setThreads((prev) => prev.filter((t) => t.id !== threadId));
+		setThreads((prev) => {
+			const nextThreads = prev.filter((t) => t.id !== threadId);
+			lastSerializedRef.current = serializeRovoAppThreads(nextThreads);
+			return nextThreads;
+		});
 		try {
 			await deleteRovoAppThread(threadId);
 		} catch {
