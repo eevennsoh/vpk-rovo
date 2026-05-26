@@ -163,7 +163,7 @@ function RovoAppComposerInner({
 	const [companyKnowledgeEnabled, setCompanyKnowledgeEnabled] = useState(true);
 	const [highlightedIndex, setHighlightedIndex] = useState(0);
 	const slashMenuRef = useRef<HTMLDivElement | null>(null);
-	const isPreviewPlaceholderActive = Boolean(previewPrompt) && controller.textInput.value.trim().length === 0;
+	const isPreviewPlaceholderActive = false;
 	const canSubmit = controller.textInput.value.trim().length > 0 || controller.attachments.files.length > 0;
 	const isComposerBusy = composerStatus === "submitted" || composerStatus === "streaming";
 	const hasQueuedPrompts = queuedPrompts.length > 0;
