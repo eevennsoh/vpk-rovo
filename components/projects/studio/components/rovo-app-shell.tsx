@@ -575,75 +575,89 @@ function HomeStarterBento({
 			</div>
 
 			<div className="@container/bento relative mt-6">
-				<AnimatePresence mode="wait" initial={false}>
-					<motion.div
-						key={activeCategory}
-						className="relative z-0 grid grid-cols-1 gap-3 auto-rows-[144px] sm:grid-cols-2 lg:grid-cols-5"
-						initial={shouldReduceMotion ? false : "hidden"}
-						animate="visible"
-						exit={shouldReduceMotion ? undefined : "exit"}
-						variants={{
-							hidden: {},
-							visible: {
-								transition: { staggerChildren: 0.04, delayChildren: 0.02 },
-							},
-							exit: {
-								transition: { staggerChildren: 0.02, staggerDirection: -1 },
-							},
-						}}
-					>
-						{visibleTemplates.map((template) => {
-							return (
-								<motion.button
-									key={template.title}
-									type="button"
-									aria-label={`Use prompt starter: ${template.title}`}
-									onClick={() => onSelect(template.prompt)}
-									onMouseEnter={() => handleTemplateMouseEnter(template.prompt)}
-									onMouseLeave={handleTemplateMouseLeave}
-									onFocus={() => handleTemplateFocus(template.prompt)}
-									onBlur={handleTemplateBlur}
-									className={cn(
-										"group flex min-h-0 flex-col items-start overflow-hidden rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-bold hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
-										template.layoutClassName,
-									)}
-									variants={{
-										hidden: { opacity: 0, y: 8, scale: 0.98 },
-										visible: { opacity: 1, y: 0, scale: 1 },
-										exit: { opacity: 0, y: -4, scale: 0.98 },
-									}}
-									transition={{ duration: 0.2, ease: [0, 0.4, 0, 1] }}
-									whileHover={
-										shouldReduceMotion
-											? undefined
-											: { y: -2, transition: { type: "spring", stiffness: 400, damping: 22 } }
-									}
-									whileTap={shouldReduceMotion ? undefined : { scale: 0.98, transition: { duration: 0.05 } }}
-									style={{ willChange: "transform, opacity" }}
-								>
-									<span className="inline-flex size-8 shrink-0 items-center justify-center transition-opacity duration-fast ease-out group-hover:opacity-90">
-										<Image
-											alt=""
-											aria-hidden
-											className="size-8 object-contain"
-											height={32}
-											src={template.iconSrc}
-											width={32}
-										/>
-									</span>
-									<span className="mt-3 block text-sm font-semibold leading-5 text-text">
-										{template.title}
-									</span>
-									<span className="mt-1 line-clamp-2 text-sm leading-5 text-text-subtle">
-										{template.description}
-									</span>
-								</motion.button>
-							);
-						})}
-					</motion.div>
-				</AnimatePresence>
+				<div
+					className="relative overflow-hidden"
+					style={
+						canShowMore
+							? {
+									maskImage:
+										"linear-gradient(to bottom, black calc(100% - 96px), transparent 100%)",
+									WebkitMaskImage:
+										"linear-gradient(to bottom, black calc(100% - 96px), transparent 100%)",
+								}
+							: undefined
+					}
+				>
+					<AnimatePresence mode="wait" initial={false}>
+						<motion.div
+							key={activeCategory}
+							className="grid grid-cols-1 gap-3 auto-rows-[144px] sm:grid-cols-2 lg:grid-cols-5"
+							initial={shouldReduceMotion ? false : "hidden"}
+							animate="visible"
+							exit={shouldReduceMotion ? undefined : "exit"}
+							variants={{
+								hidden: {},
+								visible: {
+									transition: { staggerChildren: 0.04, delayChildren: 0.02 },
+								},
+								exit: {
+									transition: { staggerChildren: 0.02, staggerDirection: -1 },
+								},
+							}}
+						>
+							{visibleTemplates.map((template) => {
+								return (
+									<motion.button
+										key={template.title}
+										type="button"
+										aria-label={`Use prompt starter: ${template.title}`}
+										onClick={() => onSelect(template.prompt)}
+										onMouseEnter={() => handleTemplateMouseEnter(template.prompt)}
+										onMouseLeave={handleTemplateMouseLeave}
+										onFocus={() => handleTemplateFocus(template.prompt)}
+										onBlur={handleTemplateBlur}
+										className={cn(
+											"group flex min-h-0 flex-col items-start overflow-hidden rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-bold hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
+											template.layoutClassName,
+										)}
+										variants={{
+											hidden: { opacity: 0, y: 8, scale: 0.98 },
+											visible: { opacity: 1, y: 0, scale: 1 },
+											exit: { opacity: 0, y: -4, scale: 0.98 },
+										}}
+										transition={{ duration: 0.2, ease: [0, 0.4, 0, 1] }}
+										whileHover={
+											shouldReduceMotion
+												? undefined
+												: { y: -2, transition: { type: "spring", stiffness: 400, damping: 22 } }
+										}
+										whileTap={shouldReduceMotion ? undefined : { scale: 0.98, transition: { duration: 0.05 } }}
+										style={{ willChange: "transform, opacity" }}
+									>
+										<span className="inline-flex size-8 shrink-0 items-center justify-center transition-opacity duration-fast ease-out group-hover:opacity-90">
+											<Image
+												alt=""
+												aria-hidden
+												className="size-8 object-contain"
+												height={32}
+												src={template.iconSrc}
+												width={32}
+											/>
+										</span>
+										<span className="mt-3 block text-sm font-semibold leading-5 text-text">
+											{template.title}
+										</span>
+										<span className="mt-1 line-clamp-2 text-sm leading-5 text-text-subtle">
+											{template.description}
+										</span>
+									</motion.button>
+								);
+							})}
+						</motion.div>
+					</AnimatePresence>
+				</div>
 				{canShowMore ? (
-					<div className="pointer-events-none absolute inset-x-0 -bottom-px z-10 flex justify-center bg-linear-to-t from-background via-background/95 to-transparent pt-24 pb-2">
+					<div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center pb-2">
 						<Button
 							type="button"
 							aria-label="Browse all agents"
