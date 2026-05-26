@@ -99,8 +99,8 @@ export function RovoAppBrand() {
 		return [
 			{
 				id: "chat-with-rovo",
-				icon: <Image alt="" aria-hidden className="mx-auto block size-4 object-contain object-center" height={16} src="/brand-icons/studio.svg" width={16} />,
-				label: "Chat with Studio",
+				icon: <Image alt="" aria-hidden className="mx-auto block size-4 object-contain object-center" height={16} src="/1p/rovo.svg" width={16} />,
+				label: "Chat with Rovo",
 				onSelect: () => {
 					resetAgentToRovo();
 					closeSelector();
@@ -127,20 +127,7 @@ export function RovoAppBrand() {
 		}
 	}
 
-	const studioSelectableAgents = useMemo(
-		() => selectableAgents.map((agent) => (
-			isRovoAgentProfile(agent)
-				? {
-						...agent,
-						avatarSrc: "/brand-icons/studio.svg",
-						byline: "Studio agent by Enterprise Solutions",
-						name: "Studio",
-					}
-				: agent
-		)),
-		[selectableAgents],
-	);
-	const triggerLabel = isRovoAgentProfile(selectedAgent) ? "Studio" : selectedAgent.name;
+	const triggerLabel = isRovoAgentProfile(selectedAgent) ? "Rovo" : selectedAgent.name;
 	const identityItemVariants = shouldReduceMotion ? ROVO_APP_BRAND_REDUCED_ITEM_VARIANTS : ROVO_APP_BRAND_ITEM_VARIANTS;
 
 	return (
@@ -148,7 +135,7 @@ export function RovoAppBrand() {
 			<DropdownMenuTrigger
 				render={
 					<Button
-						aria-label={isCustomAgentSelected ? `Select ${selectedAgent.name}` : "Select Studio agent"}
+						aria-label={isCustomAgentSelected ? `Select ${selectedAgent.name}` : "Select Rovo agent"}
 						className="h-8 shrink-0 gap-1.5 px-2 text-sm font-medium text-text"
 						type="button"
 						variant="ghost"
@@ -171,7 +158,7 @@ export function RovoAppBrand() {
 							variants={identityItemVariants}
 						>
 							<Image
-								src={isRovoAgentProfile(selectedAgent) ? "/brand-icons/studio.svg" : selectedAgent.avatarSrc}
+								src={selectedAgent.avatarSrc}
 								alt=""
 								className="size-4 object-contain"
 								width={16}
@@ -195,7 +182,7 @@ export function RovoAppBrand() {
 				sideOffset={8}
 			>
 				<AgentSelector
-					agents={studioSelectableAgents}
+					agents={selectableAgents}
 					heading={isCustomAgentSelected ? "Switch to another agent" : undefined}
 					onAgentToggle={handleAgentSelect}
 					onBrowseAgents={closeSelector}

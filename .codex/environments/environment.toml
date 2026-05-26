@@ -15,7 +15,7 @@ else
 	echo "Source worktree .env.local not found: $CODEX_SOURCE_TREE_PATH/.env.local"
 fi
 
-pnpm install
+pnpm install --prefer-offline
 '''
 
 [[actions]]
