@@ -40,6 +40,12 @@ test("Studio home starters frame agent building instead of generic one-off tasks
 	assert.doesNotMatch(SHELL_SOURCE, /prompt: "Summarize this into key points/u);
 });
 
+test("Studio chat header is hidden until a chat is active", () => {
+	assert.match(SHELL_SOURCE, /const shouldShowChatHeader = visibleMessages\.length > 0 \|\| hasActiveThreadRun \|\| chat\.isStreaming;/u);
+	assert.match(SHELL_SOURCE, /\{shouldShowChatHeader \? \(\s*<RovoAppHeader/u);
+	assert.doesNotMatch(SHELL_SOURCE, /\n\t\t\t\t<RovoAppHeader/u);
+});
+
 test("Studio agent results use guarded session-agent registration with preserve-thread selection", () => {
 	assert.match(SHELL_SOURCE, /type StudioAgentRegistryContext = ReturnType<typeof useRovoSelectedAgent> & \{/u);
 	assert.match(SHELL_SOURCE, /registerCreatedAgentFromResult\?:/u);
@@ -51,7 +57,8 @@ test("Studio agent results use guarded session-agent registration with preserve-
 	assert.match(SHELL_SOURCE, /studioAgentRegistry\.selectAgent\(agentId, \{ preserveCurrentThread: true \}\);/u);
 	assert.match(SHELL_SOURCE, /const agentResult = getMessageAgentResult\(message\);/u);
 	assert.match(SHELL_SOURCE, /if \(handleStudioAgentResultSelect\(agentResult, \{ sourceMessageId: message\.id \}\)\) \{[\s\S]*handledAgentResultKeysRef\.current\.add\(agentResultKey\);/u);
-	assert.match(SHELL_SOURCE, /studioAgentCreationThreadKeysRef\.current\.delete\(chat\.runtimeThreadId\);/u);
+	assert.match(SHELL_SOURCE, /const unmarkStudioAgentCreationThread = useCallback[\s\S]*studioAgentCreationThreadKeysRef\.current\.delete\(threadId\);/u);
+	assert.match(SHELL_SOURCE, /unmarkStudioAgentCreationThread\(chat\.runtimeThreadId\);/u);
 });
 
 test("RovoAppMessages renders the shared /agents-style agent result card", () => {
