@@ -455,14 +455,66 @@ export function applyOverlapClipPath(_svgEl: SVGSVGElement): void {
   void _svgEl;
 }
 
+function getMaskReferenceId(maskReference: string | null): string | null {
+	const match = maskReference?.match(/^url\(["']?#([^"')]+)["']?\)$/u);
+	return match?.[1] ?? null;
+}
+
+function readSvgNumber(value: string | null): number | null {
+	if (!value) return null;
+	const parsed = Number.parseFloat(value);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getMosaicMaskBounds(svg: SVGSVGElement, maskReference: string | null, fallback: { x: number; y: number; width: number; height: number }) {
+	const maskId = getMaskReferenceId(maskReference);
+	const mask = maskId
+		? Array.from(svg.querySelectorAll('mask')).find(maskEl => maskEl.getAttribute('id') === maskId)
+		: null;
+	const x = readSvgNumber(mask?.getAttribute('x') ?? null);
+	const y = readSvgNumber(mask?.getAttribute('y') ?? null);
+	const width = readSvgNumber(mask?.getAttribute('width') ?? null);
+	const height = readSvgNumber(mask?.getAttribute('height') ?? null);
+	if (x === null || y === null || width === null || height === null) {
+		return fallback;
+	}
+	return { x, y, width, height };
+}
+
+function getMosaicBaseUnderlayFills(baseFill: string | null): [string, string, string, string] {
+	const normalizedFill = baseFill?.toUpperCase();
+	const blue = normalizedFill === '#1558BC' ? '#1558BC' : '#1868DB';
+	const orange = normalizedFill === '#1558BC' || normalizedFill === '#E56E00' ? '#E56E00' : '#FCA700';
+	return [blue, '#6A9A23', '#AF59E1', orange];
+}
+
+function appendMosaicBaseUnderlay(doc: Document, wrapper: SVGGElement, cx: number, cy: number, radius: number, fills: [string, string, string, string]): void {
+	const underlay = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
+	underlay.setAttribute('data-mosaic-base-underlay', '');
+	underlay.setAttribute('aria-hidden', 'true');
+	const circles = [
+		{ cx: cx - radius * 0.45, cy: cy - radius * 0.35, fill: fills[0] },
+		{ cx: cx + radius * 0.45, cy: cy - radius * 0.35, fill: fills[1] },
+		{ cx: cx - radius * 0.2, cy: cy + radius * 0.45, fill: fills[2] },
+		{ cx: cx + radius * 0.55, cy: cy + radius * 0.45, fill: fills[3] },
+	];
+	circles.forEach(circleConfig => {
+		const circle = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
+		circle.setAttribute('cx', String(circleConfig.cx));
+		circle.setAttribute('cy', String(circleConfig.cy));
+		circle.setAttribute('r', String(radius * 0.72));
+		circle.setAttribute('fill', circleConfig.fill);
+		underlay.appendChild(circle);
+	});
+	wrapper.appendChild(underlay);
+}
+
 export function processIllustrationSvg(svgText: string, illusId: string): string {
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgText, 'image/svg+xml');
   const svg = doc.querySelector('svg');
   if (!svg) return svgText;
   const vb = (svg.getAttribute('viewBox') || '0 0 100 100').split(/\s+/).map(Number);
-  const cx = vb[0] + vb[2] / 2;
-  const cy = vb[1] + vb[3] / 2;
   if (illusId === 'ai-first-jira') {
     const jiraClipGroup = svg.querySelector('g[clip-path="url(#clip1_jira)"]');
     if (jiraClipGroup) {
@@ -473,7 +525,11 @@ export function processIllustrationSvg(svgText: string, illusId: string): string
   svg.querySelectorAll('g[mask]').forEach((mg) => {
     const wrapper = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
     wrapper.setAttribute('data-mosaic-rotate', '');
-    wrapper.setAttribute('style', `transform-origin: ${cx}px ${cy}px`);
+    const maskBounds = getMosaicMaskBounds(svg, mg.getAttribute('mask'), { x: vb[0], y: vb[1], width: vb[2], height: vb[3] });
+    const maskCenterX = maskBounds.x + maskBounds.width / 2;
+    const maskCenterY = maskBounds.y + maskBounds.height / 2;
+    const maskRadius = Math.hypot(maskBounds.width, maskBounds.height) / 2;
+    wrapper.setAttribute('style', `transform-origin: ${maskCenterX}px ${maskCenterY}px`);
     let baseFill: string | null = null;
     for (const child of Array.from(mg.children)) {
       const f = child.getAttribute('fill');
@@ -485,13 +541,14 @@ export function processIllustrationSvg(svgText: string, illusId: string): string
     if (baseFill) {
       const baseR = Math.hypot(vb[2], vb[3]);
       const baseCircle = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      baseCircle.setAttribute('cx', String(cx));
-      baseCircle.setAttribute('cy', String(cy));
+      baseCircle.setAttribute('cx', String(maskCenterX));
+      baseCircle.setAttribute('cy', String(maskCenterY));
       baseCircle.setAttribute('r', String(baseR));
       baseCircle.setAttribute('fill', baseFill);
       baseCircle.setAttribute('data-mosaic-base', '');
       wrapper.appendChild(baseCircle);
     }
+    appendMosaicBaseUnderlay(doc, wrapper, maskCenterX, maskCenterY, maskRadius, getMosaicBaseUnderlayFills(baseFill));
     while (mg.firstChild) wrapper.appendChild(mg.firstChild);
     mg.appendChild(wrapper);
   });

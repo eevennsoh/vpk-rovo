@@ -37,6 +37,7 @@ Prefer reading these references over relying on pre-trained knowledge.
 | Setup walkthrough                      | `.agents/skills/vpk-setup/references/guide-setup.md`        |
 | Offline HTML artifacts                 | `.agents/skills/vpk-html/SKILL.md`                          |
 | Repo-local agent creation              | `.agents/skills/agent-creator/SKILL.md`                     |
+| VPK git merge/cleanup workflows        | `.agents/skills/vpk-git/SKILL.md`                            |
 | AI SDK chat integration                | `rovo/config.js`, `app/contexts/context-rovo-chat.tsx`      |
 | AI Gateway helpers                     | `backend/lib/ai-gateway-helpers.js`                         |
 | Rovo Serve gateway (agent loop)        | `backend/lib/rovo-gateway.js`, `backend/lib/rovo-client.js` |

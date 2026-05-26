@@ -25,6 +25,16 @@ test("Rovo Illustration restores the embedded spot illustration API", () => {
 	assert.match(SPOT_SOURCE, /id: "deep-research"/u);
 });
 
+test("Rovo Illustration rotates clipped mosaics around their own mask center", () => {
+	assert.match(SPOT_SOURCE, /function getMosaicMaskBounds/u);
+	assert.match(SPOT_SOURCE, /function getMosaicBaseUnderlayFills/u);
+	assert.match(SPOT_SOURCE, /mg\.getAttribute\('mask'\)/u);
+	assert.match(SPOT_SOURCE, /transform-origin: \$\{maskCenterX\}px \$\{maskCenterY\}px/u);
+	assert.match(SPOT_SOURCE, /data-mosaic-base-underlay/u);
+	assert.doesNotMatch(SPOT_SOURCE, /data-mosaic-color-guard/u);
+	assert.doesNotMatch(SPOT_SOURCE, /transform-origin: \$\{cx\}px \$\{cy\}px/u);
+});
+
 test("Rovo Illustration is wired into the ui-custom catalog route", () => {
 	assert.match(DEMO_SOURCE, /from "@\/components\/ui-custom\/rovo-illustration"/u);
 	assert.ok(COMPONENTS_SOURCE.includes('customComponent("rovo-illustration", "Rovo Illustration")'));
