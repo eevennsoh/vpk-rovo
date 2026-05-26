@@ -7,6 +7,8 @@ import {
 	listRovoAppThreads,
 } from "@/components/projects/rovo/lib/api";
 
+const ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS = 15_000;
+
 export interface UseRovoAppThreadListResult {
 	deleteThread: (threadId: string) => Promise<void>;
 	refreshThreads: () => Promise<void>;
@@ -51,7 +53,7 @@ export function useRovoAppThreadList(): UseRovoAppThreadListResult {
 			if (document.visibilityState === "visible") {
 				void refreshThreads();
 			}
-		}, 3000);
+		}, ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS);
 
 		window.addEventListener("focus", handleFocus);
 		document.addEventListener("visibilitychange", handleVisibilityChange);

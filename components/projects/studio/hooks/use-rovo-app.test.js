@@ -4,10 +4,38 @@ const path = require("node:path");
 const test = require("node:test");
 
 const HOOK_SOURCE = fs.readFileSync(path.join(__dirname, "use-rovo-app.ts"), "utf8");
+const ROVO_HOOK_SOURCE = fs.readFileSync(
+	path.join(process.cwd(), "components/projects/rovo/hooks/use-rovo-app.ts"),
+	"utf8",
+);
+const THREAD_LIST_SOURCE = fs.readFileSync(
+	path.join(__dirname, "use-rovo-app-thread-list.ts"),
+	"utf8",
+);
+const ROVO_THREAD_LIST_SOURCE = fs.readFileSync(
+	path.join(process.cwd(), "components/projects/rovo/hooks/use-rovo-app-thread-list.ts"),
+	"utf8",
+);
 const TYPES_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "lib/rovo-app-types.ts"),
 	"utf8",
 );
+
+test("passive Rovo app thread refresh is quiet and not a 3-second poll", () => {
+	for (const source of [HOOK_SOURCE, ROVO_HOOK_SOURCE]) {
+		assert.match(source, /const ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS = 15_000;/u);
+		assert.match(source, /reportBackendUnavailable\?: boolean;/u);
+		assert.match(source, /const reportBackendUnavailable = options\.reportBackendUnavailable \?\? true;/u);
+		assert.match(source, /void refreshThreads\(\{ reportBackendUnavailable: false \}\);/u);
+		assert.match(source, /if \(reportBackendUnavailable\) \{\s*setInputError\(getRovoAppBackendUnavailableUserMessage\(\)\);/u);
+		assert.doesNotMatch(source, /void refreshThreads\(\{ reportBackendUnavailable: false \}\);[\s\S]{0,160}\}, 3000\);/u);
+	}
+
+	for (const source of [THREAD_LIST_SOURCE, ROVO_THREAD_LIST_SOURCE]) {
+		assert.match(source, /const ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS = 15_000;/u);
+		assert.doesNotMatch(source, /setInterval\([\s\S]*,\s*3000\);/u);
+	}
+});
 
 test("Studio queued prompt actions preserve explicit creation mode", () => {
 	assert.match(
