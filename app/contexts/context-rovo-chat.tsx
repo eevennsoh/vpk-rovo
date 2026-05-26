@@ -687,6 +687,7 @@ export interface StudioSessionAgentEntry {
 	resultKey: string;
 	sourceResult: RovoDataParts["agent-result"];
 	draftResult: RovoDataParts["agent-result"];
+	lastTouchedAt: number;
 	publishReadyResult: RovoDataParts["agent-result"];
 	publishedResult: RovoDataParts["agent-result"] | null;
 	publishStatus: StudioAgentPublishStatus;
@@ -1124,6 +1125,7 @@ function createSessionAgentEntryFromResult(params: {
 		resultKey,
 		sourceResult: params.agentResult,
 		draftResult: params.agentResult,
+		lastTouchedAt: Date.now(),
 		publishReadyResult: params.agentResult,
 		publishedResult: null,
 		publishStatus: "testing",
@@ -1133,6 +1135,7 @@ function createSessionAgentEntryFromResult(params: {
 const STUDIO_PUBLISHED_AGENTS_STORAGE_KEY = "vpk:studio:published-agents:v1";
 
 type PublishedAgentRecord = {
+	lastTouchedAt?: number;
 	profileId: string;
 	profileName: string;
 	resultKey: string;
@@ -1175,6 +1178,12 @@ function readPublishedAgentRecords(): readonly PublishedAgentRecord[] {
 	}
 }
 
+function getPublishedAgentRecordTimestamp(record: PublishedAgentRecord): number {
+	return typeof record.lastTouchedAt === "number" && Number.isFinite(record.lastTouchedAt)
+		? record.lastTouchedAt
+		: Date.now();
+}
+
 function writePublishedAgentRecords(records: readonly PublishedAgentRecord[]): void {
 	if (typeof window === "undefined") {
 		return;
@@ -1209,11 +1218,30 @@ function rehydrateSessionAgentEntriesFromStorage(): SessionAgentEntry[] {
 			resultKey: record.resultKey,
 			sourceResult: record.result,
 			draftResult: record.result,
+			lastTouchedAt: getPublishedAgentRecordTimestamp(record),
 			publishReadyResult: record.result,
 			publishedResult: record.result,
 			publishStatus: "published" as StudioAgentPublishStatus,
 		};
 	});
+}
+
+function getPublishedAgentRecordsFromEntries(
+	entries: readonly SessionAgentEntry[]
+): PublishedAgentRecord[] {
+	return entries
+		.filter((entry) => entry.publishStatus === "published" && entry.publishedResult)
+		.map((entry) => ({
+			lastTouchedAt: entry.lastTouchedAt,
+			profileId: entry.profile.id,
+			profileName: entry.profile.name,
+			resultKey: entry.resultKey,
+			result: entry.publishedResult as RovoDataParts["agent-result"],
+		}));
+}
+
+function persistPublishedAgentEntries(entries: readonly SessionAgentEntry[]): void {
+	writePublishedAgentRecords(getPublishedAgentRecordsFromEntries(entries));
 }
 
 export function RovoChatProvider({
@@ -2796,34 +2824,61 @@ export function RovoChatProvider({
 		setMessages,
 	]);
 
+	const touchSessionAgent = useCallback((profileId: string): SessionAgentEntry | null => {
+		const current = sessionAgentEntriesRef.current;
+		const index = current.findIndex((entry) => entry.profile.id === profileId);
+		if (index === -1) {
+			return null;
+		}
+
+		const existing = current[index];
+		const nextEntry: SessionAgentEntry = {
+			...existing,
+			lastTouchedAt: Date.now(),
+		};
+		const nextEntries = [...current];
+		nextEntries[index] = nextEntry;
+		sessionAgentEntriesRef.current = nextEntries;
+		setSessionAgentEntries(nextEntries);
+		if (nextEntry.publishStatus === "published") {
+			persistPublishedAgentEntries(nextEntries);
+		}
+		return nextEntry;
+	}, []);
+
 	const selectAgent = useCallback((agentId: string, options?: SelectAgentOptions) => {
 		const nextAgent = agentProfileById.get(agentId) ?? getRovoAgentProfile(agentId);
 		if (nextAgent.id === selectedAgentId) {
+			touchSessionAgent(nextAgent.id);
 			return;
 		}
 
+		touchSessionAgent(nextAgent.id);
 		setSelectedAgentId(nextAgent.id);
 		if (!options?.preserveCurrentThread) {
 			resetChat();
 		}
-	}, [agentProfileById, resetChat, selectedAgentId]);
+	}, [agentProfileById, resetChat, selectedAgentId, touchSessionAgent]);
 
 	const registerCreatedAgentFromResult = useCallback(
 		(
 			agentResult: RovoDataParts["agent-result"],
 			options?: RegisterCreatedAgentOptions
 		) => {
-				const entry = createSessionAgentEntryFromResult({
-					agentResult,
-					sessionAgentEntries: sessionAgentEntriesRef.current,
-					sourceKey: options?.sourceKey,
-					staticAgentProfiles,
-				});
+			const entry = createSessionAgentEntryFromResult({
+				agentResult,
+				sessionAgentEntries: sessionAgentEntriesRef.current,
+				sourceKey: options?.sourceKey,
+				staticAgentProfiles,
+			});
 			if (!entry) {
 				return null;
 			}
 
-			if (!sessionAgentEntriesRef.current.some((item) => item.resultKey === entry.resultKey)) {
+			const existingEntry = sessionAgentEntriesRef.current.find((item) => item.resultKey === entry.resultKey);
+			if (existingEntry) {
+				touchSessionAgent(existingEntry.profile.id);
+			} else {
 				const nextEntries = [...sessionAgentEntriesRef.current, entry];
 				sessionAgentEntriesRef.current = nextEntries;
 				setSessionAgentEntries(nextEntries);
@@ -2838,7 +2893,7 @@ export function RovoChatProvider({
 
 			return entry.profile;
 		},
-		[resetChat, selectedAgentId, staticAgentProfiles]
+		[resetChat, selectedAgentId, staticAgentProfiles, touchSessionAgent]
 	);
 
 	const getSessionAgentEntry = useCallback((profileId: string): SessionAgentEntry | null => {
@@ -2879,6 +2934,7 @@ export function RovoChatProvider({
 				...existing,
 				profile: nextProfile,
 				draftResult: nextDraftResult,
+				lastTouchedAt: Date.now(),
 				publishStatus: nextPublishStatus,
 			};
 
@@ -2886,6 +2942,9 @@ export function RovoChatProvider({
 			nextEntries[index] = nextEntry;
 			sessionAgentEntriesRef.current = nextEntries;
 			setSessionAgentEntries(nextEntries);
+			if (nextEntry.publishStatus === "published") {
+				persistPublishedAgentEntries(nextEntries);
+			}
 			return nextEntry;
 		},
 		[]
@@ -2909,12 +2968,16 @@ export function RovoChatProvider({
 
 			const nextEntry: SessionAgentEntry = {
 				...existing,
+				lastTouchedAt: Date.now(),
 				publishReadyResult: existing.draftResult,
 			};
 			const nextEntries = [...current];
 			nextEntries[index] = nextEntry;
 			sessionAgentEntriesRef.current = nextEntries;
 			setSessionAgentEntries(nextEntries);
+			if (nextEntry.publishStatus === "published") {
+				persistPublishedAgentEntries(nextEntries);
+			}
 			return nextEntry;
 		},
 		[]
@@ -2932,6 +2995,7 @@ export function RovoChatProvider({
 			const publishResult = existing.publishReadyResult;
 			const nextEntry: SessionAgentEntry = {
 				...existing,
+				lastTouchedAt: Date.now(),
 				publishedResult: publishResult,
 				publishStatus: "published",
 			};
@@ -2940,15 +3004,7 @@ export function RovoChatProvider({
 			sessionAgentEntriesRef.current = nextEntries;
 			setSessionAgentEntries(nextEntries);
 
-			const publishedRecords: PublishedAgentRecord[] = nextEntries
-				.filter((entry) => entry.publishStatus === "published" && entry.publishedResult)
-				.map((entry) => ({
-					profileId: entry.profile.id,
-					profileName: entry.profile.name,
-					resultKey: entry.resultKey,
-					result: entry.publishedResult as RovoDataParts["agent-result"],
-				}));
-			writePublishedAgentRecords(publishedRecords);
+			persistPublishedAgentEntries(nextEntries);
 
 			return nextEntry;
 		},

@@ -783,6 +783,16 @@ function normalizeStudioAgentResult(agentResult: RovoDataParts["agent-result"]):
 	};
 }
 
+function getStudioAgentCreationThreadTitle(thread: { title: string } | null): string {
+	const title = thread?.title.trim();
+
+	if (title && title !== "New chat") {
+		return title;
+	}
+
+	return "Agent creation";
+}
+
 type StudioAgentRegistrationResult =
 	| string
 	| {
@@ -1159,6 +1169,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		profileId: string;
 		sourceMessageId: string | null;
 	} | null>(null);
+	const [isSidebarAgentBrowserOpen, setIsSidebarAgentBrowserOpen] = useState(false);
 	const [agentConfigCompactTab, setAgentConfigCompactTab] =
 		useState<AgentConfigCompactTab>("config");
 
@@ -1220,6 +1231,35 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			return true;
 		},
 		[chat.activeThreadId, chat.runtimeThreadId, studioAgentRegistry],
+	);
+
+	const handleStudioSidebarAgentSelect = useCallback(
+		(agentId: string) => {
+			studioAgentRegistry.selectAgent(agentId, { preserveCurrentThread: true });
+			setActiveAgentConfig({
+				profileId: agentId,
+				sourceMessageId: null,
+			});
+			setAgentConfigCompactTab("config");
+		},
+		[studioAgentRegistry],
+	);
+
+	const handleSidebarBrowseAgentSelect = useCallback(
+		(agent: { id: string }) => {
+			studioAgentRegistry.selectAgent(agent.id, { preserveCurrentThread: true });
+			if (studioAgentRegistry.getSessionAgentEntry?.(agent.id)) {
+				setActiveAgentConfig({
+					profileId: agent.id,
+					sourceMessageId: null,
+				});
+				setAgentConfigCompactTab("config");
+			} else {
+				setActiveAgentConfig(null);
+			}
+			setIsSidebarAgentBrowserOpen(false);
+		},
+		[studioAgentRegistry],
 	);
 
 	const handleCloseAgentConfigPane = useCallback(() => {
@@ -1397,7 +1437,18 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const pendingTypedScrollAnchorRef = useRef(false);
 	const isDefaultAgentHomeStateRef = useRef(false);
 	const studioAgentCreationThreadKeysRef = useRef<Set<string>>(new Set());
+	const studioAgentCreationThreadTouchedAtRef = useRef<Map<string, number>>(new Map());
 	const [studioAgentCreationThreadIds, setStudioAgentCreationThreadIds] = useState<ReadonlySet<string>>(() => new Set());
+	const studioAgentCreationThreads = useMemo(() => {
+		return Array.from(studioAgentCreationThreadIds).map((threadId) => {
+			const thread = chat.threads.find((currentThread) => currentThread.id === threadId) ?? null;
+			return {
+				id: threadId,
+				lastTouchedAt: studioAgentCreationThreadTouchedAtRef.current.get(threadId) ?? 0,
+				title: getStudioAgentCreationThreadTitle(thread),
+			};
+		});
+	}, [chat.threads, studioAgentCreationThreadIds]);
 	const handledAgentResultKeysRef = useRef<Set<string>>(new Set());
 	const previousTypedAnchorUserMessageIdRef = useRef<string | null>(null);
 	const typedScrollAnchorSourceRef = useRef<TypedScrollAnchorSource>("none");
@@ -1410,11 +1461,8 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		}
 
 		studioAgentCreationThreadKeysRef.current.add(threadId);
+		studioAgentCreationThreadTouchedAtRef.current.set(threadId, Date.now());
 		setStudioAgentCreationThreadIds((currentThreadIds) => {
-			if (currentThreadIds.has(threadId)) {
-				return currentThreadIds;
-			}
-
 			const nextThreadIds = new Set(currentThreadIds);
 			nextThreadIds.add(threadId);
 			return nextThreadIds;
@@ -1427,6 +1475,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		}
 
 		studioAgentCreationThreadKeysRef.current.delete(threadId);
+		studioAgentCreationThreadTouchedAtRef.current.delete(threadId);
 		setStudioAgentCreationThreadIds((currentThreadIds) => {
 			if (!currentThreadIds.has(threadId)) {
 				return currentThreadIds;
@@ -3280,7 +3329,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			<SidebarProvider className={cn(embedded ? "h-full" : "h-svh", "overflow-hidden")} defaultOpen={!embedded} onOpenChange={chat.setSidebarOpen} open={chat.sidebarOpen} style={rovoAppSidebarStyle}>
 			<RovoAppSidebar
 				activeThreadId={chat.activeThreadId}
-				agentCreationThreadIds={studioAgentCreationThreadIds}
+				agentCreationThreads={studioAgentCreationThreads}
 				hoverOpen={isHoverOpen}
 				isResizing={sidebarResize.isResizing}
 				onCancelThreadRun={async (threadId) => {
@@ -3297,6 +3346,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						void chat.openNewChat();
 					});
 				}}
+				onSelectAgent={handleStudioSidebarAgentSelect}
 				onSelectThread={async (threadId) => {
 					setOptimisticUserMessage(null);
 					startTransition(async () => {
@@ -3309,6 +3359,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				}}
 				onSidebarMouseEnter={handleSidebarContentMouseEnter}
 				onSidebarMouseLeave={handleSidebarContentMouseLeave}
+				onViewAllAgents={() => setIsSidebarAgentBrowserOpen(true)}
 				resizeHandle={
 					<SidebarResizeHandle
 						data-active={sidebarResize.isResizing ? "" : undefined}
@@ -3319,9 +3370,17 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						onPointerLeave={sidebarResize.onResizeHandlePointerLeave}
 					/>
 				}
+				selectedAgentId={studioAgentRegistry.selectedAgentId}
+				sessionAgentEntries={studioAgentRegistry.sessionAgentEntries}
 				threads={chat.threads}
 				threadsLoaded={chat.threadsLoaded}
 				topOffset={!embedded}
+			/>
+			<BrowseAgentsDialog
+				open={isSidebarAgentBrowserOpen}
+				onOpenChange={setIsSidebarAgentBrowserOpen}
+				onSelectAgent={handleSidebarBrowseAgentSelect}
+				sessionAgentEntries={studioAgentRegistry.sessionAgentEntries}
 			/>
 
 			{!embedded ? (
