@@ -1,7 +1,7 @@
 "use client";
 
 import type { FileUIPart } from "ai";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { type CSSProperties, startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -417,6 +417,7 @@ function HomeStarterBento({
 }>) {
 	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>("analyze");
 	const [browseOpen, setBrowseOpen] = useState(false);
+	const shouldReduceMotion = useReducedMotion();
 	const templates = HOME_STARTER_VIEWS[activeCategory];
 	const visibleTemplates = templates.slice(0, 5);
 	const canShowMore = templates.length > visibleTemplates.length;
@@ -436,12 +437,24 @@ function HomeStarterBento({
 								setActiveCategory(category.id);
 							}}
 							className={cn(
-								"inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-medium leading-5 outline-none transition-colors duration-fast ease-out focus-visible:ring-3 focus-visible:ring-ring/50",
+								"relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-medium leading-5 outline-none transition-colors duration-fast ease-out focus-visible:ring-3 focus-visible:ring-ring/50",
 								isActive
-									? "border-border-selected bg-bg-selected text-text-selected"
+									? "border-border-selected text-text-selected"
 									: "border-border bg-background text-text-subtle hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 							)}
 						>
+							{isActive ? (
+								<motion.span
+									aria-hidden
+									className="absolute inset-0 -z-10 rounded-md bg-bg-selected"
+									layoutId="studioStarterTabPill"
+									transition={
+										shouldReduceMotion
+											? { duration: 0 }
+											: { type: "spring", stiffness: 500, damping: 38, mass: 0.6 }
+									}
+								/>
+							) : null}
 							{category.iconSrc ? (
 								<span aria-hidden className="inline-flex size-6 shrink-0 items-center justify-center">
 									<Image
@@ -460,43 +473,73 @@ function HomeStarterBento({
 			</div>
 
 			<div className="@container/bento relative mt-6">
-				<div className="grid grid-cols-1 gap-3 [grid-auto-rows:minmax(144px,auto)] sm:grid-cols-2 lg:grid-cols-5">
-					{visibleTemplates.map((template) => {
-						return (
-							<button
-								key={template.title}
-								type="button"
-								aria-label={`Use prompt starter: ${template.title}`}
-								onClick={() => onSelect(template.prompt)}
-								onMouseEnter={() => onPreviewStart(template.prompt)}
-								onMouseLeave={onPreviewEnd}
-								onFocus={() => onPreviewStart(template.prompt)}
-								onBlur={onPreviewEnd}
-								className={cn(
-									"group flex min-h-0 flex-col items-start rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:border-border-selected hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
-									template.layoutClassName,
-								)}
-							>
-								<span className="inline-flex size-8 shrink-0 items-center justify-center transition-opacity duration-fast ease-out group-hover:opacity-90">
-									<Image
-										alt=""
-										aria-hidden
-										className="size-8 object-contain"
-										height={32}
-										src={template.iconSrc}
-										width={32}
-									/>
-								</span>
-								<span className="mt-3 block text-sm font-semibold leading-5 text-text">
-									{template.title}
-								</span>
-								<span className="mt-1 line-clamp-2 text-sm leading-5 text-text-subtle @4xl/bento:line-clamp-none">
-									{template.description}
-								</span>
-							</button>
-						);
-					})}
-				</div>
+				<AnimatePresence mode="wait" initial={false}>
+					<motion.div
+						key={activeCategory}
+						className="grid grid-cols-1 gap-3 [grid-auto-rows:minmax(144px,auto)] sm:grid-cols-2 lg:grid-cols-5"
+						initial={shouldReduceMotion ? false : "hidden"}
+						animate="visible"
+						exit={shouldReduceMotion ? undefined : "exit"}
+						variants={{
+							hidden: {},
+							visible: {
+								transition: { staggerChildren: 0.04, delayChildren: 0.02 },
+							},
+							exit: {
+								transition: { staggerChildren: 0.02, staggerDirection: -1 },
+							},
+						}}
+					>
+						{visibleTemplates.map((template) => {
+							return (
+								<motion.button
+									key={template.title}
+									type="button"
+									aria-label={`Use prompt starter: ${template.title}`}
+									onClick={() => onSelect(template.prompt)}
+									onMouseEnter={() => onPreviewStart(template.prompt)}
+									onMouseLeave={onPreviewEnd}
+									onFocus={() => onPreviewStart(template.prompt)}
+									onBlur={onPreviewEnd}
+									className={cn(
+										"group flex min-h-0 flex-col items-start rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-selected hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
+										template.layoutClassName,
+									)}
+									variants={{
+										hidden: { opacity: 0, y: 8, scale: 0.98 },
+										visible: { opacity: 1, y: 0, scale: 1 },
+										exit: { opacity: 0, y: -4, scale: 0.98 },
+									}}
+									transition={{ duration: 0.2, ease: [0, 0.4, 0, 1] }}
+									whileHover={
+										shouldReduceMotion
+											? undefined
+											: { y: -2, transition: { type: "spring", stiffness: 400, damping: 22 } }
+									}
+									whileTap={shouldReduceMotion ? undefined : { scale: 0.98, transition: { duration: 0.05 } }}
+									style={{ willChange: "transform, opacity" }}
+								>
+									<span className="inline-flex size-8 shrink-0 items-center justify-center transition-opacity duration-fast ease-out group-hover:opacity-90">
+										<Image
+											alt=""
+											aria-hidden
+											className="size-8 object-contain"
+											height={32}
+											src={template.iconSrc}
+											width={32}
+										/>
+									</span>
+									<span className="mt-3 block text-sm font-semibold leading-5 text-text">
+										{template.title}
+									</span>
+									<span className="mt-1 line-clamp-2 text-sm leading-5 text-text-subtle @4xl/bento:line-clamp-none">
+										{template.description}
+									</span>
+								</motion.button>
+							);
+						})}
+					</motion.div>
+				</AnimatePresence>
 				{canShowMore ? (
 					<div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-linear-to-t from-background via-background/85 to-transparent pt-12 pb-1">
 						<Button
@@ -2498,7 +2541,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	});
 	const hasActiveThreadRun = typeof chat.activeThreadId === "string" && chat.backgroundStreamThreadIds.has(chat.activeThreadId);
 	const showHomeState = !chat.isLoadingThread && !isArtifactOpen && !hasActiveThreadRun && visibleMessages.length === 0;
-	const shouldShowChatHeader = visibleMessages.length > 0 || hasActiveThreadRun || chat.isStreaming;
 	const isDefaultAgentHomeState = showHomeState && !isCustomAgentSelected;
 	isDefaultAgentHomeStateRef.current = isDefaultAgentHomeState;
 	const shouldReduceMotion = useReducedMotion();
@@ -2905,10 +2947,10 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			{isDefaultAgentHomeState ? (
 				<motion.div
 					className="z-10 mx-auto mb-5 w-[90%] px-3"
-					initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
-					animate={{ opacity: 1, y: 0 }}
-					transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.25 }}
-					style={{ willChange: "transform, opacity" }}
+					initial={shouldReduceMotion ? false : { opacity: 0 }}
+					animate={{ opacity: 1 }}
+					transition={{ duration: 0.25, ease: [0, 0.4, 0, 1], delay: 0.2 }}
+					style={{ willChange: "opacity" }}
 				>
 					<HomeStarterBento
 						onSelect={handleGallerySelect}
@@ -3259,17 +3301,15 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						<RightNavigation product="studio" windowWidth={nav.windowWidth} onToggleChat={nav.toggleChat} onToggleTheme={nav.toggleTheme} />
 					</div>
 				) : null}
-				{shouldShowChatHeader ? (
-					<RovoAppHeader
-						artifactMenuItems={artifactMenuItems}
-						isArtifactOpen={isArtifactOpen}
-						onNewChat={() => {
-							setOptimisticUserMessage(null);
-							void chat.openNewChat();
-						}}
-						onOpenDocument={(documentId) => void chat.openDocument(documentId)}
-					/>
-				) : null}
+				<RovoAppHeader
+					artifactMenuItems={artifactMenuItems}
+					isArtifactOpen={isArtifactOpen}
+					onNewChat={() => {
+						setOptimisticUserMessage(null);
+						void chat.openNewChat();
+					}}
+					onOpenDocument={(documentId) => void chat.openDocument(documentId)}
+				/>
 				<main ref={shellRef} className="relative flex min-h-0 min-w-0 flex-1 bg-background px-3 text-foreground">
 					<RovoAppShellPaneLayout
 						agentConfigPane={agentConfigPane}
