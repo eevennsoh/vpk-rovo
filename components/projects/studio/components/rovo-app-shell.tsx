@@ -424,7 +424,7 @@ function HomeStarterBento({
 
 	return (
 		<div className="w-full">
-			<div className="no-scrollbar -mx-1 flex justify-center gap-2 overflow-x-auto px-1 py-1">
+			<div className="no-scrollbar -mx-1 flex justify-center gap-2 overflow-x-auto px-1">
 				{HOME_STARTER_CATEGORIES.map((category) => {
 					const isActive = activeCategory === category.id;
 
@@ -476,7 +476,7 @@ function HomeStarterBento({
 				<AnimatePresence mode="wait" initial={false}>
 					<motion.div
 						key={activeCategory}
-						className="grid grid-cols-1 gap-3 [grid-auto-rows:minmax(144px,auto)] sm:grid-cols-2 lg:grid-cols-5"
+						className="grid grid-cols-1 gap-3 auto-rows-[144px] sm:grid-cols-2 lg:grid-cols-5"
 						initial={shouldReduceMotion ? false : "hidden"}
 						animate="visible"
 						exit={shouldReduceMotion ? undefined : "exit"}
@@ -502,7 +502,7 @@ function HomeStarterBento({
 									onFocus={() => onPreviewStart(template.prompt)}
 									onBlur={onPreviewEnd}
 									className={cn(
-										"group flex min-h-0 flex-col items-start rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-selected hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
+										"group flex min-h-0 flex-col items-start overflow-hidden rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-selected hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
 										template.layoutClassName,
 									)}
 									variants={{
@@ -532,7 +532,7 @@ function HomeStarterBento({
 									<span className="mt-3 block text-sm font-semibold leading-5 text-text">
 										{template.title}
 									</span>
-									<span className="mt-1 line-clamp-2 text-sm leading-5 text-text-subtle @4xl/bento:line-clamp-none">
+									<span className="mt-1 line-clamp-2 text-sm leading-5 text-text-subtle">
 										{template.description}
 									</span>
 								</motion.button>
@@ -2541,6 +2541,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	});
 	const hasActiveThreadRun = typeof chat.activeThreadId === "string" && chat.backgroundStreamThreadIds.has(chat.activeThreadId);
 	const showHomeState = !chat.isLoadingThread && !isArtifactOpen && !hasActiveThreadRun && visibleMessages.length === 0;
+	const shouldShowChatHeader = visibleMessages.length > 0 || hasActiveThreadRun || chat.isStreaming;
 	const isDefaultAgentHomeState = showHomeState && !isCustomAgentSelected;
 	isDefaultAgentHomeStateRef.current = isDefaultAgentHomeState;
 	const shouldReduceMotion = useReducedMotion();
@@ -3301,15 +3302,17 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						<RightNavigation product="studio" windowWidth={nav.windowWidth} onToggleChat={nav.toggleChat} onToggleTheme={nav.toggleTheme} />
 					</div>
 				) : null}
-				<RovoAppHeader
-					artifactMenuItems={artifactMenuItems}
-					isArtifactOpen={isArtifactOpen}
-					onNewChat={() => {
-						setOptimisticUserMessage(null);
-						void chat.openNewChat();
-					}}
-					onOpenDocument={(documentId) => void chat.openDocument(documentId)}
-				/>
+				{shouldShowChatHeader ? (
+					<RovoAppHeader
+						artifactMenuItems={artifactMenuItems}
+						isArtifactOpen={isArtifactOpen}
+						onNewChat={() => {
+							setOptimisticUserMessage(null);
+							void chat.openNewChat();
+						}}
+						onOpenDocument={(documentId) => void chat.openDocument(documentId)}
+					/>
+				) : null}
 				<main ref={shellRef} className="relative flex min-h-0 min-w-0 flex-1 bg-background px-3 text-foreground">
 					<RovoAppShellPaneLayout
 						agentConfigPane={agentConfigPane}
