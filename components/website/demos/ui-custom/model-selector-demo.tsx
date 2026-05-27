@@ -43,6 +43,23 @@ const MISTRAL_MODELS = [
 	{ value: "codestral", label: "Codestral" },
 ];
 
+const REASONING_MODE_SECTIONS = [
+	{
+		options: [{ value: "quick-auto", label: "Searching and simple Q&A" }],
+		title: "Quick answer",
+	},
+	{
+		options: [
+			{ value: "deep-auto", label: "Recommended" },
+			{ value: "gemini-flash-3", label: "Gemini Flash 3" },
+			{ value: "gpt-5.4", label: "GPT 5.4" },
+			{ value: "sonnet-4.6", label: "Sonnet 4.6" },
+			{ value: "opus-4.6", label: "Opus 4.6" },
+		],
+		title: "Think deeper",
+	},
+];
+
 // — Default: minimal command palette —
 
 export default function ModelSelectorDemo() {
@@ -87,12 +104,13 @@ export function ModelSelectorDemoWithSearch() {
 						{ANTHROPIC_MODELS.map((m) => (
 							<ModelSelectorItem
 								key={m.value}
+								data-checked={selected === m.value}
 								value={m.value}
 								onSelect={() => setSelected(m.value)}
 							>
 								<ModelSelectorName>{m.label}</ModelSelectorName>
 								{selected === m.value ? (
-									<CheckIcon className="ml-auto size-4 text-text-subtle" />
+									<CheckIcon size="small" className="ml-auto text-text-selected" />
 								) : null}
 							</ModelSelectorItem>
 						))}
@@ -101,12 +119,13 @@ export function ModelSelectorDemoWithSearch() {
 						{OPENAI_MODELS.map((m) => (
 							<ModelSelectorItem
 								key={m.value}
+								data-checked={selected === m.value}
 								value={m.value}
 								onSelect={() => setSelected(m.value)}
 							>
 								<ModelSelectorName>{m.label}</ModelSelectorName>
 								{selected === m.value ? (
-									<CheckIcon className="ml-auto size-4 text-text-subtle" />
+									<CheckIcon size="small" className="ml-auto text-text-selected" />
 								) : null}
 							</ModelSelectorItem>
 						))}
@@ -115,12 +134,13 @@ export function ModelSelectorDemoWithSearch() {
 						{GOOGLE_MODELS.map((m) => (
 							<ModelSelectorItem
 								key={m.value}
+								data-checked={selected === m.value}
 								value={m.value}
 								onSelect={() => setSelected(m.value)}
 							>
 								<ModelSelectorName>{m.label}</ModelSelectorName>
 								{selected === m.value ? (
-									<CheckIcon className="ml-auto size-4 text-text-subtle" />
+									<CheckIcon size="small" className="ml-auto text-text-selected" />
 								) : null}
 							</ModelSelectorItem>
 						))}
@@ -161,11 +181,15 @@ export function ModelSelectorDemoWithLogos() {
 						{ANTHROPIC_MODELS.map((m) => (
 							<ModelSelectorItem
 								key={m.value}
+								data-checked={selected === m.value}
 								value={m.value}
 								onSelect={() => setSelected(m.value)}
 							>
 								<ModelSelectorLogo provider="anthropic" />
 								<ModelSelectorName>{m.label}</ModelSelectorName>
+								{selected === m.value ? (
+									<CheckIcon size="small" className="ml-auto text-text-selected" />
+								) : null}
 							</ModelSelectorItem>
 						))}
 					</ModelSelectorGroup>
@@ -174,11 +198,15 @@ export function ModelSelectorDemoWithLogos() {
 						{OPENAI_MODELS.map((m) => (
 							<ModelSelectorItem
 								key={m.value}
+								data-checked={selected === m.value}
 								value={m.value}
 								onSelect={() => setSelected(m.value)}
 							>
 								<ModelSelectorLogo provider="openai" />
 								<ModelSelectorName>{m.label}</ModelSelectorName>
+								{selected === m.value ? (
+									<CheckIcon size="small" className="ml-auto text-text-selected" />
+								) : null}
 							</ModelSelectorItem>
 						))}
 					</ModelSelectorGroup>
@@ -187,11 +215,15 @@ export function ModelSelectorDemoWithLogos() {
 						{GOOGLE_MODELS.map((m) => (
 							<ModelSelectorItem
 								key={m.value}
+								data-checked={selected === m.value}
 								value={m.value}
 								onSelect={() => setSelected(m.value)}
 							>
 								<ModelSelectorLogo provider="google" />
 								<ModelSelectorName>{m.label}</ModelSelectorName>
+								{selected === m.value ? (
+									<CheckIcon size="small" className="ml-auto text-text-selected" />
+								) : null}
 							</ModelSelectorItem>
 						))}
 					</ModelSelectorGroup>
@@ -200,11 +232,15 @@ export function ModelSelectorDemoWithLogos() {
 						{MISTRAL_MODELS.map((m) => (
 							<ModelSelectorItem
 								key={m.value}
+								data-checked={selected === m.value}
 								value={m.value}
 								onSelect={() => setSelected(m.value)}
 							>
 								<ModelSelectorLogo provider="mistral" />
 								<ModelSelectorName>{m.label}</ModelSelectorName>
+								{selected === m.value ? (
+									<CheckIcon size="small" className="ml-auto text-text-selected" />
+								) : null}
 							</ModelSelectorItem>
 						))}
 					</ModelSelectorGroup>
@@ -239,11 +275,15 @@ export function ModelSelectorDemoMultiProvider() {
 						{ANTHROPIC_MODELS.map((m) => (
 							<ModelSelectorItem
 								key={m.value}
+								data-checked={selected === m.value}
 								value={m.value}
 								onSelect={() => setSelected(m.value)}
 							>
 								<ModelSelectorLogo provider="anthropic" />
 								<ModelSelectorName>{m.label}</ModelSelectorName>
+								{selected === m.value ? (
+									<CheckIcon size="small" className="ml-auto text-text-selected" />
+								) : null}
 							</ModelSelectorItem>
 						))}
 					</ModelSelectorGroup>
@@ -251,11 +291,15 @@ export function ModelSelectorDemoMultiProvider() {
 						{OPENAI_MODELS.map((m) => (
 							<ModelSelectorItem
 								key={m.value}
+								data-checked={selected === m.value}
 								value={m.value}
 								onSelect={() => setSelected(m.value)}
 							>
 								<ModelSelectorLogo provider="openai" />
 								<ModelSelectorName>{m.label}</ModelSelectorName>
+								{selected === m.value ? (
+									<CheckIcon size="small" className="ml-auto text-text-selected" />
+								) : null}
 							</ModelSelectorItem>
 						))}
 					</ModelSelectorGroup>
@@ -263,14 +307,69 @@ export function ModelSelectorDemoMultiProvider() {
 						{GOOGLE_MODELS.map((m) => (
 							<ModelSelectorItem
 								key={m.value}
+								data-checked={selected === m.value}
 								value={m.value}
 								onSelect={() => setSelected(m.value)}
 							>
 								<ModelSelectorLogo provider="google" />
 								<ModelSelectorName>{m.label}</ModelSelectorName>
+								{selected === m.value ? (
+									<CheckIcon size="small" className="ml-auto text-text-selected" />
+								) : null}
 							</ModelSelectorItem>
 						))}
 					</ModelSelectorGroup>
+				</ModelSelectorList>
+			</ModelSelectorContent>
+		</ModelSelector>
+	);
+}
+
+// — Reasoning modes: grouped mode options —
+
+export function ModelSelectorDemoReasoningModes() {
+	const [selected, setSelected] = useState("quick-auto");
+	const current = REASONING_MODE_SECTIONS
+		.flatMap((section) =>
+			section.options.map((option) => ({
+				...option,
+				optionCount: section.options.length,
+				section: section.title,
+			}))
+		)
+		.find((option) => option.value === selected);
+
+	return (
+		<ModelSelector>
+			<ModelSelectorTrigger render={<Button variant="outline" size="sm" />}>
+				{current
+					? current.optionCount === 1
+						? current.section
+						: `${current.section}: ${current.label}`
+					: "Select mode"}
+			</ModelSelectorTrigger>
+			<ModelSelectorContent className="w-[360px] max-w-[calc(100vw-2rem)]">
+				<ModelSelectorList>
+					{REASONING_MODE_SECTIONS.map((section) => (
+						<ModelSelectorGroup
+							key={section.title}
+							heading={section.title}
+						>
+							{section.options.map((option) => (
+								<ModelSelectorItem
+									key={option.value}
+									data-checked={selected === option.value}
+									value={option.value}
+									onSelect={() => setSelected(option.value)}
+								>
+									<ModelSelectorName>{option.label}</ModelSelectorName>
+									{selected === option.value ? (
+										<CheckIcon size="small" className="ml-auto text-text-selected" />
+									) : null}
+								</ModelSelectorItem>
+							))}
+						</ModelSelectorGroup>
+					))}
 				</ModelSelectorList>
 			</ModelSelectorContent>
 		</ModelSelector>

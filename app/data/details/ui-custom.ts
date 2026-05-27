@@ -2286,7 +2286,7 @@ const edgeTypes = {
 
 	"model-selector": {
 		description:
-			"A searchable command palette for selecting AI models, built on cmdk with fuzzy search, keyboard navigation, grouped provider organization, and provider logos fetched from models.dev.",
+			"A searchable dropdown menu for selecting AI models, built on cmdk with fuzzy search, keyboard navigation, grouped provider organization, and provider logos fetched from models.dev.",
 		usage: `import {
   ModelSelector,
   ModelSelectorTrigger,
@@ -2332,24 +2332,29 @@ const edgeTypes = {
 			{
 				name: "open",
 				type: "boolean",
-				description: "Controlled open state for the dialog.",
+				description: "Controlled open state for the dropdown menu.",
+			},
+			{
+				name: "modal",
+				type: "boolean",
+				default: "false",
+				description: "Whether the dropdown menu should trap outside interaction. Defaults to false so the embedded search input keeps focus.",
 			},
 			{
 				name: "onOpenChange",
 				type: "(open: boolean) => void",
-				description: "Callback when dialog open state changes.",
+				description: "Callback when dropdown menu open state changes.",
 			},
 		],
 		subComponents: [
-			{ name: "ModelSelector", description: "Root Dialog wrapper." },
-			{ name: "ModelSelectorTrigger", description: "Button trigger to open the command palette." },
-			{ name: "ModelSelectorContent", description: "Dialog content with embedded Command, configurable title (default: 'Model Selector')." },
-			{ name: "ModelSelectorDialog", description: "Alternative CommandDialog wrapper." },
+			{ name: "ModelSelector", description: "Root DropdownMenu wrapper." },
+			{ name: "ModelSelectorTrigger", description: "Button trigger to open the dropdown menu." },
+			{ name: "ModelSelectorContent", description: "Dropdown menu content with embedded Command, configurable title (default: 'Model Selector')." },
 			{ name: "ModelSelectorInput", description: "Search input with fuzzy filtering." },
 			{ name: "ModelSelectorList", description: "Scrollable list container for groups and items." },
 			{ name: "ModelSelectorEmpty", description: "Fallback content when search yields no results." },
 			{ name: "ModelSelectorGroup", description: "Provider category group with heading." },
-			{ name: "ModelSelectorItem", description: "Individual model option with value and onSelect callback." },
+			{ name: "ModelSelectorItem", description: "Individual model option with value and onSelect callback. Closes the dropdown by default after selection." },
 			{ name: "ModelSelectorName", description: "Truncated model name text." },
 			{ name: "ModelSelectorLogo", description: "Provider logo fetched from models.dev/logos. Supports autocomplete-friendly provider union type." },
 			{ name: "ModelSelectorLogoGroup", description: "Stacked logo container with overlapping ring styling." },
@@ -2360,6 +2365,7 @@ const edgeTypes = {
 			{ title: "With search", description: "Searchable model palette with grouped providers, selection state, and empty state.", demoSlug: "model-selector-demo-with-search" },
 			{ title: "With logos", description: "Provider logos on trigger and items with separators between groups.", demoSlug: "model-selector-demo-with-logos" },
 			{ title: "Multi-provider trigger", description: "Trigger showing stacked logos from multiple providers.", demoSlug: "model-selector-demo-multi-provider" },
+			{ title: "Reasoning modes", description: "Grouped mode selector with selected state.", demoSlug: "model-selector-demo-reasoning-modes" },
 		],
 	},
 
