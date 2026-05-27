@@ -72,27 +72,25 @@ export const UI_CUSTOM_DETAILS: Record<string, ComponentDetail> = {
 
 	agent: {
 		description:
-			"A structured card for displaying AI agent configuration including name, model, instructions, tools, and output schema.",
+			"A structured agent strategy/configuration surface with an app header, cover area, action tiles, knowledge controls, and instructions composer.",
 		usage: `import {
   Agent,
   AgentHeader,
   AgentContent,
-  AgentInstructions,
-  AgentTools,
-  AgentTool,
-  AgentOutput,
+  AgentConfigFields,
 } from "@/components/ui-custom/agent";
 
 <Agent>
-  <AgentHeader name="Sentiment Analyzer" model="anthropic/claude-sonnet-4-5" />
+  <AgentHeader name="Policy Checker" model="Draft" />
   <AgentContent>
-    <AgentInstructions>
-      Analyze text sentiment and return structured results.
-    </AgentInstructions>
-    <AgentTools multiple>
-      <AgentTool tool={webSearch} value="web_search" />
-    </AgentTools>
-    <AgentOutput schema={outputSchema} />
+    <AgentConfigFields
+      config={agentConfig}
+      idPrefix="agent-config"
+      onTextChange={handleTextChange}
+      onListItemChange={updateListItem}
+      onRemoveListItem={removeListItem}
+      onAppendListItem={appendListItem}
+    />
   </AgentContent>
 </Agent>`,
 		demoLayout: {
@@ -107,15 +105,16 @@ export const UI_CUSTOM_DETAILS: Record<string, ComponentDetail> = {
 			},
 		],
 		subComponents: [
-			{ name: "AgentHeader", description: "Top bar with agent name, icon, and optional model badge." },
-			{ name: "AgentContent", description: "Body container for instructions, tools, and output." },
+			{ name: "AgentHeader", description: "Top app bar with agent avatar, name, status lozenge, and test/activate actions." },
+			{ name: "AgentContent", description: "Body container for the agent configuration surface." },
+			{ name: "AgentConfigFields", description: "Shared Figma-style agent strategy surface used by the catalog preview and Studio panel." },
 			{ name: "AgentInstructions", description: "Instruction text block with label." },
 			{ name: "AgentTools", description: "Accordion container for tool definitions." },
 			{ name: "AgentTool", description: "Individual tool item with expandable JSON schema." },
 			{ name: "AgentOutput", description: "Output schema display with syntax highlighting." },
 		],
 		examples: [
-			{ title: "Full agent", description: "Agent card with instructions, tools, and output schema.", demoSlug: "agent-demo-full" },
+			{ title: "Full agent", description: "Agent strategy surface with cover, action tiles, knowledge, and instructions.", demoSlug: "agent-demo-full" },
 			{ title: "With tools", description: "Agent card showing only the tools accordion.", demoSlug: "agent-demo-with-tools" },
 			{ title: "With output", description: "Agent card with instructions and output schema, no tools.", demoSlug: "agent-demo-with-output" },
 			{ title: "Minimal", description: "Header-only agent card with name and model badge.", demoSlug: "agent-demo-minimal" },

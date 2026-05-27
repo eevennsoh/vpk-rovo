@@ -1,138 +1,477 @@
 "use client";
 
 import type { Tool } from "ai";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
+import { memo } from "react";
+import Image from "next/image";
 
-import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
+import AddIcon from "@atlaskit/icon/core/add";
+import ListBulletedIcon from "@atlaskit/icon/core/list-bulleted";
+import ListNumberedIcon from "@atlaskit/icon/core/list-numbered";
+import RedoIcon from "@atlaskit/icon/core/redo";
+import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
+import TextIcon from "@atlaskit/icon/core/text";
+import TextBoldIcon from "@atlaskit/icon/core/text-bold";
+import TextItalicIcon from "@atlaskit/icon/core/text-italic";
+import UndoIcon from "@atlaskit/icon/core/undo";
+import AiModelIcon from "@atlaskit/icon-lab/core/ai-model";
+import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
 
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { RovoDevAgentIcon } from "@/components/ui/logo";
+import { Tile } from "@/components/ui/tile";
+import {
+	TwgToolBannerBackground,
+	TwgToolSourceStack,
+	type TwgToolSource,
+} from "@/components/ui-custom/twg-tool";
 import { cn } from "@/lib/utils";
-import { memo } from "react";
 
 import { CodeBlock } from "./code-block";
+
+const AGENT_AVATAR_HEXAGON_PATH = "M19.01 0.922148C20.24 0.212148 21.76 0.212148 23 0.922148L40 10.6921C41.24 11.4021 42.01 12.7321 42.01 14.1621V33.6721C42.01 35.1021 41.24 36.4221 40 37.1421L23 46.9121C21.77 47.6221 20.25 47.6221 19.01 46.9121L2.01 37.1321C0.77 36.4221 0 35.0921 0 33.6621V14.1621C0 12.7321 0.77 11.4121 2.01 10.6921L19.01 0.922148Z";
+const AGENT_AVATAR_SRC = "/avatar-agent/teamwork-agents/blocker-checker.svg";
+
+const AGENT_KNOWLEDGE_SOURCES = [
+	{ id: "twg", label: "Teamwork Graph", provider: "twg" },
+	{ id: "jira", label: "Jira", provider: "jira" },
+	{ id: "google-drive", label: "Google Drive", provider: "google-drive" },
+	{ id: "confluence", label: "Confluence", provider: "confluence" },
+	{ id: "teams", label: "Microsoft Teams", provider: "teams" },
+	{ id: "salesforce", label: "Salesforce", provider: "salesforce" },
+] as const satisfies readonly TwgToolSource[];
+
+const AGENT_EDITOR_CONTROLS = [
+	{ id: "text", label: "Text style", icon: <TextIcon label="" size="small" /> },
+	{ id: "bold", label: "Bold", icon: <TextBoldIcon label="" size="small" /> },
+	{ id: "italic", label: "Italic", icon: <TextItalicIcon label="" size="small" /> },
+	{ id: "more", label: "More formatting", icon: <ShowMoreHorizontalIcon label="" size="small" /> },
+	"divider",
+	{ id: "bulleted", label: "Bulleted list", icon: <ListBulletedIcon label="" size="small" /> },
+	{ id: "numbered", label: "Numbered list", icon: <ListNumberedIcon label="" size="small" /> },
+	"divider",
+	{ id: "add", label: "Add", icon: <AddIcon label="" size="small" /> },
+	{ id: "undo", label: "Undo", icon: <UndoIcon label="" size="small" /> },
+	{ id: "redo", label: "Redo", icon: <RedoIcon label="" size="small" /> },
+] as const;
+
+function AgentAvatarLogo({
+	label,
+	size,
+}: Readonly<{ label: string; size: ComponentProps<typeof RovoDevAgentIcon>["size"] }>) {
+	return (
+		<span className="agent-rovo-avatar-brand">
+			<RovoDevAgentIcon label={label} size={size} themeAware={false} />
+		</span>
+	);
+}
+
+export type AgentConfigTextFieldName =
+	| "name"
+	| "description"
+	| "instructions"
+	| "contextDescription"
+	| "trigger"
+	| "guardrail";
+
+export type AgentConfigListFieldName = "tools" | "conversationStarters";
+
+export interface AgentConfigFormValue {
+	name?: string;
+	description?: string;
+	summary?: string;
+	instructions?: string;
+	contextDescription?: string;
+	trigger?: string;
+	guardrail?: string;
+	tools?: readonly string[];
+	conversationStarters?: readonly string[];
+	agentId?: string;
+	action?: string;
+}
 
 export type AgentProps = ComponentProps<"div">;
 
 export const Agent = memo(({ className, ...props }: Readonly<AgentProps>) => (
-  <div
-    className={cn("not-prose w-full rounded-lg border border-border bg-surface", className)}
-    {...props}
-  />
+	<div
+		className={cn("not-prose w-full overflow-hidden bg-surface text-text", className)}
+		{...props}
+	/>
 ));
 
 export type AgentHeaderProps = ComponentProps<"div"> & {
-  name: string;
-  model?: string;
+	name: string;
+	model?: string;
+	primaryActionLabel?: string;
+	secondaryActionLabel?: string;
+	showActions?: boolean;
 };
 
 export const AgentHeader = memo(
-  ({ className, name, model, ...props }: Readonly<AgentHeaderProps>) => (
-    <div
-      className={cn(
-        "flex w-full items-center justify-between gap-4 p-3",
-        className
-      )}
-      {...props}
-    >
-      <div className="flex items-center gap-2">
-        <Icon render={<AiAgentIcon label="" size="small" />} label="Agent" className="text-icon-subtle" />
-        <span className="font-medium text-sm text-text">{name}</span>
-        {model ? (
-          <Badge className="font-mono text-xs" variant="secondary">
-            {model}
-          </Badge>
-        ) : null}
-      </div>
-    </div>
-  )
+	({
+		className,
+		model,
+		name,
+		primaryActionLabel = "Activate",
+		secondaryActionLabel = "Test",
+		showActions = true,
+		...props
+	}: Readonly<AgentHeaderProps>) => (
+		<div
+			className={cn(
+				"flex h-14 w-full items-center justify-between gap-4 border-b border-border bg-surface px-6",
+				className
+			)}
+			{...props}
+		>
+			<div className="flex min-w-0 items-center gap-2">
+				<AgentAvatarLogo label="Agent" size="small" />
+				<span className="truncate text-sm font-semibold leading-5 text-text">{name}</span>
+				{model ? (
+					<Badge className="font-normal" variant="outline">
+						{model}
+					</Badge>
+				) : null}
+			</div>
+			{showActions ? (
+				<div className="flex shrink-0 items-center gap-2">
+					<Button size="default" variant="outline">
+						{secondaryActionLabel}
+					</Button>
+					<Button size="default" variant="default">
+						{primaryActionLabel}
+					</Button>
+				</div>
+			) : null}
+		</div>
+	)
 );
 
 export type AgentContentProps = ComponentProps<"div">;
 
 export const AgentContent = memo(
-  ({ className, ...props }: Readonly<AgentContentProps>) => (
-    <div className={cn("space-y-4 p-4 pt-0", className)} {...props} />
-  )
+	({ className, ...props }: Readonly<AgentContentProps>) => (
+		<div className={cn("space-y-4 p-6", className)} {...props} />
+	)
 );
 
 export type AgentInstructionsProps = ComponentProps<"div"> & {
-  children: string;
+	children: string;
 };
 
 export const AgentInstructions = memo(
-  ({ className, children, ...props }: Readonly<AgentInstructionsProps>) => (
-    <div className={cn("space-y-2", className)} {...props}>
-      <span className="font-medium text-text-subtle text-sm">
-        Instructions
-      </span>
-      <div className="rounded-md bg-surface-sunken p-3 text-text-subtle text-sm">
-        <p>{children}</p>
-      </div>
-    </div>
-  )
+	({ className, children, ...props }: Readonly<AgentInstructionsProps>) => (
+		<div className={cn("space-y-2", className)} {...props}>
+			<span className="font-medium text-text-subtle text-sm">
+				Instructions
+			</span>
+			<div className="rounded-md bg-surface-sunken p-3 text-text-subtle text-sm">
+				<p>{children}</p>
+			</div>
+		</div>
+	)
 );
 
 export type AgentToolsProps = ComponentProps<typeof Accordion>;
 
 export const AgentTools = memo(({ className, ...props }: Readonly<AgentToolsProps>) => (
-  <div className={cn("space-y-2", className)}>
-    <span className="font-medium text-text-subtle text-sm">Tools</span>
-    <Accordion className="rounded-md border border-border" {...props} />
-  </div>
+	<div className={cn("space-y-2", className)}>
+		<span className="font-medium text-text-subtle text-sm">Tools</span>
+		<Accordion className="rounded-md border border-border" {...props} />
+	</div>
 ));
 
 export type AgentToolProps = ComponentProps<typeof AccordionItem> & {
-  tool: Tool;
+	tool: Tool;
 };
 
 export const AgentTool = memo(
-  ({ className, tool, value, ...props }: Readonly<AgentToolProps>) => {
-    const schema =
-      "jsonSchema" in tool && tool.jsonSchema
-        ? tool.jsonSchema
-        : tool.inputSchema;
+	({ className, tool, value, ...props }: Readonly<AgentToolProps>) => {
+		const schema =
+			"jsonSchema" in tool && tool.jsonSchema
+				? tool.jsonSchema
+				: tool.inputSchema;
 
-    return (
-      <AccordionItem
-        className={cn("border-b border-border last:border-b-0", className)}
-        value={value}
-        {...props}
-      >
-        <AccordionTrigger className="px-3 py-2 text-sm text-text-subtle hover:text-text hover:no-underline transition-colors">
-          {tool.description ?? "No description"}
-        </AccordionTrigger>
-        <AccordionContent className="px-3 pb-3">
-          <div className="rounded-md bg-surface-sunken">
-            <CodeBlock code={JSON.stringify(schema, null, 2)} language="json" />
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    );
-  }
+		return (
+			<AccordionItem
+				className={cn("border-b border-border last:border-b-0", className)}
+				value={value}
+				{...props}
+			>
+				<AccordionTrigger className="px-3 py-2 text-sm text-text-subtle transition-colors hover:text-text hover:no-underline">
+					{tool.description ?? "No description"}
+				</AccordionTrigger>
+				<AccordionContent className="px-3 pb-3">
+					<div className="rounded-md bg-surface-sunken">
+						<CodeBlock code={JSON.stringify(schema, null, 2)} language="json" />
+					</div>
+				</AccordionContent>
+			</AccordionItem>
+		);
+	}
 );
 
 export type AgentOutputProps = ComponentProps<"div"> & {
-  schema: string;
+	schema: string;
 };
 
 export const AgentOutput = memo(
-  ({ className, schema, ...props }: Readonly<AgentOutputProps>) => (
-    <div className={cn("space-y-2", className)} {...props}>
-      <span className="font-medium text-text-subtle text-sm">
-        Output Schema
-      </span>
-      <div className="rounded-md bg-surface-sunken">
-        <CodeBlock code={schema} language="typescript" />
-      </div>
-    </div>
-  )
+	({ className, schema, ...props }: Readonly<AgentOutputProps>) => (
+		<div className={cn("space-y-2", className)} {...props}>
+			<span className="font-medium text-text-subtle text-sm">
+				Output Schema
+			</span>
+			<div className="rounded-md bg-surface-sunken">
+				<CodeBlock code={schema} language="typescript" />
+			</div>
+		</div>
+	)
+);
+
+interface AgentActionTileProps {
+	label: string;
+	onClick?: () => void;
+}
+
+function AgentIconTile({ children, label }: Readonly<{ children: ReactNode; label: string }>) {
+	return (
+		<Tile
+			className="shrink-0 text-icon-subtle"
+			label={label}
+			size="medium"
+			variant="neutral"
+		>
+			{children}
+		</Tile>
+	);
+}
+
+function AgentActionTile({ label, onClick }: Readonly<AgentActionTileProps>) {
+	return (
+		<button
+			type="button"
+			className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-border bg-surface p-1.5 text-left text-sm font-medium text-text transition-colors hover:bg-surface-raised-hovered focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+			onClick={onClick}
+		>
+			<AgentIconTile label="Add">
+				<Icon render={<AddIcon label="" size="small" />} aria-hidden />
+			</AgentIconTile>
+			<span className="min-w-0 truncate">{label}</span>
+		</button>
+	);
+}
+
+function AgentSectionLabel({ children }: Readonly<{ children: ReactNode }>) {
+	return (
+		<div className="flex h-8 items-center text-xs font-semibold leading-4 text-text-subtlest">
+			{children}
+		</div>
+	);
+}
+
+function AgentProfileCover() {
+	return (
+		<div className="relative overflow-hidden rounded-t-xl bg-surface text-text">
+			<div className="relative h-12 overflow-hidden bg-primary">
+				<Image
+					alt=""
+					aria-hidden
+					className="absolute top-1/2 left-[88%] h-48 w-[168px] -translate-x-1/2 -translate-y-1/2 opacity-95"
+					height={192}
+					src={AGENT_AVATAR_SRC}
+					width={168}
+				/>
+			</div>
+			<div className="flex h-6 items-end justify-end px-4">
+				<Button className="relative z-10" size="sm" variant="outline">
+					Edit
+				</Button>
+			</div>
+			<div className="absolute top-6 left-4 size-12">
+				<Image
+					alt="Agent avatar"
+					className="h-12 w-[42px]"
+					height={48}
+					src={AGENT_AVATAR_SRC}
+					width={42}
+				/>
+				<svg
+					aria-hidden="true"
+					className="pointer-events-none absolute top-0 left-0 h-12 w-[42px] overflow-visible"
+					focusable="false"
+					viewBox="0 0 43 48"
+				>
+					<path
+						d={AGENT_AVATAR_HEXAGON_PATH}
+						fill="none"
+						stroke="white"
+						strokeWidth={2}
+						vectorEffect="non-scaling-stroke"
+					/>
+				</svg>
+			</div>
+		</div>
+	);
+}
+
+function AgentKnowledgePanel() {
+	return (
+		<section className="space-y-0">
+			<AgentSectionLabel>Knowledge</AgentSectionLabel>
+			<div className="rounded-xl border border-border bg-bg-input p-1.5">
+				<div className="relative flex h-12 min-w-0 items-center justify-between gap-3 overflow-hidden rounded-lg bg-surface-sunken px-2">
+					<TwgToolBannerBackground />
+					<div className="relative z-10 flex min-w-0 items-center gap-2">
+						<Tile
+							className="bg-surface text-icon-discovery"
+							hasBorder
+							isInset={false}
+							label="Teamwork Graph"
+							size="medium"
+							variant="transparent"
+						>
+							<Icon render={<TeamworkGraphIcon label="" size="small" />} aria-hidden />
+						</Tile>
+						<span className="truncate text-sm font-medium text-text-subtle">Teamwork Graph</span>
+					</div>
+					<TwgToolSourceStack
+						className="relative z-10 max-w-[42%]"
+						iconSize="md"
+						sources={AGENT_KNOWLEDGE_SOURCES}
+					/>
+				</div>
+				<div className="flex h-12 items-center justify-between p-1.5">
+					<div className="flex min-w-0 items-center gap-3">
+						<AgentIconTile label="Memory">
+							<Icon render={<AiModelIcon label="" size="small" />} aria-hidden />
+						</AgentIconTile>
+						<span className="truncate text-sm font-medium text-text-subtle">Memory</span>
+					</div>
+					<Button size="sm" variant="ghost">
+						Manage
+					</Button>
+				</div>
+				<div className="px-1.5">
+					<div className="h-px bg-border-disabled" />
+				</div>
+				<button
+					type="button"
+					className="flex h-12 w-full items-center gap-3 rounded-lg p-1.5 text-left text-sm font-medium text-text-subtle transition-colors hover:bg-bg-neutral-subtle-hovered focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+				>
+					<AgentIconTile label="Add knowledge">
+						<Icon render={<AddIcon label="" size="small" />} aria-hidden />
+					</AgentIconTile>
+					<span>Add knowledge</span>
+				</button>
+			</div>
+		</section>
+	);
+}
+
+function AgentEditorToolbarButton({
+	children,
+	label,
+}: Readonly<{ children: ReactNode; label: string }>) {
+	return (
+		<button
+			type="button"
+			aria-label={label}
+			className="flex size-7 items-center justify-center rounded text-icon-subtle transition-colors hover:bg-bg-neutral-subtle-hovered hover:text-icon focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+		>
+			{children}
+		</button>
+	);
+}
+
+function AgentInstructionsComposer({ instructions }: Readonly<{ instructions?: string }>) {
+	return (
+		<section className="space-y-0">
+			<AgentSectionLabel>Instructions</AgentSectionLabel>
+			<div className="flex min-h-8 items-center justify-between gap-4">
+				<div className="flex min-w-0 items-center gap-1">
+					{AGENT_EDITOR_CONTROLS.map((control, index) =>
+						control === "divider" ? (
+							<div key={`divider-${index}`} aria-hidden className="mx-1 h-5 w-px bg-border" />
+						) : (
+							<AgentEditorToolbarButton key={control.id} label={control.label}>
+								<Icon render={control.icon} aria-hidden />
+							</AgentEditorToolbarButton>
+						)
+					)}
+				</div>
+				<Button className="shrink-0 text-text-subtle" size="sm" variant="ghost">
+					GPT-5.5 Medium
+				</Button>
+			</div>
+			<div className="min-h-32 pt-4 text-sm leading-5 text-text-subtlest">
+				{instructions?.trim()
+					? instructions
+					: "Describe the agent’s role and what it should do. @mention, or / for skills"}
+			</div>
+		</section>
+	);
+}
+
+export interface AgentConfigFieldsProps extends ComponentProps<"div"> {
+	config: AgentConfigFormValue;
+	idPrefix: string;
+	onTextChange?: (field: AgentConfigTextFieldName, value: string) => void;
+	onListItemChange?: (field: AgentConfigListFieldName, index: number, value: string) => void;
+	onRemoveListItem?: (field: AgentConfigListFieldName, index: number) => void;
+	onAppendListItem?: (field: AgentConfigListFieldName) => void;
+}
+
+export const AgentConfigFields = memo(
+	({
+		className,
+		config,
+		idPrefix,
+		onListItemChange,
+		onAppendListItem,
+		onRemoveListItem,
+		onTextChange,
+		...props
+	}: Readonly<AgentConfigFieldsProps>) => {
+		void onListItemChange;
+		void onRemoveListItem;
+		void onTextChange;
+
+		const agentName = config.name?.trim() || "Untitled agent";
+		const description = config.description?.trim() || config.summary?.trim() || "Add a description";
+
+		return (
+			<div className={cn("space-y-6", className)} data-agent-config-id={idPrefix} {...props}>
+				<section className="space-y-4">
+					<AgentProfileCover />
+					<div className="space-y-1">
+						<h2 className="text-2xl font-semibold leading-7 text-text">{agentName}</h2>
+						<p className="text-sm leading-5 text-text-subtlest">{description}</p>
+					</div>
+				</section>
+
+				<div className="grid grid-cols-2 gap-2">
+					<AgentActionTile label="Add triggers" />
+					<AgentActionTile label="Add skills" />
+					<AgentActionTile label="Add tools" onClick={() => onAppendListItem?.("tools")} />
+					<AgentActionTile
+						label="Add conversation starters"
+						onClick={() => onAppendListItem?.("conversationStarters")}
+					/>
+				</div>
+
+				<AgentKnowledgePanel />
+				<AgentInstructionsComposer instructions={config.instructions} />
+			</div>
+		);
+	}
 );
 
 Agent.displayName = "Agent";
@@ -142,3 +481,4 @@ AgentInstructions.displayName = "AgentInstructions";
 AgentTools.displayName = "AgentTools";
 AgentTool.displayName = "AgentTool";
 AgentOutput.displayName = "AgentOutput";
+AgentConfigFields.displayName = "AgentConfigFields";

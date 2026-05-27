@@ -3,14 +3,17 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CrossIcon from "@atlaskit/icon/core/cross";
-import AddIcon from "@atlaskit/icon/core/add";
 
-import { Agent, AgentContent, AgentHeader } from "@/components/ui-custom/agent";
+import {
+	Agent,
+	AgentConfigFields,
+	AgentContent,
+	AgentHeader,
+	type AgentConfigListFieldName,
+	type AgentConfigTextFieldName,
+} from "@/components/ui-custom/agent";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import type {
 	StudioAgentPublishStatus,
 	StudioSessionAgentEntry,
@@ -19,8 +22,6 @@ import type { RovoDataParts } from "@/lib/rovo-ui-messages";
 import { cn } from "@/lib/utils";
 
 type AgentResult = RovoDataParts["agent-result"];
-
-const FIELD_GAP_CLASS = "space-y-1.5";
 
 interface RovoAppAgentConfigPanelProps {
 	entry: StudioSessionAgentEntry;
@@ -92,18 +93,14 @@ export function RovoAppAgentConfigPanel({
 		[onUpdateDraft, profileId],
 	);
 
-	const handleStringChange = useCallback(
-		(field: keyof AgentResult) => (value: string) => {
+	const handleConfigTextChange = useCallback(
+		(field: AgentConfigTextFieldName, value: string) => {
+			if (field === "description") {
+				updateDraft({ description: value, summary: value });
+				return;
+			}
 			updateDraft({ [field]: value } as Partial<AgentResult>);
 		},
-		[updateDraft],
-	);
-
-	const handleTextareaChange = useCallback(
-		(field: keyof AgentResult) =>
-			(event: React.ChangeEvent<HTMLTextAreaElement>) => {
-				updateDraft({ [field]: event.currentTarget.value } as Partial<AgentResult>);
-			},
 		[updateDraft],
 	);
 
@@ -118,7 +115,7 @@ export function RovoAppAgentConfigPanel({
 	}, [draft.conversationStarters]);
 
 	const updateListItem = useCallback(
-		(field: "tools" | "conversationStarters", index: number, value: string) => {
+		(field: AgentConfigListFieldName, index: number, value: string) => {
 			const current = field === "tools" ? tools : conversationStarters;
 			const next = [...current];
 			next[index] = value;
@@ -128,7 +125,7 @@ export function RovoAppAgentConfigPanel({
 	);
 
 	const removeListItem = useCallback(
-		(field: "tools" | "conversationStarters", index: number) => {
+		(field: AgentConfigListFieldName, index: number) => {
 			const current = field === "tools" ? tools : conversationStarters;
 			const next = current.filter((_, itemIndex) => itemIndex !== index);
 			updateDraft({ [field]: next } as Partial<AgentResult>);
@@ -137,7 +134,7 @@ export function RovoAppAgentConfigPanel({
 	);
 
 	const appendListItem = useCallback(
-		(field: "tools" | "conversationStarters") => {
+		(field: AgentConfigListFieldName) => {
 			const current = field === "tools" ? tools : conversationStarters;
 			updateDraft({ [field]: [...current, ""] } as Partial<AgentResult>);
 		},
@@ -274,193 +271,17 @@ export function RovoAppAgentConfigPanel({
 							className="border-b border-border"
 							name={agentName}
 							model={draft.action === "update" ? "update" : "create"}
+							showActions={false}
 						/>
-						<AgentContent className="space-y-5 p-4">
-							<div className={FIELD_GAP_CLASS}>
-								<Label htmlFor={`agent-${profileId}-name`}>Name</Label>
-								<Input
-									id={`agent-${profileId}-name`}
-									value={draft.name ?? ""}
-									placeholder="Agent name"
-									onValueChange={handleStringChange("name")}
-								/>
-							</div>
-
-							<div className={FIELD_GAP_CLASS}>
-								<Label htmlFor={`agent-${profileId}-description`}>Description</Label>
-								<Textarea
-									id={`agent-${profileId}-description`}
-									value={draft.description ?? draft.summary ?? ""}
-									placeholder="Short summary of what this agent does"
-									onChange={(event) => {
-										updateDraft({
-											description: event.currentTarget.value,
-											summary: event.currentTarget.value,
-										});
-									}}
-								/>
-							</div>
-
-							<div className={FIELD_GAP_CLASS}>
-								<Label htmlFor={`agent-${profileId}-instructions`}>Instructions</Label>
-								<Textarea
-									id={`agent-${profileId}-instructions`}
-									value={draft.instructions ?? ""}
-									placeholder="How the agent should think and respond"
-									className="min-h-32"
-									onChange={handleTextareaChange("instructions")}
-								/>
-							</div>
-
-							<div className={FIELD_GAP_CLASS}>
-								<Label htmlFor={`agent-${profileId}-context-description`}>
-									Context description
-								</Label>
-								<Textarea
-									id={`agent-${profileId}-context-description`}
-									value={draft.contextDescription ?? ""}
-									placeholder="Extra context appended to chat turns"
-									onChange={handleTextareaChange("contextDescription")}
-								/>
-							</div>
-
-							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-								<div className={FIELD_GAP_CLASS}>
-									<Label htmlFor={`agent-${profileId}-trigger`}>Trigger</Label>
-									<Input
-										id={`agent-${profileId}-trigger`}
-										value={draft.trigger ?? ""}
-										placeholder="When this agent should run"
-										onValueChange={handleStringChange("trigger")}
-									/>
-								</div>
-								<div className={FIELD_GAP_CLASS}>
-									<Label htmlFor={`agent-${profileId}-guardrail`}>Guardrail</Label>
-									<Input
-										id={`agent-${profileId}-guardrail`}
-										value={draft.guardrail ?? ""}
-										placeholder="Safety / scope boundary"
-										onValueChange={handleStringChange("guardrail")}
-									/>
-								</div>
-							</div>
-
-							<div className="space-y-2">
-								<div className="flex items-center justify-between">
-									<Label>Tools</Label>
-									<Button
-										type="button"
-										size="sm"
-										variant="ghost"
-										onClick={() => appendListItem("tools")}
-									>
-										<AddIcon label="" spacing="none" />
-										Add tool
-									</Button>
-								</div>
-								{tools.length === 0 ? (
-									<p className="text-text-subtlest text-xs">
-										No tools yet. Add tool names this agent should be able to use.
-									</p>
-								) : (
-									<ul className="space-y-2">
-										{tools.map((tool, index) => (
-											<li
-												key={`tool-${index}`}
-												className="flex items-center gap-2"
-											>
-												<Input
-													value={tool}
-													placeholder="Tool name"
-													onValueChange={(value) =>
-														updateListItem("tools", index, value)
-													}
-												/>
-												<Button
-													type="button"
-													size="icon"
-													variant="ghost"
-													aria-label={`Remove tool ${index + 1}`}
-													onClick={() => removeListItem("tools", index)}
-												>
-													<CrossIcon label="" spacing="none" />
-												</Button>
-											</li>
-										))}
-									</ul>
-								)}
-							</div>
-
-							<div className="space-y-2">
-								<div className="flex items-center justify-between">
-									<Label>Conversation starters</Label>
-									<Button
-										type="button"
-										size="sm"
-										variant="ghost"
-										onClick={() => appendListItem("conversationStarters")}
-									>
-										<AddIcon label="" spacing="none" />
-										Add starter
-									</Button>
-								</div>
-								{conversationStarters.length === 0 ? (
-									<p className="text-text-subtlest text-xs">
-										No conversation starters yet. Add prompts users can click to start a chat.
-									</p>
-								) : (
-									<ul className="space-y-2">
-										{conversationStarters.map((starter, index) => (
-											<li
-												key={`starter-${index}`}
-												className="flex items-center gap-2"
-											>
-												<Input
-													value={starter}
-													placeholder="Conversation starter"
-													onValueChange={(value) =>
-														updateListItem(
-															"conversationStarters",
-															index,
-															value,
-														)
-													}
-												/>
-												<Button
-													type="button"
-													size="icon"
-													variant="ghost"
-													aria-label={`Remove conversation starter ${index + 1}`}
-													onClick={() => removeListItem("conversationStarters", index)}
-												>
-													<CrossIcon label="" spacing="none" />
-												</Button>
-											</li>
-										))}
-									</ul>
-								)}
-							</div>
-
-							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-								<div className={FIELD_GAP_CLASS}>
-									<Label htmlFor={`agent-${profileId}-agent-id`}>Agent ID</Label>
-									<Input
-										id={`agent-${profileId}-agent-id`}
-										value={draft.agentId ?? ""}
-										readOnly
-										aria-readonly
-									/>
-								</div>
-								<div className={FIELD_GAP_CLASS}>
-									<Label htmlFor={`agent-${profileId}-action`}>Action</Label>
-									<Input
-										id={`agent-${profileId}-action`}
-										value={draft.action ?? ""}
-										readOnly
-										aria-readonly
-									/>
-								</div>
-							</div>
+						<AgentContent>
+							<AgentConfigFields
+								config={draft}
+								idPrefix={`agent-${profileId}`}
+								onTextChange={handleConfigTextChange}
+								onListItemChange={updateListItem}
+								onRemoveListItem={removeListItem}
+								onAppendListItem={appendListItem}
+							/>
 						</AgentContent>
 					</Agent>
 				</div>
