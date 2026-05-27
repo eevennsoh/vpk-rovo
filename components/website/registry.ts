@@ -6673,6 +6673,9 @@ const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
 };
 
 const BLOCK_DEMOS: Record<string, ComponentType> = {
+  "agent-card": dynamic(() => import("./demos/blocks/agent-card-demo"), {
+    ssr: false,
+  }),
   "agent-progress": dynamic(
     () => import("./demos/blocks/agent-progress-demo"),
     { ssr: false },

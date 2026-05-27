@@ -277,6 +277,7 @@ export const UI_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 ]);
 
 export const BLOCK_COMPONENTS: ComponentEntry[] = sortEntriesByName([
+	blockComponent("agent-card", "Agent Card"),
 	blockComponent("agent-progress", "Agent Progress"),
 	blockComponent("agent-selector", "Agent Selector"),
 	blockComponent("task-progress", "Task Progress"),
