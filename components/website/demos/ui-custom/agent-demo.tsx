@@ -98,7 +98,7 @@ export function AgentDemoFull() {
 	return (
 		<Agent className="mx-auto min-h-[852px] w-full max-w-[720px]">
 			<AgentHeader
-				name="Policy Checker"
+				name="Untitled agent"
 				model="Draft"
 			/>
 			<AgentContent>
