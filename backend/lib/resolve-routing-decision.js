@@ -37,6 +37,16 @@ function resolveRoutingDecisionFastPath(context) {
 	const origin = context?.origin === "voice" ? "voice" : "text";
 	const activeArtifact = context?.activeArtifact;
 
+	if (context?.creationMode === "agent") {
+		return {
+			intent: "chat",
+			presentation: "text",
+			confidence: 1,
+			reason: "agent_creation_mode",
+			origin,
+		};
+	}
+
 	// Empty / whitespace-only → chat
 	if (!prompt.trim()) {
 		return {
