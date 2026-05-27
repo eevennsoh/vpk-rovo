@@ -53,6 +53,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkillTag, SkillTagGroup, type SkillTagColor } from "@/components/ui/skill-tag";
 import SearchIcon from "@atlaskit/icon/core/search";
+import DashboardIcon from "@atlaskit/icon/core/dashboard";
+import EpicIcon from "@atlaskit/icon/core/epic";
+import TaskIcon from "@atlaskit/icon/core/task";
+import TasksIcon from "@atlaskit/icon/core/tasks";
+import NoteIcon from "@atlaskit/icon/core/note";
+import ClipboardIcon from "@atlaskit/icon/core/clipboard";
+import CheckCircleIcon from "@atlaskit/icon/core/check-circle";
+import EditIcon from "@atlaskit/icon/core/edit";
+import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
+import CommentIcon from "@atlaskit/icon/core/comment";
+import CommentAddIcon from "@atlaskit/icon/core/comment-add";
+import PersonIcon from "@atlaskit/icon/core/person";
+import PersonAddIcon from "@atlaskit/icon/core/person-add";
+import EyeOpenIcon from "@atlaskit/icon/core/eye-open";
+import SortAscendingIcon from "@atlaskit/icon/core/sort-ascending";
+import FlagFilledIcon from "@atlaskit/icon/core/flag-filled";
+import ArrowUpRightIcon from "@atlaskit/icon/core/arrow-up-right";
+import ChartTrendUpIcon from "@atlaskit/icon/core/chart-trend-up";
+import ClockIcon from "@atlaskit/icon/core/clock";
 import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
 import { Footer } from "@/components/ui/footer";
 import { useClicky } from "@/components/projects/studio/hooks/use-clicky";
@@ -113,6 +132,7 @@ interface HomeStarterCategoryOption {
 
 interface HomeStarterHeroSkill {
 	color?: SkillTagColor;
+	icon?: React.ReactNode;
 	label: string;
 }
 
@@ -134,9 +154,6 @@ interface HomeStarterTemplate {
 const RICH_ICON_ROOT = "/illustration/rich-icon";
 const HOME_STARTER_DEFAULT_CATEGORY: HomeStarterCategory = "analyze";
 const HOME_STARTER_TAB_PROGRESS_DURATION_MS = 4_500;
-// keep in sync with AGENT_AVATAR_HEXAGON_PATH in components/ui-custom/agent.tsx
-const HOME_STARTER_HERO_HEXAGON_PATH =
-	"M19.01 0.922148C20.24 0.212148 21.76 0.212148 23 0.922148L40 10.6921C41.24 11.4021 42.01 12.7321 42.01 14.1621V33.6721C42.01 35.1021 41.24 36.4221 40 37.1421L23 46.9121C21.77 47.6221 20.25 47.6221 19.01 46.9121L2.01 37.1321C0.77 36.4221 0 35.0921 0 33.6621V14.1621C0 12.7321 0.77 11.4121 2.01 10.6921L19.01 0.922148Z";
 
 const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "analyze", label: "Insights", iconSrc: `${RICH_ICON_ROOT}/marketing/standard.png`, iconClassName: "scale-[1.08]" },
@@ -158,33 +175,25 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		{
 			description: "Surface customer feedback themes from trusted sources.",
 			iconSrc: "/avatar-agent/teamwork-agents/customer-insights.svg",
-			layoutClassName: "lg:col-start-1 lg:row-start-1",
+			layoutClassName: "sm:col-span-2 lg:col-start-1 lg:col-span-1 lg:row-start-1",
 			prompt: "Build a Studio agent named Customer Insights that analyzes customer feedback from provided pages, links, or projects, then returns themes, needs, risks, and recommended actions.",
 			title: "Customer Insights",
 		},
 		{
 			description: "Group Jira work items into clear themes and epics.",
 			hero: {
-				bannerClassName: "bg-green-400",
+				bannerClassName: "bg-[#82B536]",
 				skills: [
-					{ color: "software", label: "JQL search" },
-					{ color: "software", label: "Theme grouping" },
-					{ color: "teamwork", label: "Epic suggestions" },
-					{ color: "teamwork", label: "Work item summary" },
-					{ color: "product", label: "Confluence retrieval" },
+					{ color: "software", icon: <SearchIcon label="" size="small" />, label: "jql-search" },
+					{ color: "software", icon: <DashboardIcon label="" size="small" />, label: "theme-grouping" },
+					{ color: "teamwork", icon: <EpicIcon label="" size="small" />, label: "epic-suggestions" },
+					{ color: "teamwork", icon: <TaskIcon label="" size="small" />, label: "work-item-summary" },
+					{ color: "product", icon: <NoteIcon label="" size="small" />, label: "confluence-retrieval" },
 				],
 				sources: [
-					{ id: "twg", label: "Teamwork Graph", provider: "twg" },
 					{ id: "jira", label: "Jira", provider: "jira" },
 					{ id: "confluence", label: "Confluence", provider: "confluence" },
-					{ id: "jira-product-discovery", label: "Jira Product Discovery", provider: "jira-product-discovery" },
 					{ id: "google-drive", label: "Google Drive", provider: "google-drive" },
-					{
-						icon: <Image alt="" aria-hidden height={24} src="/3p/microsoft-teams/24.svg" width={24} />,
-						id: "microsoft-teams",
-						label: "Microsoft Teams",
-						provider: "teams",
-					},
 				],
 			},
 			iconSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
@@ -194,7 +203,7 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		},
 		{
 			description: "Turn transcripts into insights and next actions.",
-			iconSrc: "/avatar-agent/teamwork-agents/transcript-insights-reporter.svg",
+			iconSrc: "/avatar-agent/strategy-agents/wildcard-1.svg",
 			layoutClassName: "sm:row-span-2 lg:col-start-4 lg:row-start-1",
 			prompt: "Build a Studio agent named Transcript Insights Reporter that turns meeting transcripts into decisions, insights, recommendations, owners, and follow-up action items.",
 			title: "Transcript Insights Reporter",
@@ -208,7 +217,7 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		},
 		{
 			description: "Spot emerging trends across notes and feedback.",
-			iconSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
+			iconSrc: "/avatar-agent/service-agents/wildcard-5.svg",
 			layoutClassName: "lg:col-start-1 lg:row-start-2",
 			prompt: "Build a Studio agent named Trend Spotter that scans recent notes, transcripts, and feedback for emerging themes, leading indicators, and worth-watching shifts.",
 			title: "Trend Spotter",
@@ -239,22 +248,25 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		{
 			description: "Clarify DACI decisions and close gaps.",
 			hero: {
-				bannerClassName: "bg-blue-400",
+				bannerClassName: "bg-[#1868DB]",
 				skills: [
-					{ color: "strategy", label: "DACI review" },
-					{ color: "teamwork", label: "Context gap detection" },
-					{ color: "teamwork", label: "Decision drafting" },
-					{ color: "product", label: "Stakeholder lookup" },
+					{ color: "strategy", icon: <ClipboardIcon label="" size="small" />, label: "daci-review" },
+					{ color: "teamwork", icon: <CheckCircleIcon label="" size="small" />, label: "context-gap-detection" },
+					{ color: "teamwork", icon: <EditIcon label="" size="small" />, label: "decision-drafting" },
+					{ color: "product", icon: <PeopleGroupIcon label="" size="small" />, label: "stakeholder-lookup" },
 				],
 				sources: [
-					{ id: "twg", label: "Teamwork Graph", provider: "twg" },
-					{ id: "confluence", label: "Confluence", provider: "confluence" },
-					{ id: "jira", label: "Jira", provider: "jira" },
-					{ id: "google-drive", label: "Google Drive", provider: "google-drive" },
 					{
 						icon: <Image alt="" aria-hidden height={24} src="/3p/slack/24.svg" width={24} />,
 						id: "slack",
 						label: "Slack",
+						provider: "teams",
+					},
+					{ id: "google-drive", label: "Google Drive", provider: "google-drive" },
+					{
+						icon: <Image alt="" aria-hidden height={24} src="/3p/microsoft-teams/24.svg" width={24} />,
+						id: "microsoft-teams",
+						label: "Microsoft Teams",
 						provider: "teams",
 					},
 				],
@@ -287,7 +299,7 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		},
 		{
 			description: "Compare options by upside, cost, and risk.",
-			iconSrc: "/avatar-agent/service-agents/wildcard-4.svg",
+			iconSrc: "/avatar-agent/strategy-agents/wildcard-2.svg",
 			layoutClassName: "lg:col-start-5 lg:row-start-2",
 			prompt: "Build a Studio agent named Tradeoff Mapper that compares competing options by upside, cost, risk, reversibility, confidence, and team fit before recommending a direction.",
 			title: "Tradeoff Mapper",
@@ -311,24 +323,29 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		{
 			description: "Triage requests and surface field updates.",
 			iconSrc: "/avatar-agent/service-agents/service-triage.svg",
-			layoutClassName: "lg:col-start-1 lg:row-start-1 lg:row-span-2",
+			layoutClassName: "sm:col-span-2 lg:col-start-1 lg:col-span-1 lg:row-start-1 lg:row-span-2",
 			prompt: "Build a Studio agent named Service Triage that triages service requests, recommends field updates, explains automation-ready output, and asks for missing details when needed.",
 			title: "Service Triage",
 		},
 		{
 			description: "Draft support responses and suggest assignees.",
 			hero: {
-				bannerClassName: "bg-orange-400",
+				bannerClassName: "bg-[#FCA700]",
 				skills: [
-					{ color: "service", label: "Response drafting" },
-					{ color: "service", label: "Assignee suggestion" },
-					{ color: "teamwork", label: "Request summary" },
-					{ color: "product", label: "Similar ticket lookup" },
+					{ color: "service", icon: <CommentAddIcon label="" size="small" />, label: "response-drafting" },
+					{ color: "service", icon: <PersonAddIcon label="" size="small" />, label: "assignee-suggestion" },
+					{ color: "teamwork", icon: <ClipboardIcon label="" size="small" />, label: "request-summary" },
+					{ color: "product", icon: <SearchIcon label="" size="small" />, label: "similar-ticket-lookup" },
+					{ color: "service", icon: <ArrowUpRightIcon label="" size="small" />, label: "escalation-routing" },
 				],
 				sources: [
-					{ id: "twg", label: "Teamwork Graph", provider: "twg" },
 					{ id: "jira-service-management", label: "Jira Service Management", provider: "jira-service-management" },
-					{ id: "confluence", label: "Confluence", provider: "confluence" },
+					{
+						icon: <Image alt="" aria-hidden height={24} src="/3p/zendesk/24.svg" width={24} />,
+						id: "zendesk",
+						label: "Zendesk",
+						provider: "teams",
+					},
 					{ id: "salesforce", label: "Salesforce", provider: "salesforce" },
 					{
 						icon: <Image alt="" aria-hidden height={24} src="/3p/microsoft-teams/24.svg" width={24} />,
@@ -336,15 +353,9 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 						label: "Microsoft Teams",
 						provider: "teams",
 					},
-					{
-						icon: <Image alt="" aria-hidden height={24} src="/3p/zendesk/24.svg" width={24} />,
-						id: "zendesk",
-						label: "Zendesk",
-						provider: "teams",
-					},
 				],
 			},
-			iconSrc: "/avatar-agent/service-agents/service-request-helper.svg",
+			iconSrc: "/avatar-agent/strategy-agents/strategic-insight.svg",
 			layoutClassName: "sm:col-span-2 sm:row-span-2 lg:col-start-2 lg:col-span-2 lg:row-start-1 lg:row-span-2",
 			prompt: "Build a Studio agent named Service Request Helper that drafts responses using prior request insights, suggests assignees and skills, and summarizes requests for faster resolution.",
 			title: "Service Request Helper",
@@ -358,14 +369,14 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		},
 		{
 			description: "Answer setup questions and share Rovo guidance.",
-			iconSrc: "/avatar-agent/service-agents/wildcard-3.svg",
+			iconSrc: "/avatar-agent/product-agents/wildcard-3.svg",
 			layoutClassName: "lg:col-start-4 lg:row-start-2",
 			prompt: "Build a Studio agent named Rovo Expert that introduces Rovo features, answers setup and usage questions, and shares helpful links for unlocking organizational knowledge.",
 			title: "Rovo Expert",
 		},
 		{
 			description: "Help teammates document their working style.",
-			iconSrc: "/avatar-agent/dev-agents/code-accessibility-checker.svg",
+			iconSrc: "/avatar-agent/teamwork-agents/user-manual-writer.svg",
 			layoutClassName: "lg:col-start-5 lg:row-start-2",
 			prompt: "Build a Studio agent named User Manual Writer that helps people write a friendly personal user manual covering working hours, preferred environments, communication norms, and collaboration tips.",
 			title: "User Manual Writer",
@@ -389,24 +400,23 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		{
 			description: "Create and review PRDs with direct feedback.",
 			hero: {
-				bannerClassName: "bg-purple-400",
+				bannerClassName: "bg-[#BF63F3]",
 				skills: [
-					{ color: "product", label: "PRD review" },
-					{ color: "product", label: "Customer evidence" },
-					{ color: "strategy", label: "Clarity feedback" },
-					{ color: "teamwork", label: "Acceptance criteria" },
+					{ color: "product", icon: <EyeOpenIcon label="" size="small" />, label: "prd-review" },
+					{ color: "product", icon: <PersonIcon label="" size="small" />, label: "customer-evidence" },
+					{ color: "strategy", icon: <CommentIcon label="" size="small" />, label: "clarity-feedback" },
+					{ color: "teamwork", icon: <CheckCircleIcon label="" size="small" />, label: "acceptance-criteria" },
+					{ color: "strategy", icon: <ChartTrendUpIcon label="" size="small" />, label: "success-metrics" },
 				],
 				sources: [
-					{ id: "twg", label: "Teamwork Graph", provider: "twg" },
-					{ id: "confluence", label: "Confluence", provider: "confluence" },
-					{ id: "jira", label: "Jira", provider: "jira" },
-					{ id: "google-drive", label: "Google Drive", provider: "google-drive" },
 					{
 						icon: <Image alt="" aria-hidden height={24} src="/3p/figma/24.svg" width={24} />,
 						id: "figma",
 						label: "Figma",
 						provider: "teams",
 					},
+					{ id: "confluence", label: "Confluence", provider: "confluence" },
+					{ id: "google-drive", label: "Google Drive", provider: "google-drive" },
 				],
 			},
 			iconSrc: "/avatar-agent/product-agents/wildcard-1.svg",
@@ -423,14 +433,14 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		},
 		{
 			description: "Review drafts against brand voice and tone.",
-			iconSrc: "/avatar-agent/dev-agents/unit-test-creator.svg",
+			iconSrc: "/avatar-agent/strategy-agents/wildcard-3.svg",
 			layoutClassName: "lg:col-start-4 lg:col-span-2 lg:row-start-1",
 			prompt: "Build a Studio agent named Brand Voice Crafter that reviews or generates content against supplied brand voice and tone guidelines to help produce consistent communications.",
 			title: "Brand Voice Crafter",
 		},
 		{
 			description: "Write social posts and improve engagement.",
-			iconSrc: "/avatar-agent/dev-agents/code-documentation-writer.svg",
+			iconSrc: "/avatar-agent/service-agents/wildcard-4.svg",
 			layoutClassName: "lg:col-start-4 lg:row-start-2",
 			prompt: "Build a Studio agent named Social Media Writer that drafts social media posts, suggests more engaging variants, and adapts messaging for channel, audience, and tone.",
 			title: "Social Media Writer",
@@ -461,29 +471,33 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		{
 			description: "Break large work into actionable tasks.",
 			hero: {
-				bannerClassName: "bg-blue-400",
+				bannerClassName: "bg-[#FFC716]",
 				skills: [
-					{ color: "strategy", label: "Work breakdown" },
-					{ color: "strategy", label: "Sequencing" },
-					{ color: "teamwork", label: "Owner assignment" },
-					{ color: "software", label: "Definition of ready" },
+					{ color: "strategy", icon: <TasksIcon label="" size="small" />, label: "work-breakdown" },
+					{ color: "strategy", icon: <SortAscendingIcon label="" size="small" />, label: "sequencing" },
+					{ color: "teamwork", icon: <PersonAddIcon label="" size="small" />, label: "owner-assignment" },
+					{ color: "software", icon: <FlagFilledIcon label="" size="small" />, label: "definition-of-ready" },
+					{ color: "strategy", icon: <ClockIcon label="" size="small" />, label: "effort-estimation" },
 				],
 				sources: [
-					{ id: "twg", label: "Teamwork Graph", provider: "twg" },
-					{ id: "jira", label: "Jira", provider: "jira" },
-					{ id: "confluence", label: "Confluence", provider: "confluence" },
-					{ id: "jira-product-discovery", label: "Jira Product Discovery", provider: "jira-product-discovery" },
 					{ id: "trello", label: "Trello", provider: "trello" },
+					{ id: "jira", label: "Jira", provider: "jira" },
+					{
+						icon: <Image alt="" aria-hidden height={24} src="/3p/monday/24.svg" width={24} />,
+						id: "monday",
+						label: "Monday",
+						provider: "teams",
+					},
 				],
 			},
-			iconSrc: "/avatar-agent/teamwork-agents/work-item-planner.svg",
+			iconSrc: "/avatar-agent/service-agents/wildcard-2.svg",
 			layoutClassName: "sm:col-span-2 sm:row-span-2 lg:col-start-4 lg:col-span-2 lg:row-start-1 lg:row-span-2",
 			prompt: "Build a Studio agent named Work Item Planner that breaks big projects, epics, or streams of work into smaller actionable tasks, owners, sequencing, and next steps.",
 			title: "Work Item Planner",
 		},
 		{
 			description: "Find, move, update, and organize work items.",
-			iconSrc: "/avatar-agent/service-agents/wildcard-2.svg",
+			iconSrc: "/avatar-agent/teamwork-agents/work-organizer.svg",
 			layoutClassName: "lg:col-start-1 lg:row-start-1 lg:row-span-2",
 			prompt: "Build a Studio agent named Work Item Organizer that finds and updates project work items, moves them into sprints, assigns epics, deletes stale items, and recommends cleanup actions.",
 			title: "Work Item Organizer",
@@ -497,7 +511,7 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 		},
 		{
 			description: "Detect blocked work and explain the next move.",
-			iconSrc: "/avatar-agent/teamwork-agents/blocker-checker.svg",
+			iconSrc: "/avatar-agent/strategy-agents/wildcard-4.svg",
 			layoutClassName: "lg:col-start-2 lg:row-start-2",
 			prompt: "Build a Studio agent named Blocker Checker that detects work items likely to be blocked, explains the evidence, and recommends how to update or unblock the work.",
 			title: "Blocker Checker",
@@ -595,18 +609,7 @@ function HomeStarterHeroTile({
 			}
 			whileTap={shouldReduceMotion ? undefined : { scale: 0.98, transition: { duration: 0.05 } }}
 		>
-			<div className={cn("relative h-12 shrink-0 overflow-hidden", hero.bannerClassName)}>
-				<Image
-					alt=""
-					aria-hidden
-					className="absolute top-1/2 left-[88%] h-48 w-[168px] -translate-x-1/2 -translate-y-1/2 opacity-95"
-					height={192}
-					src={template.iconSrc}
-					width={168}
-				/>
-			</div>
-			<div aria-hidden className="h-6 shrink-0" />
-			<div className="pointer-events-none absolute top-6 left-4 size-12">
+			<div className="mt-4 mb-3 ml-4 size-12 shrink-0">
 				<Image
 					alt=""
 					aria-hidden
@@ -615,20 +618,6 @@ function HomeStarterHeroTile({
 					src={template.iconSrc}
 					width={42}
 				/>
-				<svg
-					aria-hidden
-					className="pointer-events-none absolute top-0 left-0 h-12 w-[42px] overflow-visible"
-					focusable="false"
-					viewBox="0 0 43 48"
-				>
-					<path
-						d={HOME_STARTER_HERO_HEXAGON_PATH}
-						fill="none"
-						stroke="white"
-						strokeWidth={2}
-						vectorEffect="non-scaling-stroke"
-					/>
-				</svg>
 			</div>
 			<div className="flex min-h-0 flex-1 flex-col gap-2 px-4 pb-3">
 				<div>
@@ -640,7 +629,7 @@ function HomeStarterHeroTile({
 					</span>
 				</div>
 				{hero.sources.length > 0 ? (
-					<div>
+					<div className="mt-1">
 						<span className="block text-xs font-semibold leading-4 text-text-subtle">
 							Works with
 						</span>
@@ -653,13 +642,13 @@ function HomeStarterHeroTile({
 					</div>
 				) : null}
 				{hero.skills.length > 0 ? (
-					<div>
+					<div className="mt-1">
 						<span className="block text-xs font-semibold leading-4 text-text-subtle">
 							Skills
 						</span>
 						<SkillTagGroup className="mt-1">
 							{hero.skills.map((skill) => (
-								<SkillTag color={skill.color ?? "default"} key={skill.label}>
+								<SkillTag color={skill.color ?? "default"} icon={skill.icon} key={skill.label}>
 									{skill.label}
 								</SkillTag>
 							))}
@@ -782,7 +771,7 @@ function HomeStarterBento({
 
 	return (
 		<div className="w-full">
-			<div className="no-scrollbar -mx-1 flex justify-center gap-2 overflow-x-auto px-1">
+			<div className="flex flex-wrap justify-center gap-2">
 				{HOME_STARTER_CATEGORIES.map((category) => {
 					const isActive = activeCategory === category.id;
 
@@ -833,19 +822,7 @@ function HomeStarterBento({
 			</div>
 
 			<div className="@container/bento relative mt-6">
-				<div
-					className="relative -m-1 overflow-hidden p-1"
-					style={
-						canShowMore
-							? {
-									maskImage:
-										"linear-gradient(to bottom, black calc(100% - 96px), transparent 100%)",
-									WebkitMaskImage:
-										"linear-gradient(to bottom, black calc(100% - 96px), transparent 100%)",
-								}
-							: undefined
-					}
-				>
+				<div className="relative">
 					<AnimatePresence mode="wait" initial={false}>
 						<motion.div
 							key={activeCategory}
@@ -930,7 +907,12 @@ function HomeStarterBento({
 					</AnimatePresence>
 				</div>
 				{canShowMore ? (
-					<div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center pb-2">
+					<>
+						<div
+							aria-hidden
+							className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-background"
+						/>
+						<div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center pb-2">
 						<Button
 							type="button"
 							aria-label="Browse all agents"
@@ -943,6 +925,7 @@ function HomeStarterBento({
 							Browse all
 						</Button>
 					</div>
+					</>
 				) : null}
 			</div>
 			<AgentsDirectoryDialog
