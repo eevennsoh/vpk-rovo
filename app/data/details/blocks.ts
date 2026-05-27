@@ -2,7 +2,7 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const BLOCK_DETAILS: Record<string, ComponentDetail> = {
 	"agent-card": {
-		description: "Figma-matched Rovo agent profile card with cover art, avatar attribution, partner byline, description, and default edit/chat actions.",
+		description: "Figma-matched Rovo agent profile card with cover art, avatar attribution, partner byline, description, title actions, and an AI input affordance.",
 		importStatement: `import { AgentCard } from "@/components/blocks/agent-card";`,
 		usage: `import { AgentCard } from "@/components/blocks/agent-card";
 
@@ -41,14 +41,20 @@ export const BLOCK_DETAILS: Record<string, ComponentDetail> = {
 				description: "Cover artwork asset. Defaults to the avatar asset.",
 			},
 			{
-				name: "onEdit",
-				type: "() => void",
-				description: "Called when the Edit action is selected.",
+				name: "inputPlaceholder",
+				type: "string",
+				default: '"Ask, @mention, or / for actions"',
+				description: "Placeholder copy shown in the AI input affordance.",
 			},
 			{
-				name: "onChat",
+				name: "onMoreAction",
 				type: "() => void",
-				description: "Called when the Chat with agent action is selected.",
+				description: "Called when the more-actions icon button is selected.",
+			},
+			{
+				name: "onVoiceInput",
+				type: "() => void",
+				description: "Called when the waveform icon button is selected.",
 			},
 		],
 	},

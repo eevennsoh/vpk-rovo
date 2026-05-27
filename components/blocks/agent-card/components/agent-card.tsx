@@ -3,6 +3,9 @@
 import Image from "next/image";
 import type { ComponentProps, ReactElement } from "react";
 
+import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
+import AudioWaveformIcon from "@atlaskit/icon-lab/core/audio-waveform";
+
 import { Button } from "@/components/ui/button";
 import { AtlassianLogo } from "@/components/ui/logo";
 import { token } from "@/lib/tokens";
@@ -15,10 +18,11 @@ export interface AgentCardProps extends Omit<ComponentProps<"section">, "childre
 	avatarSrc?: string;
 	coverSrc?: string;
 	avatarAlt?: string;
-	editLabel?: string;
-	chatLabel?: string;
-	onEdit?: () => void;
-	onChat?: () => void;
+	inputPlaceholder?: string;
+	moreActionLabel?: string;
+	voiceActionLabel?: string;
+	onMoreAction?: () => void;
+	onVoiceInput?: () => void;
 }
 
 function AgentCard({
@@ -28,18 +32,21 @@ function AgentCard({
 	avatarSrc = "/avatar-agent/teamwork-agents/blocker-checker.svg",
 	coverSrc = avatarSrc,
 	avatarAlt = "",
-	editLabel = "Edit",
-	chatLabel = "Chat with agent",
-	onEdit,
-	onChat,
+	inputPlaceholder = "Ask, @mention, or / for actions",
+	moreActionLabel,
+	voiceActionLabel = "Start voice input",
+	onMoreAction,
+	onVoiceInput,
 	className,
 	...props
 }: Readonly<AgentCardProps>): ReactElement {
+	const resolvedMoreActionLabel = moreActionLabel ?? `More actions for ${name}`;
+
 	return (
 		<section
 			aria-label={`${name} agent card`}
 			className={cn(
-				"relative flex w-full max-w-[362px] flex-col overflow-hidden rounded-xl border border-border bg-surface-raised shadow-sm",
+				"relative flex !h-auto w-[360px] max-w-full self-start flex-col overflow-hidden rounded-xl bg-surface-raised shadow-sm",
 				className,
 			)}
 			data-slot="agent-card"
@@ -62,9 +69,21 @@ function AgentCard({
 
 			<div className="flex flex-col gap-4 bg-surface-raised pt-6">
 				<div className="flex flex-col gap-1 px-4 pt-2">
-					<h3 className="truncate text-[20px] leading-6 font-bold text-text">
-						{name}
-					</h3>
+					<div className="flex w-full items-center justify-between gap-3">
+						<h3 className="min-w-0 truncate text-[20px] leading-6 font-bold text-text">
+							{name}
+						</h3>
+						<Button
+							aria-label={resolvedMoreActionLabel}
+							className="size-6 rounded-md bg-surface p-0 text-icon-subtle"
+							onClick={onMoreAction}
+							size="icon-xs"
+							type="button"
+							variant="outline"
+						>
+							<ShowMoreHorizontalIcon label="" size="small" />
+						</Button>
+					</div>
 					<p className="text-xs leading-4 text-text-subtle">
 						By <span className="text-link">{partnerName}</span>
 					</p>
@@ -74,14 +93,23 @@ function AgentCard({
 				</p>
 			</div>
 
-			<footer className="flex items-center justify-end gap-2 border-t border-border p-4">
-				<Button variant="outline" onClick={onEdit} type="button">
-					{editLabel}
-				</Button>
-				<Button onClick={onChat} type="button">
-					{chatLabel}
-				</Button>
-			</footer>
+			<div className="flex h-[60px] items-start bg-surface px-3 pb-3">
+				<div className="flex h-12 w-full items-center justify-between rounded-xl border border-border bg-bg-input px-3 shadow-[0px_-2px_25px_rgba(30,31,33,0.08)]">
+					<p className="min-w-0 flex-1 truncate px-1.5 text-left text-sm leading-5 text-text-subtlest">
+						{inputPlaceholder}
+					</p>
+					<Button
+						aria-label={voiceActionLabel}
+						className="size-8 rounded-md p-0 text-icon-subtle"
+						onClick={onVoiceInput}
+						size="icon"
+						type="button"
+						variant="ghost"
+					>
+						<AudioWaveformIcon label="" size="small" />
+					</Button>
+				</div>
+			</div>
 
 			<div className="absolute top-6 left-4 size-12" aria-hidden={avatarAlt === ""}>
 				<Image
