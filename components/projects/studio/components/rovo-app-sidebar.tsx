@@ -211,10 +211,7 @@ function StudioSidebarNavigation({
 											isSelected={shouldShowRecentAgents && hasSelectedRecentAgent ? false : item.isSelected}
 										/>
 										{shouldShowRecentAgents ? (
-											<div className="mt-0.5 flex flex-col gap-0.5 pl-7">
-												<div className="px-1.5 text-xs font-semibold leading-4 text-text-subtlest">
-													Recent
-												</div>
+											<div className="flex flex-col gap-0.5 pl-3">
 												{recentAgents.items.map((recentAgent) => (
 													<SidebarNavItem
 														key={`${recentAgent.kind}:${recentAgent.id}`}

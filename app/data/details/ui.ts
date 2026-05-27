@@ -5114,6 +5114,11 @@ import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/com
         description: "Secondary description text below the label, useful for metadata like timestamps.",
         demoSlug: "sidebar-nav-item-demo-with-description",
       },
+      {
+        title: "Nested levels",
+        description: "Nested items use 12px left indentation per level.",
+        demoSlug: "sidebar-nav-item-demo-nested-levels",
+      },
     ],
   },
 
