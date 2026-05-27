@@ -47,6 +47,16 @@ export const BLOCK_DETAILS: Record<string, ComponentDetail> = {
 				description: "Placeholder copy shown in the AI input affordance.",
 			},
 			{
+				name: "inputActionLabel",
+				type: "string",
+				description: "Accessible label for the input affordance when it is actionable.",
+			},
+			{
+				name: "onInputAction",
+				type: "() => void",
+				description: "Called when the input affordance is selected.",
+			},
+			{
 				name: "onMoreAction",
 				type: "() => void",
 				description: "Called when the more-actions icon button is selected.",

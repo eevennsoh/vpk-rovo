@@ -19,8 +19,10 @@ export interface AgentCardProps extends Omit<ComponentProps<"section">, "childre
 	coverSrc?: string;
 	avatarAlt?: string;
 	inputPlaceholder?: string;
+	inputActionLabel?: string;
 	moreActionLabel?: string;
 	voiceActionLabel?: string;
+	onInputAction?: () => void;
 	onMoreAction?: () => void;
 	onVoiceInput?: () => void;
 }
@@ -33,8 +35,10 @@ function AgentCard({
 	coverSrc = avatarSrc,
 	avatarAlt = "",
 	inputPlaceholder = "Ask, @mention, or / for actions",
+	inputActionLabel,
 	moreActionLabel,
 	voiceActionLabel = "Start voice input",
+	onInputAction,
 	onMoreAction,
 	onVoiceInput,
 	className,
@@ -95,9 +99,20 @@ function AgentCard({
 
 			<div className="flex h-[60px] items-start bg-surface px-3 pb-3">
 				<div className="flex h-12 w-full items-center justify-between rounded-xl border border-border bg-bg-input px-3 shadow-[0px_-2px_25px_rgba(30,31,33,0.08)]">
-					<p className="min-w-0 flex-1 truncate px-1.5 text-left text-sm leading-5 text-text-subtlest">
-						{inputPlaceholder}
-					</p>
+					{onInputAction ? (
+						<button
+							aria-label={inputActionLabel ?? inputPlaceholder}
+							className="min-w-0 flex-1 truncate rounded-md px-1.5 text-left text-sm leading-5 text-text-subtlest outline-none hover:text-text-subtle focus-visible:ring-2 focus-visible:ring-ring"
+							onClick={onInputAction}
+							type="button"
+						>
+							{inputPlaceholder}
+						</button>
+					) : (
+						<p className="min-w-0 flex-1 truncate px-1.5 text-left text-sm leading-5 text-text-subtlest">
+							{inputPlaceholder}
+						</p>
+					)}
 					<Button
 						aria-label={voiceActionLabel}
 						className="size-8 rounded-md p-0 text-icon-subtle"
