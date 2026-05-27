@@ -3,7 +3,6 @@
 import type { ComponentProps, CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
-import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
 
 import {
 	Collapsible,
@@ -130,17 +129,21 @@ export function TwgToolSourceIcon({
 	if (source.provider === "twg") {
 		return (
 			<Tile
-				className={cn("shrink-0 text-icon-warning", className)}
+				className={cn("shrink-0", className)}
+				isInset={false}
 				label={source.label}
 				size={tileSize}
-				variant="warning"
+				variant="transparent"
 				{...props}
 			>
-				<Icon
-					aria-hidden
-					render={<TeamworkGraphIcon label="" size="small" spacing="none" />}
-					className={size === "md" ? "size-4" : "size-3"}
-				/>
+				<span className="inline-flex size-full items-center justify-center">
+					<AtlassianLogo
+						name="jira-service-management"
+						label={source.label}
+						size={size === "md" ? "small" : "xxsmall"}
+						themeAware={false}
+					/>
+				</span>
 			</Tile>
 		);
 	}
@@ -169,7 +172,6 @@ export function TwgToolSourceIcon({
 	return (
 		<Tile
 			className={cn("shrink-0 text-icon-subtle", className)}
-			hasBorder
 			isInset={false}
 			label={source.label}
 			size={tileSize}
@@ -180,7 +182,7 @@ export function TwgToolSourceIcon({
 				<AtlassianLogo
 					name={source.provider}
 					label={source.label}
-					size="xxsmall"
+					size={size === "md" ? "small" : "xxsmall"}
 					themeAware={false}
 				/>
 			</span>
@@ -285,14 +287,15 @@ export function TwgTool({
 					<div className="w-px flex-1 bg-border" />
 					<div
 						className={cn(
-							"flex size-8 shrink-0 items-center justify-center text-icon-subtle",
-							status === "active" && "animate-pulse text-icon"
+							"flex size-8 shrink-0 items-center justify-center",
+							status === "active" && "animate-pulse"
 						)}
 					>
-						<Icon
-							render={<TeamworkGraphIcon label="" size="small" spacing="none" />}
-							label="Teamwork Graph"
-							className="size-4"
+						<AtlassianLogo
+							name="jira-service-management"
+							label="Jira Service Management"
+							size="small"
+							themeAware={false}
 						/>
 					</div>
 					<div className="w-px flex-1 bg-border group-last/twg:bg-transparent" />
