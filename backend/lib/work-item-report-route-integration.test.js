@@ -83,6 +83,9 @@ test("backend Work Item artifact route uses the vpk-html runner and emits an htm
 });
 
 test("RFP demo agent creation emits an agent result instead of an artifact result", () => {
+	assert.match(SERVER_SOURCE, /const requestCreationMode =[\s\S]*requestBody\.creationMode === "agent"[\s\S]*requestBody\.creationMode[\s\S]*: null;/u);
+	assert.match(SERVER_SOURCE, /if \(requestCreationMode === "agent"\) \{[\s\S]*reason: "agent_creation_mode"[\s\S]*\} else if \(workItemReportRequest\.isIntent/u);
+	assert.match(SERVER_SOURCE, /creationMode: requestCreationMode/u);
 	assert.match(SERVER_SOURCE, /turn === "agent-creation"/u);
 	assert.match(SERVER_SOURCE, /buildAgentsRfpDemoAgentCreationTrace\(\{ selectedKnowledge \}\)/u);
 	assert.match(SERVER_SOURCE, /type:\s*"data-agent-result"/u);

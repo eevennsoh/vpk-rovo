@@ -4021,6 +4021,10 @@ async function executeRovoAppManagedRun(run) {
 
 	const requestIsPlanMode = requestBody.isPlanMode === true;
 	delete requestBody.isPlanMode;
+	const requestCreationMode =
+		requestBody.creationMode === "agent" || requestBody.creationMode === "skill"
+			? requestBody.creationMode
+			: null;
 
 	const requestArtifactCreationRetry = requestBody.artifactCreationRetry === true;
 	delete requestBody.artifactCreationRetry;
@@ -4049,7 +4053,21 @@ async function executeRovoAppManagedRun(run) {
 		}
 	}
 
-	if (workItemReportRequest.isIntent && !workItemReportRequest.hasContext) {
+	if (requestCreationMode === "agent") {
+		routingDecision = {
+			intent: "chat",
+			presentation: "text",
+			confidence: 1,
+			reason: "agent_creation_mode",
+			origin: requestOrigin,
+		};
+		stageTrace.mark("route_decision_resolved", {
+			stageMs: 0,
+			intent: "chat",
+			confidence: 1,
+			reason: "agent_creation_mode",
+		});
+	} else if (workItemReportRequest.isIntent && !workItemReportRequest.hasContext) {
 		routingDecision = {
 			intent: "chat",
 			presentation: "text",
@@ -4113,6 +4131,7 @@ async function executeRovoAppManagedRun(run) {
 					prompt: latestUserMessage,
 					origin: requestOrigin,
 					activeArtifact: activeArtifact || undefined,
+					creationMode: requestCreationMode,
 					voiceMetadata: requestVoiceMetadata,
 					recentHistory,
 					threadId,

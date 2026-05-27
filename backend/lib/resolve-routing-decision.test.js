@@ -81,6 +81,16 @@ describe("resolveRoutingDecisionFastPath", () => {
 		assert.equal(result.reason, "active_artifact");
 	});
 
+	it("keeps Studio agent creation prompts out of artifact routing", () => {
+		const result = resolveRoutingDecisionFastPath({
+			prompt: "Build a code review agent that checks diffs for regressions",
+			creationMode: "agent",
+		});
+		assert.equal(result.intent, "chat");
+		assert.equal(result.presentation, "text");
+		assert.equal(result.reason, "agent_creation_mode");
+	});
+
 	it("returns artifact_create for document verb + noun match", () => {
 		const result = resolveRoutingDecisionFastPath({ prompt: "create a product brief about Watermelon" });
 		assert.equal(result.intent, "artifact_create");
