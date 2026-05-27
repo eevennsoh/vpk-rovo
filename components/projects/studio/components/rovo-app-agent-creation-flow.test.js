@@ -67,10 +67,14 @@ test("Studio agent results use guarded session-agent registration with preserve-
 	assert.match(SHELL_SOURCE, /if \(handleStudioAgentResultSelect\(agentResult, \{ sourceMessageId: message\.id \}\)\) \{[\s\S]*handledAgentResultKeysRef\.current\.add\(agentResultKey\);/u);
 	assert.match(SHELL_SOURCE, /const unmarkStudioAgentCreationThread = useCallback[\s\S]*studioAgentCreationThreadKeysRef\.current\.delete\(threadId\);/u);
 	assert.match(SHELL_SOURCE, /unmarkStudioAgentCreationThread\(chat\.runtimeThreadId\);/u);
+	assert.match(SHELL_SOURCE, /import \{ AgentsDirectoryDialog \} from "@\/components\/blocks\/agents-directory";/u);
 	assert.match(SHELL_SOURCE, /sessionAgentEntries=\{studioAgentRegistry\.sessionAgentEntries\}/u);
+	assert.match(SHELL_SOURCE, /sessionAgents=\{studioAgentRegistry\.sessionAgentEntries\.map\(\(entry\) => entry\.profile\)\}/u);
+	assert.match(SHELL_SOURCE, /agents=\{ROVO_AGENT_PROFILES\}/u);
 	assert.match(SHELL_SOURCE, /selectedAgentId=\{studioAgentRegistry\.selectedAgentId\}/u);
 	assert.match(SHELL_SOURCE, /onSelectAgent=\{handleStudioSidebarAgentSelect\}/u);
 	assert.match(SHELL_SOURCE, /onViewAllAgents=\{\(\) => setIsSidebarAgentBrowserOpen\(true\)\}/u);
+	assert.doesNotMatch(SHELL_SOURCE, /rovo-app-agents-directory/u);
 });
 
 test("RovoAppMessages renders the block agent result card after generation completes", () => {

@@ -6690,6 +6690,10 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
   "agent-card": dynamic(() => import("./demos/blocks/agent-card-demo"), {
     ssr: false,
   }),
+  "agents-directory": dynamic(
+    () => import("./demos/blocks/agents-directory-demo"),
+    { ssr: false },
+  ),
   "agent-progress": dynamic(
     () => import("./demos/blocks/agent-progress-demo"),
     { ssr: false },

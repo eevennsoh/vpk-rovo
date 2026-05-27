@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { ArtifactPanel } from "@/components/ui-custom/artifact";
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
-import { BrowseAgentsDialog } from "@/components/projects/studio/components/rovo-app-agents-directory";
+import { AgentsDirectoryDialog } from "@/components/blocks/agents-directory";
 import { RovoAppBrowserArtifact } from "@/components/projects/studio/components/rovo-app-browser-artifact";
 import { RovoAppComposer } from "@/components/projects/studio/components/rovo-app-composer";
 import { RovoAppMessages } from "@/components/projects/studio/components/rovo-app-messages";
@@ -74,7 +74,7 @@ import { approveSkillDraft, fetchWikiStatus, fetchSkillDraftDetail, fetchSkillDr
 import type { HermesSkillDraftDetail, HermesSkillDraftSummary, HermesSkillSummary, WikiStatus } from "@/lib/rovo-runtime-types";
 import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
 import { useRovoSelectedAgent } from "@/app/contexts";
-import { getRovoAgentPromptContext, isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/studio/data/agent-profiles";
+import { ROVO_AGENT_PROFILES, getRovoAgentPromptContext, isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/studio/data/agent-profiles";
 
 interface RovoAppShellProps {
 	embedded?: boolean;
@@ -672,7 +672,11 @@ function HomeStarterBento({
 					</div>
 				) : null}
 			</div>
-			<BrowseAgentsDialog open={browseOpen} onOpenChange={setBrowseOpen} />
+			<AgentsDirectoryDialog
+				open={browseOpen}
+				onOpenChange={setBrowseOpen}
+				agents={ROVO_AGENT_PROFILES}
+			/>
 		</div>
 	);
 }
@@ -3409,11 +3413,12 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				threadsLoaded={chat.threadsLoaded}
 				topOffset={!embedded}
 			/>
-			<BrowseAgentsDialog
+			<AgentsDirectoryDialog
 				open={isSidebarAgentBrowserOpen}
 				onOpenChange={setIsSidebarAgentBrowserOpen}
+				agents={ROVO_AGENT_PROFILES}
 				onSelectAgent={handleSidebarBrowseAgentSelect}
-				sessionAgentEntries={studioAgentRegistry.sessionAgentEntries}
+				sessionAgents={studioAgentRegistry.sessionAgentEntries.map((entry) => entry.profile)}
 			/>
 
 			{!embedded ? (
