@@ -18,7 +18,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { RovoDevAgentIcon } from "@/components/ui/logo";
 import { Tile } from "@/components/ui/tile";
 import {
 	TwgToolBannerBackground,
@@ -42,14 +41,15 @@ const AGENT_KNOWLEDGE_SOURCES = [
 	{ id: "salesforce", label: "Salesforce", provider: "salesforce" },
 ] as const satisfies readonly TwgToolSource[];
 
-function AgentAvatarLogo({
-	label,
-	size,
-}: Readonly<{ label: string; size: ComponentProps<typeof RovoDevAgentIcon>["size"] }>) {
+function AgentHeaderAvatar({ label }: Readonly<{ label: string }>) {
 	return (
-		<span className="agent-rovo-avatar-brand">
-			<RovoDevAgentIcon label={label} size={size} themeAware={false} />
-		</span>
+		<Image
+			alt={label}
+			className="h-6 w-[21px] shrink-0"
+			height={48}
+			src={AGENT_AVATAR_SRC}
+			width={42}
+		/>
 	);
 }
 
@@ -112,7 +112,7 @@ export const AgentHeader = memo(
 			{...props}
 		>
 			<div className="flex min-w-0 items-center gap-2">
-				<AgentAvatarLogo label="Agent" size="small" />
+				<AgentHeaderAvatar label="Agent" />
 				<span className="truncate text-sm font-semibold leading-5 text-text">{name}</span>
 				{model ? (
 					<Badge className="font-normal" variant="outline">
