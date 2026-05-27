@@ -29,6 +29,11 @@ import {
 } from "@/lib/rovo-app-types";
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
 import {
+	readSessionAgentRecords,
+	writeSessionAgentRecords,
+	toPersistedRecord,
+} from "@/components/projects/studio/lib/studio-session-agent-storage";
+import {
 	getRovoAgentProfile,
 	getRovoAgentPromptContext,
 	isRovoAgentProfile,
@@ -88,6 +93,7 @@ import {
 	getChatInProgressRetryContent,
 	getChatInProgressUserMessage,
 } from "@/lib/chat-error-utils";
+import { isPlainRecord } from "@/lib/utils";
 import { DefaultChatTransport, type FileUIPart } from "ai";
 
 export interface SendPromptOptions {
@@ -875,10 +881,6 @@ function getPayloadString(
 	return null;
 }
 
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function getAgentResultStarterLabel(value: unknown): string | null {
 	const directLabel = getNonEmptyString(value);
 	if (directLabel) {
@@ -1132,116 +1134,36 @@ function createSessionAgentEntryFromResult(params: {
 	};
 }
 
-const STUDIO_PUBLISHED_AGENTS_STORAGE_KEY = "vpk:studio:published-agents:v1";
-
-type PublishedAgentRecord = {
-	lastTouchedAt?: number;
-	profileId: string;
-	profileName: string;
-	resultKey: string;
-	result: RovoDataParts["agent-result"];
-};
-
-function isPublishedAgentRecord(value: unknown): value is PublishedAgentRecord {
-	if (!isPlainRecord(value)) {
-		return false;
-	}
-
-	return (
-		typeof value.profileId === "string" &&
-		typeof value.profileName === "string" &&
-		typeof value.resultKey === "string" &&
-		isPlainRecord(value.result) &&
-		typeof (value.result as Record<string, unknown>).agentId === "string"
-	);
-}
-
-function readPublishedAgentRecords(): readonly PublishedAgentRecord[] {
-	if (typeof window === "undefined") {
-		return [];
-	}
-
-	try {
-		const raw = window.localStorage.getItem(STUDIO_PUBLISHED_AGENTS_STORAGE_KEY);
-		if (!raw) {
-			return [];
-		}
-
-		const parsed = JSON.parse(raw) as unknown;
-		if (!Array.isArray(parsed)) {
-			return [];
-		}
-
-		return parsed.filter(isPublishedAgentRecord);
-	} catch {
-		return [];
-	}
-}
-
-function getPublishedAgentRecordTimestamp(record: PublishedAgentRecord): number {
-	return typeof record.lastTouchedAt === "number" && Number.isFinite(record.lastTouchedAt)
-		? record.lastTouchedAt
-		: Date.now();
-}
-
-function writePublishedAgentRecords(records: readonly PublishedAgentRecord[]): void {
-	if (typeof window === "undefined") {
-		return;
-	}
-
-	try {
-		window.localStorage.setItem(
-			STUDIO_PUBLISHED_AGENTS_STORAGE_KEY,
-			JSON.stringify(records)
-		);
-	} catch {
-		// Ignore quota / serialization failures; published agents are best-effort
-		// client-only persistence.
-	}
-}
-
 function rehydrateSessionAgentEntriesFromStorage(): SessionAgentEntry[] {
-	const records = readPublishedAgentRecords();
+	const records = readSessionAgentRecords();
 	if (records.length === 0) {
 		return [];
 	}
 
 	return records.map((record) => {
+		const fallbackName =
+			getNonEmptyString(record.sourceResult.name) ?? SESSION_AGENT_DEFAULT_NAME;
 		const profile = buildSessionAgentProfileFromResult({
-			agentResult: record.result,
+			agentResult: record.draftResult,
 			profileId: record.profileId,
-			profileName: record.profileName,
+			profileName: getNonEmptyString(record.draftResult.name) ?? fallbackName,
 		});
 
 		return {
 			profile,
 			resultKey: record.resultKey,
-			sourceResult: record.result,
-			draftResult: record.result,
-			lastTouchedAt: getPublishedAgentRecordTimestamp(record),
-			publishReadyResult: record.result,
-			publishedResult: record.result,
-			publishStatus: "published" as StudioAgentPublishStatus,
+			sourceResult: record.sourceResult,
+			draftResult: record.draftResult,
+			lastTouchedAt: record.lastTouchedAt,
+			publishReadyResult: record.publishReadyResult,
+			publishedResult: record.publishedResult,
+			publishStatus: record.publishStatus,
 		};
 	});
 }
 
-function getPublishedAgentRecordsFromEntries(
-	entries: readonly SessionAgentEntry[]
-): PublishedAgentRecord[] {
-	return entries
-		.filter((entry) => entry.publishStatus === "published" && entry.publishedResult)
-		.map((entry) => ({
-			lastTouchedAt: entry.lastTouchedAt,
-			profileId: entry.profile.id,
-			profileName: entry.profile.name,
-			resultKey: entry.resultKey,
-			result: entry.publishedResult as RovoDataParts["agent-result"],
-		}));
-}
-
-function persistPublishedAgentEntries(entries: readonly SessionAgentEntry[]): void {
-	writePublishedAgentRecords(getPublishedAgentRecordsFromEntries(entries));
+function persistSessionAgentEntries(entries: readonly SessionAgentEntry[]): void {
+	writeSessionAgentRecords(entries.map(toPersistedRecord));
 }
 
 export function RovoChatProvider({
@@ -1270,6 +1192,7 @@ export function RovoChatProvider({
 	const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 	const [sessionAgentEntries, setSessionAgentEntries] = useState<SessionAgentEntry[]>([]);
 	const hasRehydratedPublishedAgentsRef = useRef(false);
+	const hasInitializedSessionAgentsRef = useRef(false);
 
 	const errorCounterRef = useRef(0);
 	const queueIdRef = useRef(0);
@@ -1335,6 +1258,11 @@ export function RovoChatProvider({
 
 	useEffect(() => {
 		sessionAgentEntriesRef.current = sessionAgentEntries;
+		if (!hasInitializedSessionAgentsRef.current) {
+			hasInitializedSessionAgentsRef.current = true;
+			return;
+		}
+		persistSessionAgentEntries(sessionAgentEntries);
 	}, [sessionAgentEntries]);
 
 	useEffect(() => {
@@ -2840,9 +2768,6 @@ export function RovoChatProvider({
 		nextEntries[index] = nextEntry;
 		sessionAgentEntriesRef.current = nextEntries;
 		setSessionAgentEntries(nextEntries);
-		if (nextEntry.publishStatus === "published") {
-			persistPublishedAgentEntries(nextEntries);
-		}
 		return nextEntry;
 	}, []);
 
@@ -2942,9 +2867,6 @@ export function RovoChatProvider({
 			nextEntries[index] = nextEntry;
 			sessionAgentEntriesRef.current = nextEntries;
 			setSessionAgentEntries(nextEntries);
-			if (nextEntry.publishStatus === "published") {
-				persistPublishedAgentEntries(nextEntries);
-			}
 			return nextEntry;
 		},
 		[]
@@ -2975,9 +2897,6 @@ export function RovoChatProvider({
 			nextEntries[index] = nextEntry;
 			sessionAgentEntriesRef.current = nextEntries;
 			setSessionAgentEntries(nextEntries);
-			if (nextEntry.publishStatus === "published") {
-				persistPublishedAgentEntries(nextEntries);
-			}
 			return nextEntry;
 		},
 		[]
@@ -3003,8 +2922,6 @@ export function RovoChatProvider({
 			nextEntries[index] = nextEntry;
 			sessionAgentEntriesRef.current = nextEntries;
 			setSessionAgentEntries(nextEntries);
-
-			persistPublishedAgentEntries(nextEntries);
 
 			return nextEntry;
 		},

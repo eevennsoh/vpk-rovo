@@ -419,10 +419,12 @@ function HomeStarterBento({
 	onPreviewEnd,
 	onPreviewStart,
 	onSelect,
+	sessionAgents,
 }: Readonly<{
 	onPreviewEnd: () => void;
 	onPreviewStart: (prompt: string) => void;
 	onSelect: (prompt: string) => void;
+	sessionAgents: readonly RovoAgentProfile[];
 }>) {
 	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>(HOME_STARTER_DEFAULT_CATEGORY);
 	const [browseOpen, setBrowseOpen] = useState(false);
@@ -676,6 +678,7 @@ function HomeStarterBento({
 				open={browseOpen}
 				onOpenChange={setBrowseOpen}
 				agents={ROVO_AGENT_PROFILES}
+				sessionAgents={sessionAgents}
 			/>
 		</div>
 	);
@@ -3159,6 +3162,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						onSelect={handleGallerySelect}
 						onPreviewStart={handleGalleryPreviewStart}
 						onPreviewEnd={handleGalleryPreviewEnd}
+						sessionAgents={studioAgentRegistry.sessionAgentEntries.map((entry) => entry.profile)}
 					/>
 				</motion.div>
 			) : null}
