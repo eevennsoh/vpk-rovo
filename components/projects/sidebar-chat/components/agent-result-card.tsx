@@ -32,7 +32,7 @@ function getAgentDisplayName(agent: AgentResult): string {
 
 function getAgentDescription(agent: AgentResult): string {
 	if (agent.agentId === RFP_DRAFTING_AGENT_ID) {
-		return "RFP Drafter monitors Drafting tickets, reads Jira context, uses Teamwork Graph knowledge, and generates and attaches a response PDF.";
+		return "RFP Drafter monitors Drafting work items, reads Jira context, uses Teamwork Graph knowledge, and generates and attaches a response PDF.";
 	}
 
 	return agent.summary?.trim() || agent.description?.trim() || "Generated agent";
