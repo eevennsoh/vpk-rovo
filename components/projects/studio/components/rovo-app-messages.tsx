@@ -11,7 +11,7 @@ import { AdsReasoningTrigger, Reasoning, ReasoningContent } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { InlineEdit } from "@/components/ui/inline-edit";
-import { AgentResultCard } from "@/components/projects/sidebar-chat/components/agent-result-card";
+import { AgentResultCard, isGeneratedAgentResult } from "@/components/projects/sidebar-chat/components/agent-result-card";
 import { getRovoAppInterruptionLabel } from "@/lib/rovo-app-interruptions";
 import { resolveRovoAppMessageArtifactDisplay, resolveRovoAppOrphanArtifactDisplay, type RovoAppPendingArtifactResult } from "@/components/projects/studio/lib/rovo-app-message-artifacts";
 import {
@@ -1073,6 +1073,12 @@ export function RovoAppMessages({
 					const shouldHideSuggestions = message.id !== lastAssistantMessageId || shouldSuppressLatestAssistantSuggestions;
 					const suggestions = shouldHideSuggestions ? [] : (getLatestDataPart(message, "data-suggested-questions")?.data.questions ?? []);
 					const agentResult = getMessageAgentResult(message);
+					const completedAgentResult =
+						isGeneratedAgentResult(agentResult) && hasTurnCompleteSignal(message)
+							? agentResult
+							: null;
+					const resolvedArtifactDisplayForMessage =
+						completedAgentResult ? null : resolvedArtifactDisplay;
 
 					const messagePlanWidget = (() => {
 						const widget = getLatestDataPart(message, "data-widget-data");
@@ -1108,19 +1114,19 @@ export function RovoAppMessages({
 						<Fragment key={message.id}>
 							<AssistantMessage
 								artifactCard={
-									resolvedArtifactDisplay ? (
+									resolvedArtifactDisplayForMessage ? (
 										<ArtifactCard
-											action={resolvedArtifactDisplay.action}
-											displayMode={resolvedArtifactDisplay.displayMode}
+											action={resolvedArtifactDisplayForMessage.action}
+											displayMode={resolvedArtifactDisplayForMessage.displayMode}
 											visualIdentity={latestPlanVisualIdentity}
-											isStreaming={resolvedArtifactDisplay.isStreaming}
-											kind={resolvedArtifactDisplay.kind}
-											onOpen={(element) => onOpenArtifactFromCard(resolvedArtifactDisplay.documentId, element)}
-											onRegister={(element) => onRegisterArtifactCard(resolvedArtifactDisplay.documentId, element)}
-											previewContent={resolvedArtifactDisplay.previewContent}
-											previewSummary={resolvedArtifactDisplay.previewSummary ?? undefined}
-											title={resolvedArtifactDisplay.title}
-											versionNumber={resolvedArtifactDisplay.document?.versions.length ?? 1}
+											isStreaming={resolvedArtifactDisplayForMessage.isStreaming}
+											kind={resolvedArtifactDisplayForMessage.kind}
+											onOpen={(element) => onOpenArtifactFromCard(resolvedArtifactDisplayForMessage.documentId, element)}
+											onRegister={(element) => onRegisterArtifactCard(resolvedArtifactDisplayForMessage.documentId, element)}
+											previewContent={resolvedArtifactDisplayForMessage.previewContent}
+											previewSummary={resolvedArtifactDisplayForMessage.previewSummary ?? undefined}
+											title={resolvedArtifactDisplayForMessage.title}
+											versionNumber={resolvedArtifactDisplayForMessage.document?.versions.length ?? 1}
 										/>
 									) : null
 								}
@@ -1139,16 +1145,16 @@ export function RovoAppMessages({
 								planBuildDisabledReason={planBuildDisabledReason}
 								voteValue={votes[message.id]}
 							/>
-								{agentResult ? (
-									<AgentResultCard
-										agent={agentResult}
-										onSelectAgent={
-											onAgentResultSelect
-												? (agent) => onAgentResultSelect(agent, { sourceMessageId: message.id })
-												: undefined
-										}
-									/>
-								) : null}
+							{completedAgentResult ? (
+								<AgentResultCard
+									agent={completedAgentResult}
+									onSelectAgent={
+										onAgentResultSelect
+											? (agent) => onAgentResultSelect(agent, { sourceMessageId: message.id })
+											: undefined
+									}
+								/>
+							) : null}
 							<AssistantSuggestionPills messageId={message.id} onSelectSuggestion={onSelectSuggestion} suggestions={suggestions} />
 						</Fragment>
 					);

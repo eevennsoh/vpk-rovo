@@ -58,18 +58,38 @@ If GitHub reads fail because `GITHUB_TOKEN` is invalid while keyring auth is ava
 
 Trigger: `vpk-git --pr [<optional title hint>]`.
 
-Use when the user wants to commit current edits, push, and open a PR in one command. Assumes the common VPK-rovo case: the user is already inside a feature branch or worktree. Branch creation is reactive — only used when HEAD happens to be `main`.
+Use when the user wants to commit current edits, push, and open a PR in one command. Assumes the common VPK-rovo case: the user is already inside a feature branch or worktree. The branch name comes from the **diff**, not from whatever branch the agent happened to be on — background-session worktrees often pre-create branches from the agent's initial framing (the bug symptom, a random word pair, a session id), and those names are not allowed to leak into the PR. The skill always self-serves a name; it never asks the user to pick one.
 
 1. Inspect HEAD state:
-   - `git rev-parse --abbrev-ref HEAD`
+   - `git rev-parse --abbrev-ref HEAD` (returns `HEAD` when detached)
    - `git status --porcelain=v1 --untracked-files=all`
-   - `git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null` (missing upstream is expected on fresh branches)
-   - Stop if HEAD is detached, or if the working tree is clean **and** the branch is already in sync with its upstream — nothing to PR.
+   - `git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null` (missing upstream is expected on fresh branches and on detached HEAD)
+   - Stop only if **all** of the following are true: working tree is clean, no commits ahead of the default branch (`git log --oneline origin/main..HEAD` is empty), and an upstream exists and is in sync — i.e. there is genuinely nothing to PR.
 
-2. Branch handling:
-   - **On a feature branch**: keep it. No rename, no new branch.
-   - **On `main` with changes**: derive a short kebab-case branch name from the diff. 3-5 words, verb-noun phrasing (e.g. `fix-hermes-panel-overflow`, `add-rovo-app-shell`, `refactor-message-thread`). Avoid timestamps, ticket prefixes, or path slugs. Use `git switch -c <name>` to carry the working tree onto the new branch without stashing. Never commit to `main`.
+2. Derive a contextual branch name from the diff, then decide keep / rename / create. **Always compute the contextual name first** — never trust the current branch name without evaluating it against the change content.
+
+   Signal sources, in order of weight:
+   - `git diff origin/main...HEAD` (committed work on the branch)
+   - `git status --porcelain` plus targeted `git diff` reads of the largest uncommitted files (uncommitted edits)
+   - Commit subjects on the branch: `git log --oneline origin/main..HEAD`
+   - The optional title hint the user passed to `vpk-git --pr`
+
+   Naming rules: short kebab-case, 3-5 words, verb-noun phrasing that describes **what the change does**. Avoid timestamps, ticket prefixes, path slugs, and generic placeholders (`fix-bug`, `update-code`, `wip`, `patch-1`). Also avoid names that describe the bug *symptom*, the agent session, or the worktree the change was authored in rather than the change itself.
+
+   - Good: `fix-hermes-panel-overflow`, `add-rovo-app-shell`, `auto-derive-pr-branch-name`, `refactor-message-thread`.
+   - Bad: `detached-head` (symptom, not fix), `concurrent-conjuring-firefly` (random worktree slug), `claude/session-3` (agent session id), `wip-foo`, `fixes`.
+
+   Then act based on current HEAD:
+
+   - **On a feature branch**: compare current branch name to the derived name. **Rename** with `git branch -m <derived>` when *any* of these are true, **provided no open PR already exists on the branch** (verify with `gh pr list --head <current> --state open`):
+     - The current name describes the bug symptom, the worktree, or the agent session rather than what the change does.
+     - The current name shares no meaningful vocabulary with the derived name (no overlapping noun or verb).
+     - The current name is generic, random word-pair, or placeholder (`wip`, `fix`, `update`, `patch`, agent-assigned slugs like `claude/<adj>-<adj>-<noun>`).
+     If an open PR already exists on the current branch, **keep the branch name** — renaming would orphan the PR. Note the name mismatch in the final report so the user can rename next time. If the current name is already a fair match for the diff (shares the key noun/verb and reads as verb-noun), keep it with no rename.
+   - **On `main` with changes**: create the branch with `git switch -c <derived>` to carry the working tree across. Never commit to `main`.
+   - **On detached HEAD (any state — clean with commits ahead, dirty, or both)**: attach a new branch at the current commit with `git switch -c <derived>`. The signal is the combined diff against the default branch (`git diff origin/main...HEAD` for committed work plus `git status --porcelain` for uncommitted edits). Do **not** create a branch ref pointing at the SHA while leaving HEAD detached. The only acceptable reason to stop here is if both the diff and the uncommitted set are empty — already covered by the step-1 stop check.
    - **No upstream**: push with `-u origin <branch>` in step 5.
+   - **Derived name collision**: if `<derived>` already exists locally or on `origin` (and is not the branch you would be renaming onto itself), append a 2-3 char disambiguator from the short SHA of HEAD (e.g. `auto-derive-pr-branch-name-a1b`). Do not ask the user.
 
 3. Check for an existing PR on this branch:
    - `gh pr list --head <branch> --state open --json number,title,url`
@@ -290,7 +310,7 @@ Stop and report instead of changing state when:
 - A local branch would require `git branch -D`.
 - A worktree removal would require `--force`.
 - GitHub state, default branch, PR ownership, or branch ancestry is ambiguous.
-- **Create PR**: HEAD is detached, working tree is clean (no commit possible), the derived branch name collides with an existing local or remote branch, or `gh pr create` / `git push` fails for a non-trivial reason (auth, network, protected branch).
+- **Create PR**: working tree is clean **and** no commits ahead of the default branch (nothing to PR), the derived branch name collides with an existing local or remote branch *and* the SHA-disambiguator fallback also collides, or `gh pr create` / `git push` fails for a non-trivial reason (auth, network, protected branch). Detached HEAD is *not* a stop condition — branch handling step 2 derives a name and attaches a branch automatically. A mismatched-but-locked branch name (current branch name is a poor fit for the diff but an open PR already exists on it) is *not* a stop either — keep the branch, finish the PR, and surface the mismatch in the report.
 - **Full Ship Sequence**: auto-merge cannot be queued, required checks fail, merge state goes `DIRTY` (conflict needs human resolution), or the merge poll exceeds the 15-minute timeout.
 
 ## Output
@@ -298,7 +318,7 @@ Stop and report instead of changing state when:
 Keep the final report concise:
 
 - PR created / updated / merged / closed and its URL.
-- Branch created (with derived name) or reused, push result.
+- Branch created (with derived name), renamed (from old → new, with the reason), or reused as-is; push result. If the branch name was a poor fit for the diff but could not be renamed (open PR already attached), surface the mismatch explicitly so the user can rename next time.
 - PR/branch/worktree merged, closed, deleted, removed, or deliberately skipped.
 - Merge commit or final commit hash when available.
 - Validation performed and result (note when validation was deferred to CI).

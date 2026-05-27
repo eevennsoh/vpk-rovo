@@ -16,6 +16,7 @@ import { MessageTurns } from "@/components/projects/shared/message-turns";
 import {
 	getMessageAgentResult,
 	getMessageArtifactResult,
+	hasTurnCompleteSignal,
 	isRenderableRovoUIMessage,
 	type RovoDataParts,
 } from "@/lib/rovo-ui-messages";
@@ -50,7 +51,7 @@ import ChatGreeting from "./components/chat-greeting";
 import ChatComposer from "./components/chat-composer";
 import MessageBubble from "./components/message-bubble";
 import { ArtifactResultCard, type ArtifactResult } from "./components/artifact-result-card";
-import { AgentResultCard } from "./components/agent-result-card";
+import { AgentResultCard, isGeneratedAgentResult } from "./components/agent-result-card";
 import { StreamingThinkingIndicator } from "./components/streaming-thinking-indicator";
 import { PreloadThinkingIndicator } from "@/components/projects/shared/components/preload-thinking-indicator";
 import { chatStyles } from "./data/styles";
@@ -634,13 +635,17 @@ export default function ChatPanel({
 							const generatedResults = turn.flatMap((message): GeneratedResult[] => {
 								const artifactResult = getMessageArtifactResult(message);
 								const agentResult = getMessageAgentResult(message);
+								const generatedAgentResult =
+									isGeneratedAgentResult(agentResult) && hasTurnCompleteSignal(message)
+										? agentResult
+										: null;
 								const results: GeneratedResult[] = [];
 
-								if (artifactResult) {
+								if (artifactResult && !generatedAgentResult) {
 									results.push({ type: "artifact", result: artifactResult });
 								}
-								if (agentResult) {
-									results.push({ type: "agent", result: agentResult });
+								if (generatedAgentResult) {
+									results.push({ type: "agent", result: generatedAgentResult });
 								}
 
 								return results;
