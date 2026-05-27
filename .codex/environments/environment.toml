@@ -42,3 +42,8 @@ command = "pnpm run rovo:tmux:start --1"
 name = "pnpm run rovo:tmux:stop"
 icon = "run"
 command = "pnpm run rovo:tmux:stop"
+
+[[actions]]
+name = "vpk-portless"
+icon = "tool"
+command = "vpk-portless"
