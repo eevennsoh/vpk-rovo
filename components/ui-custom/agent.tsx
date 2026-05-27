@@ -41,18 +41,6 @@ const AGENT_KNOWLEDGE_SOURCES = [
 	{ id: "salesforce", label: "Salesforce", provider: "salesforce" },
 ] as const satisfies readonly TwgToolSource[];
 
-function AgentHeaderAvatar({ label }: Readonly<{ label: string }>) {
-	return (
-		<Image
-			alt={label}
-			className="h-6 w-[21px] shrink-0"
-			height={48}
-			src={AGENT_AVATAR_SRC}
-			width={42}
-		/>
-	);
-}
-
 export type AgentConfigTextFieldName =
 	| "name"
 	| "description"
@@ -112,7 +100,13 @@ export const AgentHeader = memo(
 			{...props}
 		>
 			<div className="flex min-w-0 items-center gap-2">
-				<AgentHeaderAvatar label="Agent" />
+				<Image
+					alt="Agent"
+					className="h-6 w-[21px] shrink-0"
+					height={48}
+					src={AGENT_AVATAR_SRC}
+					width={42}
+				/>
 				<span className="truncate text-sm font-semibold leading-5 text-text">{name}</span>
 				{model ? (
 					<Badge className="font-normal" variant="outline">
