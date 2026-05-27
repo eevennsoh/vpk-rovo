@@ -73,12 +73,16 @@ test("Studio agent results use guarded session-agent registration with preserve-
 	assert.match(SHELL_SOURCE, /onViewAllAgents=\{\(\) => setIsSidebarAgentBrowserOpen\(true\)\}/u);
 });
 
-test("RovoAppMessages renders the shared /agents-style agent result card", () => {
+test("RovoAppMessages renders the block agent result card after generation completes", () => {
 	assert.match(MESSAGES_SOURCE, /getMessageAgentResult/u);
+	assert.match(MESSAGES_SOURCE, /hasTurnCompleteSignal/u);
 	assert.match(MESSAGES_SOURCE, /type RovoDataParts/u);
-	assert.match(MESSAGES_SOURCE, /import \{ AgentResultCard \} from "@\/components\/projects\/sidebar-chat\/components\/agent-result-card";/u);
+	assert.match(MESSAGES_SOURCE, /import \{ AgentResultCard, isGeneratedAgentResult \} from "@\/components\/projects\/sidebar-chat\/components\/agent-result-card";/u);
 	assert.match(MESSAGES_SOURCE, /const agentResult = getMessageAgentResult\(message\);/u);
-	assert.match(MESSAGES_SOURCE, /<AgentResultCard[\s\S]*agent=\{agentResult\}[\s\S]*sourceMessageId: message\.id/u);
+	assert.match(MESSAGES_SOURCE, /const completedAgentResult =[\s\S]*isGeneratedAgentResult\(agentResult\) && hasTurnCompleteSignal\(message\)[\s\S]*\? agentResult[\s\S]*: null;/u);
+	assert.match(MESSAGES_SOURCE, /const resolvedArtifactDisplayForMessage =[\s\S]*completedAgentResult \? null : resolvedArtifactDisplay;/u);
+	assert.match(MESSAGES_SOURCE, /resolvedArtifactDisplayForMessage \? \([\s\S]*<ArtifactCard/u);
+	assert.match(MESSAGES_SOURCE, /completedAgentResult \? \([\s\S]*<AgentResultCard[\s\S]*agent=\{completedAgentResult\}[\s\S]*sourceMessageId: message\.id/u);
 	assert.doesNotMatch(MESSAGES_SOURCE, /function StudioAgentResultCard/u);
 });
 

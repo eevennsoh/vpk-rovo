@@ -6,14 +6,6 @@ import { memo } from "react";
 import Image from "next/image";
 
 import AddIcon from "@atlaskit/icon/core/add";
-import ListBulletedIcon from "@atlaskit/icon/core/list-bulleted";
-import ListNumberedIcon from "@atlaskit/icon/core/list-numbered";
-import RedoIcon from "@atlaskit/icon/core/redo";
-import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
-import TextIcon from "@atlaskit/icon/core/text";
-import TextBoldIcon from "@atlaskit/icon/core/text-bold";
-import TextItalicIcon from "@atlaskit/icon/core/text-italic";
-import UndoIcon from "@atlaskit/icon/core/undo";
 import AiModelIcon from "@atlaskit/icon-lab/core/ai-model";
 import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
 
@@ -32,6 +24,7 @@ import {
 	TwgToolSourceStack,
 	type TwgToolSource,
 } from "@/components/ui-custom/twg-tool";
+import { RichTextEditor } from "@/components/ui-custom/rich-text-editor";
 import { cn } from "@/lib/utils";
 
 import { CodeBlock } from "./code-block";
@@ -47,20 +40,6 @@ const AGENT_KNOWLEDGE_SOURCES = [
 	{ id: "teams", label: "Microsoft Teams", provider: "teams" },
 	{ id: "salesforce", label: "Salesforce", provider: "salesforce" },
 ] as const satisfies readonly TwgToolSource[];
-
-const AGENT_EDITOR_CONTROLS = [
-	{ id: "text", label: "Text style", icon: <TextIcon label="" size="small" /> },
-	{ id: "bold", label: "Bold", icon: <TextBoldIcon label="" size="small" /> },
-	{ id: "italic", label: "Italic", icon: <TextItalicIcon label="" size="small" /> },
-	{ id: "more", label: "More formatting", icon: <ShowMoreHorizontalIcon label="" size="small" /> },
-	"divider",
-	{ id: "bulleted", label: "Bulleted list", icon: <ListBulletedIcon label="" size="small" /> },
-	{ id: "numbered", label: "Numbered list", icon: <ListNumberedIcon label="" size="small" /> },
-	"divider",
-	{ id: "add", label: "Add", icon: <AddIcon label="" size="small" /> },
-	{ id: "undo", label: "Undo", icon: <UndoIcon label="" size="small" /> },
-	{ id: "redo", label: "Redo", icon: <RedoIcon label="" size="small" /> },
-] as const;
 
 export type AgentConfigTextFieldName =
 	| "name"
@@ -366,46 +345,31 @@ function AgentKnowledgePanel() {
 	);
 }
 
-function AgentEditorToolbarButton({
-	children,
-	label,
-}: Readonly<{ children: ReactNode; label: string }>) {
-	return (
-		<button
-			type="button"
-			aria-label={label}
-			className="flex size-7 items-center justify-center rounded text-icon-subtle transition-colors hover:bg-bg-neutral-subtle-hovered hover:text-icon focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-		>
-			{children}
-		</button>
-	);
-}
-
-function AgentInstructionsComposer({ instructions }: Readonly<{ instructions?: string }>) {
+function AgentInstructionsComposer({
+	instructions,
+	onInstructionsChange,
+}: Readonly<{
+	instructions?: string;
+	onInstructionsChange?: (value: string) => void;
+}>) {
 	return (
 		<section className="space-y-0">
 			<AgentSectionLabel>Instructions</AgentSectionLabel>
-			<div className="flex min-h-8 items-center justify-between gap-4">
-				<div className="flex min-w-0 items-center gap-1">
-					{AGENT_EDITOR_CONTROLS.map((control, index) =>
-						control === "divider" ? (
-							<div key={`divider-${index}`} aria-hidden className="mx-1 h-5 w-px bg-border" />
-						) : (
-							<AgentEditorToolbarButton key={control.id} label={control.label}>
-								<Icon render={control.icon} aria-hidden />
-							</AgentEditorToolbarButton>
-						)
-					)}
-				</div>
-				<Button className="shrink-0 text-text-subtle" size="sm" variant="ghost">
-					GPT-5.5 Medium
-				</Button>
-			</div>
-			<div className="min-h-32 pt-4 text-sm leading-5 text-text-subtlest">
-				{instructions?.trim()
-					? instructions
-					: "Describe the agent’s role and what it should do. @mention, or / for skills"}
-			</div>
+			<RichTextEditor
+				aria-label="Agent instructions"
+				className="space-y-2"
+				contentClassName="pt-2"
+				editorClassName="agent-instructions-tiptap-editor"
+				placeholder="Describe the agent’s role and what it should do. @mention, or / for skills"
+				showBubbleMenu={false}
+				toolbarEndSlot={
+					<Button className="shrink-0 text-text-subtle" size="sm" variant="ghost">
+						GPT-5.5 Medium
+					</Button>
+				}
+				value={instructions}
+				onPlainTextChange={onInstructionsChange}
+			/>
 		</section>
 	);
 }
@@ -432,7 +396,6 @@ export const AgentConfigFields = memo(
 	}: Readonly<AgentConfigFieldsProps>) => {
 		void onListItemChange;
 		void onRemoveListItem;
-		void onTextChange;
 
 		const agentName = config.name?.trim() || "Untitled agent";
 		const description = config.description?.trim() || config.summary?.trim() || "Add a description";
@@ -458,7 +421,10 @@ export const AgentConfigFields = memo(
 				</div>
 
 				<AgentKnowledgePanel />
-				<AgentInstructionsComposer instructions={config.instructions} />
+				<AgentInstructionsComposer
+					instructions={config.instructions}
+					onInstructionsChange={(value) => onTextChange?.("instructions", value)}
+				/>
 			</div>
 		);
 	}

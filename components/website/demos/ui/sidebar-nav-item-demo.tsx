@@ -40,6 +40,7 @@ export default function SidebarNavItemDemo() {
 				<SidebarNavItemDemoWithCount />
 				<SidebarNavItemDemoProjectCount />
 				<SidebarNavItemDemoWithDescription />
+				<SidebarNavItemDemoNestedLevels />
 			</div>
 		</div>
 	);
@@ -162,5 +163,33 @@ export function SidebarNavItemDemoWithDescription() {
 				actions={<ChevronAction />}
 			/>
 		</DemoFrame>
+	);
+}
+
+export function SidebarNavItemDemoNestedLevels() {
+	return (
+		<div className="flex w-[276px] flex-col gap-0.5">
+			<SidebarNavItem
+				label="Apps"
+				leading={<ChevronDownIcon label="" />}
+				leadingSize="small"
+				isExpanded
+			/>
+			<div className="flex flex-col gap-0.5 pl-3">
+				<SidebarNavItem
+					label="Dependency Mapper"
+					leading={<ProjectIcon label="" />}
+					leadingSize="medium"
+					isSelected
+				/>
+				<div className="flex flex-col gap-0.5 pl-3">
+					<SidebarNavItem
+						label="Data sources"
+						leading={<ChevronRightIcon label="" />}
+						leadingSize="small"
+					/>
+				</div>
+			</div>
+		</div>
 	);
 }
