@@ -60,11 +60,14 @@ Trigger: `vpk-git --pr [<optional title hint>]`.
 
 Use when the user wants to commit current edits, push, and open a PR in one command. Assumes the common VPK-rovo case: the user is already inside a feature branch or worktree. The branch name comes from the **diff**, not from whatever branch the agent happened to be on — background-session worktrees often pre-create branches from the agent's initial framing (the bug symptom, a random word pair, a session id), and those names are not allowed to leak into the PR. The skill always self-serves a name; it never asks the user to pick one.
 
+**Detached HEAD is normal here.** VPK-rovo background worktrees (Codex, Claude) commonly detach after PR merges, so "checkout is detached" is the rule, not the exception. Detached HEAD is NEVER a stop condition on its own — step 2 attaches a fresh branch from the diff. Do not bail at step 1 just because HEAD is detached. If you find yourself about to report "blocked because this checkout is detached", you are misreading the skill — go to step 2.
+
 1. Inspect HEAD state:
-   - `git rev-parse --abbrev-ref HEAD` (returns `HEAD` when detached)
+   - `git rev-parse --abbrev-ref HEAD` (returns `HEAD` when detached — fine, continue)
    - `git status --porcelain=v1 --untracked-files=all`
-   - `git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null` (missing upstream is expected on fresh branches and on detached HEAD)
-   - Stop only if **all** of the following are true: working tree is clean, no commits ahead of the default branch (`git log --oneline origin/main..HEAD` is empty), and an upstream exists and is in sync — i.e. there is genuinely nothing to PR.
+   - `git log --oneline origin/main..HEAD` (committed work ahead of the default branch)
+   - `git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null` (missing upstream is expected on fresh branches and on detached HEAD — fine, continue)
+   - Stop only when there is genuinely nothing to PR: working tree clean **and** no commits ahead of `origin/main` (both `git status --porcelain` and `git log --oneline origin/main..HEAD` are empty). Missing upstream and detached HEAD are NOT stop conditions on their own — they are expected, and steps 2 and 5 handle them.
 
 2. Derive a contextual branch name from the diff, then decide keep / rename / create. **Always compute the contextual name first** — never trust the current branch name without evaluating it against the change content.
 
