@@ -210,8 +210,10 @@ export const AgentOutput = memo(
 );
 
 interface AgentActionTileProps {
+	agentFieldName?: string;
 	label: string;
 	onClick?: () => void;
+	screenAssistantTargetId?: string;
 }
 
 function AgentIconTile({ children, label }: Readonly<{ children: ReactNode; label: string }>) {
@@ -227,10 +229,17 @@ function AgentIconTile({ children, label }: Readonly<{ children: ReactNode; labe
 	);
 }
 
-function AgentActionTile({ label, onClick }: Readonly<AgentActionTileProps>) {
+function AgentActionTile({
+	agentFieldName,
+	label,
+	onClick,
+	screenAssistantTargetId,
+}: Readonly<AgentActionTileProps>) {
 	return (
 		<button
 			type="button"
+			data-agent-field={agentFieldName}
+			data-screen-assistant-target={screenAssistantTargetId}
 			className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-border bg-surface p-1.5 text-left text-sm font-medium text-text transition-colors hover:bg-surface-raised-hovered focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 			onClick={onClick}
 		>
@@ -348,12 +357,18 @@ function AgentKnowledgePanel() {
 function AgentInstructionsComposer({
 	instructions,
 	onInstructionsChange,
+	screenAssistantTargetId,
 }: Readonly<{
 	instructions?: string;
 	onInstructionsChange?: (value: string) => void;
+	screenAssistantTargetId?: string;
 }>) {
 	return (
-		<section className="space-y-0">
+		<section
+			className="space-y-0"
+			data-agent-field="instructions"
+			data-screen-assistant-target={screenAssistantTargetId}
+		>
 			<AgentSectionLabel>Instructions</AgentSectionLabel>
 			<RichTextEditor
 				aria-label="Agent instructions"
@@ -381,6 +396,7 @@ export interface AgentConfigFieldsProps extends ComponentProps<"div"> {
 	onListItemChange?: (field: AgentConfigListFieldName, index: number, value: string) => void;
 	onRemoveListItem?: (field: AgentConfigListFieldName, index: number) => void;
 	onAppendListItem?: (field: AgentConfigListFieldName) => void;
+	screenAssistantTargetPrefix?: string;
 }
 
 export const AgentConfigFields = memo(
@@ -392,6 +408,7 @@ export const AgentConfigFields = memo(
 		onAppendListItem,
 		onRemoveListItem,
 		onTextChange,
+		screenAssistantTargetPrefix,
 		...props
 	}: Readonly<AgentConfigFieldsProps>) => {
 		void onListItemChange;
@@ -401,22 +418,54 @@ export const AgentConfigFields = memo(
 		const description = config.description?.trim() || config.summary?.trim() || "Add a description";
 
 		return (
-			<div className={cn("space-y-6", className)} data-agent-config-id={idPrefix} {...props}>
-				<section className="space-y-4">
+			<div
+				className={cn("space-y-6", className)}
+				data-agent-config-id={idPrefix}
+				data-screen-assistant-target={screenAssistantTargetPrefix}
+				{...props}
+			>
+				<section
+					className="space-y-4"
+					data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:profile` : undefined}
+				>
 					<AgentProfileCover />
-					<div className="space-y-1">
+					<div
+						className="space-y-1"
+						data-agent-field="name"
+						data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:name` : undefined}
+					>
 						<h2 className="text-2xl font-semibold leading-7 text-text">{agentName}</h2>
-						<p className="text-sm leading-5 text-text-subtlest">{description}</p>
+						<p
+							className="text-sm leading-5 text-text-subtlest"
+							data-agent-field="description"
+							data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:description` : undefined}
+						>
+							{description}
+						</p>
 					</div>
 				</section>
 
 				<div className="grid grid-cols-2 gap-2">
-					<AgentActionTile label="Add triggers" />
-					<AgentActionTile label="Add skills" />
-					<AgentActionTile label="Add tools" onClick={() => onAppendListItem?.("tools")} />
 					<AgentActionTile
+						agentFieldName="trigger"
+						label="Add triggers"
+						screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:trigger` : undefined}
+					/>
+					<AgentActionTile
+						label="Add skills"
+						screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:skills` : undefined}
+					/>
+					<AgentActionTile
+						agentFieldName="tools"
+						label="Add tools"
+						onClick={() => onAppendListItem?.("tools")}
+						screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:tools` : undefined}
+					/>
+					<AgentActionTile
+						agentFieldName="conversationStarters"
 						label="Add conversation starters"
 						onClick={() => onAppendListItem?.("conversationStarters")}
+						screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:conversation-starters` : undefined}
 					/>
 				</div>
 
@@ -424,6 +473,7 @@ export const AgentConfigFields = memo(
 				<AgentInstructionsComposer
 					instructions={config.instructions}
 					onInstructionsChange={(value) => onTextChange?.("instructions", value)}
+					screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:instructions` : undefined}
 				/>
 			</div>
 		);

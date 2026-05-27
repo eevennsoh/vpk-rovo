@@ -139,6 +139,22 @@ test("Studio agent config panel renders the shared ui-custom agent config fields
 	assert.doesNotMatch(AGENT_CONFIG_PANEL_SOURCE, /<Label htmlFor=\{`agent-\$\{profileId\}-name`\}/u);
 });
 
+test("Studio screen assistant applies draft patches without publishing agents", () => {
+	assert.match(SHELL_SOURCE, /onScreenAssistantResult/u);
+	assert.match(SHELL_SOURCE, /normalizeAgentDraftPatch/u);
+	assert.match(SHELL_SOURCE, /studioAgentRegistry\.updateSessionAgentDraft/u);
+	const screenAssistantHandlerSource = SHELL_SOURCE.slice(
+		SHELL_SOURCE.indexOf("onScreenAssistantResult: useCallback"),
+		SHELL_SOURCE.indexOf("chatMessages: chat.messages"),
+	);
+	assert.match(screenAssistantHandlerSource, /lastScreenAssistantMutationTurnIdRef/u);
+	assert.match(screenAssistantHandlerSource, /activeSessionAgentEntry\.profile\.id/u);
+	assert.doesNotMatch(screenAssistantHandlerSource, /publishSessionAgent/u);
+	assert.match(AGENT_CONFIG_PANEL_SOURCE, /data-screen-assistant-target="studio-agent-config-panel"/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /screenAssistantTargetPrefix/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /data-agent-field="instructions"/u);
+});
+
 test("Studio clarification answers keep agent creation mode active", () => {
 	assert.match(SHELL_SOURCE, /function buildStudioAgentCreationContinuationContext\(\): string/u);
 	assert.match(SHELL_SOURCE, /Source: \/studio prompt input clarification answer\./u);

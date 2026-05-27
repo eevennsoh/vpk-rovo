@@ -96,6 +96,7 @@ export interface RovoComposerActionButtonProps {
 	onStop: () => Promise<void> | void;
 	onToggleRealtimeVoice?: () => void;
 	realtimeVoiceActive?: boolean;
+	screenAssistantTargetPrefix?: string;
 	showBackgroundStop?: boolean;
 	submitDisabled?: boolean;
 }
@@ -108,6 +109,7 @@ export function RovoComposerActionButton({
 	onStop,
 	onToggleRealtimeVoice,
 	realtimeVoiceActive = false,
+	screenAssistantTargetPrefix,
 	showBackgroundStop = false,
 	submitDisabled = false,
 }: Readonly<RovoComposerActionButtonProps>): ReactElement {
@@ -251,6 +253,7 @@ export function RovoComposerActionButton({
 							variant="default"
 							aria-label="Start live voice"
 							className="size-8 hover:opacity-90 active:opacity-80"
+							data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:voice` : undefined}
 							onClick={handleToggleRealtimeVoice}
 							tooltip={{ content: "Live chat", delay: 0 }}
 						>
@@ -297,6 +300,7 @@ export function RovoComposerSendControls({
 	onToggleRealtimeVoice,
 	open,
 	realtimeVoiceActive,
+	screenAssistantTargetPrefix,
 	selectedReasoning,
 	showBackgroundStop,
 	submitDisabled,
@@ -324,6 +328,7 @@ export function RovoComposerSendControls({
 				onStop={onStop}
 				onToggleRealtimeVoice={onToggleRealtimeVoice}
 				realtimeVoiceActive={realtimeVoiceActive}
+				screenAssistantTargetPrefix={screenAssistantTargetPrefix}
 				showBackgroundStop={showBackgroundStop}
 				submitDisabled={submitDisabled}
 			/>

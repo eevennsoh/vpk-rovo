@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ClickyState } from "./use-clicky";
 import { captureViewport } from "@/components/projects/studio/lib/clicky-screen-capture";
+import type { StudioScreenAssistantSnapshot } from "@/components/projects/studio/lib/studio-screen-assistant";
 
 // ---------------------------------------------------------------------------
 // Clicky system prompt — adapted for the web context.
 // ---------------------------------------------------------------------------
 
-const CLICKY_SYSTEM_INSTRUCTIONS = `You are Clicky, an AI cursor companion that lives on the user's screen. You can see what the user sees through screenshots and talk to them in real-time.
+const CLICKY_SYSTEM_INSTRUCTIONS = `You are Clicky, a Studio screen assistant that lives on the user's screen. You can see the Studio browser surface through screenshots and talk to the user in real time.
 
 ## Your personality
 - Helpful, concise, and friendly
@@ -17,32 +18,39 @@ const CLICKY_SYSTEM_INSTRUCTIONS = `You are Clicky, an AI cursor companion that 
 
 ## What you can do
 - See the user's screen via screenshots sent with each message
-- Point at specific elements on screen using the POINT tag
+- Point at specific elements on screen
 - Answer questions about what's visible on screen
 - Help navigate UI, explain elements, identify issues
+- Help fill the visible Studio agent builder form by returning a safe draft patch
 
-## Pointing at elements
-When you want to point at something on screen, append a coordinate tag at the very end of your response, AFTER your spoken text.
+## Response format
+Return exactly one JSON object, without markdown fences, with these fields:
+- text: the short spoken response, 1-3 sentences
+- point: optional { "x": number, "y": number, "label": string } in screenshot pixels
+- target: optional { "id": string, "fieldId": string, "label": string } when one of the provided visible targets matches
+- agentDraftPatch: optional object for session-local agent builder updates
 
 The screenshot images are labeled with their pixel dimensions. Use those dimensions as the coordinate space.
 Origin (0,0) is the top-left corner. x increases rightward, y increases downward.
 
-FORMAT: [POINT:x,y:label] where x,y are integer pixel coordinates in the screenshot's coordinate space, and label is a short 1-3 word description.
-
 Only point when it adds value — not every response needs pointing.
-If pointing wouldn't help, just respond normally without a POINT tag.
+If pointing wouldn't help, omit point.
+Use target.id or target.fieldId when the provided target hints identify the UI more reliably than pixels.
 
 Examples:
-- "see that submit button right there? click it to save your changes. [POINT:450,320:Submit button]"
-- "the error message is right here. [POINT:200,150:Error toast]"
-- "html stands for hypertext markup language."
+- { "text": "The Publish button is in the top-right of the agent panel.", "target": { "id": "studio-agent-config-publish", "label": "Publish" } }
+- { "text": "I filled in the instructions with a focused support-agent brief.", "target": { "fieldId": "instructions", "label": "Instructions" }, "agentDraftPatch": { "instructions": "Help support teams triage requests, summarize context, and recommend next steps." } }
+- { "text": "That control starts the live voice assistant." }
 
 ## Rules
 - Be concise — you're speaking out loud, not writing an essay
 - Reference what you SEE on screen, not what you assume
 - If you can't see something clearly, say so
 - Don't hallucinate UI elements that aren't in the screenshot
-- When pointing, be precise — aim for the center of the element you're referencing`;
+- When pointing, be precise — aim for the center of the element you're referencing
+- For form fill, return at most one agentDraftPatch per user turn
+- Never publish or activate an agent. Only suggest or patch the session-local draft.
+- Allowed agentDraftPatch fields: name, description, summary, instructions, contextDescription, trigger, guardrail, tools, conversationStarters, byline, avatarFallback, action. Never return agentId.`;
 
 export { CLICKY_SYSTEM_INSTRUCTIONS };
 
@@ -60,13 +68,14 @@ interface UseClickyVoiceOptions {
 		detail?: "low" | "high" | "auto";
 		clicky?: boolean;
 		systemPrompt?: string;
+		screenAssistant?: StudioScreenAssistantSnapshot & {
+			turnId: string;
+		};
 	}) => void;
 	/** Whether the Realtime WebSocket is connected. */
 	isRealtimeConnected: boolean;
 	/** Connect to the Realtime voice session. */
 	connectRealtime: () => void;
-	/** Disconnect from the Realtime voice session. */
-	disconnectRealtime: () => void;
 	/** Inject context into the Realtime session (used for system prompt swap). */
 	injectContext: (data: {
 		type:
@@ -81,6 +90,8 @@ interface UseClickyVoiceOptions {
 	}) => void;
 	/** Called after a screenshot is captured, with the screenshot dimensions. */
 	onScreenshotCaptured?: (dims: { width: number; height: number }) => void;
+	/** Captures Studio DOM/app context to send alongside the screenshot. */
+	getScreenAssistantSnapshot?: () => StudioScreenAssistantSnapshot;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +103,7 @@ interface UseClickyVoiceOptions {
  *
  * - On activation: connects to Realtime, injects Clicky's system prompt
  * - On speech end (processing state): captures screenshot, sends as image
- * - On deactivation: disconnects Realtime
+ * - On deactivation: stops visual capture/pointing without tearing down voice
  */
 export function useClickyVoice({
 	clickyState,
@@ -100,29 +111,37 @@ export function useClickyVoice({
 	sendImageInput,
 	isRealtimeConnected,
 	connectRealtime,
-	disconnectRealtime,
 	injectContext,
 	onScreenshotCaptured,
+	getScreenAssistantSnapshot,
 }: UseClickyVoiceOptions) {
 	const wasActiveRef = useRef(false);
 	const hasInjectedPromptRef = useRef(false);
+	const connectedForClickyRef = useRef(false);
+	const turnCounterRef = useRef(0);
 
-	// Connect/disconnect Realtime when Clicky activates/deactivates
+	// Connect Realtime when Clicky activates. Cursor deactivation must not stop
+	// a voice session the user started separately.
 	useEffect(() => {
 		if (isClickyActive && !wasActiveRef.current) {
 			wasActiveRef.current = true;
 			hasInjectedPromptRef.current = false;
-			connectRealtime();
+			if (!isRealtimeConnected) {
+				connectedForClickyRef.current = true;
+				connectRealtime();
+			} else {
+				connectedForClickyRef.current = false;
+			}
 		} else if (!isClickyActive && wasActiveRef.current) {
 			wasActiveRef.current = false;
 			hasInjectedPromptRef.current = false;
-			disconnectRealtime();
+			connectedForClickyRef.current = false;
 		}
-	}, [isClickyActive, connectRealtime, disconnectRealtime]);
+	}, [isClickyActive, isRealtimeConnected, connectRealtime]);
 
 	// Inject Clicky system prompt once connected
 	useEffect(() => {
-		if (isClickyActive && isRealtimeConnected && !hasInjectedPromptRef.current) {
+		if (isClickyActive && isRealtimeConnected && connectedForClickyRef.current && !hasInjectedPromptRef.current) {
 			injectContext({
 				type: "initial_context",
 				content: CLICKY_SYSTEM_INSTRUCTIONS,
@@ -137,15 +156,24 @@ export function useClickyVoice({
 		if (!result) return;
 
 		onScreenshotCaptured?.({ width: result.width, height: result.height });
+		const turnId = `screen-assistant-${Date.now()}-${turnCounterRef.current++}`;
+		const screenAssistant = getScreenAssistantSnapshot?.();
 
 		sendImageInput({
 			image: result.base64,
-			text: `Screenshot of the current page (image dimensions: ${result.width}x${result.height} pixels). Use these dimensions as the coordinate space for any POINT tags.`,
+			text: [
+				`Screenshot of the current Studio page (image dimensions: ${result.width}x${result.height} pixels).`,
+				"Use screenshot pixels for point.x and point.y.",
+				screenAssistant
+					? `Studio screen assistant context JSON: ${JSON.stringify(screenAssistant)}`
+					: "",
+			].filter(Boolean).join("\n\n"),
 			detail: "auto",
 			clicky: true,
 			systemPrompt: CLICKY_SYSTEM_INSTRUCTIONS,
+			...(screenAssistant ? { screenAssistant: { ...screenAssistant, turnId } } : {}),
 		});
-	}, [sendImageInput, onScreenshotCaptured]);
+	}, [sendImageInput, onScreenshotCaptured, getScreenAssistantSnapshot]);
 
 	useEffect(() => {
 		if (clickyState === "processing" && isRealtimeConnected) {

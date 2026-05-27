@@ -18,6 +18,7 @@ export interface ClickyPointTarget {
 	x: number;
 	y: number;
 	label: string;
+	coordinateSpace?: "screenshot" | "viewport";
 }
 
 export interface ClickyExchange {

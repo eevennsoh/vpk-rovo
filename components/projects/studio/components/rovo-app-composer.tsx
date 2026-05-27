@@ -575,6 +575,7 @@ function RovoAppComposerInner({
 					<PromptInput
 						allowOverflow
 						className={cn(composerPromptInputClassName, "relative z-10", composerHeight ? "flex h-full flex-col [&>[data-slot=input-group]]:h-full" : undefined)}
+						data-screen-assistant-target="studio-composer"
 						onSubmit={handlePromptSubmit}
 					>
 						<PendingAttachments />
@@ -611,6 +612,7 @@ function RovoAppComposerInner({
 									onClick={onToggleClicky}
 									aria-label="Studio AI cursor"
 									aria-pressed={clickyActive}
+									data-screen-assistant-target="studio-composer:cursor"
 									tooltip={{ content: "AI Cursor ⌘⇧K", delay: 0 }}
 								>
 									<CursorIcon label="" />
@@ -647,6 +649,7 @@ function RovoAppComposerInner({
 								onToggleRealtimeVoice={onToggleRealtimeVoice}
 								open={isAutoMenuOpen}
 								realtimeVoiceActive={realtimeVoiceActive}
+								screenAssistantTargetPrefix="studio-composer"
 								selectedReasoning={selectedReasoning}
 								showBackgroundStop={showBackgroundStop}
 								submitDisabled={submitDisabled}

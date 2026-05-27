@@ -197,6 +197,7 @@ export function RovoAppAgentConfigPanel({
 	return (
 		<motion.div
 			className={cn("flex h-full w-full flex-col overflow-hidden", className)}
+			data-screen-assistant-target="studio-agent-config-panel"
 			initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.24, ease: [0, 0.4, 0, 1] }}
@@ -225,6 +226,7 @@ export function RovoAppAgentConfigPanel({
 						onClick={handleUpdate}
 						disabled={!hasUpdateChanges}
 						data-testid="agent-config-update"
+						data-screen-assistant-target="studio-agent-config-update"
 					>
 						{justUpdatedAt ? "Updated" : "Update"}
 					</Button>
@@ -235,6 +237,7 @@ export function RovoAppAgentConfigPanel({
 						onClick={handlePublish}
 						disabled={!hasPublishChanges}
 						data-testid="agent-config-publish"
+						data-screen-assistant-target="studio-agent-config-publish"
 					>
 						Publish
 					</Button>
@@ -281,6 +284,7 @@ export function RovoAppAgentConfigPanel({
 								onListItemChange={updateListItem}
 								onRemoveListItem={removeListItem}
 								onAppendListItem={appendListItem}
+								screenAssistantTargetPrefix="studio-agent-config"
 							/>
 						</AgentContent>
 					</Agent>

@@ -3,6 +3,7 @@ const test = require("node:test");
 const WebSocket = require("ws");
 
 const {
+	parseScreenAssistantVisionResponse,
 	RealtimeSession,
 	ROVO_SYSTEM_INSTRUCTIONS,
 	SESSION_STATE,
@@ -86,6 +87,79 @@ test("system instructions force delegation for explicit artifact requests", () =
 	assert.match(
 		ROVO_SYSTEM_INSTRUCTIONS,
 		/Do not say things like "I'm putting that together"/iu,
+	);
+});
+
+test("parses structured screen assistant vision responses", () => {
+	assert.deepEqual(
+		parseScreenAssistantVisionResponse(
+			JSON.stringify({
+				agentDraftPatch: {
+					name: "Support Triage Agent",
+				},
+				point: {
+					label: "Instructions",
+					x: 120.7,
+					y: 240.2,
+				},
+				target: {
+					fieldId: "instructions",
+					id: "studio-agent-config:instructions",
+					label: "Instructions",
+					rect: {
+						height: 80,
+						width: 420,
+						x: 40,
+						y: 100,
+					},
+				},
+				text: "I filled in the instructions.",
+			}),
+			"voice-turn-1",
+		),
+		{
+			agentDraftPatch: {
+				name: "Support Triage Agent",
+			},
+			point: {
+				label: "Instructions",
+				x: 121,
+				y: 240,
+			},
+			target: {
+				fieldId: "instructions",
+				id: "studio-agent-config:instructions",
+				label: "Instructions",
+				rect: {
+					height: 80,
+					width: 420,
+					x: 40,
+					y: 100,
+				},
+			},
+			text: "I filled in the instructions.",
+			turnId: "voice-turn-1",
+			type: "screen_assistant_result",
+		},
+	);
+});
+
+test("parses legacy POINT responses as screen assistant fallback", () => {
+	assert.deepEqual(
+		parseScreenAssistantVisionResponse(
+			"That button starts live voice. [POINT:450,320:Voice button]",
+			"voice-turn-2",
+		),
+		{
+			point: {
+				label: "Voice button",
+				x: 450,
+				y: 320,
+			},
+			text: "That button starts live voice.",
+			turnId: "voice-turn-2",
+			type: "screen_assistant_result",
+		},
 	);
 });
 

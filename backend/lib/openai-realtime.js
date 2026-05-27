@@ -85,6 +85,149 @@ const SUPPORTED_CONTEXT_TYPES = new Set([
 	"delegation_error",
 ]);
 
+const POINT_TAG_RE = /\[POINT:(\d+),(\d+):([^\]]+)\]/u;
+const SCREEN_ASSISTANT_JSON_FENCE_RE = /```(?:json|screen-assistant|screen_assistant_result)?\s*([\s\S]*?)\s*```/iu;
+const SCREEN_ASSISTANT_MARKER_RE = /\[SCREEN_ASSISTANT:(\{[\s\S]*\})\]/iu;
+
+function isPlainObject(value) {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeNonEmptyString(value) {
+	return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeScreenAssistantPoint(value) {
+	if (!isPlainObject(value)) {
+		return null;
+	}
+
+	const x = Number(value.x);
+	const y = Number(value.y);
+	const label = normalizeNonEmptyString(value.label) || "Target";
+
+	if (!Number.isFinite(x) || !Number.isFinite(y)) {
+		return null;
+	}
+
+	return {
+		x: Math.max(0, Math.round(x)),
+		y: Math.max(0, Math.round(y)),
+		label,
+	};
+}
+
+function normalizeScreenAssistantRect(value) {
+	if (!isPlainObject(value)) {
+		return null;
+	}
+
+	const x = Number(value.x);
+	const y = Number(value.y);
+	const width = Number(value.width);
+	const height = Number(value.height);
+
+	if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) {
+		return null;
+	}
+
+	return {
+		x: Math.round(x),
+		y: Math.round(y),
+		width: Math.round(width),
+		height: Math.round(height),
+	};
+}
+
+function normalizeScreenAssistantTarget(value) {
+	if (!isPlainObject(value)) {
+		return null;
+	}
+
+	const target = {};
+	const id = normalizeNonEmptyString(value.id);
+	const fieldId = normalizeNonEmptyString(value.fieldId);
+	const label = normalizeNonEmptyString(value.label);
+	const role = normalizeNonEmptyString(value.role);
+	const rect = normalizeScreenAssistantRect(value.rect);
+
+	if (id) target.id = id;
+	if (fieldId) target.fieldId = fieldId;
+	if (label) target.label = label;
+	if (role) target.role = role;
+	if (rect) target.rect = rect;
+
+	return Object.keys(target).length > 0 ? target : null;
+}
+
+function extractScreenAssistantJson(rawText) {
+	const trimmed = normalizeNonEmptyString(rawText);
+	if (!trimmed) {
+		return null;
+	}
+
+	const candidates = [];
+	const fenceMatch = trimmed.match(SCREEN_ASSISTANT_JSON_FENCE_RE);
+	if (fenceMatch?.[1]) {
+		candidates.push(fenceMatch[1]);
+	}
+	const markerMatch = trimmed.match(SCREEN_ASSISTANT_MARKER_RE);
+	if (markerMatch?.[1]) {
+		candidates.push(markerMatch[1]);
+	}
+	if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+		candidates.push(trimmed);
+	}
+
+	for (const candidate of candidates) {
+		try {
+			const parsed = JSON.parse(candidate);
+			if (isPlainObject(parsed)) {
+				return parsed;
+			}
+		} catch {
+			// Try the next candidate.
+		}
+	}
+
+	return null;
+}
+
+function parseScreenAssistantVisionResponse(rawText, fallbackTurnId = "screen-assistant") {
+	const parsed = extractScreenAssistantJson(rawText);
+	if (parsed) {
+		const text = normalizeNonEmptyString(parsed.text) || "";
+		const point = normalizeScreenAssistantPoint(parsed.point);
+		const target = normalizeScreenAssistantTarget(parsed.target);
+		const turnId = normalizeNonEmptyString(parsed.turnId) || fallbackTurnId;
+		return {
+			type: "screen_assistant_result",
+			turnId,
+			text,
+			...(point ? { point } : {}),
+			...(target ? { target } : {}),
+			...(isPlainObject(parsed.agentDraftPatch) ? { agentDraftPatch: parsed.agentDraftPatch } : {}),
+		};
+	}
+
+	const pointMatch = rawText.match(POINT_TAG_RE);
+	const point = pointMatch
+		? {
+				x: Number(pointMatch[1]),
+				y: Number(pointMatch[2]),
+				label: pointMatch[3].trim() || "Target",
+			}
+		: null;
+	const text = rawText.replace(POINT_TAG_RE, "").trim();
+
+	return {
+		type: "screen_assistant_result",
+		turnId: fallbackTurnId,
+		text,
+		...(point ? { point } : {}),
+	};
+}
+
 // ─── Tools ────────────────────────────────────────────────────────────────────
 
 const SESSION_TOOLS = [
@@ -733,6 +876,8 @@ class RealtimeSession {
 		const image = typeof msg.image === "string" ? msg.image : "";
 		const textContext = typeof msg.text === "string" ? msg.text.trim() : "";
 		const systemPrompt = typeof msg.systemPrompt === "string" ? msg.systemPrompt : "";
+		const screenAssistant = isPlainObject(msg.screenAssistant) ? msg.screenAssistant : null;
+		const turnId = normalizeNonEmptyString(screenAssistant?.turnId) || `screen-assistant-${Date.now()}`;
 
 		this._log("CLICKY_VISION", `Sending screenshot to Claude (${image.length} chars)`);
 
@@ -751,6 +896,12 @@ class RealtimeSession {
 			userContent.push({
 				type: "text",
 				text: textContext,
+			});
+		}
+		if (screenAssistant) {
+			userContent.push({
+				type: "text",
+				text: `Structured Studio context. Use this to ground targets before relying on pixels:\n${JSON.stringify(screenAssistant)}`,
 			});
 		}
 
@@ -772,14 +923,12 @@ class RealtimeSession {
 
 			this._log("CLICKY_VISION", `Claude response: ${responseText.slice(0, 100)}...`);
 
-			// Send Claude's text response directly to the client for POINT tag parsing
-			this._sendToClient({
-				type: "clicky_text_completed",
-				text: responseText,
-			});
+			const screenAssistantResult = parseScreenAssistantVisionResponse(responseText, turnId);
+
+			this._sendToClient(screenAssistantResult);
 
 			// Strip POINT tag for TTS — OpenAI should only read the spoken text
-			const spokenText = responseText.replace(/\[POINT:[^\]]*\]/g, "").trim();
+			const spokenText = screenAssistantResult.text.trim();
 
 			if (spokenText && this.isReady && this._openaiWs) {
 				// Mark the next response as a Rovo TTS response (suppress its text output)
@@ -1019,6 +1168,7 @@ class RealtimeSession {
 // ─── Exports ─────────────────────────────────────────────────────────────────
 
 module.exports = {
+	parseScreenAssistantVisionResponse,
 	RealtimeSession,
 	ROVO_SYSTEM_INSTRUCTIONS,
 	SESSION_STATE,

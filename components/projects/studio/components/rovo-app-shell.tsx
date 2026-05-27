@@ -57,6 +57,13 @@ import { useClicky } from "@/components/projects/studio/hooks/use-clicky";
 import { useClickyVoice } from "@/components/projects/studio/hooks/use-clicky-voice";
 import { ClickyOverlay } from "@/components/projects/studio/components/clicky/clicky-overlay";
 import { parseClickyResponse } from "@/components/projects/studio/lib/clicky-point-parser";
+import {
+	createStudioScreenAssistantSnapshot,
+	groundStudioScreenAssistantTarget,
+	normalizeAgentDraftPatch,
+	type StudioScreenAssistantResult,
+	type StudioScreenAssistantTarget,
+} from "@/components/projects/studio/lib/studio-screen-assistant";
 import { useSidebarResize } from "@/components/projects/studio/hooks/use-sidebar-resize";
 import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
@@ -893,6 +900,7 @@ type RealtimeAssistantTextCompletedPayload =
 type RealtimeVoiceShellOptions = Parameters<typeof useRealtimeVoice>[0] & {
 	onAssistantTextCompleted?: (payload: string | { messageId?: string; text?: string }) => void;
 	onAssistantTextDelta?: (payload: string | { delta?: string; messageId?: string; text?: string }) => void;
+	onScreenAssistantResult?: (payload: StudioScreenAssistantResult) => void;
 	onSpeechTranscriptCompleted?: (payload: string | { messageId?: string; transcript?: string; text?: string }) => void;
 	onSpeechTranscriptDelta?: (payload: string | { delta?: string; messageId?: string; text?: string }) => void;
 	onTextResponseStart?: (payload?: { messageId?: string }) => void;
@@ -1006,6 +1014,21 @@ function resolveRealtimeSessionIdentity(realtime: RealtimeVoiceShellResult, acti
 	}
 
 	return realtime.voiceState !== "idle" ? `${activeThreadId ?? runtimeThreadId}:${realtime.voiceState}` : null;
+}
+
+function getViewportPointFromScreenAssistantTarget(
+	target: StudioScreenAssistantTarget | null | undefined,
+): { x: number; y: number; label: string; coordinateSpace: "viewport" } | null {
+	if (!target?.rect) {
+		return null;
+	}
+
+	return {
+		x: target.rect.x + target.rect.width / 2,
+		y: target.rect.y + target.rect.height / 2,
+		label: target.label ?? target.fieldId ?? target.id ?? "Target",
+		coordinateSpace: "viewport",
+	};
 }
 
 export function RovoAppShell({ embedded = false, initialThreadId = null }: Readonly<RovoAppShellProps>) {
@@ -2077,10 +2100,49 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		screenshotDimensions: clickyScreenshotDimensions,
 		setScreenshotDimensions: clickySetScreenshotDimensions,
 	} = clicky;
+	const screenAssistantPointerRef = useRef<{ x: number; y: number } | null>(null);
+	const screenAssistantComposerRef = useRef<{
+		hasPrefill?: boolean;
+		placeholder?: string;
+	}>({
+		placeholder: DEFAULT_COMPOSER_PLACEHOLDER,
+	});
+	const lastScreenAssistantMutationTurnIdRef = useRef<string | null>(null);
 
 	const handleToggleClicky = useCallback(() => {
 		toggleClicky();
 	}, [toggleClicky]);
+
+	useEffect(() => {
+		const handlePointerMove = (event: PointerEvent) => {
+			screenAssistantPointerRef.current = {
+				x: event.clientX,
+				y: event.clientY,
+			};
+		};
+
+		window.addEventListener("pointermove", handlePointerMove, { passive: true });
+		return () => window.removeEventListener("pointermove", handlePointerMove);
+	}, []);
+
+	const getScreenAssistantSnapshot = useCallback(() => {
+		const activePanel = activeSessionAgentEntry
+			? "agent-config"
+			: chat.panelState === "preview"
+				? "artifact-preview"
+				: "chat";
+
+		return createStudioScreenAssistantSnapshot({
+			activeAgentDraft: activeSessionAgentEntry?.draftResult ?? null,
+			activePanel,
+			composer: screenAssistantComposerRef.current,
+			pointer: screenAssistantPointerRef.current,
+			selectedAgent: {
+				id: selectedAgent.id,
+				name: selectedAgent.name,
+			},
+		});
+	}, [activeSessionAgentEntry, chat.panelState, selectedAgent.id, selectedAgent.name]);
 
 	// Keyboard shortcuts for Rovo
 	useEffect(() => {
@@ -2270,6 +2332,73 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			},
 			[ensureRealtimeAssistantMessage, updateRealtimeMessage, isClickyActive, clickyStartPointing, clickyStartSpeaking, clickyAddExchange, clickyScreenshotDimensions],
 		),
+		onScreenAssistantResult: useCallback(
+			async (payload: StudioScreenAssistantResult) => {
+				const text = payload.text.trim();
+				const snapshot = getScreenAssistantSnapshot();
+				const groundedTarget = groundStudioScreenAssistantTarget({
+					fieldId: payload.target?.fieldId,
+					id: payload.target?.id,
+					label: payload.target?.label ?? payload.point?.label,
+					pointerTarget: snapshot.pointerContext?.target ?? null,
+					visibleTargets: snapshot.visibleTargets,
+				}) ?? payload.target ?? null;
+				const targetPoint = getViewportPointFromScreenAssistantTarget(groundedTarget);
+				const normalizedPatch = normalizeAgentDraftPatch(payload.agentDraftPatch);
+				let didApplyPatch = false;
+
+				if (
+					normalizedPatch &&
+					activeSessionAgentEntry &&
+					lastScreenAssistantMutationTurnIdRef.current !== payload.turnId
+				) {
+					const patch = normalizedPatch.description && !normalizedPatch.summary
+						? { ...normalizedPatch, summary: normalizedPatch.description }
+						: normalizedPatch;
+					const nextEntry = studioAgentRegistry.updateSessionAgentDraft?.(
+						activeSessionAgentEntry.profile.id,
+						patch,
+					);
+					if (nextEntry) {
+						didApplyPatch = true;
+						lastScreenAssistantMutationTurnIdRef.current = payload.turnId;
+					}
+				}
+
+				if (text) {
+					const messageId = await ensureRealtimeAssistantMessage();
+					await updateRealtimeMessage(messageId, text, {
+						replace: true,
+					});
+				}
+
+				if (isClickyActive) {
+					const displayText = text || (didApplyPatch ? "Updated the agent draft." : "");
+					if (displayText) {
+						clickyAddExchange({ role: "assistant", content: displayText });
+					}
+
+					if (targetPoint) {
+						clickyStartPointing(targetPoint, displayText);
+					} else if (payload.point) {
+						clickyStartPointing(payload.point, displayText);
+					} else if (displayText) {
+						clickyStartSpeaking(displayText);
+					}
+				}
+			},
+			[
+				activeSessionAgentEntry,
+				clickyAddExchange,
+				clickyStartPointing,
+				clickyStartSpeaking,
+				ensureRealtimeAssistantMessage,
+				getScreenAssistantSnapshot,
+				isClickyActive,
+				studioAgentRegistry,
+				updateRealtimeMessage,
+			],
+		),
 		chatMessages: chat.messages,
 		isGenerating: chat.isStreaming,
 	} satisfies RealtimeVoiceShellOptions) as RealtimeVoiceShellResult;
@@ -2283,9 +2412,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		sendImageInput: realtime.sendImageInput,
 		isRealtimeConnected: realtime.isConnected,
 		connectRealtime: realtime.connect,
-		disconnectRealtime: realtime.disconnect,
 		injectContext: realtime.injectContext,
 		onScreenshotCaptured: clickySetScreenshotDimensions,
+		getScreenAssistantSnapshot,
 	});
 
 	const realtimeStatusMessage = resolveRealtimeStatusMessage(realtime);
@@ -2756,6 +2885,10 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		previewPrompt,
 		showHomeState,
 	});
+	screenAssistantComposerRef.current = {
+		hasPrefill: Boolean(voiceTranscript ?? prefillText),
+		placeholder: composerPreviewState.placeholder,
+	};
 	const canAnnotateWorkspaceDocument = workspaceDocument !== null;
 	const annotationState = useArtifactAnnotations({
 		active: cursorMode && isArtifactOpen && !chat.streamingArtifact && chat.artifactMode === "preview" && process.env.NODE_ENV === "development",
