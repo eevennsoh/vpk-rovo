@@ -6208,6 +6208,13 @@ const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
+  "model-selector-demo-reasoning-modes": dynamic(
+    () =>
+      import("./demos/ui-custom/model-selector-demo").then((mod) => ({
+        default: mod.ModelSelectorDemoReasoningModes,
+      })),
+    { ssr: false },
+  ),
   "node-demo-full": dynamic(
     () =>
       import("./demos/ui-custom/node-demo").then((mod) => ({
