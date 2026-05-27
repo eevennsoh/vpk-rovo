@@ -40,39 +40,28 @@ async function seedSessionAgent(page: Page) {
 	);
 }
 
-async function openAgentsDirectory(page: Page) {
-	const sidebarTrigger = page.getByRole("button", { name: /view all agents/i });
-	const homeTrigger = page.getByRole("button", { name: /browse all agents/i });
-
-	if (await sidebarTrigger.first().isVisible().catch(() => false)) {
-		await sidebarTrigger.first().click();
-	} else {
-		await homeTrigger.first().click();
-	}
-
-	const dialog = page.getByRole("dialog");
-	await expect(dialog).toBeVisible();
-	return dialog;
+async function expectSeededAgentInSidebar(page: Page) {
+	const sidebarNav = page.getByRole("navigation", { name: /studio/i });
+	await expect(sidebarNav.getByText(SEEDED_AGENT_NAME).first()).toBeVisible();
 }
 
 test.describe("Studio draft agent persistence", () => {
-	test("seeded draft agent appears in the agents directory", async ({ page }) => {
+	test("seeded draft agent appears in the left-hand Agents nav on first load", async ({ page }) => {
 		await seedSessionAgent(page);
 
 		await page.goto(STUDIO_URL, { waitUntil: "networkidle" });
 
-		const dialog = await openAgentsDirectory(page);
-		await expect(dialog.getByText(SEEDED_AGENT_NAME).first()).toBeVisible();
+		await expectSeededAgentInSidebar(page);
 	});
 
 	test("seeded draft agent survives a full page reload", async ({ page }) => {
 		await seedSessionAgent(page);
 
 		await page.goto(STUDIO_URL, { waitUntil: "networkidle" });
-		await page.reload({ waitUntil: "networkidle" });
+		await expectSeededAgentInSidebar(page);
 
-		const dialog = await openAgentsDirectory(page);
-		await expect(dialog.getByText(SEEDED_AGENT_NAME).first()).toBeVisible();
+		await page.reload({ waitUntil: "networkidle" });
+		await expectSeededAgentInSidebar(page);
 
 		const stored = await page.evaluate(
 			(key) => window.localStorage.getItem(key),
