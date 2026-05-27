@@ -1,9 +1,14 @@
 "use client";
 
 import { tool } from "ai";
+import { useState } from "react";
 import { z } from "zod";
 import {
 	Agent,
+	AgentConfigFields,
+	type AgentConfigFormValue,
+	type AgentConfigListFieldName,
+	type AgentConfigTextFieldName,
 	AgentContent,
 	AgentHeader,
 	AgentInstructions,
@@ -16,13 +21,6 @@ const webSearch = tool({
 	description: "Search the web for information",
 	inputSchema: z.object({
 		query: z.string().describe("The search query"),
-	}),
-});
-
-const readUrl = tool({
-	description: "Read and parse content from a URL",
-	inputSchema: z.object({
-		url: z.string().describe("The URL to read"),
 	}),
 });
 
@@ -50,23 +48,68 @@ const outputSchema = `z.object({
   summary: z.string(),
 })`;
 
+const initialAgentConfig: AgentConfigFormValue = {
+	name: "",
+	description: "",
+	summary: "",
+	instructions: "",
+	contextDescription: "",
+	trigger: "",
+	guardrail: "",
+	tools: [],
+	conversationStarters: [],
+	agentId: "policy-checker",
+	action: "draft",
+};
+
 export function AgentDemoFull() {
+	const [config, setConfig] = useState<AgentConfigFormValue>(initialAgentConfig);
+
+	function handleTextChange(field: AgentConfigTextFieldName, value: string) {
+		setConfig((current) => ({
+			...current,
+			[field]: value,
+			...(field === "description" ? { summary: value } : {}),
+		}));
+	}
+
+	function updateListItem(field: AgentConfigListFieldName, index: number, value: string) {
+		setConfig((current) => {
+			const items = Array.isArray(current[field]) ? [...current[field]] : [];
+			items[index] = value;
+			return { ...current, [field]: items };
+		});
+	}
+
+	function removeListItem(field: AgentConfigListFieldName, index: number) {
+		setConfig((current) => {
+			const items = Array.isArray(current[field]) ? current[field] : [];
+			return { ...current, [field]: items.filter((_, itemIndex) => itemIndex !== index) };
+		});
+	}
+
+	function appendListItem(field: AgentConfigListFieldName) {
+		setConfig((current) => {
+			const items = Array.isArray(current[field]) ? current[field] : [];
+			return { ...current, [field]: [...items, ""] };
+		});
+	}
+
 	return (
-		<Agent className="w-full">
+		<Agent className="mx-auto min-h-[852px] w-full max-w-[720px]">
 			<AgentHeader
-				name="Sentiment Analyzer"
-				model="anthropic/claude-sonnet-4-5"
+				name="Policy Checker"
+				model="Draft"
 			/>
 			<AgentContent>
-				<AgentInstructions>
-					Analyze the sentiment of the provided text and return a structured
-					analysis with sentiment classification, confidence score, and summary.
-				</AgentInstructions>
-				<AgentTools multiple>
-					<AgentTool tool={webSearch} value="web_search" />
-					<AgentTool tool={readUrl} value="read_url" />
-				</AgentTools>
-				<AgentOutput schema={outputSchema} />
+				<AgentConfigFields
+					config={config}
+					idPrefix="agent-demo-full"
+					onTextChange={handleTextChange}
+					onListItemChange={updateListItem}
+					onRemoveListItem={removeListItem}
+					onAppendListItem={appendListItem}
+				/>
 			</AgentContent>
 		</Agent>
 	);
@@ -78,6 +121,7 @@ export function AgentDemoWithTools() {
 			<AgentHeader
 				name="Code Assistant"
 				model="anthropic/claude-sonnet-4-5"
+				showActions={false}
 			/>
 			<AgentContent>
 				<AgentTools multiple>
@@ -96,6 +140,7 @@ export function AgentDemoWithOutput() {
 			<AgentHeader
 				name="Data Classifier"
 				model="anthropic/claude-haiku-3-5"
+				showActions={false}
 			/>
 			<AgentContent>
 				<AgentInstructions>
@@ -114,6 +159,7 @@ export function AgentDemoMinimal() {
 			<AgentHeader
 				name="Research Assistant"
 				model="anthropic/claude-opus-4"
+				showActions={false}
 			/>
 		</Agent>
 	);

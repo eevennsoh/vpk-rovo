@@ -11,6 +11,14 @@ const MESSAGES_SOURCE = fs.readFileSync(
 	path.join(__dirname, "rovo-app-messages.tsx"),
 	"utf8",
 );
+const AGENT_CONFIG_PANEL_SOURCE = fs.readFileSync(
+	path.join(__dirname, "rovo-app-agent-config-panel.tsx"),
+	"utf8",
+);
+const UI_CUSTOM_AGENT_SOURCE = fs.readFileSync(
+	path.join(process.cwd(), "components/ui-custom/agent.tsx"),
+	"utf8",
+);
 
 test("RovoAppShell starts Studio agent creation only from the default-agent home composer", () => {
 	assert.match(SHELL_SOURCE, /const DEFAULT_COMPOSER_PLACEHOLDER = "Describe the agent you want to build";/u);
@@ -72,6 +80,18 @@ test("RovoAppMessages renders the shared /agents-style agent result card", () =>
 	assert.match(MESSAGES_SOURCE, /const agentResult = getMessageAgentResult\(message\);/u);
 	assert.match(MESSAGES_SOURCE, /<AgentResultCard[\s\S]*agent=\{agentResult\}[\s\S]*sourceMessageId: message\.id/u);
 	assert.doesNotMatch(MESSAGES_SOURCE, /function StudioAgentResultCard/u);
+});
+
+test("Studio agent config panel renders the shared ui-custom agent config fields", () => {
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /export const AgentConfigFields = memo/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /Add triggers/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /Add conversation starters/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /Teamwork Graph/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /Describe the agent’s role and what it should do/u);
+	assert.match(AGENT_CONFIG_PANEL_SOURCE, /AgentConfigFields/u);
+	assert.match(AGENT_CONFIG_PANEL_SOURCE, /config=\{draft\}/u);
+	assert.match(AGENT_CONFIG_PANEL_SOURCE, /onTextChange=\{handleConfigTextChange\}/u);
+	assert.doesNotMatch(AGENT_CONFIG_PANEL_SOURCE, /<Label htmlFor=\{`agent-\$\{profileId\}-name`\}/u);
 });
 
 test("Studio clarification answers keep agent creation mode active", () => {

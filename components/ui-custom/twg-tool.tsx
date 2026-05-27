@@ -60,6 +60,13 @@ const bannerGridFadeStyle = {
 		"linear-gradient(90deg, var(--color-surface-raised) 0%, color-mix(in srgb, var(--color-surface-raised) 18%, transparent) 44%)",
 } satisfies CSSProperties;
 
+const SOURCE_STACK_ROTATION_CLASSES = [
+	"",
+	"rotate-6",
+	"",
+	"-rotate-8",
+] as const;
+
 function isThirdPartyProvider(
 	provider: TwgToolSourceProvider
 ): provider is TwgToolThirdPartyProvider {
@@ -78,7 +85,7 @@ function getSourceImageSize(size: TwgToolSourceIconSize) {
 	return size === "md" ? 24 : 16;
 }
 
-function TwgToolBannerBackground() {
+export function TwgToolBannerBackground() {
 	return (
 		<div aria-hidden="true" className="pointer-events-none absolute inset-0">
 			<PatternTile
@@ -196,7 +203,7 @@ export function TwgToolSourceStack({
 	const hiddenCount = Math.max(0, sources.length - visibleSources.length);
 
 	return (
-		<div className={cn("flex shrink-0 items-center justify-end overflow-hidden", className)} {...props}>
+		<div className={cn("flex shrink-0 items-center justify-end overflow-visible", className)} {...props}>
 			{visibleSources.map((source, index) => (
 				<TwgToolSourceIcon
 					key={source.id}
@@ -204,7 +211,8 @@ export function TwgToolSourceStack({
 					size={iconSize}
 					className={cn(
 						"relative",
-						index > 0 && "-ml-1"
+						index > 0 && "-ml-1",
+						SOURCE_STACK_ROTATION_CLASSES[index % SOURCE_STACK_ROTATION_CLASSES.length]
 					)}
 				/>
 			))}
