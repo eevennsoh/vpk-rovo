@@ -7,17 +7,16 @@ import Image from "next/image";
 
 import AddIcon from "@atlaskit/icon/core/add";
 import AiModelIcon from "@atlaskit/icon-lab/core/ai-model";
-import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
 
-import {
-	Accordion,
+import { Accordion,
 	AccordionContent,
 	AccordionItem,
 	AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { InlineEdit } from "@/components/ui/inline-edit";
+import { Lozenge } from "@/components/ui/lozenge";
 import { Tile } from "@/components/ui/tile";
 import {
 	TwgToolBannerBackground,
@@ -109,9 +108,9 @@ export const AgentHeader = memo(
 				/>
 				<span className="truncate text-sm font-semibold leading-5 text-text">{name}</span>
 				{model ? (
-					<Badge className="font-normal" variant="outline">
+					<Lozenge>
 						{model}
-					</Badge>
+					</Lozenge>
 				) : null}
 			</div>
 			{showActions ? (
@@ -305,7 +304,7 @@ function AgentKnowledgePanel() {
 		<section className="space-y-0">
 			<AgentSectionLabel>Knowledge</AgentSectionLabel>
 			<div className="rounded-xl border border-border bg-bg-input p-1.5">
-				<div className="relative flex h-12 min-w-0 items-center justify-between gap-3 overflow-hidden rounded-lg bg-surface-sunken px-2">
+				<div className="relative flex h-12 min-w-0 items-center justify-between gap-3 overflow-hidden rounded-lg bg-surface-sunken pl-1.5 pr-2">
 					<TwgToolBannerBackground />
 					<div className="relative z-10 flex min-w-0 items-center gap-2">
 						<Tile
@@ -316,7 +315,16 @@ function AgentKnowledgePanel() {
 							size="medium"
 							variant="transparent"
 						>
-							<Icon render={<TeamworkGraphIcon label="" size="small" />} aria-hidden />
+							<div className="size-4">
+								<Image
+									src="/icons/twg.svg"
+									alt=""
+									aria-hidden
+									className="size-full"
+									width={16}
+									height={16}
+								/>
+							</div>
 						</Tile>
 						<span className="truncate text-sm font-medium text-text-subtle">Teamwork Graph</span>
 					</div>
@@ -326,23 +334,23 @@ function AgentKnowledgePanel() {
 						sources={AGENT_KNOWLEDGE_SOURCES}
 					/>
 				</div>
-				<div className="flex h-12 items-center justify-between p-1.5">
+				<div className="flex items-center justify-between rounded-lg p-1.5 transition-colors hover:bg-bg-neutral-subtle-hovered">
 					<div className="flex min-w-0 items-center gap-3">
 						<AgentIconTile label="Memory">
-							<Icon render={<AiModelIcon label="" size="small" />} aria-hidden />
+							<Icon render={<AiModelIcon label="" />} aria-hidden />
 						</AgentIconTile>
 						<span className="truncate text-sm font-medium text-text-subtle">Memory</span>
 					</div>
-					<Button size="sm" variant="ghost">
+					<Button variant="ghost">
 						Manage
 					</Button>
 				</div>
-				<div className="px-1.5">
+				<div className="px-1.5 py-1.5">
 					<div className="h-px bg-border-disabled" />
 				</div>
 				<button
 					type="button"
-					className="flex h-12 w-full items-center gap-3 rounded-lg p-1.5 text-left text-sm font-medium text-text-subtle transition-colors hover:bg-bg-neutral-subtle-hovered focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+					className="flex w-full items-center gap-3 rounded-lg p-1.5 text-left text-sm font-medium text-text-subtle transition-colors hover:bg-bg-neutral-subtle-hovered focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 				>
 					<AgentIconTile label="Add knowledge">
 						<Icon render={<AddIcon label="" size="small" />} aria-hidden />
@@ -378,7 +386,7 @@ function AgentInstructionsComposer({
 				placeholder="Describe the agent’s role and what it should do. @mention, or / for skills"
 				showBubbleMenu={false}
 				toolbarEndSlot={
-					<Button className="shrink-0 text-text-subtle" size="sm" variant="ghost">
+					<Button className="shrink-0 text-text-subtle" variant="ghost">
 						GPT-5.5 Medium
 					</Button>
 				}
@@ -414,9 +422,6 @@ export const AgentConfigFields = memo(
 		void onListItemChange;
 		void onRemoveListItem;
 
-		const agentName = config.name?.trim() || "Untitled agent";
-		const description = config.description?.trim() || config.summary?.trim() || "Add a description";
-
 		return (
 			<div
 				className={cn("space-y-6", className)}
@@ -425,7 +430,7 @@ export const AgentConfigFields = memo(
 				{...props}
 			>
 				<section
-					className="space-y-4"
+					className="space-y-4 [&+*]:!mt-4"
 					data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:profile` : undefined}
 				>
 					<AgentProfileCover />
@@ -434,14 +439,27 @@ export const AgentConfigFields = memo(
 						data-agent-field="name"
 						data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:name` : undefined}
 					>
-						<h2 className="text-2xl font-semibold leading-7 text-text">{agentName}</h2>
-						<p
-							className="text-sm leading-5 text-text-subtlest"
+						<InlineEdit
+							value={config.name ?? ""}
+							placeholder="Untitled agent"
+							editButtonLabel="Edit agent name"
+							readViewClassName="h-auto py-1 text-2xl leading-7 font-semibold"
+							inputProps={{ className: "h-auto py-1 text-2xl leading-7 font-semibold md:text-2xl" }}
+							onConfirm={(value) => onTextChange?.("name", value)}
+						/>
+						<div
 							data-agent-field="description"
 							data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:description` : undefined}
 						>
-							{description}
-						</p>
+							<InlineEdit
+								value={config.description ?? config.summary ?? ""}
+								placeholder="Add a description"
+								editButtonLabel="Edit agent description"
+								multiline
+								textareaProps={{ rows: 1, className: "min-h-10 bg-bg-neutral-subtle focus-visible:ring-0 focus-visible:ring-offset-0 data-[variant=default]:border-transparent" }}
+								onConfirm={(value) => onTextChange?.("description", value)}
+							/>
+						</div>
 					</div>
 				</section>
 

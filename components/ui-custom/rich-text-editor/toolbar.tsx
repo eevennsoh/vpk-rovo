@@ -280,7 +280,7 @@ export function RichTextEditorToolbar({
 							type="button"
 							aria-label={getCurrentTextStyle(editor)}
 							aria-expanded={openDropdown === "textStyle"}
-							size="icon-sm"
+							size="icon"
 							variant="ghost"
 							onClick={() => toggleDropdown("textStyle")}
 						>
@@ -329,7 +329,7 @@ export function RichTextEditorToolbar({
 						<Button
 							type="button"
 							aria-label="Bold"
-							size="icon-sm"
+							size="icon"
 							variant={editor.isActive("bold") ? "secondary" : "ghost"}
 							onClick={() => editor.chain().focus().toggleBold().run()}
 						>
@@ -339,7 +339,7 @@ export function RichTextEditorToolbar({
 							type="button"
 							aria-label="More formatting options"
 							aria-expanded={openDropdown === "formatting"}
-							size="icon-sm"
+							size="icon"
 							variant="ghost"
 							onClick={() => toggleDropdown("formatting")}
 						>
@@ -382,7 +382,7 @@ export function RichTextEditorToolbar({
 						<Button
 							type="button"
 							aria-label="Bulleted list"
-							size="icon-sm"
+							size="icon"
 							variant={editor.isActive("bulletList") ? "secondary" : "ghost"}
 							onClick={() => editor.chain().focus().toggleBulletList().run()}
 						>
@@ -392,7 +392,7 @@ export function RichTextEditorToolbar({
 							type="button"
 							aria-label="More list options"
 							aria-expanded={openDropdown === "list"}
-							size="icon-sm"
+							size="icon"
 							variant="ghost"
 							onClick={() => toggleDropdown("list")}
 						>
@@ -427,7 +427,7 @@ export function RichTextEditorToolbar({
 							type="button"
 							aria-label="Text alignment"
 							aria-expanded={openDropdown === "align"}
-							size="icon-sm"
+							size="icon"
 							variant="ghost"
 							onClick={() => toggleDropdown("align")}
 						>
@@ -460,7 +460,7 @@ export function RichTextEditorToolbar({
 					<Button
 						type="button"
 						aria-label="Link"
-						size="icon-sm"
+						size="icon"
 						variant={editor.isActive("link") ? "secondary" : "ghost"}
 						onClick={() => addLink(editor)}
 					>
@@ -468,7 +468,7 @@ export function RichTextEditorToolbar({
 					</Button>
 
 					{showCommentControl ? (
-						<Button type="button" className="gap-2" size="sm" variant="ghost">
+						<Button type="button" className="gap-2" variant="ghost">
 							<CommentIcon label="" size="small" />
 							Comment
 						</Button>
@@ -478,7 +478,7 @@ export function RichTextEditorToolbar({
 						<Button
 							type="button"
 							aria-label="More options"
-							size="icon-sm"
+							size="icon"
 							variant="ghost"
 						>
 							<ShowMoreHorizontalIcon label="" size="small" />
