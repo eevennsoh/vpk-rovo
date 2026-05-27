@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import type {
+	StudioScreenAssistantResult,
+	StudioScreenAssistantSnapshot,
+} from "@/components/projects/studio/lib/studio-screen-assistant";
 import {
 	createRealtimeAssistantTextStreamState,
 	finalizeRealtimeAssistantText,
@@ -70,6 +74,7 @@ export interface UseRealtimeVoiceOptions {
 		messageId?: string;
 		text?: string;
 	} | string) => void;
+	onScreenAssistantResult?: (payload: StudioScreenAssistantResult) => void;
 	/** Current chat messages for thread context. */
 	chatMessages: RovoUIMessage[];
 	/** Whether Rovo is currently generating. */
@@ -88,6 +93,11 @@ export interface UseRealtimeVoiceResult {
 		image: string;
 		text?: string;
 		detail?: "low" | "high" | "auto";
+		clicky?: boolean;
+		systemPrompt?: string;
+		screenAssistant?: StudioScreenAssistantSnapshot & {
+			turnId: string;
+		};
 	}) => void;
 	voiceState: RealtimeVoiceState;
 	generationState: RealtimeGenerationState;
@@ -269,6 +279,10 @@ interface ServerClickyTextCompleted {
 	text: string;
 }
 
+type ServerScreenAssistantResult = StudioScreenAssistantResult & {
+	type: "screen_assistant_result";
+};
+
 type ServerMessage =
 	| ServerSessionReady
 	| ServerAudioDelta
@@ -282,7 +296,8 @@ type ServerMessage =
 	| ServerError
 	| ServerFunctionCall
 	| ServerResponseDone
-	| ServerClickyTextCompleted;
+	| ServerClickyTextCompleted
+	| ServerScreenAssistantResult;
 
 // ---------------------------------------------------------------------------
 // Audio helpers
@@ -563,6 +578,7 @@ export function useRealtimeVoice({
 	onTextResponseStart,
 	onAssistantTextDelta,
 	onAssistantTextCompleted,
+	onScreenAssistantResult,
 	chatMessages,
 	isGenerating = false,
 }: UseRealtimeVoiceOptions): UseRealtimeVoiceResult {
@@ -658,6 +674,11 @@ export function useRealtimeVoice({
 	useEffect(() => {
 		onAssistantTextCompletedRef.current = onAssistantTextCompleted;
 	}, [onAssistantTextCompleted]);
+
+	const onScreenAssistantResultRef = useRef(onScreenAssistantResult);
+	useEffect(() => {
+		onScreenAssistantResultRef.current = onScreenAssistantResult;
+	}, [onScreenAssistantResult]);
 
 	const chatMessagesRef = useRef(chatMessages);
 	useEffect(() => {
@@ -1532,6 +1553,16 @@ export function useRealtimeVoice({
 					}
 					break;
 
+				case "screen_assistant_result":
+					onScreenAssistantResultRef.current?.({
+						turnId: message.turnId,
+						text: message.text,
+						...(message.point ? { point: message.point } : {}),
+						...(message.target ? { target: message.target } : {}),
+						...(message.agentDraftPatch ? { agentDraftPatch: message.agentDraftPatch } : {}),
+					});
+					break;
+
 				case "function_call":
 					markSpeechResponseStarted();
 					if (message.name === "end_voice_session") {
@@ -1825,12 +1856,16 @@ export function useRealtimeVoice({
 		detail = "low",
 		clicky,
 		systemPrompt,
+		screenAssistant,
 	}: {
 		image: string;
 		text?: string;
 		detail?: "low" | "high" | "auto";
 		clicky?: boolean;
 		systemPrompt?: string;
+		screenAssistant?: StudioScreenAssistantSnapshot & {
+			turnId: string;
+		};
 	}) => {
 		if (!image) return;
 
@@ -1839,7 +1874,7 @@ export function useRealtimeVoice({
 			image,
 			text,
 			detail,
-			...(clicky ? { clicky: true, systemPrompt } : {}),
+			...(clicky ? { clicky: true, systemPrompt, screenAssistant } : {}),
 		});
 	}, [sendWsMessage]);
 

@@ -295,7 +295,7 @@ export function ClickyOverlay({
 		// Compute target in viewport-space
 		let targetX = pointTarget.x;
 		let targetY = pointTarget.y;
-		if (screenshotDimensions) {
+		if (screenshotDimensions && pointTarget.coordinateSpace !== "viewport") {
 			const scaleX = window.innerWidth / screenshotDimensions.width;
 			const scaleY = window.innerHeight / screenshotDimensions.height;
 			targetX = pointTarget.x * scaleX;
