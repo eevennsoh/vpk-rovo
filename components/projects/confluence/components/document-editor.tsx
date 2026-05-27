@@ -2,47 +2,20 @@
 
 import React, { useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
-import Link from "@tiptap/extension-link";
-import TextAlign from "@tiptap/extension-text-align";
-import Color from "@tiptap/extension-color";
-import { TextStyle } from "@tiptap/extension-text-style";
-import Highlight from "@tiptap/extension-highlight";
 import { token } from "@/lib/tokens";
+import { createRichTextEditorExtensions } from "@/components/ui-custom/rich-text-editor";
 import EditorBubbleMenu from "./editor-bubble-menu/index";
 import TitleActionBar from "./title-action-bar";
 import DocumentTitle from "./document-title";
 import DocumentMetadata from "./document-metadata";
 import { INITIAL_CONTENT, DEFAULT_DOCUMENT } from "../data/editor-content";
-import "../confluence/editor-styles.css";
+import "@/components/ui-custom/rich-text-editor/rich-text-editor.css";
 
 export default function DocumentEditor() {
 	const [isHoveringTitle, setIsHoveringTitle] = useState(false);
 
 	const editor = useEditor({
-		extensions: [
-			StarterKit.configure({
-				link: false,
-				underline: false,
-			}),
-			Underline,
-			Link.configure({
-				openOnClick: false,
-				HTMLAttributes: {
-					class: "editor-link",
-				},
-			}),
-			TextAlign.configure({
-				types: ["heading", "paragraph"],
-				alignments: ["left", "center", "right"],
-			}),
-			TextStyle,
-			Color,
-			Highlight.configure({
-				multicolor: true,
-			}),
-		],
+		extensions: createRichTextEditorExtensions(),
 		content: INITIAL_CONTENT,
 		immediatelyRender: false,
 		editorProps: {

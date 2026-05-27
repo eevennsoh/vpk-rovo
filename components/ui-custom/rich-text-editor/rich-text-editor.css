@@ -1,4 +1,4 @@
-/* Tiptap Editor Styles */
+/* Shared Tiptap editor styles used by Confluence and compact agent previews. */
 .tiptap-editor {
 	outline: none;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
@@ -7,7 +7,6 @@
 	color: var(--ds-text, #172b4d);
 }
 
-/* Text alignment */
 .tiptap-editor [style*="text-align: left"] {
 	text-align: left;
 }
@@ -20,7 +19,6 @@
 	text-align: right;
 }
 
-/* Headings */
 .tiptap-editor h1 {
 	font-size: 32px;
 	font-weight: 600;
@@ -73,7 +71,6 @@
 	margin-top: 0;
 }
 
-/* Paragraphs */
 .tiptap-editor p {
 	margin-bottom: 16px;
 }
@@ -82,7 +79,6 @@
 	margin-bottom: 0;
 }
 
-/* Lists */
 .tiptap-editor ul,
 .tiptap-editor ol {
 	padding-left: 24px;
@@ -109,7 +105,6 @@
 	margin-bottom: 0;
 }
 
-/* Nested lists */
 .tiptap-editor ul ul,
 .tiptap-editor ol ul {
 	list-style-type: circle;
@@ -125,7 +120,6 @@
 	list-style-type: lower-alpha;
 }
 
-/* Code blocks */
 .tiptap-editor pre {
 	background-color: var(--ds-surface-raised, #f4f5f7);
 	border: 1px solid var(--ds-border, #dfe1e6);
@@ -145,7 +139,6 @@
 	color: var(--ds-text, #172b4d);
 }
 
-/* Inline code */
 .tiptap-editor code {
 	background-color: var(--ds-surface-raised, #f4f5f7);
 	border: 1px solid var(--ds-border, #dfe1e6);
@@ -156,7 +149,6 @@
 	color: var(--ds-text-accent-red, #bf2600);
 }
 
-/* Blockquotes */
 .tiptap-editor blockquote {
 	border-left: 4px solid var(--ds-border-accent-blue, #0065ff);
 	padding-left: 16px;
@@ -174,7 +166,6 @@
 	margin-bottom: 0;
 }
 
-/* Links */
 .tiptap-editor a,
 .tiptap-editor .editor-link {
 	color: var(--ds-link, #0052cc);
@@ -187,7 +178,6 @@
 	text-decoration: underline;
 }
 
-/* Text formatting */
 .tiptap-editor strong {
 	font-weight: 600;
 }
@@ -204,54 +194,66 @@
 	text-decoration: line-through;
 }
 
-/* Horizontal rule */
 .tiptap-editor hr {
 	border: none;
 	border-top: 2px solid var(--ds-border, #dfe1e6);
 	margin: 24px 0;
 }
 
-/* Focus styles */
 .tiptap-editor:focus {
 	outline: none;
 }
 
-/* Placeholder */
-.tiptap-editor p.is-editor-empty:first-child::before {
-	content: attr(data-placeholder);
+.rich-text-editor-content[data-empty="true"] .tiptap-editor > p:first-child::before {
+	content: var(--rich-text-placeholder);
 	float: left;
-	color: var(--ds-text-subtlest, #97a0af);
-	pointer-events: none;
 	height: 0;
+	color: var(--ds-text-subtlest, #626f86);
+	pointer-events: none;
 }
 
-/* Selection */
 .tiptap-editor ::selection {
 	background-color: var(--ds-background-selected, #deebff);
 }
 
-/* Make sure the editor takes full width */
 .ProseMirror {
 	min-height: 200px;
 }
 
-/* Task list items (if you add them later) */
-.tiptap-editor ul[data-type="taskList"] {
-	list-style: none;
-	padding-left: 0;
+.agent-instructions-tiptap-editor {
+	min-height: 128px;
+	color: var(--ds-text-subtlest, #626f86);
 }
 
-.tiptap-editor ul[data-type="taskList"] li {
-	display: flex;
-	align-items: flex-start;
+.agent-instructions-tiptap-editor.ProseMirror {
+	min-height: 128px;
 }
 
-.tiptap-editor ul[data-type="taskList"] li > label {
-	flex: 0 0 auto;
-	margin-right: 8px;
-	user-select: none;
+.agent-instructions-tiptap-editor h1 {
+	font-size: 20px;
+	line-height: 1.3;
+	margin-top: 12px;
+	margin-bottom: 8px;
 }
 
-.tiptap-editor ul[data-type="taskList"] li > div {
-	flex: 1 1 auto;
+.agent-instructions-tiptap-editor h2 {
+	font-size: 18px;
+	line-height: 1.35;
+	margin-top: 12px;
+	margin-bottom: 8px;
+}
+
+.agent-instructions-tiptap-editor h3 {
+	font-size: 16px;
+	line-height: 1.4;
+	margin-top: 10px;
+	margin-bottom: 6px;
+}
+
+.agent-instructions-tiptap-editor p,
+.agent-instructions-tiptap-editor ul,
+.agent-instructions-tiptap-editor ol,
+.agent-instructions-tiptap-editor blockquote,
+.agent-instructions-tiptap-editor pre {
+	margin-bottom: 10px;
 }
