@@ -4421,6 +4421,20 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
+  "sidebar-nav-item-demo-with-description": dynamic(
+    () =>
+      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
+        default: mod.SidebarNavItemDemoWithDescription,
+      })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-nested-levels": dynamic(
+    () =>
+      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
+        default: mod.SidebarNavItemDemoNestedLevels,
+      })),
+    { ssr: false },
+  ),
   // Sonner
   "sonner-demo-default": dynamic(
     () =>
