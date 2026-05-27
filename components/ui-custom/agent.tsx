@@ -290,11 +290,7 @@ function AgentProfileCover() {
 					width={168}
 				/>
 			</div>
-			<div className="flex h-6 items-end justify-end px-4">
-				<Button className="relative z-10" size="sm" variant="outline">
-					Edit
-				</Button>
-			</div>
+			<div aria-hidden className="h-6" />
 			<div className="absolute top-6 left-4 size-12">
 				<Image
 					alt="Agent avatar"
