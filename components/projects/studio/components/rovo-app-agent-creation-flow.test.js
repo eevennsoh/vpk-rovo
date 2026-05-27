@@ -40,11 +40,48 @@ test("RovoAppShell starts Studio agent creation only from the default-agent home
 test("Studio home starters frame agent building instead of generic one-off tasks", () => {
 	assert.match(SHELL_SOURCE, /type HomeStarterCategory = "analyze" \| "brainstorm" \| "review" \| "summarize" \| "create";/u);
 	assert.match(SHELL_SOURCE, /const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<HomeStarterTemplate>>>/u);
-	assert.match(SHELL_SOURCE, /title: "Build a triage agent"/u);
-	assert.match(SHELL_SOURCE, /title: "Build a code review agent"/u);
-	assert.match(SHELL_SOURCE, /title: "Build a meeting agent"/u);
-	assert.match(SHELL_SOURCE, /title: "Build a knowledge agent"/u);
+	const homeStarterViewsSource = SHELL_SOURCE.slice(
+		SHELL_SOURCE.indexOf("const HOME_STARTER_VIEWS"),
+		SHELL_SOURCE.indexOf("function parseCssDurationMs"),
+	);
+	const starterTitles = [...homeStarterViewsSource.matchAll(/\btitle: "([^"]+)"/gu)].map((match) => match[1]);
+
+	assert.equal(starterTitles.length, 36);
+	for (const title of starterTitles) {
+		assert.doesNotMatch(title, /agent/iu);
+	}
+
+	for (const title of [
+		"Product Requirements Guide",
+		"Release Notes Drafter",
+		"Brand Voice Crafter",
+		"Social Media Writer",
+		"Global Translator",
+		"Meeting Insights",
+		"Decision Director",
+		"OKR Generator",
+		"Work Item Planner",
+		"Progress Tracker",
+		"Work Item Organizer",
+		"Blocker Checker",
+		"Bug Report Assistant",
+		"Readiness Checker",
+		"Rovo Ops",
+		"Service Request Helper",
+		"Service Triage",
+		"Jira Theme Analyzer",
+		"Transcript Insights Reporter",
+		"Customer Insights",
+		"User Manual Writer",
+		"Rovo Expert",
+	]) {
+		assert.ok(starterTitles.includes(title), `${title} should be available as a Studio starter`);
+	}
+
+	assert.match(SHELL_SOURCE, /prompt: "Build a Studio agent named Product Requirements Guide/u);
+	assert.match(SHELL_SOURCE, /prompt: "Build a Studio agent named Rovo Expert/u);
 	assert.doesNotMatch(SHELL_SOURCE, /title: "Analyze a workstream"/u);
+	assert.doesNotMatch(homeStarterViewsSource, /\btitle: "Build .* agent"/iu);
 	assert.doesNotMatch(SHELL_SOURCE, /prompt: "Summarize this into key points/u);
 });
 
