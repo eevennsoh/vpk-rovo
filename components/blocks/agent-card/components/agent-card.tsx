@@ -5,11 +5,30 @@ import type { ComponentProps, ReactElement } from "react";
 
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import AudioWaveformIcon from "@atlaskit/icon-lab/core/audio-waveform";
+import SwapIcon from "@atlaskit/icon-lab/core/swap";
 
 import { Button } from "@/components/ui/button";
 import { AtlassianLogo } from "@/components/ui/logo";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
+
+const AVATAR_HEXAGON_PATH =
+	"M19.01 0.922148C20.24 0.212148 21.76 0.212148 23 0.922148L40 10.6921C41.24 11.4021 42.01 12.7321 42.01 14.1621V33.6721C42.01 35.1021 41.24 36.4221 40 37.1421L23 46.9121C21.77 47.6221 20.25 47.6221 19.01 46.9121L2.01 37.1321C0.77 36.4221 0 35.0921 0 33.6621V14.1621C0 12.7321 0.77 11.4121 2.01 10.6921L19.01 0.922148Z";
+
+const AGENT_CATEGORY_BANNER_COLOR: Record<string, string> = {
+	"dev-agents": "#82B536",
+	"product-agents": "#BF63F3",
+	"service-agents": "#FFC716",
+	"strategy-agents": "#FF9F1A",
+	"teamwork-agents": "#1868DB",
+};
+
+const DEFAULT_BANNER_COLOR = "#1868DB";
+
+function getBannerColorFromAvatarSrc(src: string): string {
+	const category = src.match(/\/avatar-agent\/([^/]+)\//)?.[1];
+	return (category && AGENT_CATEGORY_BANNER_COLOR[category]) ?? DEFAULT_BANNER_COLOR;
+}
 
 export interface AgentCardProps extends Omit<ComponentProps<"section">, "children"> {
 	name?: string;
@@ -18,12 +37,15 @@ export interface AgentCardProps extends Omit<ComponentProps<"section">, "childre
 	avatarSrc?: string;
 	coverSrc?: string;
 	avatarAlt?: string;
+	coverBackgroundColor?: string;
 	inputPlaceholder?: string;
 	inputActionLabel?: string;
 	moreActionLabel?: string;
+	swapActionLabel?: string;
 	voiceActionLabel?: string;
 	onInputAction?: () => void;
 	onMoreAction?: () => void;
+	onSwapAction?: () => void;
 	onVoiceInput?: () => void;
 }
 
@@ -34,17 +56,23 @@ function AgentCard({
 	avatarSrc = "/avatar-agent/teamwork-agents/blocker-checker.svg",
 	coverSrc = avatarSrc,
 	avatarAlt = "",
+	coverBackgroundColor,
 	inputPlaceholder = "Ask, @mention, or / for actions",
 	inputActionLabel,
 	moreActionLabel,
+	swapActionLabel,
 	voiceActionLabel = "Start voice input",
 	onInputAction,
 	onMoreAction,
+	onSwapAction,
 	onVoiceInput,
 	className,
 	...props
 }: Readonly<AgentCardProps>): ReactElement {
 	const resolvedMoreActionLabel = moreActionLabel ?? `More actions for ${name}`;
+	const resolvedSwapActionLabel = swapActionLabel ?? `Swap ${name}`;
+	const resolvedCoverBackgroundColor =
+		coverBackgroundColor ?? getBannerColorFromAvatarSrc(avatarSrc);
 
 	return (
 		<section
@@ -59,7 +87,7 @@ function AgentCard({
 			<div
 				aria-hidden="true"
 				className="relative h-12 shrink-0 overflow-hidden"
-				style={{ backgroundColor: token("color.icon.accent.blue") }}
+				style={{ backgroundColor: resolvedCoverBackgroundColor }}
 			>
 				<Image
 					alt=""
@@ -77,16 +105,28 @@ function AgentCard({
 						<h3 className="min-w-0 truncate text-[20px] leading-6 font-bold text-text">
 							{name}
 						</h3>
-						<Button
-							aria-label={resolvedMoreActionLabel}
-							className="size-6 rounded-md bg-surface p-0 text-icon-subtle"
-							onClick={onMoreAction}
-							size="icon-xs"
-							type="button"
-							variant="outline"
-						>
-							<ShowMoreHorizontalIcon label="" size="small" />
-						</Button>
+						<div className="flex items-center gap-2">
+							<Button
+								aria-label={resolvedSwapActionLabel}
+								className="size-6 rounded-md bg-surface p-0 text-icon-subtle"
+								onClick={onSwapAction}
+								size="icon-xs"
+								type="button"
+								variant="outline"
+							>
+								<SwapIcon label="" size="small" />
+							</Button>
+							<Button
+								aria-label={resolvedMoreActionLabel}
+								className="size-6 rounded-md bg-surface p-0 text-icon-subtle"
+								onClick={onMoreAction}
+								size="icon-xs"
+								type="button"
+								variant="outline"
+							>
+								<ShowMoreHorizontalIcon label="" size="small" />
+							</Button>
+						</div>
 					</div>
 					<p className="text-xs leading-4 text-text-subtle">
 						By <span className="text-link">{partnerName}</span>
@@ -134,20 +174,32 @@ function AgentCard({
 					src={avatarSrc}
 					width={42}
 				/>
+				<svg
+					aria-hidden="true"
+					className="pointer-events-none absolute top-0 left-0 h-12 w-[42px] overflow-visible"
+					focusable="false"
+					viewBox="0 0 43 48"
+				>
+					<path
+						d={AVATAR_HEXAGON_PATH}
+						fill="none"
+						stroke="white"
+						strokeWidth={2}
+						vectorEffect="non-scaling-stroke"
+					/>
+				</svg>
 				<span
-					className="absolute right-px bottom-0 flex size-4 items-center justify-center rounded-lg border-[1.5px] border-surface"
+					className="absolute right-px bottom-0 flex size-4 items-center justify-center overflow-hidden rounded-lg border-[1.5px] border-surface text-text-inverse [&_svg]:size-2"
 					style={{ backgroundColor: token("color.icon.brand") }}
 				>
-					<span className="flex size-2 items-center justify-center overflow-hidden text-text-inverse">
-						<AtlassianLogo
-							appearance="inverse"
-							label=""
-							name="atlassian"
-							shouldUseNewLogoDesign
-							size="xxsmall"
-							themeAware={false}
-						/>
-					</span>
+					<AtlassianLogo
+						appearance="inverse"
+						label=""
+						name="atlassian"
+						shouldUseNewLogoDesign
+						size="xxsmall"
+						themeAware={false}
+					/>
 				</span>
 			</div>
 		</section>
