@@ -1,5 +1,4 @@
 packages:
-  - .
   - backend
 overrides:
   '@hono/node-server': ^1.19.10
