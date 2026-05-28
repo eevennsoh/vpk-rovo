@@ -1137,12 +1137,6 @@ import AddIcon from "@atlaskit/icon/core/add";
 		],
 		examples: [
 			{ title: "Chat Composer style", description: "ADS-styled prompt input with add menu, customize options, and disclaimer.", demoSlug: "create-input-demo-chat-composer" },
-			{ title: "Cursor style", description: "Compact assistant layout with mode tabs and model selector.", demoSlug: "create-input-demo-cursor-style" },
-			{ title: "Button tooltips", description: "Action buttons with tooltip strings and shortcut hints.", demoSlug: "create-input-demo-button-tooltips" },
-			{ title: "Action menu", description: "Quick insert actions and contextual prompt starters.", demoSlug: "create-input-demo-action-menu" },
-			{ title: "Submit status", description: "Preview submitted, streaming, error, and stop button behaviors.", demoSlug: "create-input-demo-submit-status" },
-			{ title: "Model selects", description: "Compose with model and response-style dropdown controls.", demoSlug: "create-input-demo-model-select" },
-			{ title: "Provider controlled", description: "Drive CreateInput externally with CreateInputProvider and controller hooks.", demoSlug: "create-input-demo-provider-controlled" },
 			{ title: "Floating bar", description: 'Uses variant="floating" for a minimal single-line input with elevated shadow, ideal for overlaying on content areas.', demoSlug: "create-input-demo-floating-bar" },
 		],
 	},
