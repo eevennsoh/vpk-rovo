@@ -63,7 +63,7 @@ test("derives stable defaults for generated Studio agent definitions", () => {
 	});
 
 	assert.equal(result.agentId, "studio-agent-content-qa");
-	assert.equal(result.byline, "Generated agent");
+	assert.equal(result.byline, "Custom agent by You");
 	assert.deepEqual(result.avatarFallback, { initials: "CQ" });
 	assert.equal(result.action, "create");
 });

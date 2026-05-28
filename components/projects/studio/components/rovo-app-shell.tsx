@@ -1030,8 +1030,8 @@ function normalizeStudioAgentResult(agentResult: RovoDataParts["agent-result"]):
 		.join("\n");
 
 	return {
-		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-1.svg",
-		byline: "Generated in Studio",
+		avatarSrc: "/avatar-agent/strategy-agents/wildcard-4.svg",
+		byline: "Custom agent by You",
 		contextDescription,
 		description,
 		id,

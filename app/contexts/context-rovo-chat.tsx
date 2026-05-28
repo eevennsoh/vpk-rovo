@@ -852,9 +852,9 @@ function toAgentSelectorAgent(agent: Pick<RovoAgentProfile, "avatarSrc" | "bylin
 }
 
 const SESSION_AGENT_DEFAULT_ID = "session-agent";
-const SESSION_AGENT_DEFAULT_NAME = "Untitled agent";
-const SESSION_AGENT_DEFAULT_BYLINE = "Generated agent";
-const SESSION_AGENT_DEFAULT_AVATAR_SRC = "/avatar-agent/teamwork-agents/wildcard-1.svg";
+const SESSION_AGENT_DEFAULT_NAME = "New agent";
+const SESSION_AGENT_DEFAULT_BYLINE = "Custom agent by You";
+const SESSION_AGENT_DEFAULT_AVATAR_SRC = "/avatar-agent/strategy-agents/wildcard-4.svg";
 
 type AgentResultPayload = RovoDataParts["agent-result"] & Record<string, unknown>;
 
