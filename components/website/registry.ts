@@ -246,9 +246,6 @@ const UI_CUSTOM_DEMO: Record<string, ComponentType> = {
   conversation: dynamic(() => import("./demos/ui-custom/conversation-demo"), {
     ssr: false,
   }),
-  "create-input": dynamic(() => import("./demos/ui-custom/create-input-demo"), {
-    ssr: false,
-  }),
   edge: dynamic(() => import("./demos/ui-custom/edge-demo"), { ssr: false }),
   "environment-variables": dynamic(
     () => import("./demos/ui-custom/environment-variables-demo"),
@@ -6012,20 +6009,6 @@ const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
     () =>
       import("./demos/ui-custom/jsx-preview-demo").then((mod) => ({
         default: mod.JsxPreviewDemoCustomError,
-      })),
-    { ssr: false },
-  ),
-  "create-input-demo-chat-composer": dynamic(
-    () =>
-      import("./demos/ui-custom/create-input-demo").then((mod) => ({
-        default: mod.CreateInputDemoChatComposer,
-      })),
-    { ssr: false },
-  ),
-  "create-input-demo-floating-bar": dynamic(
-    () =>
-      import("./demos/ui-custom/create-input-demo").then((mod) => ({
-        default: mod.CreateInputDemoFloatingBar,
       })),
     { ssr: false },
   ),
