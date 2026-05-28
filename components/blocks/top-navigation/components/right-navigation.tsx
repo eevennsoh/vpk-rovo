@@ -15,6 +15,7 @@ interface RightNavigationProps {
 	product: Product;
 	windowWidth: number;
 	hideRovoAction?: boolean;
+	forceShowRovoAction?: boolean;
 	isChatOpen?: boolean;
 	onToggleChat: () => void;
 	onToggleTheme: () => void;
@@ -24,10 +25,13 @@ export function RightNavigation({
 	product,
 	windowWidth,
 	hideRovoAction = false,
+	forceShowRovoAction = false,
 	isChatOpen = false,
 	onToggleChat,
 	onToggleTheme,
 }: Readonly<RightNavigationProps>) {
+	const productSuppressesRovoAction = product === "rovo" || product === "studio";
+	const showRovoAction = !hideRovoAction && (!productSuppressesRovoAction || forceShowRovoAction);
 	const containerStyle = {
 		display: "flex",
 		alignItems: "center",
@@ -39,8 +43,8 @@ export function RightNavigation({
 
 	return (
 		<div style={containerStyle}>
-			{/* Rovo chat button - hidden when on Rovo page */}
-			{product !== "rovo" && product !== "studio" && !hideRovoAction ? (
+			{/* Rovo chat button - suppressed on Rovo/Studio unless forceShowRovoAction overrides it */}
+			{showRovoAction ? (
 				<>
 					{windowWidth >= 768 ? (
 						<Button
