@@ -303,9 +303,9 @@ function AgentProfileCover() {
 					viewBox="0 0 43 48"
 				>
 					<path
+						className="stroke-surface"
 						d={AGENT_AVATAR_HEXAGON_PATH}
 						fill="none"
-						stroke="white"
 						strokeWidth={2}
 						vectorEffect="non-scaling-stroke"
 					/>
