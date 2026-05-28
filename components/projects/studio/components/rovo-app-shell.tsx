@@ -16,7 +16,7 @@ import { RovoAppMessages } from "@/components/projects/studio/components/rovo-ap
 import { RovoAppHermesMemoryBar } from "@/components/projects/studio/components/rovo-app-hermes-memory-bar";
 import { RovoAppHermesSkillDraftBar } from "@/components/projects/studio/components/rovo-app-hermes-skill-draft-bar";
 import { RovoAppAgentConfigPanel } from "@/components/projects/studio/components/rovo-app-agent-config-panel";
-import { RovoAppShellPaneLayout, type AgentConfigCompactTab } from "@/components/projects/studio/components/rovo-app-shell-pane-layout";
+import { RovoAppShellPaneLayout } from "@/components/projects/studio/components/rovo-app-shell-pane-layout";
 import { RovoAppSidebar } from "@/components/projects/studio/components/rovo-app-sidebar";
 import { type RovoAppSteeringPhase } from "@/components/projects/studio/components/rovo-app-steering-lane";
 import { SmoothGradientWaveform } from "@/components/blocks/visual-waveform/smooth-gradient-waveform";
@@ -121,7 +121,6 @@ const REALTIME_THREAD_SUMMARY_MAX_MESSAGES = 10;
 const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
 const ROVO_APP_SPLIT_CHAT_PANEL_ID = "rovo-app-chat-pane";
 const ROVO_APP_SPLIT_ARTIFACT_PANEL_ID = "rovo-app-artifact-pane";
-const ROVO_APP_SPLIT_AGENT_CONFIG_PANEL_ID = "rovo-app-agent-config-pane";
 
 type HomeStarterCategory = "analyze" | "brainstorm" | "review" | "summarize" | "create";
 
@@ -1408,8 +1407,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		sourceMessageId: string | null;
 	} | null>(null);
 	const [isSidebarAgentBrowserOpen, setIsSidebarAgentBrowserOpen] = useState(false);
-	const [agentConfigCompactTab, setAgentConfigCompactTab] =
-		useState<AgentConfigCompactTab>("config");
 
 	const handleStudioAgentResultSelect = useCallback(
 		(agentResult: RovoDataParts["agent-result"], options?: { sourceMessageId?: string; sourceKey?: string }): boolean => {
@@ -1436,7 +1433,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					profileId: registered.id,
 					sourceMessageId: options?.sourceMessageId ?? null,
 				});
-				setAgentConfigCompactTab("config");
 				return true;
 			}
 
@@ -1465,7 +1461,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				profileId: agentId,
 				sourceMessageId: options?.sourceMessageId ?? null,
 			});
-			setAgentConfigCompactTab("config");
 			return true;
 		},
 		[chat.activeThreadId, chat.runtimeThreadId, studioAgentRegistry],
@@ -1478,7 +1473,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				profileId: agentId,
 				sourceMessageId: null,
 			});
-			setAgentConfigCompactTab("config");
 		},
 		[studioAgentRegistry],
 	);
@@ -1491,7 +1485,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					profileId: agent.id,
 					sourceMessageId: null,
 				});
-				setAgentConfigCompactTab("config");
 			} else {
 				setActiveAgentConfig(null);
 			}
@@ -3860,15 +3853,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				>
 					<RovoAppShellPaneLayout
 						agentConfigPane={agentConfigPane}
-						agentConfigPanelId={ROVO_APP_SPLIT_AGENT_CONFIG_PANEL_ID}
-						agentConfigCompact={
-							shouldShowAgentConfigPane && isAgentConfigOverlayActive
-								? {
-									activeTab: agentConfigCompactTab,
-									onChangeTab: setAgentConfigCompactTab,
-								}
-								: undefined
-						}
 						artifactOrigin={artifactOrigin}
 						artifactPane={artifactPane}
 						artifactPanelId={ROVO_APP_SPLIT_ARTIFACT_PANEL_ID}
