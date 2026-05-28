@@ -602,19 +602,19 @@ function HomeStarterHeroTile({
 			}
 			whileTap={shouldReduceMotion ? undefined : { scale: 0.98, transition: { duration: 0.05 } }}
 		>
-			<div className="size-12 shrink-0">
+			<span className="inline-flex size-8 shrink-0 items-center justify-center">
 				<Image
 					alt=""
 					aria-hidden
-					className="h-12 w-[42px] object-contain"
-					height={48}
+					className="size-8 object-contain"
+					height={32}
 					src={template.iconSrc}
-					width={42}
+					width={32}
 				/>
-			</div>
+			</span>
 			<div className="flex min-h-0 flex-1 flex-col gap-4">
 				<div className="flex flex-col gap-1">
-					<span className="block w-full min-w-0 truncate text-2xl leading-7 font-semibold text-text">
+					<span className="block w-full min-w-0 text-sm font-semibold leading-5 text-text">
 						{template.title}
 					</span>
 					<span className="block w-full min-w-0 line-clamp-2 text-sm leading-5 text-text-subtle">
