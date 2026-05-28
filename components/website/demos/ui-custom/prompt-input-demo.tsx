@@ -10,7 +10,10 @@ import {
 	composerUpwardShadow,
 	textareaCSS,
 } from "@/components/blocks/shared-ui/composer-styles";
-import { RovoComposerSendControls } from "@/components/projects/shared/components/rovo-composer-send-controls";
+import {
+	RovoComposerActionButton,
+	RovoComposerSendControls,
+} from "@/components/projects/shared/components/rovo-composer-send-controls";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import {
 	PromptInput,
@@ -24,14 +27,11 @@ import {
 	PromptInputButton,
 	PromptInputFooter,
 	PromptInputPreferencesButton,
-	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputTools,
 } from "@/components/ui-custom/prompt-input";
-import { SpeechInput } from "@/components/ui-custom/speech-input";
 import { cn } from "@/lib/utils";
 import AddIcon from "@atlaskit/icon/core/add";
-import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import LinkIcon from "@atlaskit/icon/core/link";
 import MentionIcon from "@atlaskit/icon/core/mention";
 import PageIcon from "@atlaskit/icon/core/page";
@@ -208,10 +208,17 @@ export function PromptInputDemoChatComposer() {
 
 export function PromptInputDemoFloatingBar() {
 	const [prompt, setPrompt] = useState("");
+	const [realtimeVoiceActive, setRealtimeVoiceActive] = useState(false);
 
-	const handleSpeechTranscription = useCallback((transcription: string) => {
-		setPrompt((prev) => (prev ? `${prev} ${transcription}` : transcription));
+	const handleToggleRealtimeVoice = useCallback(() => {
+		setRealtimeVoiceActive((prev) => !prev);
 	}, []);
+
+	const handleStop = useCallback(() => {
+		setRealtimeVoiceActive(false);
+	}, []);
+
+	const canSubmit = Boolean(prompt.trim());
 
 	return (
 		<DemoFrame>
@@ -232,14 +239,13 @@ export function PromptInputDemoFloatingBar() {
 						className="min-h-8 flex-1 py-1.5 leading-5"
 					/>
 					<div className="flex shrink-0 items-center gap-1">
-						<SpeechInput
-							aria-label="Voice"
-							onTranscriptionChange={handleSpeechTranscription}
-							variant="ghost"
+						<RovoComposerActionButton
+							canSubmit={canSubmit}
+							composerStatus="ready"
+							onStop={handleStop}
+							onToggleRealtimeVoice={handleToggleRealtimeVoice}
+							realtimeVoiceActive={realtimeVoiceActive}
 						/>
-						<PromptInputSubmit disabled={!prompt.trim()} aria-label="Submit">
-							<ArrowUpIcon label="" />
-						</PromptInputSubmit>
 					</div>
 				</PromptInputBody>
 			</PromptInput>
