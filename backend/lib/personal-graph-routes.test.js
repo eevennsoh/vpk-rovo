@@ -44,13 +44,18 @@ function setEnvValueForTest(t, key, value) {
 	});
 }
 
-async function dispatch(app, { method = "GET", url }) {
+async function dispatch(app, { method = "GET", requestSignalGetter, url }) {
 	const req = createInProcessRequest({
 		headers: { Accept: "application/json" },
 	});
 	req.method = method;
 	req.url = url;
 	req.originalUrl = url;
+	if (requestSignalGetter) {
+		Object.defineProperty(req, "signal", {
+			get: requestSignalGetter,
+		});
+	}
 
 	const res = createCapturedResponse();
 	app.handle(req, res, (error) => {
@@ -322,7 +327,30 @@ test("GET /api/personal-graph/explorer returns cached TWG payload when source is
 		url: "/api/personal-graph/explorer",
 	});
 	const body = await response.json();
-	assert.equal(response.status, 200);
+	assert.equal(response.status, 200, JSON.stringify(body));
+	assert.equal(body.generatedAt, "2026-05-07T10:00:00.000Z");
+	assert.equal(body.nodes.length, 1);
+});
+
+test("GET /api/personal-graph/explorer ignores unavailable request signals for cached TWG payloads", async (t) => {
+	const { sourcePath, cachePath } = configureTwgEnv(t);
+	fs.writeFileSync(sourcePath, JSON.stringify({ source: "twg" }), "utf8");
+	fs.writeFileSync(cachePath, JSON.stringify({
+		edges: [],
+		generatedAt: "2026-05-07T10:00:00.000Z",
+		nodes: [{ id: "ari:cloud:identity::user/me", title: "Me", provider: "twg" }],
+		stats: { nodeCount: 1, edgeCount: 0, danglingCount: 0, rawCount: 0, wikiCount: 0 },
+	}), "utf8");
+
+	const response = await dispatch(createPersonalGraphTestApp(), {
+		requestSignalGetter: () => {
+			throw new Error("request signal unavailable");
+		},
+		url: "/api/personal-graph/explorer",
+	});
+	const body = await response.json();
+
+	assert.equal(response.status, 200, JSON.stringify(body));
 	assert.equal(body.generatedAt, "2026-05-07T10:00:00.000Z");
 	assert.equal(body.nodes.length, 1);
 });
@@ -359,7 +387,7 @@ test("GET /api/personal-graph/explorer hydrates stale cached TWG artifact titles
 	await new Promise((resolve) => setImmediate(resolve));
 	const persisted = JSON.parse(fs.readFileSync(cachePath, "utf8"));
 
-	assert.equal(response.status, 200);
+	assert.equal(response.status, 200, JSON.stringify(body));
 	assert.equal(body.nodes[0].title, "Confluence Page 1");
 	assert.equal(persisted.nodes[0].title, "Roadmap");
 	assert.equal(persisted.nodes[0].externalUrl, "https://hello.atlassian.net/wiki/spaces/ENG/pages/1/Roadmap");
