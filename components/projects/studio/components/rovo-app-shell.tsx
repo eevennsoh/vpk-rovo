@@ -3845,7 +3845,10 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				) : null}
 				<main
 					ref={shellRef}
-					className="relative flex min-h-0 min-w-0 flex-1 bg-background px-3 text-foreground"
+					className={cn(
+						"relative flex min-h-0 min-w-0 flex-1 bg-background text-foreground",
+						!shouldShowAgentConfigPane && "px-3",
+					)}
 					style={{
 						marginRight: isStudioAskRovoChatActive ? `${askRovoChatPanelWidth}px` : "0px",
 						transition: askRovoChatResize.isResizing
