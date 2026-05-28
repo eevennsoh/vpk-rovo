@@ -229,7 +229,7 @@ export function PromptInputDemoFloatingBar() {
 						onChange={(e) => setPrompt(e.currentTarget.value)}
 						placeholder="Ask, @mention, or / for actions"
 						rows={1}
-						className="min-h-8 flex-1 content-center py-0"
+						className="min-h-8 flex-1 py-1.5 leading-5"
 					/>
 					<div className="flex shrink-0 items-center gap-1">
 						<SpeechInput
