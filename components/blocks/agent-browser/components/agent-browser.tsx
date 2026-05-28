@@ -264,7 +264,7 @@ function DirectorySidebar({
 	onSelectAgent,
 }: Readonly<DirectorySidebarProps>) {
 	return (
-		<nav aria-label="Agent categories" className="hidden h-full min-h-0 w-[220px] shrink-0 flex-col gap-5 overflow-y-auto md:flex">
+		<nav aria-label="Agent categories" className="hidden h-full min-h-0 w-[220px] shrink-0 flex-col gap-5 overflow-y-auto pt-1 md:flex">
 			<ul className="flex flex-col gap-0.5">
 				{categories.map((category) => (
 					<SidebarPrimaryItem
