@@ -414,7 +414,8 @@ async function getTwgExplorerCachedOrFresh({ signal } = {}) {
 
 function getRequestSignal(req) {
 	try {
-		return req?.signal;
+		const signal = req?.signal;
+		return signal && typeof signal.addEventListener === "function" ? signal : undefined;
 	} catch {
 		return undefined;
 	}
