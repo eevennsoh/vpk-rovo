@@ -10,14 +10,16 @@ const DEMO_SESSION_AGENTS: readonly AgentsDirectoryAgent[] = [
 	{
 		id: "workflow-synthesizer",
 		name: "Workflow Synthesizer",
-		byline: "Custom agent by Atlassian",
+		byline: "Workflow design by Revenue Operations",
+		attributionKind: "team",
 		avatarSrc: "/avatar-agent/teamwork-agents/progress-tracker.svg",
 		description: "Turns scattered requests into durable operating workflows.",
 	},
 	{
 		id: "research-brief-writer",
 		name: "Research Brief Writer",
-		byline: "Custom agent",
+		byline: "Research synthesis by Alex Kim",
+		attributionKind: "person",
 		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-3.svg",
 		description: "Condenses long research inputs into crisp team-ready briefs.",
 	},

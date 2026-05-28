@@ -6,16 +6,34 @@ export const DEFAULT_AGENTS_DIRECTORY_SIDEBAR_GROUPS: readonly AgentBrowserSideb
 		agentIds: ["feedback-analyzer", "ai-insights-agent"],
 	},
 	{
-		title: "By my teams",
-		agentIds: [
-			"readiness-checker",
-			"code-reviewer",
-			"pipeline-troubleshooter",
-			"meeting-insights-reporter",
+		title: "By teams",
+		showAll: true,
+		items: [
+			{
+				id: "product-experience",
+				label: "Product Experience",
+				avatarSrc: "/avatar-project/compass.svg",
+			},
+			{
+				id: "platform-engineering",
+				label: "Platform Engineering",
+				avatarSrc: "/avatar-project/code.svg",
+			},
+			{
+				id: "customer-success",
+				label: "Customer Success",
+				avatarSrc: "/avatar-project/service-bell.svg",
+			},
+			{
+				id: "revenue-operations",
+				label: "Revenue Operations",
+				avatarSrc: "/avatar-project/graph.svg",
+			},
 		],
 	},
 	{
-		title: "By partners",
+		title: "By companies",
+		showAll: true,
 		agentIds: ["google-drive", "github-copilot", "slack", "notion"],
 	},
 ];
