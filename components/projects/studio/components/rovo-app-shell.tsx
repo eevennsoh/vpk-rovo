@@ -617,7 +617,7 @@ function HomeStarterHeroTile({
 					<span className="block w-full min-w-0 text-sm font-semibold leading-5 text-text">
 						{template.title}
 					</span>
-					<span className="block w-full min-w-0 line-clamp-2 text-sm leading-5 text-text-subtle">
+					<span className="block w-full min-w-0 text-sm leading-5 text-text-subtle">
 						{template.description}
 					</span>
 				</div>
@@ -827,6 +827,14 @@ function HomeStarterBento({
 									);
 								}
 
+								const tallAtSm = template.layoutClassName.includes("sm:row-span-2");
+								const tallAtLg = template.layoutClassName.includes("lg:row-span-2");
+								const descriptionClampClass = cn(
+									"line-clamp-2",
+									tallAtSm && "sm:line-clamp-none",
+									!tallAtSm && tallAtLg && "lg:line-clamp-none",
+								);
+
 								return (
 									<motion.button
 										key={template.title}
@@ -869,7 +877,7 @@ function HomeStarterBento({
 											<span className="block w-full min-w-0 text-sm font-semibold leading-5 text-text">
 												{template.title}
 											</span>
-											<span className="line-clamp-2 w-full min-w-0 text-sm leading-5 text-text-subtle">
+											<span className={cn("w-full min-w-0 text-sm leading-5 text-text-subtle", descriptionClampClass)}>
 												{template.description}
 											</span>
 										</span>
