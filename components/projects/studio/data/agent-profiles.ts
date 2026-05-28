@@ -84,7 +84,7 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 		id: "release-notes-drafter",
 		name: "Release Notes Drafter",
 		byline: "Custom agent by Diego Alvarez",
-		avatarSrc: "/avatar-agent/teamwork-agents/release-notes-drafter.svg",
+		avatarSrc: "/avatar-agent/strategy-agents/wildcard-1.svg",
 		description: "Turns merged changes and tickets into clear, customer-ready release notes.",
 	}),
 	createProfile({
@@ -98,7 +98,7 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 		id: "readiness-checker",
 		name: "Readiness Checker",
 		byline: "Rovo agent by Enterprise Solutions",
-		avatarSrc: "/avatar-agent/teamwork-agents/readiness-checker.svg",
+		avatarSrc: "/avatar-agent/service-agents/service-triage.svg",
 		description: "Checks plans, launches, and work items for readiness gaps before handoff.",
 	}),
 	createProfile({
@@ -175,7 +175,7 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 		id: AI_INSIGHTS_AGENT_ID,
 		name: "AI Insights Agent",
 		byline: "Custom agent by Atlassian",
-		avatarSrc: "/avatar-agent/teamwork-agents/customer-insights.svg",
+		avatarSrc: "/avatar-agent/product-agents/wildcard-1.svg",
 		description: AI_INSIGHTS_DESCRIPTION,
 		starters: [
 			createStarter("ai-insights-agent-latest-trends", "What are the latest AI trends this week?"),
@@ -185,23 +185,23 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 	}),
 	createProfile({
 		id: "untitled-agent",
-		name: "Untitled",
-		byline: "Custom agent",
-		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-1.svg",
+		name: "Research Companion",
+		byline: "Custom agent by Maya Chen",
+		avatarSrc: "/avatar-agent/strategy-agents/wildcard-3.svg",
 		description: "A flexible custom agent for open-ended research, writing, and planning tasks.",
 	}),
 	createProfile({
 		id: "chatgpt-wrapper-app",
 		name: "ChatGPT Wrapper App",
-		byline: "Custom agent",
-		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-4.svg",
+		byline: "Custom agent by Sam Rivera",
+		avatarSrc: "/avatar-agent/product-agents/wildcard-2.svg",
 		description: "Wraps general chat workflows with lightweight task framing and response structure.",
 	}),
 	createProfile({
 		id: "social-media-writer",
 		name: "Social Media Writer",
 		byline: "Teamwork agent by Atlassian",
-		avatarSrc: "/avatar-agent/teamwork-agents/social-media-writer.svg",
+		avatarSrc: "/avatar-agent/strategy-agents/wildcard-2.svg",
 		description: "Drafts concise social posts, campaign variations, and channel-ready copy.",
 	}),
 	createProfile({
@@ -215,7 +215,7 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 		id: "transcript-insights-reporter",
 		name: "Transcript Insights Reporter",
 		byline: "Teamwork agent by Atlassian",
-		avatarSrc: "/avatar-agent/teamwork-agents/transcript-insights-reporter.svg",
+		avatarSrc: "/avatar-agent/service-agents/wildcard-1.svg",
 		description: "Extracts themes, decisions, and action items from long transcripts.",
 	}),
 ] as const;
