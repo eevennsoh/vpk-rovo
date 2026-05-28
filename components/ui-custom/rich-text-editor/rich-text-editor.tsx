@@ -8,9 +8,12 @@ import { cn } from "@/lib/utils";
 
 import { createRichTextEditorExtensions } from "./extensions";
 import "./rich-text-editor.css";
-import { RichTextEditorBubbleMenu, RichTextEditorToolbar } from "./toolbar";
-
-const BLOCK_SEPARATOR = "\n";
+import {
+	RichTextEditorBubbleMenu,
+	RichTextEditorFloatingMenu,
+	RichTextEditorToolbar,
+} from "./toolbar";
+import type { RichTextMentionSources } from "./types";
 
 interface RichTextEditorProps
 	extends Omit<ComponentProps<"div">, "onChange"> {
@@ -19,42 +22,19 @@ interface RichTextEditorProps
 	editorClassName?: string;
 	contentClassName?: string;
 	toolbarEndSlot?: ReactNode;
+	mentionSources?: RichTextMentionSources;
+	onMarkdownChange?: (value: string) => void;
 	onPlainTextChange?: (value: string) => void;
 	showToolbar?: boolean;
 	showBubbleMenu?: boolean;
+	showFloatingMenu?: boolean;
 	showCommentControl?: boolean;
 	showMoreControl?: boolean;
 	"aria-label"?: string;
 }
 
-function escapeHtml(value: string): string {
-	return value
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#39;");
-}
-
-function plainTextToEditorHtml(value: string | undefined): string {
-	const text = value ?? "";
-
-	if (!text.trim()) {
-		return "";
-	}
-
-	return text
-		.split(/\n{2,}/)
-		.map((block) => `<p>${escapeHtml(block).replace(/\n/g, "<br>")}</p>`)
-		.join("");
-}
-
 function toCssString(value: string): string {
 	return JSON.stringify(value);
-}
-
-function getEditorPlainText(editor: NonNullable<ReturnType<typeof useEditor>>): string {
-	return editor.getText({ blockSeparator: BLOCK_SEPARATOR });
 }
 
 export function RichTextEditor({
@@ -64,20 +44,31 @@ export function RichTextEditor({
 	editorClassName,
 	contentClassName,
 	toolbarEndSlot,
+	mentionSources,
+	onMarkdownChange,
 	onPlainTextChange,
 	showToolbar = true,
 	showBubbleMenu = true,
+	showFloatingMenu = false,
 	showCommentControl = true,
 	showMoreControl = true,
 	"aria-label": ariaLabel,
 	...props
 }: Readonly<RichTextEditorProps>) {
+	const mentionSourcesRef = useRef(mentionSources);
+	const onMarkdownChangeRef = useRef(onMarkdownChange);
 	const onPlainTextChangeRef = useRef(onPlainTextChange);
 	const [isEmpty, setIsEmpty] = useState(() => !value?.trim());
-	const extensions = useMemo(() => createRichTextEditorExtensions(), []);
+	const extensions = useMemo(
+		() => createRichTextEditorExtensions({
+			getMentionSources: () => mentionSourcesRef.current,
+		}),
+		[],
+	);
 	const editor = useEditor({
 		extensions,
-		content: plainTextToEditorHtml(value),
+		content: value ?? "",
+		contentType: "markdown",
 		immediatelyRender: false,
 		editorProps: {
 			attributes: {
@@ -87,9 +78,19 @@ export function RichTextEditor({
 		},
 		onUpdate: ({ editor: activeEditor }) => {
 			setIsEmpty(activeEditor.isEmpty);
-			onPlainTextChangeRef.current?.(getEditorPlainText(activeEditor));
+			const markdown = activeEditor.getMarkdown();
+			onMarkdownChangeRef.current?.(markdown);
+			onPlainTextChangeRef.current?.(markdown);
 		},
 	});
+
+	useEffect(() => {
+		mentionSourcesRef.current = mentionSources;
+	}, [mentionSources]);
+
+	useEffect(() => {
+		onMarkdownChangeRef.current = onMarkdownChange;
+	}, [onMarkdownChange]);
 
 	useEffect(() => {
 		onPlainTextChangeRef.current = onPlainTextChange;
@@ -102,11 +103,12 @@ export function RichTextEditor({
 
 		const nextValue = value ?? "";
 
-		if (getEditorPlainText(editor) === nextValue) {
+		if (editor.getMarkdown() === nextValue) {
 			return;
 		}
 
-		editor.commands.setContent(plainTextToEditorHtml(nextValue), {
+		editor.commands.setContent(nextValue, {
+			contentType: "markdown",
 			emitUpdate: false,
 		});
 		setIsEmpty(!nextValue.trim());
@@ -131,11 +133,18 @@ export function RichTextEditor({
 								"--rich-text-placeholder": toCssString(placeholder),
 							} as CSSProperties)
 						: undefined
-				}
-			>
+					}
+				>
 				<EditorContent editor={editor} />
 				{showBubbleMenu && editor ? (
 					<RichTextEditorBubbleMenu
+						editor={editor}
+						showCommentControl={showCommentControl}
+						showMoreControl={showMoreControl}
+					/>
+				) : null}
+				{showFloatingMenu && editor ? (
+					<RichTextEditorFloatingMenu
 						editor={editor}
 						showCommentControl={showCommentControl}
 						showMoreControl={showMoreControl}
@@ -146,4 +155,9 @@ export function RichTextEditor({
 	);
 }
 
-export { RichTextEditorBubbleMenu, RichTextEditorToolbar };
+export {
+	RichTextEditorBubbleMenu,
+	RichTextEditorFloatingMenu,
+	RichTextEditorToolbar,
+};
+export type { RichTextMentionSources };
