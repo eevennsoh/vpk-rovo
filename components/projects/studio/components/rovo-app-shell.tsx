@@ -1,7 +1,7 @@
 "use client";
 
 import type { FileUIPart } from "ai";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, type AnimationPlaybackControls } from "motion/react";
 import { type CSSProperties, startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -680,29 +680,52 @@ function HomeStarterBento({
 	const templates = HOME_STARTER_VIEWS[activeCategory];
 	const visibleTemplates = templates.slice(0, 5);
 	const canShowMore = templates.length > visibleTemplates.length;
-	const cycleActive = cycleEnabled && !shouldReduceMotion && !browseOpen && !bentoInteracting;
+	const cycleRunning = cycleEnabled && !shouldReduceMotion && !browseOpen;
+	const cycleProgress = useMotionValue(0);
+	const cycleControlsRef = useRef<AnimationPlaybackControls | null>(null);
 	const selectHomeStarterCategory = useCallback((category: HomeStarterCategory) => {
 		setActiveCategory(category);
 		setCycleEnabled(false);
 	}, []);
 
 	useEffect(() => {
-		if (!cycleActive) {
+		if (!cycleRunning) {
+			cycleProgress.set(0);
 			return;
 		}
 
-		const intervalId = window.setInterval(() => {
-			setActiveCategory((prev) => {
-				const currentIndex = HOME_STARTER_CATEGORIES.findIndex((entry) => entry.id === prev);
-				const nextIndex = (currentIndex + 1) % HOME_STARTER_CATEGORIES.length;
-				return HOME_STARTER_CATEGORIES[nextIndex].id;
-			});
-		}, HOME_STARTER_CYCLE_DURATION_MS);
+		cycleProgress.set(0);
+		const controls = animate(cycleProgress, 1, {
+			duration: HOME_STARTER_CYCLE_DURATION_MS / 1000,
+			ease: "linear",
+			onComplete: () => {
+				cycleProgress.set(0);
+				setActiveCategory((prev) => {
+					const currentIndex = HOME_STARTER_CATEGORIES.findIndex((entry) => entry.id === prev);
+					const nextIndex = (currentIndex + 1) % HOME_STARTER_CATEGORIES.length;
+					return HOME_STARTER_CATEGORIES[nextIndex].id;
+				});
+			},
+		});
+		cycleControlsRef.current = controls;
 
 		return () => {
-			window.clearInterval(intervalId);
+			controls.stop();
+			cycleControlsRef.current = null;
 		};
-	}, [cycleActive]);
+	}, [activeCategory, cycleRunning, cycleProgress]);
+
+	useEffect(() => {
+		const controls = cycleControlsRef.current;
+		if (!controls) {
+			return;
+		}
+		if (bentoInteracting) {
+			controls.pause();
+		} else {
+			controls.play();
+		}
+	}, [bentoInteracting]);
 	const handleTemplateMouseEnter = useCallback((prompt: string) => {
 		hoveredTemplatePromptRef.current = prompt;
 		onPreviewStart(prompt);
@@ -745,7 +768,7 @@ function HomeStarterBento({
 			<div className="flex flex-wrap justify-center gap-2">
 				{HOME_STARTER_CATEGORIES.map((category) => {
 					const isActive = activeCategory === category.id;
-					const showProgress = isActive && cycleActive;
+					const showProgress = isActive && cycleRunning;
 
 					return (
 						<button
@@ -778,13 +801,9 @@ function HomeStarterBento({
 							</span>
 							{showProgress ? (
 								<motion.span
-									key={`${category.id}-${cycleActive}`}
 									aria-hidden
 									className="pointer-events-none absolute inset-0 z-[1] origin-left bg-bg-selected-hovered"
-									initial={{ scaleX: 0 }}
-									animate={{ scaleX: 1 }}
-									transition={{ duration: HOME_STARTER_CYCLE_DURATION_MS / 1000, ease: "linear" }}
-									style={{ willChange: "transform" }}
+									style={{ scaleX: cycleProgress, willChange: "transform" }}
 								/>
 							) : null}
 						</button>
