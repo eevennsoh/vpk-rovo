@@ -172,7 +172,7 @@ function InputGroupTextarea({
 				data-slot="input-group-control"
 				variant="none"
 				className={cn(
-					"min-w-0 w-full resize-none rounded-none border-0 bg-transparent px-0 py-2 shadow-none focus-visible:ring-0",
+					"min-w-0 w-full resize-none rounded-none border-0 bg-transparent px-0 py-2 shadow-none focus-visible:ring-0 content-center",
 					className
 				)}
 				{...props}
