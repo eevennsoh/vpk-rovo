@@ -79,6 +79,8 @@ export type AgentHeaderProps = ComponentProps<"div"> & {
 	primaryActionLabel?: string;
 	secondaryActionLabel?: string;
 	showActions?: boolean;
+	actions?: ReactNode;
+	badge?: ReactNode;
 };
 
 export const AgentHeader = memo(
@@ -89,6 +91,8 @@ export const AgentHeader = memo(
 		primaryActionLabel = "Activate",
 		secondaryActionLabel = "Test",
 		showActions = true,
+		actions,
+		badge,
 		...props
 	}: Readonly<AgentHeaderProps>) => (
 		<div
@@ -112,15 +116,20 @@ export const AgentHeader = memo(
 						{model}
 					</Lozenge>
 				) : null}
+				{badge}
 			</div>
 			{showActions ? (
 				<div className="flex shrink-0 items-center gap-2">
-					<Button size="default" variant="outline">
-						{secondaryActionLabel}
-					</Button>
-					<Button size="default" variant="default">
-						{primaryActionLabel}
-					</Button>
+					{actions ?? (
+						<>
+							<Button size="default" variant="outline">
+								{secondaryActionLabel}
+							</Button>
+							<Button size="default" variant="default">
+								{primaryActionLabel}
+							</Button>
+						</>
+					)}
 				</div>
 			) : null}
 		</div>

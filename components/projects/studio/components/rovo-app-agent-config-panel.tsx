@@ -32,9 +32,7 @@ interface RovoAppAgentConfigPanelProps {
 		profileId: string,
 		patch: Partial<AgentResult>,
 	) => void;
-	headerSlot?: React.ReactNode;
 	className?: string;
-	tabSwitcher?: React.ReactNode;
 }
 
 function stringifyForComparison(value: unknown): string {
@@ -78,9 +76,7 @@ export function RovoAppAgentConfigPanel({
 	onCommitPublishReady,
 	onPublish,
 	onUpdateDraft,
-	headerSlot,
 	className,
-	tabSwitcher,
 }: Readonly<RovoAppAgentConfigPanelProps>) {
 	const draft = entry.draftResult;
 	const shouldReduceMotion = useReducedMotion();
@@ -202,80 +198,65 @@ export function RovoAppAgentConfigPanel({
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.24, ease: [0, 0.4, 0, 1] }}
 		>
-			<div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
-				<div className="flex min-w-0 items-center gap-2">
-					<div className="flex min-w-0 flex-col gap-0.5">
-						<div className="flex items-center gap-2">
-							<span className="truncate font-medium text-sm text-text">
-								{agentName}
-							</span>
-							<Badge variant={badgeVariant} data-testid="agent-config-status-lozenge">
-								{publishStatusLabel}
-							</Badge>
-						</div>
-						{headerSlot ? (
-							<div className="text-text-subtlest text-xs">{headerSlot}</div>
-						) : null}
-					</div>
-				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					<Button
-						type="button"
-						size="sm"
-						variant="ghost"
-						onClick={handleUpdate}
-						disabled={!hasUpdateChanges}
-						data-testid="agent-config-update"
-						data-screen-assistant-target="studio-agent-config-update"
-					>
-						{justUpdatedAt ? "Updated" : "Update"}
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="default"
-						onClick={handlePublish}
-						disabled={!hasPublishChanges}
-						data-testid="agent-config-publish"
-						data-screen-assistant-target="studio-agent-config-publish"
-					>
-						Publish
-					</Button>
-					<Button
-						type="button"
-						size="icon"
-						variant="ghost"
-						onClick={onClose}
-						aria-label="Close agent config"
-					>
-						<CrossIcon label="" spacing="none" />
-					</Button>
-				</div>
-			</div>
-			{tabSwitcher ? (
-				<div className="border-b border-border bg-surface px-4 py-2">{tabSwitcher}</div>
-			) : null}
-			<div className="min-h-0 flex-1 overflow-y-auto">
-				<div className="mx-auto w-full max-w-[760px] px-4 py-5">
-					<AnimatePresence>
-						{missingFields.length > 0 ? (
-							<motion.div
-								className="mb-4 rounded-md border border-border-warning bg-bg-warning-subtler px-3 py-2 text-text-warning-bolder text-xs"
-								initial={shouldReduceMotion ? false : { opacity: 0, y: -4 }}
-								animate={{ opacity: 1, y: 0 }}
-								exit={{ opacity: 0, y: -4 }}
+			<Agent className="flex min-h-0 flex-1 flex-col">
+				<AgentHeader
+					name={agentName}
+					model={draft.action === "update" ? "update" : "create"}
+					badge={
+						<Badge variant={badgeVariant} data-testid="agent-config-status-lozenge">
+							{publishStatusLabel}
+						</Badge>
+					}
+					actions={
+						<>
+							<Button
+								type="button"
+								size="sm"
+								variant="ghost"
+								onClick={handleUpdate}
+								disabled={!hasUpdateChanges}
+								data-testid="agent-config-update"
+								data-screen-assistant-target="studio-agent-config-update"
 							>
-								Generation looks partial — fill in {missingFields.join(", ")} before publishing.
-							</motion.div>
-						) : null}
-					</AnimatePresence>
-					<Agent>
-						<AgentHeader
-							className="border-b border-border"
-							name={agentName}
-							model={draft.action === "update" ? "update" : "create"}
-							showActions={false}
-						/>
+								{justUpdatedAt ? "Updated" : "Update"}
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="default"
+								onClick={handlePublish}
+								disabled={!hasPublishChanges}
+								data-testid="agent-config-publish"
+								data-screen-assistant-target="studio-agent-config-publish"
+							>
+								Publish
+							</Button>
+							<Button
+								type="button"
+								size="icon"
+								variant="ghost"
+								onClick={onClose}
+								aria-label="Close agent config"
+							>
+								<CrossIcon label="" spacing="none" />
+							</Button>
+						</>
+					}
+				/>
+				<div className="min-h-0 flex-1 overflow-y-auto">
+					<div className="mx-auto w-full max-w-[760px] px-4 py-5">
+						<AnimatePresence>
+							{missingFields.length > 0 ? (
+								<motion.div
+									className="mb-4 rounded-md border border-border-warning bg-bg-warning-subtler px-3 py-2 text-text-warning-bolder text-xs"
+									initial={shouldReduceMotion ? false : { opacity: 0, y: -4 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -4 }}
+								>
+									Generation looks partial — fill in {missingFields.join(", ")} before publishing.
+								</motion.div>
+							) : null}
+						</AnimatePresence>
 						<AgentContent>
 							<AgentConfigFields
 								config={draft}
@@ -287,9 +268,9 @@ export function RovoAppAgentConfigPanel({
 								screenAssistantTargetPrefix="studio-agent-config"
 							/>
 						</AgentContent>
-					</Agent>
+					</div>
 				</div>
-			</div>
+			</Agent>
 		</motion.div>
 	);
 }
