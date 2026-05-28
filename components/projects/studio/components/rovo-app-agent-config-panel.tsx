@@ -25,7 +25,7 @@ type AgentResult = RovoDataParts["agent-result"];
 
 interface RovoAppAgentConfigPanelProps {
 	entry: StudioSessionAgentEntry;
-	onClose: () => void;
+	onClose?: () => void;
 	onCommitPublishReady: (profileId: string) => void;
 	onPublish: (profileId: string) => void;
 	onUpdateDraft: (
@@ -231,15 +231,17 @@ export function RovoAppAgentConfigPanel({
 							>
 								Publish
 							</Button>
-							<Button
-								type="button"
-								size="icon"
-								variant="ghost"
-								onClick={onClose}
-								aria-label="Close agent config"
-							>
-								<CrossIcon label="" spacing="none" />
-							</Button>
+							{onClose ? (
+								<Button
+									type="button"
+									size="icon"
+									variant="ghost"
+									onClick={onClose}
+									aria-label="Close agent config"
+								>
+									<CrossIcon label="" spacing="none" />
+								</Button>
+							) : null}
 						</>
 					}
 				/>
