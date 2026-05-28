@@ -172,6 +172,13 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 		description: "Helps locate, summarize, and work with Drive files and document context.",
 	}),
 	createProfile({
+		id: "atlassian",
+		name: "Atlassian",
+		byline: "by Atlassian",
+		avatarSrc: "/1p/atlassian.svg",
+		description: "Searches and connects work across Jira, Confluence, and the Teamwork Graph.",
+	}),
+	createProfile({
 		id: AI_INSIGHTS_AGENT_ID,
 		name: "AI Insights Agent",
 		byline: "Custom agent by Atlassian",
