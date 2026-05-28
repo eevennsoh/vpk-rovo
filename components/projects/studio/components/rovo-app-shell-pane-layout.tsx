@@ -7,20 +7,9 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-
-export type AgentConfigCompactTab = "config" | "chat";
-
-interface AgentConfigCompactState {
-	activeTab: AgentConfigCompactTab;
-	onChangeTab: (tab: AgentConfigCompactTab) => void;
-}
 
 interface RovoAppShellPaneLayoutProps {
 	agentConfigPane?: ReactNode;
-	agentConfigPanelId?: string;
-	agentConfigCompact?: AgentConfigCompactState;
 	artifactOrigin: {
 		height: number;
 		left: number;
@@ -45,39 +34,8 @@ interface RovoAppShellPaneLayoutProps {
 	splitChatPaneMaxSize: number;
 }
 
-function CompactTabSwitcher({
-	state,
-}: Readonly<{ state: AgentConfigCompactState }>) {
-	return (
-		<div className="flex items-center gap-1 rounded-md border border-border bg-surface-sunken p-0.5">
-			<Button
-				type="button"
-				size="sm"
-				variant={state.activeTab === "config" ? "default" : "ghost"}
-				aria-pressed={state.activeTab === "config"}
-				onClick={() => state.onChangeTab("config")}
-				className="flex-1"
-			>
-				Config
-			</Button>
-			<Button
-				type="button"
-				size="sm"
-				variant={state.activeTab === "chat" ? "default" : "ghost"}
-				aria-pressed={state.activeTab === "chat"}
-				onClick={() => state.onChangeTab("chat")}
-				className="flex-1"
-			>
-				Test chat
-			</Button>
-		</div>
-	);
-}
-
 export function RovoAppShellPaneLayout({
 	agentConfigPane,
-	agentConfigPanelId,
-	agentConfigCompact,
 	artifactOrigin,
 	artifactPane,
 	artifactPanelId,
@@ -93,51 +51,14 @@ export function RovoAppShellPaneLayout({
 	splitChatPaneDefaultSize,
 	splitChatPaneMaxSize,
 }: Readonly<RovoAppShellPaneLayoutProps>) {
-	// Agent config pane takes priority over artifact/browser previews.
+	// Agent config pane takes priority over artifact/browser previews. The
+	// Ask Rovo sidebar chat (mounted by RovoAppShell) handles all custom-agent
+	// interaction, so the config pane renders full-width with no embedded chat.
 	if (shouldShowAgentConfigPane && agentConfigPane) {
-		if (agentConfigCompact) {
-			return (
-				<div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background">
-					<div className="border-b border-border bg-surface px-3 py-2">
-						<CompactTabSwitcher state={agentConfigCompact} />
-					</div>
-					<div className="min-h-0 flex-1 overflow-hidden">
-						{agentConfigCompact.activeTab === "config" ? agentConfigPane : chatPane}
-					</div>
-				</div>
-			);
-		}
-
 		return (
-			<ResizablePanelGroup
-				className="h-full min-h-0 min-w-0 w-full overflow-visible"
-				orientation="horizontal"
-				onLayoutChanged={onArtifactSplitLayoutChanged}
-				resizeTargetMinimumSize={{ coarse: 36, fine: 16 }}
-			>
-				<ResizablePanel
-					className="min-h-0"
-					defaultSize={splitArtifactPaneDefaultSize}
-					id={agentConfigPanelId ?? artifactPanelId}
-					minSize={minArtifactPaneWidth}
-				>
-					<div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
-						{agentConfigPane}
-					</div>
-				</ResizablePanel>
-				<ResizableHandle className="z-20" withHandle />
-				<ResizablePanel
-					className={cn("min-h-0")}
-					defaultSize={splitChatPaneDefaultSize}
-					groupResizeBehavior="preserve-pixel-size"
-					id={chatPanelId}
-					maxSize={splitChatPaneMaxSize}
-					minSize={minChatPaneWidth}
-					style={{ overflow: "visible" }}
-				>
-					{chatPane}
-				</ResizablePanel>
-			</ResizablePanelGroup>
+			<div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background">
+				{agentConfigPane}
+			</div>
 		);
 	}
 
