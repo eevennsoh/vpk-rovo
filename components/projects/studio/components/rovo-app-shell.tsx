@@ -153,7 +153,6 @@ interface HomeStarterTemplate {
 
 const RICH_ICON_ROOT = "/illustration/rich-icon";
 const HOME_STARTER_DEFAULT_CATEGORY: HomeStarterCategory = "analyze";
-const HOME_STARTER_TAB_PROGRESS_DURATION_MS = 4_500;
 
 const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "analyze", label: "Insights", iconSrc: `${RICH_ICON_ROOT}/marketing/standard.png`, iconClassName: "scale-[1.08]" },
@@ -162,13 +161,6 @@ const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "summarize", label: "Writing", iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg`, iconClassName: "translate-y-px scale-[1.08]" },
 	{ id: "create", label: "Work management", iconSrc: `${RICH_ICON_ROOT}/project-management/standard.png`, iconClassName: "scale-[1.08]" },
 ];
-
-function getNextHomeStarterCategory(category: HomeStarterCategory): HomeStarterCategory {
-	const currentCategoryIndex = HOME_STARTER_CATEGORIES.findIndex((option) => option.id === category);
-	const nextCategoryIndex = currentCategoryIndex === -1 ? 0 : (currentCategoryIndex + 1) % HOME_STARTER_CATEGORIES.length;
-
-	return HOME_STARTER_CATEGORIES[nextCategoryIndex]?.id ?? HOME_STARTER_DEFAULT_CATEGORY;
-}
 
 const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<HomeStarterTemplate>>> = {
 	analyze: [
@@ -590,7 +582,7 @@ function HomeStarterHeroTile({
 		<motion.button
 			aria-label={`Use prompt starter: ${template.title}`}
 			className={cn(
-				"group relative flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-background text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-bold hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
+				"group relative flex min-h-0 flex-col items-start gap-3 overflow-hidden rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-bold hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
 				template.layoutClassName,
 			)}
 			onBlur={onBlur}
@@ -609,50 +601,54 @@ function HomeStarterHeroTile({
 			}
 			whileTap={shouldReduceMotion ? undefined : { scale: 0.98, transition: { duration: 0.05 } }}
 		>
-			<div className="mt-4 mb-3 ml-4 size-8 shrink-0">
+			<div className="size-12 shrink-0">
 				<Image
 					alt=""
 					aria-hidden
-					className="size-8 object-contain"
-					height={32}
+					className="h-12 w-[42px] object-contain"
+					height={48}
 					src={template.iconSrc}
-					width={32}
+					width={42}
 				/>
 			</div>
-			<div className="flex min-h-0 flex-1 flex-col gap-2 px-4 pb-3">
-				<div>
+			<div className="flex min-h-0 flex-1 flex-col gap-4">
+				<div className="flex flex-col gap-1">
 					<span className="block w-full min-w-0 truncate text-2xl leading-7 font-semibold text-text">
 						{template.title}
 					</span>
-					<span className="mt-0.5 block w-full min-w-0 line-clamp-2 text-sm leading-5 text-text-subtle">
+					<span className="block w-full min-w-0 line-clamp-2 text-sm leading-5 text-text-subtle">
 						{template.description}
 					</span>
 				</div>
-				{hero.sources.length > 0 ? (
-					<div className="mt-1">
-						<span className="block text-xs font-semibold leading-4 text-text-subtle">
-							Works with
-						</span>
-						<TwgToolSourceStack
-							className="mt-1 justify-start"
-							iconSize="md"
-							maxVisible={6}
-							sources={hero.sources}
-						/>
-					</div>
-				) : null}
-				{hero.skills.length > 0 ? (
-					<div className="mt-1">
-						<span className="block text-xs font-semibold leading-4 text-text-subtle">
-							Skills
-						</span>
-						<SkillTagGroup className="mt-1">
-							{hero.skills.map((skill) => (
-								<SkillTag color={skill.color ?? "default"} icon={skill.icon} key={skill.label}>
-									{skill.label}
-								</SkillTag>
-							))}
-						</SkillTagGroup>
+				{hero.sources.length > 0 || hero.skills.length > 0 ? (
+					<div className="flex flex-col gap-4">
+						{hero.sources.length > 0 ? (
+							<div className="flex flex-col gap-1">
+								<span className="block text-xs font-semibold leading-4 text-text-subtle">
+									Works with
+								</span>
+								<TwgToolSourceStack
+									className="justify-start"
+									iconSize="md"
+									maxVisible={6}
+									sources={hero.sources}
+								/>
+							</div>
+						) : null}
+						{hero.skills.length > 0 ? (
+							<div className="flex flex-col gap-1">
+								<span className="block text-xs font-semibold leading-4 text-text-subtle">
+									Skills
+								</span>
+								<SkillTagGroup>
+									{hero.skills.map((skill) => (
+										<SkillTag color={skill.color ?? "default"} icon={skill.icon} key={skill.label}>
+											{skill.label}
+										</SkillTag>
+									))}
+								</SkillTagGroup>
+							</div>
+						) : null}
 					</div>
 				) : null}
 			</div>
@@ -673,46 +669,21 @@ function HomeStarterBento({
 }>) {
 	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>(HOME_STARTER_DEFAULT_CATEGORY);
 	const [browseOpen, setBrowseOpen] = useState(false);
-	const [isTemplateFocused, setIsTemplateFocused] = useState(false);
-	const [isTemplateHovered, setIsTemplateHovered] = useState(false);
 	const shouldReduceMotion = useReducedMotion();
 	const focusedTemplatePromptRef = useRef<string | null>(null);
 	const hoveredTemplatePromptRef = useRef<string | null>(null);
-	const tabProgressBarRef = useRef<HTMLSpanElement | null>(null);
-	const tabProgressRef = useRef(0);
 	const templates = HOME_STARTER_VIEWS[activeCategory];
 	const visibleTemplates = templates.slice(0, 5);
 	const canShowMore = templates.length > visibleTemplates.length;
-	const isProgressPaused = isTemplateFocused || isTemplateHovered;
-	const setHomeStarterTabProgress = useCallback((progress: number) => {
-		const nextProgress = clamp(progress, 0, 1);
-
-		tabProgressRef.current = nextProgress;
-		tabProgressBarRef.current?.style.setProperty("--home-starter-tab-progress", String(nextProgress));
-	}, []);
-	const setTabProgressBarNode = useCallback((node: HTMLSpanElement | null) => {
-		tabProgressBarRef.current = node;
-
-		if (node) {
-			node.style.setProperty("--home-starter-tab-progress", String(tabProgressRef.current));
-		}
-	}, []);
 	const selectHomeStarterCategory = useCallback((category: HomeStarterCategory) => {
-		setHomeStarterTabProgress(0);
 		setActiveCategory(category);
-	}, [setHomeStarterTabProgress]);
-	const advanceHomeStarterCategory = useCallback(() => {
-		setHomeStarterTabProgress(0);
-		setActiveCategory((currentCategory) => getNextHomeStarterCategory(currentCategory));
-	}, [setHomeStarterTabProgress]);
+	}, []);
 	const handleTemplateMouseEnter = useCallback((prompt: string) => {
 		hoveredTemplatePromptRef.current = prompt;
-		setIsTemplateHovered(true);
 		onPreviewStart(prompt);
 	}, [onPreviewStart]);
 	const handleTemplateMouseLeave = useCallback(() => {
 		hoveredTemplatePromptRef.current = null;
-		setIsTemplateHovered(false);
 
 		if (focusedTemplatePromptRef.current) {
 			onPreviewStart(focusedTemplatePromptRef.current);
@@ -722,12 +693,10 @@ function HomeStarterBento({
 	}, [onPreviewEnd, onPreviewStart]);
 	const handleTemplateFocus = useCallback((prompt: string) => {
 		focusedTemplatePromptRef.current = prompt;
-		setIsTemplateFocused(true);
 		onPreviewStart(prompt);
 	}, [onPreviewStart]);
 	const handleTemplateBlur = useCallback(() => {
 		focusedTemplatePromptRef.current = null;
-		setIsTemplateFocused(false);
 
 		if (hoveredTemplatePromptRef.current) {
 			onPreviewStart(hoveredTemplatePromptRef.current);
@@ -735,39 +704,6 @@ function HomeStarterBento({
 			onPreviewEnd();
 		}
 	}, [onPreviewEnd, onPreviewStart]);
-
-	useEffect(() => {
-		if (shouldReduceMotion || isProgressPaused) {
-			return;
-		}
-
-		let animationFrameId = 0;
-		let previousFrameTime: number | null = null;
-
-		const tick = (frameTime: number) => {
-			if (previousFrameTime === null) {
-				previousFrameTime = frameTime;
-			}
-
-			const elapsedMs = Math.min(frameTime - previousFrameTime, 100);
-			previousFrameTime = frameTime;
-			const nextProgress = tabProgressRef.current + elapsedMs / HOME_STARTER_TAB_PROGRESS_DURATION_MS;
-
-			if (nextProgress >= 1) {
-				advanceHomeStarterCategory();
-			} else {
-				setHomeStarterTabProgress(nextProgress);
-			}
-
-			animationFrameId = window.requestAnimationFrame(tick);
-		};
-
-		animationFrameId = window.requestAnimationFrame(tick);
-
-		return () => {
-			window.cancelAnimationFrame(animationFrameId);
-		};
-	}, [advanceHomeStarterCategory, isProgressPaused, setHomeStarterTabProgress, shouldReduceMotion]);
 
 	return (
 		<div className="w-full">
@@ -790,18 +726,6 @@ function HomeStarterBento({
 									: "border-border bg-background text-text-subtle hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 							)}
 						>
-							{isActive ? (
-								<span
-									ref={setTabProgressBarNode}
-									aria-hidden
-									className="pointer-events-none absolute inset-0 z-0 w-full bg-bg-selected-hovered"
-									style={{
-										transform: "scaleX(var(--home-starter-tab-progress, 0))",
-										transformOrigin: "left center",
-										willChange: "transform",
-									}}
-								/>
-							) : null}
 							<span className="relative z-[2] inline-flex items-center gap-1.5">
 								{category.iconSrc ? (
 									<span aria-hidden className="inline-flex size-6 shrink-0 items-center justify-center">
@@ -867,7 +791,7 @@ function HomeStarterBento({
 										onFocus={() => handleTemplateFocus(template.prompt)}
 										onBlur={handleTemplateBlur}
 										className={cn(
-											"group flex min-h-0 flex-col items-start overflow-hidden rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-bold hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
+											"group flex min-h-0 flex-col items-start gap-3 overflow-hidden rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-bold hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
 											template.layoutClassName,
 										)}
 										variants={{
@@ -894,11 +818,13 @@ function HomeStarterBento({
 												width={32}
 											/>
 										</span>
-										<span className="mt-3 block w-full min-w-0 text-sm font-semibold leading-5 text-text">
-											{template.title}
-										</span>
-										<span className="mt-1 line-clamp-2 w-full min-w-0 text-sm leading-5 text-text-subtle">
-											{template.description}
+										<span className="flex w-full min-w-0 flex-col gap-1">
+											<span className="block w-full min-w-0 text-sm font-semibold leading-5 text-text">
+												{template.title}
+											</span>
+											<span className="line-clamp-2 w-full min-w-0 text-sm leading-5 text-text-subtle">
+												{template.description}
+											</span>
 										</span>
 									</motion.button>
 								);
@@ -3532,7 +3458,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 			{isDefaultAgentHomeState ? (
 				<motion.div
-					className="z-10 mx-auto mb-5 w-[90%] px-3"
+					className="z-10 mx-auto mb-5 w-[90%]"
 					initial={shouldReduceMotion ? false : { opacity: 0 }}
 					animate={{ opacity: 1 }}
 					transition={{ duration: 0.25, ease: [0, 0.4, 0, 1], delay: 0.2 }}
