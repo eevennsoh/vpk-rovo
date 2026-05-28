@@ -778,7 +778,7 @@ function HomeStarterBento({
 								<motion.span
 									key={`${category.id}-${cycleActive}`}
 									aria-hidden
-									className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[3px] origin-left bg-border-selected"
+									className="pointer-events-none absolute inset-0 z-[1] origin-left bg-bg-selected-hovered"
 									initial={{ scaleX: 0 }}
 									animate={{ scaleX: 1 }}
 									transition={{ duration: HOME_STARTER_CYCLE_DURATION_MS / 1000, ease: "linear" }}
