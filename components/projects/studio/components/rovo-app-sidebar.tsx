@@ -44,6 +44,7 @@ interface StudioSidebarNavItem {
 	isExpanded?: boolean;
 	isSelected?: boolean;
 	label: string;
+	onClick?: React.MouseEventHandler<HTMLButtonElement>;
 }
 
 interface StudioSidebarNavSection {
@@ -103,7 +104,7 @@ interface StudioAgentCreationThread {
 	title: string;
 }
 
-function StudioSidebarNavItem({ icon, isExpanded, isSelected = false, label }: Readonly<StudioSidebarNavItem>) {
+function StudioSidebarNavItem({ icon, isExpanded, isSelected = false, label, onClick }: Readonly<StudioSidebarNavItem>) {
 	return (
 		<SidebarNavItem
 			label={label}
@@ -111,6 +112,7 @@ function StudioSidebarNavItem({ icon, isExpanded, isSelected = false, label }: R
 			leadingSize="medium"
 			isExpanded={isExpanded}
 			isSelected={isSelected}
+			onClick={onClick}
 		/>
 	);
 }
@@ -209,6 +211,7 @@ function StudioSidebarNavigation({
 											{...item}
 											isExpanded={shouldShowRecentAgents ? true : item.isExpanded}
 											isSelected={shouldShowRecentAgents && hasSelectedRecentAgent ? false : item.isSelected}
+											onClick={isAgentsItem ? onViewAllAgents : item.onClick}
 										/>
 										{shouldShowRecentAgents ? (
 											<div className="flex flex-col gap-0.5 pl-3">
