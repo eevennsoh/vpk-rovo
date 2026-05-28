@@ -1500,10 +1500,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		[studioAgentRegistry],
 	);
 
-	const handleCloseAgentConfigPane = useCallback(() => {
-		setActiveAgentConfig(null);
-	}, []);
-
 	const handleUpdateAgentDraft = useCallback(
 		(profileId: string, patch: Partial<RovoDataParts["agent-result"]>) => {
 			studioAgentRegistry.updateSessionAgentDraft?.(profileId, patch);
@@ -3369,7 +3365,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const agentConfigPane = activeSessionAgentEntry ? (
 		<RovoAppAgentConfigPanel
 			entry={activeSessionAgentEntry}
-			onClose={handleCloseAgentConfigPane}
 			onCommitPublishReady={handleCommitAgentPublishReady}
 			onPublish={handlePublishAgent}
 			onUpdateDraft={handleUpdateAgentDraft}
