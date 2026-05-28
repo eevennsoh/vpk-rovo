@@ -153,6 +153,7 @@ function getRecentAgentItemSelected(
 function StudioSidebarNavigation({
 	activeThreadId,
 	agentCreationThreads = [],
+	onNewChat,
 	onSelectAgent,
 	onSelectAgentCreationThread,
 	onViewAllAgents,
@@ -161,6 +162,7 @@ function StudioSidebarNavigation({
 }: Readonly<{
 	activeThreadId: string | null;
 	agentCreationThreads?: ReadonlyArray<StudioAgentCreationThread>;
+	onNewChat?: () => void;
 	onSelectAgent?: (agentId: string) => void;
 	onSelectAgentCreationThread?: (threadId: string) => void;
 	onViewAllAgents?: () => void;
@@ -211,7 +213,7 @@ function StudioSidebarNavigation({
 											{...item}
 											isExpanded={shouldShowRecentAgents ? true : item.isExpanded}
 											isSelected={shouldShowRecentAgents && hasSelectedRecentAgent ? false : item.isSelected}
-											onClick={isAgentsItem ? onViewAllAgents : item.onClick}
+											onClick={isAgentsItem ? onNewChat : item.onClick}
 										/>
 										{shouldShowRecentAgents ? (
 											<div className="flex flex-col gap-0.5 pl-3">
@@ -266,6 +268,7 @@ export function RovoAppSidebar({
 	hoverOpen = false,
 	isResizing,
 	selectedAgentId,
+	onNewChat,
 	onSelectThread,
 	onSelectAgent,
 	onSidebarMouseEnter,
@@ -297,6 +300,7 @@ export function RovoAppSidebar({
 				<StudioSidebarNavigation
 					activeThreadId={activeThreadId}
 					agentCreationThreads={agentCreationThreads}
+					onNewChat={onNewChat}
 					onSelectAgent={onSelectAgent}
 					onSelectAgentCreationThread={(threadId) => {
 						void onSelectThread(threadId);
