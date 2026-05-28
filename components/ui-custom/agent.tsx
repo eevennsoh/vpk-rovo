@@ -277,7 +277,7 @@ function AgentSectionLabel({ children }: Readonly<{ children: ReactNode }>) {
 function AgentProfileCover() {
 	return (
 		<div className="relative overflow-hidden rounded-t-xl bg-surface text-text">
-			<div className="relative h-12 overflow-hidden bg-primary">
+			<div className="relative h-12 overflow-hidden bg-[#1868DB]">
 				<Image
 					alt=""
 					aria-hidden
