@@ -3454,6 +3454,8 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				/>
 			</ViewTransition>
 
+			{shouldShowAgentConfigPane && showHomeState ? <div aria-hidden className="flex-1 shrink" /> : null}
+
 			{isDefaultAgentHomeState ? (
 				<motion.div
 					className="z-10 mx-auto mb-5 w-[90%]"
@@ -3659,11 +3661,11 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					}}
 				/>
 			) : null}
-			{showHomeState && !shouldSplitArtifactPane ? <div className="min-h-[40px] flex-1 shrink" /> : null}
+			{showHomeState && !shouldSplitArtifactPane && !shouldShowAgentConfigPane ? <div className="min-h-[40px] flex-1 shrink" /> : null}
 			{chatPane}
 			{showHomeState && !shouldSplitArtifactPane ? (
 				<>
-					<div className="flex-1 shrink" />
+					{!shouldShowAgentConfigPane ? <div className="flex-1 shrink" /> : null}
 					<Footer className="shrink-0" />
 				</>
 			) : null}
