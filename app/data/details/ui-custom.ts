@@ -1033,6 +1033,29 @@ import { Button } from "@/components/ui/button";
 			],
 		},
 
+	"create-input": {
+		description:
+			"A starting-point variant of the prompt composer, intended for create/generate flows. Mirrors PromptInput's API surface 1:1 — same props, same compound sub-components — so it can diverge in styling or defaults without touching the original.",
+		usage: `import {
+  CreateInput,
+  CreateInputBody,
+  CreateInputTextarea,
+  CreateInputFooter,
+  CreateInputTools,
+  CreateInputSendControls,
+} from "@/components/ui-custom/create-input";
+
+<CreateInput onSubmit={({ text, files }) => create({ text, files })}>
+  <CreateInputBody>
+    <CreateInputTextarea placeholder="Describe what to create..." rows={1} />
+  </CreateInputBody>
+  <CreateInputFooter className="justify-between px-1">
+    <CreateInputTools />
+    <CreateInputSendControls />
+  </CreateInputFooter>
+</CreateInput>`,
+	},
+
 	"prompt-input": {
 		description:
 			"A composable AI prompt composer built on InputGroup primitives, with textarea submission semantics, action menus, model/tool controls, file attachments, and provider-based external control.",

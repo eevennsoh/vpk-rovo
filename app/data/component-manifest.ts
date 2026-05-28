@@ -121,6 +121,7 @@ export const CUSTOM_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	customComponent("context"),
 	customComponent("controls"),
 	customComponent("conversation"),
+	customComponent("create-input", "Create Input"),
 	customComponent("edge"),
 	customComponent("environment-variables", "Environment Variables"),
 	customComponent("file-tree", "File Tree"),
