@@ -13,6 +13,10 @@ const temporaryMoves = [
 		source: join(rootDir, "app", "rovo", "skills", "[category]", "[name]"),
 		backup: join(rootDir, ".rovo-skills-detail-route-backup"),
 	},
+	{
+		source: join(rootDir, "app", "studio", "skills", "[category]", "[name]"),
+		backup: join(rootDir, ".studio-skills-detail-route-backup"),
+	},
 ];
 
 const movedPaths = [];
