@@ -6015,6 +6015,62 @@ const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
+  "create-input-demo-chat-composer": dynamic(
+    () =>
+      import("./demos/ui-custom/create-input-demo").then((mod) => ({
+        default: mod.CreateInputDemoChatComposer,
+      })),
+    { ssr: false },
+  ),
+  "create-input-demo-cursor-style": dynamic(
+    () =>
+      import("./demos/ui-custom/create-input-demo").then((mod) => ({
+        default: mod.CreateInputDemoCursorStyle,
+      })),
+    { ssr: false },
+  ),
+  "create-input-demo-button-tooltips": dynamic(
+    () =>
+      import("./demos/ui-custom/create-input-demo").then((mod) => ({
+        default: mod.CreateInputDemoButtonTooltips,
+      })),
+    { ssr: false },
+  ),
+  "create-input-demo-action-menu": dynamic(
+    () =>
+      import("./demos/ui-custom/create-input-demo").then((mod) => ({
+        default: mod.CreateInputDemoActionMenu,
+      })),
+    { ssr: false },
+  ),
+  "create-input-demo-submit-status": dynamic(
+    () =>
+      import("./demos/ui-custom/create-input-demo").then((mod) => ({
+        default: mod.CreateInputDemoSubmitStatus,
+      })),
+    { ssr: false },
+  ),
+  "create-input-demo-model-select": dynamic(
+    () =>
+      import("./demos/ui-custom/create-input-demo").then((mod) => ({
+        default: mod.CreateInputDemoModelSelect,
+      })),
+    { ssr: false },
+  ),
+  "create-input-demo-provider-controlled": dynamic(
+    () =>
+      import("./demos/ui-custom/create-input-demo").then((mod) => ({
+        default: mod.CreateInputDemoProviderControlled,
+      })),
+    { ssr: false },
+  ),
+  "create-input-demo-floating-bar": dynamic(
+    () =>
+      import("./demos/ui-custom/create-input-demo").then((mod) => ({
+        default: mod.CreateInputDemoFloatingBar,
+      })),
+    { ssr: false },
+  ),
   "prompt-input-demo-chat-composer": dynamic(
     () =>
       import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
