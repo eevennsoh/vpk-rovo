@@ -657,6 +657,8 @@ function HomeStarterHeroTile({
 	);
 }
 
+const HOME_STARTER_CYCLE_DURATION_MS = 6000;
+
 function HomeStarterBento({
 	onPreviewEnd,
 	onPreviewStart,
@@ -670,15 +672,37 @@ function HomeStarterBento({
 }>) {
 	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>(HOME_STARTER_DEFAULT_CATEGORY);
 	const [browseOpen, setBrowseOpen] = useState(false);
+	const [cycleEnabled, setCycleEnabled] = useState(true);
+	const [bentoInteracting, setBentoInteracting] = useState(false);
 	const shouldReduceMotion = useReducedMotion();
 	const focusedTemplatePromptRef = useRef<string | null>(null);
 	const hoveredTemplatePromptRef = useRef<string | null>(null);
 	const templates = HOME_STARTER_VIEWS[activeCategory];
 	const visibleTemplates = templates.slice(0, 5);
 	const canShowMore = templates.length > visibleTemplates.length;
+	const cycleActive = cycleEnabled && !shouldReduceMotion && !browseOpen && !bentoInteracting;
 	const selectHomeStarterCategory = useCallback((category: HomeStarterCategory) => {
 		setActiveCategory(category);
+		setCycleEnabled(false);
 	}, []);
+
+	useEffect(() => {
+		if (!cycleActive) {
+			return;
+		}
+
+		const intervalId = window.setInterval(() => {
+			setActiveCategory((prev) => {
+				const currentIndex = HOME_STARTER_CATEGORIES.findIndex((entry) => entry.id === prev);
+				const nextIndex = (currentIndex + 1) % HOME_STARTER_CATEGORIES.length;
+				return HOME_STARTER_CATEGORIES[nextIndex].id;
+			});
+		}, HOME_STARTER_CYCLE_DURATION_MS);
+
+		return () => {
+			window.clearInterval(intervalId);
+		};
+	}, [cycleActive]);
 	const handleTemplateMouseEnter = useCallback((prompt: string) => {
 		hoveredTemplatePromptRef.current = prompt;
 		onPreviewStart(prompt);
@@ -707,10 +731,21 @@ function HomeStarterBento({
 	}, [onPreviewEnd, onPreviewStart]);
 
 	return (
-		<div className="w-full">
+		<div
+			className="w-full"
+			onMouseEnter={() => setBentoInteracting(true)}
+			onMouseLeave={() => setBentoInteracting(false)}
+			onFocus={() => setBentoInteracting(true)}
+			onBlur={(event) => {
+				if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+					setBentoInteracting(false);
+				}
+			}}
+		>
 			<div className="flex flex-wrap justify-center gap-2">
 				{HOME_STARTER_CATEGORIES.map((category) => {
 					const isActive = activeCategory === category.id;
+					const showProgress = isActive && cycleActive;
 
 					return (
 						<button
@@ -741,6 +776,17 @@ function HomeStarterBento({
 								) : null}
 								<span>{category.label}</span>
 							</span>
+							{showProgress ? (
+								<motion.span
+									key={`${category.id}-${cycleActive}`}
+									aria-hidden
+									className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[2px] origin-left bg-text-selected/40"
+									initial={{ scaleX: 0 }}
+									animate={{ scaleX: 1 }}
+									transition={{ duration: HOME_STARTER_CYCLE_DURATION_MS / 1000, ease: "linear" }}
+									style={{ willChange: "transform" }}
+								/>
+							) : null}
 						</button>
 					);
 				})}
