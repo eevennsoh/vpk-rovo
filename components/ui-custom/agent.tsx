@@ -2,7 +2,7 @@
 
 import type { Tool } from "ai";
 import type { ComponentProps, ReactNode } from "react";
-import { Fragment, memo, useState } from "react";
+import { memo, useState } from "react";
 import Image from "next/image";
 
 import AddIcon from "@atlaskit/icon/core/add";
@@ -22,14 +22,10 @@ import { CheckIcon } from "@/components/ui/vpk-icons";
 import {
 	ModelSelector,
 	ModelSelectorContent,
-	ModelSelectorEmpty,
 	ModelSelectorGroup,
-	ModelSelectorInput,
 	ModelSelectorItem,
 	ModelSelectorList,
-	ModelSelectorLogo,
 	ModelSelectorName,
-	ModelSelectorSeparator,
 	ModelSelectorTrigger,
 } from "@/components/ui-custom/model-selector";
 import {
@@ -385,72 +381,68 @@ function AgentKnowledgePanel() {
 	);
 }
 
-const AGENT_INSTRUCTION_MODELS = [
-	{ value: "gpt-5.5-medium", label: "GPT-5.5 Medium", provider: "openai" },
-	{ value: "gpt-5.5-large", label: "GPT-5.5 Large", provider: "openai" },
-	{ value: "gpt-4o", label: "GPT-4o", provider: "openai" },
-	{ value: "claude-4-sonnet", label: "Claude 4 Sonnet", provider: "anthropic" },
-	{ value: "claude-4-opus", label: "Claude 4 Opus", provider: "anthropic" },
-	{ value: "gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "google" },
+const REASONING_MODE_SECTIONS = [
+	{
+		title: "Quick answer",
+		options: [{ value: "quick-auto", label: "Searching and simple Q&A" }],
+	},
+	{
+		title: "Think deeper",
+		options: [
+			{ value: "deep-auto", label: "Recommended" },
+			{ value: "gemini-flash-3", label: "Gemini Flash 3" },
+			{ value: "gpt-5.4", label: "GPT 5.4" },
+			{ value: "sonnet-4.6", label: "Sonnet 4.6" },
+			{ value: "opus-4.6", label: "Opus 4.6" },
+		],
+	},
 ] as const;
 
-type AgentInstructionModelValue = (typeof AGENT_INSTRUCTION_MODELS)[number]["value"];
-type AgentInstructionModelProvider = (typeof AGENT_INSTRUCTION_MODELS)[number]["provider"];
+type ReasoningModeValue =
+	(typeof REASONING_MODE_SECTIONS)[number]["options"][number]["value"];
 
 function AgentInstructionsModelSelector() {
-	const [selected, setSelected] = useState<AgentInstructionModelValue>("gpt-5.5-medium");
-	const current =
-		AGENT_INSTRUCTION_MODELS.find((model) => model.value === selected) ??
-		AGENT_INSTRUCTION_MODELS[0];
-
-	const groupedProviders: readonly {
-		heading: string;
-		provider: AgentInstructionModelProvider;
-	}[] = [
-		{ heading: "OpenAI", provider: "openai" },
-		{ heading: "Anthropic", provider: "anthropic" },
-		{ heading: "Google", provider: "google" },
-	];
+	const [selected, setSelected] = useState<ReasoningModeValue>("quick-auto");
+	const current = REASONING_MODE_SECTIONS
+		.flatMap((section) =>
+			section.options.map((option) => ({
+				...option,
+				optionCount: section.options.length,
+				section: section.title,
+			}))
+		)
+		.find((option) => option.value === selected);
 
 	return (
 		<ModelSelector>
 			<ModelSelectorTrigger
-				render={<Button className="shrink-0 gap-2 text-text-subtle" variant="ghost" />}
+				render={<Button className="shrink-0 text-text-subtle" variant="ghost" />}
 			>
-				<ModelSelectorLogo provider={current.provider} />
-				{current.label}
+				{current
+					? current.optionCount === 1
+						? current.section
+						: `${current.section}: ${current.label}`
+					: "Select mode"}
 			</ModelSelectorTrigger>
-			<ModelSelectorContent>
-				<ModelSelectorInput placeholder="Search models..." />
+			<ModelSelectorContent className="w-[360px] max-w-[calc(100vw-2rem)]">
 				<ModelSelectorList>
-					<ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-					{groupedProviders.map((group, index) => {
-						const models = AGENT_INSTRUCTION_MODELS.filter(
-							(model) => model.provider === group.provider
-						);
-						if (models.length === 0) return null;
-						return (
-							<Fragment key={group.provider}>
-								{index > 0 ? <ModelSelectorSeparator /> : null}
-								<ModelSelectorGroup heading={group.heading}>
-									{models.map((model) => (
-										<ModelSelectorItem
-											key={model.value}
-											data-checked={selected === model.value}
-											value={model.value}
-											onSelect={() => setSelected(model.value)}
-										>
-											<ModelSelectorLogo provider={model.provider} />
-											<ModelSelectorName>{model.label}</ModelSelectorName>
-											{selected === model.value ? (
-												<CheckIcon size="small" className="ml-auto text-text-selected" />
-											) : null}
-										</ModelSelectorItem>
-									))}
-								</ModelSelectorGroup>
-							</Fragment>
-						);
-					})}
+					{REASONING_MODE_SECTIONS.map((section) => (
+						<ModelSelectorGroup key={section.title} heading={section.title}>
+							{section.options.map((option) => (
+								<ModelSelectorItem
+									key={option.value}
+									data-checked={selected === option.value}
+									value={option.value}
+									onSelect={() => setSelected(option.value)}
+								>
+									<ModelSelectorName>{option.label}</ModelSelectorName>
+									{selected === option.value ? (
+										<CheckIcon size="small" className="ml-auto text-text-selected" />
+									) : null}
+								</ModelSelectorItem>
+							))}
+						</ModelSelectorGroup>
+					))}
 				</ModelSelectorList>
 			</ModelSelectorContent>
 		</ModelSelector>
