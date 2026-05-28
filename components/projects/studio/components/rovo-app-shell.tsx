@@ -86,6 +86,8 @@ import {
 	type StudioScreenAssistantTarget,
 } from "@/components/projects/studio/lib/studio-screen-assistant";
 import { useSidebarResize } from "@/components/projects/studio/hooks/use-sidebar-resize";
+import { useSidebarResize as useStudioAskRovoChatResize } from "@/components/projects/rovo/hooks/use-sidebar-resize";
+import ChatPanel from "@/components/projects/sidebar-chat/page";
 import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import { getLatestDataPart, getLatestUserMessageId, getMessageAgentResult, getMessageArtifactResult, getMessageInterruption, getMessageText, type RovoDataParts } from "@/lib/rovo-ui-messages";
@@ -1534,6 +1536,14 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		return entries.find((entry) => entry.profile.id === activeAgentConfig.profileId) ?? null;
 	}, [activeAgentConfig, studioAgentRegistry.sessionAgentEntries]);
 	const shouldShowAgentConfigPane = Boolean(activeSessionAgentEntry);
+	const askRovoChatResize = useStudioAskRovoChatResize({
+		defaultWidth: 400,
+		minWidth: 320,
+		maxWidth: 720,
+		direction: "rtl",
+	});
+	const askRovoChatPanelWidth = askRovoChatResize.sidebarWidth;
+	const isStudioAskRovoChatActive = !embedded && shouldShowAgentConfigPane && nav.isSidebarChatOpen;
 
 	// When the active agent disappears (e.g. provider remounts), clear the
 	// config pane so we don't keep a stale reference around.
@@ -3766,7 +3776,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				</div>
 			) : null}
 
-			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+			<div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
 				{!embedded ? (
 					<div
 						className={cn("flex h-12 shrink-0 items-center border-b px-3 transition-[padding] duration-medium ease-in-out", !chat.sidebarOpen && "pl-44")}
@@ -3843,7 +3853,16 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						onOpenDocument={(documentId) => void chat.openDocument(documentId)}
 					/>
 				) : null}
-				<main ref={shellRef} className="relative flex min-h-0 min-w-0 flex-1 bg-background px-3 text-foreground">
+				<main
+					ref={shellRef}
+					className="relative flex min-h-0 min-w-0 flex-1 bg-background px-3 text-foreground"
+					style={{
+						marginRight: isStudioAskRovoChatActive ? `${askRovoChatPanelWidth}px` : "0px",
+						transition: askRovoChatResize.isResizing
+							? undefined
+							: "margin-right var(--duration-medium) var(--ease-in-out)",
+					}}
+				>
 					<RovoAppShellPaneLayout
 						agentConfigPane={agentConfigPane}
 						agentConfigPanelId={ROVO_APP_SPLIT_AGENT_CONFIG_PANEL_ID}
@@ -3871,6 +3890,40 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						splitChatPaneMaxSize={splitChatPaneMaxSize}
 					/>
 				</main>
+				{!embedded && shouldShowAgentConfigPane ? (
+					<div
+						data-shell-chrome=""
+						aria-hidden={!isStudioAskRovoChatActive}
+						{...(!isStudioAskRovoChatActive ? { inert: true } : {})}
+						style={{
+							position: "absolute",
+							top: 48,
+							right: 0,
+							bottom: 0,
+							width: `${askRovoChatPanelWidth}px`,
+							padding: token("space.100"),
+							pointerEvents: isStudioAskRovoChatActive ? "auto" : "none",
+							transform: isStudioAskRovoChatActive
+								? "translateX(0)"
+								: `translateX(${askRovoChatPanelWidth}px)`,
+							transition: askRovoChatResize.isResizing
+								? undefined
+								: "transform var(--duration-medium) var(--ease-in-out)",
+							willChange: "transform",
+							zIndex: 90,
+						}}
+					>
+						<ChatPanel onClose={nav.toggleChat} abortOnUnmount={false} />
+						<SidebarResizeHandle
+							side="left"
+							data-active={askRovoChatResize.isResizing ? "" : undefined}
+							onDoubleClick={askRovoChatResize.onResizeHandleDoubleClick}
+							onPointerDown={askRovoChatResize.onResizeHandlePointerDown}
+							onPointerEnter={askRovoChatResize.onResizeHandlePointerEnter}
+							onPointerLeave={askRovoChatResize.onResizeHandlePointerLeave}
+						/>
+					</div>
+				) : null}
 			</div>
 			<ClickyOverlay
 				state={clicky.state}
