@@ -226,18 +226,25 @@ export function PromptInputDemoFloatingBar() {
 				variant="floating"
 				allowOverflow
 				onSubmit={() => setPrompt("")}
+				className={composerPromptInputClassName}
 			>
-				<PromptInputBody className="flex w-full items-center gap-2">
-					<PromptInputButton aria-label="Add">
-						<AddIcon label="" />
-					</PromptInputButton>
+				<PromptInputBody>
 					<PromptInputTextarea
 						value={prompt}
 						onChange={(e) => setPrompt(e.currentTarget.value)}
 						placeholder="Ask, @mention, or / for actions"
 						rows={1}
-						className="min-h-8 flex-1 py-1.5 leading-5"
+						className={composerTextareaClassName}
 					/>
+				</PromptInputBody>
+
+				<PromptInputFooter className="mt-3 justify-between px-0 pb-0">
+					<PromptInputTools>
+						<PromptInputButton aria-label="Add" size="icon-sm" variant="ghost">
+							<AddIcon label="" />
+						</PromptInputButton>
+					</PromptInputTools>
+
 					<div className="flex shrink-0 items-center gap-1">
 						<RovoComposerActionButton
 							canSubmit={canSubmit}
@@ -247,8 +254,10 @@ export function PromptInputDemoFloatingBar() {
 							realtimeVoiceActive={realtimeVoiceActive}
 						/>
 					</div>
-				</PromptInputBody>
+				</PromptInputFooter>
 			</PromptInput>
+
+			<style>{textareaCSS}</style>
 		</DemoFrame>
 	);
 }
