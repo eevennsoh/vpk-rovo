@@ -5,4 +5,5 @@ export type {
 	AgentBrowserDialogProps,
 	AgentBrowserProps,
 	AgentBrowserSidebarGroup,
+	AgentBrowserSidebarItem,
 } from "./components/agent-browser";

@@ -112,7 +112,7 @@ function SidebarNavItem({
 					/>
 				) : null}
 
-				<span className="min-w-0 flex-1">
+				<span data-slot="sidebar-nav-item-content" className="min-w-0 flex-1 pl-0.5">
 					<span data-slot="sidebar-nav-item-label" className={cn("block truncate text-sm leading-5 font-medium", isSelected ? "text-text-selected" : "text-text-subtle")}>
 						{label}
 					</span>
