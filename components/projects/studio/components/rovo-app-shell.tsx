@@ -185,7 +185,7 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 				],
 				sources: [
 					{ id: "jira", label: "Jira", provider: "jira" },
-					{ id: "confluence", label: "Confluence", provider: "confluence" },
+					{ id: "jira-product-discovery", label: "Jira Product Discovery", provider: "jira-product-discovery" },
 					{ id: "google-drive", label: "Google Drive", provider: "google-drive" },
 				],
 			},
