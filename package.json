@@ -12,7 +12,6 @@
 		"test:unit:js": "node scripts/run-js-unit-tests.mjs",
 		"build:export": "node scripts/build-static-export.mjs",
 		"ci:pr": "pnpm run lint && pnpm run typecheck && pnpm run test:unit:js",
-		"ci:full": "pnpm run ci:pr && pnpm run build:export",
 		"deploy:micros": "./scripts/dev-deploy-fast.sh",
 		"dev:backend": "node scripts/dev-backend.js",
 		"dev:frontend": "node scripts/dev-frontend.js",
