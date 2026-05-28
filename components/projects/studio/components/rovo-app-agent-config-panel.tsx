@@ -201,7 +201,6 @@ export function RovoAppAgentConfigPanel({
 			<Agent className="flex min-h-0 flex-1 flex-col">
 				<AgentHeader
 					name={agentName}
-					model={draft.action === "update" ? "update" : "create"}
 					badge={
 						<Badge variant={badgeVariant} data-testid="agent-config-status-lozenge">
 							{publishStatusLabel}
