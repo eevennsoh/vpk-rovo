@@ -609,14 +609,14 @@ function HomeStarterHeroTile({
 			}
 			whileTap={shouldReduceMotion ? undefined : { scale: 0.98, transition: { duration: 0.05 } }}
 		>
-			<div className="mt-4 mb-3 ml-4 size-12 shrink-0">
+			<div className="mt-4 mb-3 ml-4 size-8 shrink-0">
 				<Image
 					alt=""
 					aria-hidden
-					className="h-12 w-[42px] object-contain"
-					height={48}
+					className="size-8 object-contain"
+					height={32}
 					src={template.iconSrc}
-					width={42}
+					width={32}
 				/>
 			</div>
 			<div className="flex min-h-0 flex-1 flex-col gap-2 px-4 pb-3">
