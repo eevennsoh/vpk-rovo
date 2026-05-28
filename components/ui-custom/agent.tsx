@@ -2,7 +2,7 @@
 
 import type { Tool } from "ai";
 import type { ComponentProps, ReactNode } from "react";
-import { memo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 
 import AddIcon from "@atlaskit/icon/core/add";
@@ -34,7 +34,15 @@ import {
 	TwgToolSourceStack,
 	type TwgToolSource,
 } from "@/components/ui-custom/twg-tool";
-import { RichTextEditor } from "@/components/ui-custom/rich-text-editor";
+import {
+	type RichTextMentionItem,
+	type RichTextMentionSources,
+	RichTextEditor,
+} from "@/components/ui-custom/rich-text-editor";
+import type {
+	HermesSkillSummary,
+	WikiMemoryExplorerResponse,
+} from "@/lib/rovo-runtime-types";
 import { cn } from "@/lib/utils";
 
 import { CodeBlock } from "./code-block";
@@ -50,6 +58,43 @@ const AGENT_KNOWLEDGE_SOURCES = [
 	{ id: "teams", label: "Microsoft Teams", provider: "teams" },
 	{ id: "salesforce", label: "Salesforce", provider: "salesforce" },
 ] as const satisfies readonly TwgToolSource[];
+
+const MENTION_SOURCE_LIMIT = 24;
+
+interface AgentSkillMentionResponse {
+	skills?: HermesSkillSummary[];
+}
+
+function toMentionId(category: RichTextMentionItem["category"], id: string): string {
+	return `${category}:${id.trim().replace(/\s+/g, "-")}`;
+}
+
+function mapSkillsToMentionItems(
+	skills: readonly HermesSkillSummary[] | undefined,
+): RichTextMentionItem[] {
+	return (skills ?? [])
+		.filter((skill) => !skill.disabled)
+		.slice(0, MENTION_SOURCE_LIMIT)
+		.map((skill) => ({
+			category: "skill",
+			id: toMentionId("skill", skill.id || `${skill.category}/${skill.name}`),
+			label: skill.title || skill.name,
+			description: skill.description ?? `${skill.category} skill`,
+		}));
+}
+
+function mapMemoryToMentionItems(
+	explorer: WikiMemoryExplorerResponse | null,
+): RichTextMentionItem[] {
+	return (explorer?.nodes ?? [])
+		.slice(0, MENTION_SOURCE_LIMIT)
+		.map((node) => ({
+			category: "memory",
+			id: toMentionId("memory", node.id),
+			label: node.title || node.label || node.id,
+			description: node.summary || node.kind,
+		}));
+}
 
 export type AgentConfigTextFieldName =
 	| "name"
@@ -460,6 +505,44 @@ function AgentInstructionsComposer({
 	onInstructionsChange?: (value: string) => void;
 	screenAssistantTargetId?: string;
 }>) {
+	const [skills, setSkills] = useState<RichTextMentionItem[]>([]);
+	const [memory, setMemory] = useState<RichTextMentionItem[]>([]);
+	const mentionSources = useMemo<RichTextMentionSources>(() => ({
+		skill: skills,
+		memory,
+	}), [memory, skills]);
+
+	useEffect(() => {
+		const abortController = new AbortController();
+
+		async function loadMentionSources(): Promise<void> {
+			try {
+				const [skillsResponse, memoryResponse] = await Promise.all([
+					fetch("/api/skills", { signal: abortController.signal }),
+					fetch("/api/wiki/memory-explorer", { signal: abortController.signal }),
+				]);
+
+				if (skillsResponse.ok) {
+					const payload = await skillsResponse.json() as AgentSkillMentionResponse;
+					setSkills(mapSkillsToMentionItems(payload.skills));
+				}
+
+				if (memoryResponse.ok) {
+					const payload = await memoryResponse.json() as WikiMemoryExplorerResponse;
+					setMemory(mapMemoryToMentionItems(payload));
+				}
+			} catch (error) {
+				if (error instanceof DOMException && error.name === "AbortError") {
+					return;
+				}
+			}
+		}
+
+		void loadMentionSources();
+
+		return () => abortController.abort();
+	}, []);
+
 	return (
 		<section
 			className="space-y-0"
@@ -476,7 +559,8 @@ function AgentInstructionsComposer({
 				showBubbleMenu={false}
 				toolbarEndSlot={<AgentInstructionsModelSelector />}
 				value={instructions}
-				onPlainTextChange={onInstructionsChange}
+				mentionSources={mentionSources}
+				onMarkdownChange={onInstructionsChange}
 			/>
 		</section>
 	);

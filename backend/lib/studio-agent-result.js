@@ -402,8 +402,9 @@ You are in agent creation mode. Help the user create a session-local agent profi
 This is a local agent definition - not a Confluence page, Jira ticket, or any Atlassian product content.
 Ask clarifying questions only when required profile fields are missing: name, description, instructions/context, and conversation starters.
 Do not call POST /api/plan/agents or any persistence endpoint; durable agent persistence is out of scope for this v1.
+Write instructions as structured Markdown matching repo-local agent definitions: start with ## Instructions, use clear paragraphs, bullet lists with bold labels, and include optional ## Knowledge, ## Triggers, and ## Validation sections only when relevant.
 When ready, emit exactly one structured result marker outside code fences:
-AGENT_RESULT: {"agentId":"stable-slug","name":"Display name","byline":"Generated agent","description":"Short profile summary","instructions":"How the agent should behave and what context it uses.","conversationStarters":["Starter prompt 1","Starter prompt 2"],"avatarFallback":{"initials":"DA"},"action":"create"}
+AGENT_RESULT: {"agentId":"stable-slug","name":"Display name","byline":"Generated agent","description":"Short profile summary","instructions":"## Instructions\\n\\nYou are Display name. Describe the role, scope, and operating style.\\n\\n- **Summary** Explain the agent's main responsibility.\\n- **Workflow** Describe how it should handle requests.\\n\\n## Validation\\n\\n- Confirm the output is ready for the user's next step.","conversationStarters":["Starter prompt 1","Starter prompt 2"],"avatarFallback":{"initials":"DA"},"action":"create"}
 Do not include edit, delete, approval, publishing, or real tool-binding controls in the result.
 [END AGENT CREATION MODE]`;
 	}
