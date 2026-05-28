@@ -7,7 +7,6 @@ import CrossIcon from "@atlaskit/icon/core/cross";
 import {
 	Agent,
 	AgentConfigFields,
-	AgentContent,
 	AgentHeader,
 	type AgentConfigListFieldName,
 	type AgentConfigTextFieldName,
@@ -258,17 +257,15 @@ export function RovoAppAgentConfigPanel({
 								</motion.div>
 							) : null}
 						</AnimatePresence>
-						<AgentContent>
-							<AgentConfigFields
-								config={draft}
-								idPrefix={`agent-${profileId}`}
-								onTextChange={handleConfigTextChange}
-								onListItemChange={updateListItem}
-								onRemoveListItem={removeListItem}
-								onAppendListItem={appendListItem}
-								screenAssistantTargetPrefix="studio-agent-config"
-							/>
-						</AgentContent>
+						<AgentConfigFields
+							config={draft}
+							idPrefix={`agent-${profileId}`}
+							onTextChange={handleConfigTextChange}
+							onListItemChange={updateListItem}
+							onRemoveListItem={removeListItem}
+							onAppendListItem={appendListItem}
+							screenAssistantTargetPrefix="studio-agent-config"
+						/>
 					</div>
 				</div>
 			</Agent>
