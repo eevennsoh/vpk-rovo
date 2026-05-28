@@ -7730,6 +7730,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   "shadow-overlay": dynamic(() => import("./demos/visual/shadow-overlay-demo"), {
     ssr: false,
   }),
+  "card-glow": dynamic(() => import("./demos/visual/card-glow-demo"), {
+    ssr: false,
+  }),
   squircle: dynamic(() => import("./demos/visual/squircle-demo"), {
     ssr: false,
   }),
