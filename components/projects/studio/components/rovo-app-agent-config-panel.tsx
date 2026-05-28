@@ -245,7 +245,7 @@ export function RovoAppAgentConfigPanel({
 					}
 				/>
 				<div className="min-h-0 flex-1 overflow-y-auto">
-					<div className="mx-auto w-full max-w-[760px] px-4 py-5">
+					<div className="w-full px-6 py-5">
 						<AnimatePresence>
 							{missingFields.length > 0 ? (
 								<motion.div
