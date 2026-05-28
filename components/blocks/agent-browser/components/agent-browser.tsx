@@ -68,14 +68,14 @@ const AGENT_CARD_OVERLAY_SHADOW = token("elevation.shadow.overlay");
 const AGENT_CARD_HOVER_ANIMATION = {
 	borderColor: "transparent",
 	boxShadow: AGENT_CARD_OVERLAY_SHADOW,
-	transform: "scale(1.006)",
+	scale: 1.006,
 } as const;
 const AGENT_CARD_REDUCED_HOVER_ANIMATION = {
 	borderColor: "transparent",
 	boxShadow: AGENT_CARD_OVERLAY_SHADOW,
 } as const;
 const AGENT_CARD_TAP_ANIMATION = {
-	transform: "scale(0.998)",
+	scale: 0.998,
 } as const;
 const AGENT_CARD_HOVER_TRANSITION = {
 	type: "spring",
@@ -482,7 +482,7 @@ function AgentDirectoryCard({ agent, onSelectAgent }: Readonly<AgentDirectoryCar
 		"group/card flex h-full w-full cursor-pointer flex-col gap-3 rounded-md border border-border bg-surface p-4 text-left outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 	const cardMotionProps = {
 		className: cardClassName,
-		style: { willChange: "transform, box-shadow, border-color" },
+		style: { willChange: "transform" },
 		transition: AGENT_CARD_HOVER_TRANSITION,
 		whileHover: hoverAnimation,
 	};
