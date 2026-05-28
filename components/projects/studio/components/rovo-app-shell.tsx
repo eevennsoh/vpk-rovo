@@ -3822,7 +3822,14 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 							<CreateButton windowWidth={nav.windowWidth} />
 						</div>
-						<RightNavigation product="studio" windowWidth={nav.windowWidth} onToggleChat={nav.toggleChat} onToggleTheme={nav.toggleTheme} />
+						<RightNavigation
+							product="studio"
+							windowWidth={nav.windowWidth}
+							forceShowRovoAction={shouldShowAgentConfigPane}
+							isChatOpen={nav.isSidebarChatOpen}
+							onToggleChat={nav.toggleChat}
+							onToggleTheme={nav.toggleTheme}
+						/>
 					</div>
 				) : null}
 				{shouldShowChatHeader ? (
