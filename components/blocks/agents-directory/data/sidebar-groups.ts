@@ -29,11 +29,16 @@ export const DEFAULT_AGENTS_DIRECTORY_SIDEBAR_GROUPS: readonly AgentBrowserSideb
 				label: "Revenue Operations",
 				avatarSrc: "/avatar-project/graph.svg",
 			},
+			{
+				id: "security-and-trust",
+				label: "Security & Trust",
+				avatarSrc: "/avatar-project/shield.svg",
+			},
 		],
 	},
 	{
 		title: "By companies",
 		showAll: true,
-		agentIds: ["google-drive", "github-copilot", "slack", "notion"],
+		agentIds: ["atlassian", "google-drive", "github-copilot", "slack", "notion"],
 	},
 ];
