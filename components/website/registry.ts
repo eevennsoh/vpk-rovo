@@ -6036,48 +6036,6 @@ const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  "prompt-input-demo-cursor-style": dynamic(
-    () =>
-      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
-        default: mod.PromptInputDemoCursorStyle,
-      })),
-    { ssr: false },
-  ),
-  "prompt-input-demo-button-tooltips": dynamic(
-    () =>
-      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
-        default: mod.PromptInputDemoButtonTooltips,
-      })),
-    { ssr: false },
-  ),
-  "prompt-input-demo-action-menu": dynamic(
-    () =>
-      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
-        default: mod.PromptInputDemoActionMenu,
-      })),
-    { ssr: false },
-  ),
-  "prompt-input-demo-submit-status": dynamic(
-    () =>
-      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
-        default: mod.PromptInputDemoSubmitStatus,
-      })),
-    { ssr: false },
-  ),
-  "prompt-input-demo-model-select": dynamic(
-    () =>
-      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
-        default: mod.PromptInputDemoModelSelect,
-      })),
-    { ssr: false },
-  ),
-  "prompt-input-demo-provider-controlled": dynamic(
-    () =>
-      import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
-        default: mod.PromptInputDemoProviderControlled,
-      })),
-    { ssr: false },
-  ),
   "prompt-input-demo-floating-bar": dynamic(
     () =>
       import("./demos/ui-custom/prompt-input-demo").then((mod) => ({
