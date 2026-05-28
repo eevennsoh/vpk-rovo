@@ -832,6 +832,7 @@ function HomeStarterBento({
 									tallAtSm && "sm:line-clamp-none",
 									tallAtSm && !tallAtLg && "lg:line-clamp-2",
 									!tallAtSm && tallAtLg && "lg:line-clamp-none",
+									!tallAtLg && "lg:line-clamp-1",
 								);
 
 								return (
