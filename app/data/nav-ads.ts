@@ -9,6 +9,7 @@ const ADS_CUSTOM_SLUGS = new Set([
 	"chain-of-thought",
 	"code-block",
 	"conversation",
+	"create-input",
 	"message",
 	"morphing-rovo",
 	"plan",

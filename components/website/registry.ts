@@ -246,6 +246,9 @@ const UI_CUSTOM_DEMO: Record<string, ComponentType> = {
   conversation: dynamic(() => import("./demos/ui-custom/conversation-demo"), {
     ssr: false,
   }),
+  "create-input": dynamic(() => import("./demos/ui-custom/create-input-demo"), {
+    ssr: false,
+  }),
   edge: dynamic(() => import("./demos/ui-custom/edge-demo"), { ssr: false }),
   "environment-variables": dynamic(
     () => import("./demos/ui-custom/environment-variables-demo"),
