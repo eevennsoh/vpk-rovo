@@ -412,11 +412,19 @@ async function getTwgExplorerCachedOrFresh({ signal } = {}) {
 	return fresh;
 }
 
+function getRequestSignal(req) {
+	try {
+		return req?.signal;
+	} catch {
+		return undefined;
+	}
+}
+
 router.get("/explorer", async (req, res) => {
 	const source = getActiveSource();
 	try {
 		if (source === "twg") {
-			return res.json(await getTwgExplorerCachedOrFresh({ signal: req.signal }));
+			return res.json(await getTwgExplorerCachedOrFresh({ signal: getRequestSignal(req) }));
 		}
 		return res.json(buildExplorer());
 	} catch (error) {
@@ -483,7 +491,7 @@ router.post("/twg/chat", async (req, res) => {
 router.post("/twg/refresh", async (req, res) => {
 	try {
 		const fresh = await twgSource.buildTwgExplorer({
-			signal: req.signal,
+			signal: getRequestSignal(req),
 			since: normalizeTwgWorkWindow(req.body?.since),
 		});
 		writeCache(fresh);
@@ -513,7 +521,7 @@ router.post("/twg/expand", async (req, res) => {
 		const result = await twgSource.expandTwgExplorerNode({
 			explorer: cached,
 			nodeId: req.body?.nodeId,
-			signal: req.signal,
+			signal: getRequestSignal(req),
 		});
 		writeCache(result.explorer);
 		return res.json(result);
