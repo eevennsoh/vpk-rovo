@@ -326,7 +326,6 @@ function AgentKnowledgePanel() {
 						<Tile
 							className="bg-surface text-icon-discovery"
 							hasBorder
-							isInset={false}
 							label="Teamwork Graph"
 							size="medium"
 							variant="transparent"
