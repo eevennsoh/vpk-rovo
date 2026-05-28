@@ -733,8 +733,6 @@ function HomeStarterBento({
 	return (
 		<div
 			className="w-full"
-			onMouseEnter={() => setBentoInteracting(true)}
-			onMouseLeave={() => setBentoInteracting(false)}
 			onFocus={() => setBentoInteracting(true)}
 			onBlur={(event) => {
 				if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -780,7 +778,7 @@ function HomeStarterBento({
 								<motion.span
 									key={`${category.id}-${cycleActive}`}
 									aria-hidden
-									className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[2px] origin-left bg-text-selected/40"
+									className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[3px] origin-left bg-border-selected"
 									initial={{ scaleX: 0 }}
 									animate={{ scaleX: 1 }}
 									transition={{ duration: HOME_STARTER_CYCLE_DURATION_MS / 1000, ease: "linear" }}
