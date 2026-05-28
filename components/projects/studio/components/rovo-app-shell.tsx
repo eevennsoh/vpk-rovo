@@ -155,7 +155,7 @@ const RICH_ICON_ROOT = "/illustration/rich-icon";
 const HOME_STARTER_DEFAULT_CATEGORY: HomeStarterCategory = "analyze";
 
 const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
-	{ id: "analyze", label: "Insights", iconSrc: `${RICH_ICON_ROOT}/marketing/standard.png`, iconClassName: "scale-[1.08]" },
+	{ id: "analyze", label: "Insights", iconSrc: `${RICH_ICON_ROOT}/marketing/standard.svg`, iconClassName: "scale-[1.08]" },
 	{ id: "brainstorm", label: "Planning", iconSrc: `${RICH_ICON_ROOT}/lightbulb/standard.svg`, iconClassName: "-translate-y-px scale-[1.08]" },
 	{ id: "review", label: "Operations", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.png`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.14]" },
 	{ id: "summarize", label: "Writing", iconSrc: `${RICH_ICON_ROOT}/content-design/standard.svg`, iconClassName: "translate-y-px scale-[1.08]" },
@@ -188,7 +188,7 @@ const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<Hom
 					{ id: "google-drive", label: "Google Drive", provider: "google-drive" },
 				],
 			},
-			iconSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
+			iconSrc: "/illustration/rich-icon/marketing/standard.svg",
 			layoutClassName: "sm:col-span-2 sm:row-span-2 lg:col-start-2 lg:row-start-1",
 			prompt: "Build a Studio agent named Jira Theme Analyzer that scans Jira work items from a JQL query, search results, or project context, then identifies themes and recommends epic groupings.",
 			title: "Jira Theme Analyzer",
