@@ -739,6 +739,8 @@ function HomeStarterBento({
 					setBentoInteracting(false);
 				}
 			}}
+			onMouseEnter={() => setBentoInteracting(true)}
+			onMouseLeave={() => setBentoInteracting(false)}
 		>
 			<div className="flex flex-wrap justify-center gap-2">
 				{HOME_STARTER_CATEGORIES.map((category) => {
