@@ -90,7 +90,7 @@ function derivePublisher(byline: string): string {
 
 function isVerified(agent: AgentBrowserAgent, publisher: string): boolean {
 	if (agent.attributionKind) return agent.attributionKind === "company";
-	return ["atlassian", "google", "github", "slack", "notion"].includes(publisher.toLowerCase());
+	return ["atlassian", "google", "github", "slack", "notion", "figma", "canva"].includes(publisher.toLowerCase());
 }
 
 function hashString(value: string): number {
