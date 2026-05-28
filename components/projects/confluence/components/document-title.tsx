@@ -55,7 +55,6 @@ export default function DocumentTitle({ title }: Readonly<DocumentTitleProps>) {
 					fontSize: "32px",
 					fontWeight: 400,
 					lineHeight: "1.2",
-					fontFamily: token("font.family.brand.heading"),
 					color: token("color.text"),
 					outline: "none",
 					cursor: "text",
