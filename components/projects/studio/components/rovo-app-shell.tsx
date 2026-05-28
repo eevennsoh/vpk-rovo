@@ -104,7 +104,7 @@ import { approveSkillDraft, fetchWikiStatus, fetchSkillDraftDetail, fetchSkillDr
 import type { HermesSkillDraftDetail, HermesSkillDraftSummary, HermesSkillSummary, WikiStatus } from "@/lib/rovo-runtime-types";
 import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
 import { useRovoSelectedAgent } from "@/app/contexts";
-import { ROVO_AGENT_PROFILES, getRovoAgentPromptContext, isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/studio/data/agent-profiles";
+import { ROVO_DIRECTORY_AGENT_PROFILES, getRovoAgentPromptContext, isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/studio/data/agent-profiles";
 
 interface RovoAppShellProps {
 	embedded?: boolean;
@@ -932,7 +932,7 @@ function HomeStarterBento({
 			<AgentsDirectoryDialog
 				open={browseOpen}
 				onOpenChange={setBrowseOpen}
-				agents={ROVO_AGENT_PROFILES}
+				agents={ROVO_DIRECTORY_AGENT_PROFILES}
 				sessionAgents={sessionAgents}
 			/>
 		</div>
@@ -3800,7 +3800,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			<AgentsDirectoryDialog
 				open={isSidebarAgentBrowserOpen}
 				onOpenChange={setIsSidebarAgentBrowserOpen}
-				agents={ROVO_AGENT_PROFILES}
+				agents={ROVO_DIRECTORY_AGENT_PROFILES}
 				onSelectAgent={handleSidebarBrowseAgentSelect}
 				sessionAgents={studioAgentRegistry.sessionAgentEntries.map((entry) => entry.profile)}
 			/>

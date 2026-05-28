@@ -81,6 +81,13 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 		description: "Helps review code, explain repository changes, and suggest implementation paths.",
 	}),
 	createProfile({
+		id: "release-notes-drafter",
+		name: "Release Notes Drafter",
+		byline: "Custom agent by Diego Alvarez",
+		avatarSrc: "/avatar-agent/teamwork-agents/release-notes-drafter.svg",
+		description: "Turns merged changes and tickets into clear, customer-ready release notes.",
+	}),
+	createProfile({
 		id: ROVO_AGENT_ID,
 		name: "Rovo Dev",
 		byline: "by Atlassian",
@@ -216,6 +223,12 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 export const ROVO_AGENT_PROFILE_BY_ID = new Map(
 	ROVO_AGENT_PROFILES.map((agent) => [agent.id, agent]),
 );
+
+// The Browse agents directory lists addable agents only. Rovo Dev is the
+// built-in platform default (not a custom agent you add), so it is excluded
+// here while remaining in ROVO_AGENT_PROFILES for default-agent lookups.
+export const ROVO_DIRECTORY_AGENT_PROFILES: readonly RovoAgentProfile[] = ROVO_AGENT_PROFILES
+	.filter((agent) => agent.id !== ROVO_AGENT_ID);
 
 export const ROVO_AGENT_SELECTOR_AGENTS: readonly AgentSelectorAgent[] = ROVO_AGENT_PROFILES
 	.filter((agent) => agent.id !== ROVO_AGENT_ID)
