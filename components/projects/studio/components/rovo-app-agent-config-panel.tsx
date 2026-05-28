@@ -192,7 +192,7 @@ export function RovoAppAgentConfigPanel({
 
 	return (
 		<motion.div
-			className={cn("flex h-full w-full flex-col overflow-hidden", className)}
+			className={cn("flex h-full w-full flex-col overflow-hidden bg-surface", className)}
 			data-screen-assistant-target="studio-agent-config-panel"
 			initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
 			animate={{ opacity: 1, y: 0 }}
