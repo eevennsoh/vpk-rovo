@@ -832,7 +832,6 @@ function HomeStarterBento({
 								const descriptionClampClass = cn(
 									"line-clamp-2",
 									tallAtSm && "sm:line-clamp-none",
-									tallAtSm && !tallAtLg && "lg:line-clamp-2",
 									!tallAtSm && tallAtLg && "lg:line-clamp-none",
 								);
 
