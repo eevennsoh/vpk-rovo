@@ -13,6 +13,7 @@ import { Accordion,
 	AccordionItem,
 	AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { InlineEdit } from "@/components/ui/inline-edit";
@@ -113,13 +114,9 @@ export const AgentHeader = memo(
 			{...props}
 		>
 			<div className="flex min-w-0 items-center gap-2">
-				<Image
-					alt="Agent"
-					className="h-6 w-[21px] shrink-0"
-					height={48}
-					src={AGENT_AVATAR_SRC}
-					width={42}
-				/>
+				<Avatar label="Agent" shape="hexagon" size="sm">
+					<AvatarImage alt="" src={AGENT_AVATAR_SRC} />
+				</Avatar>
 				<span className="truncate text-sm font-semibold leading-5 text-text">{name}</span>
 				{model ? (
 					<Lozenge>
