@@ -220,13 +220,16 @@ export function PromptInputDemoFloatingBar() {
 				allowOverflow
 				onSubmit={() => setPrompt("")}
 			>
-				<PromptInputBody className="flex w-full items-center justify-between gap-2">
+				<PromptInputBody className="flex w-full items-center gap-2">
+					<PromptInputButton aria-label="Add">
+						<AddIcon label="" />
+					</PromptInputButton>
 					<PromptInputTextarea
 						value={prompt}
 						onChange={(e) => setPrompt(e.currentTarget.value)}
 						placeholder="Ask, @mention, or / for actions"
 						rows={1}
-						className="min-h-0 flex-1 py-0"
+						className="min-h-8 flex-1 content-center py-0"
 					/>
 					<div className="flex shrink-0 items-center gap-1">
 						<SpeechInput
