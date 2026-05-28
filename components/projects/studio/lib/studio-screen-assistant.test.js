@@ -92,6 +92,33 @@ test("normalizeAgentDraftPatch keeps only safe session draft fields", () => {
 	assert.equal(normalizeAgentDraftPatch(null), null);
 });
 
+test("normalizeAgentDraftPatch sanitizes avatar fallback and action fields", () => {
+	assert.deepEqual(
+		normalizeAgentDraftPatch({
+			action: "delete",
+			agentId: "should-not-change",
+			avatarFallback: {
+				backgroundColor: "  bg-discovery-bold  ",
+				href: "javascript:alert(1)",
+				iconName: "  robot  ",
+				initials: "  SA  ",
+				label: "  Support agent  ",
+			},
+			byline: "  Support specialist  ",
+			publishStatus: "published",
+		}),
+		{
+			avatarFallback: {
+				backgroundColor: "bg-discovery-bold",
+				iconName: "robot",
+				initials: "SA",
+				label: "Support agent",
+			},
+			byline: "Support specialist",
+		},
+	);
+});
+
 test("collects visible Studio screen assistant targets from DOM metadata", () => {
 	const nameElement = createFakeElement({
 		attrs: {
