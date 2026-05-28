@@ -182,7 +182,7 @@ export function AgentBrowserDialog({
 						<span className="sr-only">Close</span>
 					</DialogClose>
 				</div>
-				<div className="min-h-0 overflow-hidden px-6 pb-6">
+				<div className="min-h-0 overflow-hidden px-6">
 					<AgentBrowser {...browserProps} />
 				</div>
 			</DialogContent>
