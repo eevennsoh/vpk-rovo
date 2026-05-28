@@ -213,7 +213,7 @@ export function AgentBrowser({
 				onSelectAgent={onSelectAgent}
 			/>
 
-			<div className="flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto px-1 pt-1 pb-3">
+			<div className="-mx-4 flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto px-4 pt-2 pb-6">
 				<InputGroup>
 					<InputGroupAddon>
 						<SearchIcon label="" />
