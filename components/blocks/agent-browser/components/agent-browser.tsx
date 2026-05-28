@@ -431,7 +431,7 @@ function AgentDirectoryCard({ agent, onSelectAgent }: Readonly<AgentDirectoryCar
 					/>
 				</Avatar>
 				<div className="min-w-0 flex-1">
-					<h3 className="truncate text-base font-semibold leading-5 text-text">{agent.name}</h3>
+					<h3 className="truncate text-text" style={{ font: token("font.heading.xsmall") }}>{agent.name}</h3>
 					<p className="flex items-center gap-1 text-xs leading-4 text-text-subtle">
 						<span>By</span>
 						<span className="truncate text-link">{publisher}</span>
