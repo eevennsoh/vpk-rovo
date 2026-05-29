@@ -297,6 +297,7 @@ export const BLOCK_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	blockComponent("generative-card", "Generative Card"),
 	blockComponent("generative", "Generative UI"),
 	blockComponent("kanban-board", "Kanban Board"),
+	blockComponent("tools-directory", "Tools Directory"),
 	blockComponent("mermaid-diagram", "Mermaid Diagram"),
 	{ name: "Login 01", slug: "login-01", importPath: "@/components/blocks/login/login-01", category: "blocks", detail: BLOCK_DETAILS["login-01"] },
 	{ name: "Login 02", slug: "login-02", importPath: "@/components/blocks/login/login-02", category: "blocks", detail: BLOCK_DETAILS["login-02"] },

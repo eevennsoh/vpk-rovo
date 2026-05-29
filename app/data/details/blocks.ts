@@ -132,6 +132,70 @@ const agents: AgentsDirectoryAgent[] = [
 			},
 		],
 	},
+	"tools-directory": {
+		description: "Dialog-based tools directory for browsing recommended, team, partner, and session-created tools.",
+		importStatement: `import { ToolsDirectoryDialog } from "@/components/blocks/tools-directory";`,
+		usage: `import { ToolsDirectoryDialog } from "@/components/blocks/tools-directory";
+import type { ToolsDirectoryTool } from "@/components/blocks/tools-directory";
+
+const tools: ToolsDirectoryTool[] = [
+  {
+    id: "google-drive",
+    name: "Google Drive",
+    byline: "File search by Google",
+    avatarSrc: "/3p/google-drive/24.svg",
+    description: "Searches your Drive for the most relevant document in context.",
+  },
+];
+
+<ToolsDirectoryDialog
+  open={open}
+  onOpenChange={setOpen}
+  tools={tools}
+  onSelectTool={(tool) => console.log(tool.id)}
+/>`,
+		demoLayout: { previewHeight: "fixed" },
+		props: [
+			{
+				name: "tools",
+				type: "readonly ToolsDirectoryTool[]",
+				required: true,
+				description: "Base catalog tools shown in the directory.",
+			},
+			{
+				name: "sessionTools",
+				type: "readonly ToolsDirectoryTool[]",
+				description: "Runtime-created tools appended to the catalog.",
+			},
+			{
+				name: "open",
+				type: "boolean",
+				required: true,
+				description: "Controlled dialog open state.",
+			},
+			{
+				name: "onOpenChange",
+				type: "(open: boolean) => void",
+				required: true,
+				description: "Called when the dialog requests an open-state change.",
+			},
+			{
+				name: "onSelectTool",
+				type: "(tool: ToolsDirectoryTool) => void",
+				description: "Called when a tool card or sidebar tool is selected.",
+			},
+			{
+				name: "sidebarGroups",
+				type: "readonly ToolsDirectorySidebarGroup[]",
+				description: "Optional sidebar grouping override. Defaults to the Studio directory grouping.",
+			},
+			{
+				name: "title",
+				type: "string",
+				description: "Optional dialog title. Defaults to the tools directory title.",
+			},
+		],
+	},
 	"skills-directory": {
 		description: "Dialog-based skills directory duplicated from Agents Directory for browsing recommended, team, partner, and session-created entries.",
 		importStatement: `import { SkillsDirectoryDialog } from "@/components/blocks/skills-directory";`,
