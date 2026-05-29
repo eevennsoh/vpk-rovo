@@ -248,7 +248,9 @@ test("Studio composer reveals 'Start from scratch' on focus and lands on a blank
 	assert.match(COMPOSER_SOURCE, /onFocus=\{\(\) => setIsInputFocused\(true\)\}/u);
 	assert.match(COMPOSER_SOURCE, /onBlur=\{\(\) => setIsInputFocused\(false\)\}/u);
 	assert.match(COMPOSER_SOURCE, /\{onStartFromScratch \? \([\s\S]*\{isInputFocused \?/u);
-	assert.match(COMPOSER_SOURCE, /Start from scratch/u);
+	assert.match(COMPOSER_SOURCE, /Or start from scratch/u);
+	// Reveal is taken out of layout flow so it never reflows/recenters siblings.
+	assert.match(COMPOSER_SOURCE, /className="absolute inset-x-0 top-full/u);
 	// Footer-style copy: subtle text size + color.
 	assert.match(COMPOSER_SOURCE, /text-xs text-text-subtlest/u);
 	// Click must survive the textarea blur so the reveal isn't unmounted first.
