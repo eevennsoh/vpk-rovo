@@ -61,6 +61,10 @@ import { useScrollAnchor } from "./hooks/use-scroll-anchor";
 import { useThinkingStatus } from "./hooks/use-thinking-status";
 import { appendOptimisticCompactUserMessage } from "./lib/optimistic-user-message";
 import { type DelegationRequest, useRealtimeVoice } from "@/components/projects/rovo/hooks/use-realtime-voice";
+import { useClicky } from "@/components/projects/rovo/hooks/use-clicky";
+import { useClickyVoice } from "@/components/projects/rovo/hooks/use-clicky-voice";
+import { ClickyOverlay } from "@/components/projects/rovo/components/clicky/clicky-overlay";
+import { parseClickyResponse } from "@/components/projects/rovo/lib/clicky-point-parser";
 import styles from "./chat.module.css";
 
 interface ChatPanelCardsProps {
@@ -266,12 +270,59 @@ export default function ChatPanel({
 	} = useChatSubmit({
 		defaultPromptOptions: resolvedSendPromptOptions,
 	});
+
+	// --- Rovo AI cursor companion (Clicky) ---
+	const clicky = useClicky();
+	const {
+		toggle: toggleClicky,
+		isActive: isClickyActive,
+		deactivate: deactivateClicky,
+		startListening: clickyStartListening,
+		startProcessing: clickyStartProcessing,
+		startPointing: clickyStartPointing,
+		startSpeaking: clickyStartSpeaking,
+		returnToIdle: clickyReturnToIdle,
+		addExchange: clickyAddExchange,
+		screenshotDimensions: clickyScreenshotDimensions,
+		setScreenshotDimensions: clickySetScreenshotDimensions,
+	} = clicky;
+
+	// Cmd+Shift+K (Mac) / Ctrl+Shift+K toggles the AI cursor; Escape deactivates it.
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "K" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+				e.preventDefault();
+				toggleClicky();
+				return;
+			}
+
+			if (e.key === "Escape" && isClickyActive) {
+				deactivateClicky();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [isClickyActive, deactivateClicky, toggleClicky]);
+
 	const realtimeTranscriptRef = useRef("");
 	const handleRealtimeSpeechStarted = useCallback(() => {
 		realtimeTranscriptRef.current = "";
+
+		// Clicky runs a private voice + screenshot loop; leave the composer untouched.
+		if (isClickyActive) {
+			clickyStartListening();
+			return;
+		}
+
 		setPrompt("");
-	}, [setPrompt]);
+	}, [isClickyActive, clickyStartListening, setPrompt]);
 	const handleRealtimeTranscript = useCallback((payload: RealtimeTranscriptPayload) => {
+		// Suppress live transcript deltas in the composer while Clicky is active.
+		if (isClickyActive) {
+			return;
+		}
+
 		const transcriptText = getRealtimeTranscriptText(payload);
 		if (!transcriptText.trim()) {
 			return;
@@ -279,9 +330,54 @@ export default function ChatPanel({
 
 		realtimeTranscriptRef.current = transcriptText;
 		setPrompt(transcriptText);
-	}, [setPrompt]);
+	}, [isClickyActive, setPrompt]);
+	const handleRealtimeTranscriptCompleted = useCallback((payload: RealtimeTranscriptPayload) => {
+		const transcriptText = getRealtimeTranscriptText(payload);
+
+		// Clicky: transition to processing and record the user's spoken question
+		// instead of routing it into the chat composer/thread.
+		if (isClickyActive) {
+			clickyStartProcessing();
+			if (transcriptText.trim()) {
+				clickyAddExchange({ role: "user", content: transcriptText });
+			}
+			return;
+		}
+
+		if (!transcriptText.trim()) {
+			return;
+		}
+
+		realtimeTranscriptRef.current = transcriptText;
+		setPrompt(transcriptText);
+	}, [isClickyActive, clickyStartProcessing, clickyAddExchange, setPrompt]);
+	const handleRealtimeAssistantTextCompleted = useCallback((payload: { messageId?: string; text?: string } | string) => {
+		// Only Clicky consumes the realtime model's own text response (POINT tags);
+		// normal voice mode delegates to the Rovo chat stream instead.
+		if (!isClickyActive) {
+			return;
+		}
+
+		const text = typeof payload === "string" ? payload : (payload.text ?? "");
+		if (!text) {
+			return;
+		}
+
+		const parsed = parseClickyResponse(text, clickyScreenshotDimensions);
+		clickyAddExchange({ role: "assistant", content: parsed.text || text });
+		if (parsed.point) {
+			clickyStartPointing(parsed.point, parsed.text);
+		} else {
+			clickyStartSpeaking(text);
+		}
+	}, [isClickyActive, clickyScreenshotDimensions, clickyAddExchange, clickyStartPointing, clickyStartSpeaking]);
 	const handleRealtimeDelegateToRovo = useCallback(
 		(request: DelegationRequest) => {
+			// Clicky's spoken queries must never delegate into the chat thread.
+			if (isClickyActive) {
+				return;
+			}
+
 			const promptText = request.prompt.trim();
 			if (!promptText) {
 				return;
@@ -301,15 +397,28 @@ export default function ChatPanel({
 			setPrompt("");
 			void sendPrompt(promptText, promptOptions);
 		},
-		[resolvedSendPromptOptions, sendPrompt, setPrompt],
+		[isClickyActive, resolvedSendPromptOptions, sendPrompt, setPrompt],
 	);
 	const realtime = useRealtimeVoice({
 		chatMessages: uiMessages,
 		isGenerating: isStreaming,
 		onDelegateToRovo: handleRealtimeDelegateToRovo,
 		onSpeechStarted: handleRealtimeSpeechStarted,
-		onSpeechTranscriptCompleted: handleRealtimeTranscript,
+		onSpeechTranscriptCompleted: handleRealtimeTranscriptCompleted,
 		onSpeechTranscriptDelta: handleRealtimeTranscript,
+		onAssistantTextCompleted: handleRealtimeAssistantTextCompleted,
+	});
+
+	// --- Clicky voice bridge: connects realtime + injects prompt + sends screenshots ---
+	useClickyVoice({
+		clickyState: clicky.state,
+		isClickyActive,
+		sendImageInput: realtime.sendImageInput,
+		isRealtimeConnected: realtime.isConnected,
+		connectRealtime: realtime.connect,
+		disconnectRealtime: realtime.disconnect,
+		injectContext: realtime.injectContext,
+		onScreenshotCaptured: clickySetScreenshotDimensions,
 	});
 	const isRealtimeVoiceActive = realtime.voiceState !== "idle";
 	const handleToggleRealtimeVoice = useCallback(() => {
@@ -734,9 +843,11 @@ export default function ChatPanel({
 						hasInFlightTurn={hasInFlightTurn}
 						queuedPrompts={queuedPrompts}
 						micStream={realtime.micStream}
+						clickyActive={isClickyActive}
 						onPromptChange={setPrompt}
 						onSubmit={handleSubmit}
 						onStop={abort}
+						onToggleClicky={toggleClicky}
 						onToggleRealtimeVoice={handleToggleRealtimeVoice}
 						onRemoveQueuedPrompt={removeQueuedPrompt}
 						onReasoningChange={setSelectedReasoning}
@@ -805,6 +916,14 @@ export default function ChatPanel({
 			) : (
 				chatPanelBody
 			)}
+			<ClickyOverlay
+				state={clicky.state}
+				pointTarget={clicky.pointTarget}
+				responseText={clicky.responseText}
+				history={clicky.history}
+				screenshotDimensions={clickyScreenshotDimensions}
+				onReturnToIdle={clickyReturnToIdle}
+			/>
 		</div>
 	);
 }
