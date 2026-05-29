@@ -3,12 +3,6 @@ import { ROVO_SHADER_COLOR_HEX } from "@/lib/rovo-colors";
 /** Direction the shimmer "light" travels across the text. */
 export type TracingMode = "line" | "sweep" | "vertical";
 
-/** A single band of colored light. `spread` is measured in `ch` (line/sweep) or `lh` (vertical). */
-export type ColorStop = Readonly<{
-	color: string;
-	spread: number;
-}>;
-
 export type TracingConfig = Readonly<{
 	mode: TracingMode;
 	/** Characters per second — drives the trace duration (charCount / cps). */
@@ -17,9 +11,15 @@ export type TracingConfig = Readonly<{
 	textAlpha: number;
 	/** Gradient angle offset in degrees, applied in `sweep` mode only. */
 	angle: number;
-	/** Edge-clearing offset, in the active spread unit. */
+	/** Edge-clearing offset, in the active spread unit (ch for line/sweep, lh for vertical). */
 	offset: number;
-	stops: readonly ColorStop[];
+	/** Width of the lit band, in the active spread unit. */
+	spread: number;
+	/**
+	 * Colors blended smoothly across the lit band. One color renders a solid
+	 * band; multiple colors blend into a single gradient sweep.
+	 */
+	colors: readonly string[];
 	autoLoop: boolean;
 	/** Pause between auto-loop cycles, in seconds. */
 	loopDelay: number;
@@ -27,13 +27,21 @@ export type TracingConfig = Readonly<{
 
 const [BLUE, ORANGE, PURPLE, LIME] = ROVO_SHADER_COLOR_HEX;
 
+/** Default spread (band width) per mode — vertical bands are measured in line-heights. */
+export const SPREAD_DEFAULTS: Readonly<Record<TracingMode, number>> = {
+	line: 20,
+	sweep: 20,
+	vertical: 4,
+};
+
 export const DEFAULT_CONFIG: TracingConfig = {
 	mode: "line",
 	cps: 50,
 	textAlpha: 0.1,
 	angle: 0,
 	offset: 0,
-	stops: [{ color: BLUE, spread: 20 }],
+	spread: SPREAD_DEFAULTS.line,
+	colors: [...ROVO_SHADER_COLOR_HEX],
 	autoLoop: true,
 	loopDelay: 1,
 };
@@ -44,70 +52,48 @@ export type TracingPreset = Readonly<{
 	config: TracingConfig;
 }>;
 
-/** Named looks ported from the original pen, recolored to the four Rovo brand hues. */
+/** Single-color and multi-color looks built from the four Rovo brand hues. */
 export const TRACING_PRESETS: readonly TracingPreset[] = [
-	{ value: "default", label: "Default", config: DEFAULT_CONFIG },
+	{ value: "rovo-spectrum", label: "Rovo Spectrum", config: DEFAULT_CONFIG },
 	{
-		value: "subtle",
-		label: "Subtle",
-		config: { ...DEFAULT_CONFIG, cps: 40, textAlpha: 0.18, stops: [{ color: BLUE, spread: 30 }] },
-	},
-	{
-		value: "neon-duo",
-		label: "Neon Duo",
-		config: { ...DEFAULT_CONFIG, stops: [{ color: BLUE, spread: 16 }, { color: PURPLE, spread: 16 }] },
+		value: "rovo-blue",
+		label: "Rovo Blue",
+		config: { ...DEFAULT_CONFIG, colors: [BLUE] },
 	},
 	{
 		value: "golden",
 		label: "Golden",
-		config: { ...DEFAULT_CONFIG, stops: [{ color: ORANGE, spread: 22 }] },
+		config: { ...DEFAULT_CONFIG, colors: [ORANGE], spread: 22 },
 	},
 	{
-		value: "tri-color",
-		label: "Tri-Color",
-		config: {
-			...DEFAULT_CONFIG,
-			stops: [
-				{ color: BLUE, spread: 14 },
-				{ color: ORANGE, spread: 14 },
-				{ color: PURPLE, spread: 14 },
-			],
-		},
+		value: "purple",
+		label: "Purple",
+		config: { ...DEFAULT_CONFIG, colors: [PURPLE] },
+	},
+	{
+		value: "lime",
+		label: "Lime",
+		config: { ...DEFAULT_CONFIG, colors: [LIME] },
+	},
+	{
+		value: "duo",
+		label: "Blue → Purple",
+		config: { ...DEFAULT_CONFIG, colors: [BLUE, PURPLE], spread: 24 },
+	},
+	{
+		value: "subtle",
+		label: "Subtle",
+		config: { ...DEFAULT_CONFIG, cps: 40, textAlpha: 0.18, colors: [BLUE], spread: 30 },
 	},
 	{
 		value: "sweep",
 		label: "Sweep",
-		config: { ...DEFAULT_CONFIG, mode: "sweep", angle: 25, stops: [{ color: LIME, spread: 24 }] },
-	},
-	{
-		value: "sweep-duo",
-		label: "Sweep Duo",
-		config: {
-			...DEFAULT_CONFIG,
-			mode: "sweep",
-			angle: 20,
-			stops: [{ color: BLUE, spread: 18 }, { color: PURPLE, spread: 18 }],
-		},
+		config: { ...DEFAULT_CONFIG, mode: "sweep", angle: 25, spread: 26 },
 	},
 	{
 		value: "waterfall",
 		label: "Waterfall",
-		config: { ...DEFAULT_CONFIG, mode: "vertical", cps: 18, stops: [{ color: LIME, spread: 3 }] },
-	},
-	{
-		value: "cascade",
-		label: "Cascade",
-		config: {
-			...DEFAULT_CONFIG,
-			mode: "vertical",
-			cps: 22,
-			stops: [
-				{ color: BLUE, spread: 2 },
-				{ color: ORANGE, spread: 2 },
-				{ color: PURPLE, spread: 2 },
-				{ color: LIME, spread: 2 },
-			],
-		},
+		config: { ...DEFAULT_CONFIG, mode: "vertical", cps: 18, spread: SPREAD_DEFAULTS.vertical },
 	},
 ];
 
