@@ -49,6 +49,14 @@ import { CodeBlock } from "./code-block";
 
 const AGENT_AVATAR_HEXAGON_PATH = "M19.01 0.922148C20.24 0.212148 21.76 0.212148 23 0.922148L40 10.6921C41.24 11.4021 42.01 12.7321 42.01 14.1621V33.6721C42.01 35.1021 41.24 36.4221 40 37.1421L23 46.9121C21.77 47.6221 20.25 47.6221 19.01 46.9121L2.01 37.1321C0.77 36.4221 0 35.0921 0 33.6621V14.1621C0 12.7321 0.77 11.4121 2.01 10.6921L19.01 0.922148Z";
 const AGENT_AVATAR_SRC = "/avatar-agent/teamwork-agents/blocker-checker.svg";
+const DEFAULT_AGENT_PROFILE_COVER_COLOR = "#1868DB";
+const AGENT_AVATAR_PROFILE_COVER_COLORS: Record<string, string> = {
+	"dev-agents": "#82B536",
+	"product-agents": "#BF63F3",
+	"service-agents": "#FFC716",
+	"strategy-agents": "#FF9F1A",
+	"teamwork-agents": DEFAULT_AGENT_PROFILE_COVER_COLOR,
+};
 
 const AGENT_KNOWLEDGE_SOURCES = [
 	{ id: "twg", label: "Teamwork Graph", provider: "twg" },
@@ -94,6 +102,11 @@ function mapMemoryToMentionItems(
 			label: node.title || node.label || node.id,
 			description: node.summary || node.kind,
 		}));
+}
+
+function getAgentProfileCoverBackgroundColor(avatarSrc: string | undefined): string {
+	const category = avatarSrc?.match(/\/avatar-agent\/([^/]+)\//u)?.[1];
+	return (category ? AGENT_AVATAR_PROFILE_COVER_COLORS[category] : undefined) ?? DEFAULT_AGENT_PROFILE_COVER_COLOR;
 }
 
 export type AgentConfigTextFieldName =
@@ -322,9 +335,11 @@ function AgentSectionLabel({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 function AgentProfileCover({ avatarSrc = AGENT_AVATAR_SRC }: Readonly<{ avatarSrc?: string }>) {
+	const coverBackgroundColor = getAgentProfileCoverBackgroundColor(avatarSrc);
+
 	return (
 		<div className="relative overflow-hidden rounded-t-xl bg-surface text-text">
-			<div className="relative h-12 overflow-hidden bg-[#1868DB]">
+			<div className="relative h-12 overflow-hidden" style={{ backgroundColor: coverBackgroundColor }}>
 				<Image
 					alt=""
 					aria-hidden
