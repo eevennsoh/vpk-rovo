@@ -797,21 +797,24 @@ function HomeStarterBento({
 }>) {
 	const [activeCategory, setActiveCategory] = useState<HomeStarterCategory>(HOME_STARTER_DEFAULT_CATEGORY);
 	const [browseOpen, setBrowseOpen] = useState(false);
-	const [cycleEnabled, setCycleEnabled] = useState(true);
 	const [bentoInteracting, setBentoInteracting] = useState(false);
 	const shouldReduceMotion = useReducedMotion();
 	const focusedTemplatePromptRef = useRef<string | null>(null);
 	const hoveredTemplatePromptRef = useRef<string | null>(null);
+	const bentoInteractingRef = useRef(false);
 	const tileRefs = useRef<Array<HTMLButtonElement | null>>([]);
 	const templates = HOME_STARTER_VIEWS[activeCategory];
 	const visibleTemplates = templates.slice(0, 5);
 	const canShowMore = templates.length > visibleTemplates.length;
-	const cycleRunning = cycleEnabled && !shouldReduceMotion && !browseOpen;
+	const cycleRunning = !shouldReduceMotion && !browseOpen;
 	const cycleProgress = useMotionValue(0);
 	const cycleControlsRef = useRef<AnimationPlaybackControls | null>(null);
+	const updateBentoInteracting = useCallback((interacting: boolean) => {
+		bentoInteractingRef.current = interacting;
+		setBentoInteracting(interacting);
+	}, []);
 	const selectHomeStarterCategory = useCallback((category: HomeStarterCategory) => {
 		setActiveCategory(category);
-		setCycleEnabled(false);
 	}, []);
 
 	useEffect(() => {
@@ -833,6 +836,9 @@ function HomeStarterBento({
 				});
 			},
 		});
+		if (bentoInteractingRef.current) {
+			controls.pause();
+		}
 		cycleControlsRef.current = controls;
 
 		return () => {
@@ -907,14 +913,14 @@ function HomeStarterBento({
 	return (
 		<div
 			className="w-full"
-			onFocus={() => setBentoInteracting(true)}
+			onFocus={() => updateBentoInteracting(true)}
 			onBlur={(event) => {
 				if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-					setBentoInteracting(false);
+					updateBentoInteracting(false);
 				}
 			}}
-			onMouseEnter={() => setBentoInteracting(true)}
-			onMouseLeave={() => setBentoInteracting(false)}
+			onMouseEnter={() => updateBentoInteracting(true)}
+			onMouseLeave={() => updateBentoInteracting(false)}
 		>
 			<div className="flex flex-wrap justify-center gap-2">
 				{HOME_STARTER_CATEGORIES.map((category) => {

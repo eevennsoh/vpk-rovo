@@ -141,6 +141,15 @@ test("Studio home bento applies card glow pointer flow to starter tiles", () => 
 	assert.doesNotMatch(SHELL_SOURCE, /rounded-lg border border-border bg-background/u);
 });
 
+test("Studio home bento keeps tab auto-cycle active after manual tab selection", () => {
+	assert.match(SHELL_SOURCE, /const cycleRunning = !shouldReduceMotion && !browseOpen;/u);
+	assert.match(SHELL_SOURCE, /const bentoInteractingRef = useRef\(false\);/u);
+	assert.match(SHELL_SOURCE, /const updateBentoInteracting = useCallback\(\(interacting: boolean\) => \{[\s\S]*bentoInteractingRef\.current = interacting;[\s\S]*setBentoInteracting\(interacting\);[\s\S]*\}, \[\]\);/u);
+	assert.match(SHELL_SOURCE, /const selectHomeStarterCategory = useCallback\(\(category: HomeStarterCategory\) => \{[\s\S]*setActiveCategory\(category\);[\s\S]*\}, \[\]\);/u);
+	assert.match(SHELL_SOURCE, /if \(bentoInteractingRef\.current\) \{[\s\S]*controls\.pause\(\);[\s\S]*\}[\s\S]*cycleControlsRef\.current = controls;/u);
+	assert.doesNotMatch(SHELL_SOURCE, /setCycleEnabled\(false\)/u);
+});
+
 test("Studio chat header is hidden until a chat is active", () => {
 	assert.match(SHELL_SOURCE, /const shouldShowChatHeader = visibleMessages\.length > 0 \|\| hasActiveThreadRun \|\| chat\.isStreaming;/u);
 	assert.match(SHELL_SOURCE, /\{shouldShowChatHeader \? \(\s*<RovoAppHeader/u);
