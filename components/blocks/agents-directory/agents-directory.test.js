@@ -165,54 +165,40 @@ test("Agents Directory uses one unsegmented results grid and updated sidebar lab
 	}
 });
 
-test("Agents Directory cards hover with overlay elevation and hidden stroke", () => {
+test("Agents Directory cards render the shared CardDirectoryAgent with overlay elevation", () => {
 	const source = readProjectFile("components/blocks/agent-browser/components/agent-browser.tsx");
 
-	assert.match(source, /import \{ motion, useReducedMotion \} from "motion\/react";/u);
-	assert.match(source, /import AiChatIcon from "@atlaskit\/icon\/core\/ai-chat";/u);
-	assert.match(source, /import ShowMoreHorizontalIcon from "@atlaskit\/icon\/core\/show-more-horizontal";/u);
-	assert.match(source, /import StarUnstarredIcon from "@atlaskit\/icon\/core\/star-unstarred";/u);
-	assert.doesNotMatch(source, /@atlaskit\/icon\/core\/comment/u);
-	assert.doesNotMatch(source, /@atlaskit\/icon\/core\/star-starred/u);
-	assert.match(source, /const AGENT_CARD_OVERLAY_SHADOW = token\("elevation\.shadow\.overlay"\);/u);
-	assert.match(source, /const AGENT_CARD_HOVER_ANIMATION = \{[\s\S]*borderColor: "transparent",[\s\S]*boxShadow: AGENT_CARD_OVERLAY_SHADOW,[\s\S]*transform: "scale\(1\.006\)",[\s\S]*\} as const;/u);
-	assert.match(source, /const AGENT_CARD_REDUCED_HOVER_ANIMATION = \{[\s\S]*borderColor: "transparent",[\s\S]*boxShadow: AGENT_CARD_OVERLAY_SHADOW,[\s\S]*\} as const;/u);
-	assert.match(source, /const AGENT_CARD_HOVER_TRANSITION = \{[\s\S]*type: "spring",[\s\S]*bounce: 0\.16,[\s\S]*visualDuration: 0\.22,[\s\S]*\} as const;/u);
-	assert.match(source, /<div className="flex items-start gap-2">/u);
-	assert.doesNotMatch(source, /<div className="flex items-start gap-3">/u);
+	// Cards are delegated to the shared ui-custom component — no inlined shell duplication.
+	assert.match(source, /import \{ CardDirectoryAgent \} from "@\/components\/ui-custom\/card-directory";/u);
+	assert.match(source, /<CardDirectoryAgent[\s\S]*avatarImageClassName=\{getDirectoryCardAvatarClassName\(agent\)\}/u);
+	assert.match(source, /onSelect=\{onSelectAgent \? \(\) => onSelectAgent\(agent\) : undefined\}/u);
+	assert.doesNotMatch(source, /AgentDirectoryCard/u);
+	assert.doesNotMatch(source, /AGENT_CARD_OVERLAY_SHADOW/u);
+	assert.doesNotMatch(source, /import \{ motion, useReducedMotion \}/u);
+
+	// Avatar scaling for wide third-party logos is still derived locally.
 	assert.match(source, /function getDirectoryCardAvatarClassName\(agent: AgentBrowserAgent\): string/u);
 	assert.match(source, /if \(agent\.id === "google-drive" \|\| agent\.id === "slack"\)/u);
 	assert.match(source, /return "size-full scale-85 object-contain";/u);
-	assert.match(source, /className=\{getDirectoryCardAvatarClassName\(agent\)\}/u);
-	assert.match(source, /<p className="line-clamp-2 min-h-10 text-sm leading-5 text-text">/u);
-	assert.doesNotMatch(source, /line-clamp-2 min-h-10 text-xs leading-5 text-text-subtle/u);
-	assert.match(source, /const handleMoreActionClick = \(event: MouseEvent<HTMLButtonElement>\) => \{[\s\S]*event\.stopPropagation\(\);[\s\S]*\};/u);
-	assert.match(
-		source,
-		/<Button[\s\S]*aria-label=\{`More actions for \$\{agent\.name\}`\}[\s\S]*className="size-6 shrink-0 cursor-pointer opacity-0 transition-opacity duration-fast ease-out group-hover\/card:opacity-100 group-focus-within\/card:opacity-100"[\s\S]*onClick=\{handleMoreActionClick\}[\s\S]*size="icon-xs"[\s\S]*type="button"[\s\S]*variant="ghost"[\s\S]*<ShowMoreHorizontalIcon label="" size="small" \/>[\s\S]*<\/Button>/u,
-	);
-	assert.match(source, /<div className="flex items-center gap-4 text-xs leading-4 text-text-subtlest">/u);
-	assert.match(
-		source,
-		/<Icon[\s\S]*className="size-3 text-icon-subtlest \[&_svg\]:size-3"[\s\S]*render=\{<StarUnstarredIcon label="" size="small" spacing="none" color="currentColor" \/>\}/u,
-	);
-	assert.match(
-		source,
-		/<Icon[\s\S]*className="size-3 text-icon-subtlest \[&_svg\]:size-3"[\s\S]*render=\{<AiChatIcon label="" size="small" spacing="none" color="currentColor" \/>\}/u,
-	);
-	assert.match(
-		source,
-		/"group\/card flex h-full w-full cursor-pointer flex-col gap-3 rounded-md border border-border bg-surface p-4 text-left outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring\/50"/u,
-	);
-	assert.match(source, /const shouldReduceMotion = useReducedMotion\(\);/u);
-	assert.match(source, /whileHover: hoverAnimation/u);
-	assert.match(source, /whileTap=\{tapAnimation\}/u);
-	assert.match(source, /style: \{ willChange: "transform, box-shadow, border-color" \}/u);
-	assert.match(source, /<motion\.article[\s\S]*role="button"[\s\S]*tabIndex=\{0\}[\s\S]*whileTap=\{tapAnimation\}[\s\S]*\{content\}[\s\S]*<\/motion\.article>/u);
-	assert.match(source, /return <motion\.article \{\.\.\.cardMotionProps\}>\{content\}<\/motion\.article>;/u);
-	assert.doesNotMatch(source, /hover:-translate-y/u);
-	assert.doesNotMatch(source, /hover:border-border-selected/u);
-	assert.doesNotMatch(source, /hover:bg-surface-hovered/u);
-	assert.doesNotMatch(source, /hover:shadow-2xl/u);
-	assert.doesNotMatch(source, /transition-\[background-color,border-color,box-shadow,transform\]/u);
+
+	// The hover/elevation/keyboard contract now lives in the shared shell + agent wrapper.
+	const shell = readProjectFile("components/ui-custom/card-directory/card-directory.tsx");
+	const interaction = readProjectFile("components/ui-custom/card-directory/use-card-interaction.ts");
+	const agentWrapper = readProjectFile("components/ui-custom/card-directory/card-directory-agent.tsx");
+
+	assert.match(interaction, /token\("elevation\.shadow\.overlay"\)/u);
+	assert.match(interaction, /scale: 1\.006/u);
+	assert.match(interaction, /type: "spring",[\s\S]*bounce: 0\.16,[\s\S]*visualDuration: 0\.22/u);
+	assert.match(shell, /group\/card flex h-full w-full flex-col gap-3 rounded-md border border-border bg-surface p-4/u);
+	assert.match(shell, /focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring\/50/u);
+	assert.match(shell, /willChange: "transform"/u);
+	assert.match(shell, /role="button"[\s\S]*tabIndex=\{0\}[\s\S]*whileTap=\{tapAnimation\}/u);
+
+	assert.match(agentWrapper, /shape="hexagon"/u);
+	assert.match(agentWrapper, /<CardDirectoryByline/u);
+	assert.match(agentWrapper, /StarUnstarredIcon/u);
+	assert.match(agentWrapper, /AiChatIcon/u);
+
+	assert.doesNotMatch(shell, /hover:-translate-y/u);
+	assert.doesNotMatch(shell, /hover:shadow-2xl/u);
 });

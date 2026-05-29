@@ -1,16 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { type KeyboardEvent, type MouseEvent, useMemo, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
-import AiChatIcon from "@atlaskit/icon/core/ai-chat";
+import { useMemo, useState } from "react";
 import AlignTextLeftIcon from "@atlaskit/icon/core/align-text-left";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import SearchIcon from "@atlaskit/icon/core/search";
-import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
-import StatusVerifiedIcon from "@atlaskit/icon/core/status-verified";
-import StarUnstarredIcon from "@atlaskit/icon/core/star-unstarred";
 
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -18,6 +13,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui
 import { Icon } from "@/components/ui/icon";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { SidebarNavItem } from "@/components/ui/sidebar-nav-item";
+import { CardDirectoryAgent } from "@/components/ui-custom/card-directory";
 import { token } from "@/lib/tokens";
 
 export interface AgentBrowserAgent {
@@ -64,24 +60,6 @@ const DEFAULT_CATEGORIES: readonly AgentBrowserCategory[] = [
 	{ id: "all", label: "All" },
 	{ id: "my-agents", label: "My agents" },
 ] as const;
-const AGENT_CARD_OVERLAY_SHADOW = token("elevation.shadow.overlay");
-const AGENT_CARD_HOVER_ANIMATION = {
-	borderColor: "transparent",
-	boxShadow: AGENT_CARD_OVERLAY_SHADOW,
-	scale: 1.006,
-} as const;
-const AGENT_CARD_REDUCED_HOVER_ANIMATION = {
-	borderColor: "transparent",
-	boxShadow: AGENT_CARD_OVERLAY_SHADOW,
-} as const;
-const AGENT_CARD_TAP_ANIMATION = {
-	scale: 0.998,
-} as const;
-const AGENT_CARD_HOVER_TRANSITION = {
-	type: "spring",
-	bounce: 0.16,
-	visualDuration: 0.22,
-} as const;
 
 function derivePublisher(byline: string): string {
 	const match = /\bby\s+(.+)$/i.exec(byline);
@@ -112,12 +90,6 @@ function syntheticChats(id: string): number {
 
 function syntheticFeedback(id: string): number {
 	return 50 + (hashString(`${id}-feedback`) % 2000);
-}
-
-function formatCompact(value: number): string {
-	if (value >= 10000) return `${Math.round(value / 1000)}K`;
-	if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-	return `${value}`;
 }
 
 function filterByQuery(
@@ -380,128 +352,27 @@ function AgentSection({ agents, onSelectAgent }: Readonly<AgentSectionProps>) {
 	return (
 		<section aria-label="Agents">
 			<ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-				{agents.map((agent) => (
-					<li key={agent.id}>
-						<AgentDirectoryCard agent={agent} onSelectAgent={onSelectAgent} />
-					</li>
-				))}
+				{agents.map((agent) => {
+					const publisher = derivePublisher(agent.byline);
+					return (
+						<li key={agent.id}>
+							<CardDirectoryAgent
+								avatarImageClassName={getDirectoryCardAvatarClassName(agent)}
+								avatarSrc={agent.avatarSrc}
+								chatCount={syntheticChats(agent.id)}
+								description={agent.description}
+								feedbackCount={syntheticFeedback(agent.id)}
+								name={agent.name}
+								onMoreActions={() => {}}
+								onSelect={onSelectAgent ? () => onSelectAgent(agent) : undefined}
+								publisher={publisher}
+								rating={syntheticRating(agent.id)}
+								verified={isVerified(agent, publisher)}
+							/>
+						</li>
+					);
+				})}
 			</ul>
 		</section>
 	);
-}
-
-interface AgentDirectoryCardProps {
-	agent: AgentBrowserAgent;
-	onSelectAgent?: (agent: AgentBrowserAgent) => void;
-}
-
-function AgentDirectoryCard({ agent, onSelectAgent }: Readonly<AgentDirectoryCardProps>) {
-	const publisher = derivePublisher(agent.byline);
-	const verified = isVerified(agent, publisher);
-	const rating = syntheticRating(agent.id);
-	const feedback = syntheticFeedback(agent.id);
-	const chats = syntheticChats(agent.id);
-	const interactive = Boolean(onSelectAgent);
-	const shouldReduceMotion = useReducedMotion();
-	const hoverAnimation = shouldReduceMotion ? AGENT_CARD_REDUCED_HOVER_ANIMATION : AGENT_CARD_HOVER_ANIMATION;
-	const tapAnimation = shouldReduceMotion ? undefined : AGENT_CARD_TAP_ANIMATION;
-	const handleSelectAgent = () => onSelectAgent?.(agent);
-	const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-		if (!interactive) return;
-		if (event.key !== "Enter" && event.key !== " ") return;
-
-		event.preventDefault();
-		handleSelectAgent();
-	};
-	const handleMoreActionClick = (event: MouseEvent<HTMLButtonElement>) => {
-		event.stopPropagation();
-	};
-
-	const content = (
-		<>
-			<div className="flex items-start gap-2">
-				<Avatar size="default" shape="hexagon" className="shrink-0">
-					<Image
-						alt=""
-						aria-hidden
-						className={getDirectoryCardAvatarClassName(agent)}
-						height={32}
-						src={agent.avatarSrc}
-						width={32}
-					/>
-				</Avatar>
-				<div className="min-w-0 flex-1">
-					<h3 className="truncate text-text" style={{ font: token("font.heading.xsmall") }}>{agent.name}</h3>
-					<p className="flex items-center gap-1 text-xs leading-4 text-text-subtle">
-						<span>By</span>
-						<span className="truncate text-link">{publisher}</span>
-						{verified ? (
-							<Icon
-								className="text-icon-information"
-								render={<StatusVerifiedIcon label="Verified" size="small" color="currentColor" />}
-							/>
-						) : null}
-					</p>
-				</div>
-				<Button
-					aria-label={`More actions for ${agent.name}`}
-					className="size-6 shrink-0 cursor-pointer opacity-0 transition-opacity duration-fast ease-out group-hover/card:opacity-100 group-focus-within/card:opacity-100"
-					onClick={handleMoreActionClick}
-					size="icon-xs"
-					type="button"
-					variant="ghost"
-				>
-					<ShowMoreHorizontalIcon label="" size="small" />
-				</Button>
-			</div>
-
-			<p className="line-clamp-2 min-h-10 text-sm leading-5 text-text">
-				{agent.description ?? `Learn how ${agent.name} can help your team work faster.`}
-			</p>
-
-			<div className="flex items-center gap-4 text-xs leading-4 text-text-subtlest">
-				<span className="inline-flex items-center gap-1">
-					<Icon
-						className="size-3 text-icon-subtlest [&_svg]:size-3"
-						render={<StarUnstarredIcon label="" size="small" spacing="none" color="currentColor" />}
-					/>
-					{rating.toFixed(1)} ({formatCompact(feedback)} feedback)
-				</span>
-				<span className="inline-flex items-center gap-1">
-					<Icon
-						className="size-3 text-icon-subtlest [&_svg]:size-3"
-						render={<AiChatIcon label="" size="small" spacing="none" color="currentColor" />}
-					/>
-					{formatCompact(chats)} chats
-				</span>
-			</div>
-		</>
-	);
-
-	const cardClassName =
-		"group/card flex h-full w-full cursor-pointer flex-col gap-3 rounded-md border border-border bg-surface p-4 text-left outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
-	const cardMotionProps = {
-		className: cardClassName,
-		style: { willChange: "transform" },
-		transition: AGENT_CARD_HOVER_TRANSITION,
-		whileHover: hoverAnimation,
-	};
-
-	if (interactive) {
-		return (
-			<motion.article
-				aria-label={`Select ${agent.name}`}
-				onClick={handleSelectAgent}
-				onKeyDown={handleCardKeyDown}
-				role="button"
-				tabIndex={0}
-				whileTap={tapAnimation}
-				{...cardMotionProps}
-			>
-				{content}
-			</motion.article>
-		);
-	}
-
-	return <motion.article {...cardMotionProps}>{content}</motion.article>;
 }

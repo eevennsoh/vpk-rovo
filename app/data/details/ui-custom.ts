@@ -3,21 +3,71 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 export const UI_CUSTOM_DETAILS: Record<string, ComponentDetail> = {
 	"card-directory": {
 		description:
-			"A directory listing card with a hexagon avatar, title, attribution with optional verified badge, two-line description, and optional rating and chat stats. Passing onSelect turns the whole card into a keyboard-operable button; onMoreActions reveals an overflow button on hover/focus.",
-		usage: `import { CardDirectory } from "@/components/ui-custom/card-directory";
+			"A directory listing card with a shared shell (bordered surface, hover elevation, optional keyboard-operable button) and four ready-made variants that swap the leading visual and footer: agent (hexagon avatar + rating/chats), skill (icon tile + publisher + views), tool (app logo + tool/teammate counts), and template (rich icon + \"Works with\" sources and \"Skills\" tags). Compose your own layout with the CardDirectory parts, or use a variant wrapper. Passing onSelect turns the card into a keyboard-operable button; onMoreActions reveals an overflow button on hover/focus.",
+		usage: `import {
+  CardDirectoryAgent,
+  CardDirectorySkill,
+  CardDirectoryTool,
+  CardDirectoryTemplate,
+} from "@/components/ui-custom/card-directory";
+import PageIcon from "@atlaskit/icon/core/page";
+import { ConfluenceLogo } from "@/components/ui/logo";
 
-<CardDirectory
+// Agent — hexagon avatar, attribution, rating + chats
+<CardDirectoryAgent
   name="Feedback analyzer"
   publisher="Atlassian"
   avatarSrc="/avatar-agent/product-agents/feedback-analyzer.svg"
-  description="Surfaces themes and sentiment from raw customer feedback in seconds."
+  description="Surfaces themes and sentiment from raw customer feedback."
   verified
   rating={4.6}
   feedbackCount={1280}
   chatCount={9400}
   onSelect={() => openAgent()}
   onMoreActions={() => openMenu()}
-/>`,
+/>
+
+// Skill — icon tile + publisher logo + star/view counts
+<CardDirectorySkill
+  name="Create page"
+  icon={<PageIcon label="" />}
+  iconVariant="blue"
+  publisher="Atlassian"
+  publisherLogo={<ConfluenceLogo size="xsmall" />}
+  description="Create a new formatted page in Confluence."
+  starCount={38}
+  viewCount={6273}
+  onSelect={() => runSkill()}
+/>
+
+// Tool — app logo tile + tool/teammate counts
+<CardDirectoryTool
+  name="Confluence"
+  appLogo={<ConfluenceLogo size="small" />}
+  description="Create, search, and update pages."
+  toolCount={36}
+  teammateCount={258}
+  onSelect={() => openApp()}
+/>
+
+// Template — rich icon + "Works with" sources and "Skills" tags
+<CardDirectoryTemplate
+  name="Customer Insights"
+  iconSrc="/avatar-agent/teamwork-agents/customer-insights.svg"
+  description="Surface customer feedback themes from trusted sources."
+  sources={[{ id: "jira", label: "Jira", provider: "jira" }]}
+  skills={[{ label: "jql-search", color: "software" }]}
+  onSelect={() => useTemplate()}
+/>
+
+// Custom layout — compose the shared parts directly
+import {
+  CardDirectory,
+  CardDirectoryHeader,
+  CardDirectoryDescription,
+  CardDirectoryFooter,
+  CardDirectoryStat,
+} from "@/components/ui-custom/card-directory";`,
 	},
 	"audio-player": {
 		description:
