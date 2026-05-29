@@ -741,7 +741,7 @@ function HomeStarterHeroTile({
 					<span className="block w-full min-w-0 text-sm font-semibold leading-5 text-text">
 						{template.title}
 					</span>
-					<span className="block w-full min-w-0 text-sm leading-5 text-text-subtle">
+					<span className="block w-full min-w-0 text-sm leading-5 text-text">
 						{template.description}
 					</span>
 				</div>
