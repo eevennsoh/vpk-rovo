@@ -1,15 +1,17 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import CustomizeMenu from "@/components/blocks/shared-ui/customize-menu";
 import { DEFAULT_REASONING_OPTION_ID } from "@/components/blocks/shared-ui/data/customize-menu-data";
 import {
 	composerPromptInputClassName,
 	composerTextareaClassName,
 	composerUpwardShadow,
+	floatingComposerTextareaClassName,
 	textareaCSS,
 } from "@/components/blocks/shared-ui/composer-styles";
+import { FloatingComposer } from "@/components/projects/shared/components/floating-composer";
 import {
 	RovoComposerActionButton,
 	RovoComposerSendControls,
@@ -51,22 +53,6 @@ function DemoFrame({ children, className }: Readonly<DemoFrameProps>) {
 		</div>
 	);
 }
-
-// The floating bar lays its three controls — add button, textarea, action button —
-// onto the flex InputGroup that PromptInput renders. Because PromptInputBody uses
-// `display: contents`, the textarea is a direct flex child alongside the buttons, so we
-// reflow single-line ↔ multi-line by toggling flex-wrap + per-child `order`/`basis`
-// (the textarea never remounts, preserving focus and caret position). We deliberately
-// avoid `grid-template-areas` here: CSS minification collapses the significant whitespace
-// inside its string value and corrupts the layout.
-
-// Single line: one row — add · textarea · action.
-const floatingComposerLayoutSingleLine =
-	"[&>[data-slot=input-group]]:flex-nowrap [&>[data-slot=input-group]]:items-center [&>[data-slot=input-group]]:gap-x-2";
-
-// Multi-line: textarea spans the full width on top, buttons wrap to a row beneath it.
-const floatingComposerLayoutMultiLine =
-	"[&>[data-slot=input-group]]:flex-wrap [&>[data-slot=input-group]]:items-center [&>[data-slot=input-group]]:gap-x-2 [&>[data-slot=input-group]]:gap-y-3";
 
 export default function PromptInputDemo() {
 	return <PromptInputDemoChatComposer />;
@@ -225,21 +211,6 @@ export function PromptInputDemoChatComposer() {
 export function PromptInputDemoFloatingBar() {
 	const [prompt, setPrompt] = useState("");
 	const [realtimeVoiceActive, setRealtimeVoiceActive] = useState(false);
-	const [isMultiline, setIsMultiline] = useState(false);
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-	// The grid layout depends on whether the textarea has grown past one line, which is a
-	// rendered-DOM measurement (scrollHeight) rather than a value we can derive from state —
-	// so we read it in an effect after each value change. ~36px sits between one line (24px)
-	// and two lines (48px) for the composer's `leading-6` textarea.
-	useEffect(() => {
-		const textarea = textareaRef.current;
-		if (!textarea) {
-			return;
-		}
-
-		setIsMultiline(textarea.scrollHeight > 36);
-	}, [prompt]);
 
 	const handleToggleRealtimeVoice = useCallback(() => {
 		setRealtimeVoiceActive((prev) => !prev);
@@ -253,47 +224,10 @@ export function PromptInputDemoFloatingBar() {
 
 	return (
 		<DemoFrame>
-			<PromptInput
-				variant="floating"
+			<FloatingComposer
 				allowOverflow
 				onSubmit={() => setPrompt("")}
-				className={cn(
-					composerPromptInputClassName,
-					isMultiline
-						? floatingComposerLayoutMultiLine
-						: floatingComposerLayoutSingleLine,
-				)}
-			>
-				<PromptInputBody>
-					<PromptInputTextarea
-						ref={textareaRef}
-						value={prompt}
-						onChange={(e) => setPrompt(e.currentTarget.value)}
-						placeholder="Ask, @mention, or / for actions"
-						rows={1}
-						className={cn(
-							composerTextareaClassName,
-							"min-w-0",
-							isMultiline ? "order-1 basis-full" : "order-2 flex-1",
-						)}
-					/>
-				</PromptInputBody>
-
-				<PromptInputButton
-					className={isMultiline ? "order-2" : "order-1"}
-					aria-label="Add"
-					size="icon-sm"
-					variant="ghost"
-				>
-					<AddIcon label="" />
-				</PromptInputButton>
-
-				<div
-					className={cn(
-						"order-3 flex shrink-0 items-center gap-1",
-						isMultiline && "ml-auto",
-					)}
-				>
+				actions={
 					<RovoComposerActionButton
 						canSubmit={canSubmit}
 						composerStatus="ready"
@@ -301,8 +235,17 @@ export function PromptInputDemoFloatingBar() {
 						onToggleRealtimeVoice={handleToggleRealtimeVoice}
 						realtimeVoiceActive={realtimeVoiceActive}
 					/>
-				</div>
-			</PromptInput>
+				}
+			>
+				<PromptInputTextarea
+					value={prompt}
+					onChange={(e) => setPrompt(e.currentTarget.value)}
+					placeholder="Ask, @mention, or / for actions"
+					autoResize
+					rows={1}
+					className={cn(composerTextareaClassName, floatingComposerTextareaClassName)}
+				/>
+			</FloatingComposer>
 
 			<style>{textareaCSS}</style>
 		</DemoFrame>

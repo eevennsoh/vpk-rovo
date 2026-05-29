@@ -9,6 +9,12 @@ export const composerPromptInputClassName =
 export const composerTextareaClassName =
 	"chat-composer-textarea min-h-6 max-h-[120px] px-0 py-0 font-normal leading-6 shadow-none outline-none ring-0";
 
+// Textarea sizing for the floating composer layout: `min-h-8` makes the field as tall as
+// the leading/trailing icon buttons so a single line sits vertically centered on the flex
+// row, while `flex-1` lets it fill the width between the "+" and the action cluster.
+export const floatingComposerTextareaClassName =
+	"min-h-8 flex-1 py-1.5 leading-5";
+
 export const textareaCSS = `
 	.chat-composer-textarea:placeholder-shown {
 		white-space: nowrap;
