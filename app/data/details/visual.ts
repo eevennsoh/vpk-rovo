@@ -88,6 +88,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 			{ name: "iconContrast", type: "number", default: "1.4", description: "Contrast multiplier for the duplicated avatar glow." },
 			{ name: "iconScale", type: "number", default: "3.4", description: "Scale applied to the duplicated avatar glow layer." },
 			{ name: "iconOpacity", type: "number", default: "0.25", description: "Opacity for the glow layer, reduced until hover or focus when exclude mode is enabled." },
+			{ name: "borderSpread", type: "number", default: "120", description: "Fade radius for the pointer-driven border highlight; higher values create longer stroke traces along the card edge." },
 			{ name: "borderWidth", type: "number", default: "1", description: "Width of the masked backdrop-filter border ring." },
 			{ name: "borderBlur", type: "number", default: "0", description: "Backdrop blur applied through the masked border ring." },
 			{ name: "borderSaturate", type: "number", default: "4.2", description: "Backdrop saturation multiplier applied through the masked border ring." },

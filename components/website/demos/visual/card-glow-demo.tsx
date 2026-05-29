@@ -18,6 +18,7 @@ export interface CardGlowConfig {
 	iconContrast: number;
 	iconScale: number;
 	iconOpacity: number;
+	borderSpread: number;
 	borderWidth: number;
 	borderBlur: number;
 	borderSaturate: number;
@@ -35,6 +36,7 @@ export const CARD_GLOW_DEFAULT_CONFIG: CardGlowConfig = {
 	iconContrast: 1.4,
 	iconScale: 3.4,
 	iconOpacity: 0.25,
+	borderSpread: 120,
 	borderWidth: 1,
 	borderBlur: 0,
 	borderSaturate: 4.2,
@@ -190,6 +192,8 @@ export function CardGlowBento({ config }: Readonly<{ config: CardGlowConfig }>) 
 		"--card-glow-icon-contrast": config.iconContrast,
 		"--card-glow-icon-scale": config.iconScale,
 		"--card-glow-icon-opacity": config.iconOpacity,
+		"--card-glow-border-core": Math.max(1, config.borderSpread * 0.3),
+		"--card-glow-border-spread": config.borderSpread,
 		"--card-glow-border-width": config.borderWidth,
 		"--card-glow-border-blur": config.borderBlur,
 		"--card-glow-border-saturate": config.borderSaturate,
@@ -219,8 +223,8 @@ export function CardGlowBento({ config }: Readonly<{ config: CardGlowConfig }>) 
 			"circle at ",
 			"calc((var(--card-glow-pointer-x, -10) + 1) * 50%) ",
 			"calc((var(--card-glow-pointer-y, -10) + 1) * 50%), ",
-			"color-mix(in srgb, var(--card-glow-tile-accent) 78%, transparent) 0 24px, ",
-			"transparent 82px",
+			"color-mix(in srgb, var(--card-glow-tile-accent) 78%, transparent) 0 calc(var(--card-glow-border-core) * 1px), ",
+			"transparent calc(var(--card-glow-border-spread) * 1px)",
 			") border-box",
 		].join(""),
 		borderColor: "transparent",
@@ -434,6 +438,16 @@ export default function CardGlowDemo() {
 				</GUI.Section>
 
 				<GUI.Section title="Border">
+					<GUI.Control
+						id="card-glow-border-spread"
+						label="spread"
+						value={config.borderSpread}
+						defaultValue={CARD_GLOW_DEFAULT_CONFIG.borderSpread}
+						min={24}
+						max={240}
+						step={1}
+						onChange={(next) => updateConfig("borderSpread", next)}
+					/>
 					<GUI.Control
 						id="card-glow-border-width"
 						label="width"
