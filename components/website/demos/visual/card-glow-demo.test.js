@@ -35,6 +35,7 @@ test("Card Glow exposes CodePen-equivalent defaults and GUI controls", () => {
 		"iconContrast: 1.4",
 		"iconScale: 3.4",
 		"iconOpacity: 0.25",
+		"borderSpread: 120",
 		"borderWidth: 1",
 		"borderBlur: 0",
 		"borderSaturate: 4.2",
@@ -48,6 +49,7 @@ test("Card Glow exposes CodePen-equivalent defaults and GUI controls", () => {
 		"label=\"contrast\"",
 		"label=\"scale\"",
 		"label=\"opacity\"",
+		"label=\"spread\"",
 		"label=\"width\"",
 		"label=\"exclude\"",
 		"label=\"css\"",
@@ -104,6 +106,9 @@ test("Card Glow duplicates avatars for the glow and renders a masked border ring
 	assert.match(DEMO_SOURCE, /backdropFilter: borderFilter/);
 	assert.match(DEMO_SOURCE, /circle at /);
 	assert.match(DEMO_SOURCE, /var\(--card-glow-tile-accent\) 78%/);
+	assert.match(DEMO_SOURCE, /"--card-glow-border-spread": config\.borderSpread/);
+	assert.match(DEMO_SOURCE, /"--card-glow-border-core": Math\.max\(1, config\.borderSpread \* 0\.3\)/);
+	assert.match(DEMO_SOURCE, /transparent calc\(var\(--card-glow-border-spread\) \* 1px\)/);
 	assert.match(DEMO_SOURCE, /"--card-glow-tile-accent": tile\.accentColor/);
 	assert.match(DEMO_SOURCE, /getCardBorderClassName\(config\.theme\)/);
 	assert.match(DEMO_SOURCE, /absolute inset-0 z-\[1\] rounded-\[inherit\] border/);

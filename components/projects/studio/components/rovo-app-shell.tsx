@@ -2,7 +2,7 @@
 
 import type { FileUIPart } from "ai";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { type CSSProperties, startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
+import { type CSSProperties, type PointerEvent as ReactPointerEvent, startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArtifactPanel } from "@/components/ui-custom/artifact";
@@ -152,6 +152,8 @@ interface HomeStarterTemplate {
 	title: string;
 }
 
+type HomeStarterCardGlowCSSProperties = CSSProperties & Record<`--card-glow-${string}`, string | number>;
+
 const RICH_ICON_ROOT = "/illustration/rich-icon";
 const HOME_STARTER_DEFAULT_CATEGORY: HomeStarterCategory = "brainstorm";
 
@@ -162,6 +164,76 @@ const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "summarize", label: "Writing", iconSrc: `${RICH_ICON_ROOT}/illustrations/standard.svg`, iconClassName: "translate-y-px scale-[1.4]" },
 	{ id: "create", label: "Work management", iconSrc: `${RICH_ICON_ROOT}/project-management/standard.svg`, iconClassName: "scale-[1.08]" },
 ];
+
+const HOME_STARTER_CARD_GLOW_ACCENTS: Readonly<Record<HomeStarterCategory, readonly string[]>> = {
+	analyze: ["#1868DB", "#6A9A23", "#FCA700", "#AF59E1", "#FFC400"],
+	brainstorm: ["#1868DB", "#AF59E1", "#FCA700", "#6A9A23", "#FFC400"],
+	create: ["#FFC400", "#6A9A23", "#1868DB", "#AF59E1", "#FCA700"],
+	review: ["#FCA700", "#AF59E1", "#1868DB", "#6A9A23", "#FFC400"],
+	summarize: ["#AF59E1", "#1868DB", "#FCA700", "#6A9A23", "#FFC400"],
+};
+
+const HOME_STARTER_CARD_GLOW_EFFECT_STYLE: HomeStarterCardGlowCSSProperties = {
+	"--card-glow-border-blur": 0,
+	"--card-glow-border-brightness": 2.5,
+	"--card-glow-border-contrast": 2.5,
+	"--card-glow-border-core": 36,
+	"--card-glow-border-saturate": 4.2,
+	"--card-glow-border-spread": 120,
+	"--card-glow-border-width": 1,
+	"--card-glow-icon-blur": 28,
+	"--card-glow-icon-brightness": 1.3,
+	"--card-glow-icon-contrast": 1.4,
+	"--card-glow-icon-opacity": 0.25,
+	"--card-glow-icon-saturate": 5,
+	"--card-glow-icon-scale": 3.4,
+};
+
+const HOME_STARTER_CARD_GLOW_LAYER_STYLE: CSSProperties = {
+	filter: [
+		"blur(calc(var(--card-glow-icon-blur) * 1px))",
+		"saturate(var(--card-glow-icon-saturate))",
+		"brightness(var(--card-glow-icon-brightness))",
+		"contrast(var(--card-glow-icon-contrast))",
+	].join(" "),
+	scale: "var(--card-glow-icon-scale)",
+	translate: "calc(var(--card-glow-pointer-x, -10) * 50cqi) calc(var(--card-glow-pointer-y, -10) * 50cqh)",
+	willChange: "translate, scale, filter, opacity",
+};
+
+const HOME_STARTER_CARD_BASE_BORDER_STYLE: CSSProperties = {
+	boxShadow: `inset 0 0 0 calc(var(--card-glow-border-width) * 1px) ${token("color.border.bold")}`,
+};
+
+const HOME_STARTER_CARD_BORDER_GLOW_STYLE: CSSProperties = {
+	backdropFilter: [
+		"blur(calc(var(--card-glow-border-blur) * 1px))",
+		"saturate(var(--card-glow-border-saturate))",
+		"brightness(var(--card-glow-border-brightness))",
+		"contrast(var(--card-glow-border-contrast))",
+	].join(" "),
+	background: [
+		"radial-gradient(",
+		"circle at ",
+		"calc((var(--card-glow-pointer-x, -10) + 1) * 50%) ",
+		"calc((var(--card-glow-pointer-y, -10) + 1) * 50%), ",
+		"color-mix(in srgb, var(--card-glow-tile-accent) 78%, transparent) 0 calc(var(--card-glow-border-core) * 1px), ",
+		"transparent calc(var(--card-glow-border-spread) * 1px)",
+		") border-box",
+	].join(""),
+	borderColor: "transparent",
+	borderWidth: "calc(var(--card-glow-border-width) * 1px)",
+	mask: "linear-gradient(#fff 0 100%) border-box, linear-gradient(#fff 0 100%) padding-box",
+	maskComposite: "exclude",
+	WebkitBackdropFilter: [
+		"blur(calc(var(--card-glow-border-blur) * 1px))",
+		"saturate(var(--card-glow-border-saturate))",
+		"brightness(var(--card-glow-border-brightness))",
+		"contrast(var(--card-glow-border-contrast))",
+	].join(" "),
+	WebkitMask: "linear-gradient(#fff 0 100%) border-box, linear-gradient(#fff 0 100%) padding-box",
+	WebkitMaskComposite: "xor",
+};
 
 const HOME_STARTER_VIEWS: Readonly<Record<HomeStarterCategory, ReadonlyArray<HomeStarterTemplate>>> = {
 	analyze: [
@@ -554,6 +626,57 @@ function parseCssDurationMs(value: string): number | null {
 	return Number.isFinite(numericDuration) ? numericDuration : null;
 }
 
+function getHomeStarterCardGlowAccent(category: HomeStarterCategory, index: number): string {
+	const accents = HOME_STARTER_CARD_GLOW_ACCENTS[category];
+	return accents[index % accents.length];
+}
+
+function getHomeStarterCardStyle(accentColor: string): HomeStarterCardGlowCSSProperties {
+	return {
+		"--card-glow-tile-accent": accentColor,
+		containerType: "size",
+		willChange: "transform, opacity",
+	};
+}
+
+function resetHomeStarterCardPointer(tile: HTMLElement) {
+	tile.style.setProperty("--card-glow-pointer-x", "-10");
+	tile.style.setProperty("--card-glow-pointer-y", "-10");
+}
+
+function HomeStarterCardGlowLayers({ iconSrc }: Readonly<{ iconSrc: string }>) {
+	return (
+		<>
+			<span
+				aria-hidden
+				className="pointer-events-none absolute inset-0 z-0 grid place-items-center transform-gpu"
+				style={HOME_STARTER_CARD_GLOW_LAYER_STYLE}
+			>
+				<Image
+					alt=""
+					aria-hidden
+					className="size-12 object-contain opacity-[var(--card-glow-icon-opacity)]"
+					height={48}
+					src={iconSrc}
+					width={48}
+				/>
+			</span>
+			<span
+				aria-hidden
+				className="pointer-events-none absolute inset-0 z-[1] rounded-[inherit]"
+				data-home-starter-card-base-border
+				style={HOME_STARTER_CARD_BASE_BORDER_STYLE}
+			/>
+			<span
+				aria-hidden
+				className="pointer-events-none absolute inset-0 z-[2] overflow-hidden rounded-[inherit] border border-transparent"
+				data-home-starter-card-glow-border
+				style={HOME_STARTER_CARD_BORDER_GLOW_STYLE}
+			/>
+		</>
+	);
+}
+
 const HOME_STARTER_HERO_VARIANTS = {
 	exit: { opacity: 0, scale: 0.98, y: -4 },
 	hidden: { opacity: 0, scale: 0.98, y: 8 },
@@ -561,19 +684,23 @@ const HOME_STARTER_HERO_VARIANTS = {
 } as const;
 
 function HomeStarterHeroTile({
+	accentColor,
 	onBlur,
 	onClick,
 	onFocus,
 	onMouseEnter,
 	onMouseLeave,
+	setTileRef,
 	shouldReduceMotion,
 	template,
 }: Readonly<{
+	accentColor: string;
 	onBlur: () => void;
 	onClick: () => void;
 	onFocus: () => void;
 	onMouseEnter: () => void;
 	onMouseLeave: () => void;
+	setTileRef: (node: HTMLButtonElement | null) => void;
 	shouldReduceMotion: boolean | null;
 	template: HomeStarterTemplate & { hero: HomeStarterHeroDecoration };
 }>) {
@@ -583,7 +710,7 @@ function HomeStarterHeroTile({
 		<motion.button
 			aria-label={`Use prompt starter: ${template.title}`}
 			className={cn(
-				"group relative flex min-h-0 flex-col items-start gap-3 overflow-hidden rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-bold hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
+				"group group/home-starter-card relative isolate flex min-h-0 flex-col items-start gap-3 overflow-hidden rounded-lg bg-background p-4 text-left outline-none transition-[background-color,box-shadow] duration-fast ease-out hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
 				template.layoutClassName,
 			)}
 			onBlur={onBlur}
@@ -591,7 +718,8 @@ function HomeStarterHeroTile({
 			onFocus={onFocus}
 			onMouseEnter={onMouseEnter}
 			onMouseLeave={onMouseLeave}
-			style={{ willChange: "transform, opacity" }}
+			ref={setTileRef}
+			style={getHomeStarterCardStyle(accentColor)}
 			transition={{ duration: 0.2, ease: [0, 0.4, 0, 1] }}
 			type="button"
 			variants={HOME_STARTER_HERO_VARIANTS}
@@ -602,7 +730,8 @@ function HomeStarterHeroTile({
 			}
 			whileTap={shouldReduceMotion ? undefined : { scale: 0.98, transition: { duration: 0.05 } }}
 		>
-			<span className="inline-flex size-8 shrink-0 items-center justify-center">
+			<HomeStarterCardGlowLayers iconSrc={template.iconSrc} />
+			<span className="relative z-[3] inline-flex size-8 shrink-0 items-center justify-center">
 				<Image
 					alt=""
 					aria-hidden
@@ -612,7 +741,7 @@ function HomeStarterHeroTile({
 					width={32}
 				/>
 			</span>
-			<div className="flex min-h-0 flex-1 flex-col gap-4">
+			<div className="relative z-[3] flex min-h-0 flex-1 flex-col gap-4">
 				<div className="flex flex-col gap-1">
 					<span className="block w-full min-w-0 text-sm font-semibold leading-5 text-text">
 						{template.title}
@@ -677,6 +806,7 @@ function HomeStarterBento({
 	const shouldReduceMotion = useReducedMotion();
 	const focusedTemplatePromptRef = useRef<string | null>(null);
 	const hoveredTemplatePromptRef = useRef<string | null>(null);
+	const tileRefs = useRef<Array<HTMLButtonElement | null>>([]);
 	const templates = HOME_STARTER_VIEWS[activeCategory];
 	const visibleTemplates = templates.slice(0, 5);
 	const canShowMore = templates.length > visibleTemplates.length;
@@ -729,6 +859,31 @@ function HomeStarterBento({
 			onPreviewEnd();
 		}
 	}, [onPreviewEnd, onPreviewStart]);
+	const handleBentoPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+		for (const tile of tileRefs.current) {
+			if (!tile) {
+				continue;
+			}
+
+			const rect = tile.getBoundingClientRect();
+			const centerX = rect.left + rect.width / 2;
+			const centerY = rect.top + rect.height / 2;
+			const relativeX = event.clientX - centerX;
+			const relativeY = event.clientY - centerY;
+			const normalizedX = relativeX / (rect.width / 2);
+			const normalizedY = relativeY / (rect.height / 2);
+
+			tile.style.setProperty("--card-glow-pointer-x", normalizedX.toFixed(3));
+			tile.style.setProperty("--card-glow-pointer-y", normalizedY.toFixed(3));
+		}
+	}, []);
+	const resetBentoPointer = useCallback(() => {
+		for (const tile of tileRefs.current) {
+			if (tile) {
+				resetHomeStarterCardPointer(tile);
+			}
+		}
+	}, []);
 
 	return (
 		<div
@@ -792,7 +947,12 @@ function HomeStarterBento({
 				})}
 			</div>
 
-			<div className="@container/bento relative mt-6">
+			<div
+				className="@container/bento relative mt-6"
+				onPointerLeave={resetBentoPointer}
+				onPointerMove={handleBentoPointerMove}
+				style={HOME_STARTER_CARD_GLOW_EFFECT_STYLE}
+			>
 				<div className="relative">
 					<AnimatePresence mode="wait" initial={false}>
 						<motion.div
@@ -811,16 +971,22 @@ function HomeStarterBento({
 								},
 							}}
 						>
-							{visibleTemplates.map((template) => {
+							{visibleTemplates.map((template, index) => {
+								const accentColor = getHomeStarterCardGlowAccent(activeCategory, index);
+
 								if (template.hero) {
 									return (
 										<HomeStarterHeroTile
+											accentColor={accentColor}
 											key={template.title}
 											onBlur={handleTemplateBlur}
 											onClick={() => onSelect(template.prompt)}
 											onFocus={() => handleTemplateFocus(template.prompt)}
 											onMouseEnter={() => handleTemplateMouseEnter(template.prompt)}
 											onMouseLeave={handleTemplateMouseLeave}
+											setTileRef={(node) => {
+												tileRefs.current[index] = node;
+											}}
 											shouldReduceMotion={shouldReduceMotion}
 											template={template as HomeStarterTemplate & { hero: HomeStarterHeroDecoration }}
 										/>
@@ -847,9 +1013,12 @@ function HomeStarterBento({
 										onFocus={() => handleTemplateFocus(template.prompt)}
 										onBlur={handleTemplateBlur}
 										className={cn(
-											"group flex min-h-0 flex-col items-start gap-3 overflow-hidden rounded-lg border border-border bg-background p-4 text-left outline-none transition-[background-color,border-color,box-shadow] duration-fast ease-out hover:border-border-bold hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
+											"group group/home-starter-card relative isolate flex min-h-0 flex-col items-start gap-3 overflow-hidden rounded-lg bg-background p-4 text-left outline-none transition-[background-color,box-shadow] duration-fast ease-out hover:bg-bg-neutral-subtle focus-visible:ring-3 focus-visible:ring-ring/50",
 											template.layoutClassName,
 										)}
+										ref={(node) => {
+											tileRefs.current[index] = node;
+										}}
 										variants={{
 											hidden: { opacity: 0, y: 8, scale: 0.98 },
 											visible: { opacity: 1, y: 0, scale: 1 },
@@ -862,9 +1031,10 @@ function HomeStarterBento({
 												: { y: -2, transition: { type: "spring", stiffness: 400, damping: 22 } }
 										}
 										whileTap={shouldReduceMotion ? undefined : { scale: 0.98, transition: { duration: 0.05 } }}
-										style={{ willChange: "transform, opacity" }}
+										style={getHomeStarterCardStyle(accentColor)}
 									>
-										<span className="inline-flex size-8 shrink-0 items-center justify-center transition-opacity duration-fast ease-out group-hover:opacity-90">
+										<HomeStarterCardGlowLayers iconSrc={template.iconSrc} />
+										<span className="relative z-[3] inline-flex size-8 shrink-0 items-center justify-center transition-opacity duration-fast ease-out group-hover:opacity-90">
 											<Image
 												alt=""
 												aria-hidden
@@ -874,7 +1044,7 @@ function HomeStarterBento({
 												width={32}
 											/>
 										</span>
-										<span className="flex w-full min-w-0 flex-col gap-1">
+										<span className="relative z-[3] flex w-full min-w-0 flex-col gap-1">
 											<span className="block w-full min-w-0 text-sm font-semibold leading-5 text-text">
 												{template.title}
 											</span>
