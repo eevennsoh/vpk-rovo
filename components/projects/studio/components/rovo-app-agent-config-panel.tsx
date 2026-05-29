@@ -213,7 +213,7 @@ export function RovoAppAgentConfigPanel({
 						<>
 							<Button
 								type="button"
-								size="sm"
+								size="default"
 								variant="ghost"
 								onClick={handleUpdate}
 								disabled={!hasUpdateChanges}
@@ -224,7 +224,7 @@ export function RovoAppAgentConfigPanel({
 							</Button>
 							<Button
 								type="button"
-								size="sm"
+								size="default"
 								variant="default"
 								onClick={handlePublish}
 								disabled={!hasPublishChanges}
