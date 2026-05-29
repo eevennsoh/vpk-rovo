@@ -75,17 +75,24 @@ export default function VisualTracing({ config, text = SAMPLE_TEXT }: VisualTrac
 		WebkitBackgroundClip: layers.backgroundClip,
 		backgroundClip: layers.backgroundClip,
 		transition: animating ? `background-position ${durationMs}ms linear` : "none",
+		// `clone` gives each wrapped line its own full gradient so the light
+		// traces along every line (line mode) instead of one block-wide sweep.
+		WebkitBoxDecorationBreak: "clone",
+		boxDecorationBreak: "clone",
 	};
 
 	return (
 		<div className="flex w-full flex-col items-center gap-8">
-			<p
-				lang="en"
-				style={{ ...textStyle, maxWidth: "34ch" }}
+			{/* Block wrapper owns centering + max width so the inner text can stay
+			    truly `inline` (a direct flex child would be blockified). */}
+			<div
 				className="text-center text-2xl font-semibold leading-relaxed sm:text-3xl"
+				style={{ maxWidth: "34ch" }}
 			>
-				{text}
-			</p>
+				<span lang="en" style={textStyle}>
+					{text}
+				</span>
+			</div>
 			<Button variant="secondary" onClick={replay} disabled={reducedMotion}>
 				<RefreshIcon label="" size="small" />
 				Replay
