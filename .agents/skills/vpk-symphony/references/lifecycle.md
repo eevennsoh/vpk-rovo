@@ -18,7 +18,7 @@ Use this reference when executing or updating the VPK-rovo Symphony workflow.
 - `Merging`: follow `references/git/land.md`; move to `Done` only after a
   current-head passing Symphony Agent Review, green checks, clean mergeability,
   and GitHub-reported merge.
-- `Done`, `Canceled`, `Duplicate`: terminal.
+- `Done`, `Closed`, `Cancelled`, `Canceled`, `Duplicate`: terminal.
 
 ## Execution Rules
 

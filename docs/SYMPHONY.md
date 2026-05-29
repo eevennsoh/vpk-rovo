@@ -112,7 +112,7 @@ The wrapper also passes upstream Symphony the required
 With `--port`, upstream Symphony exposes:
 
 - `/`: Phoenix LiveView dashboard.
-- `/api/v1/state`: JSON snapshot of running and retrying work.
+- `/api/v1/state`: JSON snapshot of running, retrying, and blocked work.
 - `/api/v1/<issue_identifier>`: one issue's running or retrying status.
 - `/api/v1/refresh`: `POST` endpoint that requests an immediate poll.
 
@@ -141,7 +141,7 @@ customization in the YAML hooks plus the repository contract section.
 - `Merging`: worker follows the `vpk-symphony` landing reference and moves the
   issue to `Done` only after a current-head passing Symphony Agent Review,
   green checks, clean mergeability, and GitHub-reported merge commit.
-- `Done`, `Canceled`, `Duplicate`: terminal.
+- `Done`, `Closed`, `Cancelled`, `Canceled`, `Duplicate`: terminal.
 
 Symphony PRs should carry the `symphony` label and should not require
 `automerge:allowed`; Symphony owns the guarded merge path for this workflow.
@@ -180,6 +180,12 @@ write the handoff or blocker into the workpad. Completed implementation work
 should move to `Agent Review`; super-risk blockers move to `Human Review`; and
 answer-only work should move to `Done`.
 
+If Codex reports required operator input, an approval request, or MCP
+elicitation, upstream Symphony keeps the issue claimed and exposes it as blocked
+in the runtime state, JSON API, and dashboard. The blocked map is in memory only;
+restarting Symphony clears it, so any still-active Linear issue can be
+dispatched again after restart.
+
 Answer-only issues, such as “explain this codebase” or operational questions,
 do not need a branch or PR. Workers should do a bounded targeted read, put the
 answer in the workpad handoff, and move the issue to `Done`.
@@ -207,10 +213,11 @@ The workflow keeps the upstream defaults visible where local choices matter:
   cap, so merge work does not run in parallel across several issues.
 - `codex.command`: upstream-style `codex ... app-server` with inherited shell
   environment plus explicit `gpt-5.5` and `xhigh` reasoning settings.
-- `codex.approval_policy`: `on-request`, because the local Codex app-server
-  cloud requirements currently reject `never` turn overrides. Smooth unattended
-  behavior comes from keeping the worker prompt and validation path narrow, not
-  from forcing a policy the runtime will refuse.
+- `codex.approval_policy`: object-form `reject` for sandbox approvals, rule
+  approvals, and MCP elicitations, matching upstream's safer unattended default.
+- `codex.thread_sandbox`: `workspace-write`, matching upstream's safer default.
+- `codex.turn_sandbox_policy`: intentionally omitted so upstream derives a
+  `workspaceWrite` policy rooted at the current issue workspace.
 - `codex.turn_timeout_ms`: `300000`, `codex.read_timeout_ms`: `5000`, and
   `codex.stall_timeout_ms`: `120000`, local guards that prevent long-running or
   silent turns from burning indefinitely.

@@ -10,6 +10,8 @@ tracker:
     - Agent Review
     - Merging
   terminal_states:
+    - Closed
+    - Cancelled
     - Canceled
     - Duplicate
     - Done
@@ -54,13 +56,15 @@ agent:
     Merging: 1
 codex:
   command: codex --config shell_environment_policy.inherit=all --config 'model="gpt-5.5"' --config model_reasoning_effort=xhigh app-server
-  approval_policy: on-request
+  approval_policy:
+    reject:
+      sandbox_approval: true
+      rules: true
+      mcp_elicitations: true
   thread_sandbox: workspace-write
   turn_timeout_ms: 300000
   read_timeout_ms: 5000
   stall_timeout_ms: 120000
-  turn_sandbox_policy:
-    type: workspaceWrite
 ---
 
 You are working on a Linear ticket `{{ issue.identifier }}`
@@ -210,7 +214,7 @@ The agent should be able to talk to Linear, either via a configured Linear MCP s
 - `Merging` -> approved by Agent Review or Human Review; execute the
   `vpk-symphony` landing flow (do not call `gh pr merge` directly).
 - `Done` -> terminal state; no further action required.
-- `Canceled`, `Duplicate` -> terminal states; no further action required.
+- `Closed`, `Cancelled`, `Canceled`, `Duplicate` -> terminal states; no further action required.
 
 ## Phase prompts
 
@@ -277,7 +281,7 @@ Do nothing and shut down.
    - `Agent Review` -> run the read-only Agent Review flow.
    - `Human Review` -> wait and poll for super-risk or blocked-access decision updates.
    - `Merging` -> on entry, open and follow `.agents/skills/vpk-symphony/references/git/land.md`; do not call `gh pr merge` directly.
-   - `Done`, `Canceled`, `Duplicate` -> do nothing and shut down.
+   - `Done`, `Closed`, `Cancelled`, `Canceled`, `Duplicate` -> do nothing and shut down.
 4. Check whether a PR already exists for the current branch and whether it is closed.
    - If a branch PR exists and is `CLOSED` or `MERGED`, treat prior branch work as non-reusable for this run.
    - Create a fresh branch from `origin/main` and restart execution flow as a new attempt.
