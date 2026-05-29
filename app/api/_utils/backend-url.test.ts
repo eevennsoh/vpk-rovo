@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
-import { buildBackendUrlCandidates, fetchBackend } from "./backend-url.ts";
+import { buildBackendUrlCandidates, createCachedPortResolver, fetchBackend } from "./backend-url.ts";
 
 test("buildBackendUrlCandidates keeps the reserved backend port behind a stale recorded port", () => {
 	assert.deepEqual(
@@ -29,6 +29,30 @@ test("buildBackendUrlCandidates preserves env overrides ahead of port-file candi
 			"http://localhost:8080",
 		],
 	);
+});
+
+test("createCachedPortResolver reuses a successful reserved-port lookup", () => {
+	let callCount = 0;
+	const resolvePort = createCachedPortResolver(() => {
+		callCount += 1;
+		return 8160;
+	});
+
+	assert.equal(resolvePort(), 8160);
+	assert.equal(resolvePort(), 8160);
+	assert.equal(callCount, 1);
+});
+
+test("createCachedPortResolver retries unresolved ports", () => {
+	let callCount = 0;
+	const resolvePort = createCachedPortResolver(() => {
+		callCount += 1;
+		return callCount === 1 ? null : 8160;
+	});
+
+	assert.equal(resolvePort(), null);
+	assert.equal(resolvePort(), 8160);
+	assert.equal(callCount, 2);
 });
 
 test("fetchBackend retries generic backend route 404 responses against later candidates", async (t) => {
