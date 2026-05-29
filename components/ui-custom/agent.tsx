@@ -131,6 +131,7 @@ export const Agent = memo(({ className, ...props }: Readonly<AgentProps>) => (
 
 export type AgentHeaderProps = ComponentProps<"div"> & {
 	name: string;
+	avatarSrc?: string;
 	model?: string;
 	primaryActionLabel?: string;
 	secondaryActionLabel?: string;
@@ -142,6 +143,7 @@ export type AgentHeaderProps = ComponentProps<"div"> & {
 export const AgentHeader = memo(
 	({
 		className,
+		avatarSrc = AGENT_AVATAR_SRC,
 		model,
 		name,
 		primaryActionLabel = "Activate",
@@ -160,7 +162,7 @@ export const AgentHeader = memo(
 		>
 			<div className="flex min-w-0 items-center gap-2">
 				<Avatar label="Agent" shape="hexagon" size="sm">
-					<AvatarImage alt="" src={AGENT_AVATAR_SRC} />
+					<AvatarImage alt="" src={avatarSrc} />
 				</Avatar>
 				<span className="truncate text-sm font-semibold leading-5 text-text">{name}</span>
 				{model ? (
@@ -319,7 +321,7 @@ function AgentSectionLabel({ children }: Readonly<{ children: ReactNode }>) {
 	);
 }
 
-function AgentProfileCover() {
+function AgentProfileCover({ avatarSrc = AGENT_AVATAR_SRC }: Readonly<{ avatarSrc?: string }>) {
 	return (
 		<div className="relative overflow-hidden rounded-t-xl bg-surface text-text">
 			<div className="relative h-12 overflow-hidden bg-[#1868DB]">
@@ -328,7 +330,7 @@ function AgentProfileCover() {
 					aria-hidden
 					className="absolute top-1/2 left-[88%] h-48 w-[168px] -translate-x-1/2 -translate-y-1/2 opacity-95"
 					height={192}
-					src={AGENT_AVATAR_SRC}
+					src={avatarSrc}
 					width={168}
 				/>
 			</div>
@@ -338,7 +340,7 @@ function AgentProfileCover() {
 					alt="Agent avatar"
 					className="h-12 w-[42px]"
 					height={48}
-					src={AGENT_AVATAR_SRC}
+					src={avatarSrc}
 					width={42}
 				/>
 				<svg
@@ -567,6 +569,7 @@ function AgentInstructionsComposer({
 
 export interface AgentConfigFieldsProps extends ComponentProps<"div"> {
 	config: AgentConfigFormValue;
+	avatarSrc?: string;
 	idPrefix: string;
 	onTextChange?: (field: AgentConfigTextFieldName, value: string) => void;
 	onListItemChange?: (field: AgentConfigListFieldName, index: number, value: string) => void;
@@ -579,6 +582,7 @@ export const AgentConfigFields = memo(
 	({
 		className,
 		config,
+		avatarSrc,
 		idPrefix,
 		onListItemChange,
 		onAppendListItem,
@@ -601,7 +605,7 @@ export const AgentConfigFields = memo(
 					className="space-y-4 [&+*]:!mt-4"
 					data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:profile` : undefined}
 				>
-					<AgentProfileCover />
+					<AgentProfileCover avatarSrc={avatarSrc} />
 					<div
 						className="space-y-1"
 						data-agent-field="name"
