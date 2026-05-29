@@ -54,11 +54,11 @@ const iconTileVariants = cva(
 	{
 		variants: {
 			size: {
-				xsmall: "size-5 [&_svg]:size-3",
-				small: "size-6 [&_svg]:size-3.5",
-				medium: "size-8 [&_svg]:size-4",
-				large: "size-10 [&_svg]:size-5",
-				xlarge: "size-12 [&_svg]:size-6",
+				xsmall: "size-5 [font-size:12px] [&_span]:size-3! [&_svg]:size-3!",
+				small: "size-6 [font-size:14px] [&_span]:size-3.5! [&_svg]:size-3.5!",
+				medium: "size-8 [font-size:16px] [&_span]:size-4! [&_svg]:size-4!",
+				large: "size-10 [font-size:20px] [&_span]:size-5! [&_svg]:size-5!",
+				xlarge: "size-12 [font-size:24px] [&_span]:size-6! [&_svg]:size-6!",
 			},
 			shape: {
 				square: "rounded-tile",
