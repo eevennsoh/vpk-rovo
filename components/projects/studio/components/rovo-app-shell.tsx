@@ -3959,7 +3959,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 							right: 0,
 							bottom: 0,
 							width: `${askRovoChatPanelWidth}px`,
-							padding: token("space.100"),
 							pointerEvents: isStudioAskRovoChatActive ? "auto" : "none",
 							transform: isStudioAskRovoChatActive
 								? "translateX(0)"
@@ -3971,7 +3970,11 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 							zIndex: 90,
 						}}
 					>
-						<ChatPanel onClose={nav.toggleChat} abortOnUnmount={false} />
+						<ChatPanel
+							onClose={nav.toggleChat}
+							abortOnUnmount={false}
+							containerStyle={{ borderRadius: 0, borderWidth: "0 0 0 1px" }}
+						/>
 						<SidebarResizeHandle
 							side="left"
 							data-active={askRovoChatResize.isResizing ? "" : undefined}
