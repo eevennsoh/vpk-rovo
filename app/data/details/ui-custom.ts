@@ -1,6 +1,24 @@
 import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const UI_CUSTOM_DETAILS: Record<string, ComponentDetail> = {
+	"card-directory": {
+		description:
+			"A directory listing card with a hexagon avatar, title, attribution with optional verified badge, two-line description, and optional rating and chat stats. Passing onSelect turns the whole card into a keyboard-operable button; onMoreActions reveals an overflow button on hover/focus.",
+		usage: `import { CardDirectory } from "@/components/ui-custom/card-directory";
+
+<CardDirectory
+  name="Feedback analyzer"
+  publisher="Atlassian"
+  avatarSrc="/avatar-agent/product-agents/feedback-analyzer.svg"
+  description="Surfaces themes and sentiment from raw customer feedback in seconds."
+  verified
+  rating={4.6}
+  feedbackCount={1280}
+  chatCount={9400}
+  onSelect={() => openAgent()}
+  onMoreActions={() => openMenu()}
+/>`,
+	},
 	"audio-player": {
 		description:
 			"A composable audio player built on media-chrome with play/pause, seek, time display, and volume controls. Supports remote URLs and AI SDK SpeechResult base64 audio.",

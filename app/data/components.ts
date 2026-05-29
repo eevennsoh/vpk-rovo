@@ -116,6 +116,7 @@ export const CUSTOM_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	customComponent("attachments"),
 	customComponent("audio-player", "Audio Player"),
 	customComponent("canvas"),
+	customComponent("card-directory", "Card Directory"),
 	customComponent("chain-of-thought", "Chain of Thought"),
 	customComponent("checkpoint"),
 	customComponent("code-block", "Code Block"),
