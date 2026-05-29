@@ -112,6 +112,7 @@ export const CUSTOM_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	customComponent("attachments"),
 	customComponent("audio-player", "Audio Player"),
 	customComponent("canvas"),
+	customComponent("card-directory", "Card Directory"),
 	customComponent("chain-of-thought", "Chain of Thought"),
 	customComponent("checkpoint"),
 	customComponent("code-block", "Code Block"),
@@ -290,6 +291,7 @@ export const BLOCK_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	blockComponent("generative-card", "Generative Card"),
 	blockComponent("generative", "Generative UI"),
 	blockComponent("kanban-board", "Kanban Board"),
+	blockComponent("tools-directory", "Tools Directory"),
 	blockComponent("mermaid-diagram", "Mermaid Diagram"),
 	{
 		name: "Login 01",

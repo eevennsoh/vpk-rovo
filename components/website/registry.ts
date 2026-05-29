@@ -222,6 +222,9 @@ const UI_CUSTOM_DEMO: Record<string, ComponentType> = {
     ssr: false,
   }),
   canvas: dynamic(() => import("./demos/ui-custom/canvas-demo"), { ssr: false }),
+  "card-directory": dynamic(() => import("./demos/ui-custom/card-directory-demo"), {
+    ssr: false,
+  }),
   "chain-of-thought": dynamic(
     () => import("./demos/ui-custom/chain-of-thought-demo"),
     { ssr: false },
@@ -6661,6 +6664,10 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
   ),
   "agent-templates": dynamic(
     () => import("./demos/blocks/agent-templates-demo"),
+    { ssr: false },
+  ),
+  "tools-directory": dynamic(
+    () => import("./demos/blocks/tools-directory-demo"),
     { ssr: false },
   ),
   "skills-directory": dynamic(
