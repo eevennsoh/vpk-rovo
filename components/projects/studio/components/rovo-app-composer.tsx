@@ -59,6 +59,7 @@ interface RovoAppComposerProps {
 	onDismissArtifactContext?: () => void;
 	onRemoveQueuedPrompt?: (id: string) => void;
 	onSelectHermesSkill?: (skillId: string) => void;
+	onStartFromScratch?: () => void;
 	onSubmit: (payload: { text: string; files: FileUIPart[] }) => Promise<void>;
 	onToggleClicky?: () => void;
 	onTogglePlanMode?: () => void;
@@ -105,6 +106,7 @@ function RovoAppComposerInner({
 	onStop,
 	onRemoveQueuedPrompt,
 	onSelectHermesSkill,
+	onStartFromScratch,
 	onSubmit,
 	onToggleRealtimeVoice,
 	placeholder = "Describe what it should do",
@@ -123,6 +125,7 @@ function RovoAppComposerInner({
 	const controller = usePromptInputController();
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const [highlightedIndex, setHighlightedIndex] = useState(0);
+	const [isInputFocused, setIsInputFocused] = useState(false);
 	const slashMenuRef = useRef<HTMLDivElement | null>(null);
 	const canSubmit = controller.textInput.value.trim().length > 0 || controller.attachments.files.length > 0;
 	const hasQueuedPrompts = queuedPrompts.length > 0;
@@ -381,6 +384,8 @@ function RovoAppComposerInner({
 							autoFocus={autoFocus}
 							autoResize
 							className={cn(composerTextareaClassName, floatingComposerTextareaClassName)}
+							onBlur={() => setIsInputFocused(false)}
+							onFocus={() => setIsInputFocused(true)}
 							onInput={() => setHighlightedIndex(0)}
 							onKeyDown={handleTextareaKeyDown}
 							placeholder={placeholder}
@@ -429,6 +434,33 @@ function RovoAppComposerInner({
 						) : null}
 					</AnimatePresence>
 				</div>
+
+				{onStartFromScratch ? (
+					<AnimatePresence>
+						{isInputFocused ? (
+							<motion.div
+								key="start-from-scratch"
+								initial={{ opacity: 0, height: 0 }}
+								animate={{ opacity: 1, height: "auto" }}
+								exit={{ opacity: 0, height: 0 }}
+								transition={{ type: "spring", bounce: 0, visualDuration: 0.2 }}
+								className="flex items-center justify-center overflow-hidden"
+								style={{ willChange: "opacity" }}
+							>
+								<button
+									type="button"
+									// Prevent the textarea from blurring before the click lands,
+									// which would unmount this reveal mid-interaction.
+									onMouseDown={(event) => event.preventDefault()}
+									onClick={onStartFromScratch}
+									className="mt-2 rounded-xs text-xs text-text-subtlest underline-offset-2 transition-colors hover:text-text-subtle hover:underline focus-visible:text-text-subtle focus-visible:underline focus-visible:outline-none"
+								>
+									Start from scratch
+								</button>
+							</motion.div>
+						) : null}
+					</AnimatePresence>
+				) : null}
 			</div>
 
 			<style>{textareaCSS}</style>
