@@ -433,34 +433,36 @@ function RovoAppComposerInner({
 							</motion.div>
 						) : null}
 					</AnimatePresence>
-				</div>
 
-				{onStartFromScratch ? (
-					<AnimatePresence>
-						{isInputFocused ? (
-							<motion.div
-								key="start-from-scratch"
-								initial={{ opacity: 0, height: 0 }}
-								animate={{ opacity: 1, height: "auto" }}
-								exit={{ opacity: 0, height: 0 }}
-								transition={{ type: "spring", bounce: 0, visualDuration: 0.2 }}
-								className="flex items-center justify-center overflow-hidden"
-								style={{ willChange: "opacity" }}
-							>
-								<button
-									type="button"
-									// Prevent the textarea from blurring before the click lands,
-									// which would unmount this reveal mid-interaction.
-									onMouseDown={(event) => event.preventDefault()}
-									onClick={onStartFromScratch}
-									className="mt-2 rounded-xs text-xs text-text-subtlest underline-offset-2 transition-colors hover:text-text-subtle hover:underline focus-visible:text-text-subtle focus-visible:underline focus-visible:outline-none"
+					{onStartFromScratch ? (
+						<AnimatePresence>
+							{isInputFocused ? (
+								<motion.div
+									key="start-from-scratch"
+									initial={{ opacity: 0, y: -4 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -4 }}
+									transition={{ type: "spring", bounce: 0, visualDuration: 0.2 }}
+									// Anchored absolutely below the composer so the reveal fades
+									// in over the layout instead of reflowing/recentering it.
+									className="absolute inset-x-0 top-full flex items-center justify-center pt-2"
+									style={{ willChange: "opacity, transform" }}
 								>
-									Start from scratch
-								</button>
-							</motion.div>
-						) : null}
-					</AnimatePresence>
-				) : null}
+									<button
+										type="button"
+										// Prevent the textarea from blurring before the click lands,
+										// which would unmount this reveal mid-interaction.
+										onMouseDown={(event) => event.preventDefault()}
+										onClick={onStartFromScratch}
+										className="rounded-xs text-xs text-text-subtlest underline-offset-2 transition-colors hover:text-text-subtle hover:underline focus-visible:text-text-subtle focus-visible:underline focus-visible:outline-none"
+									>
+										Or start from scratch
+									</button>
+								</motion.div>
+							) : null}
+						</AnimatePresence>
+					) : null}
+				</div>
 			</div>
 
 			<style>{textareaCSS}</style>
