@@ -42,6 +42,15 @@ function stringifyForComparison(value: unknown): string {
 	}
 }
 
+function isDraftEmpty(result: AgentResult): boolean {
+	const hasName = Boolean(result.name && result.name.trim().length > 0);
+	const hasDescription = Boolean(result.description || result.summary);
+	const hasInstructions = Boolean(result.instructions && result.instructions.trim().length > 0);
+	const hasStarters = Array.isArray(result.conversationStarters) && result.conversationStarters.length > 0;
+	const hasTools = Array.isArray(result.tools) && result.tools.length > 0;
+	return !hasName && !hasDescription && !hasInstructions && !hasStarters && !hasTools;
+}
+
 function getMissingFieldWarnings(result: AgentResult): readonly string[] {
 	const missing: string[] = [];
 	if (!result.name || result.name.trim().length === 0) {
@@ -153,7 +162,13 @@ export function RovoAppAgentConfigPanel({
 		);
 	}, [entry.publishReadyResult, entry.publishedResult]);
 
-	const missingFields = useMemo(() => getMissingFieldWarnings(draft), [draft]);
+	// Only warn about a partial generation once the agent has some content. A
+	// brand-new "start from scratch" agent has every field empty, and surfacing
+	// "Generation looks partial" there is noise — nothing was generated yet.
+	const missingFields = useMemo(
+		() => (isDraftEmpty(draft) ? [] : getMissingFieldWarnings(draft)),
+		[draft],
+	);
 
 	const [justUpdatedAt, setJustUpdatedAt] = useState<number | null>(null);
 	const justUpdatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
