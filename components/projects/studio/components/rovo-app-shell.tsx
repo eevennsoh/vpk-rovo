@@ -3992,6 +3992,13 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				}}
 				onNewChat={() => {
 					setOptimisticUserMessage(null);
+					// Returning to the "Agents" home must clear all three view-model
+					// layers: the agent-config pane (activeAgentConfig), the selected
+					// custom agent (resetAgentToRovo flips isCustomAgentSelected), and
+					// the chat thread (openNewChat). Without the first two, openNewChat
+					// alone leaves the custom-agent screen open.
+					setActiveAgentConfig(null);
+					studioAgentRegistry.resetAgentToRovo();
 					startTransition(() => {
 						void chat.openNewChat();
 					});
