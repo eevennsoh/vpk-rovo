@@ -376,6 +376,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("scribbles", "Scribbles", "@/components/website/demos/visual/scribbles"),
 	visualComponent("melt", "Melt", "@/components/website/demos/visual/melt"),
 	visualComponent("squircle", "Squircle", "@/components/website/demos/visual/shaders/squircle"),
+	visualComponent("visual-tracing", "Visual Tracing", "@/components/visual/visual-tracing"),
 	visualComponent("ascii", "ASCII", "@/components/website/demos/visual/shaders/ascii"),
 	visualComponent("bloom", "Bloom", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("circuit-bent", "Circuit Bent", "@/components/website/demos/visual/shader-lab-effect-demo"),
