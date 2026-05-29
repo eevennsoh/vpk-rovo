@@ -177,6 +177,10 @@ test("RovoAppMessages renders the block agent result card after generation compl
 
 test("Studio agent config panel renders the shared ui-custom agent config fields", () => {
 	assert.match(UI_CUSTOM_AGENT_SOURCE, /export const AgentConfigFields = memo/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /const AGENT_AVATAR_PROFILE_COVER_COLORS: Record<string, string>/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /"product-agents": "#BF63F3"/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /function getAgentProfileCoverBackgroundColor\(avatarSrc: string \| undefined\): string/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /style=\{\{ backgroundColor: coverBackgroundColor \}\}/u);
 	assert.match(UI_CUSTOM_AGENT_SOURCE, /Add triggers/u);
 	assert.match(UI_CUSTOM_AGENT_SOURCE, /Add conversation starters/u);
 	assert.match(UI_CUSTOM_AGENT_SOURCE, /Teamwork Graph/u);
