@@ -23,6 +23,10 @@ const NAV_HOOK_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "components/blocks/top-navigation/hooks/use-top-navigation.ts"),
 	"utf8",
 );
+const COMPOSER_SOURCE = fs.readFileSync(
+	path.join(__dirname, "rovo-app-composer.tsx"),
+	"utf8",
+);
 
 test("RovoAppShell starts Studio agent creation only from the default-agent home composer", () => {
 	assert.match(SHELL_SOURCE, /const DEFAULT_COMPOSER_PLACEHOLDER = "Describe the agent you want to build";/u);
@@ -216,4 +220,30 @@ test("Studio clarification answers keep agent creation mode active", () => {
 	assert.match(SHELL_SOURCE, /creationMode: "agent" as const/u);
 	assert.match(SHELL_SOURCE, /submitClarification\([\s\S]*activeQuestionCard,[\s\S]*answers,[\s\S]*getStudioAgentCreationClarificationOptions\(\),/u);
 	assert.match(SHELL_SOURCE, /onDismissQuestionCard: handleCancelClarificationQuestionSet/u);
+});
+
+test("Studio composer reveals 'Start from scratch' on focus and lands on a blank untitled agent config", () => {
+	// Composer reveals the focus-gated affordance underneath the prompt input.
+	assert.match(COMPOSER_SOURCE, /onStartFromScratch\?: \(\) => void;/u);
+	assert.match(COMPOSER_SOURCE, /const \[isInputFocused, setIsInputFocused\] = useState\(false\);/u);
+	assert.match(COMPOSER_SOURCE, /onFocus=\{\(\) => setIsInputFocused\(true\)\}/u);
+	assert.match(COMPOSER_SOURCE, /onBlur=\{\(\) => setIsInputFocused\(false\)\}/u);
+	assert.match(COMPOSER_SOURCE, /\{onStartFromScratch \? \([\s\S]*\{isInputFocused \?/u);
+	assert.match(COMPOSER_SOURCE, /Start from scratch/u);
+	// Footer-style copy: subtle text size + color.
+	assert.match(COMPOSER_SOURCE, /text-xs text-text-subtlest/u);
+	// Click must survive the textarea blur so the reveal isn't unmounted first.
+	assert.match(COMPOSER_SOURCE, /onMouseDown=\{\(event\) => event\.preventDefault\(\)\}/u);
+
+	// Shell wires the affordance to a from-scratch agent registration that opens the config pane.
+	assert.match(SHELL_SOURCE, /const handleStartAgentFromScratch = useCallback\(\(\) => \{/u);
+	assert.match(SHELL_SOURCE, /action: "create",\s*\n\s*agentId: `untitled-agent-\$\{uniqueSuffix\}`/u);
+	assert.match(SHELL_SOURCE, /studioAgentRegistry\.registerCreatedAgentFromResult\(blankAgentResult/u);
+	assert.match(SHELL_SOURCE, /onStartFromScratch=\{handleStartAgentFromScratch\}/u);
+	// The from-scratch handler opens the same config pane the AI-result flow uses.
+	const fromScratchHandlerSource = SHELL_SOURCE.slice(
+		SHELL_SOURCE.indexOf("const handleStartAgentFromScratch = useCallback"),
+		SHELL_SOURCE.indexOf("const handleStudioSidebarAgentSelect = useCallback"),
+	);
+	assert.match(fromScratchHandlerSource, /setActiveAgentConfig\(\{\s*\n\s*profileId: registered\.id/u);
 });

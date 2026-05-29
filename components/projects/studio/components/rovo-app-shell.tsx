@@ -1720,6 +1720,39 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		[chat.activeThreadId, chat.runtimeThreadId, studioAgentRegistry, nav, embedded],
 	);
 
+	// "Start from scratch" — create a fresh, untitled session agent (no AI result
+	// to derive from) and open the blank config pane on it. We register a minimal
+	// create-payload directly via the registry because the normal agent-result path
+	// (`normalizeStudioAgentResult`) requires a name, description, and conversation
+	// starters, none of which exist for a from-scratch agent.
+	const handleStartAgentFromScratch = useCallback(() => {
+		if (typeof studioAgentRegistry.registerCreatedAgentFromResult !== "function") {
+			return;
+		}
+
+		const uniqueSuffix = `${Date.now()}`;
+		const blankAgentResult: RovoDataParts["agent-result"] = {
+			action: "create",
+			agentId: `untitled-agent-${uniqueSuffix}`,
+			name: "",
+			summary: "",
+		};
+
+		const registered = studioAgentRegistry.registerCreatedAgentFromResult(blankAgentResult, {
+			preserveCurrentThread: true,
+			select: true,
+			sourceKey: `studio-start-from-scratch:${uniqueSuffix}`,
+		});
+		if (!registered) {
+			return;
+		}
+
+		setActiveAgentConfig({
+			profileId: registered.id,
+			sourceMessageId: null,
+		});
+	}, [studioAgentRegistry]);
+
 	const handleStudioSidebarAgentSelect = useCallback(
 		(agentId: string) => {
 			studioAgentRegistry.selectAgent(agentId, { preserveCurrentThread: true });
@@ -3846,6 +3879,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 									onDismissPlanExecutionTracker={chat.dismissPlanExecutionTracker}
 									onRemoveHermesSkill={selectHermesSkill}
 									onSelectHermesSkill={selectHermesSkill}
+									onStartFromScratch={handleStartAgentFromScratch}
 									onStop={handleStop}
 									onRemoveQueuedPrompt={chat.removeQueuedPrompt}
 									onSubmit={handleComposerSubmit}
