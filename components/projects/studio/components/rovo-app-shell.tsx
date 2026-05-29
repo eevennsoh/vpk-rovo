@@ -4209,7 +4209,10 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 							onClose={nav.toggleChat}
 							abortOnUnmount={false}
 							chatContextBar={agentEditContextBar}
-							containerStyle={{ borderRadius: 0, borderWidth: "0 0 0 1px" }}
+							// No left border here: the SidebarResizeHandle below paints the divider.
+							// Keeping the panel's own `border-l` too would stack two translucent
+							// `color.border` lines into a darker double-edge.
+							containerStyle={{ borderRadius: 0, borderWidth: 0 }}
 						/>
 						<SidebarResizeHandle
 							side="left"
