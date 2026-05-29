@@ -69,7 +69,24 @@ function getBackendPortFromPortFile(): number | null {
 	}
 }
 
-function getReservedBackendPort(): number | null {
+export function createCachedPortResolver(resolvePort: () => number | null): () => number | null {
+	let cachedPort: number | null = null;
+
+	return () => {
+		if (cachedPort !== null) {
+			return cachedPort;
+		}
+
+		const resolvedPort = resolvePort();
+		if (resolvedPort !== null) {
+			cachedPort = resolvedPort;
+		}
+
+		return resolvedPort;
+	};
+}
+
+function readReservedBackendPort(): number | null {
 	try {
 		const portInfo = worktreePorts.getPortInfo?.();
 		return parsePort(portInfo?.backendBase ?? null);
@@ -77,6 +94,8 @@ function getReservedBackendPort(): number | null {
 		return null;
 	}
 }
+
+const getReservedBackendPort = createCachedPortResolver(readReservedBackendPort);
 
 export function buildBackendUrlCandidates(
 	options: Readonly<BackendUrlCandidateOptions> = {},
