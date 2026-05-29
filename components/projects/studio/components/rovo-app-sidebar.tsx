@@ -13,6 +13,8 @@ import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
 import { token } from "@/lib/tokens";
 import { Sidebar, SidebarContent } from "@/components/ui/sidebar";
 import { SidebarNavItem } from "@/components/ui/sidebar-nav-item";
+import { MorphingRovo } from "@/components/ui-custom/morphing-rovo";
+import { Shimmer } from "@/components/ui-custom/shimmer";
 import type { StudioSessionAgentEntry } from "@/app/contexts/context-rovo-chat";
 import { getStudioSidebarRecentAgents, type StudioSidebarRecentAgentItem } from "@/components/projects/studio/lib/studio-sidebar-recent-agents";
 import type { RovoAppThread } from "@/lib/rovo-app-types";
@@ -138,6 +140,15 @@ function StudioSidebarAgentAvatar({
 	);
 }
 
+// Mirrors the `/rovo` chat's in-creation cue (`PreloadThinkingIndicator` →
+// `ChainOfThoughtHeader shimmer`): the morphing Rovo glyph stands in for a
+// spinner. Defined as a wrapper so `SidebarNavItem`'s `normalizeIconNode` can
+// `cloneElement` it with `label`/`size` props without breaking the numeric
+// `size` that `MorphingRovo.Shape` expects.
+function StudioSidebarAgentCreationIcon() {
+	return <MorphingRovo.Shape size={12} duration={0.8} blur={1.25} />;
+}
+
 function getRecentAgentItemSelected(
 	item: StudioSidebarRecentAgentItem,
 	activeThreadId: string | null,
@@ -217,29 +228,43 @@ function StudioSidebarNavigation({
 										/>
 										{shouldShowRecentAgents ? (
 											<div className="flex flex-col gap-0.5 pl-3">
-												{recentAgents.items.map((recentAgent) => (
-													<SidebarNavItem
-														key={`${recentAgent.kind}:${recentAgent.id}`}
-														label={recentAgent.label}
-														leading={
-															recentAgent.avatarSrc ? (
-																<StudioSidebarAgentAvatar src={recentAgent.avatarSrc} />
-															) : (
-																<AiAgentIcon label="" />
-															)
-														}
-														leadingSize="small"
-														isSelected={getRecentAgentItemSelected(recentAgent, activeThreadId, selectedAgentId)}
-														onClick={() => {
-															if (recentAgent.kind === "wip") {
-																onSelectAgentCreationThread?.(recentAgent.id);
-															} else {
-																onSelectAgent?.(recentAgent.id);
+												{recentAgents.items.map((recentAgent) => {
+													const isCreating = recentAgent.kind === "wip";
+
+													return (
+														<SidebarNavItem
+															key={`${recentAgent.kind}:${recentAgent.id}`}
+															label={
+																isCreating ? (
+																	<Shimmer as="span" duration={1.4} spread={2} className="block truncate text-left">
+																		{recentAgent.label}
+																	</Shimmer>
+																) : (
+																	recentAgent.label
+																)
 															}
-														}}
-														className="min-h-7"
-													/>
-												))}
+															leading={
+																isCreating ? (
+																	<StudioSidebarAgentCreationIcon />
+																) : recentAgent.avatarSrc ? (
+																	<StudioSidebarAgentAvatar src={recentAgent.avatarSrc} />
+																) : (
+																	<AiAgentIcon label="" />
+																)
+															}
+															leadingSize="small"
+															isSelected={getRecentAgentItemSelected(recentAgent, activeThreadId, selectedAgentId)}
+															onClick={() => {
+																if (recentAgent.kind === "wip") {
+																	onSelectAgentCreationThread?.(recentAgent.id);
+																} else {
+																	onSelectAgent?.(recentAgent.id);
+																}
+															}}
+															className="min-h-7"
+														/>
+													);
+												})}
 												{recentAgents.showViewAll ? (
 													<SidebarNavItem
 														label="View all agents"
