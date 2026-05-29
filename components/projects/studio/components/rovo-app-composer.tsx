@@ -2,6 +2,7 @@
 
 import type { ChatStatus, FileUIPart } from "ai";
 import {
+	PromptInputButton,
 	PromptInputProvider,
 	PromptInputTextarea,
 	usePromptInputController,
@@ -25,6 +26,8 @@ import type { RealtimeGenerationState } from "@/components/projects/studio/hooks
 import { cn } from "@/lib/utils";
 import type { RovoAppPlanExecutionTrackerViewModel } from "@/components/projects/studio/lib/rovo-app-plan-execution-tracker";
 import type { RovoAppQueuedAction } from "@/lib/rovo-app-types";
+import AddIcon from "@atlaskit/icon/core/add";
+import CursorIcon from "@atlaskit/icon-lab/core/cursor";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import { AnimatePresence, motion } from "motion/react";
@@ -108,7 +111,9 @@ function RovoAppComposerInner({
 	onSelectHermesSkill,
 	onStartFromScratch,
 	onSubmit,
+	onToggleClicky,
 	onToggleRealtimeVoice,
+	clickyActive = false,
 	placeholder = "Describe what it should do",
 	planExecutionTracker = null,
 	prefillText,
@@ -365,6 +370,23 @@ function RovoAppComposerInner({
 						className="relative z-10"
 						data-screen-assistant-target="studio-composer"
 						onSubmit={handlePromptSubmit}
+						addButton={
+							<div className="flex items-center gap-1">
+								<PromptInputButton size="icon-sm" variant="ghost" aria-label="Add">
+									<AddIcon label="" />
+								</PromptInputButton>
+								<PromptInputButton
+									size="icon-sm"
+									variant={clickyActive ? "default" : "ghost"}
+									onClick={onToggleClicky}
+									aria-label="Studio AI cursor"
+									aria-pressed={clickyActive}
+									tooltip={{ content: "AI Cursor ⌘⇧K", delay: 0 }}
+								>
+									<CursorIcon label="" />
+								</PromptInputButton>
+							</div>
+						}
 						actions={
 							<RovoComposerActionButton
 								canSubmit={canSubmit}
