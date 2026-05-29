@@ -6662,6 +6662,10 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
     () => import("./demos/blocks/agents-directory-demo"),
     { ssr: false },
   ),
+  "agent-templates": dynamic(
+    () => import("./demos/blocks/agent-templates-demo"),
+    { ssr: false },
+  ),
   "tools-directory": dynamic(
     () => import("./demos/blocks/tools-directory-demo"),
     { ssr: false },
