@@ -132,6 +132,70 @@ const agents: AgentsDirectoryAgent[] = [
 			},
 		],
 	},
+	"agent-templates": {
+		description: "Dialog-based agent templates directory duplicated from Agents Directory for browsing recommended, team, partner, and session-created templates.",
+		importStatement: `import { AgentTemplatesDialog } from "@/components/blocks/agent-templates";`,
+		usage: `import { AgentTemplatesDialog } from "@/components/blocks/agent-templates";
+import type { AgentTemplatesAgent } from "@/components/blocks/agent-templates";
+
+const agents: AgentTemplatesAgent[] = [
+  {
+    id: "feedback-analyzer",
+    name: "Feedback Analyzer",
+    byline: "Product agent by Atlassian",
+    avatarSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
+    description: "Clusters customer feedback and surfaces themes.",
+  },
+];
+
+<AgentTemplatesDialog
+  open={open}
+  onOpenChange={setOpen}
+  agents={agents}
+  onSelectAgent={(agent) => console.log(agent.id)}
+/>`,
+		demoLayout: { previewHeight: "fixed" },
+		props: [
+			{
+				name: "agents",
+				type: "readonly AgentTemplatesAgent[]",
+				required: true,
+				description: "Base catalog templates shown in the directory.",
+			},
+			{
+				name: "sessionAgents",
+				type: "readonly AgentTemplatesAgent[]",
+				description: "Runtime-created templates appended to the catalog.",
+			},
+			{
+				name: "open",
+				type: "boolean",
+				required: true,
+				description: "Controlled dialog open state.",
+			},
+			{
+				name: "onOpenChange",
+				type: "(open: boolean) => void",
+				required: true,
+				description: "Called when the dialog requests an open-state change.",
+			},
+			{
+				name: "onSelectAgent",
+				type: "(agent: AgentTemplatesAgent) => void",
+				description: "Called when a template card or sidebar entry is selected.",
+			},
+			{
+				name: "sidebarGroups",
+				type: "readonly AgentTemplatesSidebarGroup[]",
+				description: "Optional sidebar grouping override. Defaults to the duplicated directory grouping.",
+			},
+			{
+				name: "title",
+				type: "string",
+				description: "Optional dialog title. Defaults to Agent templates.",
+			},
+		],
+	},
 	"skills-directory": {
 		description: "Dialog-based skills directory duplicated from Agents Directory for browsing recommended, team, partner, and session-created entries.",
 		importStatement: `import { SkillsDirectoryDialog } from "@/components/blocks/skills-directory";`,
