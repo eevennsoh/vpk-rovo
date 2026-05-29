@@ -1507,6 +1507,11 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					profileId: registered.id,
 					sourceMessageId: options?.sourceMessageId ?? null,
 				});
+				// Once an agent finishes building, surface the sidebar chat so the
+				// freshly selected agent is ready to test — even before publishing.
+				if (!embedded) {
+					nav.openChat("sidebar");
+				}
 				return true;
 			}
 
@@ -1535,9 +1540,14 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				profileId: agentId,
 				sourceMessageId: options?.sourceMessageId ?? null,
 			});
+			// Once an agent finishes building, surface the sidebar chat so the
+			// freshly selected agent is ready to test — even before publishing.
+			if (!embedded) {
+				nav.openChat("sidebar");
+			}
 			return true;
 		},
-		[chat.activeThreadId, chat.runtimeThreadId, studioAgentRegistry],
+		[chat.activeThreadId, chat.runtimeThreadId, studioAgentRegistry, nav, embedded],
 	);
 
 	const handleStudioSidebarAgentSelect = useCallback(
