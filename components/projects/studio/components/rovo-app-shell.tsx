@@ -165,20 +165,21 @@ const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "create", label: "Work management", iconSrc: `${RICH_ICON_ROOT}/project-management/standard.svg`, iconClassName: "scale-[1.08]" },
 ];
 
-const HOME_STARTER_CARD_GLOW_ACCENTS: Readonly<Record<HomeStarterCategory, readonly string[]>> = {
-	analyze: ["#1868DB", "#6A9A23", "#FCA700", "#AF59E1", "#FFC400"],
-	brainstorm: ["#1868DB", "#AF59E1", "#FCA700", "#6A9A23", "#FFC400"],
-	create: ["#FFC400", "#6A9A23", "#1868DB", "#AF59E1", "#FCA700"],
-	review: ["#FCA700", "#AF59E1", "#1868DB", "#6A9A23", "#FFC400"],
-	summarize: ["#AF59E1", "#1868DB", "#FCA700", "#6A9A23", "#FFC400"],
+// The hover glow uses each tile's own agent-avatar color so the stroke always
+// matches the avatar shown on the tile. Avatars are grouped by agent family
+// under /avatar-agent/<group>/, and every avatar in a family shares one brand
+// color, so we derive the accent from the avatar group in `iconSrc`.
+const HOME_STARTER_AVATAR_GROUP_ACCENTS: Readonly<Record<string, string>> = {
+	"dev-agents": "#82B536",
+	"product-agents": "#BF63F3",
+	"service-agents": "#FFC716",
+	"strategy-agents": "#FCA700",
+	"teamwork-agents": "#1868DB",
 };
+const HOME_STARTER_CARD_GLOW_FALLBACK_ACCENT = "#1868DB";
 
 const HOME_STARTER_CARD_GLOW_EFFECT_STYLE: HomeStarterCardGlowCSSProperties = {
-	"--card-glow-border-blur": 0,
-	"--card-glow-border-brightness": 2.5,
-	"--card-glow-border-contrast": 2.5,
 	"--card-glow-border-core": 36,
-	"--card-glow-border-saturate": 4.2,
 	"--card-glow-border-spread": 120,
 	"--card-glow-border-width": 1,
 	"--card-glow-icon-blur": 28,
@@ -202,22 +203,22 @@ const HOME_STARTER_CARD_GLOW_LAYER_STYLE: CSSProperties = {
 };
 
 const HOME_STARTER_CARD_BASE_BORDER_STYLE: CSSProperties = {
-	boxShadow: `inset 0 0 0 calc(var(--card-glow-border-width) * 1px) ${token("color.border.bold")}`,
+	boxShadow: `inset 0 0 0 calc(var(--card-glow-border-width) * 1px) ${token("color.border")}`,
 };
 
+// The hover glow is a plain accent radial-gradient painted onto the same 1px
+// ring as the base grey border (same border-box geometry + radius). It is fully
+// transparent away from the pointer, so the grey stroke shows through everywhere
+// except where the accent overlays it. Deliberately NO backdrop-filter here — an
+// always-on filter recolors the ring even where the gradient is transparent,
+// which crushes the grey border underneath and breaks coexistence.
 const HOME_STARTER_CARD_BORDER_GLOW_STYLE: CSSProperties = {
-	backdropFilter: [
-		"blur(calc(var(--card-glow-border-blur) * 1px))",
-		"saturate(var(--card-glow-border-saturate))",
-		"brightness(var(--card-glow-border-brightness))",
-		"contrast(var(--card-glow-border-contrast))",
-	].join(" "),
 	background: [
 		"radial-gradient(",
 		"circle at ",
 		"calc((var(--card-glow-pointer-x, -10) + 1) * 50%) ",
 		"calc((var(--card-glow-pointer-y, -10) + 1) * 50%), ",
-		"color-mix(in srgb, var(--card-glow-tile-accent) 78%, transparent) 0 calc(var(--card-glow-border-core) * 1px), ",
+		"var(--card-glow-tile-accent) 0 calc(var(--card-glow-border-core) * 1px), ",
 		"transparent calc(var(--card-glow-border-spread) * 1px)",
 		") border-box",
 	].join(""),
@@ -225,12 +226,6 @@ const HOME_STARTER_CARD_BORDER_GLOW_STYLE: CSSProperties = {
 	borderWidth: "calc(var(--card-glow-border-width) * 1px)",
 	mask: "linear-gradient(#fff 0 100%) border-box, linear-gradient(#fff 0 100%) padding-box",
 	maskComposite: "exclude",
-	WebkitBackdropFilter: [
-		"blur(calc(var(--card-glow-border-blur) * 1px))",
-		"saturate(var(--card-glow-border-saturate))",
-		"brightness(var(--card-glow-border-brightness))",
-		"contrast(var(--card-glow-border-contrast))",
-	].join(" "),
 	WebkitMask: "linear-gradient(#fff 0 100%) border-box, linear-gradient(#fff 0 100%) padding-box",
 	WebkitMaskComposite: "xor",
 };
@@ -626,9 +621,9 @@ function parseCssDurationMs(value: string): number | null {
 	return Number.isFinite(numericDuration) ? numericDuration : null;
 }
 
-function getHomeStarterCardGlowAccent(category: HomeStarterCategory, index: number): string {
-	const accents = HOME_STARTER_CARD_GLOW_ACCENTS[category];
-	return accents[index % accents.length];
+function getHomeStarterCardGlowAccent(iconSrc: string): string {
+	const group = iconSrc.match(/\/avatar-agent\/([^/]+)\//)?.[1];
+	return (group && HOME_STARTER_AVATAR_GROUP_ACCENTS[group]) || HOME_STARTER_CARD_GLOW_FALLBACK_ACCENT;
 }
 
 function getHomeStarterCardStyle(accentColor: string): HomeStarterCardGlowCSSProperties {
@@ -991,7 +986,7 @@ function HomeStarterBento({
 							}}
 						>
 							{visibleTemplates.map((template, index) => {
-								const accentColor = getHomeStarterCardGlowAccent(activeCategory, index);
+								const accentColor = getHomeStarterCardGlowAccent(template.iconSrc);
 
 								if (template.hero) {
 									return (

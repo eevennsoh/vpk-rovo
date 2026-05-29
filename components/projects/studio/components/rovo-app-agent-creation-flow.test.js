@@ -91,7 +91,13 @@ test("Studio home starters frame agent building instead of generic one-off tasks
 
 test("Studio home bento applies card glow pointer flow to starter tiles", () => {
 	assert.match(SHELL_SOURCE, /const HOME_STARTER_CARD_GLOW_EFFECT_STYLE/u);
-	assert.match(SHELL_SOURCE, /const HOME_STARTER_CARD_GLOW_ACCENTS: Readonly<Record<HomeStarterCategory, readonly string\[\]>>/u);
+	// The hover stroke color is the tile's own agent-avatar color, derived from
+	// the avatar group in `iconSrc` (each /avatar-agent/<group>/ family shares one
+	// brand color) — not an index-cycled palette that drifts out of sync.
+	assert.match(SHELL_SOURCE, /const HOME_STARTER_AVATAR_GROUP_ACCENTS: Readonly<Record<string, string>>/u);
+	assert.match(SHELL_SOURCE, /"teamwork-agents": "#1868DB"/u);
+	assert.match(SHELL_SOURCE, /function getHomeStarterCardGlowAccent\(iconSrc: string\)/u);
+	assert.match(SHELL_SOURCE, /getHomeStarterCardGlowAccent\(template\.iconSrc\)/u);
 	assert.match(SHELL_SOURCE, /function HomeStarterCardGlowLayers/u);
 	assert.match(SHELL_SOURCE, /const tileRefs = useRef<Array<HTMLButtonElement \| null>>\(\[\]\);/u);
 	assert.match(SHELL_SOURCE, /onPointerMove=\{handleBentoPointerMove\}/u);
@@ -103,7 +109,10 @@ test("Studio home bento applies card glow pointer flow to starter tiles", () => 
 	assert.match(SHELL_SOURCE, /"--card-glow-border-spread": 120/u);
 	assert.match(SHELL_SOURCE, /<HomeStarterCardGlowLayers iconSrc=\{template\.iconSrc\} \/>/u);
 	assert.match(SHELL_SOURCE, /const HOME_STARTER_CARD_BASE_BORDER_STYLE: CSSProperties/u);
-	assert.match(SHELL_SOURCE, /boxShadow: `inset 0 0 0 calc\(var\(--card-glow-border-width\) \* 1px\) \$\{token\("color\.border\.bold"\)\}`/u);
+	// Resting stroke uses the subtle `color.border` token (matches the tiles'
+	// pre-glow default), not the heavier `color.border.bold`.
+	assert.match(SHELL_SOURCE, /boxShadow: `inset 0 0 0 calc\(var\(--card-glow-border-width\) \* 1px\) \$\{token\("color\.border"\)\}`/u);
+	assert.doesNotMatch(SHELL_SOURCE, /token\("color\.border\.bold"\)/u);
 	assert.match(SHELL_SOURCE, /borderWidth: "calc\(var\(--card-glow-border-width\) \* 1px\)"/u);
 	assert.match(SHELL_SOURCE, /transparent calc\(var\(--card-glow-border-spread\) \* 1px\)/u);
 	assert.match(SHELL_SOURCE, /data-home-starter-card-base-border/u);
@@ -111,6 +120,16 @@ test("Studio home bento applies card glow pointer flow to starter tiles", () => 
 	assert.match(SHELL_SOURCE, /absolute inset-0 z-\[1\] rounded-\[inherit\]/u);
 	assert.match(SHELL_SOURCE, /style=\{HOME_STARTER_CARD_BASE_BORDER_STYLE\}/u);
 	assert.match(SHELL_SOURCE, /absolute inset-0 z-\[2\] overflow-hidden rounded-\[inherit\] border border-transparent/u);
+	// Regression: the glow ring must coexist with the always-on grey base stroke.
+	// Two invariants enforce the desired behavior:
+	// 1. No backdrop-filter on the ring — an always-on filter recolors the whole
+	//    ring (even where the gradient is transparent) and crushes the grey stroke.
+	// 2. No per-tile hover/focus opacity gate on the ring — the glow is driven by
+	//    the container-level pointer tracking so edges still light up when the
+	//    cursor is in the GAPS between tiles, not only over the hovered tile.
+	assert.doesNotMatch(SHELL_SOURCE, /backdropFilter/u);
+	assert.doesNotMatch(SHELL_SOURCE, /z-\[2\][^"]*group-hover\/home-starter-card:opacity-100/u);
+	assert.match(SHELL_SOURCE, /onPointerMove=\{handleBentoPointerMove\}/u);
 	assert.match(SHELL_SOURCE, /rounded-lg bg-background/u);
 	assert.match(SHELL_SOURCE, /transition-\[background-color,box-shadow\]/u);
 	assert.doesNotMatch(SHELL_SOURCE, /hover:border-border-bold/u);
