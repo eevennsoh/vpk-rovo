@@ -222,6 +222,9 @@ const UI_CUSTOM_DEMO: Record<string, ComponentType> = {
     ssr: false,
   }),
   canvas: dynamic(() => import("./demos/ui-custom/canvas-demo"), { ssr: false }),
+  "card-directory": dynamic(() => import("./demos/ui-custom/card-directory-demo"), {
+    ssr: false,
+  }),
   "chain-of-thought": dynamic(
     () => import("./demos/ui-custom/chain-of-thought-demo"),
     { ssr: false },
