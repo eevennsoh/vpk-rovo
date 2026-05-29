@@ -6659,6 +6659,10 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
     () => import("./demos/blocks/agents-directory-demo"),
     { ssr: false },
   ),
+  "skills-directory": dynamic(
+    () => import("./demos/blocks/skills-directory-demo"),
+    { ssr: false },
+  ),
   "agent-progress": dynamic(
     () => import("./demos/blocks/agent-progress-demo"),
     { ssr: false },
