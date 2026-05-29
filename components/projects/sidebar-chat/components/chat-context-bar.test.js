@@ -93,6 +93,29 @@ async function loadChatContextBarHarness() {
 				}
 			`,
 		],
+		[
+			"@atlaskit/icon/core/person",
+			`
+				import React from "react";
+				export default function PersonIcon() {
+					return React.createElement("svg", { "data-icon": "person" });
+				}
+			`,
+		],
+		[
+			"next/image",
+			`
+				import React from "react";
+				export default function Image(props) {
+					return React.createElement("img", {
+						"data-image": true,
+						src: props.src,
+						alt: props.alt,
+						"data-class": props.className,
+					});
+				}
+			`,
+		],
 	]);
 
 	const result = await esbuild.build({
@@ -197,17 +220,50 @@ test("ChatContextBar renders artifact edit context with an active dismiss afford
 	assert.doesNotMatch(markup, /data-icon="location"/);
 });
 
-test("ChatContextBar does not own local dismissal state", () => {
-	assert.match(
-		CHAT_CONTEXT_BAR_SOURCE,
-		/className="flex min-w-0 flex-1 items-center gap-1\.5 overflow-hidden"/,
-	);
-	assert.match(CHAT_CONTEXT_BAR_SOURCE, /className="min-w-0 max-w-full shrink overflow-hidden"/);
-	assert.match(CHAT_CONTEXT_BAR_SOURCE, /className="flex size-6 shrink-0/);
-	assert.match(CHAT_CONTEXT_BAR_SOURCE, /<CrossIcon color="currentColor" label="" size="small" \/>/);
+test("ChatContextBar stays presentational and delegates dismissal to props", async () => {
+	// The adapter maps a descriptor onto the harvested ui-custom context-bar
+	// primitive. It must remain stateless: the non-collapsible path renders a
+	// purely presentational bar whose dismiss affordance is driven by props.
 	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /removedSignature/);
 	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /setRemovedSignature/);
 	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /useEffect/);
 	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /useState/);
 	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /onRemove=/);
+
+	const harness = await loadChatContextBarHarness();
+	const markup = harness.renderContextBar({
+		label: "Acmecorp RFP qualification DACI",
+		iconName: "work-item",
+		signature: "agents-work-item:RFP-101",
+	});
+
+	// Content wrapper + truncating chip classes now come from the primitive but
+	// must still appear in the rendered output, and a non-dismissible bar must
+	// not render an interactive control.
+	assert.match(markup, /class="flex min-w-0 flex-1 items-center gap-1\.5 overflow-hidden"/);
+	assert.match(markup, /data-class="min-w-0 max-w-full shrink overflow-hidden"/);
+	assert.match(markup, /data-icon="cross" data-size="small"/);
+	assert.doesNotMatch(markup, /<button/);
+});
+
+test("ChatContextBar renders a collapsible agent edit bar with avatar", async () => {
+	const harness = await loadChatContextBarHarness();
+	const markup = harness.renderContextBar({
+		label: "Research assistant",
+		iconName: "agent",
+		signature: "studio-edit-agent:research-assistant",
+		variant: "edit",
+		avatarSrc: "/1p/rovo.svg",
+		collapsible: true,
+		collapsedLabel: "Edit agent",
+	});
+
+	// Defaults to the expanded "Edit:" state with the agent avatar (not an icon)
+	// and a collapse affordance the user can dismiss.
+	assert.match(markup, /Edit:/);
+	assert.match(markup, /Research assistant/);
+	assert.match(markup, /data-image="true"/);
+	assert.match(markup, /src="\/1p\/rovo\.svg"/);
+	assert.match(markup, /<button/);
+	assert.doesNotMatch(markup, /data-icon="person"/);
 });

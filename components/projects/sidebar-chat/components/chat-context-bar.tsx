@@ -1,13 +1,19 @@
 "use client";
 
 import BoardIcon from "@atlaskit/icon/core/board";
-import CrossIcon from "@atlaskit/icon/core/cross";
 import EditIcon from "@atlaskit/icon/core/edit";
 import LocationIcon from "@atlaskit/icon/core/location";
 import PageIcon from "@atlaskit/icon/core/page";
+import PersonIcon from "@atlaskit/icon/core/person";
 import WorkItemIcon from "@atlaskit/icon/core/work-item";
+import Image from "next/image";
 import { token } from "@/lib/tokens";
-import { Tag } from "@/components/ui/tag";
+import {
+	CollapsibleContextBar,
+	ContextBar,
+	ContextBarLead,
+	ContextBarTag,
+} from "@/components/ui-custom/context-bar";
 import type {
 	ChatContextBarDescriptor,
 	ChatContextBarIconName,
@@ -19,6 +25,7 @@ interface ChatContextBarProps {
 }
 
 const ICON_MAP: Record<ChatContextBarIconName, typeof BoardIcon> = {
+	agent: PersonIcon,
 	artifact: PageIcon,
 	board: BoardIcon,
 	"work-item": WorkItemIcon,
@@ -38,47 +45,48 @@ export default function ChatContextBar({
 	const leadLabel = isEditContext ? "Edit:" : "Context:";
 	const dismissLabel = isEditContext ? "Close edit context" : "Close context";
 
+	// Agents carry an avatar; everything else falls back to its category icon.
+	const tagElemBefore = context.avatarSrc ? (
+		<Image
+			alt=""
+			aria-hidden
+			className="size-4 shrink-0 rounded-xs object-contain"
+			height={16}
+			src={context.avatarSrc}
+			width={16}
+		/>
+	) : (
+		<ContextIcon color={token("color.icon.brand")} label="" size="small" />
+	);
+
+	const tag = (
+		<ContextBarTag color="blue" elemBefore={tagElemBefore} title={context.label}>
+			{context.label}
+		</ContextBarTag>
+	);
+
+	if (context.collapsible) {
+		const collapsedLabel = context.collapsedLabel ?? "Edit";
+		return (
+			<CollapsibleContextBar
+				collapsedIcon={<EditIcon color={token("color.icon.subtle")} label="" size="small" />}
+				collapsedLabel={collapsedLabel}
+				dismissLabel={dismissLabel}
+				lead={<LeadIcon color={token("color.icon.subtle")} label="" size="small" />}
+				leadLabel={leadLabel}
+				triggerAriaLabel={`${collapsedLabel}: ${context.label}`}
+			>
+				{tag}
+			</CollapsibleContextBar>
+		);
+	}
+
 	return (
-		<div
-			className="mb-3 flex min-w-0 items-center justify-between gap-3 rounded-xl bg-bg-neutral px-3 py-2"
-			data-chat-context-bar
-		>
-			<div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-				<span className="flex size-4 shrink-0 items-center justify-center text-icon-subtle">
-					<LeadIcon color={token("color.icon.subtle")} label="" size="small" />
-				</span>
-				<span className="shrink-0 text-sm font-medium text-text-subtle">
-					{leadLabel}
-				</span>
-				<Tag
-					color="blue"
-					elemBefore={
-						<ContextIcon color={token("color.icon.brand")} label="" size="small" />
-					}
-					className="min-w-0 max-w-full shrink overflow-hidden"
-					maxWidth="100%"
-					title={context.label}
-				>
-					{context.label}
-				</Tag>
-			</div>
-			{onDismiss ? (
-				<button
-					aria-label={dismissLabel}
-					className="flex size-6 shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-icon-subtle transition-colors duration-normal ease-out hover:bg-bg-neutral-hovered hover:text-icon active:bg-bg-neutral-pressed focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none"
-					onClick={onDismiss}
-					type="button"
-				>
-					<CrossIcon color="currentColor" label="" size="small" />
-				</button>
-			) : (
-				<span
-					aria-hidden
-					className="flex size-6 shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-icon-subtle transition-colors duration-normal ease-out hover:bg-bg-neutral-hovered hover:text-icon active:bg-bg-neutral-pressed focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none"
-				>
-					<CrossIcon color="currentColor" label="" size="small" />
-				</span>
-			)}
-		</div>
+		<ContextBar data-chat-context-bar dismissLabel={dismissLabel} onDismiss={onDismiss}>
+			<ContextBarLead icon={<LeadIcon color={token("color.icon.subtle")} label="" size="small" />}>
+				{leadLabel}
+			</ContextBarLead>
+			{tag}
+		</ContextBar>
 	);
 }

@@ -88,6 +88,7 @@ import {
 import { useSidebarResize } from "@/components/projects/studio/hooks/use-sidebar-resize";
 import { useSidebarResize as useStudioAskRovoChatResize } from "@/components/projects/rovo/hooks/use-sidebar-resize";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
+import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import { getLatestDataPart, getLatestUserMessageId, getMessageAgentResult, getMessageArtifactResult, getMessageInterruption, getMessageText, type RovoDataParts } from "@/lib/rovo-ui-messages";
@@ -1807,6 +1808,25 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		return entries.find((entry) => entry.profile.id === activeAgentConfig.profileId) ?? null;
 	}, [activeAgentConfig, studioAgentRegistry.sessionAgentEntries]);
 	const shouldShowAgentConfigPane = Boolean(activeSessionAgentEntry);
+	// Drives the "Edit agent" context bar above the studio sidebar-chat input.
+	// Defaults to the expanded "Edit: <agent>" state; the bar itself owns the
+	// collapse-to-pill / re-expand affordance.
+	const agentEditContextBar = useMemo<ChatContextBarDescriptor | null>(() => {
+		if (!activeSessionAgentEntry) {
+			return null;
+		}
+		const { profile, draftResult } = activeSessionAgentEntry;
+		const agentName = draftResult?.name?.trim() || profile.name;
+		return {
+			iconName: "agent",
+			label: agentName,
+			avatarSrc: profile.avatarSrc,
+			signature: `studio-edit-agent:${profile.id}`,
+			variant: "edit",
+			collapsible: true,
+			collapsedLabel: "Edit agent",
+		};
+	}, [activeSessionAgentEntry]);
 	const askRovoChatResize = useStudioAskRovoChatResize({
 		defaultWidth: 400,
 		minWidth: 320,
@@ -4188,6 +4208,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						<ChatPanel
 							onClose={nav.toggleChat}
 							abortOnUnmount={false}
+							chatContextBar={agentEditContextBar}
 							containerStyle={{ borderRadius: 0, borderWidth: "0 0 0 1px" }}
 						/>
 						<SidebarResizeHandle
