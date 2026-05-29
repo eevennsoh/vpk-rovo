@@ -6663,6 +6663,10 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
     () => import("./demos/blocks/tools-directory-demo"),
     { ssr: false },
   ),
+  "skills-directory": dynamic(
+    () => import("./demos/blocks/skills-directory-demo"),
+    { ssr: false },
+  ),
   "agent-progress": dynamic(
     () => import("./demos/blocks/agent-progress-demo"),
     { ssr: false },
@@ -7679,6 +7683,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
     ssr: false,
   }),
   squircle: dynamic(() => import("./demos/visual/squircle-demo"), {
+    ssr: false,
+  }),
+  "visual-tracing": dynamic(() => import("./demos/visual/visual-tracing-demo"), {
     ssr: false,
   }),
   ascii: dynamic(() => import("./demos/visual/ascii-demo"), {

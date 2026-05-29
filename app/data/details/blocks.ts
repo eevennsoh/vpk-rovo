@@ -196,6 +196,70 @@ const tools: ToolsDirectoryTool[] = [
 			},
 		],
 	},
+	"skills-directory": {
+		description: "Dialog-based skills directory duplicated from Agents Directory for browsing recommended, team, partner, and session-created entries.",
+		importStatement: `import { SkillsDirectoryDialog } from "@/components/blocks/skills-directory";`,
+		usage: `import { SkillsDirectoryDialog } from "@/components/blocks/skills-directory";
+import type { SkillsDirectoryAgent } from "@/components/blocks/skills-directory";
+
+const agents: SkillsDirectoryAgent[] = [
+  {
+    id: "feedback-analyzer",
+    name: "Feedback Analyzer",
+    byline: "Product agent by Atlassian",
+    avatarSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
+    description: "Clusters customer feedback and surfaces themes.",
+  },
+];
+
+<SkillsDirectoryDialog
+  open={open}
+  onOpenChange={setOpen}
+  agents={agents}
+  onSelectAgent={(agent) => console.log(agent.id)}
+/>`,
+		demoLayout: { previewHeight: "fixed" },
+		props: [
+			{
+				name: "agents",
+				type: "readonly SkillsDirectoryAgent[]",
+				required: true,
+				description: "Base catalog entries shown in the directory.",
+			},
+			{
+				name: "sessionAgents",
+				type: "readonly SkillsDirectoryAgent[]",
+				description: "Runtime-created entries appended to the catalog.",
+			},
+			{
+				name: "open",
+				type: "boolean",
+				required: true,
+				description: "Controlled dialog open state.",
+			},
+			{
+				name: "onOpenChange",
+				type: "(open: boolean) => void",
+				required: true,
+				description: "Called when the dialog requests an open-state change.",
+			},
+			{
+				name: "onSelectAgent",
+				type: "(agent: SkillsDirectoryAgent) => void",
+				description: "Called when a card or sidebar entry is selected.",
+			},
+			{
+				name: "sidebarGroups",
+				type: "readonly SkillsDirectorySidebarGroup[]",
+				description: "Optional sidebar grouping override. Defaults to the duplicated directory grouping.",
+			},
+			{
+				name: "title",
+				type: "string",
+				description: "Optional dialog title. Defaults to the underlying browser dialog title.",
+			},
+		],
+	},
 	"mermaid-diagram": {
 		description: "Dedicated Mermaid diagram block rendered through Streamdown’s Mermaid plugin so fenced mermaid content becomes an interactive SVG diagram instead of a plain code block.",
 		usage: `import MermaidDiagram from "@/components/blocks/mermaid-diagram/page";

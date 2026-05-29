@@ -89,6 +89,35 @@ test("Studio home starters frame agent building instead of generic one-off tasks
 	assert.doesNotMatch(SHELL_SOURCE, /prompt: "Summarize this into key points/u);
 });
 
+test("Studio home bento applies card glow pointer flow to starter tiles", () => {
+	assert.match(SHELL_SOURCE, /const HOME_STARTER_CARD_GLOW_EFFECT_STYLE/u);
+	assert.match(SHELL_SOURCE, /const HOME_STARTER_CARD_GLOW_ACCENTS: Readonly<Record<HomeStarterCategory, readonly string\[\]>>/u);
+	assert.match(SHELL_SOURCE, /function HomeStarterCardGlowLayers/u);
+	assert.match(SHELL_SOURCE, /const tileRefs = useRef<Array<HTMLButtonElement \| null>>\(\[\]\);/u);
+	assert.match(SHELL_SOURCE, /onPointerMove=\{handleBentoPointerMove\}/u);
+	assert.match(SHELL_SOURCE, /onPointerLeave=\{resetBentoPointer\}/u);
+	assert.match(SHELL_SOURCE, /--card-glow-pointer-x", normalizedX\.toFixed\(3\)/u);
+	assert.match(SHELL_SOURCE, /--card-glow-pointer-y", normalizedY\.toFixed\(3\)/u);
+	assert.match(SHELL_SOURCE, /"--card-glow-tile-accent": accentColor/u);
+	assert.match(SHELL_SOURCE, /"--card-glow-border-core": 36/u);
+	assert.match(SHELL_SOURCE, /"--card-glow-border-spread": 120/u);
+	assert.match(SHELL_SOURCE, /<HomeStarterCardGlowLayers iconSrc=\{template\.iconSrc\} \/>/u);
+	assert.match(SHELL_SOURCE, /const HOME_STARTER_CARD_BASE_BORDER_STYLE: CSSProperties/u);
+	assert.match(SHELL_SOURCE, /boxShadow: `inset 0 0 0 calc\(var\(--card-glow-border-width\) \* 1px\) \$\{token\("color\.border\.bold"\)\}`/u);
+	assert.match(SHELL_SOURCE, /borderWidth: "calc\(var\(--card-glow-border-width\) \* 1px\)"/u);
+	assert.match(SHELL_SOURCE, /transparent calc\(var\(--card-glow-border-spread\) \* 1px\)/u);
+	assert.match(SHELL_SOURCE, /data-home-starter-card-base-border/u);
+	assert.match(SHELL_SOURCE, /data-home-starter-card-glow-border/u);
+	assert.match(SHELL_SOURCE, /absolute inset-0 z-\[1\] rounded-\[inherit\]/u);
+	assert.match(SHELL_SOURCE, /style=\{HOME_STARTER_CARD_BASE_BORDER_STYLE\}/u);
+	assert.match(SHELL_SOURCE, /absolute inset-0 z-\[2\] overflow-hidden rounded-\[inherit\] border border-transparent/u);
+	assert.match(SHELL_SOURCE, /rounded-lg bg-background/u);
+	assert.match(SHELL_SOURCE, /transition-\[background-color,box-shadow\]/u);
+	assert.doesNotMatch(SHELL_SOURCE, /hover:border-border-bold/u);
+	assert.doesNotMatch(SHELL_SOURCE, /color-mix\(in srgb, var\(--card-glow-tile-accent\) 92%, white\)/u);
+	assert.doesNotMatch(SHELL_SOURCE, /rounded-lg border border-border bg-background/u);
+});
+
 test("Studio chat header is hidden until a chat is active", () => {
 	assert.match(SHELL_SOURCE, /const shouldShowChatHeader = visibleMessages\.length > 0 \|\| hasActiveThreadRun \|\| chat\.isStreaming;/u);
 	assert.match(SHELL_SOURCE, /\{shouldShowChatHeader \? \(\s*<RovoAppHeader/u);
@@ -111,7 +140,7 @@ test("Studio agent results use guarded session-agent registration with preserve-
 	assert.match(SHELL_SOURCE, /import \{ AgentsDirectoryDialog \} from "@\/components\/blocks\/agents-directory";/u);
 	assert.match(SHELL_SOURCE, /sessionAgentEntries=\{studioAgentRegistry\.sessionAgentEntries\}/u);
 	assert.match(SHELL_SOURCE, /sessionAgents=\{studioAgentRegistry\.sessionAgentEntries\.map\(\(entry\) => entry\.profile\)\}/u);
-	assert.match(SHELL_SOURCE, /agents=\{ROVO_AGENT_PROFILES\}/u);
+	assert.match(SHELL_SOURCE, /agents=\{ROVO_DIRECTORY_AGENT_PROFILES\}/u);
 	assert.match(SHELL_SOURCE, /selectedAgentId=\{studioAgentRegistry\.selectedAgentId\}/u);
 	assert.match(SHELL_SOURCE, /onSelectAgent=\{handleStudioSidebarAgentSelect\}/u);
 	assert.match(SHELL_SOURCE, /onViewAllAgents=\{\(\) => setIsSidebarAgentBrowserOpen\(true\)\}/u);
@@ -148,6 +177,10 @@ test("RovoAppMessages renders the block agent result card after generation compl
 
 test("Studio agent config panel renders the shared ui-custom agent config fields", () => {
 	assert.match(UI_CUSTOM_AGENT_SOURCE, /export const AgentConfigFields = memo/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /const AGENT_AVATAR_PROFILE_COVER_COLORS: Record<string, string>/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /"product-agents": "#BF63F3"/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /function getAgentProfileCoverBackgroundColor\(avatarSrc: string \| undefined\): string/u);
+	assert.match(UI_CUSTOM_AGENT_SOURCE, /style=\{\{ backgroundColor: coverBackgroundColor \}\}/u);
 	assert.match(UI_CUSTOM_AGENT_SOURCE, /Add triggers/u);
 	assert.match(UI_CUSTOM_AGENT_SOURCE, /Add conversation starters/u);
 	assert.match(UI_CUSTOM_AGENT_SOURCE, /Teamwork Graph/u);

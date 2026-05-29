@@ -88,6 +88,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 			{ name: "iconContrast", type: "number", default: "1.4", description: "Contrast multiplier for the duplicated avatar glow." },
 			{ name: "iconScale", type: "number", default: "3.4", description: "Scale applied to the duplicated avatar glow layer." },
 			{ name: "iconOpacity", type: "number", default: "0.25", description: "Opacity for the glow layer, reduced until hover or focus when exclude mode is enabled." },
+			{ name: "borderSpread", type: "number", default: "120", description: "Fade radius for the pointer-driven border highlight; higher values create longer stroke traces along the card edge." },
 			{ name: "borderWidth", type: "number", default: "1", description: "Width of the masked backdrop-filter border ring." },
 			{ name: "borderBlur", type: "number", default: "0", description: "Backdrop blur applied through the masked border ring." },
 			{ name: "borderSaturate", type: "number", default: "4.2", description: "Backdrop saturation multiplier applied through the masked border ring." },
@@ -216,6 +217,16 @@ import { stagger } from "motion/react";`,
 			{ name: "className", type: "string", description: "Additional class names applied to the squircle host element." },
 			{ name: "contentClassName", type: "string", description: "Class names applied to the inner content wrapper." },
 			{ name: "style", type: "React.CSSProperties", description: "Inline styles merged onto the squircle host element." },
+		],
+	},
+	"visual-tracing": {
+		description: "Text light-tracing effect: paragraph glyphs are made transparent with background-clip:text, and stacked linear-gradient bands sweep across via animated background-position. Trace duration is derived from character count (charCount / cps). Supports line, sweep, and vertical modes with multiple Rovo-colored stops. Ported from jh3y's CodePen with theme-aware ADS colors and reduced-motion support.",
+		importStatement: `import VisualTracing from "@/components/visual/visual-tracing";
+import { DEFAULT_CONFIG } from "@/components/visual/visual-tracing/data";`,
+		usage: `<VisualTracing config={DEFAULT_CONFIG} text="Light traces across these words." />`,
+		props: [
+			{ name: "config", type: "TracingConfig", description: "Mode, speed (cps), text alpha, sweep angle, offset, color stops, and auto-loop settings that drive the trace." },
+			{ name: "text", type: "string", default: "SAMPLE_TEXT", description: "Passage to animate. Its length feeds the trace duration so longer text traces proportionally longer." },
 		],
 	},
 	"ascii": {
