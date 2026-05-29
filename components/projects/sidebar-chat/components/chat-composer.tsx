@@ -11,6 +11,7 @@ import {
 	PromptInputActionMenuContent,
 	PromptInputActionMenuTrigger,
 	PromptInputBody,
+	PromptInputButton,
 	PromptInputFooter,
 	PromptInputPreferencesButton,
 	PromptInputTextarea,
@@ -27,6 +28,7 @@ import { Footer } from "@/components/ui/footer";
 import ChatContextBar from "./chat-context-bar";
 import type { ChatContextBarDescriptor } from "../lib/chat-context-bar";
 import AddIcon from "@atlaskit/icon/core/add";
+import CursorIcon from "@atlaskit/icon-lab/core/cursor";
 import { PendingAttachments } from "@/components/projects/rovo/components/pending-attachments";
 import { RovoAppComposerAddMenu } from "@/components/projects/rovo/components/rovo-app-composer-add-menu";
 import { RovoComposerSendControls } from "@/components/projects/shared/components/rovo-composer-send-controls";
@@ -37,9 +39,11 @@ interface ChatComposerProps {
 	hasInFlightTurn: boolean;
 	queuedPrompts: ReadonlyArray<QueuedPromptItem>;
 	micStream?: MediaStream | null;
+	clickyActive?: boolean;
 	onPromptChange: (value: string) => void;
 	onSubmit: (message: PromptInputMessage) => Promise<void> | void;
 	onStop: () => void;
+	onToggleClicky?: () => void;
 	onToggleRealtimeVoice?: () => void;
 	onRemoveQueuedPrompt: (id: string) => void;
 	onReasoningChange?: (value: string) => void;
@@ -111,7 +115,7 @@ function ChatComposerSendControls({
 	);
 }
 
-export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, queuedPrompts, micStream = null, onPromptChange, onSubmit, onStop, onToggleRealtimeVoice, onRemoveQueuedPrompt, onReasoningChange, realtimeVoiceActive = false, selectedReasoning: controlledSelectedReasoning, chatContextBar }: Readonly<ChatComposerProps>): React.ReactElement {
+export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, queuedPrompts, micStream = null, clickyActive = false, onPromptChange, onSubmit, onStop, onToggleClicky, onToggleRealtimeVoice, onRemoveQueuedPrompt, onReasoningChange, realtimeVoiceActive = false, selectedReasoning: controlledSelectedReasoning, chatContextBar }: Readonly<ChatComposerProps>): React.ReactElement {
 	const [localSelectedReasoning, setLocalSelectedReasoning] = useState(DEFAULT_REASONING_OPTION_ID);
 	const [webResultsEnabled, setWebResultsEnabled] = useState(false);
 	const [companyKnowledgeEnabled, setCompanyKnowledgeEnabled] = useState(true);
@@ -203,6 +207,17 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 									/>
 								</PromptInputActionMenuContent>
 							</PromptInputActionMenu>
+
+							<PromptInputButton
+								size="icon-sm"
+								variant={clickyActive ? "default" : "ghost"}
+								onClick={onToggleClicky}
+								aria-label="Rovo AI cursor"
+								aria-pressed={clickyActive}
+								tooltip={{ content: "AI Cursor ⌘⇧K", delay: 0 }}
+							>
+								<CursorIcon label="" />
+							</PromptInputButton>
 
 							<Popover open={isCustomizeMenuOpen} onOpenChange={handleCustomizeMenuOpenChange}>
 								<PopoverTrigger render={<PromptInputPreferencesButton aria-label="Customize" />} />
