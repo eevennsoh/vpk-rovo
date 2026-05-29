@@ -2,9 +2,6 @@
 
 import type { ChatStatus, FileUIPart } from "ai";
 import {
-	PromptInput,
-	PromptInputBody,
-	PromptInputButton,
 	PromptInputProvider,
 	PromptInputTextarea,
 	usePromptInputController,
@@ -17,7 +14,7 @@ import {
 	QueueItemIndicator,
 	QueueList,
 } from "@/components/ui-custom/queue";
-import { composerPromptInputClassName, composerTextareaClassName, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
+import { composerTextareaClassName, floatingComposerTextareaClassName, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { SkillTag, SkillTagGroup } from "@/components/ui/skill-tag";
@@ -28,7 +25,6 @@ import type { RealtimeGenerationState } from "@/components/projects/studio/hooks
 import { cn } from "@/lib/utils";
 import type { RovoAppPlanExecutionTrackerViewModel } from "@/components/projects/studio/lib/rovo-app-plan-execution-tracker";
 import type { RovoAppQueuedAction } from "@/lib/rovo-app-types";
-import AddIcon from "@atlaskit/icon/core/add";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import { AnimatePresence, motion } from "motion/react";
@@ -36,6 +32,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RovoAppPlanExecutionTracker } from "./rovo-app-plan-execution-tracker";
 import { RovoAppComposerResponseGradient } from "./rovo-app-composer-response-gradient";
 import { RovoComposerActionButton } from "@/components/projects/shared/components/rovo-composer-send-controls";
+import { FloatingComposer } from "@/components/projects/shared/components/floating-composer";
 
 const HIDDEN_COMPOSER_SKILL_IDS = new Set(["vpk-html"]);
 const EMPTY_REALTIME_OUTPUT_WAVEFORM_BARS: number[] = [];
@@ -360,43 +357,37 @@ function RovoAppComposerInner({
 				) : null}
 
 				<div className="relative z-10">
-					<PromptInput
-						variant="floating"
+					<FloatingComposer
 						allowOverflow
-						className={cn(composerPromptInputClassName, "relative z-10")}
+						className="relative z-10"
 						data-screen-assistant-target="studio-composer"
 						onSubmit={handlePromptSubmit}
-					>
-						<PromptInputBody className="flex w-full items-center gap-2">
-							<PromptInputButton size="icon-sm" variant="ghost" aria-label="Add">
-								<AddIcon label="" />
-							</PromptInputButton>
-							<PromptInputTextarea
-								ref={textareaRef}
-								autoFocus={autoFocus}
-								autoResize
-								className={cn(composerTextareaClassName, "min-h-8 flex-1 py-1.5 leading-5")}
-								onInput={() => setHighlightedIndex(0)}
-								onKeyDown={handleTextareaKeyDown}
-								placeholder={placeholder}
-								rows={1}
-								suppressHydrationWarning
+						actions={
+							<RovoComposerActionButton
+								canSubmit={canSubmit}
+								composerStatus={composerStatus}
+								micStream={micStream}
+								onStop={onStop}
+								onToggleRealtimeVoice={onToggleRealtimeVoice}
+								realtimeVoiceActive={realtimeVoiceActive}
+								screenAssistantTargetPrefix="studio-composer"
+								showBackgroundStop={showBackgroundStop}
+								submitDisabled={submitDisabled}
 							/>
-							<div className="flex shrink-0 items-center gap-1">
-								<RovoComposerActionButton
-									canSubmit={canSubmit}
-									composerStatus={composerStatus}
-									micStream={micStream}
-									onStop={onStop}
-									onToggleRealtimeVoice={onToggleRealtimeVoice}
-									realtimeVoiceActive={realtimeVoiceActive}
-									screenAssistantTargetPrefix="studio-composer"
-									showBackgroundStop={showBackgroundStop}
-									submitDisabled={submitDisabled}
-								/>
-							</div>
-						</PromptInputBody>
-					</PromptInput>
+						}
+					>
+						<PromptInputTextarea
+							ref={textareaRef}
+							autoFocus={autoFocus}
+							autoResize
+							className={cn(composerTextareaClassName, floatingComposerTextareaClassName)}
+							onInput={() => setHighlightedIndex(0)}
+							onKeyDown={handleTextareaKeyDown}
+							placeholder={placeholder}
+							rows={1}
+							suppressHydrationWarning
+						/>
+					</FloatingComposer>
 
 					<AnimatePresence>
 						{isSlashMenuOpen && filteredSlashSkills.length > 0 ? (
