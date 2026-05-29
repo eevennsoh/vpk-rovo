@@ -4059,8 +4059,14 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 							viewTransitionName: "persistent-header" as never,
 						}}
 					>
-						<div className="relative flex min-w-0 flex-1 items-center justify-start gap-2">
-							<div ref={nav.searchContainerRef} className="relative flex h-9 w-full max-w-[680px] items-center">
+						<div className={cn("relative flex min-w-0 flex-1 items-center gap-2", chat.sidebarOpen ? "justify-start" : "justify-end")}>
+							<div
+									ref={nav.searchContainerRef}
+									className={cn(
+										"flex h-9 w-full max-w-[680px] items-center",
+										chat.sidebarOpen ? "relative" : "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+									)}
+								>
 								<InputGroup
 									className={cn(
 										"h-7 rounded-md bg-bg-input shadow-none transition-[height,background-color,box-shadow] duration-medium ease-out hover:bg-bg-input-hovered",
