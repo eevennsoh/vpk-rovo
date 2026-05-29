@@ -1,7 +1,7 @@
 "use client";
 
 import type { FileUIPart } from "ai";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, type AnimationPlaybackControls } from "motion/react";
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -104,7 +104,7 @@ import { approveSkillDraft, fetchWikiStatus, fetchSkillDraftDetail, fetchSkillDr
 import type { HermesSkillDraftDetail, HermesSkillDraftSummary, HermesSkillSummary, WikiStatus } from "@/lib/rovo-runtime-types";
 import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
 import { useRovoSelectedAgent } from "@/app/contexts";
-import { ROVO_AGENT_PROFILES, getRovoAgentPromptContext, isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/studio/data/agent-profiles";
+import { ROVO_DIRECTORY_AGENT_PROFILES, getRovoAgentPromptContext, isRovoAgentProfile, type RovoAgentProfile } from "@/components/projects/studio/data/agent-profiles";
 
 interface RovoAppShellProps {
 	embedded?: boolean;
@@ -161,7 +161,7 @@ const HOME_STARTER_CATEGORIES: ReadonlyArray<HomeStarterCategoryOption> = [
 	{ id: "brainstorm", label: "Planning", iconSrc: `${RICH_ICON_ROOT}/lightbulb/standard.svg`, iconClassName: "-translate-y-px scale-[1.08]" },
 	{ id: "analyze", label: "Insights", iconSrc: `${RICH_ICON_ROOT}/marketing/standard.svg`, iconClassName: "scale-[1.08]" },
 	{ id: "review", label: "Operations", iconSrc: `${RICH_ICON_ROOT}/product-management/standard.svg`, iconClassName: "translate-x-0.5 -translate-y-0.5 scale-[1.14]" },
-	{ id: "summarize", label: "Writing", iconSrc: `${RICH_ICON_ROOT}/illustrations/standard.svg`, iconClassName: "translate-y-px scale-[1.4]" },
+	{ id: "summarize", label: "Writing", iconSrc: `${RICH_ICON_ROOT}/illustrations/standard.svg`, iconClassName: "-translate-y-px scale-[0.88]" },
 	{ id: "create", label: "Work management", iconSrc: `${RICH_ICON_ROOT}/project-management/standard.svg`, iconClassName: "scale-[1.08]" },
 ];
 
@@ -810,29 +810,52 @@ function HomeStarterBento({
 	const templates = HOME_STARTER_VIEWS[activeCategory];
 	const visibleTemplates = templates.slice(0, 5);
 	const canShowMore = templates.length > visibleTemplates.length;
-	const cycleActive = cycleEnabled && !shouldReduceMotion && !browseOpen && !bentoInteracting;
+	const cycleRunning = cycleEnabled && !shouldReduceMotion && !browseOpen;
+	const cycleProgress = useMotionValue(0);
+	const cycleControlsRef = useRef<AnimationPlaybackControls | null>(null);
 	const selectHomeStarterCategory = useCallback((category: HomeStarterCategory) => {
 		setActiveCategory(category);
 		setCycleEnabled(false);
 	}, []);
 
 	useEffect(() => {
-		if (!cycleActive) {
+		if (!cycleRunning) {
+			cycleProgress.set(0);
 			return;
 		}
 
-		const intervalId = window.setInterval(() => {
-			setActiveCategory((prev) => {
-				const currentIndex = HOME_STARTER_CATEGORIES.findIndex((entry) => entry.id === prev);
-				const nextIndex = (currentIndex + 1) % HOME_STARTER_CATEGORIES.length;
-				return HOME_STARTER_CATEGORIES[nextIndex].id;
-			});
-		}, HOME_STARTER_CYCLE_DURATION_MS);
+		cycleProgress.set(0);
+		const controls = animate(cycleProgress, 1, {
+			duration: HOME_STARTER_CYCLE_DURATION_MS / 1000,
+			ease: "linear",
+			onComplete: () => {
+				cycleProgress.set(0);
+				setActiveCategory((prev) => {
+					const currentIndex = HOME_STARTER_CATEGORIES.findIndex((entry) => entry.id === prev);
+					const nextIndex = (currentIndex + 1) % HOME_STARTER_CATEGORIES.length;
+					return HOME_STARTER_CATEGORIES[nextIndex].id;
+				});
+			},
+		});
+		cycleControlsRef.current = controls;
 
 		return () => {
-			window.clearInterval(intervalId);
+			controls.stop();
+			cycleControlsRef.current = null;
 		};
-	}, [cycleActive]);
+	}, [activeCategory, cycleRunning, cycleProgress]);
+
+	useEffect(() => {
+		const controls = cycleControlsRef.current;
+		if (!controls) {
+			return;
+		}
+		if (bentoInteracting) {
+			controls.pause();
+		} else {
+			controls.play();
+		}
+	}, [bentoInteracting]);
 	const handleTemplateMouseEnter = useCallback((prompt: string) => {
 		hoveredTemplatePromptRef.current = prompt;
 		onPreviewStart(prompt);
@@ -900,7 +923,7 @@ function HomeStarterBento({
 			<div className="flex flex-wrap justify-center gap-2">
 				{HOME_STARTER_CATEGORIES.map((category) => {
 					const isActive = activeCategory === category.id;
-					const showProgress = isActive && cycleActive;
+					const showProgress = isActive && cycleRunning;
 
 					return (
 						<button
@@ -933,13 +956,9 @@ function HomeStarterBento({
 							</span>
 							{showProgress ? (
 								<motion.span
-									key={`${category.id}-${cycleActive}`}
 									aria-hidden
 									className="pointer-events-none absolute inset-0 z-[1] origin-left bg-bg-selected-hovered"
-									initial={{ scaleX: 0 }}
-									animate={{ scaleX: 1 }}
-									transition={{ duration: HOME_STARTER_CYCLE_DURATION_MS / 1000, ease: "linear" }}
-									style={{ willChange: "transform" }}
+									style={{ scaleX: cycleProgress, willChange: "transform" }}
 								/>
 							) : null}
 						</button>
@@ -1083,7 +1102,7 @@ function HomeStarterBento({
 			<AgentsDirectoryDialog
 				open={browseOpen}
 				onOpenChange={setBrowseOpen}
-				agents={ROVO_AGENT_PROFILES}
+				agents={ROVO_DIRECTORY_AGENT_PROFILES}
 				sessionAgents={sessionAgents}
 			/>
 		</div>
@@ -1123,7 +1142,7 @@ function buildStudioAgentCreationContext(originalBrief: string): string {
 		"- name: short display name",
 		"- byline: one-line tagline (e.g. \"Generated agent\")",
 		"- description: 1–2 sentence summary of what the agent does",
-		"- instructions: how the agent should behave and what context it uses",
+		"- instructions: structured Markdown beginning with ## Instructions; use paragraphs, bullet lists with bold labels, and optional ## Knowledge, ## Triggers, and ## Validation sections",
 		"- conversationStarters: 2–4 starter prompts (strings)",
 		"- avatarFallback: { initials: 2-letter shorthand derived from the name }",
 		"- action: \"create\"",
@@ -1144,7 +1163,7 @@ function buildStudioAgentCreationContinuationContext(): string {
 		"- name: short display name",
 		"- byline: one-line tagline (e.g. \"Generated agent\")",
 		"- description: 1–2 sentence summary of what the agent does",
-		"- instructions: how the agent should behave and what context it uses",
+		"- instructions: structured Markdown beginning with ## Instructions; use paragraphs, bullet lists with bold labels, and optional ## Knowledge, ## Triggers, and ## Validation sections",
 		"- conversationStarters: 2–4 starter prompts (strings)",
 		"- avatarFallback: { initials: 2-letter shorthand derived from the name }",
 		"- action: \"create\"",
@@ -1181,8 +1200,8 @@ function normalizeStudioAgentResult(agentResult: RovoDataParts["agent-result"]):
 		.join("\n");
 
 	return {
-		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-1.svg",
-		byline: "Generated in Studio",
+		avatarSrc: "/avatar-agent/strategy-agents/wildcard-4.svg",
+		byline: "Custom agent by You",
 		contextDescription,
 		description,
 		id,
@@ -1658,6 +1677,11 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					profileId: registered.id,
 					sourceMessageId: options?.sourceMessageId ?? null,
 				});
+				// Once an agent finishes building, surface the sidebar chat so the
+				// freshly selected agent is ready to test — even before publishing.
+				if (!embedded) {
+					nav.openChat("sidebar");
+				}
 				return true;
 			}
 
@@ -1686,9 +1710,14 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				profileId: agentId,
 				sourceMessageId: options?.sourceMessageId ?? null,
 			});
+			// Once an agent finishes building, surface the sidebar chat so the
+			// freshly selected agent is ready to test — even before publishing.
+			if (!embedded) {
+				nav.openChat("sidebar");
+			}
 			return true;
 		},
-		[chat.activeThreadId, chat.runtimeThreadId, studioAgentRegistry],
+		[chat.activeThreadId, chat.runtimeThreadId, studioAgentRegistry, nav, embedded],
 	);
 
 	const handleStudioSidebarAgentSelect = useCallback(
@@ -3951,7 +3980,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			<AgentsDirectoryDialog
 				open={isSidebarAgentBrowserOpen}
 				onOpenChange={setIsSidebarAgentBrowserOpen}
-				agents={ROVO_AGENT_PROFILES}
+				agents={ROVO_DIRECTORY_AGENT_PROFILES}
 				onSelectAgent={handleSidebarBrowseAgentSelect}
 				sessionAgents={studioAgentRegistry.sessionAgentEntries.map((entry) => entry.profile)}
 			/>
@@ -4110,7 +4139,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 							right: 0,
 							bottom: 0,
 							width: `${askRovoChatPanelWidth}px`,
-							padding: token("space.100"),
 							pointerEvents: isStudioAskRovoChatActive ? "auto" : "none",
 							transform: isStudioAskRovoChatActive
 								? "translateX(0)"
@@ -4122,7 +4150,11 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 							zIndex: 90,
 						}}
 					>
-						<ChatPanel onClose={nav.toggleChat} abortOnUnmount={false} />
+						<ChatPanel
+							onClose={nav.toggleChat}
+							abortOnUnmount={false}
+							containerStyle={{ borderRadius: 0, borderWidth: "0 0 0 1px" }}
+						/>
 						<SidebarResizeHandle
 							side="left"
 							data-active={askRovoChatResize.isResizing ? "" : undefined}

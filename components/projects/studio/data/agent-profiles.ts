@@ -81,6 +81,13 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 		description: "Helps review code, explain repository changes, and suggest implementation paths.",
 	}),
 	createProfile({
+		id: "release-notes-drafter",
+		name: "Release Notes Drafter",
+		byline: "Custom agent by Diego Alvarez",
+		avatarSrc: "/avatar-agent/strategy-agents/wildcard-1.svg",
+		description: "Turns merged changes and tickets into clear, customer-ready release notes.",
+	}),
+	createProfile({
 		id: ROVO_AGENT_ID,
 		name: "Rovo Dev",
 		byline: "by Atlassian",
@@ -91,7 +98,7 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 		id: "readiness-checker",
 		name: "Readiness Checker",
 		byline: "Rovo agent by Enterprise Solutions",
-		avatarSrc: "/avatar-agent/teamwork-agents/readiness-checker.svg",
+		avatarSrc: "/avatar-agent/service-agents/service-triage.svg",
 		description: "Checks plans, launches, and work items for readiness gaps before handoff.",
 	}),
 	createProfile({
@@ -165,10 +172,17 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 		description: "Helps locate, summarize, and work with Drive files and document context.",
 	}),
 	createProfile({
+		id: "atlassian",
+		name: "Atlassian",
+		byline: "by Atlassian",
+		avatarSrc: "/1p/atlassian.svg",
+		description: "Searches and connects work across Jira, Confluence, and the Teamwork Graph.",
+	}),
+	createProfile({
 		id: AI_INSIGHTS_AGENT_ID,
 		name: "AI Insights Agent",
 		byline: "Custom agent by Atlassian",
-		avatarSrc: "/avatar-agent/teamwork-agents/customer-insights.svg",
+		avatarSrc: "/avatar-agent/product-agents/wildcard-1.svg",
 		description: AI_INSIGHTS_DESCRIPTION,
 		starters: [
 			createStarter("ai-insights-agent-latest-trends", "What are the latest AI trends this week?"),
@@ -178,23 +192,23 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 	}),
 	createProfile({
 		id: "untitled-agent",
-		name: "Untitled",
-		byline: "Custom agent",
-		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-1.svg",
+		name: "Research Companion",
+		byline: "Custom agent by Maya Chen",
+		avatarSrc: "/avatar-agent/strategy-agents/wildcard-3.svg",
 		description: "A flexible custom agent for open-ended research, writing, and planning tasks.",
 	}),
 	createProfile({
 		id: "chatgpt-wrapper-app",
 		name: "ChatGPT Wrapper App",
-		byline: "Custom agent",
-		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-4.svg",
+		byline: "Custom agent by Sam Rivera",
+		avatarSrc: "/avatar-agent/product-agents/wildcard-2.svg",
 		description: "Wraps general chat workflows with lightweight task framing and response structure.",
 	}),
 	createProfile({
 		id: "social-media-writer",
 		name: "Social Media Writer",
 		byline: "Teamwork agent by Atlassian",
-		avatarSrc: "/avatar-agent/teamwork-agents/social-media-writer.svg",
+		avatarSrc: "/avatar-agent/strategy-agents/wildcard-2.svg",
 		description: "Drafts concise social posts, campaign variations, and channel-ready copy.",
 	}),
 	createProfile({
@@ -208,7 +222,7 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 		id: "transcript-insights-reporter",
 		name: "Transcript Insights Reporter",
 		byline: "Teamwork agent by Atlassian",
-		avatarSrc: "/avatar-agent/teamwork-agents/transcript-insights-reporter.svg",
+		avatarSrc: "/avatar-agent/service-agents/wildcard-1.svg",
 		description: "Extracts themes, decisions, and action items from long transcripts.",
 	}),
 ] as const;
@@ -216,6 +230,12 @@ export const ROVO_AGENT_PROFILES: readonly RovoAgentProfile[] = [
 export const ROVO_AGENT_PROFILE_BY_ID = new Map(
 	ROVO_AGENT_PROFILES.map((agent) => [agent.id, agent]),
 );
+
+// The Browse agents directory lists addable agents only. Rovo Dev is the
+// built-in platform default (not a custom agent you add), so it is excluded
+// here while remaining in ROVO_AGENT_PROFILES for default-agent lookups.
+export const ROVO_DIRECTORY_AGENT_PROFILES: readonly RovoAgentProfile[] = ROVO_AGENT_PROFILES
+	.filter((agent) => agent.id !== ROVO_AGENT_ID);
 
 export const ROVO_AGENT_SELECTOR_AGENTS: readonly AgentSelectorAgent[] = ROVO_AGENT_PROFILES
 	.filter((agent) => agent.id !== ROVO_AGENT_ID)

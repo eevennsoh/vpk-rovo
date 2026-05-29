@@ -81,6 +81,14 @@ export const DEMO_AGENT_BROWSER_AGENTS: readonly AgentBrowserAgent[] = [
 		avatarSrc: "/3p/notion/24.svg",
 		description: "Pulls answers from your team's pages and databases.",
 	},
+	{
+		id: "atlassian",
+		name: "Atlassian",
+		byline: "Teamwork search by Atlassian",
+		attributionKind: "company",
+		avatarSrc: "/1p/atlassian.svg",
+		description: "Connects work across Jira, Confluence, and the rest of your suite.",
+	},
 ];
 
 export const DEMO_AGENT_BROWSER_SIDEBAR_GROUPS: readonly AgentBrowserSidebarGroup[] = [

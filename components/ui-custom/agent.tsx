@@ -2,7 +2,7 @@
 
 import type { Tool } from "ai";
 import type { ComponentProps, ReactNode } from "react";
-import { memo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 
 import AddIcon from "@atlaskit/icon/core/add";
@@ -34,7 +34,15 @@ import {
 	TwgToolSourceStack,
 	type TwgToolSource,
 } from "@/components/ui-custom/twg-tool";
-import { RichTextEditor } from "@/components/ui-custom/rich-text-editor";
+import {
+	type RichTextMentionItem,
+	type RichTextMentionSources,
+	RichTextEditor,
+} from "@/components/ui-custom/rich-text-editor";
+import type {
+	HermesSkillSummary,
+	WikiMemoryExplorerResponse,
+} from "@/lib/rovo-runtime-types";
 import { cn } from "@/lib/utils";
 
 import { CodeBlock } from "./code-block";
@@ -50,6 +58,43 @@ const AGENT_KNOWLEDGE_SOURCES = [
 	{ id: "teams", label: "Microsoft Teams", provider: "teams" },
 	{ id: "salesforce", label: "Salesforce", provider: "salesforce" },
 ] as const satisfies readonly TwgToolSource[];
+
+const MENTION_SOURCE_LIMIT = 24;
+
+interface AgentSkillMentionResponse {
+	skills?: HermesSkillSummary[];
+}
+
+function toMentionId(category: RichTextMentionItem["category"], id: string): string {
+	return `${category}:${id.trim().replace(/\s+/g, "-")}`;
+}
+
+function mapSkillsToMentionItems(
+	skills: readonly HermesSkillSummary[] | undefined,
+): RichTextMentionItem[] {
+	return (skills ?? [])
+		.filter((skill) => !skill.disabled)
+		.slice(0, MENTION_SOURCE_LIMIT)
+		.map((skill) => ({
+			category: "skill",
+			id: toMentionId("skill", skill.id || `${skill.category}/${skill.name}`),
+			label: skill.title || skill.name,
+			description: skill.description ?? `${skill.category} skill`,
+		}));
+}
+
+function mapMemoryToMentionItems(
+	explorer: WikiMemoryExplorerResponse | null,
+): RichTextMentionItem[] {
+	return (explorer?.nodes ?? [])
+		.slice(0, MENTION_SOURCE_LIMIT)
+		.map((node) => ({
+			category: "memory",
+			id: toMentionId("memory", node.id),
+			label: node.title || node.label || node.id,
+			description: node.summary || node.kind,
+		}));
+}
 
 export type AgentConfigTextFieldName =
 	| "name"
@@ -86,6 +131,7 @@ export const Agent = memo(({ className, ...props }: Readonly<AgentProps>) => (
 
 export type AgentHeaderProps = ComponentProps<"div"> & {
 	name: string;
+	avatarSrc?: string;
 	model?: string;
 	primaryActionLabel?: string;
 	secondaryActionLabel?: string;
@@ -97,6 +143,7 @@ export type AgentHeaderProps = ComponentProps<"div"> & {
 export const AgentHeader = memo(
 	({
 		className,
+		avatarSrc = AGENT_AVATAR_SRC,
 		model,
 		name,
 		primaryActionLabel = "Activate",
@@ -115,7 +162,7 @@ export const AgentHeader = memo(
 		>
 			<div className="flex min-w-0 items-center gap-2">
 				<Avatar label="Agent" shape="hexagon" size="sm">
-					<AvatarImage alt="" src={AGENT_AVATAR_SRC} />
+					<AvatarImage alt="" src={avatarSrc} />
 				</Avatar>
 				<span className="truncate text-sm font-semibold leading-5 text-text">{name}</span>
 				{model ? (
@@ -274,7 +321,7 @@ function AgentSectionLabel({ children }: Readonly<{ children: ReactNode }>) {
 	);
 }
 
-function AgentProfileCover() {
+function AgentProfileCover({ avatarSrc = AGENT_AVATAR_SRC }: Readonly<{ avatarSrc?: string }>) {
 	return (
 		<div className="relative overflow-hidden rounded-t-xl bg-surface text-text">
 			<div className="relative h-12 overflow-hidden bg-[#1868DB]">
@@ -283,7 +330,7 @@ function AgentProfileCover() {
 					aria-hidden
 					className="absolute top-1/2 left-[88%] h-48 w-[168px] -translate-x-1/2 -translate-y-1/2 opacity-95"
 					height={192}
-					src={AGENT_AVATAR_SRC}
+					src={avatarSrc}
 					width={168}
 				/>
 			</div>
@@ -293,7 +340,7 @@ function AgentProfileCover() {
 					alt="Agent avatar"
 					className="h-12 w-[42px]"
 					height={48}
-					src={AGENT_AVATAR_SRC}
+					src={avatarSrc}
 					width={42}
 				/>
 				<svg
@@ -459,6 +506,44 @@ function AgentInstructionsComposer({
 	onInstructionsChange?: (value: string) => void;
 	screenAssistantTargetId?: string;
 }>) {
+	const [skills, setSkills] = useState<RichTextMentionItem[]>([]);
+	const [memory, setMemory] = useState<RichTextMentionItem[]>([]);
+	const mentionSources = useMemo<RichTextMentionSources>(() => ({
+		skill: skills,
+		memory,
+	}), [memory, skills]);
+
+	useEffect(() => {
+		const abortController = new AbortController();
+
+		async function loadMentionSources(): Promise<void> {
+			try {
+				const [skillsResponse, memoryResponse] = await Promise.all([
+					fetch("/api/skills", { signal: abortController.signal }),
+					fetch("/api/wiki/memory-explorer", { signal: abortController.signal }),
+				]);
+
+				if (skillsResponse.ok) {
+					const payload = await skillsResponse.json() as AgentSkillMentionResponse;
+					setSkills(mapSkillsToMentionItems(payload.skills));
+				}
+
+				if (memoryResponse.ok) {
+					const payload = await memoryResponse.json() as WikiMemoryExplorerResponse;
+					setMemory(mapMemoryToMentionItems(payload));
+				}
+			} catch (error) {
+				if (error instanceof DOMException && error.name === "AbortError") {
+					return;
+				}
+			}
+		}
+
+		void loadMentionSources();
+
+		return () => abortController.abort();
+	}, []);
+
 	return (
 		<section
 			className="space-y-0"
@@ -475,7 +560,8 @@ function AgentInstructionsComposer({
 				showBubbleMenu={false}
 				toolbarEndSlot={<AgentInstructionsModelSelector />}
 				value={instructions}
-				onPlainTextChange={onInstructionsChange}
+				mentionSources={mentionSources}
+				onMarkdownChange={onInstructionsChange}
 			/>
 		</section>
 	);
@@ -483,6 +569,7 @@ function AgentInstructionsComposer({
 
 export interface AgentConfigFieldsProps extends ComponentProps<"div"> {
 	config: AgentConfigFormValue;
+	avatarSrc?: string;
 	idPrefix: string;
 	onTextChange?: (field: AgentConfigTextFieldName, value: string) => void;
 	onListItemChange?: (field: AgentConfigListFieldName, index: number, value: string) => void;
@@ -495,6 +582,7 @@ export const AgentConfigFields = memo(
 	({
 		className,
 		config,
+		avatarSrc,
 		idPrefix,
 		onListItemChange,
 		onAppendListItem,
@@ -517,7 +605,7 @@ export const AgentConfigFields = memo(
 					className="space-y-4 [&+*]:!mt-4"
 					data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:profile` : undefined}
 				>
-					<AgentProfileCover />
+					<AgentProfileCover avatarSrc={avatarSrc} />
 					<div
 						className="space-y-1"
 						data-agent-field="name"

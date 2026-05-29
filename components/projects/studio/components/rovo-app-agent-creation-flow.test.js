@@ -19,6 +19,10 @@ const UI_CUSTOM_AGENT_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "components/ui-custom/agent.tsx"),
 	"utf8",
 );
+const NAV_HOOK_SOURCE = fs.readFileSync(
+	path.join(process.cwd(), "components/blocks/top-navigation/hooks/use-top-navigation.ts"),
+	"utf8",
+);
 
 test("RovoAppShell starts Studio agent creation only from the default-agent home composer", () => {
 	assert.match(SHELL_SOURCE, /const DEFAULT_COMPOSER_PLACEHOLDER = "Describe the agent you want to build";/u);
@@ -136,11 +140,26 @@ test("Studio agent results use guarded session-agent registration with preserve-
 	assert.match(SHELL_SOURCE, /import \{ AgentsDirectoryDialog \} from "@\/components\/blocks\/agents-directory";/u);
 	assert.match(SHELL_SOURCE, /sessionAgentEntries=\{studioAgentRegistry\.sessionAgentEntries\}/u);
 	assert.match(SHELL_SOURCE, /sessionAgents=\{studioAgentRegistry\.sessionAgentEntries\.map\(\(entry\) => entry\.profile\)\}/u);
-	assert.match(SHELL_SOURCE, /agents=\{ROVO_AGENT_PROFILES\}/u);
+	assert.match(SHELL_SOURCE, /agents=\{ROVO_DIRECTORY_AGENT_PROFILES\}/u);
 	assert.match(SHELL_SOURCE, /selectedAgentId=\{studioAgentRegistry\.selectedAgentId\}/u);
 	assert.match(SHELL_SOURCE, /onSelectAgent=\{handleStudioSidebarAgentSelect\}/u);
 	assert.match(SHELL_SOURCE, /onViewAllAgents=\{\(\) => setIsSidebarAgentBrowserOpen\(true\)\}/u);
 	assert.doesNotMatch(SHELL_SOURCE, /rovo-app-agents-directory/u);
+});
+
+test("Studio opens the sidebar chat once an agent finishes building", () => {
+	// The navigation hook must expose a deterministic open (not just toggle),
+	// otherwise an already-open sidebar would be closed on build completion.
+	assert.match(NAV_HOOK_SOURCE, /const \{ toggleChat, openChat, chatSurface \} = useRovoChat\(\);/u);
+	assert.match(NAV_HOOK_SOURCE, /\n\t\topenChat,\n/u);
+
+	// The agent-result handler surfaces the sidebar chat (gated to non-embedded
+	// shells) so the freshly selected agent is ready to test before publishing.
+	assert.ok(
+		(SHELL_SOURCE.match(/if \(!embedded\) \{\s*nav\.openChat\("sidebar"\);\s*\}/gu) ?? []).length >= 2,
+		"both registration success paths should open the sidebar chat",
+	);
+	assert.match(SHELL_SOURCE, /\[chat\.activeThreadId, chat\.runtimeThreadId, studioAgentRegistry, nav, embedded\]/u);
 });
 
 test("RovoAppMessages renders the block agent result card after generation completes", () => {

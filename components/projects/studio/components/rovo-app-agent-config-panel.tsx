@@ -188,6 +188,9 @@ export function RovoAppAgentConfigPanel({
 	const publishStatusLabel = getPublishLabel(entry.publishStatus);
 	const badgeVariant = getPublishBadgeVariant(entry.publishStatus);
 	const agentName = draft.name?.trim() || entry.profile.name || "Untitled agent";
+	// Mirror the avatar the sidebar nav renders for this agent (entry.profile.avatarSrc)
+	// so the header + profile cover match instead of falling back to the static default.
+	const agentAvatarSrc = entry.profile.avatarSrc;
 
 	return (
 		<motion.div
@@ -199,6 +202,7 @@ export function RovoAppAgentConfigPanel({
 		>
 			<Agent className="flex min-h-0 flex-1 flex-col">
 				<AgentHeader
+					avatarSrc={agentAvatarSrc}
 					name={agentName}
 					badge={
 						<Badge variant={badgeVariant} data-testid="agent-config-status-lozenge">
@@ -259,6 +263,7 @@ export function RovoAppAgentConfigPanel({
 						</AnimatePresence>
 						<AgentConfigFields
 							config={draft}
+							avatarSrc={agentAvatarSrc}
 							idPrefix={`agent-${profileId}`}
 							onTextChange={handleConfigTextChange}
 							onListItemChange={updateListItem}

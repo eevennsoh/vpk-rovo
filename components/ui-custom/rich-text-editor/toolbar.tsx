@@ -3,6 +3,7 @@
 import type { ReactNode, RefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
+import { BubbleMenu, FloatingMenu } from "@tiptap/react/menus";
 
 import AlignTextCenterIcon from "@atlaskit/icon/core/align-text-center";
 import AlignTextLeftIcon from "@atlaskit/icon/core/align-text-left";
@@ -48,6 +49,13 @@ interface RichTextEditorBubbleMenuProps {
 	showMoreControl?: boolean;
 }
 
+interface RichTextEditorFloatingMenuProps {
+	editor: Editor;
+	leadingSlot?: ReactNode;
+	showCommentControl?: boolean;
+	showMoreControl?: boolean;
+}
+
 interface DropdownMenuItemProps {
 	icon: ReactNode;
 	label: string;
@@ -59,11 +67,6 @@ interface DropdownMenuItemProps {
 interface DropdownMenuContainerProps {
 	children: ReactNode;
 	align?: "left" | "right";
-}
-
-interface SelectionPosition {
-	top: number;
-	left: number;
 }
 
 function useEditorTransactionRerender(editor: Editor): void {
@@ -82,43 +85,6 @@ function useEditorTransactionRerender(editor: Editor): void {
 			editor.off("update", update);
 		};
 	}, [editor]);
-}
-
-function useSelectionPosition(editor: Editor): { show: boolean; position: SelectionPosition } {
-	const [show, setShow] = useState(false);
-	const [position, setPosition] = useState<SelectionPosition>({ top: 0, left: 0 });
-
-	useEffect(() => {
-		function updateMenu(): void {
-			const { from, to } = editor.state.selection;
-			const hasSelection = from !== to;
-
-			if (!hasSelection) {
-				setShow(false);
-				return;
-			}
-
-			const { view } = editor;
-			const start = view.coordsAtPos(from);
-			const end = view.coordsAtPos(to);
-
-			setPosition({
-				left: (start.left + end.left) / 2,
-				top: start.top - 10,
-			});
-			setShow(true);
-		}
-
-		editor.on("selectionUpdate", updateMenu);
-		editor.on("transaction", updateMenu);
-
-		return () => {
-			editor.off("selectionUpdate", updateMenu);
-			editor.off("transaction", updateMenu);
-		};
-	}, [editor]);
-
-	return { show, position };
 }
 
 function DropdownMenuItem({
@@ -497,20 +463,13 @@ export function RichTextEditorBubbleMenu({
 	showCommentControl,
 	showMoreControl,
 }: Readonly<RichTextEditorBubbleMenuProps>) {
-	const { show, position } = useSelectionPosition(editor);
-
-	if (!show) {
-		return null;
-	}
-
 	return (
-		<div
-			className="fixed z-[1000] flex items-stretch rounded-lg bg-popover text-popover-foreground shadow-2xl"
-			style={{
-				top: position.top,
-				left: position.left,
-				transform: "translate(-50%, -100%)",
-			}}
+		<BubbleMenu
+			editor={editor}
+			className="z-[1000] flex items-stretch rounded-lg bg-popover text-popover-foreground shadow-2xl"
+			shouldShow={({ editor: activeEditor, from, to }) =>
+				activeEditor.isEditable && from !== to
+			}
 		>
 			<RichTextEditorToolbar
 				editor={editor}
@@ -520,6 +479,29 @@ export function RichTextEditorBubbleMenu({
 				className="gap-0"
 				controlsClassName="px-2 py-1"
 			/>
-		</div>
+		</BubbleMenu>
+	);
+}
+
+export function RichTextEditorFloatingMenu({
+	editor,
+	leadingSlot,
+	showCommentControl,
+	showMoreControl,
+}: Readonly<RichTextEditorFloatingMenuProps>) {
+	return (
+		<FloatingMenu
+			editor={editor}
+			className="z-[1000] flex items-stretch rounded-lg bg-popover text-popover-foreground shadow-2xl"
+		>
+			<RichTextEditorToolbar
+				editor={editor}
+				leadingSlot={leadingSlot}
+				showCommentControl={showCommentControl}
+				showMoreControl={showMoreControl}
+				className="gap-0"
+				controlsClassName="px-2 py-1"
+			/>
+		</FloatingMenu>
 	);
 }

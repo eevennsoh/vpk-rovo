@@ -68,14 +68,14 @@ const AGENT_CARD_OVERLAY_SHADOW = token("elevation.shadow.overlay");
 const AGENT_CARD_HOVER_ANIMATION = {
 	borderColor: "transparent",
 	boxShadow: AGENT_CARD_OVERLAY_SHADOW,
-	transform: "scale(1.006)",
+	scale: 1.006,
 } as const;
 const AGENT_CARD_REDUCED_HOVER_ANIMATION = {
 	borderColor: "transparent",
 	boxShadow: AGENT_CARD_OVERLAY_SHADOW,
 } as const;
 const AGENT_CARD_TAP_ANIMATION = {
-	transform: "scale(0.998)",
+	scale: 0.998,
 } as const;
 const AGENT_CARD_HOVER_TRANSITION = {
 	type: "spring",
@@ -90,7 +90,7 @@ function derivePublisher(byline: string): string {
 
 function isVerified(agent: AgentBrowserAgent, publisher: string): boolean {
 	if (agent.attributionKind) return agent.attributionKind === "company";
-	return ["atlassian", "google", "github", "slack", "notion"].includes(publisher.toLowerCase());
+	return ["atlassian", "google", "github", "slack", "notion", "figma", "canva"].includes(publisher.toLowerCase());
 }
 
 function hashString(value: string): number {
@@ -182,7 +182,7 @@ export function AgentBrowserDialog({
 						<span className="sr-only">Close</span>
 					</DialogClose>
 				</div>
-				<div className="min-h-0 overflow-hidden px-6 pb-6">
+				<div className="min-h-0 overflow-hidden px-6">
 					<AgentBrowser {...browserProps} />
 				</div>
 			</DialogContent>
@@ -213,7 +213,7 @@ export function AgentBrowser({
 				onSelectAgent={onSelectAgent}
 			/>
 
-			<div className="flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto">
+			<div className="-mx-4 flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto px-4 pt-2 pb-6">
 				<InputGroup>
 					<InputGroupAddon>
 						<SearchIcon label="" />
@@ -264,7 +264,7 @@ function DirectorySidebar({
 	onSelectAgent,
 }: Readonly<DirectorySidebarProps>) {
 	return (
-		<nav aria-label="Agent categories" className="hidden h-full min-h-0 w-[220px] shrink-0 flex-col gap-5 overflow-y-auto md:flex">
+		<nav aria-label="Agent categories" className="hidden h-full min-h-0 w-[220px] shrink-0 flex-col gap-5 overflow-y-auto pt-1 md:flex">
 			<ul className="flex flex-col gap-0.5">
 				{categories.map((category) => (
 					<SidebarPrimaryItem
@@ -431,7 +431,7 @@ function AgentDirectoryCard({ agent, onSelectAgent }: Readonly<AgentDirectoryCar
 					/>
 				</Avatar>
 				<div className="min-w-0 flex-1">
-					<h3 className="truncate text-base font-semibold leading-5 text-text">{agent.name}</h3>
+					<h3 className="truncate text-text" style={{ font: token("font.heading.xsmall") }}>{agent.name}</h3>
 					<p className="flex items-center gap-1 text-xs leading-4 text-text-subtle">
 						<span>By</span>
 						<span className="truncate text-link">{publisher}</span>
@@ -482,7 +482,7 @@ function AgentDirectoryCard({ agent, onSelectAgent }: Readonly<AgentDirectoryCar
 		"group/card flex h-full w-full cursor-pointer flex-col gap-3 rounded-md border border-border bg-surface p-4 text-left outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 	const cardMotionProps = {
 		className: cardClassName,
-		style: { willChange: "transform, box-shadow, border-color" },
+		style: { willChange: "transform" },
 		transition: AGENT_CARD_HOVER_TRANSITION,
 		whileHover: hoverAnimation,
 	};

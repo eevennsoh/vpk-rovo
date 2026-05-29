@@ -8,9 +8,14 @@ import {
 	composerPromptInputClassName,
 	composerTextareaClassName,
 	composerUpwardShadow,
+	floatingComposerTextareaClassName,
 	textareaCSS,
 } from "@/components/blocks/shared-ui/composer-styles";
-import { RovoComposerSendControls } from "@/components/projects/shared/components/rovo-composer-send-controls";
+import { FloatingComposer } from "@/components/projects/shared/components/floating-composer";
+import {
+	RovoComposerActionButton,
+	RovoComposerSendControls,
+} from "@/components/projects/shared/components/rovo-composer-send-controls";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import {
 	PromptInput,
@@ -24,14 +29,11 @@ import {
 	PromptInputButton,
 	PromptInputFooter,
 	PromptInputPreferencesButton,
-	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputTools,
 } from "@/components/ui-custom/prompt-input";
-import { SpeechInput } from "@/components/ui-custom/speech-input";
 import { cn } from "@/lib/utils";
 import AddIcon from "@atlaskit/icon/core/add";
-import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import LinkIcon from "@atlaskit/icon/core/link";
 import MentionIcon from "@atlaskit/icon/core/mention";
 import PageIcon from "@atlaskit/icon/core/page";
@@ -208,41 +210,44 @@ export function PromptInputDemoChatComposer() {
 
 export function PromptInputDemoFloatingBar() {
 	const [prompt, setPrompt] = useState("");
+	const [realtimeVoiceActive, setRealtimeVoiceActive] = useState(false);
 
-	const handleSpeechTranscription = useCallback((transcription: string) => {
-		setPrompt((prev) => (prev ? `${prev} ${transcription}` : transcription));
+	const handleToggleRealtimeVoice = useCallback(() => {
+		setRealtimeVoiceActive((prev) => !prev);
 	}, []);
+
+	const handleStop = useCallback(() => {
+		setRealtimeVoiceActive(false);
+	}, []);
+
+	const canSubmit = Boolean(prompt.trim());
 
 	return (
 		<DemoFrame>
-			<PromptInput
-				variant="floating"
+			<FloatingComposer
 				allowOverflow
 				onSubmit={() => setPrompt("")}
-			>
-				<PromptInputBody className="flex w-full items-center gap-2">
-					<PromptInputButton aria-label="Add">
-						<AddIcon label="" />
-					</PromptInputButton>
-					<PromptInputTextarea
-						value={prompt}
-						onChange={(e) => setPrompt(e.currentTarget.value)}
-						placeholder="Ask, @mention, or / for actions"
-						rows={1}
-						className="min-h-8 flex-1 content-center py-0"
+				actions={
+					<RovoComposerActionButton
+						canSubmit={canSubmit}
+						composerStatus="ready"
+						onStop={handleStop}
+						onToggleRealtimeVoice={handleToggleRealtimeVoice}
+						realtimeVoiceActive={realtimeVoiceActive}
 					/>
-					<div className="flex shrink-0 items-center gap-1">
-						<SpeechInput
-							aria-label="Voice"
-							onTranscriptionChange={handleSpeechTranscription}
-							variant="ghost"
-						/>
-						<PromptInputSubmit disabled={!prompt.trim()} aria-label="Submit">
-							<ArrowUpIcon label="" />
-						</PromptInputSubmit>
-					</div>
-				</PromptInputBody>
-			</PromptInput>
+				}
+			>
+				<PromptInputTextarea
+					value={prompt}
+					onChange={(e) => setPrompt(e.currentTarget.value)}
+					placeholder="Ask, @mention, or / for actions"
+					autoResize
+					rows={1}
+					className={cn(composerTextareaClassName, floatingComposerTextareaClassName)}
+				/>
+			</FloatingComposer>
+
+			<style>{textareaCSS}</style>
 		</DemoFrame>
 	);
 }

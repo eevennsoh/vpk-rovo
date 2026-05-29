@@ -22,7 +22,7 @@ export function useTopNavigation() {
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const windowWidth = useWindowWidth();
 	const { isVisible, toggleSidebar, setHovered } = useSidebar();
-	const { toggleChat, chatSurface } = useRovoChat();
+	const { toggleChat, openChat, chatSurface } = useRovoChat();
 	const isSidebarChatOpen = chatSurface === "sidebar";
 	const { setTheme, actualTheme } = useTheme();
 	const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -122,6 +122,7 @@ export function useTopNavigation() {
 		isVisible,
 		toggleSidebar,
 		toggleChat,
+		openChat,
 		isSidebarChatOpen,
 		toggleTheme,
 		searchContainerRef,
