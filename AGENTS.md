@@ -13,7 +13,7 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel), A
   - `pnpm run rovo`
 - Local development usually starts frontend + backend with `pnpm run dev`; `pnpm run rovo` adds Rovo Serve for flows that explicitly select or delegate to Rovo.
 - Production runtime uses one Express process serving static export plus `/api/*`.
-- Primary frontend edits are in `components/projects/`, `components/blocks/`, `components/arts/`, `components/website/` (component docs and demos), and `app/` route files.
+- Primary frontend edits are in `components/projects/`, `components/blocks/`, `components/arts/`, `components/ui-custom/`, `components/ui-audio/`, `components/visual/`, `components/website/` (component docs and demos), and `app/` route files.
 - Backend/API edits are in `backend/server.js`, `backend/lib/*.js`, and nested `app/api/**/route.ts` handlers (dev proxy and route-local adapters).
 - Validate every change with `pnpm run lint` and `pnpm run typecheck`.
 - For UI changes, also run visual + accessibility checks (see `.agents/docs/workflows-extended.md`).
@@ -162,7 +162,7 @@ Use these commands when you need to verify the app build locally or prepare the
 static export used by deployment.
 
 - Verify the Next.js build locally: `pnpm run build`
-- Build the static export used in production deployment: `NEXT_OUTPUT=export pnpm run build`
+- Build the static export used in production deployment: `pnpm run build:export` (temporarily moves runtime-only App Router API and skills detail routes before invoking the export build)
 - Fast redeploy to Micros after `.deploy.local` exists: `pnpm run deploy:micros`
 
 ### Testing
@@ -175,9 +175,9 @@ static export used by deployment.
   run targeted specs with `pnpm exec playwright test <spec>` after
   `pnpm install`.
 - GitHub Actions runs `.github/workflows/ci.yml` on PRs and manual dispatch.
-  The remote `CI / PR checks` status check installs with
-  `pnpm install --frozen-lockfile`, then runs `pnpm run ci:pr`
-  (lint, typecheck, and unit tests via `pnpm run test:unit:js`); treat it as
+  The remote `CI / PR checks` status check verifies lockfile registry URLs with
+  `scripts/verify-pnpm-lockfile.js`, installs with `pnpm install --frozen-lockfile`,
+  then runs `pnpm run ci:pr` (lint, typecheck, and unit tests via `pnpm run test:unit:js`); treat it as
   PR confirmation, not a substitute for local validation. This check is
   required by branch protection on `main` — `/vpk-git` auto-merge will wait
   for it to pass.
