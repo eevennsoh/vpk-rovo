@@ -1,23 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import AddIcon from "@atlaskit/icon/core/add";
-import CrossIcon from "@atlaskit/icon/core/cross";
 
 import VisualTracing from "@/components/visual/visual-tracing";
 import {
 	DEFAULT_CONFIG,
+	SPREAD_DEFAULTS,
 	TRACING_PRESETS,
-	type ColorStop,
 	type TracingConfig,
 	type TracingMode,
 } from "@/components/visual/visual-tracing/data";
 import { Label } from "@/components/ui/label";
 import { GUI } from "@/components/utils/gui";
 import { token } from "@/lib/tokens";
-import { ROVO_SHADER_COLOR_HEX } from "@/lib/rovo-colors";
-
-import { ShaderColorInput } from "./shader-color-controls";
+import { ROVO_COLOR_SWATCHES, ROVO_SHADER_COLOR_HEX } from "@/lib/rovo-colors";
+import { cn } from "@/lib/utils";
 
 const MODE_OPTIONS: readonly { value: TracingMode; label: string }[] = [
 	{ value: "line", label: "Line" },
@@ -25,103 +22,82 @@ const MODE_OPTIONS: readonly { value: TracingMode; label: string }[] = [
 	{ value: "vertical", label: "Vertical" },
 ];
 
-const MAX_STOPS = 4;
-
-type SpreadRange = Readonly<{ min: number; max: number; step: number }>;
-
-function spreadRangeForMode(mode: TracingMode): SpreadRange {
+function spreadRangeForMode(mode: TracingMode) {
 	return mode === "vertical"
-		? { min: 0.5, max: 15, step: 0.5 }
-		: { min: 1, max: 60, step: 1 };
+		? { min: 0.5, max: 15, step: 0.5, unit: "lh" }
+		: { min: 1, max: 60, step: 1, unit: "ch" };
 }
 
-type StopsEditorProps = Readonly<{
-	stops: readonly ColorStop[];
-	mode: TracingMode;
-	onChange: (next: ColorStop[]) => void;
+type RovoColorPickerProps = Readonly<{
+	value: readonly string[];
+	onChange: (next: string[]) => void;
 }>;
 
-function StopsEditor({ stops, mode, onChange }: StopsEditorProps) {
-	const range = spreadRangeForMode(mode);
-	const canAdd = stops.length < MAX_STOPS;
-	const canRemove = stops.length > 1;
-
-	const updateStop = (index: number, patch: Partial<ColorStop>) => {
-		onChange(stops.map((stop, i) => (i === index ? { ...stop, ...patch } : stop)));
+/** Toggle the four Rovo brand hues on/off (at least one stays selected). */
+function RovoColorPicker({ value, onChange }: RovoColorPickerProps) {
+	const toggle = (hex: string) => {
+		const isSelected = value.includes(hex);
+		if (isSelected && value.length === 1) return; // keep at least one color
+		// Rebuild from canonical Rovo order so the blend stays consistent.
+		onChange(
+			ROVO_SHADER_COLOR_HEX.filter((candidate) =>
+				candidate === hex ? !isSelected : value.includes(candidate),
+			),
+		);
 	};
 
 	return (
-		<div className="space-y-3">
-			{stops.map((stop, index) => (
-				<div
-					key={`stop-${index}`}
-					className="space-y-3 rounded-md border border-border p-3"
-				>
-					<div className="flex items-center justify-between">
-						<Label className="text-[11px] font-semibold uppercase tracking-wider text-text-subtlest">
-							Stop {index + 1}
-						</Label>
-						{canRemove ? (
-							<button
-								type="button"
-								aria-label={`Remove stop ${index + 1}`}
-								onClick={() => onChange(stops.filter((_, i) => i !== index))}
-								className="flex size-7 items-center justify-center rounded text-icon-subtle transition-colors hover:bg-bg-neutral hover:text-icon"
-							>
-								<CrossIcon label="" size="small" />
-							</button>
-						) : null}
-					</div>
-					<ShaderColorInput
-						id={`vt-stop-color-${index}`}
-						label="Color"
-						value={stop.color}
-						onChange={(color) => updateStop(index, { color })}
-					/>
-					<GUI.Control
-						id={`vt-stop-spread-${index}`}
-						label="Spread"
-						value={stop.spread}
-						min={range.min}
-						max={range.max}
-						step={range.step}
-						unit={mode === "vertical" ? "lh" : "ch"}
-						onChange={(spread) => updateStop(index, { spread })}
-					/>
-				</div>
-			))}
-			{canAdd ? (
-				<button
-					type="button"
-					onClick={() =>
-						onChange([
-							...stops,
-							{
-								color: ROVO_SHADER_COLOR_HEX[stops.length % ROVO_SHADER_COLOR_HEX.length],
-								spread: range.min === 0.5 ? 2 : 16,
-							},
-						])
-					}
-					className="flex h-8 items-center gap-1.5 rounded px-1 text-xs text-text-subtle transition-colors hover:bg-bg-neutral hover:text-text"
-				>
-					<AddIcon label="" size="small" />
-					<span>Add stop</span>
-				</button>
-			) : null}
+		<div className="space-y-2">
+			<Label className="text-xs font-medium text-text">Colors</Label>
+			<div className="flex items-center gap-2">
+				{ROVO_COLOR_SWATCHES.map((swatch) => {
+					const selected = value.includes(swatch.hex);
+					return (
+						<button
+							key={swatch.hex}
+							type="button"
+							aria-pressed={selected}
+							aria-label={`${swatch.label}${selected ? " (selected)" : ""}`}
+							title={swatch.label}
+							onClick={() => toggle(swatch.hex)}
+							style={{ background: swatch.hex }}
+							className={cn(
+								"size-8 rounded-full border-2 transition-all",
+								selected
+									? "border-text shadow-sm"
+									: "border-transparent opacity-40 hover:opacity-100",
+							)}
+						/>
+					);
+				})}
+			</div>
+			<p className="text-[12px] leading-4 text-text-subtlest">
+				Select one Rovo color for a solid trace, or several to blend them into one gradient.
+			</p>
 		</div>
 	);
 }
 
 export default function VisualTracingDemo() {
-	const [preset, setPreset] = useState("default");
+	const [preset, setPreset] = useState("rovo-spectrum");
 	const [mode, setMode] = useState<TracingMode>(DEFAULT_CONFIG.mode);
 	const [cps, setCps] = useState(DEFAULT_CONFIG.cps);
 	const [textAlpha, setTextAlpha] = useState(DEFAULT_CONFIG.textAlpha);
 	const [angle, setAngle] = useState(DEFAULT_CONFIG.angle);
 	const [offset, setOffset] = useState(DEFAULT_CONFIG.offset);
-	const [stops, setStops] = useState<readonly ColorStop[]>(DEFAULT_CONFIG.stops);
+	const [spread, setSpread] = useState(DEFAULT_CONFIG.spread);
+	const [colors, setColors] = useState<readonly string[]>(DEFAULT_CONFIG.colors);
 	const [autoLoop, setAutoLoop] = useState(DEFAULT_CONFIG.autoLoop);
 	const [loopDelay, setLoopDelay] = useState(DEFAULT_CONFIG.loopDelay);
+
+	// Spread units differ by mode (ch vs lh); reset to a sensible default when
+	// crossing the vertical boundary so the band stays usable.
+	const changeMode = (next: TracingMode) => {
+		if ((next === "vertical") !== (mode === "vertical")) {
+			setSpread(SPREAD_DEFAULTS[next]);
+		}
+		setMode(next);
+	};
 
 	const applyPreset = (value: string) => {
 		const next = TRACING_PRESETS.find((entry) => entry.value === value);
@@ -132,15 +108,18 @@ export default function VisualTracingDemo() {
 		setTextAlpha(next.config.textAlpha);
 		setAngle(next.config.angle);
 		setOffset(next.config.offset);
-		setStops(next.config.stops);
+		setSpread(next.config.spread);
+		setColors(next.config.colors);
 		setAutoLoop(next.config.autoLoop);
 		setLoopDelay(next.config.loopDelay);
 	};
 
 	const config = useMemo<TracingConfig>(
-		() => ({ mode, cps, textAlpha, angle, offset, stops, autoLoop, loopDelay }),
-		[mode, cps, textAlpha, angle, offset, stops, autoLoop, loopDelay],
+		() => ({ mode, cps, textAlpha, angle, offset, spread, colors, autoLoop, loopDelay }),
+		[mode, cps, textAlpha, angle, offset, spread, colors, autoLoop, loopDelay],
 	);
+
+	const spreadRange = spreadRangeForMode(mode);
 
 	return (
 		<div className="flex w-full max-w-2xl flex-col" style={{ gap: token("space.400") }}>
@@ -174,10 +153,10 @@ export default function VisualTracingDemo() {
 					<GUI.Select
 						id="vt-mode"
 						label="Mode"
-						description="Direction the light travels across the text."
+						description="Line traces along each line; sweep crosses the block diagonally; vertical pours top to bottom."
 						value={mode}
 						options={MODE_OPTIONS}
-						onChange={setMode}
+						onChange={changeMode}
 					/>
 					<GUI.Control
 						id="vt-cps"
@@ -225,6 +204,18 @@ export default function VisualTracingDemo() {
 				</GUI.Section>
 
 				<GUI.Section title="Appearance">
+					<RovoColorPicker value={colors} onChange={setColors} />
+					<GUI.Control
+						id="vt-spread"
+						label="Spread"
+						description="Width of the lit band."
+						value={spread}
+						min={spreadRange.min}
+						max={spreadRange.max}
+						step={spreadRange.step}
+						unit={spreadRange.unit}
+						onChange={setSpread}
+					/>
 					<GUI.Control
 						id="vt-text-alpha"
 						label="Text alpha"
@@ -247,10 +238,6 @@ export default function VisualTracingDemo() {
 						step={1}
 						onChange={setOffset}
 					/>
-				</GUI.Section>
-
-				<GUI.Section title="Colors">
-					<StopsEditor stops={stops} mode={mode} onChange={setStops} />
 				</GUI.Section>
 			</GUI.Panel>
 		</div>

@@ -149,7 +149,7 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 
 	return (
 		<div className="relative min-w-0 px-3">
-			<ChatContextBar context={chatContextBar} />
+			<ChatContextBar key={chatContextBar?.signature} context={chatContextBar} />
 			{hasQueuedPrompts ? (
 				<div className="pointer-events-none absolute bottom-full left-4 right-4 z-0">
 					<Queue className="pointer-events-auto rounded-b-none border-border border-b-0 bg-surface-raised px-2 pt-2 pb-2 shadow-none">

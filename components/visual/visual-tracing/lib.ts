@@ -15,17 +15,47 @@ export type TracingLayers = Readonly<{
 }>;
 
 /**
+ * Distributes the chosen colors across the lit band as smooth gradient stops.
+ * A single color fills the whole band; multiple colors blend into one gradient
+ * (first color at the band start, last at the band end). Positions are emitted
+ * as `calc(100% - <coeff> * <unit>)` so they track the animated band edges.
+ */
+function bandColorStops(
+	colors: readonly string[],
+	offset: number,
+	spread: number,
+	unit: string,
+	ink: string,
+): { colorStart: string; colorEnd: string; stops: string } {
+	const colorEnd = `calc(100% - ${offset} * ${unit})`;
+	const colorStart = `calc(100% - ${spread + offset} * ${unit})`;
+	const list = colors.length > 0 ? colors : [ink];
+
+	if (list.length === 1) {
+		return { colorStart, colorEnd, stops: `${list[0]} ${colorStart} ${colorEnd}` };
+	}
+
+	const stops = list
+		.map((color, index) => {
+			const t = index / (list.length - 1);
+			const coeff = offset + spread * (1 - t);
+			return `${color} calc(100% - ${coeff} * ${unit})`;
+		})
+		.join(", ");
+	return { colorStart, colorEnd, stops };
+}
+
+/**
  * Builds the multi-layer `background-clip: text` styles that make light appear
- * to trace across the glyphs. One `linear-gradient` per color stop sits above a
- * trailing mid-tone band and a static faint base layer. Animating only
+ * to trace across the glyphs: one blended shimmer band above a trailing
+ * mid-tone band and a static faint base layer. Animating only
  * `background-position` between the closed and open values plays the trace.
  *
  * Ported from jh3y's CodePen `gbLOajZ`, with the original `light-dark()` /
- * `canvas` system colors swapped for the theme-aware ADS text token so the
- * effect follows the app's color mode.
+ * `canvas` system colors swapped for the theme-aware ADS text token.
  */
 export function buildTracingLayers(config: TracingConfig): TracingLayers {
-	const { stops, textAlpha, mode, offset, angle } = config;
+	const { colors, textAlpha, mode, offset, angle, spread } = config;
 	const isVertical = mode === "vertical";
 	const ink = token("color.text"); // var(--ds-text, …) — flips with the active theme
 
@@ -36,27 +66,20 @@ export function buildTracingLayers(config: TracingConfig): TracingLayers {
 		? `100% calc(200% + ${offset} * 1lh)`
 		: `calc(200% + ${offset} * 1ch) 100%`;
 
-	const shimmer = stops.map((stop) => {
-		const colorEnd = `calc(100% - ${offset} * ${unit})`;
-		const colorStart = `calc(100% - ${stop.spread + offset} * ${unit})`;
-		return `linear-gradient(${dir}, #0000 0 ${colorStart}, ${stop.color} ${colorStart} ${colorEnd}, #0000 ${colorEnd} 100%)`;
-	});
+	const { colorStart, colorEnd, stops } = bandColorStops(colors, offset, spread, unit, ink);
+	const shimmer = `linear-gradient(${dir}, #0000 0 ${colorStart}, ${stops}, #0000 ${colorEnd} 100%)`;
 
-	const midEnd = `calc(100% - ${offset} * ${unit})`;
-	const midTone = `linear-gradient(${dir}, color-mix(in srgb, ${ink} 40%, transparent) 0 ${midEnd}, #0000 ${midEnd} 100%)`;
+	const midTone = `linear-gradient(${dir}, color-mix(in srgb, ${ink} 40%, transparent) 0 ${colorEnd}, #0000 ${colorEnd} 100%)`;
 	const baseLayer = `linear-gradient(color-mix(in srgb, ${ink} ${textAlpha * 100}%, transparent) 0 100%)`;
 
-	// shimmer stops + mid-tone all animate; the faint base layer stays put.
-	const animatedCount = stops.length + 1;
-	const totalCount = animatedCount + 1;
-
+	// shimmer band + mid-tone animate; the faint base layer stays put.
 	return {
 		display: isVertical || mode === "sweep" ? "inline-block" : "inline",
-		backgroundImage: [...shimmer, midTone, baseLayer].join(", "),
-		backgroundSize: [...Array(animatedCount).fill(animSize), "100% 100%"].join(", "),
-		backgroundRepeat: Array(totalCount).fill("no-repeat").join(", "),
-		backgroundClip: Array(totalCount).fill("text").join(", "),
-		closedPosition: [...Array(animatedCount).fill(closed), "0 0"].join(", "),
-		openPosition: Array(totalCount).fill("0 0").join(", "),
+		backgroundImage: [shimmer, midTone, baseLayer].join(", "),
+		backgroundSize: [animSize, animSize, "100% 100%"].join(", "),
+		backgroundRepeat: ["no-repeat", "no-repeat", "no-repeat"].join(", "),
+		backgroundClip: ["text", "text", "text"].join(", "),
+		closedPosition: [closed, closed, "0 0"].join(", "),
+		openPosition: ["0 0", "0 0", "0 0"].join(", "),
 	};
 }

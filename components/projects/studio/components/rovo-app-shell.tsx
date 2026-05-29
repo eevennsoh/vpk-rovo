@@ -88,6 +88,7 @@ import {
 import { useSidebarResize } from "@/components/projects/studio/hooks/use-sidebar-resize";
 import { useSidebarResize as useStudioAskRovoChatResize } from "@/components/projects/rovo/hooks/use-sidebar-resize";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
+import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import { getLatestDataPart, getLatestUserMessageId, getMessageAgentResult, getMessageArtifactResult, getMessageInterruption, getMessageText, type RovoDataParts } from "@/lib/rovo-ui-messages";
@@ -741,7 +742,7 @@ function HomeStarterHeroTile({
 					<span className="block w-full min-w-0 text-sm font-semibold leading-5 text-text">
 						{template.title}
 					</span>
-					<span className="block w-full min-w-0 text-sm leading-5 text-text-subtle">
+					<span className="block w-full min-w-0 text-sm leading-5 text-text">
 						{template.description}
 					</span>
 				</div>
@@ -1807,6 +1808,25 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		return entries.find((entry) => entry.profile.id === activeAgentConfig.profileId) ?? null;
 	}, [activeAgentConfig, studioAgentRegistry.sessionAgentEntries]);
 	const shouldShowAgentConfigPane = Boolean(activeSessionAgentEntry);
+	// Drives the "Edit agent" context bar above the studio sidebar-chat input.
+	// Defaults to the expanded "Edit: <agent>" state; the bar itself owns the
+	// collapse-to-pill / re-expand affordance.
+	const agentEditContextBar = useMemo<ChatContextBarDescriptor | null>(() => {
+		if (!activeSessionAgentEntry) {
+			return null;
+		}
+		const { profile, draftResult } = activeSessionAgentEntry;
+		const agentName = draftResult?.name?.trim() || profile.name;
+		return {
+			iconName: "agent",
+			label: agentName,
+			avatarSrc: profile.avatarSrc,
+			signature: `studio-edit-agent:${profile.id}`,
+			variant: "edit",
+			collapsible: true,
+			collapsedLabel: "Edit agent",
+		};
+	}, [activeSessionAgentEntry]);
 	const askRovoChatResize = useStudioAskRovoChatResize({
 		defaultWidth: 400,
 		minWidth: 320,
@@ -4059,8 +4079,14 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 							viewTransitionName: "persistent-header" as never,
 						}}
 					>
-						<div className="relative flex min-w-0 flex-1 items-center justify-start gap-2">
-							<div ref={nav.searchContainerRef} className="relative flex h-9 w-full max-w-[680px] items-center">
+						<div className={cn("relative flex min-w-0 flex-1 items-center gap-2", chat.sidebarOpen ? "justify-start" : "justify-end")}>
+							<div
+									ref={nav.searchContainerRef}
+									className={cn(
+										"flex h-9 w-full max-w-[680px] items-center",
+										chat.sidebarOpen ? "relative" : "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+									)}
+								>
 								<InputGroup
 									className={cn(
 										"h-7 rounded-md bg-bg-input shadow-none transition-[height,background-color,box-shadow] duration-medium ease-out hover:bg-bg-input-hovered",
@@ -4182,6 +4208,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						<ChatPanel
 							onClose={nav.toggleChat}
 							abortOnUnmount={false}
+							chatContextBar={agentEditContextBar}
 							// No left border here: the SidebarResizeHandle below paints the divider.
 							// Keeping the panel's own `border-l` too would stack two translucent
 							// `color.border` lines into a darker double-edge.
