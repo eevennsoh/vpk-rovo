@@ -1,6 +1,6 @@
 ---
 name: vpk-git
-description: "Use for VPK-rovo git work in three cases: PR creation, PR merge-back, and cleanup. PR creation commits current edits, derives a branch name when needed, pushes, and opens a GitHub PR. PR merge-back merges a PR, branch, or worktree into the default branch and syncs local/remote main. Cleanup deletes merged PR source branches, closes explicitly abandoned PRs, prunes stale refs, and safely removes clean landed worktrees/branches. Bare `vpk-git` with no flag runs all three end-to-end (create PR -> wait for auto-merge -> clean up). Use whenever the user says \"vpk-git\", \"vpk-git --pr\", \"vpk-git --merge\", \"vpk-git --clean\", \"commit and open a PR\", \"ship this branch\", \"merge this PR back to main\", \"land this worktree\", \"delete the branch after merge\", or \"clean up VPK worktrees/branches\"."
+description: "Use for VPK-rovo git shipping in two cases: PR creation and PR merge-back. PR creation commits current edits, derives a branch name when needed, pushes, and opens a GitHub PR. PR merge-back merges a PR, branch, or worktree into the default branch and syncs local/remote main. Bare `vpk-git` with no flag runs the full ship end-to-end (create PR -> wait for auto-merge -> merge -> sync main) and then stops — it does NOT remove worktrees or delete local branches, because an agent cannot remove the worktree it is running in; that local cleanup is the separate `vpk-clean` skill, run later from the main checkout. Use whenever the user says \"vpk-git\", \"vpk-git --pr\", \"vpk-git --merge\", \"commit and open a PR\", \"ship this branch\", \"merge this PR back to main\", or \"land this worktree\". For \"vpk-git --clean\", \"clean up worktrees/branches\", \"delete the branch after merge\", or \"prune stale refs\", use the `vpk-clean` skill instead."
 ---
 
 # VPK Git
@@ -9,12 +9,11 @@ Use this skill for interactive VPK-rovo git work where the agent must preserve u
 
 ## Choose One Workflow
 
-This skill has three workflows, plus a no-flag default that runs them in sequence:
+This skill ships work. It has two workflows, plus a no-flag default that runs them in sequence:
 
 - **Create PR**: commit current edits, derive a branch name when needed, push, and open a GitHub PR.
 - **PR merge back**: publish a PR, branch, or worktree into the default branch and sync local/remote `main`.
-- **Clean up**: delete merged PR source branches, close explicitly abandoned PRs, prune stale refs, and remove only clean landed worktrees/branches.
-- **Full ship sequence** (bare `vpk-git`): run Create PR -> PR Merge Back -> Clean Up end-to-end.
+- **Full ship sequence** (bare `vpk-git`): run Create PR -> PR Merge Back, then stop at "merged + main synced". Local cleanup is deliberately not part of this — see [Cleanup is a separate skill](#cleanup-is-a-separate-skill).
 
 ## Flag-Style Invocation
 
@@ -22,8 +21,8 @@ Treat these prompt forms as explicit routing:
 
 - `vpk-git --pr [<optional title hint>]` -> run **Create PR**.
 - `vpk-git --merge <PR number | branch | worktree path>` -> run **PR merge back**. Accepts a comma- or space-separated list (e.g. `--merge 303 304 305`) for batch merge-back; route into the **Batch Merge Back** subsection.
-- `vpk-git --clean <PR number | branch | worktree path | scope>` -> run **Clean up**.
-- `vpk-git` (no flag) -> run the **Full Ship Sequence**: Create PR -> PR Merge Back -> Clean Up against the current branch's work.
+- `vpk-git --clean <...>` -> this is **not** a vpk-git workflow anymore; hand off to the `vpk-clean` skill (kept here only so old muscle memory routes correctly).
+- `vpk-git` (no flag) -> run the **Full Ship Sequence**: Create PR -> PR Merge Back against the current branch's work, then stop.
 
 Examples:
 
@@ -32,18 +31,22 @@ Examples:
 [$vpk-git] --pr "Add Hermes status panel"
 [$vpk-git] --merge PR #321
 [$vpk-git] --merge /path/to/vpk-rovo-worktree
-[$vpk-git] --clean PR #321
-[$vpk-git] --clean stale merged worktrees and branches
 [$vpk-git]
 ```
 
 If the user asks a descriptive question about the skill ("what does vpk-git do?", "vpk-git help"), explain it — do not run the Full Ship Sequence.
 
-GitHub PR records generally are not deleted. When the user says "delete the PR once merged", interpret that as deleting the merged source branch and cleaning local worktrees/refs. If they want to abandon an unmerged PR, close it with `gh pr close --delete-branch` only after explicit confirmation.
+GitHub PR records generally are not deleted. When the user says "delete the PR once merged", interpret that as deleting the merged source branch and cleaning local worktrees/refs — that is the `vpk-clean` skill's job, run after the merge. If they want to abandon an unmerged PR, close it with `gh pr close --delete-branch` only after explicit confirmation.
+
+## Cleanup is a separate skill
+
+Removing landed worktrees, deleting local branches, and pruning stale tracking refs live in the **`vpk-clean`** skill, not here. This split is intentional and physical, not stylistic: VPK background agents (Codex, Claude) almost always run **inside** a `.claude/worktrees/<x>` checkout, and an agent cannot remove the worktree its own shell is sitting in — git refuses, and deleting the directory out from under a running process corrupts the session. Coupling cleanup to every ship therefore left half-done state in the common case and let worktrees pile up.
+
+So `vpk-git` ships and stops; the user (or a later session) runs `vpk-clean` from the main checkout to sweep what has landed. `vpk-clean` discovers landed worktrees on its own by ancestry and merged-PR evidence, so the ship does not need to hand it a list.
 
 ## Baseline Inventory
 
-Start both workflows by proving the repo, default branch, and local safety state:
+Start every workflow by proving the repo, default branch, and local safety state:
 
 ```bash
 pwd
@@ -118,13 +121,13 @@ Skip local validation. CI runs `pnpm run lint` and `pnpm run typecheck` on every
 
 Trigger: bare `vpk-git`, or prompts like "ship this", "land this work end-to-end", "do the whole git flow".
 
-Runs **Create PR -> PR Merge Back -> Clean Up** against the current branch's work, fully automated. The agent does not pause between steps unless a Stop Rule fires or step 3 of Create PR needs the existing-PR confirmation.
+Runs **Create PR -> PR Merge Back** against the current branch's work, fully automated, then stops at "merged + main synced". The agent does not pause between steps unless a Stop Rule fires or step 3 of Create PR needs the existing-PR confirmation. Local cleanup (worktree removal, local branch deletion) is **not** part of this sequence — see [Cleanup is a separate skill](#cleanup-is-a-separate-skill). The merge still deletes the *remote* branch server-side, because that always succeeds regardless of where the agent is running.
 
 1. Run **Create PR**. Capture the PR number and branch name.
 
 2. Queue auto-merge:
    - `gh pr merge <number> --merge --auto --delete-branch`
-   - `--auto` lets GitHub merge as soon as required checks pass. If no required checks are configured, the merge is immediate.
+   - `--auto` lets GitHub merge as soon as required checks pass. If no required checks are configured, the merge is immediate. `--delete-branch` removes the *remote* branch server-side on merge.
 
 3. Poll PR state until merged or blocked:
    - `gh pr view <number> --json state,mergedAt,mergeStateStatus,statusCheckRollup`
@@ -132,12 +135,13 @@ Runs **Create PR -> PR Merge Back -> Clean Up** against the current branch's wor
    - Report progress concisely (e.g. "checks: 2/3 pending"); do not flood the output with every poll.
    - On any failed check, `BLOCKED`/`DIRTY` merge state, or timeout, stop and report. The PR remains open for the user to resolve manually. Do not retry automatically.
 
-4. After merge confirms:
-   - Sync the persistent `main` checkout per **PR Merge Back** step 5.
-   - Run **Clean Up** scoped to this PR's branch and (if registered) its worktree.
-   - **If the agent is currently inside the worktree being cleaned**: delete the remote and local branch refs and prune tracking refs, but do not attempt to remove the worktree directory. Report: "Worktree at <path> still active because the agent is inside it — exit and run `vpk-git --clean <path>` from the main checkout to remove."
+4. After merge confirms, sync `main` and decide whether to switch — but never remove a worktree or force a navigation that loses work:
+   - **Sync the persistent `main` checkout.** If you are in the main checkout, `git switch main` (only per the rule below) then `git pull --ff-only origin main`. If you are in a secondary worktree, sync out-of-place instead: `git -C <main-checkout> fetch origin && git -C <main-checkout> pull --ff-only origin main`. You cannot check out `main` from a worktree — it is already checked out in the main checkout, and git forbids the same branch in two worktrees.
+   - **Switch to `main` + delete the local branch only when both are true:** you are running in the **main checkout** AND the working tree is clean. Then `git switch main` and `git branch -d <branch>` (the local branch is safe to delete once the remote is merged). This is the tidy, expected end state when shipping from the main repo directory.
+   - **Otherwise stay put.** In a secondary worktree (switching is impossible) or with uncommitted edits in the tree (switching would drag that work onto `main`), do not switch and do not delete the local branch. Leave navigation to the user.
+   - **Never** remove the current worktree, and never delete a local branch you are still standing on. That is `vpk-clean`'s job, run later from the main checkout.
 
-5. Final report: PR URL, merge commit hash, branches deleted (local + remote), tracking refs pruned, worktree status, local main sync state.
+5. Final report: PR URL, merge commit hash, remote branch deleted (server-side), whether you switched to `main` and deleted the local branch (or why you stayed), local `main` sync state, and a one-line deferred-cleanup pointer — e.g. "Worktree `<path>` has landed; run `vpk-clean` from the main checkout later to remove it and prune refs."
 
 Stop and hand back to the user (do not destroy state) if Create PR is blocked, auto-merge cannot be queued, required checks fail, the merge state goes `DIRTY` (conflict needs human resolution), or the poll times out.
 
@@ -174,133 +178,11 @@ Triggered by prompts that list more than one target, e.g. `merge PRs 303, 304, 3
    - `git fetch origin && git -C <main-checkout> pull --ff-only origin main` so the next PR rebases against the freshly merged tip.
    - If a later PR was "ready" but now conflicts because of a previous merge, surface the conflict and pause — do not auto-resolve across PRs.
 5. After the final merge in the batch, run a single sync + verification pass (`git status --short --branch`, `git rev-parse main`, `git rev-parse origin/main`) and report a one-line status per target: merged / skipped (with reason) / failed.
-6. Branch deletion uses `--delete-branch` per PR as in the single-target flow. Do not bulk-delete branches outside the merged set in this workflow — that is the **Clean Up** workflow's job.
+6. Branch deletion uses `--delete-branch` per PR as in the single-target flow. Do not bulk-delete branches outside the merged set in this workflow — that is the `vpk-clean` skill's job.
 
-## Clean Up
+## Cleanup (moved to `vpk-clean`)
 
-This workflow is self-contained. Run it interactively and only on the user-approved scope. The safety principle is simple: cleanup is allowed only when commands prove the committed work has landed, the target is not current/default, there are no uncommitted or untracked files, and no live process owns the path.
-
-### Cleanup Inventory
-
-Start with a source-of-truth inventory:
-
-```bash
-git status --short --branch
-git branch -v
-git worktree list --porcelain
-git remote show origin
-git symbolic-ref refs/remotes/origin/HEAD
-gh auth status
-gh pr list --state all --json number,title,headRefName,headRefOid,isDraft,state,mergedAt
-gh api repos/:owner/:repo --jq '{full_name,delete_branch_on_merge,default_branch,private}'
-```
-
-If `gh auth status` or another `gh` command fails because `GITHUB_TOKEN` is invalid while keyring accounts are available, retry GitHub read commands as `/usr/bin/env -u GITHUB_TOKEN gh ...` before declaring GitHub evidence unavailable. Use the same prefix for later `gh pr list`, `gh pr view`, or `gh api` checks in that run.
-
-The repository `delete_branch_on_merge` setting explains whether future merged PR branches should disappear automatically. It is not a blocker for deleting already-proven stale branches; report it separately.
-
-For a merged PR whose source branch remains:
-
-1. Confirm the PR is merged and capture `headRefName`, `headRefOid`, and `baseRefName`.
-2. Confirm no open PR still uses the branch.
-3. Delete the remote branch with `git push origin --delete <branch>` or `gh pr merge --delete-branch` if the merge is still being performed.
-4. If `origin/<branch>` remains locally after remote deletion, prove `git ls-remote --heads origin <branch>` returns no ref, then delete the tracking ref with `git update-ref -d refs/remotes/origin/<branch>`.
-5. Delete the local branch with `git branch -d <branch>` only when it is merged and no worktree uses it.
-
-For an abandoned unmerged PR:
-
-- Do not close it from an ambiguous prompt. Confirm the user wants to abandon the PR.
-- Use `gh pr close <number> --delete-branch` only after checking for unpushed commits, open dependent PRs, active worktrees, and user edits.
-
-For worktree and branch cleanup:
-
-1. Inventory candidates:
-   - `git branch -v`
-   - `git worktree list --porcelain`
-   - `git remote show origin`
-   - `gh pr list --state all --json number,title,headRefName,headRefOid,isDraft,state,mergedAt`
-2. For each candidate, verify:
-   - It is not current/default.
-   - `git -C <worktree> status --porcelain=v1 --untracked-files=all` is empty.
-   - Its branch or detached HEAD is proven landed by ancestry, merged PR evidence, or patch-equivalence fallback.
-   - No process owns the exact path: `lsof +D <worktree>`.
-3. Remove only safe items:
-   - Use plain `git worktree remove <path>` for registered, clean, landed, process-safe worktrees.
-   - Use `git worktree prune --verbose` only for stale admin metadata after the path is already gone.
-   - Use `git branch -d <branch>` only for merged local branches unused by any worktree.
-   - Use `git push origin --delete <branch>` only for merged remote branches with no open PR.
-
-### Candidate Verification
-
-For each cleanup candidate, verify working-tree status, current/default status, ancestry to default, merged PR evidence when ancestry is not enough, remote state, and process ownership:
-
-```bash
-git -C <worktree> status --short --branch --untracked-files=all
-git -C <worktree> status --porcelain=v1 --untracked-files=all
-git merge-base --is-ancestor <candidate> <default>
-git cherry -v <default> <candidate>
-lsof +D <worktree>
-```
-
-Use `git cherry -v` only as a fallback when ancestry is not enough and merged PR evidence is missing. Patch-equivalent commits can be reported as candidates, but destructive cleanup still needs the working tree to be clean and the user-approved scope to include that target.
-
-### Dirty Or Untracked Hard Stop
-
-If `git -C <worktree> status --porcelain=v1 --untracked-files=all` prints anything, that worktree is not eligible for removal. Record the exact worktree path, branch or detached HEAD, and dirty/untracked file list, then leave it alone.
-
-Do not use `git worktree remove --force`, `git reset`, `git restore`, `git clean`, `git stash`, `rm -rf`, or any equivalent workaround to preserve or remove a dirty worktree. Do not kill processes for a dirty or untracked worktree because the target is already ineligible.
-
-### Worktree Removal
-
-Use plain `git worktree remove <path>` only for registered worktrees that are:
-
-- non-current;
-- non-default;
-- clean by porcelain status;
-- process-safe;
-- proven landed by ancestry, merged PR evidence, or patch-equivalence fallback.
-
-Do not use `git worktree remove --force` for an existing worktree path. If plain removal fails because Git says force is required, skip the target and report the exact reason.
-
-If the worktree path is already gone but `git worktree list --porcelain` still reports stale admin metadata, run `git worktree prune --verbose` and re-check. This is metadata cleanup, not filesystem deletion. Preserve unregistered directories, paths whose Git admin metadata is missing, and any worktree whose status/HEAD/branch cannot be inspected.
-
-### Local And Remote Ref Cleanup
-
-Delete local branches with `git branch -d <branch>` only when ancestry proves they are merged and no registered worktree still uses them. Do not use `git branch -D`; report squash-merged or PR-merged local branches that require force deletion instead of deleting them.
-
-Delete remote branches with `git push origin --delete <branch>` only when GitHub shows the branch PR was merged or ancestry proves the remote branch is already in the default branch, and no open PR uses that branch.
-
-If a remote branch was deleted but the local `origin/<branch>` tracking ref remains, first prove `git ls-remote --heads origin <branch>` returns no ref, then delete the stale local tracking ref:
-
-```bash
-git update-ref -d refs/remotes/origin/<branch>
-```
-
-### Process Handling
-
-For an otherwise eligible clean merged worktree with exact-path live processes:
-
-1. Record PID, PPID, command, and cwd.
-2. Send SIGTERM only to PIDs owning that exact path.
-3. Recheck `lsof +D <worktree>`.
-4. Send SIGKILL only to the same PID if it still owns the path.
-
-Do not kill processes for current, default, dirty, untracked, unmerged, unregistered, or ambiguous worktrees.
-
-### Cleanup Validation
-
-After cleanup, run:
-
-```bash
-git status --short --branch
-git worktree list --porcelain
-git worktree prune --dry-run --verbose
-git branch -v
-git branch -r -v
-git ls-remote --heads origin <deleted-branch>
-```
-
-Report unexpected tracked deletions, dirty state, stale admin metadata, stale local tracking refs, or sync blockers.
+Worktree removal, local branch deletion, stale tracking-ref pruning, and closing abandoned PRs are no longer part of this skill. Use the **`vpk-clean`** skill, run from the main checkout. If a user asks `vpk-git` to clean up, hand off to `vpk-clean` rather than doing it here — see [Cleanup is a separate skill](#cleanup-is-a-separate-skill) for why.
 
 ## Stop Rules
 
@@ -309,9 +191,6 @@ Stop and report instead of changing state when:
 - The checkout has overlapping uncommitted user edits and no safe stash/restore path.
 - Required checks or blocking reviews are failing and the user did not ask you to fix them.
 - Merge conflicts touch files you cannot confidently resolve from source evidence.
-- A cleanup candidate has any uncommitted or untracked file.
-- A local branch would require `git branch -D`.
-- A worktree removal would require `--force`.
 - GitHub state, default branch, PR ownership, or branch ancestry is ambiguous.
 - **Create PR**: working tree is clean **and** no commits ahead of the default branch (nothing to PR), the derived branch name collides with an existing local or remote branch *and* the SHA-disambiguator fallback also collides, or `gh pr create` / `git push` fails for a non-trivial reason (auth, network, protected branch). Detached HEAD is *not* a stop condition — branch handling step 2 derives a name and attaches a branch automatically. A mismatched-but-locked branch name (current branch name is a poor fit for the diff but an open PR already exists on it) is *not* a stop either — keep the branch, finish the PR, and surface the mismatch in the report.
 - **Full Ship Sequence**: auto-merge cannot be queued, required checks fail, merge state goes `DIRTY` (conflict needs human resolution), or the merge poll exceeds the 15-minute timeout.
@@ -322,9 +201,8 @@ Keep the final report concise:
 
 - PR created / updated / merged / closed and its URL.
 - Branch created (with derived name), renamed (from old → new, with the reason), or reused as-is; push result. If the branch name was a poor fit for the diff but could not be renamed (open PR already attached), surface the mismatch explicitly so the user can rename next time.
-- PR/branch/worktree merged, closed, deleted, removed, or deliberately skipped.
-- Merge commit or final commit hash when available.
+- PR merged or deliberately skipped; merge commit or final commit hash when available.
 - Validation performed and result (note when validation was deferred to CI).
-- Branches deleted locally/remotely and tracking refs pruned.
-- Worktrees removed or left alone, with reasons.
-- Final local checkout state and any restored uncommitted edits.
+- Remote branch deleted on merge (server-side); whether you switched to `main` and deleted the local branch, or stayed put (with the reason).
+- Local `main` sync state and any uncommitted edits left in place.
+- Deferred-cleanup pointer when a worktree/branch has landed: "run `vpk-clean` from the main checkout to remove `<path>` and prune refs."
