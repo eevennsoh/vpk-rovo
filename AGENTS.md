@@ -132,6 +132,14 @@ Coordinated families that MUST move together (tiptap, json-render, remotion) liv
 
 Use `overrides:` in `pnpm-workspace.yaml` only to force a single version across the whole tree (including transitive deps), e.g. a security or compat pin. An override beats any `package.json` range.
 
+Updating (the lockfile must be refreshed — nothing auto-updates):
+
+- Survey what is behind: `pnpm outdated`
+- Pull all in-range Float/Cautious updates (safe, semver-bounded): `pnpm update`
+- Bump a Locked exact dep: edit its version in `package.json`, then `pnpm install`
+- Bump a catalog family: edit the version in the `catalog:` block of `pnpm-workspace.yaml`, then `pnpm install` (never run `pnpm update` for these and never edit the `"catalog:"` refs in `package.json`)
+- After any update run `pnpm run lint` and `pnpm run typecheck`; for major bumps also smoke-test `pnpm run dev`
+
 ### UI and Token Standards
 
 Selection priority:
