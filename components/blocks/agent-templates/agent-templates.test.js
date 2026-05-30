@@ -42,14 +42,16 @@ test("Agent Templates renders the strategy dialog layout with card-directory car
 	assert.doesNotMatch(source, /AgentBrowserDialog/u);
 	assert.match(source, /Personal agents that run routines, organize your context, and help you follow through\./u);
 	assert.match(source, /AGENT_TEMPLATES_CATEGORIES/u);
-	assert.match(source, /label: "Analyze"/u);
-	assert.match(source, /label: "Brainstorm"/u);
-	assert.match(source, /label: "Review"/u);
-	assert.match(source, /label: "Summarize"/u);
-	assert.match(source, /label: "Create"/u);
-	assert.match(source, /label: "Execute"/u);
-	assert.match(source, /label: "Find"/u);
-	assert.match(source, /label: "Learn"/u);
+	assert.match(source, /label: "Projects"/u);
+	assert.match(source, /label: "Admin"/u);
+	assert.match(source, /label: "Content"/u);
+	assert.match(source, /label: "Analytics"/u);
+	assert.match(source, /label: "Development"/u);
+	assert.match(source, /label: "Support"/u);
+	assert.match(source, /label: "Design"/u);
+	assert.match(source, /label: "Security"/u);
+	assert.match(source, /label: "People"/u);
+	assert.match(source, /label: "Sales"/u);
 	assert.match(source, /aria-pressed=\{active\}/u);
 	// Carousel cards now render via the card-directory expanded agent card.
 	assert.match(source, /AgentTemplateCard/u);

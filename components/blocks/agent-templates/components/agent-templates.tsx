@@ -1,16 +1,18 @@
 "use client";
 
 import { type MouseEvent, type ReactElement, useMemo, useRef, useState } from "react";
-import AiGenerativeTextSummaryIcon from "@atlaskit/icon/core/ai-generative-text-summary";
-import CheckboxCheckedIcon from "@atlaskit/icon/core/checkbox-checked";
+import AngleBracketsIcon from "@atlaskit/icon/core/angle-brackets";
+import ChartBarIcon from "@atlaskit/icon/core/chart-bar";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
+import CreditCardIcon from "@atlaskit/icon/core/credit-card";
 import CrossIcon from "@atlaskit/icon/core/cross";
-import EditIcon from "@atlaskit/icon/core/edit";
-import EyeOpenIcon from "@atlaskit/icon/core/eye-open";
-import LightbulbIcon from "@atlaskit/icon/core/lightbulb";
-import MagicWandIcon from "@atlaskit/icon/core/magic-wand";
-import SearchIcon from "@atlaskit/icon/core/search";
-import BookOpenIcon from "@atlaskit/icon-lab/core/book-open";
+import HeadphonesIcon from "@atlaskit/icon/core/headphones";
+import PageIcon from "@atlaskit/icon/core/page";
+import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
+import ProjectIcon from "@atlaskit/icon/core/project";
+import SettingsIcon from "@atlaskit/icon/core/settings";
+import ShapesIcon from "@atlaskit/icon/core/shapes";
+import ShieldIcon from "@atlaskit/icon/core/shield";
 
 import {
 	type AgentBrowserAgent,
@@ -67,14 +69,16 @@ type AgentTemplatesCategory = {
 };
 
 const AGENT_TEMPLATES_CATEGORIES: readonly AgentTemplatesCategory[] = [
-	{ id: "analyze", label: "Analyze", icon: <EditIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-discovery" },
-	{ id: "brainstorm", label: "Brainstorm", icon: <LightbulbIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-warning" },
-	{ id: "review", label: "Review", icon: <EyeOpenIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-orange" },
-	{ id: "summarize", label: "Summarize", icon: <AiGenerativeTextSummaryIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-blue" },
-	{ id: "create", label: "Create", icon: <MagicWandIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-purple" },
-	{ id: "execute", label: "Execute", icon: <CheckboxCheckedIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-success" },
-	{ id: "find", label: "Find", icon: <SearchIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-blue" },
-	{ id: "learn", label: "Learn", icon: <BookOpenIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-purple" },
+	{ id: "projects", label: "Projects", icon: <ProjectIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-blue" },
+	{ id: "admin", label: "Admin", icon: <SettingsIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-subtle" },
+	{ id: "content", label: "Content", icon: <PageIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-teal" },
+	{ id: "analytics", label: "Analytics", icon: <ChartBarIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-green" },
+	{ id: "development", label: "Development", icon: <AngleBracketsIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-discovery" },
+	{ id: "support", label: "Support", icon: <HeadphonesIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-orange" },
+	{ id: "design", label: "Design", icon: <ShapesIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-purple" },
+	{ id: "security", label: "Security", icon: <ShieldIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-success" },
+	{ id: "people", label: "People", icon: <PeopleGroupIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-warning" },
+	{ id: "sales", label: "Sales", icon: <CreditCardIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-magenta" },
 ] as const;
 
 const EMPTY_CAPABILITIES: readonly string[] = [];
@@ -127,11 +131,11 @@ export function AgentTemplatesDialog({
 				className="grid h-[min(725px,calc(100svh-2rem))] max-h-[calc(100svh-2rem)] w-[min(1248px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] grid-rows-[192px_minmax(0,1fr)] gap-0 overflow-hidden rounded-xl border border-border bg-surface p-0 shadow-xl sm:max-w-[1248px]"
 				showCloseButton={false}
 			>
-				<header className="px-6 pt-6">
+				<header className="border-b border-border px-6 py-6">
 					<div className="flex h-8 items-center justify-between gap-4">
 						<div
 							aria-label="Template categories"
-							className="flex min-w-0 items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+							className="flex min-w-0 items-center gap-2 overflow-x-auto p-1 -m-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 							role="group"
 						>
 							{AGENT_TEMPLATES_CATEGORIES.map((category) => (
