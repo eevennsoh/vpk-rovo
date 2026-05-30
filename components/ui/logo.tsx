@@ -20,6 +20,12 @@ export interface LogoProps extends AtlaskitLogoProps {
 	themeAware?: boolean;
 	variant?: LogoVariant;
 	shouldUseHexLogo?: boolean;
+	/**
+	 * Draws a 1px hairline directly on the logo mark's edge (inset ring, no
+	 * added size) so adjacent same-color marks stay visually separated — e.g.
+	 * blue Jira over blue Confluence in an overlapping stack. Defaults to off.
+	 */
+	hasBorder?: boolean;
 }
 
 export interface AtlassianLogoProps extends LogoProps {
@@ -62,6 +68,7 @@ export function AtlassianLogo({
 	size = "small",
 	variant = "icon",
 	shouldUseNewLogoDesign = true,
+	hasBorder = false,
 	color,
 	...props
 }: Readonly<AtlassianLogoProps>) {
@@ -74,10 +81,13 @@ export function AtlassianLogo({
 
 	const needsDarkFix = !appearance && actualTheme === "dark" && resolvedAppearance === "inverse";
 	const placeholderSize = getLogoSizePx(size);
+	// Inset ring hugs the mark's edge without growing the box (unlike a real
+	// border, which box-sizing would push outside the colored squircle).
+	const borderClassName = hasBorder && "rounded-tile ring-1 ring-inset ring-border";
 
 	if (!isMounted) {
 		return (
-			<span className={cn("inline-flex shrink-0 items-center", needsDarkFix && "ads-logo-inverse")}>
+			<span className={cn("inline-flex shrink-0 items-center", borderClassName, needsDarkFix && "ads-logo-inverse")}>
 				<span
 					aria-hidden
 					className="inline-block shrink-0"
@@ -88,7 +98,7 @@ export function AtlassianLogo({
 	}
 
 	return (
-		<span className={cn("inline-flex shrink-0 items-center", needsDarkFix && "ads-logo-inverse")}>
+		<span className={cn("inline-flex shrink-0 items-center", borderClassName, needsDarkFix && "ads-logo-inverse")}>
 			<Component
 				{...props}
 				size={size}

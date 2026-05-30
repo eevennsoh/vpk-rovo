@@ -131,7 +131,6 @@ export function TwgToolSourceIcon({
 		return (
 			<Tile
 				className={cn("shrink-0", className)}
-				hasBorder
 				isInset={false}
 				label={source.label}
 				size={tileSize}
@@ -141,6 +140,7 @@ export function TwgToolSourceIcon({
 				<span className="inline-flex size-full items-center justify-center">
 					<AtlassianLogo
 						name="jira-service-management"
+						hasBorder
 						label={source.label}
 						size={size === "md" ? "small" : "xxsmall"}
 						themeAware={false}
@@ -175,7 +175,6 @@ export function TwgToolSourceIcon({
 	return (
 		<Tile
 			className={cn("shrink-0 text-icon-subtle", className)}
-			hasBorder
 			isInset={false}
 			label={source.label}
 			size={tileSize}
@@ -185,6 +184,7 @@ export function TwgToolSourceIcon({
 			<span className="inline-flex size-full items-center justify-center">
 				<AtlassianLogo
 					name={source.provider}
+					hasBorder
 					label={source.label}
 					size={size === "md" ? "small" : "xxsmall"}
 					themeAware={false}
