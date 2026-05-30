@@ -56,6 +56,24 @@ test("Agent config updates instructions as markdown strings", () => {
 	assert.doesNotMatch(AGENT_SOURCE, /instructionsHtml|richInstructions/u);
 });
 
+test("Agent config renders filled summary rows once field data exists", () => {
+	assert.match(AGENT_SOURCE, /function hasFilledAgentConfig\(config: AgentConfigFormValue\): boolean/u);
+	assert.match(AGENT_SOURCE, /const isFilledConfig = hasFilledAgentConfig\(config\);/u);
+	assert.match(AGENT_SOURCE, /<AgentFilledConfigSummary/u);
+	assert.match(AGENT_SOURCE, /getAgentTriggerItems\(config\)\.length > 0/u);
+
+	for (const label of [
+		"Triggers",
+		"Skills",
+		"Tools",
+		"Subagents",
+		"Knowledge",
+		"Conversation starters",
+	]) {
+		assert.match(AGENT_SOURCE, new RegExp(`label="${label}"`, "u"));
+	}
+});
+
 test("Shared Tiptap editor is SSR-safe and emits markdown updates", () => {
 	assert.match(RICH_TEXT_EDITOR_SOURCE, /import \{ EditorContent, useEditor \} from "@tiptap\/react";/u);
 	assert.match(RICH_TEXT_EDITOR_SOURCE, /contentType: "markdown"/u);

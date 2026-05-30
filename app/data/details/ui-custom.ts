@@ -762,10 +762,8 @@ import {
 			{ name: "AgentOutput", description: "Output schema display with syntax highlighting." },
 		],
 		examples: [
-			{ title: "Full agent", description: "Agent strategy surface with cover, action tiles, knowledge, and instructions.", demoSlug: "agent-demo-full" },
-			{ title: "With tools", description: "Agent card showing only the tools accordion.", demoSlug: "agent-demo-with-tools" },
-			{ title: "With output", description: "Agent card with instructions and output schema, no tools.", demoSlug: "agent-demo-with-output" },
-			{ title: "Minimal", description: "Header-only agent card with name and model badge.", demoSlug: "agent-demo-minimal" },
+			{ title: "Filled agent", description: "Agent strategy surface after configuration fields have been populated.", demoSlug: "agent-demo-full" },
+			{ title: "Empty agent", description: "Default setup state with add tiles before details are populated.", demoSlug: "agent-demo-empty" },
 		],
 	},
 

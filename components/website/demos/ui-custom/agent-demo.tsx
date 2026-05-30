@@ -1,8 +1,6 @@
 "use client";
 
-import { tool } from "ai";
 import { useState } from "react";
-import { z } from "zod";
 import {
 	Agent,
 	AgentConfigFields,
@@ -11,42 +9,7 @@ import {
 	type AgentConfigTextFieldName,
 	AgentContent,
 	AgentHeader,
-	AgentInstructions,
-	AgentOutput,
-	AgentTool,
-	AgentTools,
 } from "@/components/ui-custom/agent";
-
-const webSearch = tool({
-	description: "Search the web for information",
-	inputSchema: z.object({
-		query: z.string().describe("The search query"),
-	}),
-});
-
-const executeCode = tool({
-	description: "Execute a code snippet in a sandboxed environment",
-	inputSchema: z.object({
-		code: z.string().describe("The code to execute"),
-		language: z
-			.enum(["javascript", "python", "typescript"])
-			.describe("The programming language"),
-	}),
-});
-
-const queryDatabase = tool({
-	description: "Run a read-only SQL query against the database",
-	inputSchema: z.object({
-		query: z.string().describe("The SQL query to execute"),
-		database: z.string().describe("Target database name"),
-	}),
-});
-
-const outputSchema = `z.object({
-  sentiment: z.enum(['positive', 'negative', 'neutral']),
-  score: z.number(),
-  summary: z.string(),
-})`;
 
 const initialAgentConfig: AgentConfigFormValue = {
 	name: "",
@@ -62,8 +25,36 @@ const initialAgentConfig: AgentConfigFormValue = {
 	action: "draft",
 };
 
+const emptyAgentConfig: AgentConfigFormValue = {
+	...initialAgentConfig,
+	name: "Customer Insights",
+	description:
+		"Analyzes customer feedback from pages, links, or projects and surfaces themes, needs, risks, and recommended actions.",
+	summary:
+		"Analyzes customer feedback from pages, links, or projects and surfaces themes, needs, risks, and recommended actions.",
+	agentId: "customer-insights",
+};
+
+const filledAgentConfig: AgentConfigFormValue = {
+	name: "Policy Checker",
+	description:
+		"This agent helps employees quickly find and understand company guidelines, HR policies, and benefits information.",
+	summary:
+		"This agent helps employees quickly find and understand company guidelines, HR policies, and benefits information.",
+	instructions: "",
+	contextDescription: "",
+	triggers: ["Company Handbook", "Company Handbook"],
+	skills: ["create-work-items", "create-work-items"],
+	tools: ["Tool name", "Tool name"],
+	subagents: ["Subagent 1", "Subagent 1"],
+	knowledge: ["Knowledge 1", "Knowledge 2"],
+	conversationStarters: [],
+	agentId: "policy-checker",
+	action: "draft",
+};
+
 export function AgentDemoFull() {
-	const [config, setConfig] = useState<AgentConfigFormValue>(initialAgentConfig);
+	const [config, setConfig] = useState<AgentConfigFormValue>(filledAgentConfig);
 
 	function handleTextChange(field: AgentConfigTextFieldName, value: string) {
 		setConfig((current) => ({
@@ -98,7 +89,7 @@ export function AgentDemoFull() {
 	return (
 		<Agent className="mx-auto min-h-[852px] w-full max-w-[720px]">
 			<AgentHeader
-				name="Untitled agent"
+				name={config.name?.trim() || "Untitled agent"}
 				model="Draft"
 			/>
 			<AgentContent>
@@ -115,52 +106,55 @@ export function AgentDemoFull() {
 	);
 }
 
-export function AgentDemoWithTools() {
+export function AgentDemoEmpty() {
+	const [config, setConfig] = useState<AgentConfigFormValue>(emptyAgentConfig);
+
+	function handleTextChange(field: AgentConfigTextFieldName, value: string) {
+		setConfig((current) => ({
+			...current,
+			[field]: value,
+			...(field === "description" ? { summary: value } : {}),
+		}));
+	}
+
+	function updateListItem(field: AgentConfigListFieldName, index: number, value: string) {
+		setConfig((current) => {
+			const items = Array.isArray(current[field]) ? [...current[field]] : [];
+			items[index] = value;
+			return { ...current, [field]: items };
+		});
+	}
+
+	function removeListItem(field: AgentConfigListFieldName, index: number) {
+		setConfig((current) => {
+			const items = Array.isArray(current[field]) ? current[field] : [];
+			return { ...current, [field]: items.filter((_, itemIndex) => itemIndex !== index) };
+		});
+	}
+
+	function appendListItem(field: AgentConfigListFieldName) {
+		setConfig((current) => {
+			const items = Array.isArray(current[field]) ? current[field] : [];
+			return { ...current, [field]: [...items, ""] };
+		});
+	}
+
 	return (
-		<Agent className="w-full">
+		<Agent className="mx-auto min-h-[852px] w-full max-w-[720px]">
 			<AgentHeader
-				name="Code Assistant"
-				model="anthropic/claude-sonnet-4-5"
-				showActions={false}
+				name={config.name?.trim() || "Customer Insights"}
+				model="Draft"
 			/>
 			<AgentContent>
-				<AgentTools multiple>
-					<AgentTool tool={executeCode} value="execute_code" />
-					<AgentTool tool={queryDatabase} value="query_database" />
-					<AgentTool tool={webSearch} value="web_search" />
-				</AgentTools>
+				<AgentConfigFields
+					config={config}
+					idPrefix="agent-demo-empty"
+					onTextChange={handleTextChange}
+					onListItemChange={updateListItem}
+					onRemoveListItem={removeListItem}
+					onAppendListItem={appendListItem}
+				/>
 			</AgentContent>
-		</Agent>
-	);
-}
-
-export function AgentDemoWithOutput() {
-	return (
-		<Agent className="w-full">
-			<AgentHeader
-				name="Data Classifier"
-				model="anthropic/claude-haiku-3-5"
-				showActions={false}
-			/>
-			<AgentContent>
-				<AgentInstructions>
-					Classify incoming data records into predefined categories and return
-					structured results with confidence scores.
-				</AgentInstructions>
-				<AgentOutput schema={outputSchema} />
-			</AgentContent>
-		</Agent>
-	);
-}
-
-export function AgentDemoMinimal() {
-	return (
-		<Agent className="w-full">
-			<AgentHeader
-				name="Research Assistant"
-				model="anthropic/claude-opus-4"
-				showActions={false}
-			/>
 		</Agent>
 	);
 }
