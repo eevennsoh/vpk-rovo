@@ -120,6 +120,26 @@ import { useChat } from "@ai-sdk/react"; // chat message state + streaming
 import { DefaultChatTransport, type UIMessage } from "ai"; // transport + message types
 ```
 
+### Dependency Pinning
+
+Pin every dependency into one of three tiers so a routine `pnpm update` (in-range, no `--latest`) can only pull semver-safe changes. The lockfile is the real gate — ranges just bound the blast radius when it is refreshed.
+
+- **Float** (`^x.y.z`): stable libraries. `pnpm update` may take patch + minor. Default for most deps.
+- **Cautious** (`~x.y.z`): libraries whose minors have broken us before. Patch only.
+- **Locked** (exact `x.y.z`): framework core (`react`, `react-dom`, `next`, `eslint-config-next`, `recharts`, `@modelcontextprotocol/sdk`) and coordinated families. Bump manually and deliberately.
+
+Coordinated families that MUST move together (tiptap, json-render, remotion) live in the `catalog:` block of `pnpm-workspace.yaml` and are referenced as `"catalog:"` in `package.json`. Bump the version in the catalog once and every member updates in lockstep — never edit family members individually.
+
+Use `overrides:` in `pnpm-workspace.yaml` only to force a single version across the whole tree (including transitive deps), e.g. a security or compat pin. An override beats any `package.json` range.
+
+Updating (the lockfile must be refreshed — nothing auto-updates):
+
+- Survey what is behind: `pnpm outdated`
+- Pull all in-range Float/Cautious updates (safe, semver-bounded): `pnpm update`
+- Bump a Locked exact dep: edit its version in `package.json`, then `pnpm install`
+- Bump a catalog family: edit the version in the `catalog:` block of `pnpm-workspace.yaml`, then `pnpm install` (never run `pnpm update` for these and never edit the `"catalog:"` refs in `package.json`)
+- After any update run `pnpm run lint` and `pnpm run typecheck`; for major bumps also smoke-test `pnpm run dev`
+
 ### UI and Token Standards
 
 Selection priority:
