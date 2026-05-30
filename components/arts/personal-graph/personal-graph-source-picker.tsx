@@ -117,7 +117,7 @@ export function PersonalGraphSourcePicker({
 		<div className="flex flex-wrap items-center justify-center gap-2">
 			<Button
 				aria-label="Choose Personal Graph vault folder"
-				className="rounded-full border-border bg-surface px-4 text-text shadow-none hover:bg-surface disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
+				className="rounded-full border-border bg-surface px-4 text-text shadow-none hover:bg-surface-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
 				disabled={isBusy}
 				onClick={onPickVault}
 				size="sm"
@@ -128,7 +128,7 @@ export function PersonalGraphSourcePicker({
 			</Button>
 			<Button
 				aria-label={TWG_LABEL}
-				className="rounded-full border-border bg-surface px-4 text-text shadow-none hover:bg-surface disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
+				className="rounded-full border-border bg-surface px-4 text-text shadow-none hover:bg-surface-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
 				disabled={isBusy}
 				isLoading={isBusy}
 				onClick={onPickTwg}
