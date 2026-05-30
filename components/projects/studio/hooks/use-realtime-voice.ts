@@ -155,6 +155,14 @@ const PLAYBACK_SPEAKING_GRACE_MS = 900;
 const MODEL_WAVEFORM_BAR_COUNT = 29;
 const RESPONSE_CREATE_FALLBACK_MS = 1200;
 const BROWSER_TRANSCRIPTION_COMPLETION_FALLBACK_MS = 700;
+const STUDIO_MANUAL_TURN_TAKING_CONFIG = {
+	turn_detection: {
+		type: "semantic_vad",
+		eagerness: "low",
+		create_response: false,
+		interrupt_response: true,
+	},
+};
 
 // ---------------------------------------------------------------------------
 // Client → Server message types
@@ -615,6 +623,8 @@ export function useRealtimeVoice({
 	const samplePlaybackWaveformRef = useRef<(time: number) => void>(() => {});
 	const pendingTranscriptRef = useRef("");
 	const hasReceivedServerDeltaRef = useRef(false);
+	const serverTranscriptionActiveRef = useRef(false);
+	const manualTurnTakingRef = useRef(false);
 	const assistantTextStreamRef = useRef(createRealtimeAssistantTextStreamState());
 	const queuedTextInputsRef = useRef<Array<{
 		contextDescription?: string;
@@ -825,14 +835,18 @@ export function useRealtimeVoice({
 	}, []);
 
 	const scheduleResponseCreateFallback = useCallback(() => {
-		if (!isAwaitingSpeechResponseRef.current) {
+		if (!isAwaitingSpeechResponseRef.current || manualTurnTakingRef.current) {
 			return;
 		}
 
 		clearResponseCreateFallbackTimer();
 		responseCreateFallbackTimerRef.current = setTimeout(() => {
 			responseCreateFallbackTimerRef.current = null;
-			if (!activeRef.current || !isAwaitingSpeechResponseRef.current) {
+			if (
+				!activeRef.current
+				|| !isAwaitingSpeechResponseRef.current
+				|| manualTurnTakingRef.current
+			) {
 				return;
 			}
 
@@ -844,7 +858,11 @@ export function useRealtimeVoice({
 
 	const scheduleBrowserTranscriptCompletionFallback = useCallback((transcript: string) => {
 		const normalizedTranscript = normalizeRovoAppVoiceTranscript(transcript);
-		if (!normalizedTranscript) {
+		if (
+			!normalizedTranscript
+			|| manualTurnTakingRef.current
+			|| serverTranscriptionActiveRef.current
+		) {
 			return;
 		}
 
@@ -856,7 +874,11 @@ export function useRealtimeVoice({
 		clearBrowserTranscriptCompletionTimer();
 		browserTranscriptCompletionTimerRef.current = setTimeout(() => {
 			browserTranscriptCompletionTimerRef.current = null;
-			if (hasReceivedServerDeltaRef.current) {
+			if (
+				manualTurnTakingRef.current
+				|| serverTranscriptionActiveRef.current
+				|| hasReceivedServerDeltaRef.current
+			) {
 				return;
 			}
 			if (!activeRef.current || activeSpeechTurnIdRef.current !== turnId) {
@@ -1074,7 +1096,10 @@ export function useRealtimeVoice({
 			}
 
 			ensureActiveSpeechTurn();
-			if (!hasReceivedServerDeltaRef.current) {
+			if (
+				!serverTranscriptionActiveRef.current
+				&& !hasReceivedServerDeltaRef.current
+			) {
 				pendingTranscriptRef.current = trimmed;
 				setCurrentTranscript(trimmed);
 				onSpeechTranscriptDeltaRef.current?.({ text: trimmed });
@@ -1319,10 +1344,17 @@ export function useRealtimeVoice({
 			switch (message.type) {
 				case "session_ready":
 					reconnectAttemptRef.current = 0;
+					serverTranscriptionActiveRef.current = false;
+					manualTurnTakingRef.current = true;
+					clearResponseCreateFallbackTimer();
 					resetAssistantTextStream();
 					setConnectionState("connected");
 					setStatusMessage(null);
 					setVoice("listening");
+					sendWsMessage({
+						type: "session_update",
+						config: STUDIO_MANUAL_TURN_TAKING_CONFIG,
+					});
 					// Inject initial thread context
 					{
 						const summary = buildThreadSummary(chatMessagesRef.current);
@@ -1420,6 +1452,7 @@ export function useRealtimeVoice({
 				}
 
 				case "transcription_delta":
+					serverTranscriptionActiveRef.current = true;
 					clearBrowserTranscriptCompletionTimer();
 					if (
 						!shouldProcessRovoAppVoiceTranscriptionDelta({
@@ -1450,6 +1483,7 @@ export function useRealtimeVoice({
 					break;
 
 				case "transcription_completed": {
+					serverTranscriptionActiveRef.current = true;
 					clearBrowserTranscriptCompletionTimer();
 					// Only require that speech_started validated this speech
 					// session. If capture paused after audio was already sent,
@@ -1614,6 +1648,7 @@ export function useRealtimeVoice({
 		},
 		[
 			clearBrowserTranscriptCompletionTimer,
+			clearResponseCreateFallbackTimer,
 			dispatchTextInput,
 			ensureOutputWaveformSampling,
 			ensureActiveSpeechTurn,
@@ -1626,6 +1661,7 @@ export function useRealtimeVoice({
 			scheduleResponseCreateFallback,
 			resetGenerationStateSoon,
 			resetAssistantTextStream,
+			sendWsMessage,
 			setVoice,
 			stopPlayback,
 		],
@@ -1666,6 +1702,8 @@ export function useRealtimeVoice({
 		}
 		pendingTranscriptRef.current = "";
 		hasReceivedServerDeltaRef.current = false;
+		serverTranscriptionActiveRef.current = false;
+		manualTurnTakingRef.current = false;
 		lastAudioDeltaAtRef.current = null;
 		activeInputCaptureEpochRef.current = null;
 		pausedInputCaptureEpochRef.current = null;
@@ -1793,6 +1831,8 @@ export function useRealtimeVoice({
 			return;
 		}
 		activeRef.current = true;
+		serverTranscriptionActiveRef.current = false;
+		manualTurnTakingRef.current = false;
 		isCaptureAvailableRef.current = resolveCaptureAvailability();
 		if (!isCaptureAvailableRef.current) {
 			captureEpochRef.current += 1;

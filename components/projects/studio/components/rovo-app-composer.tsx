@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import type { RovoAppPlanExecutionTrackerViewModel } from "@/components/projects/studio/lib/rovo-app-plan-execution-tracker";
 import type { RovoAppQueuedAction } from "@/lib/rovo-app-types";
 import AddIcon from "@atlaskit/icon/core/add";
+import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import CursorIcon from "@atlaskit/icon-lab/core/cursor";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
@@ -61,6 +62,7 @@ interface RovoAppComposerProps {
 	onDismissPlanExecutionTracker?: () => void;
 	onDismissArtifactContext?: () => void;
 	onRemoveQueuedPrompt?: (id: string) => void;
+	onSendQueuedPromptNow?: (id: string) => void;
 	onSelectHermesSkill?: (skillId: string) => void;
 	onStartFromScratch?: () => void;
 	onSubmit: (payload: { text: string; files: FileUIPart[] }) => Promise<void>;
@@ -108,6 +110,7 @@ function RovoAppComposerInner({
 	queuedPrompts = EMPTY_QUEUED_PROMPTS,
 	onStop,
 	onRemoveQueuedPrompt,
+	onSendQueuedPromptNow,
 	onSelectHermesSkill,
 	onStartFromScratch,
 	onSubmit,
@@ -308,9 +311,20 @@ function RovoAppComposerInner({
 											</QueueItemContent>
 											<QueueItemActions>
 												<Button
+													aria-label="Send now"
+													onClick={() => onSendQueuedPromptNow?.(queuedPrompt.id)}
+													size="icon-sm"
+													type="button"
+													variant="ghost"
+													className="size-7 rounded-full text-icon-subtle opacity-0 transition-opacity group-hover:opacity-100"
+												>
+													<ArrowUpIcon label="" size="small" />
+												</Button>
+												<Button
 													aria-label="Remove queued message"
 													onClick={() => onRemoveQueuedPrompt?.(queuedPrompt.id)}
 													size="icon-sm"
+													type="button"
 													variant="ghost"
 													className="size-7 rounded-full text-icon-subtle opacity-0 transition-opacity group-hover:opacity-100"
 												>

@@ -14,6 +14,7 @@ import {
 	useState,
 } from "react";
 import { useRovoAppQueue } from "@/app/studio/rovo-queue-provider";
+import { usePersistentState } from "@/components/projects/control-plane/lib/use-persistent-state";
 import { useLatestRef } from "@/lib/use-latest-ref";
 import { shouldSendExplicitRovoCancel } from "@/lib/rovo-cancel-strategy";
 import { toast } from "sonner";
@@ -411,6 +412,10 @@ interface RovoAppRefreshThreadsOptions {
 const EXPLICIT_CANCEL_DEBOUNCE_MS = 750;
 const ACTIVE_TURN_STOP_TIMEOUT_MS = 1_200;
 const ROVO_APP_PASSIVE_THREAD_REFRESH_INTERVAL_MS = 15_000;
+type RovoAppSendMode = "queue" | "immediate";
+type RovoAppSendModeSetter = (
+	nextMode: RovoAppSendMode | ((currentMode: RovoAppSendMode) => RovoAppSendMode),
+) => void;
 
 function areRovoAppMessagesEqual(
 	left: ReadonlyArray<RovoUIMessage>,
@@ -630,6 +635,8 @@ export interface RovoAppHookResult {
 	regenerateLatest: () => void;
 	refreshThreads: (options?: RovoAppRefreshThreadsOptions) => Promise<void>;
 	removeQueuedPrompt: (id: string) => void;
+	sendMode: RovoAppSendMode;
+	sendQueuedPromptNow: (id: string) => Promise<void>;
 	runtimeThreadId: string;
 	saveArtifactDraft: () => Promise<void>;
 	selectedVersionId: string | null;
@@ -638,6 +645,7 @@ export interface RovoAppHookResult {
 	setArtifactMode: (mode: ArtifactMode) => void;
 	setEditingMessageId: (messageId: string | null) => void;
 	setSelectedVersionId: (versionId: string | null) => void;
+	setSendMode: RovoAppSendModeSetter;
 	setSidebarOpen: (isOpen: boolean) => void;
 	setThreadVisibility: (visibility: RovoAppVisibility) => void;
 	setVoiceMode: (next: boolean) => void;
@@ -759,8 +767,13 @@ export function useRovoApp({
 	const [inputError, setInputError] = useState<string | null>(null);
 	const [isLoadingThread, setIsLoadingThread] = useState(() => initialThreadId !== null);
 	const [hasActiveDispatch, setHasActiveDispatch] = useState(false);
+	const [sendMode, setSendMode] = usePersistentState<RovoAppSendMode>("rovo-app-send-mode", "queue");
 	const queueProcessorRunningRef = useRef(false);
+	const immediateDispatchInProgressRef = useRef(false);
 	const processQueueRef = useRef<() => Promise<void>>(async () => {});
+	const interruptActiveTurnRef = useRef<(options?: {
+		source: RovoMessageInterruptionSource;
+	}) => Promise<void>>(async () => {});
 	const kickQueue = useCallback(() => {
 		void processQueueRef.current();
 	}, []);
@@ -3371,18 +3384,21 @@ export function useRovoApp({
 			);
 
 			const resolvedThreadId = activeThreadIdRef.current ?? draftThreadId;
-			const shouldEnqueue =
-				queueProcessorRunningRef.current ||
+			const wasQueueProcessorRunning = queueProcessorRunningRef.current;
+			const hasBusyTurn =
 				useChatStatus === "submitted" ||
 				useChatStatus === "streaming" ||
 				isRovoAppThreadBusy({
 					activeRunStatus: currentThread?.activeRun?.status ?? null,
 					attachedRunStatus,
 					status: statusRef.current,
-				}) ||
+				});
+			const hasQueuedActions =
 				(queuedActionsByThreadId[resolvedThreadId]?.length ?? 0) > 0;
+			const shouldEnqueue =
+				wasQueueProcessorRunning || hasBusyTurn || hasQueuedActions;
 
-			if (shouldEnqueue) {
+			if (shouldEnqueue && sendMode === "queue") {
 					enqueuePromptAction({
 						contextDescription,
 						creationMode,
@@ -3394,6 +3410,29 @@ export function useRovoApp({
 					threadId: resolvedThreadId,
 				});
 				kickQueue();
+				return;
+			}
+
+			if (shouldEnqueue) {
+				immediateDispatchInProgressRef.current = true;
+				queueProcessorRunningRef.current = false;
+				try {
+					if (wasQueueProcessorRunning || hasBusyTurn) {
+						await interruptActiveTurnRef.current({ source: "user-stop" });
+					}
+					await dispatchPromptNow({
+						text: trimmedText,
+						files,
+						contextDescription,
+						creationMode,
+						hermesContext,
+						messageMetadata: promptMessageMetadata,
+						mode: promptMode,
+					});
+				} finally {
+					immediateDispatchInProgressRef.current = false;
+					kickQueue();
+				}
 				return;
 			}
 
@@ -3416,6 +3455,7 @@ export function useRovoApp({
 			isPlanModeRef,
 			kickQueue,
 			queuedActionsByThreadId,
+			sendMode,
 			useChatStatus,
 		],
 	);
@@ -4121,6 +4161,37 @@ export function useRovoApp({
 		},
 		[enqueueQueuedAction],
 	);
+
+	const dispatchQueuedActionNow = useCallback(
+		async (action: RovoAppQueuedAction) => {
+			if (action.kind === "delegation") {
+				await dispatchDelegationNow(action.delegatedMessageId, {
+					contextDescription: action.contextDescription,
+					hermesContext: action.hermesContext,
+					conversationSummary: action.conversationSummary,
+					existingRealtimeMessageId:
+						action.existingRealtimeMessageId ?? undefined,
+					intentType: action.intentType,
+					prompt: action.text,
+					referencedFiles: action.referencedFiles,
+					urgency: action.urgency,
+				});
+				return;
+			}
+
+			await dispatchPromptNow({
+				text: action.text,
+				files: [...action.files],
+				contextDescription: action.contextDescription,
+				creationMode: action.creationMode,
+				hermesContext: action.hermesContext,
+				messageMetadata: action.messageMetadata,
+				mode: action.mode,
+			});
+		},
+		[dispatchDelegationNow, dispatchPromptNow],
+	);
+
 	const processQueue = useCallback(async () => {
 		if (queueProcessorRunningRef.current) {
 			return;
@@ -4145,6 +4216,10 @@ export function useRovoApp({
 				}
 
 				if (!queueProcessorRunningRef.current) {
+					break;
+				}
+
+				if (immediateDispatchInProgressRef.current) {
 					break;
 				}
 
@@ -4187,29 +4262,7 @@ export function useRovoApp({
 				}
 
 				try {
-						if (nextAction.kind === "delegation") {
-							await dispatchDelegationNow(nextAction.delegatedMessageId, {
-								contextDescription: nextAction.contextDescription,
-								hermesContext: nextAction.hermesContext,
-								conversationSummary: nextAction.conversationSummary,
-							existingRealtimeMessageId:
-								nextAction.existingRealtimeMessageId ?? undefined,
-							intentType: nextAction.intentType,
-							prompt: nextAction.text,
-							referencedFiles: nextAction.referencedFiles,
-							urgency: nextAction.urgency,
-						});
-						} else {
-							await dispatchPromptNow({
-								text: nextAction.text,
-								files: [...nextAction.files],
-								contextDescription: nextAction.contextDescription,
-								creationMode: nextAction.creationMode,
-								hermesContext: nextAction.hermesContext,
-								messageMetadata: nextAction.messageMetadata,
-								mode: nextAction.mode,
-							});
-					}
+					await dispatchQueuedActionNow(nextAction);
 				} catch (error) {
 					prependQueuedAction(nextAction);
 					if (isRovoAppSendSettledTimeoutError(error)) {
@@ -4230,8 +4283,7 @@ export function useRovoApp({
 			}
 		}
 	}, [
-		dispatchDelegationNow,
-		dispatchPromptNow,
+		dispatchQueuedActionNow,
 		getActivePendingPlanReview,
 		peekNextQueuedActionForThread,
 		prependQueuedAction,
@@ -4273,16 +4325,19 @@ export function useRovoApp({
 			}
 
 			const resolvedThreadId = activeThreadIdRef.current ?? draftThreadId;
-			const shouldEnqueue =
-				queueProcessorRunningRef.current ||
+			const wasQueueProcessorRunning = queueProcessorRunningRef.current;
+			const hasBusyTurn =
 				isRovoAppThreadBusy({
 					activeRunStatus: currentThread?.activeRun?.status ?? null,
 					attachedRunStatus,
 					status: statusRef.current,
-				}) ||
+				});
+			const hasQueuedActions =
 				(queuedActionsByThreadId[resolvedThreadId]?.length ?? 0) > 0;
+			const shouldEnqueue =
+				wasQueueProcessorRunning || hasBusyTurn || hasQueuedActions;
 
-			if (shouldEnqueue) {
+			if (shouldEnqueue && sendMode === "queue") {
 					enqueueDelegationAction(messageId, {
 						contextDescription: options?.contextDescription,
 						hermesContext: options?.hermesContext,
@@ -4295,6 +4350,24 @@ export function useRovoApp({
 					urgency: options?.urgency,
 				});
 				kickQueue();
+				return;
+			}
+
+			if (shouldEnqueue) {
+				immediateDispatchInProgressRef.current = true;
+				queueProcessorRunningRef.current = false;
+				try {
+					if (wasQueueProcessorRunning || hasBusyTurn) {
+						await interruptActiveTurnRef.current({ source: "user-stop" });
+					}
+					await dispatchDelegationNow(messageId, {
+						...options,
+						prompt: delegatedText,
+					});
+				} finally {
+					immediateDispatchInProgressRef.current = false;
+					kickQueue();
+				}
 				return;
 			}
 
@@ -4312,6 +4385,7 @@ export function useRovoApp({
 			kickQueue,
 			messages,
 			queuedActionsByThreadId,
+			sendMode,
 		],
 	);
 
@@ -4523,10 +4597,65 @@ export function useRovoApp({
 			waitForActiveTurnToStop,
 		],
 	);
+	interruptActiveTurnRef.current = interruptActiveTurn;
 
 	const stop = useCallback(async () => {
 		await interruptActiveTurn({ source: "user-stop" });
 	}, [interruptActiveTurn]);
+
+	const sendQueuedPromptNow = useCallback(
+		async (id: string) => {
+			if (!id) {
+				return;
+			}
+
+			const threadId = activeThreadIdRef.current ?? draftThreadId;
+			const queue = queuedActionsByThreadId[threadId] ?? [];
+			const queuedAction = queue.find((action) => action.id === id);
+			if (!queuedAction) {
+				return;
+			}
+
+			setInputError(null);
+			const wasQueueProcessorRunning = queueProcessorRunningRef.current;
+			const hasBusyTurn = isRovoAppThreadBusy({
+				activeRunStatus: currentThread?.activeRun?.status ?? null,
+				attachedRunStatus,
+				status: statusRef.current,
+			});
+			let dispatched = false;
+			immediateDispatchInProgressRef.current = true;
+			queueProcessorRunningRef.current = false;
+			removeQueuedAction(queuedAction.threadId, queuedAction.id);
+
+			try {
+				if (wasQueueProcessorRunning || hasBusyTurn) {
+					await interruptActiveTurn({ source: "user-stop" });
+				}
+				await dispatchQueuedActionNow(queuedAction);
+				dispatched = true;
+			} catch (error) {
+				prependQueuedAction(queuedAction);
+				setInputError(toRovoAppUserErrorMessage(error));
+			} finally {
+				immediateDispatchInProgressRef.current = false;
+				if (dispatched) {
+					kickQueue();
+				}
+			}
+		},
+		[
+			attachedRunStatus,
+			currentThread?.activeRun?.status,
+			dispatchQueuedActionNow,
+			draftThreadId,
+			interruptActiveTurn,
+			kickQueue,
+			prependQueuedAction,
+			queuedActionsByThreadId,
+			removeQueuedAction,
+		],
+	);
 
 	const applyVoiceSteer = useCallback(
 			async ({
@@ -5140,6 +5269,8 @@ export function useRovoApp({
 		regenerateLatest,
 		refreshThreads,
 		removeQueuedPrompt,
+		sendMode,
+		sendQueuedPromptNow,
 		runtimeThreadId,
 		saveArtifactDraft,
 		selectedVersionId,
@@ -5149,6 +5280,7 @@ export function useRovoApp({
 		setArtifactMode,
 		setEditingMessageId,
 		setSelectedVersionId,
+		setSendMode,
 		setSidebarOpen,
 		setThreadVisibility,
 		setVoiceMode,

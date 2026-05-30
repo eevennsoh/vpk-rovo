@@ -234,6 +234,8 @@ const REALTIME_TURN_DETECTION = {
 	create_response: true,
 	interrupt_response: true,
 };
+const MANUAL_TURN_COALESCE_MS = 800;
+const MANUAL_TURN_HARD_CAP_MS = 4_000;
 
 // ─── OpenAI Realtime event types ─────────────────────────────────────────────
 
@@ -361,6 +363,10 @@ class RealtimeSession {
 		this._awaitingOpenAIPong = false;
 		this._sessionRefreshTimer = null;
 		this._plannedCloseReason = null;
+		this._manualTurnTaking = false;
+		this._manualTurnTranscriptBuffer = "";
+		this._manualTurnCoalesceTimer = null;
+		this._manualTurnHardCapTimer = null;
 		// Track the in-flight OpenAI response so we never request a new one while
 		// another is active (OpenAI rejects that). Tool outputs that arrive during
 		// an active response defer their response.create until response.done.
@@ -443,6 +449,7 @@ class RealtimeSession {
 			const plannedCloseReason = this._plannedCloseReason;
 			this._plannedCloseReason = null;
 			this._clearSessionMaintenanceTimers();
+			this._clearManualTurnTranscription();
 			this._log("REALTIME", `OpenAI WS closed: ${code} ${reason}`);
 			this._state = SESSION_STATE.CLOSED;
 			if (plannedCloseReason === null) {
@@ -485,6 +492,7 @@ class RealtimeSession {
 		this._state = SESSION_STATE.CLOSED;
 		this._plannedCloseReason = null;
 		this._clearSessionMaintenanceTimers();
+		this._clearManualTurnTranscription();
 		if (this._openaiWs) {
 			if (
 				this._openaiWs.readyState === WebSocket.OPEN ||
@@ -544,6 +552,7 @@ class RealtimeSession {
 
 			this._plannedCloseReason = "session_refresh";
 			this._log("REALTIME", "Refreshing Realtime session before max lifetime");
+			this._clearManualTurnTranscription();
 			if (
 				ws.readyState === WebSocket.OPEN ||
 				ws.readyState === WebSocket.CONNECTING
@@ -643,6 +652,12 @@ class RealtimeSession {
 			msg.config && typeof msg.config === "object"
 				? msg.config
 				: msg;
+		const manualTurnTaking =
+			clientConfig.turn_detection?.create_response === false;
+		if (this._manualTurnTaking && !manualTurnTaking) {
+			this._clearManualTurnTranscription();
+		}
+		this._manualTurnTaking = manualTurnTaking;
 		const session = buildRealtimeSessionConfig({
 			instructions:
 				typeof clientConfig.instructions === "string" && clientConfig.instructions
@@ -729,6 +744,85 @@ class RealtimeSession {
 			response: {},
 		});
 		this._log("REALTIME", "Response creation requested");
+	}
+
+	// ── Manual turn-taking ────────────────────────────────────────────────
+
+	_handleTranscriptionCompleted(event) {
+		this._log("REALTIME", `Transcription completed: ${JSON.stringify(event.transcript)}`);
+
+		if (!this._manualTurnTaking) {
+			this._sendToClient({
+				type: "transcription_completed",
+				transcript: event.transcript,
+			});
+			return;
+		}
+
+		this._coalesceManualTurnTranscription(event.transcript);
+	}
+
+	_coalesceManualTurnTranscription(transcript) {
+		const text = typeof transcript === "string" ? transcript.trim() : "";
+		if (!text) {
+			return;
+		}
+
+		this._manualTurnTranscriptBuffer = this._manualTurnTranscriptBuffer
+			? `${this._manualTurnTranscriptBuffer} ${text}`
+			: text;
+
+		if (this._manualTurnCoalesceTimer !== null) {
+			clearTimeout(this._manualTurnCoalesceTimer);
+		}
+		this._manualTurnCoalesceTimer = setTimeout(() => {
+			this._flushManualTurnTranscription();
+		}, MANUAL_TURN_COALESCE_MS);
+
+		if (this._manualTurnHardCapTimer === null) {
+			this._manualTurnHardCapTimer = setTimeout(() => {
+				this._flushManualTurnTranscription();
+			}, MANUAL_TURN_HARD_CAP_MS);
+		}
+	}
+
+	_flushManualTurnTranscription() {
+		const transcript = this._manualTurnTranscriptBuffer.trim();
+		this._clearManualTurnTranscription();
+
+		if (!transcript) {
+			return;
+		}
+
+		this._sendToClient({
+			type: "transcription_completed",
+			transcript,
+		});
+		this._requestResponse();
+	}
+
+	_clearManualTurnTranscription() {
+		if (this._manualTurnCoalesceTimer !== null) {
+			clearTimeout(this._manualTurnCoalesceTimer);
+			this._manualTurnCoalesceTimer = null;
+		}
+		if (this._manualTurnHardCapTimer !== null) {
+			clearTimeout(this._manualTurnHardCapTimer);
+			this._manualTurnHardCapTimer = null;
+		}
+		this._manualTurnTranscriptBuffer = "";
+	}
+
+	_handleSpeechStarted() {
+		if (this._manualTurnTaking && this._activeResponseId) {
+			this._sendToOpenAI({
+				type: OPENAI_EVENT.RESPONSE_CANCEL,
+			});
+			this._clearManualTurnTranscription();
+			this._pendingResponseCreate = false;
+		}
+
+		this._sendToClient({ type: "speech_started" });
 	}
 
 	// ── Tool results ──────────────────────────────────────────────────────
@@ -870,6 +964,8 @@ class RealtimeSession {
 				// Fresh session — no response can be in flight from a prior connection.
 				this._activeResponseId = null;
 				this._pendingResponseCreate = false;
+				this._manualTurnTaking = false;
+				this._clearManualTurnTranscription();
 				this._log("REALTIME", `Session created: ${event.session?.id || "unknown"}`);
 				this._sendSessionUpdate(getRealtimeConfig());
 				this._sendToClient({ type: "session_ready", sessionId: event.session?.id });
@@ -947,15 +1043,11 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.CONVERSATION_ITEM_INPUT_AUDIO_TRANSCRIPTION_COMPLETED:
-				this._log("REALTIME", `Transcription completed: ${JSON.stringify(event.transcript)}`);
-				this._sendToClient({
-					type: "transcription_completed",
-					transcript: event.transcript,
-				});
+				this._handleTranscriptionCompleted(event);
 				break;
 
 			case OPENAI_EVENT.INPUT_AUDIO_BUFFER_SPEECH_STARTED:
-				this._sendToClient({ type: "speech_started" });
+				this._handleSpeechStarted();
 				break;
 
 			case OPENAI_EVENT.INPUT_AUDIO_BUFFER_SPEECH_STOPPED:

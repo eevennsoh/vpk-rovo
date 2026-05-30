@@ -52,6 +52,10 @@ function assertSystemMessage(openaiMessage, expectedText) {
 	assert.equal(openaiMessage.item?.content?.[0]?.text, expectedText);
 }
 
+function sendOpenAIEvent(session, event) {
+	session._handleOpenAIMessage(Buffer.from(JSON.stringify(event)));
+}
+
 test("realtime config defaults to the current realtime model", () => {
 	const previousModel = process.env.OPENAI_REALTIME_MODEL;
 	delete process.env.OPENAI_REALTIME_MODEL;
@@ -286,6 +290,155 @@ test("client session updates preserve configurable realtime voice options", () =
 	assert.equal(
 		openaiMessages[0].session?.audio?.input?.turn_detection?.eagerness,
 		"low",
+	);
+});
+
+test("manual turn-taking coalesces transcript completions into one client turn", (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => t.mock.timers.reset());
+	const { session, clientMessages, openaiMessages } = createReadySession();
+
+	session.handleClientMessage(JSON.stringify({
+		type: "session_update",
+		config: {
+			turn_detection: {
+				type: "semantic_vad",
+				create_response: false,
+			},
+		},
+	}));
+	openaiMessages.length = 0;
+
+	sendOpenAIEvent(session, {
+		type: "conversation.item.input_audio_transcription.completed",
+		transcript: "hello",
+	});
+	sendOpenAIEvent(session, {
+		type: "conversation.item.input_audio_transcription.completed",
+		transcript: "world",
+	});
+
+	assert.deepEqual(clientMessages, []);
+	assert.deepEqual(openaiMessages, []);
+
+	t.mock.timers.tick(799);
+	assert.deepEqual(clientMessages, []);
+	assert.deepEqual(openaiMessages, []);
+
+	t.mock.timers.tick(1);
+
+	assert.deepEqual(clientMessages, [
+		{
+			type: "transcription_completed",
+			transcript: "hello world",
+		},
+	]);
+	assert.deepEqual(openaiMessages, [
+		{
+			type: "response.create",
+			response: {},
+		},
+	]);
+});
+
+test("default turn-taking forwards transcript completions one-to-one", () => {
+	const { session, clientMessages, openaiMessages } = createReadySession();
+
+	sendOpenAIEvent(session, {
+		type: "conversation.item.input_audio_transcription.completed",
+		transcript: "hello",
+	});
+	sendOpenAIEvent(session, {
+		type: "conversation.item.input_audio_transcription.completed",
+		transcript: "world",
+	});
+
+	assert.deepEqual(clientMessages, [
+		{
+			type: "transcription_completed",
+			transcript: "hello",
+		},
+		{
+			type: "transcription_completed",
+			transcript: "world",
+		},
+	]);
+	assert.deepEqual(openaiMessages, []);
+});
+
+test("manual barge-in sends response.cancel only in manual mode", () => {
+	const manual = createReadySession();
+	manual.session.handleClientMessage(JSON.stringify({
+		type: "session_update",
+		config: {
+			turn_detection: {
+				type: "semantic_vad",
+				create_response: false,
+			},
+		},
+	}));
+	manual.openaiMessages.length = 0;
+	manual.session._activeResponseId = "response-manual";
+
+	sendOpenAIEvent(manual.session, {
+		type: "input_audio_buffer.speech_started",
+	});
+
+	assert.deepEqual(manual.clientMessages, [{ type: "speech_started" }]);
+	assert.deepEqual(manual.openaiMessages, [{ type: "response.cancel" }]);
+
+	const defaults = createReadySession();
+	defaults.session._activeResponseId = "response-default";
+
+	sendOpenAIEvent(defaults.session, {
+		type: "input_audio_buffer.speech_started",
+	});
+
+	assert.deepEqual(defaults.clientMessages, [{ type: "speech_started" }]);
+	assert.deepEqual(defaults.openaiMessages, []);
+});
+
+test("manual barge-in clears stale pending response creation", (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => t.mock.timers.reset());
+	const { session, clientMessages, openaiMessages } = createReadySession();
+
+	session.handleClientMessage(JSON.stringify({
+		type: "session_update",
+		config: {
+			turn_detection: {
+				type: "semantic_vad",
+				create_response: false,
+			},
+		},
+	}));
+	openaiMessages.length = 0;
+
+	sendOpenAIEvent(session, {
+		type: "conversation.item.input_audio_transcription.completed",
+		transcript: "stale turn",
+	});
+	session._activeResponseId = "response-active";
+	session._pendingResponseCreate = true;
+
+	sendOpenAIEvent(session, {
+		type: "input_audio_buffer.speech_started",
+	});
+	t.mock.timers.tick(4_000);
+	sendOpenAIEvent(session, {
+		type: "response.done",
+		response: { id: "response-active" },
+	});
+
+	assert.equal(session._pendingResponseCreate, false);
+	assert.deepEqual(openaiMessages, [{ type: "response.cancel" }]);
+	assert.equal(
+		clientMessages.some((message) => message.type === "transcription_completed"),
+		false,
+	);
+	assert.equal(
+		openaiMessages.some((message) => message.type === "response.create"),
+		false,
 	);
 });
 
