@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { resolveWaveHighlightColor } from "@/components/ui-custom/lib/shimmer-colors";
 import { TWGLoader } from "@/components/ui-custom/twg-loader";
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion, type Transition } from "motion/react";
 import { useState } from "react";
 import { PixelVaultIcon } from "./personal-graph-pixel-icons";
 
@@ -24,10 +24,16 @@ const SOFT_BLUR_ENTER_DURATION = 0.9;
 const SOFT_BLUR_ENTER_STAGGER = 0.025;
 const SOFT_BLUR_ENTER_EASE = [0.22, 1, 0.36, 1] as const;
 
-// Leave is uniform (no stagger) and quick, so an interrupted reveal always
-// settles back the same graceful way regardless of how far it got.
-const SOFT_BLUR_LEAVE_DURATION = 0.32;
-const SOFT_BLUR_LEAVE_EASE = [0, 0.4, 0, 1] as const;
+// Leave is uniform (no stagger) and eases out gently — reusing the enter curve
+// family — so hover-out settles back gracefully instead of snapping. The rainbow
+// glyphs AND the resting copy share this one clock, so they cross-fade as a
+// single motion rather than the copy popping in while the rainbow still lingers.
+const SOFT_BLUR_LEAVE_DURATION = 0.5;
+const SOFT_BLUR_LEAVE_EASE = [0.22, 1, 0.36, 1] as const;
+
+// On hover-in the resting copy ducks out quickly so the rising rainbow owns the
+// frame; on hover-out it fades back in on the shared leave clock above.
+const RESTING_COPY_ENTER_DURATION = 0.15;
 
 /**
  * Per-character TWG label with an interruptible rainbow "Soft Blur" reveal.
@@ -45,21 +51,33 @@ function TwgRainbowSoftBlur({ active, label }: Readonly<{ active: boolean; label
 	const rainbowFor = (index: number) =>
 		resolveWaveHighlightColor(TWG_RAINBOW_GRADIENT, index, characters.length);
 	const showRainbow = active && !reduced;
+	const leaveTransition: Transition = {
+		duration: SOFT_BLUR_LEAVE_DURATION,
+		ease: [...SOFT_BLUR_LEAVE_EASE],
+	};
 
 	return (
 		<span aria-hidden className="relative inline-flex whitespace-pre">
 			{/* Layout owner + default appearance; fades under the rainbow so the
-			    rising glyphs don't ghost over the resting copy while active. */}
-			<span
-				className="inline-flex whitespace-pre transition-opacity duration-normal ease-out"
-				style={{ opacity: showRainbow ? 0 : 1 }}
+			    rising glyphs don't ghost over the resting copy while active. Shares
+			    the rainbow's leave clock on hover-out so both cross-fade as one. */}
+			<motion.span
+				className="inline-flex whitespace-pre"
+				style={{ willChange: "opacity" }}
+				initial={false}
+				animate={{ opacity: showRainbow ? 0 : 1 }}
+				transition={
+					showRainbow
+						? { duration: RESTING_COPY_ENTER_DURATION, ease: [...SOFT_BLUR_ENTER_EASE] }
+						: leaveTransition
+				}
 			>
 				{characters.map((character, index) => (
 					<span key={index} className="inline-block whitespace-pre">
 						{character}
 					</span>
 				))}
-			</span>
+			</motion.span>
 
 			<span className="absolute inset-0 inline-flex whitespace-pre">
 				{characters.map((character, index) => (
@@ -73,16 +91,13 @@ function TwgRainbowSoftBlur({ active, label }: Readonly<{ active: boolean; label
 						initial={false}
 						animate={showRainbow ? SOFT_BLUR_SHOWN : SOFT_BLUR_HIDDEN}
 						transition={
-							active
+							showRainbow
 								? {
 										delay: index * SOFT_BLUR_ENTER_STAGGER,
 										duration: SOFT_BLUR_ENTER_DURATION,
 										ease: [...SOFT_BLUR_ENTER_EASE],
 									}
-								: {
-										duration: SOFT_BLUR_LEAVE_DURATION,
-										ease: [...SOFT_BLUR_LEAVE_EASE],
-									}
+								: leaveTransition
 						}
 					>
 						{character}
