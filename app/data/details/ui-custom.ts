@@ -583,7 +583,7 @@ import SearchIcon from "@atlaskit/icon/core/search"
 
 	"card-directory": {
 		description:
-			"A directory listing card with a shared shell (bordered surface, hover elevation, optional keyboard-operable button) and five ready-made variants that swap the leading visual and footer: agent (hexagon avatar + rating/chats), agent (expanded) (cover banner + \"Works with\" sources, \"Skills\" tags, and a scrollable capabilities list + rating/chats), skill (icon tile + publisher + views), tool (app logo + tool/teammate counts), and template (rich icon + \"Works with\" sources and \"Skills\" tags). Compose your own layout with the CardDirectory parts, or use a variant wrapper. Passing onSelect turns the card into a keyboard-operable button; onMoreActions reveals an overflow button on hover/focus.",
+			"A directory listing card with a shared shell (bordered surface, hover elevation, optional keyboard-operable button) and five ready-made variants that swap the leading visual and footer: agent (hexagon avatar + rating/chats), agent (expanded) (cover banner + \"Works with\" sources, \"Skills\" tags, a scrollable feature list, and a metadata + collaborator-avatar footer), skill (icon tile + publisher + views), tool (app logo + tool/teammate counts), and template (rich icon + \"Works with\" sources and \"Skills\" tags). Compose your own layout with the CardDirectory parts, or use a variant wrapper. Passing onSelect turns the card into a keyboard-operable button; onMoreActions reveals an overflow button on hover/focus.",
 		usage: `import {
   CardDirectoryAgent,
   CardDirectoryAgentExpanded,
@@ -608,7 +608,7 @@ import { ConfluenceLogo } from "@/components/ui/logo";
   onMoreActions={() => openMenu()}
 />
 
-// Agent (expanded) — cover banner + "Works with" + "Skills" + capabilities list
+// Agent (expanded) — cover banner + "Works with" + "Skills" + feature list + metadata footer
 <CardDirectoryAgentExpanded
   name="Feedback analyzer"
   publisher="Atlassian"
@@ -627,10 +627,16 @@ import { ConfluenceLogo } from "@/components/ui/logo";
     "Scores sentiment shifts across releases",
     "Links findings back to source tickets",
   ]}
+  stats={[
+    { value: "1.4K", label: "Remix" },
+    { value: "2 weeks ago", label: "Last update" },
+  ]}
+  collaborators={[
+    { name: "Priya Hansra", src: "/avatar-human/priya-hansra.png" },
+    { name: "Raul Gonzalez", src: "/avatar-human/raul-gonzalez.png" },
+  ]}
+  collaboratorOverflow={4}
   verified
-  rating={4.6}
-  feedbackCount={1280}
-  chatCount={9400}
   onSelect={() => openAgent()}
   onMoreActions={() => openMenu()}
 />
