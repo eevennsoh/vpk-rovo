@@ -3,6 +3,9 @@
 import AiChatIcon from "@atlaskit/icon/core/ai-chat";
 import StarUnstarredIcon from "@atlaskit/icon/core/star-unstarred";
 
+import { SkillTag, SkillTagGroup } from "@/components/ui-custom/skill-tag";
+import { TwgToolSourceStack, type TwgToolSource } from "@/components/ui-custom/twg-tool";
+
 import { CardDirectory } from "./card-directory";
 import {
 	CardDirectoryBanner,
@@ -12,19 +15,25 @@ import {
 	CardDirectoryFooter,
 	CardDirectoryHeader,
 	CardDirectoryMoreButton,
+	CardDirectorySection,
 	CardDirectoryStat,
 	formatCompact,
 } from "./card-directory-parts";
+import { type CardDirectoryTemplateSkill } from "./card-directory-template";
 
 export interface CardDirectoryAgentExpandedProps {
 	name: string;
 	avatarSrc: string;
 	publisher: string;
 	description?: string;
-	/** Capability lines rendered as a scrollable "what it can do" list. */
+	/** Capability lines rendered as a scrollable list. */
 	capabilities: readonly string[];
-	/** Label above the capabilities list. */
+	/** Optional label above the capabilities list. Omit to render the bare list. */
 	capabilitiesLabel?: string;
+	/** Connected data sources shown in the "Works with" section. */
+	sources?: ReadonlyArray<TwgToolSource>;
+	/** Skill tags shown in the "Skills" section. */
+	skills?: ReadonlyArray<CardDirectoryTemplateSkill>;
 	/** Override the avatar-category-derived cover color. */
 	coverBackgroundColor?: string;
 	verified?: boolean;
@@ -47,6 +56,8 @@ export function CardDirectoryAgentExpanded({
 	description,
 	capabilities,
 	capabilitiesLabel,
+	sources = [],
+	skills = [],
 	coverBackgroundColor,
 	verified = false,
 	rating,
@@ -76,6 +87,24 @@ export function CardDirectoryAgentExpanded({
 			<CardDirectoryDescription>
 				{description ?? `Learn how ${name} can help your team work faster.`}
 			</CardDirectoryDescription>
+
+			{sources.length > 0 ? (
+				<CardDirectorySection label="Works with">
+					<TwgToolSourceStack className="justify-start" iconSize="md" maxVisible={6} sources={sources} />
+				</CardDirectorySection>
+			) : null}
+
+			{skills.length > 0 ? (
+				<CardDirectorySection label="Skills">
+					<SkillTagGroup>
+						{skills.map((skill) => (
+							<SkillTag color={skill.color ?? "default"} icon={skill.icon} key={skill.label}>
+								{skill.label}
+							</SkillTag>
+						))}
+					</SkillTagGroup>
+				</CardDirectorySection>
+			) : null}
 
 			<CardDirectoryCapabilities items={capabilities} label={capabilitiesLabel} />
 

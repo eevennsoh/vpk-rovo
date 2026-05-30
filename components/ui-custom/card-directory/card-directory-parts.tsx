@@ -210,23 +210,20 @@ export function CardDirectoryBanner({ avatarSrc, backgroundColor }: Readonly<Car
 }
 
 export interface CardDirectoryCapabilitiesProps {
-	/** Section label above the list. */
+	/** Optional section label above the list. Omit to render the bare list. */
 	label?: string;
 	/** Capability lines rendered as a scrollable check-marked list. */
 	items: readonly string[];
 }
 
 /**
- * Scrollable "what it can do" list — reuses the bordered panel idiom from the agent
+ * Scrollable capabilities list — reuses the bordered panel idiom from the agent
  * knowledge panel, made scrollable with a native `overflow-y-auto` affordance.
  */
-export function CardDirectoryCapabilities({
-	label = "What it can do",
-	items,
-}: Readonly<CardDirectoryCapabilitiesProps>) {
+export function CardDirectoryCapabilities({ label, items }: Readonly<CardDirectoryCapabilitiesProps>) {
 	return (
 		<div className="flex flex-col gap-1" data-slot="card-directory-capabilities">
-			<span className="text-xs font-semibold leading-4 text-text-subtlest">{label}</span>
+			{label ? <span className="text-xs font-semibold leading-4 text-text-subtlest">{label}</span> : null}
 			<div className="rounded-xl border border-border bg-bg-input p-1.5">
 				<ul className="flex max-h-32 flex-col gap-0.5 overflow-y-auto">
 					{items.map((item) => (

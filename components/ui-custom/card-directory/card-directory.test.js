@@ -91,6 +91,18 @@ test("expanded agent variant adds a cover banner and scrollable capabilities to 
 	assert.match(AGENT_EXPANDED_SOURCE, /<CardDirectoryByline/u);
 });
 
+test("expanded agent variant renders Works with sources and Skills tags", () => {
+	assert.match(AGENT_EXPANDED_SOURCE, /TwgToolSourceStack/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /SkillTagGroup/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /label="Works with"/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /label="Skills"/u);
+});
+
+test("capabilities label is optional and omitted when not provided", () => {
+	assert.match(PARTS_SOURCE, /label \? <span/u);
+	assert.doesNotMatch(PARTS_SOURCE, /label = "What it can do"/u);
+});
+
 test("skill variant uses an icon tile, publisher footer, and view count", () => {
 	assert.match(SKILL_SOURCE, /IconTile/u);
 	assert.match(SKILL_SOURCE, /@atlaskit\/icon\/core\/eye-open/u);
