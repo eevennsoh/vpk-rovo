@@ -90,7 +90,9 @@ interface SelectContentProps
 		Pick<
 			SelectPrimitive.Positioner.Props,
 			"align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
-		> {}
+		> {
+	showScrollButtons?: boolean
+}
 
 function SelectContent({
 	className,
@@ -100,6 +102,7 @@ function SelectContent({
 	align = "center",
 	alignOffset = 0,
 	alignItemWithTrigger = true,
+	showScrollButtons = true,
 	...props
 }: Readonly<SelectContentProps>) {
 	return (
@@ -122,9 +125,9 @@ function SelectContent({
 					)}
 					{...props}
 				>
-					<SelectScrollUpButton />
+					{showScrollButtons ? <SelectScrollUpButton /> : null}
 					<SelectPrimitive.List>{children}</SelectPrimitive.List>
-					<SelectScrollDownButton />
+					{showScrollButtons ? <SelectScrollDownButton /> : null}
 				</SelectPrimitive.Popup>
 			</SelectPrimitive.Positioner>
 		</SelectPrimitive.Portal>
