@@ -135,8 +135,8 @@ Use `overrides:` in `pnpm-workspace.yaml` only to force a single version across 
 
 Updating (the lockfile must be refreshed — nothing auto-updates):
 
-- Survey what is behind: `pnpm outdated`
-- Pull all in-range Float/Cautious updates (safe, semver-bounded): `pnpm update`
+- Survey what is behind: `pnpm run deps:check` (wraps `pnpm outdated` with an explicit status line — bare `pnpm outdated` prints nothing and exits 0 when current, which reads as silence)
+- Pull all in-range Float/Cautious updates and report status: `pnpm run deps:update` (runs `pnpm update`, then `deps:check`)
 - Bump a Locked exact dep: edit its version in `package.json`, then `pnpm install`
 - Bump a catalog family: edit the version in the `catalog:` block of `pnpm-workspace.yaml`, then `pnpm install` (never run `pnpm update` for these and never edit the `"catalog:"` refs in `package.json`)
 - After any update run `pnpm run lint` and `pnpm run typecheck`; for major bumps also smoke-test `pnpm run dev`
