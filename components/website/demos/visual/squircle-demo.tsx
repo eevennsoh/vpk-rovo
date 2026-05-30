@@ -91,7 +91,6 @@ export default function SquircleDemo() {
 				className="relative overflow-hidden border border-border"
 				style={{
 					borderRadius: 28,
-					boxShadow: token("elevation.shadow.raised"),
 				}}
 			>
 				<div

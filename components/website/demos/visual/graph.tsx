@@ -352,7 +352,7 @@ const GRAPH_KIND_COLORS: Record<VaultNodeKind, string> = {
 
 const GRAPH_STAGE_STYLE = {
 	backgroundColor: ROVO_GRAPH_COLORS.surface,
-	boxShadow: token("elevation.shadow.raised"),
+	border: `1px solid ${token("color.border")}`,
 } satisfies CSSProperties;
 
 const GRAPH_DETAILS_PANEL_STYLE = {

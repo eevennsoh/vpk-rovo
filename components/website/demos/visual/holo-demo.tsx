@@ -44,8 +44,7 @@ export default function HoloDemo() {
 	return (
 		<div className="flex w-full max-w-2xl flex-col" style={{ gap: token("space.400") }}>
 			<div
-				className="aspect-video w-full overflow-hidden rounded-lg bg-black"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className="aspect-video w-full overflow-hidden rounded-lg bg-black border border-border"
 			>
 				<Holo
 					seed={seed}

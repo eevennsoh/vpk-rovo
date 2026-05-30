@@ -119,7 +119,6 @@ function ScribblesPreviewTile({ label, value, children, className }: ScribblesPr
 				"flex min-h-72 flex-col rounded-lg border border-border bg-surface-raised p-4",
 				className,
 			)}
-			style={{ boxShadow: token("elevation.shadow.raised") }}
 		>
 			<div className="flex items-baseline justify-between gap-3 font-mono text-xs">
 				<span className="text-text-subtle">{label}</span>

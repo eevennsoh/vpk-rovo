@@ -153,8 +153,7 @@ export default function PatternTileDemo() {
 	return (
 		<div className="flex w-full max-w-2xl flex-col" style={{ gap: token("space.400") }}>
 			<div
-				className="w-full overflow-hidden rounded-lg"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className="w-full overflow-hidden rounded-lg border border-border"
 			>
 				<PatternTile
 					patternType={patternType}

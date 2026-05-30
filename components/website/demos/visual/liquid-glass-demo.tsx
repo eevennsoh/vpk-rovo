@@ -321,7 +321,6 @@ export default function LiquidGlassDemo() {
 				className="relative overflow-hidden border border-border"
 				style={{
 					borderRadius: 28,
-					boxShadow: token("elevation.shadow.raised"),
 					backgroundColor: token("elevation.surface"),
 				}}
 			>

@@ -224,8 +224,7 @@ export default function DitheringDemo() {
 	return (
 		<div className="flex w-full max-w-2xl flex-col" style={{ gap: token("space.400") }}>
 			<div
-				className="aspect-video w-full overflow-hidden rounded-lg"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className="aspect-video w-full overflow-hidden rounded-lg border border-border"
 			>
 				<Dithering
 					sourceMode={sourceMode}

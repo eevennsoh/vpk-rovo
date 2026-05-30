@@ -32,8 +32,7 @@ export default function RingsDemo() {
 	return (
 		<div className="flex flex-col w-full max-w-2xl" style={{ gap: token("space.400") }}>
 			<div
-				className="w-full aspect-video rounded-lg overflow-hidden"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className="w-full aspect-video rounded-lg overflow-hidden border border-border"
 			>
 				<Rings
 					colors={colors}

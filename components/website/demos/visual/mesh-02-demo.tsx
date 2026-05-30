@@ -32,8 +32,7 @@ export default function Mesh02Demo() {
 	return (
 		<div className="flex flex-col w-full max-w-2xl" style={{ gap: token("space.400") }}>
 			<div
-				className="w-full aspect-video rounded-lg overflow-hidden"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className="w-full aspect-video rounded-lg overflow-hidden border border-border"
 			>
 				<Mesh2
 					backgroundColor={backgroundColor}

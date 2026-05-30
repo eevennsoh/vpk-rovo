@@ -49,7 +49,6 @@ function ScramblePreviewTile({ label, value, children, className }: ScramblePrev
 	return (
 		<div
 			className={cn("flex min-h-56 flex-col rounded-lg border border-border bg-surface-raised p-4", className)}
-			style={{ boxShadow: token("elevation.shadow.raised") }}
 		>
 			<div className="flex items-baseline justify-between gap-3 font-mono text-xs">
 				<span className="text-text-subtle">{label}</span>

@@ -34,8 +34,7 @@ export default function NoiseDemo() {
 			style={{ gap: token("space.400") }}
 		>
 			<div
-				className="w-full overflow-hidden rounded-lg"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className="w-full overflow-hidden rounded-lg border border-border"
 			>
 				<NoisePreviewSurface
 					opacity={opacity}

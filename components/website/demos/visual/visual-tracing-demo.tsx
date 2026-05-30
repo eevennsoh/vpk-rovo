@@ -125,7 +125,7 @@ export default function VisualTracingDemo() {
 		<div className="flex w-full max-w-2xl flex-col" style={{ gap: token("space.400") }}>
 			<div
 				className="relative overflow-hidden border border-border"
-				style={{ borderRadius: 28, boxShadow: token("elevation.shadow.raised") }}
+				style={{ borderRadius: 28 }}
 			>
 				<div
 					className="relative flex w-full items-center justify-center overflow-hidden px-8 py-12"

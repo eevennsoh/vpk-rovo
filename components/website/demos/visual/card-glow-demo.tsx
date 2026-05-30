@@ -261,13 +261,13 @@ export function CardGlowBento({ config }: Readonly<{ config: CardGlowConfig }>) 
 	return (
 		<div
 			className={cn(
-				"relative w-full overflow-hidden rounded-lg p-4 sm:p-6",
+				"relative w-full overflow-hidden rounded-lg border border-border p-4 sm:p-6",
 				getPreviewThemeClassName(config.theme),
 			)}
 			data-card-glow-theme={config.theme}
 			onPointerLeave={resetPointer}
 			onPointerMove={handlePointerMove}
-			style={{ ...effectStyle, boxShadow: token("elevation.shadow.raised") }}
+			style={{ ...effectStyle }}
 		>
 			<svg
 				aria-hidden
