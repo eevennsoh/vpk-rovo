@@ -114,10 +114,11 @@ test("expanded agent variant divides content and renders a metadata + collaborat
 
 test("expanded agent variant pins a full-bleed footer below a scrollable body region", () => {
 	// flex-1 + min-h-0 + overflow-y-auto gives a scrollable body so the footer stays pinned
-	assert.match(AGENT_EXPANDED_SOURCE, /min-h-0 flex-1 flex-col gap-3 overflow-y-auto/u);
-	// footer region cancels the shell px-4 to span the card edges, content re-inset with px-4
-	assert.match(AGENT_EXPANDED_SOURCE, /-mx-4 flex flex-col gap-3/u);
-	assert.match(AGENT_EXPANDED_SOURCE, /className="justify-between px-4"/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto/u);
+	// footer region cancels the shell side/bottom padding so the band stays attached to the card bottom
+	assert.match(AGENT_EXPANDED_SOURCE, /className=\{cn\("gap-0", className\)\}/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /-mx-4 -mb-4 shrink-0 border-t border-border bg-surface/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /className="justify-between px-4 py-3"/u);
 });
 
 test("capabilities label is optional and omitted when not provided", () => {

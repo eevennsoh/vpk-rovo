@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage } fr
 import { Separator } from "@/components/ui/separator";
 import { SkillTag, SkillTagGroup } from "@/components/ui-custom/skill-tag";
 import { TwgToolSourceStack, type TwgToolSource } from "@/components/ui-custom/twg-tool";
+import { cn } from "@/lib/utils";
 
 import { CardDirectory } from "./card-directory";
 import {
@@ -85,11 +86,11 @@ export function CardDirectoryAgentExpanded({
 	const showFooter = showStats || showRating || showChats || showCollaborators;
 
 	return (
-		<CardDirectory className={className} onSelect={onSelect} selectLabel={`Select ${name}`}>
+		<CardDirectory className={cn("gap-0", className)} onSelect={onSelect} selectLabel={`Select ${name}`}>
 			<CardDirectoryBanner avatarSrc={avatarSrc} backgroundColor={coverBackgroundColor} />
 
 			{/* Scrollable body — banner stays pinned above, footer pinned below. */}
-			<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+			<div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
 				<CardDirectoryHeader
 					action={
 						onMoreActions ? (
@@ -128,11 +129,10 @@ export function CardDirectoryAgentExpanded({
 			</div>
 
 			{showFooter ? (
-				// Full-bleed footer: cancel the shell's px-4 so the divider + footer span the
-				// card edges, then re-inset the footer content with px-4.
-				<div className="-mx-4 flex flex-col gap-3">
-					<Separator />
-					<CardDirectoryFooter className="justify-between px-4">
+				// Full-bleed footer band: cancel shell side/bottom padding so the divider
+				// and footer stay attached to the bottom edge of the expanded card.
+				<div className="-mx-4 -mb-4 shrink-0 border-t border-border bg-surface">
+					<CardDirectoryFooter className="justify-between px-4 py-3">
 						<div className="flex items-center gap-6">
 							{showStats ? (
 								stats.map((stat) => (
