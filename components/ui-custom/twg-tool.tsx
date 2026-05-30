@@ -115,7 +115,6 @@ export function TwgToolSourceIcon({
 		return (
 			<Tile
 				className={cn("shrink-0", className)}
-				hasBorder
 				isInset={false}
 				label={source.label}
 				size={tileSize}
@@ -154,7 +153,6 @@ export function TwgToolSourceIcon({
 		return (
 			<Tile
 				className={cn("shrink-0", className)}
-				hasBorder
 				isInset={false}
 				label={source.label}
 				size={tileSize}

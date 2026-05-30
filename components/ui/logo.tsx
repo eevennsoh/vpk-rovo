@@ -81,9 +81,10 @@ export function AtlassianLogo({
 
 	const needsDarkFix = !appearance && actualTheme === "dark" && resolvedAppearance === "inverse";
 	const placeholderSize = getLogoSizePx(size);
-	// Inset ring hugs the mark's edge without growing the box (unlike a real
-	// border, which box-sizing would push outside the colored squircle).
-	const borderClassName = hasBorder && "rounded-tile ring-1 ring-inset ring-border";
+	// Hairline drawn as an outline with a negative offset: it sits 1px inside the
+	// mark's edge and — unlike an inset ring/box-shadow, which renders *behind*
+	// content — outlines paint on top of the filled logo svg, so it stays visible.
+	const borderClassName = hasBorder && "rounded-tile [outline:1px_solid_var(--color-border)] [outline-offset:-1px]";
 
 	if (!isMounted) {
 		return (
