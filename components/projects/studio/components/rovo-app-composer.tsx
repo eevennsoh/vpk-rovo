@@ -398,6 +398,7 @@ function RovoAppComposerInner({
 								screenAssistantTargetPrefix="studio-composer"
 								showBackgroundStop={showBackgroundStop}
 								submitDisabled={submitDisabled}
+								voiceStartButtonClassName="bg-bg-neutral-bold text-text-inverse hover:bg-bg-neutral-bold-hovered active:bg-bg-neutral-bold-pressed"
 							/>
 						}
 					>

@@ -99,6 +99,7 @@ export interface RovoComposerActionButtonProps {
 	screenAssistantTargetPrefix?: string;
 	showBackgroundStop?: boolean;
 	submitDisabled?: boolean;
+	voiceStartButtonClassName?: string;
 }
 
 export function RovoComposerActionButton({
@@ -112,6 +113,7 @@ export function RovoComposerActionButton({
 	screenAssistantTargetPrefix,
 	showBackgroundStop = false,
 	submitDisabled = false,
+	voiceStartButtonClassName,
 }: Readonly<RovoComposerActionButtonProps>): ReactElement {
 	const realtimeWaveformIntroTimeoutRef = useRef<number | null>(null);
 	const [isRealtimeWaveformIntroActive, setIsRealtimeWaveformIntroActive] = useState(false);
@@ -252,7 +254,7 @@ export function RovoComposerActionButton({
 						<PromptInputButton
 							variant="default"
 							aria-label="Start live voice"
-							className="size-8 hover:opacity-90 active:opacity-80"
+							className={cn("size-8 hover:opacity-90 active:opacity-80", voiceStartButtonClassName)}
 							data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:voice` : undefined}
 							onClick={handleToggleRealtimeVoice}
 							tooltip={{ content: "Live chat", delay: 0 }}
@@ -304,6 +306,7 @@ export function RovoComposerSendControls({
 	selectedReasoning,
 	showBackgroundStop,
 	submitDisabled,
+	voiceStartButtonClassName,
 	webResultsEnabled,
 	onWebResultsChange,
 	...props
@@ -331,6 +334,7 @@ export function RovoComposerSendControls({
 				screenAssistantTargetPrefix={screenAssistantTargetPrefix}
 				showBackgroundStop={showBackgroundStop}
 				submitDisabled={submitDisabled}
+				voiceStartButtonClassName={voiceStartButtonClassName}
 			/>
 		</div>
 	);

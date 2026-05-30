@@ -2,10 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
-import type {
-	StudioScreenAssistantResult,
-	StudioScreenAssistantSnapshot,
-} from "@/components/projects/studio/lib/studio-screen-assistant";
 import {
 	createRealtimeAssistantTextStreamState,
 	finalizeRealtimeAssistantText,
@@ -41,6 +37,20 @@ export type RealtimeGenerationState =
 	| "steering"
 	| "complete";
 
+/**
+ * App-owned screen-assistant tools the model can invoke. These are executed by
+ * the browser (never raw DOM automation) and return a result via
+ * `sendFunctionCallOutput`. Kept in sync with SESSION_TOOLS in
+ * backend/lib/openai-realtime.js.
+ */
+export const SCREEN_ASSISTANT_TOOL_NAMES = new Set<string>([
+	"get_screen_state",
+	"point_at_target",
+	"set_composer_text",
+	"submit_composer",
+	"apply_agent_draft_patch",
+]);
+
 export interface DelegationRequest {
 	prompt: string;
 	intentType: string;
@@ -74,7 +84,13 @@ export interface UseRealtimeVoiceOptions {
 		messageId?: string;
 		text?: string;
 	} | string) => void;
-	onScreenAssistantResult?: (payload: StudioScreenAssistantResult) => void;
+	/**
+	 * Called when the model invokes an app-owned screen-assistant tool
+	 * (get_screen_state, point_at_target, set_composer_text, submit_composer,
+	 * apply_agent_draft_patch). The executor runs the action and returns the
+	 * result via `sendFunctionCallOutput`.
+	 */
+	onToolCall?: (call: { name: string; args: Record<string, unknown>; callId: string }) => void;
 	/** Current chat messages for thread context. */
 	chatMessages: RovoUIMessage[];
 	/** Whether Rovo is currently generating. */
@@ -89,15 +105,11 @@ export interface UseRealtimeVoiceResult {
 		messageId?: string;
 		text: string;
 	}) => Promise<void>;
-	sendImageInput: (payload: {
-		image: string;
-		text?: string;
-		detail?: "low" | "high" | "auto";
-		clicky?: boolean;
-		systemPrompt?: string;
-		screenAssistant?: StudioScreenAssistantSnapshot & {
-			turnId: string;
-		};
+	/** Return an app-owned tool result to the model so it can continue. */
+	sendFunctionCallOutput: (payload: {
+		callId: string;
+		output: unknown;
+		createResponse?: boolean;
 	}) => void;
 	voiceState: RealtimeVoiceState;
 	generationState: RealtimeGenerationState;
@@ -184,15 +196,15 @@ interface ClientTextMessageFromUser {
 	text: string;
 }
 
-interface ClientImageMessageFromUser {
-	type: "image_message_from_user";
-	image: string;
-	text?: string;
-	detail?: "low" | "high" | "auto";
-}
-
 interface ClientResponseCreate {
 	type: "response_create";
+}
+
+interface ClientFunctionCallOutput {
+	type: "function_call_output";
+	callId: string;
+	output: string;
+	createResponse?: boolean;
 }
 
 type ClientMessage =
@@ -201,8 +213,8 @@ type ClientMessage =
 	| ClientSessionUpdate
 	| ClientContextInject
 	| ClientTextMessageFromUser
-	| ClientImageMessageFromUser
-	| ClientResponseCreate;
+	| ClientResponseCreate
+	| ClientFunctionCallOutput;
 
 // ---------------------------------------------------------------------------
 // Server → Client message types
@@ -274,15 +286,6 @@ interface ServerResponseDone {
 	responseId?: string;
 }
 
-interface ServerClickyTextCompleted {
-	type: "clicky_text_completed";
-	text: string;
-}
-
-type ServerScreenAssistantResult = StudioScreenAssistantResult & {
-	type: "screen_assistant_result";
-};
-
 type ServerMessage =
 	| ServerSessionReady
 	| ServerAudioDelta
@@ -295,9 +298,7 @@ type ServerMessage =
 	| ServerSpeechStopped
 	| ServerError
 	| ServerFunctionCall
-	| ServerResponseDone
-	| ServerClickyTextCompleted
-	| ServerScreenAssistantResult;
+	| ServerResponseDone;
 
 // ---------------------------------------------------------------------------
 // Audio helpers
@@ -578,7 +579,7 @@ export function useRealtimeVoice({
 	onTextResponseStart,
 	onAssistantTextDelta,
 	onAssistantTextCompleted,
-	onScreenAssistantResult,
+	onToolCall,
 	chatMessages,
 	isGenerating = false,
 }: UseRealtimeVoiceOptions): UseRealtimeVoiceResult {
@@ -675,10 +676,10 @@ export function useRealtimeVoice({
 		onAssistantTextCompletedRef.current = onAssistantTextCompleted;
 	}, [onAssistantTextCompleted]);
 
-	const onScreenAssistantResultRef = useRef(onScreenAssistantResult);
+	const onToolCallRef = useRef(onToolCall);
 	useEffect(() => {
-		onScreenAssistantResultRef.current = onScreenAssistantResult;
-	}, [onScreenAssistantResult]);
+		onToolCallRef.current = onToolCall;
+	}, [onToolCall]);
 
 	const chatMessagesRef = useRef(chatMessages);
 	useEffect(() => {
@@ -1544,24 +1545,6 @@ export function useRealtimeVoice({
 					resetGenerationStateSoon();
 					break;
 
-				case "clicky_text_completed":
-					// Claude vision response — text with POINT tags, sent separately from TTS
-					if (message.text) {
-						onAssistantTextCompletedRef.current?.({
-							text: message.text,
-						});
-					}
-					break;
-
-				case "screen_assistant_result":
-					onScreenAssistantResultRef.current?.({
-						turnId: message.turnId,
-						text: message.text,
-						...(message.point ? { point: message.point } : {}),
-						...(message.target ? { target: message.target } : {}),
-						...(message.agentDraftPatch ? { agentDraftPatch: message.agentDraftPatch } : {}),
-					});
-					break;
 
 				case "function_call":
 					markSpeechResponseStarted();
@@ -1588,6 +1571,21 @@ export function useRealtimeVoice({
 						} catch (error) {
 							console.error("[RealtimeVoice] Failed to parse delegate_to_rovo arguments:", error);
 						}
+					} else if (SCREEN_ASSISTANT_TOOL_NAMES.has(message.name)) {
+						// App-owned screen-assistant tool. Hand it to the registered
+						// executor, which performs the whitelisted action and returns
+						// the result via sendFunctionCallOutput.
+						let args: Record<string, unknown> = {};
+						try {
+							args = message.arguments ? JSON.parse(message.arguments) : {};
+						} catch (error) {
+							console.error(`[RealtimeVoice] Failed to parse ${message.name} arguments:`, error);
+						}
+						onToolCallRef.current?.({
+							name: message.name,
+							args,
+							callId: message.callId,
+						});
 					}
 					break;
 
@@ -1850,31 +1848,21 @@ export function useRealtimeVoice({
 		});
 	}, [dispatchTextInput]);
 
-	const sendImageInput = useCallback(({
-		image,
-		text,
-		detail = "low",
-		clicky,
-		systemPrompt,
-		screenAssistant,
+	const sendFunctionCallOutput = useCallback(({
+		callId,
+		output,
+		createResponse,
 	}: {
-		image: string;
-		text?: string;
-		detail?: "low" | "high" | "auto";
-		clicky?: boolean;
-		systemPrompt?: string;
-		screenAssistant?: StudioScreenAssistantSnapshot & {
-			turnId: string;
-		};
+		callId: string;
+		output: unknown;
+		createResponse?: boolean;
 	}) => {
-		if (!image) return;
-
+		if (!callId) return;
 		sendWsMessage({
-			type: "image_message_from_user",
-			image,
-			text,
-			detail,
-			...(clicky ? { clicky: true, systemPrompt, screenAssistant } : {}),
+			type: "function_call_output",
+			callId,
+			output: typeof output === "string" ? output : JSON.stringify(output ?? {}),
+			...(createResponse === false ? { createResponse: false } : {}),
 		});
 	}, [sendWsMessage]);
 
@@ -1925,7 +1913,7 @@ export function useRealtimeVoice({
 		connect,
 		disconnect,
 		sendTextInput,
-		sendImageInput,
+		sendFunctionCallOutput,
 		voiceState,
 		generationState,
 		isConnected,

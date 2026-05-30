@@ -3,7 +3,6 @@ const test = require("node:test");
 const WebSocket = require("ws");
 
 const {
-	parseScreenAssistantVisionResponse,
 	RealtimeSession,
 	ROVO_SYSTEM_INSTRUCTIONS,
 	SESSION_STATE,
@@ -90,76 +89,46 @@ test("system instructions force delegation for explicit artifact requests", () =
 	);
 });
 
-test("parses structured screen assistant vision responses", () => {
-	assert.deepEqual(
-		parseScreenAssistantVisionResponse(
-			JSON.stringify({
-				agentDraftPatch: {
-					name: "Support Triage Agent",
-				},
-				point: {
-					label: "Instructions",
-					x: 120.7,
-					y: 240.2,
-				},
-				target: {
-					fieldId: "instructions",
-					id: "studio-agent-config:instructions",
-					label: "Instructions",
-					rect: {
-						height: 80,
-						width: 420,
-						x: 40,
-						y: 100,
-					},
-				},
-				text: "I filled in the instructions.",
-			}),
-			"voice-turn-1",
-		),
-		{
-			agentDraftPatch: {
-				name: "Support Triage Agent",
-			},
-			point: {
-				label: "Instructions",
-				x: 121,
-				y: 240,
-			},
-			target: {
-				fieldId: "instructions",
-				id: "studio-agent-config:instructions",
-				label: "Instructions",
-				rect: {
-					height: 80,
-					width: 420,
-					x: 40,
-					y: 100,
-				},
-			},
-			text: "I filled in the instructions.",
-			turnId: "voice-turn-1",
-			type: "screen_assistant_result",
-		},
+test("relays a client function_call_output to OpenAI and requests a new response", () => {
+	const { session, openaiMessages } = createReadySession();
+
+	session._handleFunctionCallOutput({
+		type: "function_call_output",
+		callId: "call_abc",
+		output: JSON.stringify({ ok: true }),
+	});
+
+	const outputItem = openaiMessages.find(
+		(m) => m.type === "conversation.item.create" && m.item?.type === "function_call_output",
+	);
+	assert.ok(outputItem, "expected a function_call_output conversation item");
+	assert.equal(outputItem.item.call_id, "call_abc");
+	assert.equal(outputItem.item.output, JSON.stringify({ ok: true }));
+	assert.ok(
+		openaiMessages.some((m) => m.type === "response.create"),
+		"expected a response.create after the tool output",
 	);
 });
 
-test("parses legacy POINT responses as screen assistant fallback", () => {
-	assert.deepEqual(
-		parseScreenAssistantVisionResponse(
-			"That button starts live voice. [POINT:450,320:Voice button]",
-			"voice-turn-2",
+test("function_call_output can suppress the follow-up response", () => {
+	const { session, openaiMessages } = createReadySession();
+
+	session._handleFunctionCallOutput({
+		type: "function_call_output",
+		callId: "call_xyz",
+		output: { ok: true },
+		createResponse: false,
+	});
+
+	assert.ok(
+		openaiMessages.some(
+			(m) => m.type === "conversation.item.create" && m.item?.type === "function_call_output",
 		),
-		{
-			point: {
-				label: "Voice button",
-				x: 450,
-				y: 320,
-			},
-			text: "That button starts live voice.",
-			turnId: "voice-turn-2",
-			type: "screen_assistant_result",
-		},
+		"expected the function_call_output item to be relayed",
+	);
+	assert.ok(
+		!openaiMessages.some((m) => m.type === "response.create"),
+		"expected no response.create when createResponse is false",
 	);
 });
 

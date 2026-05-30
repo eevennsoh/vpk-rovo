@@ -1,56 +1,40 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
-import type { ClickyState } from "./use-clicky";
-import { captureViewport } from "@/components/projects/studio/lib/clicky-screen-capture";
-import type { StudioScreenAssistantSnapshot } from "@/components/projects/studio/lib/studio-screen-assistant";
+import { useEffect, useRef } from "react";
 
 // ---------------------------------------------------------------------------
-// Clicky system prompt — adapted for the web context.
+// Clicky system prompt — tool-based screen assistant (no screenshots).
+//
+// Grounding follows the openai/realtime-voice-component pattern: the model
+// reads STRUCTURED screen state via the get_screen_state tool and acts through
+// app-owned tools, rather than relying on screenshot vision. The matching tool
+// schemas live in backend/lib/openai-realtime.js (SESSION_TOOLS) and are
+// executed by the shell's onToolCall handler.
 // ---------------------------------------------------------------------------
 
-const CLICKY_SYSTEM_INSTRUCTIONS = `You are Clicky, a Studio screen assistant that lives on the user's screen. You can see the Studio browser surface through screenshots and talk to the user in real time.
+const CLICKY_SYSTEM_INSTRUCTIONS = `You are Clicky, a Studio screen assistant that lives on the user's screen and talks to them in real time by voice.
 
-## Your personality
-- Helpful, concise, and friendly
-- Keep responses SHORT — 1-3 sentences max since you're speaking out loud
-- You're a companion cursor, not a long-form assistant
+## Personality
+- Helpful, concise, friendly. 1-3 sentences max — you are speaking out loud, not writing an essay.
+- You are a companion cursor, not a long-form assistant.
 
-## What you can do
-- See the user's screen via screenshots sent with each message
-- Point at specific elements on screen
-- Answer questions about what's visible on screen
-- Help navigate UI, explain elements, identify issues
-- Help fill the visible Studio agent builder form by returning a safe draft patch
+## How you see the screen
+You CANNOT see images or screenshots. To understand what is on screen, call the get_screen_state tool. It returns the active route/panel, the composer text, what the pointer is over, and a list of visible targets (each with id, label, and role).
+Always call get_screen_state BEFORE answering a question about "this", "here", what is visible, or before pointing at / acting on a control. Reference only what get_screen_state actually reports — never invent UI that is not in the returned state.
 
-## Response format
-Return exactly one JSON object, without markdown fences, with these fields:
-- text: the short spoken response, 1-3 sentences
-- point: optional { "x": number, "y": number, "label": string } in screenshot pixels
-- target: optional { "id": string, "fieldId": string, "label": string } when one of the provided visible targets matches
-- agentDraftPatch: optional object for session-local agent builder updates
-
-The screenshot images are labeled with their pixel dimensions. Use those dimensions as the coordinate space.
-Origin (0,0) is the top-left corner. x increases rightward, y increases downward.
-
-Only point when it adds value — not every response needs pointing.
-If pointing wouldn't help, omit point.
-Use target.id or target.fieldId when the provided target hints identify the UI more reliably than pixels.
-
-Examples:
-- { "text": "The Publish button is in the top-right of the agent panel.", "target": { "id": "studio-agent-config-publish", "label": "Publish" } }
-- { "text": "I filled in the instructions with a focused support-agent brief.", "target": { "fieldId": "instructions", "label": "Instructions" }, "agentDraftPatch": { "instructions": "Help support teams triage requests, summarize context, and recommend next steps." } }
-- { "text": "That control starts the live voice assistant." }
+## What you can do (app-owned tools)
+- get_screen_state — read the current structured screen state.
+- point_at_target — move the on-screen cursor to a visible target to direct attention. Identify it with a target id/fieldId/label from get_screen_state.
+- set_composer_text — set the agent-builder composer text (does not submit).
+- submit_composer — submit the composer's current text. Only call when the user clearly asks to send/submit.
+- apply_agent_draft_patch — update the session-local agent-builder draft with a safe patch.
+- delegate_to_rovo — hand off heavier workspace/data/build tasks to Rovo.
 
 ## Rules
-- Be concise — you're speaking out loud, not writing an essay
-- Reference what you SEE on screen, not what you assume
-- If you can't see something clearly, say so
-- Don't hallucinate UI elements that aren't in the screenshot
-- When pointing, be precise — aim for the center of the element you're referencing
-- For form fill, return at most one agentDraftPatch per user turn
-- Never publish or activate an agent. Only suggest or patch the session-local draft.
-- Allowed agentDraftPatch fields: name, description, summary, instructions, contextDescription, trigger, guardrail, tools, conversationStarters, byline, avatarFallback, action. Never return agentId.`;
+- Point only when it adds value — not every answer needs pointing.
+- Never publish or activate an agent. Only patch the session-local draft.
+- Allowed apply_agent_draft_patch fields: name, description, summary, instructions, contextDescription, trigger, guardrail, tools, conversationStarters, byline, avatarFallback, action. Never include agentId.
+- After acting, speak a short confirmation (e.g. "Done — I set the prompt.").`;
 
 export { CLICKY_SYSTEM_INSTRUCTIONS };
 
@@ -59,24 +43,13 @@ export { CLICKY_SYSTEM_INSTRUCTIONS };
 // ---------------------------------------------------------------------------
 
 interface UseClickyVoiceOptions {
-	clickyState: ClickyState;
+	/** Whether the Clicky cursor companion is active. */
 	isClickyActive: boolean;
-	/** Send image input to the Realtime session. */
-	sendImageInput: (payload: {
-		image: string;
-		text?: string;
-		detail?: "low" | "high" | "auto";
-		clicky?: boolean;
-		systemPrompt?: string;
-		screenAssistant?: StudioScreenAssistantSnapshot & {
-			turnId: string;
-		};
-	}) => void;
 	/** Whether the Realtime WebSocket is connected. */
 	isRealtimeConnected: boolean;
 	/** Connect to the Realtime voice session. */
 	connectRealtime: () => void;
-	/** Inject context into the Realtime session (used for system prompt swap). */
+	/** Inject context into the Realtime session (used for the system prompt). */
 	injectContext: (data: {
 		type:
 			| "initial_context"
@@ -88,10 +61,6 @@ interface UseClickyVoiceOptions {
 			| "delegation_error";
 		content: string;
 	}) => void;
-	/** Called after a screenshot is captured, with the screenshot dimensions. */
-	onScreenshotCaptured?: (dims: { width: number; height: number }) => void;
-	/** Captures Studio DOM/app context to send alongside the screenshot. */
-	getScreenAssistantSnapshot?: () => StudioScreenAssistantSnapshot;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,26 +68,24 @@ interface UseClickyVoiceOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Bridges the Clicky state machine with the Realtime voice system.
+ * Bridges the Clicky activation state with the Realtime voice session.
  *
- * - On activation: connects to Realtime, injects Clicky's system prompt
- * - On speech end (processing state): captures screenshot, sends as image
- * - On deactivation: stops visual capture/pointing without tearing down voice
+ * - On activation: connects to Realtime (if not already) and injects Clicky's
+ *   tool-based system prompt once.
+ * - The model grounds itself with the get_screen_state tool and acts through
+ *   app-owned tools; there is no screenshot capture.
+ * - Cursor deactivation must NOT tear down a voice session the user started
+ *   separately (connectedForClickyRef tracks who opened the session).
  */
 export function useClickyVoice({
-	clickyState,
 	isClickyActive,
-	sendImageInput,
 	isRealtimeConnected,
 	connectRealtime,
 	injectContext,
-	onScreenshotCaptured,
-	getScreenAssistantSnapshot,
 }: UseClickyVoiceOptions) {
 	const wasActiveRef = useRef(false);
 	const hasInjectedPromptRef = useRef(false);
 	const connectedForClickyRef = useRef(false);
-	const turnCounterRef = useRef(0);
 
 	// Connect Realtime when Clicky activates. Cursor deactivation must not stop
 	// a voice session the user started separately.
@@ -139,9 +106,14 @@ export function useClickyVoice({
 		}
 	}, [isClickyActive, isRealtimeConnected, connectRealtime]);
 
-	// Inject Clicky system prompt once connected
+	// Inject Clicky system prompt once connected.
 	useEffect(() => {
-		if (isClickyActive && isRealtimeConnected && connectedForClickyRef.current && !hasInjectedPromptRef.current) {
+		if (
+			isClickyActive &&
+			isRealtimeConnected &&
+			connectedForClickyRef.current &&
+			!hasInjectedPromptRef.current
+		) {
 			injectContext({
 				type: "initial_context",
 				content: CLICKY_SYSTEM_INSTRUCTIONS,
@@ -149,44 +121,4 @@ export function useClickyVoice({
 			hasInjectedPromptRef.current = true;
 		}
 	}, [isClickyActive, isRealtimeConnected, injectContext]);
-
-	// Capture and send screenshot when entering "processing" state
-	const captureAndSend = useCallback(async () => {
-		const result = await captureViewport();
-		if (!result) return;
-
-		onScreenshotCaptured?.({ width: result.width, height: result.height });
-		const turnId = `screen-assistant-${Date.now()}-${turnCounterRef.current++}`;
-		const screenAssistant = getScreenAssistantSnapshot?.();
-
-		sendImageInput({
-			image: result.base64,
-			text: [
-				`Screenshot of the current Studio page (image dimensions: ${result.width}x${result.height} pixels).`,
-				"Use screenshot pixels for point.x and point.y.",
-				screenAssistant
-					? `Studio screen assistant context JSON: ${JSON.stringify(screenAssistant)}`
-					: "",
-			].filter(Boolean).join("\n\n"),
-			detail: "auto",
-			clicky: true,
-			systemPrompt: CLICKY_SYSTEM_INSTRUCTIONS,
-			...(screenAssistant ? { screenAssistant: { ...screenAssistant, turnId } } : {}),
-		});
-	}, [sendImageInput, onScreenshotCaptured, getScreenAssistantSnapshot]);
-
-	useEffect(() => {
-		if (clickyState === "processing" && isRealtimeConnected) {
-			void captureAndSend();
-		}
-	}, [clickyState, isRealtimeConnected, captureAndSend]);
-
-	// Cleanup on unmount
-	useEffect(() => {
-		return () => {
-			if (wasActiveRef.current) {
-				wasActiveRef.current = false;
-			}
-		};
-	}, []);
 }
