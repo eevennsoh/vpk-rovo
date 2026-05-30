@@ -3031,6 +3031,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					queueTypedScrollAnchor("realtime", latestUserMessageIdBeforeSubmit);
 					resetRealtimeAssistantMessageState();
 
+					// Realtime text stays inside the active voice session so existing
+					// voice barge-in behavior is unchanged; Send mode applies to
+					// standard Studio text submissions below.
 					// Rovo: capture screenshot + transition to processing for text input
 					if (isClickyActive) {
 						clickyAddExchange({ role: "user", content: text });
@@ -3062,7 +3065,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			}
 
 			const trimmedText = text.trim();
-			const shouldShowOptimisticPrompt = !chat.shouldQueueNextSubmission && (trimmedText || files.length > 0);
+			const shouldShowOptimisticPrompt =
+				(chat.sendMode === "immediate" || !chat.shouldQueueNextSubmission) &&
+				(trimmedText || files.length > 0);
 			if (shouldShowOptimisticPrompt) {
 				setOptimisticUserMessage(
 					createRovoAppUserMessage({
@@ -3112,6 +3117,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			clearHermesSkillSelection,
 			markStudioAgentCreationThread,
 			chat.activeThreadId,
+			chat.sendMode,
 			chat.shouldQueueNextSubmission,
 			chat.runtimeThreadId,
 		],
@@ -3922,6 +3928,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 									onStartFromScratch={handleStartAgentFromScratch}
 									onStop={handleStop}
 									onRemoveQueuedPrompt={chat.removeQueuedPrompt}
+									onSendQueuedPromptNow={chat.sendQueuedPromptNow}
 									onSubmit={handleComposerSubmit}
 									onTogglePlanMode={chat.togglePlanMode}
 									onToggleRealtimeVoice={handleToggleRealtimeVoice}
@@ -4182,6 +4189,8 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 							void chat.openNewChat();
 						}}
 						onOpenDocument={(documentId) => void chat.openDocument(documentId)}
+						onSendModeChange={chat.setSendMode}
+						sendMode={chat.sendMode}
 					/>
 				) : null}
 				<main

@@ -9,9 +9,18 @@ import {
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import {
+	Item,
+	ItemContent,
+	ItemDescription,
+	ItemTitle,
+} from "@/components/ui/item";
 import { DatabaseIcon, SettingsIcon } from "@/components/ui/vpk-icons";
 import EditIcon from "@atlaskit/icon/core/edit";
 import ScorecardIcon from "@atlaskit/icon/core/scorecard";
@@ -33,6 +42,8 @@ interface RovoAppHeaderProps {
 	onNewChat?: () => void;
 	onOpenDocument?: (documentId: string) => void;
 	isArtifactOpen?: boolean;
+	sendMode?: "queue" | "immediate";
+	onSendModeChange?: (sendMode: "queue" | "immediate") => void;
 }
 
 function getControlPlaneHeaderSurfaceIcon(label: string) {
@@ -56,10 +67,17 @@ export function RovoAppHeader({
 	onNewChat,
 	onOpenDocument,
 	isArtifactOpen,
+	sendMode = "queue",
+	onSendModeChange,
 }: Readonly<RovoAppHeaderProps>) {
 	const pathname = usePathname() ?? "";
 	const router = useRouter();
 	const hasArtifacts = artifactMenuItems && artifactMenuItems.length > 0;
+	const handleSendModeChange = (value: string) => {
+		if (value === "queue" || value === "immediate") {
+			onSendModeChange?.(value);
+		}
+	};
 
 	return (
 		<header className={cn("flex items-center gap-3 px-3 py-3", isArtifactOpen && "border-b border-border")}>
@@ -122,7 +140,7 @@ export function RovoAppHeader({
 					>
 						<Icon aria-hidden render={<ShowMoreHorizontalIcon label="" />} />
 					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
+					<DropdownMenuContent align="end" className="w-64">
 						<DropdownMenuGroup>
 							{CONTROL_PLANE_HEADER_SURFACES.map((surface) => {
 								const isSelected = pathname === surface.href || pathname.startsWith(`${surface.href}/`);
@@ -140,6 +158,32 @@ export function RovoAppHeader({
 									</DropdownMenuItem>
 								);
 							})}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Send mode</DropdownMenuLabel>
+							<DropdownMenuRadioGroup value={sendMode} onValueChange={handleSendModeChange}>
+								<DropdownMenuRadioItem value="queue">
+									<Item size="xs" className="p-0">
+										<ItemContent>
+											<ItemTitle>Queue</ItemTitle>
+											<ItemDescription className="text-xs">
+												Send after the current work finishes
+											</ItemDescription>
+										</ItemContent>
+									</Item>
+								</DropdownMenuRadioItem>
+								<DropdownMenuRadioItem value="immediate">
+									<Item size="xs" className="p-0">
+										<ItemContent>
+											<ItemTitle>Send immediately</ItemTitle>
+											<ItemDescription className="text-xs">
+												Interrupt active work and send now
+											</ItemDescription>
+										</ItemContent>
+									</Item>
+								</DropdownMenuRadioItem>
+							</DropdownMenuRadioGroup>
 						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
