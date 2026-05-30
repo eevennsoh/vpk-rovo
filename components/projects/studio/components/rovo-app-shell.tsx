@@ -4010,6 +4010,18 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				onCancelThreadRun={async (threadId) => {
 					await chat.cancelThreadRun(threadId);
 				}}
+				onDeleteAgent={(agentId) => {
+					// Mirror `onNewChat`'s teardown for the removed agent: closing its
+					// config pane first stops the editor from re-saving a deleted agent,
+					// then `removeSessionAgent` drops the entry (and resets to Rovo if it
+					// was the selected agent).
+					if (activeAgentConfig?.profileId === agentId) {
+						setActiveAgentConfig(null);
+					}
+					startTransition(() => {
+						studioAgentRegistry.removeSessionAgent(agentId);
+					});
+				}}
 				onDeleteThread={async (threadId) => {
 					startTransition(() => {
 						void chat.deleteThread(threadId);
