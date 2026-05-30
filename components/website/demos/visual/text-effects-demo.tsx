@@ -7,6 +7,7 @@ import {
 	configForEffect,
 	DEFAULT_CONFIG,
 	EFFECT_OPTIONS,
+	RAINBOW_COLOR_STOPS,
 	TEXT_EFFECTS,
 	type EffectId,
 	type TextEffectConfig,
@@ -29,6 +30,8 @@ export default function TextEffectsDemo() {
 	const [staggerMs, setStaggerMs] = useState(DEFAULT_CONFIG.staggerMs);
 	const [autoLoop, setAutoLoop] = useState(DEFAULT_CONFIG.autoLoop);
 	const [loopDelay, setLoopDelay] = useState(DEFAULT_CONFIG.loopDelay);
+	const [rainbow, setRainbow] = useState(false);
+	const colorStops = rainbow ? RAINBOW_COLOR_STOPS : undefined;
 
 	const spec = TEXT_EFFECTS[effect];
 	const isWhole = spec.target === "whole";
@@ -60,11 +63,11 @@ export default function TextEffectsDemo() {
 					className="relative flex w-full items-center justify-center overflow-hidden px-8 py-12"
 					style={{ minHeight: 360 }}
 				>
-					<TextEffects config={config} />
+					<TextEffects config={config} colorStops={colorStops} />
 				</div>
 			</div>
 
-			<GUI.Panel title="Text effect controls" values={config}>
+			<GUI.Panel title="Text effect controls" values={{ ...config, colorStops: colorStops ?? "default" }}>
 				<GUI.Section title="Effect" borderTop={false}>
 					<GUI.Select
 						id="te-effect"
@@ -73,6 +76,12 @@ export default function TextEffectsDemo() {
 						value={effect}
 						options={EFFECT_OPTIONS}
 						onChange={applyEffect}
+					/>
+					<GUI.Toggle
+						id="te-rainbow"
+						label="Rainbow"
+						checked={rainbow}
+						onChange={setRainbow}
 					/>
 				</GUI.Section>
 

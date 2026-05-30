@@ -5,18 +5,33 @@ import { motion, type Transition, useReducedMotion } from "motion/react";
 import RefreshIcon from "@atlaskit/icon/core/refresh";
 
 import { Button } from "@/components/ui/button";
+import { resolveWaveHighlightColor } from "@/components/ui-custom/lib/shimmer-colors";
 
-import { SAMPLE_TEXT, TEXT_EFFECTS, type TextEffectConfig } from "./data";
-import { buildPlan, frameToProps, willChangeFor } from "./lib";
+import { SAMPLE_TEXT, TEXT_EFFECTS, type ColorStops, type TextEffectConfig } from "./data";
+import { buildPlan, frameToProps, gradientTextStyle, willChangeFor } from "./lib";
 
 type TextEffectsProps = Readonly<{
 	config: TextEffectConfig;
+	/**
+	 * Optional per-unit colour palette. Omit to inherit the ambient text colour;
+	 * supply two or more stops (e.g. `RAINBOW_COLOR_STOPS`) to carry a gradient
+	 * through the reveal — sampled discretely per split unit, or as one
+	 * continuous `background-clip` gradient for `whole` effects.
+	 */
+	colorStops?: ColorStops;
 	text?: string;
 }>;
 
-export default function TextEffects({ config, text = SAMPLE_TEXT }: TextEffectsProps) {
+export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: TextEffectsProps) {
 	const spec = TEXT_EFFECTS[config.effect];
 	const reduced = useReducedMotion();
+
+	// `whole` spans and the reduced-motion fallback paint the palette as one
+	// continuous gradient; split units sample discrete colours per unit below.
+	const wholeGradientStyle = useMemo(
+		() => (colorStops ? gradientTextStyle(colorStops) : null),
+		[colorStops],
+	);
 
 	// Bumping the cycle remounts the animated subtree, replaying initial -> animate.
 	const [cycle, setCycle] = useState(0);
@@ -74,14 +89,14 @@ export default function TextEffects({ config, text = SAMPLE_TEXT }: TextEffectsP
 				{/* Screen readers get the whole passage; the split/animated glyphs are decorative. */}
 				<span className="sr-only">{text}</span>
 				{reduced ? (
-					<span aria-hidden style={{ whiteSpace: "pre-line" }}>
+					<span aria-hidden style={{ whiteSpace: "pre-line", ...wholeGradientStyle }}>
 						{text}
 					</span>
 				) : (
 					<span key={animationKey} aria-hidden>
 						{isWhole ? (
 							<motion.span
-								style={{ display: "inline-block", whiteSpace: "pre-line", willChange }}
+								style={{ display: "inline-block", whiteSpace: "pre-line", willChange, ...wholeGradientStyle }}
 								initial={fromProps}
 								animate={animateTo}
 								transition={transitionFor(0)}
@@ -95,7 +110,16 @@ export default function TextEffects({ config, text = SAMPLE_TEXT }: TextEffectsP
 										token.animate ? (
 											<motion.span
 												key={tokenIndex}
-												style={{ display: "inline-block", whiteSpace: "pre", willChange }}
+												style={{
+													display: "inline-block",
+													whiteSpace: "pre",
+													willChange,
+													// Static per-unit colour sampled by reading order;
+													// only opacity/transform/filter animate.
+													...(colorStops
+														? { color: resolveWaveHighlightColor(colorStops, token.colorIndex, plan?.count ?? 1) }
+														: null),
+												}}
 												initial={fromProps}
 												animate={animateTo}
 												transition={transitionFor(token.slot)}
