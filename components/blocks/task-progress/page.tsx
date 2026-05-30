@@ -222,15 +222,19 @@ export default function TaskProgress({
 
 	// Track which task IDs have already rendered as "done" so we only animate the
 	// check icon on the first transition — not on expand/collapse remounts.
-	const seenDoneIdsRef = useRef<Set<string>>(new Set());
+	const seenDoneIdsRef = useRef<Set<string> | null>(null);
+	if (seenDoneIdsRef.current === null) {
+		seenDoneIdsRef.current = new Set();
+	}
+	const seenDoneIds = seenDoneIdsRef.current;
 
 	useEffect(() => {
 		for (const task of flatTasks) {
 			if (task.status === "done") {
-				seenDoneIdsRef.current.add(task.id);
+				seenDoneIds.add(task.id);
 			}
 		}
-	}, [flatTasks]);
+	}, [flatTasks, seenDoneIds]);
 
 	const progressValue = useMemo(() => {
 		const totalTaskCount =
@@ -399,7 +403,7 @@ export default function TaskProgress({
 											key={task.id}
 											task={task}
 											isLast={index === flatTasks.length - 1}
-											animated={task.status === "done" && !seenDoneIdsRef.current.has(task.id)}
+											animated={task.status === "done" && !seenDoneIds.has(task.id)}
 										/>
 									))}
 								</div>

@@ -1,6 +1,8 @@
 packages:
   - .
   - backend
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade
 # Dependency pinning tiers (see Engineering Standards in AGENTS.md):
 #   Float   ^x.y.z  - stable libs; `pnpm update` may take patch + minor
 #   Cautious ~x.y.z - libs where minors have broken us; patch only
