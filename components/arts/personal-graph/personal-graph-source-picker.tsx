@@ -137,7 +137,7 @@ export function PersonalGraphSourcePicker({
 			</Button>
 			<Button
 				aria-label={TWG_LABEL}
-				className="rounded-full border-border bg-surface px-4 text-text shadow-none hover:bg-surface-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
+				className="overflow-hidden rounded-full border-border bg-surface px-4 text-text shadow-none hover:bg-surface-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
 				disabled={isBusy}
 				isLoading={isBusy}
 				onClick={onPickTwg}
