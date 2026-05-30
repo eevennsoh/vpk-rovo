@@ -25,20 +25,20 @@ const SOFT_BLUR_SHOWN = { opacity: 1, y: 0, filter: "blur(0px)" } as const;
 const SOFT_BLUR_LEAVE = { opacity: 0, y: 0, filter: "blur(12px)" } as const;
 
 // Enter is per-glyph staggered for the cascading reveal.
-const SOFT_BLUR_ENTER_DURATION = 0.9;
-const SOFT_BLUR_ENTER_STAGGER = 0.025;
+const SOFT_BLUR_ENTER_DURATION = 0.6;
+const SOFT_BLUR_ENTER_STAGGER = 0.02;
 const SOFT_BLUR_ENTER_EASE = [0.22, 1, 0.36, 1] as const;
 
 // Leave is uniform (no stagger) and eases out gently — reusing the enter curve
 // family — so hover-out settles back gracefully instead of snapping. The rainbow
 // glyphs AND the resting copy share this one clock, so they cross-fade as a
 // single motion rather than the copy popping in while the rainbow still lingers.
-const SOFT_BLUR_LEAVE_DURATION = 0.5;
+const SOFT_BLUR_LEAVE_DURATION = 0.35;
 const SOFT_BLUR_LEAVE_EASE = [0.22, 1, 0.36, 1] as const;
 
 // On hover-in the resting copy ducks out quickly so the rising rainbow owns the
 // frame; on hover-out it fades back in on the shared leave clock above.
-const RESTING_COPY_ENTER_DURATION = 0.15;
+const RESTING_COPY_ENTER_DURATION = 0.12;
 
 /**
  * Per-character TWG label with an interruptible rainbow "Soft Blur" reveal.
