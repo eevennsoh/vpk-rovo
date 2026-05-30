@@ -229,6 +229,28 @@ import { DEFAULT_CONFIG } from "@/components/visual/visual-tracing/data";`,
 			{ name: "text", type: "string", default: "SAMPLE_TEXT", description: "Passage to animate. Its length feeds the trace duration so longer text traces proportionally longer." },
 		],
 	},
+	"scroll-mask": {
+		description: "Scrollable menu surface that fades overflow content with layered CSS masks while preserving a full-opacity scrollbar gutter.",
+		importStatement: `import { ScrollMask } from "@/components/visual/scroll-mask";`,
+		usage: `<ScrollMask
+	header={<div>Workspace menu</div>}
+	footer={<div>Actions</div>}
+>
+	{items.map((item) => (
+		<button key={item.id} type="button">{item.label}</button>
+	))}
+</ScrollMask>`,
+		props: [
+			{ name: "children", type: "React.ReactNode", description: "Scrollable content rendered between the optional sticky header and footer." },
+			{ name: "header", type: "React.ReactNode", description: "Optional sticky top content inside the scroll viewport." },
+			{ name: "footer", type: "React.ReactNode", description: "Optional sticky bottom content inside the scroll viewport." },
+			{ name: "fadeSize", type: "number | string", default: `"32px"`, description: "Height of the top and bottom fade bands. Numbers resolve to pixels." },
+			{ name: "scrollbarWidth", type: "number | string", default: `"10px"`, description: "Width reserved as a separate opaque mask track for the scrollbar gutter." },
+			{ name: "viewportClassName", type: "string", description: "Class names applied to the masked scroll viewport." },
+			{ name: "viewportStyle", type: "React.CSSProperties", description: "Inline styles merged onto the masked scroll viewport after the generated mask style." },
+			{ name: "className", type: "string", description: "Class names applied to the outer menu surface." },
+		],
+	},
 	"text-effects": {
 		description: "Catalog of 12 entrance text animations ported from Pixel Point's animate-text skill — soft blur, character rise, bottom-up/top-down letters, center-out stagger, typewriter, word crossfade, spring scale, mask reveal, line slide, shimmer sweep, and focus blur. Each effect's keyframes, easing, duration, and per-unit stagger are transcribed from the skill's portable motion contracts. Splits text per character, word, line, or whole; replays on demand and can auto-loop; degrades to static text under prefers-reduced-motion.",
 		importStatement: `import TextEffects from "@/components/visual/text-effects";
