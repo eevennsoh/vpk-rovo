@@ -33,14 +33,26 @@ test("Agent Templates docs demo starts closed until the trigger is clicked", () 
 	);
 });
 
-test("Agent Templates duplicates the Agents Directory data and browser shell", () => {
+test("Agent Templates renders the strategy dialog layout with temporary placeholders", () => {
 	const source = readProjectFile("components/blocks/agent-templates/components/agent-templates.tsx");
 	const pageSource = readProjectFile("components/blocks/agent-templates/page.tsx");
 	const defaultSidebarGroupsSource = readProjectFile("components/blocks/agent-templates/data/sidebar-groups.ts");
 
-	assert.match(source, /AgentBrowserDialog/u);
-	assert.match(source, /DEFAULT_AGENT_TEMPLATES_SIDEBAR_GROUPS/u);
-	assert.match(source, /title = "Agent templates"/u);
+	assert.doesNotMatch(source, /AgentBrowserDialog/u);
+	assert.doesNotMatch(source, /CardDirectory/u);
+	assert.match(source, /Personal agents that run routines, organize your context, and help you follow through\./u);
+	assert.match(source, /AGENT_TEMPLATES_CATEGORIES/u);
+	assert.match(source, /label: "Analyze"/u);
+	assert.match(source, /label: "Brainstorm"/u);
+	assert.match(source, /label: "Review"/u);
+	assert.match(source, /label: "Summarize"/u);
+	assert.match(source, /label: "Create"/u);
+	assert.match(source, /label: "Execute"/u);
+	assert.match(source, /label: "Find"/u);
+	assert.match(source, /label: "Learn"/u);
+	assert.match(source, /aria-pressed=\{active\}/u);
+	assert.match(source, /AgentTemplatePlaceholderCard/u);
+	assert.match(source, /scrollBy\(\{/u);
 	assert.match(pageSource, /DEMO_AGENT_BROWSER_AGENTS/u);
 	assert.match(pageSource, /attributionKind: "team"/u);
 	assert.match(pageSource, /attributionKind: "person"/u);

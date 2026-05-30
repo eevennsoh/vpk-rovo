@@ -133,7 +133,7 @@ const agents: AgentsDirectoryAgent[] = [
 		],
 	},
 	"agent-templates": {
-		description: "Dialog-based agent templates directory duplicated from Agents Directory for browsing recommended, team, partner, and session-created templates.",
+		description: "Strategy-style dialog for browsing personal agent templates with category controls and a horizontal template carousel.",
 		importStatement: `import { AgentTemplatesDialog } from "@/components/blocks/agent-templates";`,
 		usage: `import { AgentTemplatesDialog } from "@/components/blocks/agent-templates";
 import type { AgentTemplatesAgent } from "@/components/blocks/agent-templates";
@@ -160,7 +160,7 @@ const agents: AgentTemplatesAgent[] = [
 				name: "agents",
 				type: "readonly AgentTemplatesAgent[]",
 				required: true,
-				description: "Base catalog templates shown in the directory.",
+				description: "Base template cards shown in the carousel.",
 			},
 			{
 				name: "sessionAgents",
@@ -182,17 +182,17 @@ const agents: AgentTemplatesAgent[] = [
 			{
 				name: "onSelectAgent",
 				type: "(agent: AgentTemplatesAgent) => void",
-				description: "Called when a template card or sidebar entry is selected.",
+				description: "Called when a template card is selected.",
 			},
 			{
 				name: "sidebarGroups",
 				type: "readonly AgentTemplatesSidebarGroup[]",
-				description: "Optional sidebar grouping override. Defaults to the duplicated directory grouping.",
+				description: "Accepted for compatibility; ignored by this layout because it has no sidebar.",
 			},
 			{
 				name: "title",
 				type: "string",
-				description: "Optional dialog title. Defaults to Agent templates.",
+				description: "Optional dialog heading. Defaults to the Strategy heading copy.",
 			},
 		],
 	},
