@@ -4,10 +4,11 @@ import { ScrollMask } from "@/components/visual/scroll-mask";
 import { token } from "@/lib/tokens";
 
 const ROWS = Array.from({ length: 13 }, (_, index) => `Row ${index + 1}`);
+const ROW_HEIGHT = `calc(${token("space.500")} + ${token("space.050")})`;
 
 function ScrollMaskHeader() {
 	return (
-		<div className="flex min-h-11 items-center">
+		<div className="flex items-center" style={{ minHeight: ROW_HEIGHT }}>
 			<div className="truncate text-sm font-semibold text-text">Sticky header</div>
 		</div>
 	);
@@ -15,7 +16,7 @@ function ScrollMaskHeader() {
 
 function ScrollMaskFooter() {
 	return (
-		<div className="flex min-h-11 items-center">
+		<div className="flex items-center" style={{ minHeight: ROW_HEIGHT }}>
 			<div className="truncate text-sm font-semibold text-text">Sticky footer</div>
 		</div>
 	);
@@ -24,12 +25,15 @@ function ScrollMaskFooter() {
 export default function ScrollMaskDemo() {
 	return (
 		<div
-			className="flex w-full max-w-md flex-col items-center"
-			style={{ gap: token("space.300") }}
+			className="flex w-full flex-col items-center"
+			style={{
+				gap: token("space.300"),
+				maxWidth: `calc(${token("space.600")} * 9)`,
+			}}
 		>
 			<ScrollMask
 				aria-label="Workspace menu"
-				className="max-h-[28rem] w-full shadow-sm"
+				className="w-full"
 				header={<ScrollMaskHeader />}
 				footer={<ScrollMaskFooter />}
 			>
@@ -38,7 +42,8 @@ export default function ScrollMaskDemo() {
 						<button
 							key={row}
 							type="button"
-							className="flex min-h-11 w-full items-center rounded-md px-3 py-2 text-left text-sm font-medium text-text transition-colors hover:bg-bg-neutral-hovered focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focused"
+							className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm font-medium text-text transition-colors hover:bg-bg-neutral-hovered focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focused"
+							style={{ minHeight: ROW_HEIGHT }}
 						>
 							{row}
 						</button>

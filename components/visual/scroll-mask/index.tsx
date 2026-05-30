@@ -2,6 +2,7 @@
 
 import type { ComponentPropsWithoutRef, CSSProperties, ReactNode } from "react";
 
+import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
 import { buildScrollMaskStyle } from "./lib";
@@ -30,6 +31,7 @@ export function ScrollMask({
 	footerClassName,
 	fadeSize,
 	scrollbarWidth,
+	style,
 	...props
 }: Readonly<ScrollMaskProps>) {
 	const maskStyle = buildScrollMaskStyle({ fadeSize, scrollbarWidth });
@@ -38,9 +40,10 @@ export function ScrollMask({
 		<div
 			data-slot="scroll-mask"
 			className={cn(
-				"flex max-h-80 flex-col overflow-hidden rounded-lg border border-border bg-surface text-text",
+				"flex flex-col overflow-hidden rounded-lg border border-border bg-surface text-text",
 				className,
 			)}
+			style={{ maxHeight: `calc(${token("space.600")} * 8)`, ...style }}
 			{...props}
 		>
 			{header ? (

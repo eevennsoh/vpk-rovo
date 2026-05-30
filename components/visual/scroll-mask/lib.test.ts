@@ -16,7 +16,7 @@ function readWorkspaceFile(filePath: string): string {
 test("buildScrollMaskStyle preserves the scrollbar gutter as an opaque mask track", () => {
 	const style = buildScrollMaskStyle();
 
-	assert.equal(style["--scroll-mask-fade-size"], "32px");
+	assert.equal(style["--scroll-mask-fade-size"], "var(--ds-space-400)");
 	assert.equal(style["--scroll-mask-scrollbar-width"], "10px");
 	assert.equal(
 		style.maskImage,

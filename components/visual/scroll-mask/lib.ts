@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-export const SCROLL_MASK_DEFAULT_FADE_SIZE = "32px";
+export const SCROLL_MASK_DEFAULT_FADE_SIZE = "var(--ds-space-400)";
 export const SCROLL_MASK_DEFAULT_SCROLLBAR_WIDTH = "10px";
 
 export interface ScrollMaskStyleOptions {
