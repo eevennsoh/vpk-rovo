@@ -2,8 +2,13 @@
 
 import type { ComponentProps } from "react";
 
+import DragHandleVerticalIcon from "@atlaskit/icon/core/drag-handle-vertical";
+import StrokeWeightLargeIcon from "@atlaskit/icon/core/stroke-weight-large";
+import { motion, type Variants } from "motion/react";
+
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Icon } from "@/components/ui/icon";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	ChevronDownIcon,
@@ -31,10 +36,58 @@ export interface QueueTodo {
 	status?: "pending" | "completed";
 }
 
-export type QueueItemProps = ComponentProps<"li">;
+const queueDragHandleVariants: Variants = {
+	rest: {
+		marginRight: -8,
+		opacity: 0,
+		transform: "translateX(-4px) scale(0.92)",
+		width: 0,
+		transition: { duration: 0.12, ease: [0.2, 0, 0, 1] },
+	},
+	hover: {
+		marginRight: 0,
+		opacity: 1,
+		transform: "translateX(0px) scale(1)",
+		width: 12,
+		transition: { type: "spring", stiffness: 420, damping: 32, mass: 0.7 },
+	},
+};
+
+const queueDescriptionVariants: Variants = {
+	rest: {
+		marginLeft: 20,
+		transition: { duration: 0.12, ease: [0.2, 0, 0, 1] },
+	},
+	hover: {
+		marginLeft: 40,
+		transition: { type: "spring", stiffness: 420, damping: 32, mass: 0.7 },
+	},
+};
+
+export type QueueItemProps = ComponentProps<typeof motion.li>;
 
 export const QueueItem = ({ className, ...props }: QueueItemProps) => (
-	<li className={cn("group flex h-8 flex-col justify-center gap-1 rounded-2xl pl-3 pr-0.5 text-sm transition-colors hover:bg-muted", className)} {...props} />
+	<motion.li
+		animate="rest"
+		className={cn("group flex h-8 flex-col justify-center gap-1 rounded-2xl pl-3 pr-0.5 text-sm transition-colors hover:bg-muted", className)}
+		initial="rest"
+		whileHover="hover"
+		{...props}
+	/>
+);
+
+export type QueueItemDragHandleProps = ComponentProps<typeof motion.span>;
+
+export const QueueItemDragHandle = ({ className, style, ...props }: QueueItemDragHandleProps) => (
+	<motion.span
+		aria-hidden
+		className={cn("inline-flex shrink-0 cursor-grab items-center justify-center overflow-hidden text-icon-subtlest active:cursor-grabbing [&_svg]:text-icon-subtlest", className)}
+		style={{ willChange: "width, margin-right, transform, opacity", ...style }}
+		variants={queueDragHandleVariants}
+		{...props}
+	>
+		<Icon aria-hidden render={<DragHandleVerticalIcon label="" size="small" />} />
+	</motion.span>
 );
 
 export type QueueItemIndicatorProps = ComponentProps<"span"> & {
@@ -42,7 +95,12 @@ export type QueueItemIndicatorProps = ComponentProps<"span"> & {
 };
 
 export const QueueItemIndicator = ({ completed = false, className, ...props }: QueueItemIndicatorProps) => (
-	<span className={cn("mt-0.5 inline-block size-2.5 shrink-0 rounded-full border", completed ? "border-muted-foreground/20 bg-muted-foreground/10" : "border-muted-foreground/50", className)} {...props} />
+	<Icon
+		aria-hidden
+		className={cn("mt-0.5 shrink-0", completed ? "text-icon-disabled" : "text-icon-subtle", className)}
+		render={<StrokeWeightLargeIcon label="" size="small" />}
+		{...props}
+	/>
 );
 
 export type QueueItemContentProps = ComponentProps<"span"> & {
@@ -53,24 +111,29 @@ export const QueueItemContent = ({ completed = false, className, ...props }: Que
 	<span className={cn("line-clamp-1 grow break-words", completed ? "text-muted-foreground/50 line-through" : "text-muted-foreground", className)} {...props} />
 );
 
-export type QueueItemDescriptionProps = ComponentProps<"div"> & {
+export type QueueItemDescriptionProps = ComponentProps<typeof motion.div> & {
 	completed?: boolean;
 };
 
 export const QueueItemDescription = ({ completed = false, className, ...props }: QueueItemDescriptionProps) => (
-	<div className={cn("ml-6 text-xs", completed ? "text-muted-foreground/40 line-through" : "text-muted-foreground", className)} {...props} />
+	<motion.div
+		className={cn("text-xs", completed ? "text-muted-foreground/40 line-through" : "text-muted-foreground", className)}
+		variants={queueDescriptionVariants}
+		{...props}
+	/>
 );
 
 export type QueueItemActionsProps = ComponentProps<"div">;
 
-export const QueueItemActions = ({ className, ...props }: QueueItemActionsProps) => <div className={cn("flex gap-1", className)} {...props} />;
+export const QueueItemActions = ({ className, ...props }: QueueItemActionsProps) => <div className={cn("flex gap-0", className)} {...props} />;
 
-export type QueueItemActionProps = Omit<ComponentProps<typeof Button>, "variant" | "size">;
+export type QueueItemActionProps = Omit<ComponentProps<typeof Button>, "variant" | "size" | "shape">;
 
 export const QueueItemAction = ({ className, ...props }: QueueItemActionProps) => (
 	<Button
-		className={cn("size-auto rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted-foreground/10 hover:text-foreground group-hover:opacity-100", className)}
-		size="icon"
+		className={cn("text-icon-subtlest opacity-0 transition-opacity duration-normal group-hover:opacity-100 [&_svg]:text-icon-subtlest", className)}
+		shape="circle"
+		size="icon-xs"
 		type="button"
 		variant="ghost"
 		{...props}
@@ -117,7 +180,7 @@ export const QueueSectionTrigger = ({ children, className, ...props }: QueueSect
 		render={
 			<button
 				className={cn(
-					"group flex w-full items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-left font-medium text-muted-foreground text-sm transition-colors hover:bg-muted",
+					"group flex w-full items-center justify-between rounded-2xl bg-muted/40 px-3 py-2 text-left font-medium text-muted-foreground text-sm transition-colors hover:bg-muted",
 					className,
 				)}
 				type="button"
@@ -138,7 +201,7 @@ export type QueueSectionLabelProps = ComponentProps<"span"> & {
 
 export const QueueSectionLabel = ({ count, label, icon, className, ...props }: QueueSectionLabelProps) => (
 	<span className={cn("flex items-center gap-2", className)} {...props}>
-		<ChevronDownIcon className="size-4 transition-transform group-data-[state=closed]:-rotate-90" />
+		<ChevronDownIcon className="size-3 transition-transform group-data-[state=closed]:-rotate-90" size={12} />
 		{icon}
 		<span>
 			{count} {label}
