@@ -132,7 +132,7 @@ export function CardDirectorySection({
 }: Readonly<{ label: string; children: ReactNode }>) {
 	return (
 		<div className="flex flex-col gap-1" data-slot="card-directory-section">
-			<span className="text-xs font-semibold leading-4 text-text-subtle">{label}</span>
+			<span className="text-xs font-semibold leading-4 text-text-subtlest">{label}</span>
 			{children}
 		</div>
 	);
