@@ -5,6 +5,7 @@ import SearchIcon from "@atlaskit/icon/core/search";
 
 import {
 	CardDirectoryAgent,
+	CardDirectoryAgentExpanded,
 	CardDirectorySkill,
 	CardDirectoryTemplate,
 	CardDirectoryTool,
@@ -23,6 +24,48 @@ function DemoSection({ title, children }: Readonly<{ title: string; children: Re
 export default function CardDirectoryDemo() {
 	return (
 		<div className="flex w-full max-w-2xl flex-col gap-8">
+			<DemoSection title="Agent (expanded)">
+				<CardDirectoryAgentExpanded
+					avatarSrc="/avatar-agent/product-agents/feedback-analyzer.svg"
+					capabilities={[
+						"Surfaces recurring themes from raw customer feedback",
+						"Scores sentiment shifts across releases",
+						"Clusters verbatims into actionable topics",
+						"Flags emerging issues before they escalate",
+						"Links findings back to source tickets and pages",
+						"Drafts a weekly digest for your team",
+					]}
+					chatCount={9400}
+					description="Surfaces themes and sentiment from raw customer feedback in seconds."
+					feedbackCount={1280}
+					name="Feedback analyzer"
+					onMoreActions={() => {}}
+					onSelect={() => {}}
+					publisher="Atlassian"
+					rating={4.6}
+					verified
+				/>
+				<CardDirectoryAgentExpanded
+					avatarSrc="/avatar-agent/dev-agents/code-reviewer.svg"
+					capabilities={[
+						"Reviews PRs for style and correctness",
+						"Catches common security gotchas",
+						"Suggests targeted refactors with diffs",
+						"Checks tests cover the changed paths",
+						"Summarizes the change for reviewers",
+						"Flags risky migrations and breaking changes",
+					]}
+					chatCount={1500}
+					description="Reviews PRs for style, correctness, and security gotchas."
+					feedbackCount={340}
+					name="Code reviewer"
+					onMoreActions={() => {}}
+					onSelect={() => {}}
+					publisher="Mei Tan"
+					rating={4.2}
+				/>
+			</DemoSection>
+
 			<DemoSection title="Agent">
 				<CardDirectoryAgent
 					avatarSrc="/avatar-agent/product-agents/feedback-analyzer.svg"

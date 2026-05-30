@@ -9,6 +9,7 @@ const SHELL_SOURCE = read("card-directory.tsx");
 const INTERACTION_SOURCE = read("use-card-interaction.ts");
 const PARTS_SOURCE = read("card-directory-parts.tsx");
 const AGENT_SOURCE = read("card-directory-agent.tsx");
+const AGENT_EXPANDED_SOURCE = read("card-directory-agent-expanded.tsx");
 const SKILL_SOURCE = read("card-directory-skill.tsx");
 const TOOL_SOURCE = read("card-directory-tool.tsx");
 const TEMPLATE_SOURCE = read("card-directory-template.tsx");
@@ -48,9 +49,29 @@ test("parts carry data-slot attributes for the shared shell pieces", () => {
 		"card-directory-footer",
 		"card-directory-stat",
 		"card-directory-section",
+		"card-directory-banner",
+		"card-directory-capabilities",
 	]) {
 		assert.match(PARTS_SOURCE, new RegExp(`data-slot="${slot}"`, "u"));
 	}
+});
+
+test("header leading is optional and only renders the leading span when present", () => {
+	assert.match(PARTS_SOURCE, /leading\?: ReactNode/u);
+	assert.match(PARTS_SOURCE, /\{leading \? <span className="shrink-0">\{leading\}<\/span> : null\}/u);
+});
+
+test("banner part bleeds the shell padding and draws the hexagon-outlined cover avatar", () => {
+	assert.match(PARTS_SOURCE, /-mx-4 -mt-4 overflow-hidden rounded-t-md/u);
+	assert.match(PARTS_SOURCE, /backgroundColor: coverColor/u);
+	assert.match(PARTS_SOURCE, /getBannerCoverColor/u);
+	assert.match(PARTS_SOURCE, /stroke-surface/u);
+});
+
+test("capabilities part renders a scrollable check-marked list", () => {
+	assert.match(PARTS_SOURCE, /@atlaskit\/icon\/core\/check-mark/u);
+	assert.match(PARTS_SOURCE, /max-h-32 flex-col gap-0\.5 overflow-y-auto/u);
+	assert.match(PARTS_SOURCE, /rounded-xl border border-border bg-bg-input/u);
 });
 
 test("agent variant renders a hexagon avatar with rating and chat stats", () => {
@@ -59,6 +80,15 @@ test("agent variant renders a hexagon avatar with rating and chat stats", () => 
 	assert.match(AGENT_SOURCE, /AiChatIcon/u);
 	assert.match(AGENT_SOURCE, /<CardDirectoryByline/u);
 	assert.match(AGENT_SOURCE, /chats/u);
+});
+
+test("expanded agent variant adds a cover banner and scrollable capabilities to the agent layout", () => {
+	assert.match(AGENT_EXPANDED_SOURCE, /<CardDirectoryBanner/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /<CardDirectoryCapabilities/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /capabilities: readonly string\[\]/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /StarUnstarredIcon/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /AiChatIcon/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /<CardDirectoryByline/u);
 });
 
 test("skill variant uses an icon tile, publisher footer, and view count", () => {
@@ -85,13 +115,16 @@ test("template variant renders Works with sources and Skills tags, no glow or st
 	assert.doesNotMatch(TEMPLATE_SOURCE, /StarUnstarredIcon|AiChatIcon/u);
 });
 
-test("barrel exports the shell, parts, and four variant wrappers", () => {
+test("barrel exports the shell, parts, and variant wrappers", () => {
 	for (const symbol of [
 		"CardDirectory",
 		"CardDirectoryHeader",
 		"CardDirectoryFooter",
 		"CardDirectoryStat",
+		"CardDirectoryBanner",
+		"CardDirectoryCapabilities",
 		"CardDirectoryAgent",
+		"CardDirectoryAgentExpanded",
 		"CardDirectorySkill",
 		"CardDirectoryTool",
 		"CardDirectoryTemplate",
