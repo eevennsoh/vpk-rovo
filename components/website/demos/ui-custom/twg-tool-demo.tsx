@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import RefreshIcon from "@atlaskit/icon/core/refresh";
 import {
 	TwgTool,
 	TwgToolSourceIcon,
@@ -8,6 +12,7 @@ import {
 	ChainOfThoughtSearchResults,
 	ChainOfThoughtStep,
 } from "@/components/ui-custom/chain-of-thought";
+import { Button } from "@/components/ui/button";
 import SearchIcon from "@atlaskit/icon/core/search";
 
 const TWG_SOURCE: TwgToolSource = {
@@ -101,37 +106,52 @@ function ExpandedSearchResults({
 }
 
 export default function TwgToolDemo() {
+	const [replayKey, setReplayKey] = useState(0);
+
 	return (
-		<div className="flex w-full max-w-3xl flex-col gap-8">
-			<TwgTool
-				description={<InlineSource source={TWG_SOURCE}>Upper arm strain repair</InlineSource>}
-				sources={[TWG_SOURCE]}
-				defaultOpen={false}
-			>
-				<ExpandedSearchResults />
-			</TwgTool>
-			<TwgTool
-				description={<InlineSource source={CONFLUENCE_SOURCE}>Kerb collision post-incident analysis</InlineSource>}
-				sources={[TWG_SOURCE, CONFLUENCE_SOURCE]}
-				defaultOpen={false}
-			>
-				<ExpandedSearchResults />
-			</TwgTool>
-			<TwgTool
-				description={<InlineSource source={DRIVE_SOURCE}>Upper arm faring refinement</InlineSource>}
-				sources={[TWG_SOURCE, CONFLUENCE_SOURCE, DRIVE_SOURCE]}
-				defaultOpen={false}
-			>
-				<ExpandedSearchResults />
-			</TwgTool>
-			<TwgTool
-				description="Read through 6 sources"
-				sources={ALL_SOURCES}
-				status="complete"
-				defaultOpen
-			>
-				<ExpandedSearchResults />
-			</TwgTool>
+		<div className="flex w-full max-w-3xl flex-col gap-4">
+			<div className="flex justify-end">
+				<Button
+					aria-label="Replay TWG source stack animation"
+					onClick={() => setReplayKey((currentKey) => currentKey + 1)}
+					size="sm"
+					variant="outline"
+				>
+					<RefreshIcon label="" size="small" />
+					Replay
+				</Button>
+			</div>
+			<div key={replayKey} className="flex flex-col gap-8">
+				<TwgTool
+					description={<InlineSource source={TWG_SOURCE}>Upper arm strain repair</InlineSource>}
+					sources={[TWG_SOURCE]}
+					defaultOpen={false}
+				>
+					<ExpandedSearchResults />
+				</TwgTool>
+				<TwgTool
+					description={<InlineSource source={CONFLUENCE_SOURCE}>Kerb collision post-incident analysis</InlineSource>}
+					sources={[TWG_SOURCE, CONFLUENCE_SOURCE]}
+					defaultOpen={false}
+				>
+					<ExpandedSearchResults />
+				</TwgTool>
+				<TwgTool
+					description={<InlineSource source={DRIVE_SOURCE}>Upper arm faring refinement</InlineSource>}
+					sources={[TWG_SOURCE, CONFLUENCE_SOURCE, DRIVE_SOURCE]}
+					defaultOpen={false}
+				>
+					<ExpandedSearchResults />
+				</TwgTool>
+				<TwgTool
+					description="Read through 6 sources"
+					sources={ALL_SOURCES}
+					status="complete"
+					defaultOpen
+				>
+					<ExpandedSearchResults />
+				</TwgTool>
+			</div>
 		</div>
 	);
 }

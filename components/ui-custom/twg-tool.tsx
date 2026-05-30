@@ -3,6 +3,7 @@
 import type { ComponentProps, CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
+import { motion, useReducedMotion, type Transition } from "motion/react";
 
 import {
 	Collapsible,
@@ -59,12 +60,37 @@ const bannerGridFadeStyle = {
 		"linear-gradient(90deg, var(--color-surface-raised) 0%, color-mix(in srgb, var(--color-surface-raised) 18%, transparent) 44%)",
 } satisfies CSSProperties;
 
-const SOURCE_STACK_ROTATION_CLASSES = [
-	"",
-	"rotate-6",
-	"",
-	"-rotate-8",
+const SOURCE_STACK_ROTATIONS = [
+	0,
+	6,
+	0,
+	-8,
 ] as const;
+const SOURCE_STACK_STAGGER_SECONDS = 0.18;
+const SOURCE_STACK_ENTER_OFFSET = 10;
+const SOURCE_STACK_ENTER_ROTATION_OFFSET = 18;
+
+function getSourceStackRotation(index: number) {
+	return SOURCE_STACK_ROTATIONS[index % SOURCE_STACK_ROTATIONS.length];
+}
+
+function getSourceStackDelay(index: number, itemCount: number) {
+	return (itemCount - index - 1) * SOURCE_STACK_STAGGER_SECONDS;
+}
+
+function getSourceStackInitialRotation(rotation: number) {
+	return rotation + (rotation < 0 ? SOURCE_STACK_ENTER_ROTATION_OFFSET : -SOURCE_STACK_ENTER_ROTATION_OFFSET);
+}
+
+function getSourceStackTransition(delay: number): Transition {
+	return {
+		filter: { duration: 0.36, ease: [0, 0.4, 0, 1], delay },
+		opacity: { duration: 0.32, ease: [0, 0.4, 0, 1], delay },
+		rotate: { type: "spring", stiffness: 260, damping: 30, mass: 0.85, delay: delay + 0.08 },
+		scale: { type: "spring", stiffness: 260, damping: 28, mass: 0.85, delay },
+		x: { type: "spring", stiffness: 260, damping: 28, mass: 0.85, delay },
+	};
+}
 
 function isThirdPartyProvider(
 	provider: TwgToolSourceProvider
@@ -199,40 +225,73 @@ export function TwgToolSourceStack({
 	sources,
 	...props
 }: TwgToolSourceStackProps) {
+	const shouldReduceMotion = useReducedMotion();
+
 	if (sources.length === 0) {
 		return null;
 	}
 
 	const visibleSources = sources.slice(0, maxVisible);
 	const hiddenCount = Math.max(0, sources.length - visibleSources.length);
+	const itemCount = visibleSources.length + (hiddenCount > 0 ? 1 : 0);
 
 	return (
 		<div className={cn("flex shrink-0 items-center justify-end overflow-visible", className)} {...props}>
-			{visibleSources.map((source, index) => (
-				<TwgToolSourceIcon
-					key={source.id}
-					source={source}
-					size={iconSize}
-					className={cn(
-						"relative",
-						index > 0 && "-ml-1",
-						SOURCE_STACK_ROTATION_CLASSES[index % SOURCE_STACK_ROTATION_CLASSES.length]
-					)}
-				/>
-			))}
+			{visibleSources.map((source, index) => {
+				const rotation = getSourceStackRotation(index);
+				const delay = getSourceStackDelay(index, itemCount);
+
+				return (
+					<motion.div
+						key={source.id}
+						animate={{ filter: "blur(0px)", opacity: 1, rotate: rotation, scale: 1, x: 0 }}
+						className={cn("relative shrink-0", index > 0 && "-ml-1")}
+						initial={{
+							filter: shouldReduceMotion ? "blur(0px)" : "blur(6px)",
+							opacity: shouldReduceMotion ? 1 : 0,
+							rotate: shouldReduceMotion ? rotation : getSourceStackInitialRotation(rotation),
+							scale: shouldReduceMotion ? 1 : 0.96,
+							x: shouldReduceMotion ? 0 : SOURCE_STACK_ENTER_OFFSET,
+						}}
+						style={{ willChange: shouldReduceMotion ? undefined : "filter, transform, opacity" }}
+						transition={shouldReduceMotion ? { duration: 0 } : getSourceStackTransition(delay)}
+					>
+						<TwgToolSourceIcon
+							source={source}
+							size={iconSize}
+							className="relative"
+						/>
+					</motion.div>
+				);
+			})}
 			{hiddenCount > 0 ? (
-				<Tile
-					className={cn(
-						"relative -ml-1 shrink-0 text-[10px] font-medium text-text-subtle"
-					)}
-					hasBorder
-					isInset={false}
-					label={`${hiddenCount} more sources`}
-					size={getSourceTileSize(iconSize)}
-					variant="transparent"
+				<motion.div
+					key="hidden-source-count"
+					animate={{ filter: "blur(0px)", opacity: 1, rotate: 0, scale: 1, x: 0 }}
+					className="relative -ml-1 shrink-0"
+					initial={{
+						filter: shouldReduceMotion ? "blur(0px)" : "blur(6px)",
+						opacity: shouldReduceMotion ? 1 : 0,
+						rotate: shouldReduceMotion ? 0 : getSourceStackInitialRotation(0),
+						scale: shouldReduceMotion ? 1 : 0.96,
+						x: shouldReduceMotion ? 0 : SOURCE_STACK_ENTER_OFFSET,
+					}}
+					style={{ willChange: shouldReduceMotion ? undefined : "filter, transform, opacity" }}
+					transition={shouldReduceMotion ? { duration: 0 } : getSourceStackTransition(getSourceStackDelay(visibleSources.length, itemCount))}
 				>
-					+{hiddenCount}
-				</Tile>
+					<Tile
+						className={cn(
+							"shrink-0 text-[10px] font-medium text-text-subtle"
+						)}
+						hasBorder
+						isInset={false}
+						label={`${hiddenCount} more sources`}
+						size={getSourceTileSize(iconSize)}
+						variant="transparent"
+					>
+						+{hiddenCount}
+					</Tile>
+				</motion.div>
 			) : null}
 		</div>
 	);
@@ -321,7 +380,7 @@ export function TwgTool({
 			{hasExpandableContent ? (
 				<CollapsibleContent
 					className={cn(
-						"ml-9 mt-2 overflow-hidden text-xs leading-5 text-text-subtle",
+						"ml-11 mt-2 overflow-hidden text-xs leading-5 text-text-subtle",
 						"h-(--collapsible-panel-height) outline-none transition-[height,opacity] duration-medium ease-out data-starting-style:h-0 data-starting-style:opacity-0 data-ending-style:h-0 data-ending-style:opacity-0"
 					)}
 				>
