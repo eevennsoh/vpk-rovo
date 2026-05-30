@@ -7566,6 +7566,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   "visual-tracing": dynamic(() => import("./demos/visual/visual-tracing-demo"), {
     ssr: false,
   }),
+  "scroll-mask": dynamic(() => import("./demos/visual/scroll-mask-demo"), {
+    ssr: false,
+  }),
   "text-effects": dynamic(() => import("./demos/visual/text-effects-demo"), {
     ssr: false,
   }),
