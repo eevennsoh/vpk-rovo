@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
+import { TWGLoader } from "@/components/ui-custom/twg-loader";
 import { PixelVaultIcon } from "./personal-graph-pixel-icons";
 
 interface PersonalGraphSourcePickerProps {
@@ -37,14 +37,10 @@ export function PersonalGraphSourcePicker({
 				size="sm"
 				variant="outline"
 			>
-				<Image
-					alt=""
-					aria-hidden
-					className="size-4 shrink-0"
-					data-icon="inline-start"
-					height={16}
-					src="/icons/twg.svg"
-					width={16}
+				<TWGLoader
+					className="shrink-0"
+					label=""
+					size="small"
 				/>
 				Connect Team Work Graph
 			</Button>
