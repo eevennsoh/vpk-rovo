@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
-import { buildPlan, frameToProps, staggerSlots, willChangeFor } from "./lib.ts";
+import { buildPlan, frameToProps, gradientTextStyle, staggerSlots, willChangeFor } from "./lib.ts";
 
 test("staggerSlots: normal mode is identity order", () => {
 	assert.deepEqual(staggerSlots(4, "normal"), [0, 1, 2, 3]);
@@ -62,4 +62,37 @@ test("willChangeFor: lists only animated GPU-friendly properties", () => {
 	assert.equal(willChangeFor({ opacity: 0, y: 16, blur: 12 }, { opacity: 1, y: 0, blur: 0 }), "opacity, transform, filter");
 	assert.equal(willChangeFor({ opacity: 0 }, { opacity: 1 }), "opacity");
 	assert.equal(willChangeFor({ x: -48 }, { x: 0 }), "transform");
+});
+
+test("buildPlan: colorIndex follows reading order even when stagger reorders slots", () => {
+	// center-out reorders the delay slots, but colours must still read L->R.
+	const plan = buildPlan("abc", "char", "center-out");
+	const tokens = plan.lines[0];
+	assert.deepEqual(
+		tokens.map((t) => ({ slot: t.slot, colorIndex: t.colorIndex })),
+		[
+			{ slot: 1, colorIndex: 0 },
+			{ slot: 0, colorIndex: 1 },
+			{ slot: 2, colorIndex: 2 },
+		],
+	);
+});
+
+test("buildPlan: static (whitespace) tokens get colorIndex -1", () => {
+	const plan = buildPlan("a b", "char");
+	assert.deepEqual(plan.lines[0].map((t) => t.colorIndex), [0, -1, 1]);
+});
+
+test("gradientTextStyle: two+ stops clip a left-to-right gradient onto the text", () => {
+	assert.deepEqual(gradientTextStyle(["#1868db", "#fca700"]), {
+		backgroundImage: "linear-gradient(to right, #1868db, #fca700)",
+		backgroundClip: "text",
+		WebkitBackgroundClip: "text",
+		color: "transparent",
+	});
+});
+
+test("gradientTextStyle: a single stop degrades to a flat colour (no invalid 1-stop gradient)", () => {
+	assert.deepEqual(gradientTextStyle(["#1868db"]), { color: "#1868db" });
+	assert.deepEqual(gradientTextStyle([]), {});
 });

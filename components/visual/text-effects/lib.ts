@@ -1,7 +1,12 @@
 import type { Frame, Granularity, StaggerMode } from "./data";
 
-/** One rendered token. `slot` is its stagger delay step, or -1 when static. */
-export type PlanToken = Readonly<{ text: string; animate: boolean; slot: number }>;
+/**
+ * One rendered token. `slot` is its stagger delay step (reordered by stagger
+ * mode), or -1 when static. `colorIndex` is its reading-order position among
+ * animated units — used to sample per-unit colour from a palette so a left-to-
+ * right gradient reads correctly even when `slot` is reordered (e.g. center-out).
+ */
+export type PlanToken = Readonly<{ text: string; animate: boolean; slot: number; colorIndex: number }>;
 
 /** A render plan: tokens grouped into lines, plus the animated-unit count. */
 export type EffectPlan = Readonly<{ lines: readonly (readonly PlanToken[])[]; count: number }>;
@@ -50,11 +55,17 @@ export function buildPlan(text: string, granularity: Granularity, mode: StaggerM
 
 	let cursor = 0;
 	const lines = skeleton.map((line) =>
-		line.map((token) => ({
-			text: token.text,
-			animate: token.animate,
-			slot: token.animate ? slots[cursor++] : -1,
-		})),
+		line.map((token) => {
+			if (!token.animate) {
+				return { text: token.text, animate: false, slot: -1, colorIndex: -1 };
+			}
+			// `cursor` is the reading-order index; `slots[cursor]` is its (possibly
+			// reordered) delay step. Colour samples by reading order, delay by slot.
+			const colorIndex = cursor;
+			const slot = slots[cursor];
+			cursor += 1;
+			return { text: token.text, animate: true, slot, colorIndex };
+		}),
 	);
 
 	return { lines, count };
@@ -79,4 +90,24 @@ export function willChangeFor(from: Frame, to: Frame): string {
 	if (keys.has("x") || keys.has("y") || keys.has("scale")) parts.push("transform");
 	if (keys.has("blur")) parts.push("filter");
 	return parts.join(", ");
+}
+
+/**
+ * Paint a single un-split span (a `whole` effect or the reduced-motion
+ * fallback) with the palette as a continuous left-to-right `background-clip`
+ * gradient. Split effects can't use this — each glyph is independently
+ * transformed, so they sample discrete per-unit colours instead. A single-stop
+ * palette degrades to a flat colour, since a one-colour `linear-gradient()` is
+ * invalid CSS.
+ */
+export function gradientTextStyle(colorStops: readonly string[]): Record<string, string> {
+	const stops = colorStops.filter((stop) => stop.trim().length > 0);
+	if (stops.length === 0) return {};
+	if (stops.length === 1) return { color: stops[0] };
+	return {
+		backgroundImage: `linear-gradient(to right, ${stops.join(", ")})`,
+		backgroundClip: "text",
+		WebkitBackgroundClip: "text",
+		color: "transparent",
+	};
 }

@@ -226,3 +226,18 @@ export const DEFAULT_CONFIG: TextEffectConfig = configForEffect("soft-blur-in");
 
 /** Multi-line headline that exercises char, word, line, and whole granularities. */
 export const SAMPLE_TEXT = "Designed to move.\nBuilt to focus.\nReady for anything.";
+
+/**
+ * Optional per-unit colour palette. When omitted the text inherits the ambient
+ * colour (`text-text`); when supplied, each animated unit samples a colour along
+ * the palette so the reveal carries a gradient. Two or more stops blend; one
+ * stop is a flat tint.
+ */
+export type ColorStops = readonly string[];
+
+/**
+ * Blue → purple → orange — the Team Work Graph dot palette. Sampling this per
+ * character is what gives the TWG source-picker button its rainbow soft-blur
+ * reveal; exported here so any `TextEffects` consumer can reuse the same look.
+ */
+export const RAINBOW_COLOR_STOPS: ColorStops = ["#1868db", "#bf63f3", "#fca700"];
