@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { resolveWaveHighlightColor } from "@/components/ui-custom/lib/shimmer-colors";
 import { TWGLoader } from "@/components/ui-custom/twg-loader";
 import { motion, useReducedMotion, type Transition } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PixelVaultIcon } from "./personal-graph-pixel-icons";
 
 const TWG_LABEL = "Connect Team Work Graph";
@@ -13,11 +13,16 @@ const TWG_LABEL = "Connect Team Work Graph";
 // soft-blur reveal carries a rainbow gradient on hover.
 const TWG_RAINBOW_GRADIENT = ["#1868db", "#bf63f3", "#fca700"] as const;
 
-// "Soft Blur" frames (Pixel Point `animate-text` preset): the rainbow rests
-// hidden, blurred, and nudged down; on hover each glyph fades up into place.
-// Values mirror the showcase spec in components/visual/text-effects/data.ts.
-const SOFT_BLUR_HIDDEN = { opacity: 0, y: 16, filter: "blur(12px)" } as const;
+// "Soft Blur" frames (Pixel Point `animate-text` preset). Values mirror the
+// showcase spec in components/visual/text-effects/data.ts.
+// - ORIGIN: the rest/enter-from frame — blurred, transparent, nudged down so a
+//   fresh hover rises up into place.
+// - SHOWN: the revealed frame.
+// - LEAVE: the exit destination — a plain blur-out in position (no y travel), so
+//   hover-out dissolves where the glyphs sit instead of sliding back down.
+const SOFT_BLUR_ORIGIN = { opacity: 0, y: 16, filter: "blur(12px)" } as const;
 const SOFT_BLUR_SHOWN = { opacity: 1, y: 0, filter: "blur(0px)" } as const;
+const SOFT_BLUR_LEAVE = { opacity: 0, y: 0, filter: "blur(12px)" } as const;
 
 // Enter is per-glyph staggered for the cascading reveal.
 const SOFT_BLUR_ENTER_DURATION = 0.9;
@@ -56,6 +61,16 @@ function TwgRainbowSoftBlur({ active, label }: Readonly<{ active: boolean; label
 		ease: [...SOFT_BLUR_LEAVE_EASE],
 	};
 
+	// The visible exit blurs out in position (LEAVE, y unchanged). Once it
+	// finishes, the now-transparent glyphs snap back to the below ORIGIN so the
+	// next hover rises again — the y reset happens at opacity 0, so it's unseen.
+	const [restAtOrigin, setRestAtOrigin] = useState(true);
+	useEffect(() => {
+		if (showRainbow) setRestAtOrigin(false);
+	}, [showRainbow]);
+	const hiddenFrame = restAtOrigin ? SOFT_BLUR_ORIGIN : SOFT_BLUR_LEAVE;
+	const hiddenTransition: Transition = restAtOrigin ? { duration: 0 } : leaveTransition;
+
 	return (
 		<span aria-hidden className="pointer-events-none relative inline-flex whitespace-pre">
 			{/* Layout owner + default appearance; fades under the rainbow so the
@@ -89,7 +104,7 @@ function TwgRainbowSoftBlur({ active, label }: Readonly<{ active: boolean; label
 							willChange: "opacity, transform, filter",
 						}}
 						initial={false}
-						animate={showRainbow ? SOFT_BLUR_SHOWN : SOFT_BLUR_HIDDEN}
+						animate={showRainbow ? SOFT_BLUR_SHOWN : hiddenFrame}
 						transition={
 							showRainbow
 								? {
@@ -97,8 +112,11 @@ function TwgRainbowSoftBlur({ active, label }: Readonly<{ active: boolean; label
 										duration: SOFT_BLUR_ENTER_DURATION,
 										ease: [...SOFT_BLUR_ENTER_EASE],
 									}
-								: leaveTransition
+								: hiddenTransition
 						}
+						onAnimationComplete={() => {
+							if (!showRainbow && !restAtOrigin) setRestAtOrigin(true);
+						}}
 					>
 						{character}
 					</motion.span>
