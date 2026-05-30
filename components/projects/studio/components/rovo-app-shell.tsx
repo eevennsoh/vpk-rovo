@@ -10,6 +10,7 @@ import { TwgToolSourceStack, type TwgToolSource } from "@/components/ui-custom/t
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
 import { AgentsDirectoryDialog } from "@/components/blocks/agents-directory";
+import { AgentTemplatesDialog } from "@/components/blocks/agent-templates";
 import { RovoAppBrowserArtifact } from "@/components/projects/studio/components/rovo-app-browser-artifact";
 import { RovoAppComposer } from "@/components/projects/studio/components/rovo-app-composer";
 import { RovoAppMessages } from "@/components/projects/studio/components/rovo-app-messages";
@@ -1100,7 +1101,7 @@ function HomeStarterBento({
 					</>
 				) : null}
 			</div>
-			<AgentsDirectoryDialog
+			<AgentTemplatesDialog
 				open={browseOpen}
 				onOpenChange={setBrowseOpen}
 				agents={ROVO_DIRECTORY_AGENT_PROFILES}
