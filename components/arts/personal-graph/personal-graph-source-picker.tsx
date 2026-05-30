@@ -29,7 +29,7 @@ export function PersonalGraphSourcePicker({
 		<div className="flex flex-wrap items-center justify-center gap-2">
 			<Button
 				aria-label="Choose Personal Graph vault folder"
-				className="rounded-full border-border bg-bg-neutral-subtle px-4 text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
+				className="rounded-full border-border bg-surface px-4 text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
 				disabled={isBusy}
 				onClick={onPickVault}
 				size="sm"
@@ -40,7 +40,7 @@ export function PersonalGraphSourcePicker({
 			</Button>
 			<Button
 				aria-label={TWG_LABEL}
-				className="rounded-full border-border bg-bg-neutral-subtle px-4 text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
+				className="rounded-full border-border bg-surface px-4 text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
 				disabled={isBusy}
 				isLoading={isBusy}
 				onClick={onPickTwg}
@@ -54,26 +54,29 @@ export function PersonalGraphSourcePicker({
 					label=""
 					size="small"
 				/>
-				{showTwgShimmer ? (
-					<Shimmer
-						as="span"
-						baseColor="var(--color-text)"
-						baseGradientColor={TWG_SHIMMER_GRADIENT}
-						duration={1.4}
-						rotateYDistance={0}
-						scaleDistance={1}
-						spread={2}
-						transition={{ ease: "easeInOut", repeatDelay: 0.1 }}
-						wave
-						xDistance={0}
-						yDistance={0}
-						zDistance={0}
-					>
+				{/* A plain copy of the label stays in flow to lock the button
+				    width; the wave shimmer overlays it absolutely so mounting it on
+				    hover can't reflow (and resize) the button. */}
+				<span className="relative inline-flex items-center">
+					<span className={showTwgShimmer ? "opacity-0" : undefined}>
 						{TWG_LABEL}
-					</Shimmer>
-				) : (
-					<span>{TWG_LABEL}</span>
-				)}
+					</span>
+					{showTwgShimmer ? (
+						<span aria-hidden className="absolute inset-0 flex items-center">
+							<Shimmer
+								as="span"
+								baseColor="var(--color-text)"
+								baseGradientColor={TWG_SHIMMER_GRADIENT}
+								duration={1.4}
+								spread={2}
+								transition={{ ease: "easeInOut", repeatDelay: 0.1 }}
+								wave
+							>
+								{TWG_LABEL}
+							</Shimmer>
+						</span>
+					) : null}
+				</span>
 			</Button>
 		</div>
 	);
