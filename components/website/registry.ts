@@ -5329,24 +5329,10 @@ const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  "agent-demo-with-tools": dynamic(
+  "agent-demo-empty": dynamic(
     () =>
       import("./demos/ui-custom/agent-demo").then((mod) => ({
-        default: mod.AgentDemoWithTools,
-      })),
-    { ssr: false },
-  ),
-  "agent-demo-with-output": dynamic(
-    () =>
-      import("./demos/ui-custom/agent-demo").then((mod) => ({
-        default: mod.AgentDemoWithOutput,
-      })),
-    { ssr: false },
-  ),
-  "agent-demo-minimal": dynamic(
-    () =>
-      import("./demos/ui-custom/agent-demo").then((mod) => ({
-        default: mod.AgentDemoMinimal,
+        default: mod.AgentDemoEmpty,
       })),
     { ssr: false },
   ),

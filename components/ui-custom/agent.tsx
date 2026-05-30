@@ -6,6 +6,7 @@ import { memo, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 
 import AddIcon from "@atlaskit/icon/core/add";
+import PageIcon from "@atlaskit/icon/core/page";
 import AiModelIcon from "@atlaskit/icon-lab/core/ai-model";
 
 import { Accordion,
@@ -39,6 +40,7 @@ import {
 	type RichTextMentionSources,
 	RichTextEditor,
 } from "@/components/ui-custom/rich-text-editor";
+import { SkillTag } from "@/components/ui-custom/skill-tag";
 import type {
 	HermesSkillSummary,
 	WikiMemoryExplorerResponse,
@@ -126,8 +128,12 @@ export interface AgentConfigFormValue {
 	instructions?: string;
 	contextDescription?: string;
 	trigger?: string;
+	triggers?: readonly string[];
+	skills?: readonly string[];
 	guardrail?: string;
 	tools?: readonly string[];
+	subagents?: readonly string[];
+	knowledge?: readonly string[];
 	conversationStarters?: readonly string[];
 	agentId?: string;
 	action?: string;
@@ -331,6 +337,153 @@ function AgentSectionLabel({ children }: Readonly<{ children: ReactNode }>) {
 		<div className="flex h-8 items-center text-xs font-semibold leading-4 text-text-subtlest">
 			{children}
 		</div>
+	);
+}
+
+function getNonEmptyConfigItems(items: readonly string[] | undefined): readonly string[] {
+	return (items ?? [])
+		.map((item) => item.trim())
+		.filter(Boolean);
+}
+
+function getAgentTriggerItems(config: AgentConfigFormValue): readonly string[] {
+	const triggers = getNonEmptyConfigItems(config.triggers);
+	if (triggers.length > 0) {
+		return triggers;
+	}
+
+	const trigger = config.trigger?.trim();
+	return trigger ? [trigger] : [];
+}
+
+function AgentReferenceChip({ label }: Readonly<{ label: string }>) {
+	return (
+		<span className="inline-flex h-7 max-w-full items-center gap-1 rounded-md border border-border bg-surface px-1.5 text-sm leading-5 text-link">
+			<Icon
+				render={<PageIcon label="" size="small" />}
+				aria-hidden
+				className="shrink-0 text-icon-selected"
+			/>
+			<span className="min-w-0 truncate">{label}</span>
+		</span>
+	);
+}
+
+function AgentSkillChip({ label }: Readonly<{ label: string }>) {
+	return (
+		<SkillTag
+			color="teamwork"
+			icon={<CheckIcon size="small" />}
+			className="h-7 max-w-full text-sm leading-5"
+		>
+			{label}
+		</SkillTag>
+	);
+}
+
+interface AgentFilledSummaryRowProps {
+	label: string;
+	items: readonly string[];
+	variant?: "reference" | "skill";
+	agentFieldName?: string;
+	screenAssistantTargetId?: string;
+}
+
+function AgentFilledSummaryRow({
+	agentFieldName,
+	items,
+	label,
+	screenAssistantTargetId,
+	variant = "reference",
+}: Readonly<AgentFilledSummaryRowProps>) {
+	if (items.length === 0) {
+		return null;
+	}
+
+	return (
+		<div
+			className="grid gap-x-5 gap-y-1 sm:grid-cols-[8rem_minmax(0,1fr)]"
+			data-agent-field={agentFieldName}
+			data-screen-assistant-target={screenAssistantTargetId}
+		>
+			<AgentSectionLabel>{label}</AgentSectionLabel>
+			<div className="flex min-h-8 min-w-0 flex-wrap items-center gap-1.5">
+				{items.map((item, index) => (
+					variant === "skill" ? (
+						<AgentSkillChip key={`${label}-${item}-${index}`} label={item} />
+					) : (
+						<AgentReferenceChip key={`${label}-${item}-${index}`} label={item} />
+					)
+				))}
+			</div>
+		</div>
+	);
+}
+
+interface AgentFilledConfigSummaryProps {
+	config: AgentConfigFormValue;
+	screenAssistantTargetPrefix?: string;
+}
+
+function AgentFilledConfigSummary({
+	config,
+	screenAssistantTargetPrefix,
+}: Readonly<AgentFilledConfigSummaryProps>) {
+	const triggerItems = getAgentTriggerItems(config);
+	const skillItems = getNonEmptyConfigItems(config.skills);
+	const toolItems = getNonEmptyConfigItems(config.tools);
+	const subagentItems = getNonEmptyConfigItems(config.subagents);
+	const knowledgeItems = getNonEmptyConfigItems(config.knowledge);
+	const starterItems = getNonEmptyConfigItems(config.conversationStarters);
+
+	return (
+		<div className="space-y-2">
+			<AgentFilledSummaryRow
+				agentFieldName="trigger"
+				items={triggerItems}
+				label="Triggers"
+				screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:trigger` : undefined}
+			/>
+			<AgentFilledSummaryRow
+				items={skillItems}
+				label="Skills"
+				variant="skill"
+				screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:skills` : undefined}
+			/>
+			<AgentFilledSummaryRow
+				agentFieldName="tools"
+				items={toolItems}
+				label="Tools"
+				screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:tools` : undefined}
+			/>
+			<AgentFilledSummaryRow
+				items={subagentItems}
+				label="Subagents"
+				screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:subagents` : undefined}
+			/>
+			<AgentFilledSummaryRow
+				items={knowledgeItems}
+				label="Knowledge"
+				screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:knowledge` : undefined}
+			/>
+			<AgentFilledSummaryRow
+				agentFieldName="conversationStarters"
+				items={starterItems}
+				label="Conversation starters"
+				screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:conversation-starters` : undefined}
+			/>
+		</div>
+	);
+}
+
+function hasFilledAgentConfig(config: AgentConfigFormValue): boolean {
+	return (
+		getAgentTriggerItems(config).length > 0 ||
+		getNonEmptyConfigItems(config.skills).length > 0 ||
+		getNonEmptyConfigItems(config.tools).length > 0 ||
+		getNonEmptyConfigItems(config.subagents).length > 0 ||
+		getNonEmptyConfigItems(config.knowledge).length > 0 ||
+		getNonEmptyConfigItems(config.conversationStarters).length > 0
 	);
 }
 
@@ -608,6 +761,7 @@ export const AgentConfigFields = memo(
 	}: Readonly<AgentConfigFieldsProps>) => {
 		void onListItemChange;
 		void onRemoveListItem;
+		const isFilledConfig = hasFilledAgentConfig(config);
 
 		return (
 			<div
@@ -650,31 +804,43 @@ export const AgentConfigFields = memo(
 					</div>
 				</section>
 
-				<div className="grid grid-cols-2 gap-2">
-					<AgentActionTile
-						agentFieldName="trigger"
-						label="Add triggers"
-						screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:trigger` : undefined}
-					/>
-					<AgentActionTile
-						label="Add skills"
-						screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:skills` : undefined}
-					/>
-					<AgentActionTile
-						agentFieldName="tools"
-						label="Add tools"
-						onClick={() => onAppendListItem?.("tools")}
-						screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:tools` : undefined}
-					/>
-					<AgentActionTile
-						agentFieldName="conversationStarters"
-						label="Add conversation starters"
-						onClick={() => onAppendListItem?.("conversationStarters")}
-						screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:conversation-starters` : undefined}
-					/>
-				</div>
+				{isFilledConfig ? (
+					<>
+						<AgentFilledConfigSummary
+							config={config}
+							screenAssistantTargetPrefix={screenAssistantTargetPrefix}
+						/>
+						<div className="h-px bg-border" />
+					</>
+				) : (
+					<>
+						<div className="grid grid-cols-2 gap-2">
+							<AgentActionTile
+								agentFieldName="trigger"
+								label="Add triggers"
+								screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:trigger` : undefined}
+							/>
+							<AgentActionTile
+								label="Add skills"
+								screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:skills` : undefined}
+							/>
+							<AgentActionTile
+								agentFieldName="tools"
+								label="Add tools"
+								onClick={() => onAppendListItem?.("tools")}
+								screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:tools` : undefined}
+							/>
+							<AgentActionTile
+								agentFieldName="conversationStarters"
+								label="Add conversation starters"
+								onClick={() => onAppendListItem?.("conversationStarters")}
+								screenAssistantTargetId={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:conversation-starters` : undefined}
+							/>
+						</div>
 
-				<AgentKnowledgePanel />
+						<AgentKnowledgePanel />
+					</>
+				)}
 				<AgentInstructionsComposer
 					instructions={config.instructions}
 					onInstructionsChange={(value) => onTextChange?.("instructions", value)}
