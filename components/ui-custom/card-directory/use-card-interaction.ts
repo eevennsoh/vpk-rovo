@@ -4,13 +4,14 @@ import { useReducedMotion } from "motion/react";
 import { token } from "@/lib/tokens";
 
 const OVERLAY_SHADOW = token("elevation.shadow.overlay");
+const TRANSPARENT_BORDER_COLOR = "rgba(0, 0, 0, 0)";
 const HOVER_ANIMATION = {
-	borderColor: "transparent",
+	borderColor: TRANSPARENT_BORDER_COLOR,
 	boxShadow: OVERLAY_SHADOW,
 	scale: 1.006,
 } as const;
 const REDUCED_HOVER_ANIMATION = {
-	borderColor: "transparent",
+	borderColor: TRANSPARENT_BORDER_COLOR,
 	boxShadow: OVERLAY_SHADOW,
 } as const;
 const TAP_ANIMATION = {
