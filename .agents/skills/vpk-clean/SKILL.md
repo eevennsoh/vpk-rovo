@@ -21,11 +21,13 @@ Decoupling means the ship is predictable and side-effect-light, and the *local* 
 
 Accepts a PR number, branch, worktree path, or a descriptive scope ("stale merged worktrees and branches"). With no explicit target, inventory everything and propose the proven-landed candidates for the user to approve before removing. The safety principle is simple: cleanup is allowed only when commands prove the committed work has landed, the target is not current/default, there are no uncommitted or untracked files, and no live process owns the path.
 
+Treat uncommitted and untracked files as user work, not cleanup residue. Do not create branches, commits, stashes, PRs, resets, restores, cleans, or ordinary pushes during cleanup. The only push allowed by this skill is deleting a proven merged remote branch, or deleting a confirmed abandoned PR head branch through the explicit abandoned-PR flow.
+
 GitHub PR records are not deleted. When the user says "delete the PR once merged", interpret that as deleting the merged source branch and cleaning local worktrees/refs. To abandon an *unmerged* PR, close it with `gh pr close --delete-branch` only after explicit confirmation.
 
 ## Cleanup Inventory
 
-Start with a source-of-truth inventory:
+Start with a source-of-truth inventory. Record the default branch, current worktree, current branch/HEAD, and current status before considering any removal. Treat `git worktree list --porcelain` as the source of truth for registered worktrees.
 
 ```bash
 git status --short --branch
@@ -34,7 +36,7 @@ git worktree list --porcelain
 git remote show origin
 git symbolic-ref refs/remotes/origin/HEAD
 gh auth status
-gh pr list --state all --json number,title,headRefName,headRefOid,isDraft,state,mergedAt
+gh pr list --state all --json number,title,headRefName,headRefOid,baseRefName,isDraft,state,mergedAt
 gh api repos/:owner/:repo --jq '{full_name,delete_branch_on_merge,default_branch,private}'
 ```
 
@@ -45,7 +47,7 @@ The repository `delete_branch_on_merge` setting explains whether future merged P
 For a merged PR whose source branch remains:
 
 1. Confirm the PR is merged and capture `headRefName`, `headRefOid`, and `baseRefName`.
-2. Confirm no open PR still uses the branch.
+2. Confirm no open PR still uses the branch or head commit.
 3. Delete the remote branch with `git push origin --delete <branch>` or `gh pr merge --delete-branch` if the merge is still being performed.
 4. If `origin/<branch>` remains locally after remote deletion, prove `git ls-remote --heads origin <branch>` returns no ref, then delete the tracking ref with `git update-ref -d refs/remotes/origin/<branch>`.
 5. Delete the local branch with `git branch -d <branch>` only when it is merged and no worktree uses it.
@@ -61,17 +63,18 @@ For worktree and branch cleanup:
    - `git branch -v`
    - `git worktree list --porcelain`
    - `git remote show origin`
-   - `gh pr list --state all --json number,title,headRefName,headRefOid,isDraft,state,mergedAt`
+   - `gh pr list --state all --json number,title,headRefName,headRefOid,baseRefName,isDraft,state,mergedAt`
 2. For each candidate, verify:
    - It is not current/default.
    - `git -C <worktree> status --porcelain=v1 --untracked-files=all` is empty.
    - Its branch or detached HEAD is proven landed by ancestry, merged PR evidence, or patch-equivalence fallback.
+   - No open PR is backed by the branch name or head commit.
    - No process owns the exact path: `lsof +D <worktree>`.
 3. Remove only safe items:
    - Use plain `git worktree remove <path>` for registered, clean, landed, process-safe worktrees.
    - Use `git worktree prune --verbose` only for stale admin metadata after the path is already gone.
    - Use `git branch -d <branch>` only for merged local branches unused by any worktree.
-   - Use `git push origin --delete <branch>` only for merged remote branches with no open PR.
+   - Use `git push origin --delete <branch>` only for merged remote branches with no open PR by branch or head commit.
 
 ## Candidate Verification
 
@@ -85,13 +88,13 @@ git cherry -v <default> <candidate>
 lsof +D <worktree>
 ```
 
-Use `git cherry -v` only as a fallback when ancestry is not enough and merged PR evidence is missing. Patch-equivalent commits can be reported as candidates, but destructive cleanup still needs the working tree to be clean and the user-approved scope to include that target.
+Use `git cherry -v` only as a fallback when ancestry is not enough and merged PR evidence is missing. Patch-equivalence is for squash-merged or recreated commits whose patch contents are already on the default branch even though ancestry fails. Prove it before deleting anything. Do not create no-op merge commits or fake ancestry to make a cleanup candidate look merged.
 
 ## Dirty Or Untracked Hard Stop
 
 If `git -C <worktree> status --porcelain=v1 --untracked-files=all` prints anything, that worktree is not eligible for removal. Record the exact worktree path, branch or detached HEAD, and dirty/untracked file list, then leave it alone.
 
-Do not use `git worktree remove --force`, `git reset`, `git restore`, `git clean`, `git stash`, `rm -rf`, or any equivalent workaround to preserve or remove a dirty worktree. Do not kill processes for a dirty or untracked worktree because the target is already ineligible.
+Do not use `git worktree remove --force`, `git reset`, `git restore`, `git clean`, `git stash`, `rm -rf`, or any equivalent workaround to preserve or remove a dirty worktree. Do not kill processes for a dirty or untracked worktree because the target is already ineligible. HEAD ancestry, patch-equivalence, or a merged PR never proves that uncommitted local changes have landed.
 
 ## Worktree Removal
 
@@ -111,7 +114,7 @@ If the worktree path is already gone but `git worktree list --porcelain` still r
 
 Delete local branches with `git branch -d <branch>` only when ancestry proves they are merged and no registered worktree still uses them. Do not use `git branch -D`; report squash-merged or PR-merged local branches that require force deletion instead of deleting them.
 
-Delete remote branches with `git push origin --delete <branch>` only when GitHub shows the branch PR was merged or ancestry proves the remote branch is already in the default branch, and no open PR uses that branch.
+Delete remote branches with `git push origin --delete <branch>` only when GitHub shows the branch PR was merged or ancestry proves the remote branch is already in the default branch, and no open PR uses that branch or head commit.
 
 If a remote branch was deleted but the local `origin/<branch>` tracking ref remains, first prove `git ls-remote --heads origin <branch>` returns no ref, then delete the stale local tracking ref:
 
@@ -150,10 +153,12 @@ Report unexpected tracked deletions, dirty state, stale admin metadata, stale lo
 Stop and report instead of changing state when:
 
 - A cleanup candidate has any uncommitted or untracked file.
+- An open PR is backed by the candidate branch or head commit.
 - A local branch would require `git branch -D` (squash-merged / not fast-forward-merged) — report it for the user to force-delete deliberately, do not force it yourself.
 - A worktree removal would require `--force`.
 - The target is the current worktree (you are inside it) — clean other targets, and tell the user to re-run from the main checkout to remove this one.
 - GitHub state, default branch, PR ownership, or branch ancestry is ambiguous.
+- Cleanup would require creating a branch, commit, stash, PR, reset, restore, clean, no-op merge, fake ancestry, or raw filesystem deletion.
 
 ## Output
 
