@@ -228,11 +228,11 @@ export const DEFAULT_CONFIG: TextEffectConfig = configForEffect("soft-blur-in");
 export const SAMPLE_TEXT = "Designed to move.\nBuilt to focus.\nReady for anything.";
 
 /**
- * Optional colour palette layered on top of the neutral text. When omitted the
- * text stays its ambient colour (`text-text`); when supplied, a gradient drawn
- * from the palette is blended over the glyphs (`mix-blend-mode: color`) so they
- * keep their neutral luminance and take on the gradient's hue. Two or more stops
- * blend across the passage; one stop is a flat tint.
+ * Optional colour palette painted on top of the neutral text. When omitted the
+ * text stays its ambient colour (`text-text`); when supplied, a fully opaque
+ * gradient drawn from the palette is painted over the glyphs, completely
+ * covering the neutral base so they read as vivid, full-saturation colour. Two
+ * or more stops blend across the passage; one stop is a flat colour.
  */
 export type ColorStops = readonly string[];
 

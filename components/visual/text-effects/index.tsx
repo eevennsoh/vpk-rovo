@@ -13,11 +13,12 @@ import { buildPlan, frameToProps, gradientTextStyle, willChangeFor } from "./lib
 type TextEffectsProps = Readonly<{
 	config: TextEffectConfig;
 	/**
-	 * Optional colour palette layered *on top of* the neutral text — it does not
-	 * replace it. Omit to render plain neutral text; supply two or more stops
-	 * (e.g. `RAINBOW_COLOR_STOPS`) to blend a gradient over the animated glyphs
-	 * via `mix-blend-mode: color`, so they keep their neutral luminance (legible
-	 * in light and dark) and pick up the gradient's hue.
+	 * Optional colour palette painted *over* the neutral text. Omit to render
+	 * plain neutral text; supply two or more stops (e.g. `RAINBOW_COLOR_STOPS`)
+	 * to paint a fully opaque gradient on top of the animated glyphs — an
+	 * identical, in-sync overlay layer that completely covers the neutral base,
+	 * so the glyphs read as vivid, full-saturation colour rather than a muted
+	 * tint of the neutral text.
 	 */
 	colorStops?: ColorStops;
 	text?: string;
@@ -29,8 +30,8 @@ export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: 
 
 	// Style for the gradient *overlay* layer. `whole` spans and the reduced-motion
 	// fallback paint one continuous `background-clip` gradient; split units sample
-	// a discrete colour per unit (see renderUnits). The overlay is blended down
-	// onto the neutral base with `mix-blend-mode: color`.
+	// a discrete colour per unit (see renderUnits). The overlay is fully opaque
+	// and sits directly on top of the neutral base, covering it.
 	const wholeGradientStyle = useMemo(
 		() => (colorStops ? gradientTextStyle(colorStops) : null),
 		[colorStops],
@@ -84,8 +85,8 @@ export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: 
 
 	// The animated glyph tree, rendered for one of two stacked layers. `base` is
 	// the neutral text; `overlay` is an identical, in-sync copy that carries the
-	// gradient (continuous for `whole`, per-unit for split) and is blended down
-	// onto the base by its wrapper's `mix-blend-mode: color`.
+	// gradient (continuous for `whole`, per-unit for split) and paints fully
+	// opaque on top of the base, completely covering it.
 	const renderUnits = (variant: "base" | "overlay") => {
 		if (isWhole) {
 			return (
@@ -137,11 +138,10 @@ export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: 
 		));
 	};
 
-	// `isolation: isolate` scopes the overlay's `mix-blend-mode` to the base
-	// layer beneath it, so the gradient blends with the neutral text rather than
-	// with whatever is painted behind the component.
+	// Establishes the positioning context the absolutely-positioned overlay layer
+	// anchors to, so the opaque gradient copy lands exactly over the neutral base.
 	const layerWrapperStyle = colorStops
-		? ({ position: "relative", display: "inline-block", isolation: "isolate" } as const)
+		? ({ position: "relative", display: "inline-block" } as const)
 		: undefined;
 
 	return (
@@ -160,7 +160,7 @@ export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: 
 							<span
 								aria-hidden
 								className="absolute inset-0"
-								style={{ whiteSpace: "pre-line", mixBlendMode: "color", ...wholeGradientStyle }}
+								style={{ whiteSpace: "pre-line", ...wholeGradientStyle }}
 							>
 								{text}
 							</span>
@@ -174,7 +174,7 @@ export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: 
 					<span key={animationKey} aria-hidden style={layerWrapperStyle}>
 						{renderUnits("base")}
 						{colorStops ? (
-							<span aria-hidden className="absolute inset-0" style={{ mixBlendMode: "color" }}>
+							<span aria-hidden className="absolute inset-0">
 								{renderUnits("overlay")}
 							</span>
 						) : null}
