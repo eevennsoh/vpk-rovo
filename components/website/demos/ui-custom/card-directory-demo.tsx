@@ -35,6 +35,7 @@ export default function CardDirectoryDemo() {
 						"Links findings back to source tickets and pages",
 						"Drafts a weekly digest for your team",
 					]}
+					className="h-[420px]"
 					collaboratorOverflow={4}
 					collaborators={[
 						{ name: "Priya Hansra", src: "/avatar-human/priya-hansra.png" },
@@ -73,6 +74,7 @@ export default function CardDirectoryDemo() {
 						"Summarizes the change for reviewers",
 						"Flags risky migrations and breaking changes",
 					]}
+					className="h-[420px]"
 					collaboratorOverflow={2}
 					collaborators={[
 						{ name: "David Hsieh", src: "/avatar-human/david-hsieh.png" },

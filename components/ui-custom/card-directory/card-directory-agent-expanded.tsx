@@ -88,41 +88,44 @@ export function CardDirectoryAgentExpanded({
 		<CardDirectory className={className} onSelect={onSelect} selectLabel={`Select ${name}`}>
 			<CardDirectoryBanner avatarSrc={avatarSrc} backgroundColor={coverBackgroundColor} />
 
-			<CardDirectoryHeader
-				action={
-					onMoreActions ? (
-						<CardDirectoryMoreButton label={`More actions for ${name}`} onClick={onMoreActions} />
-					) : null
-				}
-				byline={<CardDirectoryByline publisher={publisher} verified={verified} />}
-				title={name}
-			/>
+			{/* Scrollable body — banner stays pinned above, footer pinned below. */}
+			<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+				<CardDirectoryHeader
+					action={
+						onMoreActions ? (
+							<CardDirectoryMoreButton label={`More actions for ${name}`} onClick={onMoreActions} />
+						) : null
+					}
+					byline={<CardDirectoryByline publisher={publisher} verified={verified} />}
+					title={name}
+				/>
 
-			<CardDirectoryDescription>
-				{description ?? `Learn how ${name} can help your team work faster.`}
-			</CardDirectoryDescription>
+				<CardDirectoryDescription>
+					{description ?? `Learn how ${name} can help your team work faster.`}
+				</CardDirectoryDescription>
 
-			{sources.length > 0 ? (
-				<CardDirectorySection label="Works with">
-					<TwgToolSourceStack className="justify-start" iconSize="md" maxVisible={6} sources={sources} />
-				</CardDirectorySection>
-			) : null}
+				{sources.length > 0 ? (
+					<CardDirectorySection label="Works with">
+						<TwgToolSourceStack className="justify-start" iconSize="md" maxVisible={6} sources={sources} />
+					</CardDirectorySection>
+				) : null}
 
-			{skills.length > 0 ? (
-				<CardDirectorySection label="Skills">
-					<SkillTagGroup>
-						{skills.map((skill) => (
-							<SkillTag color={skill.color ?? "default"} icon={skill.icon} key={skill.label}>
-								{skill.label}
-							</SkillTag>
-						))}
-					</SkillTagGroup>
-				</CardDirectorySection>
-			) : null}
+				{skills.length > 0 ? (
+					<CardDirectorySection label="Skills">
+						<SkillTagGroup>
+							{skills.map((skill) => (
+								<SkillTag color={skill.color ?? "default"} icon={skill.icon} key={skill.label}>
+									{skill.label}
+								</SkillTag>
+							))}
+						</SkillTagGroup>
+					</CardDirectorySection>
+				) : null}
 
-			<Separator />
+				<Separator />
 
-			<CardDirectoryCapabilities items={capabilities} label={capabilitiesLabel} />
+				<CardDirectoryCapabilities items={capabilities} label={capabilitiesLabel} />
+			</div>
 
 			{showFooter ? (
 				<>

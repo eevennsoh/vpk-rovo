@@ -74,10 +74,10 @@ test("banner part bleeds the shell padding and draws the hexagon-outlined cover 
 	assert.match(PARTS_SOURCE, /stroke-surface/u);
 });
 
-test("capabilities part renders a borderless scrollable icon-tile feature list", () => {
+test("capabilities part renders a borderless icon-tile feature list (no inner scroll)", () => {
 	assert.match(PARTS_SOURCE, /@atlaskit\/icon-lab\/core\/ai-model/u);
-	assert.match(PARTS_SOURCE, /max-h-44 flex-col overflow-y-auto/u);
 	assert.doesNotMatch(PARTS_SOURCE, /rounded-xl border border-border bg-bg-input/u);
+	assert.doesNotMatch(PARTS_SOURCE, /max-h-44/u);
 });
 
 test("agent variant renders a hexagon avatar with rating and chat stats", () => {
@@ -110,6 +110,11 @@ test("expanded agent variant divides content and renders a metadata + collaborat
 	assert.match(AGENT_EXPANDED_SOURCE, /AvatarGroupCount/u);
 	assert.match(AGENT_EXPANDED_SOURCE, /stats\?: ReadonlyArray/u);
 	assert.match(AGENT_EXPANDED_SOURCE, /collaborators\?: ReadonlyArray/u);
+});
+
+test("expanded agent variant pins the footer below a scrollable body region", () => {
+	// flex-1 + min-h-0 + overflow-y-auto gives a scrollable body so the footer stays pinned
+	assert.match(AGENT_EXPANDED_SOURCE, /min-h-0 flex-1 flex-col gap-3 overflow-y-auto/u);
 });
 
 test("capabilities label is optional and omitted when not provided", () => {

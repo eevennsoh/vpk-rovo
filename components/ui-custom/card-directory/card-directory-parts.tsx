@@ -223,14 +223,14 @@ export interface CardDirectoryCapabilitiesProps {
 }
 
 /**
- * Scrollable feature list — borderless icon-tile rows (one per capability),
- * made scrollable with a native `overflow-y-auto` affordance.
+ * Feature list — borderless icon-tile rows (one per capability). Scrolling is
+ * owned by the enclosing card body, so this list just flows at its natural height.
  */
 export function CardDirectoryCapabilities({ label, items }: Readonly<CardDirectoryCapabilitiesProps>) {
 	return (
 		<div className="flex flex-col gap-1" data-slot="card-directory-capabilities">
 			{label ? <span className="text-xs font-semibold leading-4 text-text-subtlest">{label}</span> : null}
-			<ul className="flex max-h-44 flex-col overflow-y-auto">
+			<ul className="flex flex-col">
 				{items.map((item) => (
 					<li key={item} className="flex items-center gap-3 py-1.5">
 						<Tile aria-hidden className="shrink-0 text-icon-subtle" label="" size="small" variant="neutral">
