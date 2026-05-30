@@ -7,12 +7,12 @@ const tileVariants = cva(
 	{
 		variants: {
 			size: {
-				xxsmall: "size-4 text-[10px]",
-				xsmall: "size-5 text-xs",
-				small: "size-6 text-sm",
-				medium: "size-8 text-base",
-				large: "size-10 text-xl",
-				xlarge: "size-12 text-2xl",
+				xxsmall: "size-4 [font-size:10px]",
+				xsmall: "size-5 [font-size:12px]",
+				small: "size-6 [font-size:14px]",
+				medium: "size-8 [font-size:16px]",
+				large: "size-10 [font-size:20px]",
+				xlarge: "size-12 [font-size:24px]",
 			},
 			variant: {
 				// Semantic
@@ -56,12 +56,12 @@ const tileVariants = cva(
 )
 
 const INSET_CHILD_SIZES = {
-	xxsmall: "[&_img]:size-2.5 [&_svg]:size-2.5",
-	xsmall: "[&_img]:size-3 [&_svg]:size-3",
-	small: "[&_img]:size-3.5 [&_svg]:size-3.5",
-	medium: "[&_img]:size-4 [&_svg]:size-4",
-	large: "[&_img]:size-5 [&_svg]:size-5",
-	xlarge: "[&_img]:size-6 [&_svg]:size-6",
+	xxsmall: "[&_span]:size-2.5! [&_img]:size-2.5! [&_svg]:size-2.5!",
+	xsmall: "[&_span]:size-3! [&_img]:size-3! [&_svg]:size-3!",
+	small: "[&_span]:size-3.5! [&_img]:size-3.5! [&_svg]:size-3.5!",
+	medium: "[&_span]:size-4! [&_img]:size-4! [&_svg]:size-4!",
+	large: "[&_span]:size-5! [&_img]:size-5! [&_svg]:size-5!",
+	xlarge: "[&_span]:size-6! [&_img]:size-6! [&_svg]:size-6!",
 } as const satisfies Record<string, string>
 
 export interface TileProps
