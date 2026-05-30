@@ -7563,6 +7563,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   squircle: dynamic(() => import("./demos/visual/squircle-demo"), {
     ssr: false,
   }),
+  "svg-tracing": dynamic(() => import("./demos/visual/svg-tracing-demo"), {
+    ssr: false,
+  }),
   "visual-tracing": dynamic(() => import("./demos/visual/visual-tracing-demo"), {
     ssr: false,
   }),

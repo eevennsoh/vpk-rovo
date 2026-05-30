@@ -408,6 +408,7 @@ type GUISelectProps<T extends string> = Readonly<{
 	value: T;
 	options: readonly GUISelectOption<T>[];
 	onChange: (next: T) => void;
+	stickyOptionValue?: T;
 	valueKeys?: string | readonly string[];
 }>;
 
@@ -418,10 +419,17 @@ function GUISelect<T extends string>({
 	value,
 	options,
 	onChange,
+	stickyOptionValue,
 	valueKeys,
 }: GUISelectProps<T>) {
 	useGUIValueKeys(valueKeys);
 	const selectedOptionLabel = options.find((option) => option.value === value)?.label;
+	const stickyOption = stickyOptionValue
+		? options.find((option) => option.value === stickyOptionValue)
+		: undefined;
+	const listOptions = stickyOption
+		? options.filter((option) => option.value !== stickyOption.value)
+		: options;
 	const useDropdown = options.length > GUI_SELECT_SEGMENTED_MAX_OPTIONS;
 	return (
 		<div className="space-y-1.5">
@@ -441,9 +449,17 @@ function GUISelect<T extends string>({
 						>
 							<SelectValue>{selectedOptionLabel ?? "Select option"}</SelectValue>
 						</SelectTrigger>
-						<SelectContent>
+						<SelectContent showScrollButtons={false}>
+							{stickyOption ? (
+								<SelectItem
+									value={stickyOption.value}
+									className="sticky top-0 z-10 border-b border-border bg-popover"
+								>
+									{stickyOption.label}
+								</SelectItem>
+							) : null}
 							<SelectGroup>
-								{options.map((option) => (
+								{listOptions.map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}
 									</SelectItem>
