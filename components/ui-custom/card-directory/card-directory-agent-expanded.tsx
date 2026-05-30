@@ -128,9 +128,11 @@ export function CardDirectoryAgentExpanded({
 			</div>
 
 			{showFooter ? (
-				<>
+				// Full-bleed footer: cancel the shell's px-4 so the divider + footer span the
+				// card edges, then re-inset the footer content with px-4.
+				<div className="-mx-4 flex flex-col gap-3">
 					<Separator />
-					<CardDirectoryFooter className="justify-between">
+					<CardDirectoryFooter className="justify-between px-4">
 						<div className="flex items-center gap-6">
 							{showStats ? (
 								stats.map((stat) => (
@@ -173,7 +175,7 @@ export function CardDirectoryAgentExpanded({
 							</AvatarGroup>
 						) : null}
 					</CardDirectoryFooter>
-				</>
+				</div>
 			) : null}
 		</CardDirectory>
 	);
