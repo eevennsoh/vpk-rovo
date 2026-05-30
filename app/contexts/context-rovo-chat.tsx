@@ -720,6 +720,7 @@ interface RovoChatContextType {
 	) => StudioSessionAgentEntry | null;
 	commitSessionAgentPublishReady: (profileId: string) => StudioSessionAgentEntry | null;
 	publishSessionAgent: (profileId: string) => StudioSessionAgentEntry | null;
+	removeSessionAgent: (profileId: string) => void;
 	resetAgentToRovo: () => void;
 	chatSurface: ChatSurface | null;
 	openChat: (surface: ChatSurface) => void;
@@ -2937,6 +2938,25 @@ export function RovoChatProvider({
 		resetChat();
 	}, [resetChat, selectedAgentId]);
 
+	const removeSessionAgent = useCallback((profileId: string) => {
+		const current = sessionAgentEntriesRef.current;
+		if (!current.some((entry) => entry.profile.id === profileId)) {
+			return;
+		}
+
+		const nextEntries = current.filter((entry) => entry.profile.id !== profileId);
+		sessionAgentEntriesRef.current = nextEntries;
+		setSessionAgentEntries(nextEntries);
+
+		// Deleting the agent that is currently driving the chat would otherwise
+		// leave the surface pointed at a profile that no longer exists, so fall
+		// back to the default Rovo agent (which also clears the thread).
+		if (selectedAgentId === profileId) {
+			setSelectedAgentId(ROVO_AGENT_ID);
+			resetChat();
+		}
+	}, [resetChat, selectedAgentId]);
+
 	const replaceMessages = useCallback(
 		(messages: ReadonlyArray<RovoUIMessage>) => {
 			isCancellingRef.current = false;
@@ -2979,6 +2999,7 @@ export function RovoChatProvider({
 			updateSessionAgentDraft,
 			commitSessionAgentPublishReady,
 			publishSessionAgent,
+			removeSessionAgent,
 			resetAgentToRovo,
 			chatSurface,
 			openChat,
@@ -3040,6 +3061,7 @@ export function RovoChatProvider({
 			updateSessionAgentDraft,
 			commitSessionAgentPublishReady,
 			publishSessionAgent,
+			removeSessionAgent,
 			resetAgentToRovo,
 			chatSurface,
 			openChat,
@@ -3117,6 +3139,7 @@ export function useRovoSelectedAgent() {
 		updateSessionAgentDraft,
 		commitSessionAgentPublishReady,
 		publishSessionAgent,
+		removeSessionAgent,
 		resetAgentToRovo,
 	} = useRovoChat();
 
@@ -3132,6 +3155,7 @@ export function useRovoSelectedAgent() {
 		updateSessionAgentDraft,
 		commitSessionAgentPublishReady,
 		publishSessionAgent,
+		removeSessionAgent,
 		resetAgentToRovo,
 	};
 }

@@ -6,11 +6,22 @@ import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import AppsIcon from "@atlaskit/icon/core/apps";
 import AutomationIcon from "@atlaskit/icon/core/automation";
 import ChartTrendUpIcon from "@atlaskit/icon/core/chart-trend-up";
+import DeleteIcon from "@atlaskit/icon/core/delete";
+import EditIcon from "@atlaskit/icon/core/edit";
 import MenuIcon from "@atlaskit/icon/core/menu";
 import PersonAvatarIcon from "@atlaskit/icon/core/person-avatar";
+import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
 import { token } from "@/lib/tokens";
+import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Sidebar, SidebarContent } from "@/components/ui/sidebar";
 import { SidebarNavItem } from "@/components/ui-custom/sidebar-nav-item";
 import { MorphingRovo } from "@/components/ui-custom/morphing-rovo";
@@ -28,6 +39,7 @@ interface RovoAppSidebarProps {
 	onCancelThreadRun: (threadId: string) => Promise<void>;
 	hoverOpen?: boolean;
 	isResizing?: boolean;
+	onDeleteAgent?: (agentId: string) => void;
 	onDeleteThread: (threadId: string) => Promise<void>;
 	onNewChat: () => void;
 	onSelectAgent?: (agentId: string) => void;
@@ -149,6 +161,49 @@ function StudioSidebarAgentCreationIcon() {
 	return <MorphingRovo.Shape size={12} duration={0.8} blur={1.25} />;
 }
 
+// Hover-reveal "..." menu mirroring `/rovo` chat history's `ChatHistoryThreadRow`:
+// the trigger stays at `opacity-0` and fades in on row hover/focus or while the
+// menu is open. It lives in `SidebarNavItem`'s `actions` slot — a sibling of the
+// row button inside the shared `group/sidebar-nav-item` group, so hovering the
+// row reveals it without forking the row markup.
+function RecentAgentRowActions({
+	label,
+	onDelete,
+	onEdit,
+}: Readonly<{
+	label: string;
+	onDelete: () => void;
+	onEdit: () => void;
+}>) {
+	return (
+		<DropdownMenu modal={false}>
+			<DropdownMenuTrigger
+				render={
+					<Button
+						aria-label={`More actions for ${label}`}
+						className="size-6 opacity-0 transition-opacity duration-normal ease-out group-hover/sidebar-nav-item:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+						size="icon"
+						variant="ghost"
+						onClick={(event) => event.stopPropagation()}
+					/>
+				}
+			>
+				<ShowMoreHorizontalIcon label="" size="small" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" positionerClassName="z-[760]">
+				<DropdownMenuGroup>
+					<DropdownMenuItem elemBefore={<EditIcon label="" />} onSelect={onEdit}>
+						Edit agent
+					</DropdownMenuItem>
+					<DropdownMenuItem variant="destructive" elemBefore={<DeleteIcon label="" />} onSelect={onDelete}>
+						Delete agent
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
 function getRecentAgentItemSelected(
 	item: StudioSidebarRecentAgentItem,
 	activeThreadId: string | null,
@@ -164,6 +219,8 @@ function getRecentAgentItemSelected(
 function StudioSidebarNavigation({
 	activeThreadId,
 	agentCreationThreads = [],
+	onDeleteAgent,
+	onDeleteAgentCreationThread,
 	onNewChat,
 	onSelectAgent,
 	onSelectAgentCreationThread,
@@ -173,6 +230,8 @@ function StudioSidebarNavigation({
 }: Readonly<{
 	activeThreadId: string | null;
 	agentCreationThreads?: ReadonlyArray<StudioAgentCreationThread>;
+	onDeleteAgent?: (agentId: string) => void;
+	onDeleteAgentCreationThread?: (threadId: string) => void;
 	onNewChat?: () => void;
 	onSelectAgent?: (agentId: string) => void;
 	onSelectAgentCreationThread?: (threadId: string) => void;
@@ -261,6 +320,25 @@ function StudioSidebarNavigation({
 																	onSelectAgent?.(recentAgent.id);
 																}
 															}}
+															actions={
+																<RecentAgentRowActions
+																	label={recentAgent.label}
+																	onEdit={() => {
+																		if (recentAgent.kind === "wip") {
+																			onSelectAgentCreationThread?.(recentAgent.id);
+																		} else {
+																			onSelectAgent?.(recentAgent.id);
+																		}
+																	}}
+																	onDelete={() => {
+																		if (recentAgent.kind === "wip") {
+																			onDeleteAgentCreationThread?.(recentAgent.id);
+																		} else {
+																			onDeleteAgent?.(recentAgent.id);
+																		}
+																	}}
+																/>
+															}
 															className="min-h-7"
 														/>
 													);
@@ -293,6 +371,8 @@ export function RovoAppSidebar({
 	hoverOpen = false,
 	isResizing,
 	selectedAgentId,
+	onDeleteAgent,
+	onDeleteThread,
 	onNewChat,
 	onSelectThread,
 	onSelectAgent,
@@ -325,6 +405,10 @@ export function RovoAppSidebar({
 				<StudioSidebarNavigation
 					activeThreadId={activeThreadId}
 					agentCreationThreads={agentCreationThreads}
+					onDeleteAgent={onDeleteAgent}
+					onDeleteAgentCreationThread={(threadId) => {
+						void onDeleteThread(threadId);
+					}}
 					onNewChat={onNewChat}
 					onSelectAgent={onSelectAgent}
 					onSelectAgentCreationThread={(threadId) => {
