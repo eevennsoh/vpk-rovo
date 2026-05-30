@@ -144,10 +144,6 @@ export function getLineColor(): string {
 	return "#6C6F77";
 }
 
-export function getMaskColor(): string {
-	return resolveCssVar("--ds-surface", "#FFFFFF");
-}
-
 /* -------------------------------------------------------------------------- */
 /* Pure animation engine                                                      */
 /* -------------------------------------------------------------------------- */

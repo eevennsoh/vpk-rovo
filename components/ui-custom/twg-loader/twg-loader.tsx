@@ -26,7 +26,6 @@ import {
 	type FrameState,
 	getDotColors,
 	getLineColor,
-	getMaskColor,
 	HIDDEN_DASH,
 	LINE_WIDTH,
 	type TWGLoaderSize,
@@ -87,10 +86,11 @@ export function TWGLoader({
 	const sizePx = SIZE_PX[size];
 	const reducedMotion = usePrefersReducedMotion();
 
-	// Tokens flip with the active theme; resolve once per render.
+	// Dot ring + line colors flip with the active theme; resolve once per render.
+	// The mask color is driven by CSS (`currentColor`) instead of JS so it tracks
+	// the surface the loader actually sits on — see the wrapper's `text-surface`.
 	const dotColors = useMemo(() => getDotColors(), []);
 	const lineColor = useMemo(() => getLineColor(), []);
-	const maskColor = useMemo(() => getMaskColor(), []);
 
 	const svgRef = useRef<SVGSVGElement>(null);
 
@@ -142,7 +142,7 @@ export function TWGLoader({
 			role="status"
 			aria-label={label}
 			data-testid={testId}
-			className={cn("inline-flex leading-[0]", className)}
+			className={cn("inline-flex leading-[0] text-surface", className)}
 		>
 			<svg
 				ref={svgRef}
@@ -178,7 +178,7 @@ export function TWGLoader({
 							cx={VIEWBOX_CENTER}
 							cy={VIEWBOX_CENTER}
 							r={DOT_RADIUS}
-							fill={maskColor}
+							fill="currentColor"
 							stroke="none"
 						/>
 					))}

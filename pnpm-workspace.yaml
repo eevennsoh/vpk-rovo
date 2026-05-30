@@ -44,7 +44,7 @@ overrides:
   hono: ^4.12.4
   postcss: ^8.5.13
   qs: 6.15.2
-  ws: ^8.20.1
+  ws: ^8.21.0
 allowBuilds:
   '@google/genai': false
   agent-browser: true
