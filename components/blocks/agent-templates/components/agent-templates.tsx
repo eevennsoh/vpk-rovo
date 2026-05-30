@@ -1,7 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import { type MouseEvent, type ReactElement, type ReactNode, useMemo, useRef, useState } from "react";
+import { type MouseEvent, type ReactElement, useMemo, useRef, useState } from "react";
 import AiGenerativeTextSummaryIcon from "@atlaskit/icon/core/ai-generative-text-summary";
 import CheckboxCheckedIcon from "@atlaskit/icon/core/checkbox-checked";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
@@ -20,10 +19,30 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
+import {
+	CardDirectoryAgentExpanded,
+	type CardDirectoryTemplateSkill,
+} from "@/components/ui-custom/card-directory";
+import { type TwgToolSource } from "@/components/ui-custom/twg-tool";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
-export type AgentTemplatesAgent = AgentBrowserAgent;
+/**
+ * Carousel agents extend the shared `AgentBrowserAgent` identity with the richer
+ * directory-card detail (`CardDirectoryAgentExpanded`) renders. Every detail field
+ * is optional so plain `AgentBrowserAgent` data still satisfies the type — the card
+ * derives a publisher from `byline` and falls back gracefully when detail is absent.
+ */
+export interface AgentTemplatesAgent extends AgentBrowserAgent {
+	publisher?: string;
+	verified?: boolean;
+	capabilities?: readonly string[];
+	sources?: ReadonlyArray<TwgToolSource>;
+	skills?: ReadonlyArray<CardDirectoryTemplateSkill>;
+	stats?: ReadonlyArray<{ value: string; label: string }>;
+	collaborators?: ReadonlyArray<{ src: string; name: string }>;
+	collaboratorOverflow?: number;
+}
 export type AgentTemplatesSidebarGroup = AgentBrowserSidebarGroup;
 
 export interface AgentTemplatesDialogProps {
@@ -58,14 +77,12 @@ const AGENT_TEMPLATES_CATEGORIES: readonly AgentTemplatesCategory[] = [
 	{ id: "learn", label: "Learn", icon: <BookOpenIcon label="" size="small" color="currentColor" />, iconClassName: "text-icon-accent-purple" },
 ] as const;
 
-const PLACEHOLDER_FEATURES: readonly string[] = [
-	"Feature description",
-	"Feature description",
-	"Feature description",
-	"Feature description",
-	"Feature description",
-	"Feature description",
-];
+const EMPTY_CAPABILITIES: readonly string[] = [];
+
+/** Pull the publisher from a byline like "Customer feedback insights by Atlassian" → "Atlassian". */
+function deriveAgentPublisher(byline: string): string {
+	return byline.match(/\bby\s+(.+)$/iu)?.[1].trim() ?? byline;
+}
 
 export function AgentTemplatesDialog({
 	agents,
@@ -146,7 +163,7 @@ export function AgentTemplatesDialog({
 						ref={scrollRef}
 					>
 						{templateAgents.map((agent) => (
-							<AgentTemplatePlaceholderCard
+							<AgentTemplateCard
 								agent={agent}
 								key={agent.id}
 								onSelectAgent={onSelectAgent}
@@ -199,112 +216,30 @@ function AgentTemplatesCategoryButton({
 	);
 }
 
-function AgentTemplatePlaceholderCard({
+function AgentTemplateCard({
 	agent,
 	onSelectAgent,
 }: Readonly<{
 	agent: AgentTemplatesAgent;
 	onSelectAgent?: (agent: AgentTemplatesAgent) => void;
 }>) {
-	const handleSelect = onSelectAgent ? () => onSelectAgent(agent) : undefined;
-	const cardContent = (
-		<>
-			<div className="relative h-12 overflow-hidden rounded-t-md bg-bg-selected-bold">
-				<Image
-					alt=""
-					aria-hidden
-					className="absolute top-1/2 right-8 h-28 w-24 -translate-y-1/2 object-contain opacity-20"
-					height={112}
-					src={agent.avatarSrc}
-					width={96}
-				/>
-			</div>
-			<div className="relative flex min-h-0 flex-1 flex-col gap-5 px-4 pt-7 pb-4">
-				<Image
-					alt=""
-					aria-hidden
-					className="absolute -top-6 left-4 size-12 object-contain"
-					height={48}
-					src={agent.avatarSrc}
-					width={48}
-				/>
-				<div className="flex flex-col gap-2">
-					<div>
-						<h3 className="truncate text-text" style={{ font: token("font.heading.small") }}>
-							{agent.name}
-						</h3>
-						<p className="mt-1 truncate text-sm leading-5 text-text-subtle">
-							{agent.byline}
-						</p>
-					</div>
-					<p className="line-clamp-2 min-h-10 text-sm leading-5 text-text">
-						{agent.description ?? "Take the busywork out of project management with automatic content updates."}
-					</p>
-				</div>
-				<PlaceholderSection label="Works with">
-					<div className="flex items-center gap-1">
-						{["bg-bg-warning", "bg-bg-selected-bold", "bg-bg-success", "bg-bg-discovery", "bg-bg-information", "bg-bg-neutral"].map((className, index) => (
-							<span
-								aria-hidden
-								className={cn("size-6 rounded-md border border-border", className)}
-								key={`${agent.id}-source-${index}`}
-							/>
-						))}
-					</div>
-				</PlaceholderSection>
-				<PlaceholderSection label="Skills">
-					<div className="flex gap-2">
-						<span className="h-5 w-[150px] rounded bg-bg-neutral-subtle" />
-						<span className="h-5 w-[150px] rounded bg-bg-neutral-subtle" />
-					</div>
-				</PlaceholderSection>
-				<div className="mt-auto rounded-xl border border-border bg-bg-input p-3">
-					<ul className="flex max-h-40 flex-col gap-2 overflow-hidden">
-						{PLACEHOLDER_FEATURES.map((feature, index) => (
-							<li className="flex items-center gap-3" key={`${agent.id}-feature-${index}`}>
-								<span className="grid size-5 shrink-0 place-items-center rounded-md bg-bg-neutral-subtle text-icon-subtlest">
-									<MagicWandIcon label="" size="small" />
-								</span>
-								<span className="truncate text-sm leading-5 text-text-subtle">{feature}</span>
-							</li>
-						))}
-					</ul>
-				</div>
-			</div>
-		</>
-	);
-
-	if (handleSelect) {
-		return (
-			<button
-				aria-label={`Select ${agent.name}`}
-				className="flex h-[518px] w-[360px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-lg border border-border bg-surface text-left outline-none transition-colors hover:bg-bg-neutral-subtle-hovered focus-visible:border-border-selected focus-visible:ring-3 focus-visible:ring-ring/50"
-				onClick={handleSelect}
-				type="button"
-			>
-				{cardContent}
-			</button>
-		);
-	}
-
+	// Fixed 360px width keeps cards in step with AGENT_TEMPLATES_CARD_SCROLL_OFFSET (360 + 16 gap);
+	// `h-full` fills the carousel row, `shrink-0` stops the flex track from squeezing them.
 	return (
-		<article className="flex h-[518px] w-[360px] shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-			{cardContent}
-		</article>
-	);
-}
-
-function PlaceholderSection({
-	label,
-	children,
-}: Readonly<{
-	label: string;
-	children: ReactNode;
-}>) {
-	return (
-		<div className="flex flex-col gap-2">
-			<span className="text-xs font-semibold leading-4 text-text-subtlest">{label}</span>
-			{children}
-		</div>
+		<CardDirectoryAgentExpanded
+			avatarSrc={agent.avatarSrc}
+			capabilities={agent.capabilities ?? EMPTY_CAPABILITIES}
+			className="h-full w-90 shrink-0"
+			collaboratorOverflow={agent.collaboratorOverflow}
+			collaborators={agent.collaborators}
+			description={agent.description}
+			name={agent.name}
+			onSelect={onSelectAgent ? () => onSelectAgent(agent) : undefined}
+			publisher={agent.publisher ?? deriveAgentPublisher(agent.byline)}
+			skills={agent.skills}
+			sources={agent.sources}
+			stats={agent.stats}
+			verified={agent.verified}
+		/>
 	);
 }
