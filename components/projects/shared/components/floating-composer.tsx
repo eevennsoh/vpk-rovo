@@ -73,28 +73,46 @@ export function FloatingComposer({
 
 		measure();
 
-		// Re-measure as the user types. We deliberately do NOT observe the textarea's height:
-		// switching to the stacked layout widens the textarea (it gains the button row's width),
-		// which can un-wrap boundary content and trigger an infinite layout/measure loop.
-		textarea.addEventListener("input", measure);
+		// Observe the textarea itself so we catch *programmatic* value changes — gallery
+		// prefill, voice transcript streaming, paste, and clear all update the controlled
+		// React value without firing a DOM `input` event, so a typing-only listener misses
+		// them and the layout never stacks.
+		//
+		// The hazard is a feedback loop: stacking widens the textarea (it gains the button
+		// row's width), which can un-wrap borderline content and flip the layout straight
+		// back. We break the loop by ignoring callbacks caused by our own width change and
+		// only re-measuring when the content height changes at a stable width.
+		let lastTextareaWidth = textarea.getBoundingClientRect().width;
+		const textareaObserver = new ResizeObserver((entries) => {
+			const width = entries[0]?.contentRect.width ?? lastTextareaWidth;
+			if (width !== lastTextareaWidth) {
+				lastTextareaWidth = width;
+				return;
+			}
+			measure();
+		});
+		textareaObserver.observe(textarea);
 
-		// React to real responsive width changes only. The outer container's width is set by its
-		// parent and does not change when the internal layout reflows, so guarding on width keeps
-		// our own height growth from feeding back into a measurement.
+		// React to real responsive width changes of the whole composer. The outer container's
+		// width is set by its parent and does not change when the internal layout reflows, so
+		// guarding on width keeps our own height growth from feeding back into a measurement.
 		let lastWidth = container.getBoundingClientRect().width;
-		const resizeObserver = new ResizeObserver((entries) => {
+		const containerObserver = new ResizeObserver((entries) => {
 			const width = entries[0]?.contentRect.width ?? lastWidth;
 			if (width === lastWidth) {
 				return;
 			}
 			lastWidth = width;
+			// The textarea width tracks the container here, so resync the baseline to keep the
+			// textarea observer from treating this genuine reflow as a content change next tick.
+			lastTextareaWidth = textarea.getBoundingClientRect().width;
 			measure();
 		});
-		resizeObserver.observe(container);
+		containerObserver.observe(container);
 
 		return () => {
-			textarea.removeEventListener("input", measure);
-			resizeObserver.disconnect();
+			textareaObserver.disconnect();
+			containerObserver.disconnect();
 		};
 	}, []);
 

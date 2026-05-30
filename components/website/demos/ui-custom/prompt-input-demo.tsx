@@ -211,6 +211,7 @@ export function PromptInputDemoChatComposer() {
 export function PromptInputDemoFloatingBar() {
 	const [prompt, setPrompt] = useState("");
 	const [realtimeVoiceActive, setRealtimeVoiceActive] = useState(false);
+	const [clickyActive, setClickyActive] = useState(false);
 
 	const handleToggleRealtimeVoice = useCallback(() => {
 		setRealtimeVoiceActive((prev) => !prev);
@@ -227,6 +228,23 @@ export function PromptInputDemoFloatingBar() {
 			<FloatingComposer
 				allowOverflow
 				onSubmit={() => setPrompt("")}
+				addButton={
+					<div className="flex items-center gap-1">
+						<PromptInputButton size="icon-sm" variant="ghost" aria-label="Add">
+							<AddIcon label="" />
+						</PromptInputButton>
+						<PromptInputButton
+							size="icon-sm"
+							variant={clickyActive ? "default" : "ghost"}
+							onClick={() => setClickyActive((prev) => !prev)}
+							aria-label="AI cursor"
+							aria-pressed={clickyActive}
+							tooltip={{ content: "AI Cursor ⌘⇧K", delay: 0 }}
+						>
+							<CursorIcon label="" />
+						</PromptInputButton>
+					</div>
+				}
 				actions={
 					<RovoComposerActionButton
 						canSubmit={canSubmit}
