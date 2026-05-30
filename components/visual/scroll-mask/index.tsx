@@ -38,45 +38,39 @@ export function ScrollMask({
 		<div
 			data-slot="scroll-mask"
 			className={cn(
-				"overflow-hidden rounded-lg border border-border bg-surface text-text",
+				"flex max-h-80 flex-col overflow-hidden rounded-lg border border-border bg-surface text-text",
 				className,
 			)}
 			{...props}
 		>
+			{header ? (
+				<div
+					data-slot="scroll-mask-header"
+					className={cn("shrink-0 bg-surface px-4 py-3", headerClassName)}
+				>
+					{header}
+				</div>
+			) : null}
 			<div
 				data-slot="scroll-mask-viewport"
 				className={cn(
-					"max-h-80 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]",
+					"min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]",
 					viewportClassName,
 				)}
 				style={{ ...maskStyle, ...viewportStyle }}
 			>
-				{header ? (
-					<div
-						data-slot="scroll-mask-header"
-						className={cn(
-							"sticky top-0 z-10 border-b border-border bg-surface px-4 py-3",
-							headerClassName,
-						)}
-					>
-						{header}
-					</div>
-				) : null}
 				<div data-slot="scroll-mask-content" className="py-1">
 					{children}
 				</div>
-				{footer ? (
-					<div
-						data-slot="scroll-mask-footer"
-						className={cn(
-							"sticky bottom-0 z-10 border-t border-border bg-surface px-4 py-3",
-							footerClassName,
-						)}
-					>
-						{footer}
-					</div>
-				) : null}
 			</div>
+			{footer ? (
+				<div
+					data-slot="scroll-mask-footer"
+					className={cn("shrink-0 bg-surface px-4 py-3", footerClassName)}
+				>
+					{footer}
+				</div>
+			) : null}
 		</div>
 	);
 }
