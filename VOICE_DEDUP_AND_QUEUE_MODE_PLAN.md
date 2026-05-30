@@ -18,6 +18,8 @@ Decisions captured from interview:
 
 Best-practice sources: [OpenAI VAD guide](https://platform.openai.com/docs/guides/realtime-vad), [Realtime conversations (manual create_response)](https://developers.openai.com/api/docs/guides/realtime-conversations), [semantic_vad burst bug](https://community.openai.com/t/bug-report-inconsistent-speech-started-speech-ended-behavior-with-semantic-vad-realtime-api/1363428), [AssemblyAI endpointing](https://www.assemblyai.com/blog/turn-detection-endpointing-voice-agent), [Deepgram endpointing](https://developers.deepgram.com/docs/understanding-end-of-speech-detection).
 
+Reference lineage: this plan was created with reference to [milind-soni/tiptour-macos](https://github.com/milind-soni/tiptour-macos) and [openai/realtime-voice-component](https://github.com/openai/realtime-voice-component/). The original implementation direction is based on [farzaa/clicky](https://github.com/farzaa/clicky).
+
 ---
 
 ## Workstream A — Voice: one message, one turn (studio-scoped)
@@ -44,7 +46,7 @@ The relay (`backend/lib/openai-realtime.js`) is shared, so **all new behavior is
 
 ### A3. Relay: barge-in under manual mode
 - With `create_response:false`, OpenAI no longer auto-interrupts via `interrupt_response`, so the relay must drive it.
-- In the `input_audio_buffer.speech_started` handler: when `_manualTurnTaking && this._activeResponseId`, emit `response.cancel` (constant `OPENAI_EVENT.RESPONSE_CANCEL` already exists, currently unused) to stop the model mid-reply. Clear any pending coalesce buffer/timer for the prior turn. Keep forwarding `speech_started` to the client. When `_manualTurnTaking === false`, leave the forward-only behavior (rovo unchanged).
+- In the `input_audio_buffer.speech_started` handler: when `_manualTurnTaking && this._activeResponseId`, emit `response.cancel` (constant `OPENAI_EVENT.RESPONSE_CANCEL` already exists, currently unused) to stop the model mid-reply. Clear any pending coalesce buffer/timer for the prior turn **and clear `_pendingResponseCreate`** so a deferred stale response is not fired after the cancel `response.done`. Keep forwarding `speech_started` to the client. When `_manualTurnTaking === false`, leave the forward-only behavior (rovo unchanged).
 - Client-side `stopPlayback()` flush on `speech_started` already exists in both hooks — keep it (harmless, shared).
 
 ### A4. Client: kill the browser-SR race + don't double-drive responses (studio only)
@@ -69,21 +71,22 @@ The relay (`backend/lib/openai-realtime.js`) is shared, so **all new behavior is
 ### B2. Mode control in the chat header "..." menu
 - File: `components/projects/studio/components/rovo-app-header.tsx` (studio copy only — it's a separate file from rovo's).
 - Add `sendMode` + `onSendModeChange` to `RovoAppHeaderProps`; thread them from the shell's `<RovoAppHeader … />` render (`rovo-app-shell.tsx`), reading `chat.sendMode`/`chat.setSendMode`.
-- Inside the existing `DropdownMenuContent`, after the `CONTROL_PLANE_HEADER_SURFACES` group, add a `DropdownMenuSeparator` + `DropdownMenuLabel` ("Send mode") + a `DropdownMenuRadioGroup value={sendMode} onValueChange={onSendModeChange}` with two `DropdownMenuRadioItem`s: **Queue** (`value="queue"`) and **Send immediately** (`value="immediate"`), each with a short `description`. Mirror `components/blocks/chatgpt/components/model-selector.tsx`. Import the radio primitives from `@/components/ui/dropdown-menu`.
+- Inside the existing `DropdownMenuContent`, after the `CONTROL_PLANE_HEADER_SURFACES` group, add a `DropdownMenuSeparator` + `DropdownMenuLabel` ("Send mode") + a `DropdownMenuRadioGroup value={sendMode} onValueChange={onSendModeChange}` with two `DropdownMenuRadioItem`s: **Queue** (`value="queue"`) and **Send immediately** (`value="immediate"`). For descriptions, mirror `components/blocks/chatgpt/components/model-selector.tsx`: nest `Item`/`ItemContent`/`ItemTitle`/`ItemDescription` inside the radio item instead of passing a `description` prop to `DropdownMenuRadioItem`. Import the radio primitives from `@/components/ui/dropdown-menu`.
 
 ### B3. Honor the mode at the submit decision
 - File: `components/projects/studio/hooks/use-rovo-app.ts`, in `submitPrompt` (the `shouldEnqueue` gate) and the parallel block in `submitDelegation`.
 - New logic when `sendMode === "immediate"`:
   - If the thread is **idle** → `dispatchPromptNow(...)` as today (no change).
-  - If the thread is **busy** (or has queued items) → **interrupt + dispatch now**: `await interruptActiveTurn({ source: "send-immediately" })` then `dispatchPromptNow(...)`. Do **not** enqueue, and **do not clear** the existing queue (older queued items remain and drain after, via the normal `kickQueue`/`processQueue` on turn end). This implements "jump ahead now."
+  - If the thread is **busy** (or has queued items) → **interrupt + dispatch now**: set the transient immediate-dispatch guard, then `await interruptActiveTurn({ source: "user-stop" })` (or first extend `RovoMessageInterruptionSource` and interruption-label tests to add a new `"send-immediately"` source), then `dispatchPromptNow(...)`. Do **not** enqueue, and **do not clear** the existing queue (older queued items remain and drain after, via the normal `kickQueue`/`processQueue` on turn end). This implements "jump ahead now."
   - Reuse existing primitives: `interruptActiveTurn` (already used for voice barge-in) + `dispatchPromptNow` (already used by `processQueue`).
 - When `sendMode === "queue"` → unchanged (current `shouldEnqueue` behavior).
-- Optimistic-bubble logic in the shell (`shouldShowOptimisticPrompt = !chat.shouldQueueNextSubmission && …`) should also treat immediate-mode submits as non-queued so the user bubble shows immediately; verify/adjust.
+- Optimistic-bubble logic in the shell (`shouldShowOptimisticPrompt = !chat.shouldQueueNextSubmission && …`) should also treat immediate-mode submits as non-queued so the user bubble shows immediately; verify/adjust the dependency list too.
+- Confirm the intended scope for typed submissions while realtime voice is active: today `handleComposerSubmit` bypasses `chat.submitPrompt` and sends typed text through `realtimeVoice.sendTextInput(...)`. If **all typed composer input** should respect Queue/Immediate, add mode handling to that realtime branch; otherwise explicitly document that the toggle applies only to non-realtime typed submits.
 
 ### B4. Per-item "send now" arrow in the queue card
 - File: `components/projects/studio/components/rovo-app-composer.tsx`, inside the existing `<QueueItemActions>` (next to the remove `DeleteIcon` button). Add a `Button` with an arrow/send icon (e.g. `@atlaskit/icon/core/arrow-up` or the existing send glyph), `aria-label="Send now"`, revealed on hover like the remove button.
 - New composer prop `onSendQueuedPromptNow?: (id: string) => void` (beside `onRemoveQueuedPrompt`).
-- Implement in `useRovoApp` beside `removeQueuedPrompt`: look up the queued action by id (handle both `kind: "prompt"` → `dispatchPromptNow` and `kind: "delegation"` → `dispatchDelegationNow`), `removeQueuedAction(threadId, id)`, and if the thread is busy `await interruptActiveTurn(...)` first, then dispatch that item now. Remaining queued items stay and drain afterward.
+- Implement in `useRovoApp` beside `removeQueuedPrompt`: look up the queued action by id (handle both `kind: "prompt"` → `dispatchPromptNow` and `kind: "delegation"` → `dispatchDelegationNow`), set the transient immediate-dispatch guard, remove that item from the queue, and if the thread is busy `await interruptActiveTurn({ source: "user-stop" })` first, then dispatch that item now. If interrupt or dispatch fails, reinsert the action at its original queue position (or at least prepend it) so a failed "send now" does not drop work. Remaining queued items stay and drain afterward.
 
 ### B Files
 - `components/projects/studio/hooks/use-rovo-app.ts` (B1, B3, B4)
@@ -95,11 +98,13 @@ The relay (`backend/lib/openai-realtime.js`) is shared, so **all new behavior is
 ---
 
 ## Edge cases & risks
-- **Queue-processor collision (B3/B4):** if `processQueue` is mid-dispatch (`queueProcessorRunningRef`) when an immediate interrupt fires, the interrupted in-flight item may re-enqueue (it already `prepend`s on error). Add a transient "immediate dispatch in progress" guard so the processor doesn't re-dispatch ahead of the user's immediate message; let the older queue resume after the immediate turn completes.
+- **Queue-processor collision (B3/B4):** if `processQueue` is mid-dispatch (`queueProcessorRunningRef`) when an immediate interrupt fires, the interrupted in-flight item may re-enqueue (it already `prepend`s on error). Add a transient "immediate dispatch in progress" guard that is set before interrupt/dispatch begins and checked by `processQueue` before it peeks/shifts the next queued action, so the processor cannot shift an older item ahead of the user's immediate message. Clear the guard in `finally`, then let the older queue resume after the immediate turn completes.
 - **Single response source (A2/A4):** the relay coalesce-timer must be the *only* thing that calls `response.create` in manual mode; the client must not also nudge one, or the AI replies twice.
 - **Coalesce latency:** 800ms adds a short pause before the AI answers voice. Tunable constant; revisit after testing.
-- **Manual barge-in (A3):** `response.cancel` + client `stopPlayback` must both fire so audio stops promptly; verify no orphaned `_activeResponseId` (cleared on `response.done`/cancel) blocks the next turn.
+- **Manual barge-in (A3):** `response.cancel` + client `stopPlayback` must both fire so audio stops promptly; verify no orphaned `_activeResponseId` (cleared on `response.done`/cancel) blocks the next turn, and verify `_pendingResponseCreate` is cleared so cancel completion does not trigger a stale response.
 - **Rovo isolation:** verify rovo voice + rovo queue behavior is byte-identical before/after (it sends no `session_update`; its header/composer/hook files are untouched).
+- **Timer cleanup:** clear relay manual-turn coalesce and hard-cap timers on flush, manual barge-in, session close, upstream close, and session refresh so stale transcript buffers cannot leak across lifecycle boundaries.
+- **Interruption source typing:** if a distinct `"send-immediately"` interruption source is desired, update `RovoMessageInterruptionSource`, interruption labeling, and related tests; otherwise use the existing `"user-stop"` source consistently.
 
 ## Out of scope
 - Applying the queue/immediate mode to **voice** (explicitly text-only).
@@ -107,7 +112,7 @@ The relay (`backend/lib/openai-realtime.js`) is shared, so **all new behavior is
 - Changing the relay's shared default turn-detection.
 
 ## Verification
-- **Unit:** `node --test backend/lib/openai-realtime.test.js` — new coalescing/manual-response + barge-in cases pass; default (rovo) path unchanged. `pnpm run typecheck` + `pnpm exec eslint <changed files>`.
+- **Unit:** `node --test backend/lib/openai-realtime.test.js` — new coalescing/manual-response + barge-in cases pass; default (rovo) path unchanged; include the stale `_pendingResponseCreate` cancel case. Add a focused queue test/helper coverage for immediate-mode decisioning and the per-item send-now failure path if that logic is extracted. `pnpm run typecheck` + `pnpm exec eslint <changed files>`.
 - **Manual, `/studio` (restart backend — no watch mode):**
   1. Voice: speak a sentence with a mid-pause → exactly **one** user bubble and **one** AI reply. Speak again rapidly to barge in → previous reply stops, new turn starts cleanly.
   2. Header "..." → toggle **Send immediately**; while the AI is generating, submit text → it interrupts and answers the new text immediately. Pre-queue 2 items in Queue mode, switch to Immediate, submit a new one → new one jumps ahead; the 2 older items still drain afterward in order.

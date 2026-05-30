@@ -41,6 +41,12 @@ test("interaction hook derives interactivity from onSelect and guards Enter/Spac
 	assert.match(INTERACTION_SOURCE, /event\.preventDefault\(\)/u);
 });
 
+test("interaction hook uses an animatable transparent border color for Motion", () => {
+	assert.match(INTERACTION_SOURCE, /const TRANSPARENT_BORDER_COLOR = "rgba\(0, 0, 0, 0\)"/u);
+	assert.match(INTERACTION_SOURCE, /borderColor: TRANSPARENT_BORDER_COLOR/u);
+	assert.doesNotMatch(INTERACTION_SOURCE, /borderColor: "transparent"/u);
+});
+
 test("parts carry data-slot attributes for the shared shell pieces", () => {
 	for (const slot of [
 		"card-directory-header",
