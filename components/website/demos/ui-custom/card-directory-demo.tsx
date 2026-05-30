@@ -43,6 +43,16 @@ export default function CardDirectoryDemo() {
 					onSelect={() => {}}
 					publisher="Atlassian"
 					rating={4.6}
+					skills={[
+						{ color: "software", label: "jql-search" },
+						{ color: "teamwork", label: "theme-grouping" },
+						{ color: "product", label: "confluence-retrieval" },
+					]}
+					sources={[
+						{ id: "jira", label: "Jira", provider: "jira" },
+						{ id: "confluence", label: "Confluence", provider: "confluence" },
+						{ id: "google-drive", label: "Google Drive", provider: "google-drive" },
+					]}
 					verified
 				/>
 				<CardDirectoryAgentExpanded
@@ -63,6 +73,14 @@ export default function CardDirectoryDemo() {
 					onSelect={() => {}}
 					publisher="Mei Tan"
 					rating={4.2}
+					skills={[
+						{ color: "software", label: "diff-review" },
+						{ color: "product", label: "security-scan" },
+					]}
+					sources={[
+						{ id: "bitbucket", label: "Bitbucket", provider: "bitbucket" },
+						{ id: "jira", label: "Jira", provider: "jira" },
+					]}
 				/>
 			</DemoSection>
 

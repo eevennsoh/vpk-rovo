@@ -583,7 +583,7 @@ import SearchIcon from "@atlaskit/icon/core/search"
 
 	"card-directory": {
 		description:
-			"A directory listing card with a shared shell (bordered surface, hover elevation, optional keyboard-operable button) and five ready-made variants that swap the leading visual and footer: agent (hexagon avatar + rating/chats), agent (expanded) (cover banner + scrollable \"what it can do\" capabilities list + rating/chats), skill (icon tile + publisher + views), tool (app logo + tool/teammate counts), and template (rich icon + \"Works with\" sources and \"Skills\" tags). Compose your own layout with the CardDirectory parts, or use a variant wrapper. Passing onSelect turns the card into a keyboard-operable button; onMoreActions reveals an overflow button on hover/focus.",
+			"A directory listing card with a shared shell (bordered surface, hover elevation, optional keyboard-operable button) and five ready-made variants that swap the leading visual and footer: agent (hexagon avatar + rating/chats), agent (expanded) (cover banner + \"Works with\" sources, \"Skills\" tags, and a scrollable capabilities list + rating/chats), skill (icon tile + publisher + views), tool (app logo + tool/teammate counts), and template (rich icon + \"Works with\" sources and \"Skills\" tags). Compose your own layout with the CardDirectory parts, or use a variant wrapper. Passing onSelect turns the card into a keyboard-operable button; onMoreActions reveals an overflow button on hover/focus.",
 		usage: `import {
   CardDirectoryAgent,
   CardDirectoryAgentExpanded,
@@ -608,12 +608,20 @@ import { ConfluenceLogo } from "@/components/ui/logo";
   onMoreActions={() => openMenu()}
 />
 
-// Agent (expanded) — cover banner + scrollable capabilities list
+// Agent (expanded) — cover banner + "Works with" + "Skills" + capabilities list
 <CardDirectoryAgentExpanded
   name="Feedback analyzer"
   publisher="Atlassian"
   avatarSrc="/avatar-agent/product-agents/feedback-analyzer.svg"
   description="Surfaces themes and sentiment from raw customer feedback."
+  sources={[
+    { id: "jira", label: "Jira", provider: "jira" },
+    { id: "confluence", label: "Confluence", provider: "confluence" },
+  ]}
+  skills={[
+    { label: "jql-search", color: "software" },
+    { label: "theme-grouping", color: "teamwork" },
+  ]}
   capabilities={[
     "Surfaces recurring themes from raw feedback",
     "Scores sentiment shifts across releases",
