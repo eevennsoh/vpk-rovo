@@ -7,6 +7,7 @@ import test from "node:test";
 import { buildScrollMaskStyle } from "./lib.ts";
 
 const ROOT = process.cwd();
+const SCROLL_MASK_SOURCE = readWorkspaceFile("components/visual/scroll-mask/index.tsx");
 
 function readWorkspaceFile(filePath: string): string {
 	return fs.readFileSync(path.join(ROOT, filePath), "utf8");
@@ -55,4 +56,14 @@ test("Scroll Mask is wired into the Visual catalog route and demo registry", () 
 		readWorkspaceFile("components/website/registry.ts"),
 		/"scroll-mask": dynamic\(\(\) => import\("\.\/demos\/visual\/scroll-mask-demo"\)/,
 	);
+});
+
+test("ScrollMask bars stay unbordered so the mask owns the header and footer edge", () => {
+	assert.doesNotMatch(SCROLL_MASK_SOURCE, /border-b border-border/);
+	assert.doesNotMatch(SCROLL_MASK_SOURCE, /border-t border-border/);
+	assert.match(
+		SCROLL_MASK_SOURCE,
+		/data-slot="scroll-mask-header"[\s\S]*data-slot="scroll-mask-viewport"[\s\S]*data-slot="scroll-mask-footer"/,
+	);
+	assert.match(SCROLL_MASK_SOURCE, /"min-h-0 flex-1 overflow-y-auto/);
 });
