@@ -57,7 +57,7 @@ function TwgRainbowSoftBlur({ active, label }: Readonly<{ active: boolean; label
 	};
 
 	return (
-		<span aria-hidden className="relative inline-flex whitespace-pre">
+		<span aria-hidden className="pointer-events-none relative inline-flex whitespace-pre">
 			{/* Layout owner + default appearance; fades under the rainbow so the
 			    rising glyphs don't ghost over the resting copy while active. Shares
 			    the rainbow's leave clock on hover-out so both cross-fade as one. */}
