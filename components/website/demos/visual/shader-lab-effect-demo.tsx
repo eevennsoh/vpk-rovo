@@ -544,8 +544,7 @@ export function ShaderLabLayer({ layerType, className, style }: ShaderLabLayerPr
 			style={{ gap: token("space.400"), ...style }}
 		>
 			<div
-				className="aspect-video w-full overflow-hidden rounded-lg bg-surface-overlay"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className="aspect-video w-full overflow-hidden rounded-lg bg-surface-overlay border border-border"
 			>
 				<ShaderLabComposition
 					config={config}
