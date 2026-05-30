@@ -5,7 +5,7 @@ import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import DataNumberIcon from "@atlaskit/icon/core/data-number";
 import ReturnIcon from "@atlaskit/icon-lab/core/return";
 import { token } from "@/lib/tokens";
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/ui-custom/footer";
 
 const iconColor = token("color.icon.subtlest");
 

@@ -4,7 +4,7 @@ import BugIcon from "@atlaskit/icon/core/bug";
 import PageIcon from "@atlaskit/icon/core/page";
 import GoalIcon from "@atlaskit/icon/core/goal";
 import { IconTile } from "@/components/ui/icon-tile";
-import { ObjectTile } from "@/components/ui/object-tile";
+import { ObjectTile } from "@/components/ui-custom/object-tile";
 import { Lozenge } from "@/components/ui/lozenge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 

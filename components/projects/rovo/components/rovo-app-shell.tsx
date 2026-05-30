@@ -51,7 +51,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Button } from "@/components/ui/button";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/ui-custom/footer";
 import { useClicky } from "@/components/projects/rovo/hooks/use-clicky";
 import { useClickyVoice } from "@/components/projects/rovo/hooks/use-clicky-voice";
 import { ClickyOverlay } from "@/components/projects/rovo/components/clicky/clicky-overlay";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ProgressRovo } from "@/components/ui/progress-rovo";
+import { ProgressRovo } from "@/components/ui-custom/progress-rovo";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 

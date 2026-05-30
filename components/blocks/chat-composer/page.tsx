@@ -4,7 +4,7 @@ import { useState } from "react";
 import { type CustomizeMenuProps } from "./components/customize-menu";
 import AddMenu from "./components/add-menu";
 import CustomizeMenu from "./components/customize-menu";
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/ui-custom/footer";
 import {
 	PromptInput,
 	PromptInputActionMenu,

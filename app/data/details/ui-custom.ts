@@ -1,6 +1,15 @@
 import type { ComponentDetail } from "@/app/data/component-detail-types";
+import { UI_DETAILS } from "@/app/data/details/ui";
 
 export const UI_CUSTOM_DETAILS: Record<string, ComponentDetail> = {
+
+	footer: UI_DETAILS.footer,
+	"object-tile": UI_DETAILS["object-tile"],
+	"progress-circle": UI_DETAILS["progress-circle"],
+	"progress-rovo": UI_DETAILS["progress-rovo"],
+	"sidebar-nav-item": UI_DETAILS["sidebar-nav-item"],
+	"skill-card": UI_DETAILS["skill-card"],
+	"skill-tag": UI_DETAILS["skill-tag"],
 	"card-directory": {
 		description:
 			"A directory listing card with a shared shell (bordered surface, hover elevation, optional keyboard-operable button) and four ready-made variants that swap the leading visual and footer: agent (hexagon avatar + rating/chats), skill (icon tile + publisher + views), tool (app logo + tool/teammate counts), and template (rich icon + \"Works with\" sources and \"Skills\" tags). Compose your own layout with the CardDirectory parts, or use a variant wrapper. Passing onSelect turns the card into a keyboard-operable button; onMoreActions reveals an overflow button on hover/focus.",
@@ -1667,7 +1676,7 @@ import { CodeBlock } from "@/components/ui-custom/code-block";
 				name: "state",
 				type: 'ToolUIPart["state"]',
 				required: true,
-				description: "Execution state from the AI SDK ToolUIPart, rendered as a status badge in the header.",
+				description: "Execution state from the AI SDK ToolUIPart, rendered as a status lozenge in the header.",
 			},
 			{
 				name: "title",
@@ -1688,7 +1697,7 @@ import { CodeBlock } from "@/components/ui-custom/code-block";
 		],
 		subComponents: [
 			{ name: "Sandbox", description: "Root Collapsible container with border and rounded corners. Defaults to open." },
-			{ name: "SandboxHeader", description: "Collapsible trigger row with code icon, title, status badge, and chevron." },
+			{ name: "SandboxHeader", description: "Collapsible trigger row with code icon, title, status lozenge, and chevron." },
 			{ name: "SandboxContent", description: "Animated collapsible content area with slide/fade transitions." },
 			{ name: "SandboxTabs", description: "Tabs wrapper for code/output views." },
 			{ name: "SandboxTabsBar", description: "Container for the tab list with top and bottom borders." },
@@ -1697,7 +1706,7 @@ import { CodeBlock } from "@/components/ui-custom/code-block";
 			{ name: "SandboxTabContent", description: "Tab content panel with no top margin." },
 		],
 		examples: [
-			{ title: "Running", description: "Sandbox in running state with animated status badge.", demoSlug: "sandbox-demo-running" },
+			{ title: "Running", description: "Sandbox in running state with animated status lozenge.", demoSlug: "sandbox-demo-running" },
 			{ title: "Error", description: "Error state with output tab showing stack trace.", demoSlug: "sandbox-demo-error" },
 			{ title: "Collapsed", description: "Sandbox starting in collapsed state.", demoSlug: "sandbox-demo-collapsed" },
 		],
@@ -3135,7 +3144,7 @@ const edgeTypes = {
 
 	tool: {
 		description:
-			"A collapsible container for displaying AI tool invocation details including parameters and execution results. Integrates with the AI SDK's ToolUIPart and DynamicToolUIPart types to show tool execution progress, status badges, and formatted JSON input/output.",
+			"A collapsible container for displaying AI tool invocation details including parameters and execution results. Integrates with the AI SDK's ToolUIPart and DynamicToolUIPart types to show tool execution progress, status lozenges, and formatted JSON input/output.",
 		usage: `import {
   Tool,
   ToolHeader,
@@ -3166,7 +3175,7 @@ const edgeTypes = {
 				name: "state",
 				type: '"input-streaming" | "input-available" | "output-available" | "output-error" | "approval-requested" | "approval-responded" | "output-denied"',
 				required: true,
-				description: "Current tool execution state. Controls the status badge icon and label.",
+				description: "Current tool execution state. Controls the status lozenge icon and label.",
 			},
 			{
 				name: "title",
@@ -3206,7 +3215,7 @@ const edgeTypes = {
 		],
 		subComponents: [
 			{ name: "Tool", description: "Root Collapsible container with border and rounded corners." },
-			{ name: "ToolHeader", description: "Collapsible trigger row with wrench icon, tool name, status badge, and chevron." },
+			{ name: "ToolHeader", description: "Collapsible trigger row with wrench icon, tool name, status lozenge, and chevron." },
 			{ name: "ToolContent", description: "Animated collapsible content area with slide/fade transitions." },
 			{ name: "ToolInput", description: "Parameter display section with 'Parameters' label and formatted JSON via CodeBlock." },
 			{ name: "ToolOutput", description: "Result display section showing output as JSON or error text with color-coded background." },
@@ -3615,7 +3624,7 @@ import { Panel } from "@/components/ui-custom/panel";
 			{ name: "Panel", description: "Themed React Flow panel with card background, rounded corners, border, and padding." },
 		],
 		examples: [
-			{ title: "Status badge", description: "Panel with a running status badge and graph stats.", demoSlug: "panel-demo-status-badge" },
+			{ title: "Status lozenge", description: "Panel with a running status lozenge and graph stats.", demoSlug: "panel-demo-status-lozenge" },
 			{ title: "Positions", description: "Panels placed in all six canvas positions.", demoSlug: "panel-demo-positions" },
 		],
 	},

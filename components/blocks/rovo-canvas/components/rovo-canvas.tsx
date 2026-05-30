@@ -14,7 +14,7 @@ import {
 	DialogContent,
 	DialogDescription,
 } from "@/components/ui/dialog";
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/ui-custom/footer";
 import { Icon as VpkIcon } from "@/components/ui/icon";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";

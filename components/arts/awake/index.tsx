@@ -12,18 +12,18 @@ import Noise, {
 } from "@/components/website/demos/visual/shaders/noise";
 import WaveGradient from "@/components/website/demos/visual/shaders/wave-gradient";
 
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/ui-custom/footer";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { GlassTabs } from "@/components/ui/glass-tabs";
+import { GlassTabs } from "@/components/visual/glass-tabs";
 import { Kbd } from "@/components/ui/kbd";
 import {
 	GLASS_TABS_SQUIRCLE_STYLE,
-} from "@/components/ui/glass-tabs-motion";
+} from "@/components/visual/glass-tabs-motion";
 import { Cctv } from "@/components/animate-ui/icons/cctv";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -186,7 +186,7 @@ function formatTemperature(value: number | null): string {
 // Match the GlassTabs internal elastic constants so the wake-lock button
 // thins/translates in lockstep with the shell. Keep these in sync with
 // `MAX_SHELL_STRETCH_PX` / `MAX_SHELL_THIN_RATIO` in
-// `components/ui/glass-tabs-motion.ts`.
+// `components/visual/glass-tabs-motion.ts`.
 const WAKE_BUTTON_MAX_SHELL_STRETCH_PX = 32;
 const WAKE_BUTTON_MAX_THIN_RATIO = 0.14;
 // When the shell stretches LEFT (negative `shellStretch`), the wake-lock

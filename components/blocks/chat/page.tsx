@@ -28,7 +28,7 @@ import {
 	composerTextareaClassName,
 	textareaCSS,
 } from "@/components/blocks/shared-ui/composer-styles";
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/ui-custom/footer";
 import { chatStyles } from "./data/styles";
 import { useChatSubmit } from "./hooks/use-chat-submit";
 import styles from "./chat.module.css";

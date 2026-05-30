@@ -161,7 +161,7 @@ function InputGroupTextarea({
 	return (
 		<div
 			data-slot="input-group-control-container"
-			className="flex min-w-0 flex-1 self-stretch cursor-text px-1.5 has-disabled:cursor-not-allowed"
+			className="flex min-w-0 flex-1 self-stretch cursor-text px-2.5 has-disabled:cursor-not-allowed"
 			onClick={(event) => {
 				event.currentTarget
 					.querySelector<HTMLElement>("[data-slot=input-group-control]")
@@ -172,7 +172,7 @@ function InputGroupTextarea({
 				data-slot="input-group-control"
 				variant="none"
 				className={cn(
-					"block min-w-0 w-full resize-none rounded-none border-0 bg-transparent px-0 py-2 shadow-none focus-visible:ring-0 content-center",
+					"block min-w-0 w-full resize-none rounded-none border-0 bg-transparent px-0 py-2 shadow-none focus-visible:ring-0",
 					className
 				)}
 				{...props}

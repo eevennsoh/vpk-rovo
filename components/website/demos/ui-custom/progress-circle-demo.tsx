@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ProgressCircle } from "@/components/ui/progress-circle";
+import { ProgressCircle } from "@/components/ui-custom/progress-circle";
 import { Slider } from "@/components/ui/slider";
 
 export default function ProgressCircleDemo() {

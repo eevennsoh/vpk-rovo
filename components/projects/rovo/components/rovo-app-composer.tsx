@@ -28,7 +28,7 @@ import CustomizeMenu from "@/components/blocks/shared-ui/customize-menu";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
-import { SkillTag, SkillTagGroup } from "@/components/ui/skill-tag";
+import { SkillTag, SkillTagGroup } from "@/components/ui-custom/skill-tag";
 import type { VoiceButtonState } from "@/components/ui-audio/voice-button";
 import ChatContextBar from "@/components/projects/sidebar-chat/components/chat-context-bar";
 import { resolveRovoAppComposerResponseGradientState } from "@/components/projects/rovo/lib/rovo-app-composer-response-gradient-state";

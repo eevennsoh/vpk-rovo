@@ -18,7 +18,7 @@ import {
 import { composerTextareaClassName, floatingComposerTextareaClassName, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { SkillTag, SkillTagGroup } from "@/components/ui/skill-tag";
+import { SkillTag, SkillTagGroup } from "@/components/ui-custom/skill-tag";
 import type { VoiceButtonState } from "@/components/ui-audio/voice-button";
 import ChatContextBar from "@/components/projects/sidebar-chat/components/chat-context-bar";
 import { resolveRovoAppComposerResponseGradientState } from "@/components/projects/studio/lib/rovo-app-composer-response-gradient-state";

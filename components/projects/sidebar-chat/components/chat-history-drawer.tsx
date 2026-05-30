@@ -46,7 +46,7 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@/components/ui/sheet";
-import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";
+import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui-custom/sidebar-nav-item";
 import { Spinner } from "@/components/ui/spinner";
 import { ChevronDownIcon } from "@/components/ui/vpk-icons";
 import { shouldShowRovoAppSidebarRunIndicator } from "@/components/projects/rovo/lib/rovo-app-sidebar-run-indicator";

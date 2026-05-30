@@ -627,7 +627,7 @@ import { LiquidGlassButton } from "@/components/website/demos/visual/shaders/liq
 	},
 	"glass-tabs": {
 		description: "Shared liquid-glass segmented control extracted from the Awake theme switcher. Uses the same elastic committed pill, hover ghost pill, and magnetic hover label drift as the Awake scene.",
-		importStatement: `import { GlassTabs } from "@/components/ui/glass-tabs";`,
+		importStatement: `import { GlassTabs } from "@/components/visual/glass-tabs";`,
 		usage: `const options = [
 	{ value: "location", label: "Location" },
 	{ value: "system", label: "System" },

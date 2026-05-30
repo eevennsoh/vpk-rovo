@@ -556,7 +556,7 @@ import { MessageResponse } from "@/components/ui-custom/message";
 import { Kbd } from "@/components/ui/kbd";
 import { Comment } from "@/components/ui/comment";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
-import { ObjectTile } from "@/components/ui/object-tile";
+import { ObjectTile } from "@/components/ui-custom/object-tile";
 import { IconTile } from "@/components/ui/icon-tile";
 import { Breadcrumb as BreadcrumbRoot, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { PageHeader } from "@/components/ui/page-header";

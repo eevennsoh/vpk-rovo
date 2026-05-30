@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { SidebarNavItem } from "@/components/ui/sidebar-nav-item";
+import { SidebarNavItem } from "@/components/ui-custom/sidebar-nav-item";
 import { CardDirectoryAgent } from "@/components/ui-custom/card-directory";
 import { token } from "@/lib/tokens";
 

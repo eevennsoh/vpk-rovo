@@ -54,11 +54,11 @@ test("Agents Directory close button sits in the dialog header", () => {
 
 test("Agents Directory sidebar nav uses the shared SidebarNavItem primitive", () => {
 	const source = readProjectFile("components/blocks/agent-browser/components/agent-browser.tsx");
-	const sidebarNavItemSource = readProjectFile("components/ui/sidebar-nav-item.tsx");
+	const sidebarNavItemSource = readProjectFile("components/ui-custom/sidebar-nav-item.tsx");
 
 	assert.match(
 		source,
-		/import \{ SidebarNavItem \} from "@\/components\/ui\/sidebar-nav-item";/u,
+		/import \{ SidebarNavItem \} from "@\/components\/ui-custom\/sidebar-nav-item";/u,
 	);
 	assert.match(source, /import AlignTextLeftIcon from "@atlaskit\/icon\/core\/align-text-left";/u);
 	assert.match(source, /import \{ Avatar, AvatarImage \} from "@\/components\/ui\/avatar";/u);
@@ -91,10 +91,10 @@ test("Agents Directory uses independent column scrolling without extra content p
 	assert.match(source, /className="grid h-\[min\(800px,calc\(100svh-2rem\)\)\] max-h-\[calc\(100svh-2rem\)\] grid-rows-\[auto_minmax\(0,1fr\)\] gap-0 overflow-hidden p-0 sm:max-w-\[1200px\]"/u);
 	assert.doesNotMatch(source, /max-h-\[85vh\]/u);
 	assert.doesNotMatch(source, /className="grid max-h-\[800px\] grid-rows-\[auto_minmax\(0,1fr\)\] gap-0 p-0 sm:max-w-\[1200px\]"/u);
-	assert.match(source, /<div className="min-h-0 overflow-hidden px-6 pb-6">/u);
+	assert.match(source, /<div className="min-h-0 overflow-hidden px-6">/u);
 	assert.match(source, /<div className="grid h-full min-h-0 grid-cols-1 gap-8 md:grid-cols-\[220px_minmax\(0,1fr\)\]">/u);
-	assert.match(source, /<div className="flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto">/u);
-	assert.match(source, /<nav aria-label="Agent categories" className="hidden h-full min-h-0 w-\[220px\] shrink-0 flex-col gap-5 overflow-y-auto md:flex">/u);
+	assert.match(source, /<div className="-mx-4 flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto px-4 pt-2 pb-6">/u);
+	assert.match(source, /<nav aria-label="Agent categories" className="hidden h-full min-h-0 w-\[220px\] shrink-0 flex-col gap-5 overflow-y-auto pt-1 md:flex">/u);
 	assert.match(source, /import \{ token \} from "@\/lib\/tokens";/u);
 	assert.match(
 		source,
@@ -108,7 +108,6 @@ test("Agents Directory uses independent column scrolling without extra content p
 	assert.doesNotMatch(source, /<p className="px-3 text-xs font-semibold uppercase leading-4 tracking-wide text-text-subtlest">/u);
 	assert.doesNotMatch(source, /text-xs font-semibold uppercase leading-4 tracking-wide text-text-subtlest/u);
 	assert.doesNotMatch(source, /<div className="min-h-0 overflow-y-auto px-6 pb-6">/u);
-	assert.doesNotMatch(source, /<div className="min-h-0 overflow-hidden px-6">/u);
 	assert.doesNotMatch(source, /<div className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-6 pr-1">/u);
 	assert.doesNotMatch(source, /<div className="flex min-w-0 flex-col gap-5 pr-5">/u);
 	assert.doesNotMatch(source, /overflow-y-auto pb-6 pr-1/u);

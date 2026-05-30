@@ -61,7 +61,7 @@ function toToolUiState(
 	return "output-available";
 }
 
-function getThinkingStatusBadgeIcon(
+function getThinkingStatusIcon(
 	state: ThinkingToolCallSummary["state"]
 ): React.ReactNode | undefined {
 	if (state !== "running") {
@@ -105,7 +105,7 @@ function AssistantThinkingToolItem({
 				leadingIcon={renderResolvedToolIcon(resolvedIcon, { className: "size-4 text-muted-foreground" })}
 				title={getThinkingToolTitle(toolCall)}
 				state={toToolUiState(toolCall.state)}
-				statusBadgeIcon={getThinkingStatusBadgeIcon(toolCall.state)}
+				statusIcon={getThinkingStatusIcon(toolCall.state)}
 				type="dynamic-tool"
 				toolName={toolCall.toolName}
 			/>

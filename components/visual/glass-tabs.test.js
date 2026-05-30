@@ -17,7 +17,7 @@ async function loadGlassTabsMotionHarness() {
 	const result = await esbuild.build({
 		stdin: {
 			contents: `
-				import { getGlassTabsKeyboardIndex } from "./components/ui/glass-tabs-motion.ts";
+				import { getGlassTabsKeyboardIndex } from "./components/visual/glass-tabs-motion.ts";
 
 				export { getGlassTabsKeyboardIndex };
 			`,

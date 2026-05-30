@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
 
-import { getStatusBadge } from "./tool";
+import { getStatusLozenge } from "./tool";
 
 export type SandboxRootProps = ComponentProps<typeof Collapsible>;
 
@@ -58,7 +58,7 @@ export const SandboxHeader = ({
     <div className="flex items-center gap-2">
       <Code className="size-4 text-muted-foreground" />
       <span className="font-medium text-sm">{title}</span>
-      {getStatusBadge(state)}
+      {getStatusLozenge(state)}
     </div>
     <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
   </CollapsibleTrigger>

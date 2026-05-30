@@ -52,7 +52,7 @@ test("Weather keeps the ticking clock state out of the top-level scene", () => {
 test("Weather splits pointer-driven chrome between the top theme control and bottom keyboard hints", () => {
 	assert.match(
 		WEATHER_SOURCE,
-		/import \{ GlassTabs \} from "@\/components\/ui\/glass-tabs";/,
+		/import \{ GlassTabs \} from "@\/components\/visual\/glass-tabs";/,
 	);
 	assert.doesNotMatch(
 		WEATHER_SOURCE,
@@ -114,11 +114,11 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 	// glyph is wrapped in a `<Kbd>` so it visually reads like the
 	// other shortcut keys (Enter == Return key).
 	assert.match(WEATHER_SOURCE, /<Kbd className="font-sans">\s*<ReturnIcon className="size-3\.5" \/>\s*<\/Kbd>/);
-	assert.match(WEATHER_SOURCE, /<Kbd className="font-sans">W<\/Kbd>\s+<span>awake<\/span>/);
+	assert.match(WEATHER_SOURCE, /<Kbd className="font-sans">w<\/Kbd>\s+<span>awake<\/span>/);
 	assert.match(WEATHER_SOURCE, /update/);
 	assert.match(
 		WEATHER_SOURCE,
-		/update[\s\S]*showWakeShortcut \?[\s\S]*<Kbd className="font-sans">W<\/Kbd>[\s\S]*<span>awake<\/span>/s,
+		/update[\s\S]*showWakeShortcut \?[\s\S]*<Kbd className="font-sans">w<\/Kbd>[\s\S]*<span>awake<\/span>/s,
 	);
 	assert.doesNotMatch(WEATHER_SOURCE, /Esc closes search/);
 	assert.match(WEATHER_SOURCE, /event\.key === "ArrowUp" \|\| event\.key === "ArrowDown"/);
@@ -263,7 +263,7 @@ test("Weather only advances the awake timer while the wake lock is active", () =
 	);
 	assert.match(
 		WEATHER_SOURCE,
-		/if \(\s+previousStatus === "waiting-for-visible" &&\s+wakeLockStatus === "active" &&\s+isWakeLockActive\s+\) \{\s+setIsWakeLockReturnReminderVisible\(true\);[\s\S]*setTimeout\(\(\) => \{\s+setIsWakeLockReturnReminderVisible\(false\);[\s\S]*\}, 3000\);/s,
+		/if \(\s+previousStatus === "waiting-for-visible" &&\s+wakeLockStatus === "active" &&\s+isWakeLockActive\s+\) \{\s+scheduleWakeLockReturnReminder\(\);\s+return;\s+\}/s,
 	);
 	assert.match(
 		WEATHER_SOURCE,

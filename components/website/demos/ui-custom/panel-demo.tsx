@@ -12,7 +12,7 @@ import {
 	NodeTitle,
 } from "@/components/ui-custom/node";
 import { Panel } from "@/components/ui-custom/panel";
-import { Badge } from "@/components/ui/badge";
+import { Lozenge } from "@/components/ui/lozenge";
 
 // -- Shared data --
 
@@ -86,10 +86,10 @@ const edges = [
 ];
 
 // ============================================================
-// Demo: Status badge (default preview)
+// Demo: Status lozenge (default preview)
 // ============================================================
 
-export function PanelDemoStatusBadge() {
+export function PanelDemoStatusLozenge() {
 	return (
 		<div className="h-[400px] w-full">
 			<Canvas
@@ -102,7 +102,7 @@ export function PanelDemoStatusBadge() {
 				<Controls />
 				<Panel position="top-right">
 					<div className="flex items-center gap-2 px-2 py-1">
-						<Badge variant="success">Running</Badge>
+						<Lozenge variant="success">Running</Lozenge>
 						<span className="text-xs text-muted-foreground">
 							3 nodes &middot; 2 edges
 						</span>
@@ -155,5 +155,5 @@ export function PanelDemoPositions() {
 // ============================================================
 
 export default function PanelDemo() {
-	return <PanelDemoStatusBadge />;
+	return <PanelDemoStatusLozenge />;
 }
