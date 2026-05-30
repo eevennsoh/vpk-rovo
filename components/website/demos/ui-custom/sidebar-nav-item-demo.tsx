@@ -4,7 +4,7 @@ import AddIcon from "@atlaskit/icon/core/add";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import ProjectIcon from "@atlaskit/icon/core/project";
-import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";
+import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui-custom/sidebar-nav-item";
 
 function DemoFrame({ children }: Readonly<{ children: React.ReactNode }>) {
 	return <div className="flex w-[276px] justify-center">{children}</div>;

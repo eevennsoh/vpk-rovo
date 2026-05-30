@@ -1,6 +1,6 @@
 "use client";
 
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/ui-custom/footer";
 
 export default function FooterDemo() {
 	return <Footer />;

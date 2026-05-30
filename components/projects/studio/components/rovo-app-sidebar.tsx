@@ -12,7 +12,7 @@ import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import TeamworkGraphIcon from "@atlaskit/icon-lab/core/teamwork-graph";
 import { token } from "@/lib/tokens";
 import { Sidebar, SidebarContent } from "@/components/ui/sidebar";
-import { SidebarNavItem } from "@/components/ui/sidebar-nav-item";
+import { SidebarNavItem } from "@/components/ui-custom/sidebar-nav-item";
 import { MorphingRovo } from "@/components/ui-custom/morphing-rovo";
 import { Shimmer } from "@/components/ui-custom/shimmer";
 import type { StudioSessionAgentEntry } from "@/app/contexts/context-rovo-chat";

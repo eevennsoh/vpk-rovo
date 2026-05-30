@@ -3,7 +3,7 @@
 import { type ReactNode } from "react";
 import Image from "next/image";
 
-import { SkillTag, SkillTagGroup, type SkillTagColor } from "@/components/ui/skill-tag";
+import { SkillTag, SkillTagGroup, type SkillTagColor } from "@/components/ui-custom/skill-tag";
 import { TwgToolSourceStack, type TwgToolSource } from "@/components/ui-custom/twg-tool";
 
 import { CardDirectory } from "./card-directory";

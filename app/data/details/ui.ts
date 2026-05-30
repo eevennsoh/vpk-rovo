@@ -1375,7 +1375,7 @@ import { Textarea } from "@/components/ui/textarea";
   footer: {
     description:
       "A compact footer bar with an information icon and customizable text. Place below prompt inputs or chat composers to communicate AI usage or other contextual information.",
-    usage: `import { Footer } from "@/components/ui/footer";
+    usage: `import { Footer } from "@/components/ui-custom/footer";
 
 <Footer />
 
@@ -2473,7 +2473,7 @@ import { Textarea } from "@/components/ui/textarea";
   "progress-rovo": {
     description:
       "Thin horizontal progress bar with a Rovo rainbow gradient for indeterminate and determinate states. Transitions to solid green on completion. Uses Motion for React animations.",
-    usage: `import { ProgressRovo } from "@/components/ui/progress-rovo";
+    usage: `import { ProgressRovo } from "@/components/ui-custom/progress-rovo";
 
 <ProgressRovo isIndeterminate />        {/* indeterminate — continuous animation */}
 <ProgressRovo value={65} />             {/* determinate — 65% filled */}
@@ -2523,7 +2523,7 @@ import { Textarea } from "@/components/ui/textarea";
   "progress-circle": {
     description:
       "Circular SVG progress indicator with percentage text, indeterminate spinner, and completed check icon states. Useful for inline progress indicators in task lists and status displays.",
-    usage: `import { ProgressCircle } from "@/components/ui/progress-circle";
+    usage: `import { ProgressCircle } from "@/components/ui-custom/progress-circle";
 
 <ProgressCircle value={65} />
 <ProgressCircle />                       {/* indeterminate / spinning */}
@@ -4989,10 +4989,10 @@ const config = {
       },
     ],
     importStatement:
-      'import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";',
+      'import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui-custom/sidebar-nav-item";',
     usage: `import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
-import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";
+import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui-custom/sidebar-nav-item";
 
 <div className="w-[276px]">
   <SidebarNavItem
@@ -5942,7 +5942,7 @@ const [date, setDate] = useState<Date>()
   "object-tile": {
     description:
       "A tile that represents Atlassian content (Jira issues, Confluence pages, etc.) with icon, title, description, metadata, and action slots. Optionally interactive when an href is provided.",
-    usage: `import { ObjectTile } from "@/components/ui/object-tile";
+    usage: `import { ObjectTile } from "@/components/ui-custom/object-tile";
 import { IconTile } from "@/components/ui/icon-tile";
 import BugIcon from "@atlaskit/icon/core/bug";
 
@@ -6226,7 +6226,7 @@ const steps: ProgressTrackerStep[] = [
   "skill-card": {
     description:
       "Compound hover-preview card for skills. Built on VPK HoverCard primitives with a trigger, title/description content, optional icon, and attribution source.",
-    usage: `import { SkillCard } from "@/components/ui/skill-card"
+    usage: `import { SkillCard } from "@/components/ui-custom/skill-card"
 import { Button } from "@/components/ui/button"
 import PageIcon from "@atlaskit/icon/core/page"
 
@@ -6324,7 +6324,7 @@ import PageIcon from "@atlaskit/icon/core/page"
   "skill-tag": {
     description:
       "Skewed parallelogram-shaped tag for displaying AI skill references inline. Features a colored slash bar on the left edge, optional icon, and counter-skewed content.",
-    usage: `import { SkillTag, SkillTagGroup } from "@/components/ui/skill-tag"
+    usage: `import { SkillTag, SkillTagGroup } from "@/components/ui-custom/skill-tag"
 import SearchIcon from "@atlaskit/icon/core/search"
 
 <SkillTag icon={<SearchIcon label="" size="small" />} color="teamwork">

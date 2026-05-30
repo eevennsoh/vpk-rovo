@@ -179,7 +179,7 @@ test("chat history row actions are scoped to the hovered row", () => {
 
 test("chat history drawer matches the Figma conversation-list content structure", () => {
 	const source = readProjectFile("components/projects/sidebar-chat/components/chat-history-drawer.tsx");
-	const sidebarNavItemSource = readProjectFile("components/ui/sidebar-nav-item.tsx");
+	const sidebarNavItemSource = readProjectFile("components/ui-custom/sidebar-nav-item.tsx");
 
 	assert.match(source, /New chat/u);
 	assert.match(source, /SidebarNavItemCount/u);

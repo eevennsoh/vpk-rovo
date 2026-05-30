@@ -3,7 +3,7 @@
 import PageIcon from "@atlaskit/icon/core/page";
 
 import { Button } from "@/components/ui/button";
-import { SkillCard } from "@/components/ui/skill-card";
+import { SkillCard } from "@/components/ui-custom/skill-card";
 
 export default function SkillCardDemo() {
 	return (

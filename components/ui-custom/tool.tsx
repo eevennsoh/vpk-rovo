@@ -71,7 +71,7 @@ export type ToolPart = ToolUIPart | DynamicToolUIPart;
 export type ToolHeaderProps = {
   title?: string;
   className?: string;
-  statusBadgeIcon?: ReactNode;
+  statusIcon?: ReactNode;
   leadingIcon?: ReactNode;
 } & (
   | { type: ToolUIPart["type"]; state: ToolUIPart["state"]; toolName?: never }
@@ -314,7 +314,7 @@ const statusVariants: Record<ToolPart["state"], ComponentProps<typeof Lozenge>["
   "output-error": "danger",
 };
 
-export const getStatusBadge = (
+export const getStatusLozenge = (
   status: ToolPart["state"],
   { icon }: { icon?: ReactNode } = {}
 ) => (
@@ -325,7 +325,7 @@ export const getStatusBadge = (
 
 export const ToolHeader = ({
   className,
-  statusBadgeIcon,
+  statusIcon,
   leadingIcon,
   title,
   type,
@@ -353,7 +353,7 @@ export const ToolHeader = ({
           />
         )}
         <span className="truncate font-medium text-sm" title={title ?? derivedName}>{title ?? derivedName}</span>
-        {getStatusBadge(state, { icon: statusBadgeIcon })}
+        {getStatusLozenge(state, { icon: statusIcon })}
       </div>
       <Icon
         render={<ChevronDownIcon label="" size="small" />}

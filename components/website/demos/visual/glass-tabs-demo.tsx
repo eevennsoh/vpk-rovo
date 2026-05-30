@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { GlassTabs } from "@/components/ui/glass-tabs";
+import { GlassTabs } from "@/components/visual/glass-tabs";
 import { ThemeToggle, ThemeWrapper } from "@/components/utils/theme-wrapper";
 
 const GLASS_TAB_OPTIONS = [

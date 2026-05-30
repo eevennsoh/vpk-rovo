@@ -52,7 +52,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SkillTag, SkillTagGroup, type SkillTagColor } from "@/components/ui/skill-tag";
+import { SkillTag, SkillTagGroup, type SkillTagColor } from "@/components/ui-custom/skill-tag";
 import SearchIcon from "@atlaskit/icon/core/search";
 import DashboardIcon from "@atlaskit/icon/core/dashboard";
 import EpicIcon from "@atlaskit/icon/core/epic";
@@ -74,7 +74,7 @@ import ArrowUpRightIcon from "@atlaskit/icon/core/arrow-up-right";
 import ChartTrendUpIcon from "@atlaskit/icon/core/chart-trend-up";
 import ClockIcon from "@atlaskit/icon/core/clock";
 import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/ui-custom/footer";
 import { useClicky } from "@/components/projects/studio/hooks/use-clicky";
 import { useClickyVoice } from "@/components/projects/studio/hooks/use-clicky-voice";
 import { ClickyOverlay } from "@/components/projects/studio/components/clicky/clicky-overlay";

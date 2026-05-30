@@ -15,6 +15,8 @@ import {
 	type ThinkingToolCallSummary,
 } from "@/lib/rovo-ui-messages";
 import { getToolDisplayInfo, renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
+import { Lozenge } from "@/components/ui/lozenge";
+import { Spinner } from "@/components/ui/spinner";
 
 /* -------------------------------------------------------------------------- */
 /*  Constants                                                                 */
@@ -321,54 +323,8 @@ function getResolvedIconHtml(options: { toolName?: string | null; title?: string
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Permission + status badges (from teamwork-agent ToolCallItem)             */
+/*  Permission + status lozenges (from teamwork-agent ToolCallItem)           */
 /* -------------------------------------------------------------------------- */
-
-const successBadgeStyle: CSSProperties = {
-	display: "inline-block",
-	padding: "2px 8px",
-	borderRadius: 4,
-	fontSize: 11,
-	fontWeight: 600,
-	backgroundColor: "var(--ds-background-success, #dcfff1)",
-	color: "var(--ds-text-success, #1b6b44)",
-	border: "1px solid var(--ds-border-success, #4bce97)",
-};
-
-const dangerBadgeStyle: CSSProperties = {
-	display: "inline-block",
-	padding: "2px 8px",
-	borderRadius: 4,
-	fontSize: 11,
-	fontWeight: 600,
-	backgroundColor: "var(--ds-background-danger, #ffedeb)",
-	color: "var(--ds-text-danger, #ae2e24)",
-	border: "1px solid var(--ds-border-danger, #fd9891)",
-};
-
-const warningBadgeStyle: CSSProperties = {
-	display: "inline-block",
-	padding: "2px 8px",
-	borderRadius: 4,
-	fontSize: 11,
-	fontWeight: 600,
-	backgroundColor: "var(--ds-background-warning, #fff7d6)",
-	color: "var(--ds-text-warning, #7f5f01)",
-	border: "1px solid var(--ds-border-warning, #cf9f02)",
-};
-
-const infoBadgeStyle: CSSProperties = {
-	display: "inline-flex",
-	alignItems: "center",
-	gap: 4,
-	padding: "2px 8px",
-	borderRadius: 4,
-	fontSize: 11,
-	fontWeight: 600,
-	backgroundColor: "var(--ds-background-information, #e9f2ff)",
-	color: "var(--ds-text-information, #0055cc)",
-	border: "1px solid var(--ds-border-information, #388bff)",
-};
 
 /**
  * Permission badge — shows the real permission scenario from the backend.
@@ -384,43 +340,31 @@ function PermissionBadge({ permissionScenario }: { permissionScenario?: string }
 	if (!permissionScenario) return null;
 	if (permissionScenario === "ASK") return null; // awaiting user decision
 	if (permissionScenario === "DENIED") {
-		return <span style={dangerBadgeStyle}>✗ Auto-denied</span>;
+		return <Lozenge variant="danger">Auto-denied</Lozenge>;
 	}
 	if (permissionScenario === "ALLOWED") {
-		return <span style={successBadgeStyle}>✓ Auto-allowed</span>;
+		return <Lozenge variant="success">Auto-allowed</Lozenge>;
 	}
 	return null;
 }
 
 /** Execution status indicator shown alongside the permission badge. */
-function StatusBadge({ state }: { state: string }) {
+function ToolStatusLozenge({ state }: { state: string }) {
 	if (state === "output-available") return null; // permission badge is enough
 	if (state === "output-error") {
-		return <span style={dangerBadgeStyle}>Error</span>;
+		return <Lozenge variant="danger">Error</Lozenge>;
 	}
 	if (state === "approval-requested") {
-		return <span style={warningBadgeStyle}>Awaiting approval</span>;
+		return <Lozenge variant="warning">Awaiting approval</Lozenge>;
 	}
 	if (state === "input-streaming" || state === "input-available") {
 		return (
-			<span style={infoBadgeStyle}>
-				<svg
-					style={{ width: 12, height: 12, animation: "tools-demo-spin 0.8s linear infinite" }}
-					viewBox="0 0 24 24"
-					fill="none"
-				>
-					<circle
-						cx="12"
-						cy="12"
-						r="10"
-						stroke="currentColor"
-						strokeWidth="3"
-						strokeLinecap="round"
-						strokeDasharray="50 20"
-					/>
-				</svg>
+			<Lozenge
+				variant="information"
+				icon={<Spinner size="xs" label="Running" className="text-current" />}
+			>
 				Running
-			</span>
+			</Lozenge>
 		);
 	}
 	return null;
@@ -473,7 +417,7 @@ function InlineToolCard({ toolPart }: { toolPart: RovoToolPart }) {
 					<span>{displayName}</span>
 				</span>
 					{serverName ? <span style={serverBadgeStyle}>{serverName}</span> : null}
-					<StatusBadge state={toolPart.state} />
+					<ToolStatusLozenge state={toolPart.state} />
 					{formattedInput ? (
 						<button
 							type="button"
@@ -594,7 +538,7 @@ function ThinkingToolCard({ toolCall }: { toolCall: ThinkingToolCallSummary }) {
 				</span>
 					{serverName ? <span style={serverBadgeStyle}>{serverName}</span> : null}
 					<PermissionBadge permissionScenario={toolCall.permissionScenario} />
-					<StatusBadge state={displayState} />
+					<ToolStatusLozenge state={displayState} />
 					{formattedInput ? (
 						<button
 							type="button"

@@ -40,7 +40,6 @@ const UI_DEMO: Record<string, ComponentType> = {
   }),
   empty: dynamic(() => import("./demos/ui/empty-demo"), { ssr: false }),
   field: dynamic(() => import("./demos/ui/field-demo"), { ssr: false }),
-  footer: dynamic(() => import("./demos/ui/footer-demo"), { ssr: false }),
   "hover-card": dynamic(() => import("./demos/ui/hover-card-demo"), {
     ssr: false,
   }),
@@ -65,12 +64,6 @@ const UI_DEMO: Record<string, ComponentType> = {
   }),
   popover: dynamic(() => import("./demos/ui/popover-demo"), { ssr: false }),
   progress: dynamic(() => import("./demos/ui/progress-demo"), { ssr: false }),
-  "progress-circle": dynamic(() => import("./demos/ui/progress-circle-demo"), {
-    ssr: false,
-  }),
-  "progress-rovo": dynamic(() => import("./demos/ui/progress-rovo-demo"), {
-    ssr: false,
-  }),
   "radio-group": dynamic(() => import("./demos/ui/radio-group-demo"), {
     ssr: false,
   }),
@@ -82,9 +75,6 @@ const UI_DEMO: Record<string, ComponentType> = {
   separator: dynamic(() => import("./demos/ui/separator-demo"), { ssr: false }),
   sheet: dynamic(() => import("./demos/ui/sheet-demo"), { ssr: false }),
   skeleton: dynamic(() => import("./demos/ui/skeleton-demo"), { ssr: false }),
-  "sidebar-nav-item": dynamic(() => import("./demos/ui/sidebar-nav-item-demo"), {
-    ssr: false,
-  }),
   slider: dynamic(() => import("./demos/ui/slider-demo"), { ssr: false }),
   sonner: dynamic(() => import("./demos/ui/sonner-demo"), { ssr: false }),
   spinner: dynamic(() => import("./demos/ui/spinner-demo"), { ssr: false }),
@@ -120,9 +110,6 @@ const UI_DEMO: Record<string, ComponentType> = {
   "menu-group": dynamic(() => import("./demos/ui/menu-group-demo"), {
     ssr: false,
   }),
-  "object-tile": dynamic(() => import("./demos/ui/object-tile-demo"), {
-    ssr: false,
-  }),
   "page-header": dynamic(() => import("./demos/ui/page-header-demo"), {
     ssr: false,
   }),
@@ -136,12 +123,6 @@ const UI_DEMO: Record<string, ComponentType> = {
   ),
   radio: dynamic(() => import("./demos/ui/radio-group-demo"), { ssr: false }),
   "split-button": dynamic(() => import("./demos/ui/split-button-demo"), {
-    ssr: false,
-  }),
-  "skill-card": dynamic(() => import("./demos/ui/skill-card-demo"), {
-    ssr: false,
-  }),
-  "skill-tag": dynamic(() => import("./demos/ui/skill-tag-demo"), {
     ssr: false,
   }),
   tag: dynamic(() => import("./demos/ui/tag-demo"), { ssr: false }),
@@ -208,6 +189,26 @@ const UI_AUDIO_DEMO: Record<string, ComponentType> = {
 };
 
 const UI_CUSTOM_DEMO: Record<string, ComponentType> = {
+
+  footer: dynamic(() => import("./demos/ui-custom/footer-demo"), { ssr: false }),
+  "object-tile": dynamic(() => import("./demos/ui-custom/object-tile-demo"), {
+    ssr: false,
+  }),
+  "progress-circle": dynamic(() => import("./demos/ui-custom/progress-circle-demo"), {
+    ssr: false,
+  }),
+  "progress-rovo": dynamic(() => import("./demos/ui-custom/progress-rovo-demo"), {
+    ssr: false,
+  }),
+  "sidebar-nav-item": dynamic(() => import("./demos/ui-custom/sidebar-nav-item-demo"), {
+    ssr: false,
+  }),
+  "skill-card": dynamic(() => import("./demos/ui-custom/skill-card-demo"), {
+    ssr: false,
+  }),
+  "skill-tag": dynamic(() => import("./demos/ui-custom/skill-tag-demo"), {
+    ssr: false,
+  }),
   agent: dynamic(() => import("./demos/ui-custom/agent-demo"), { ssr: false }),
   "animated-dots": dynamic(() => import("./demos/ui-custom/animated-dots-demo"), {
     ssr: false,
@@ -1506,35 +1507,6 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  // Footer
-  "footer-demo-default": dynamic(
-    () =>
-      import("./demos/ui/footer-demo").then((mod) => ({
-        default: mod.FooterDemoDefault,
-      })),
-    { ssr: false },
-  ),
-  "footer-demo-custom-text": dynamic(
-    () =>
-      import("./demos/ui/footer-demo").then((mod) => ({
-        default: mod.FooterDemoCustomText,
-      })),
-    { ssr: false },
-  ),
-  "footer-demo-no-icon": dynamic(
-    () =>
-      import("./demos/ui/footer-demo").then((mod) => ({
-        default: mod.FooterDemoNoIcon,
-      })),
-    { ssr: false },
-  ),
-  "footer-demo-keyboard-hints": dynamic(
-    () =>
-      import("./demos/ui/footer-demo").then((mod) => ({
-        default: mod.FooterDemoKeyboardHints,
-      })),
-    { ssr: false },
-  ),
   // Native Select
   "native-select-demo-default": dynamic(
     () =>
@@ -2243,97 +2215,6 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
     () =>
       import("./demos/ui/progress-demo").then((mod) => ({
         default: mod.ProgressDemoZero,
-      })),
-    { ssr: false },
-  ),
-  // Progress Circle
-  "progress-circle-demo-default": dynamic(
-    () =>
-      import("./demos/ui/progress-circle-demo").then((mod) => ({
-        default: mod.ProgressCircleDemoDefault,
-      })),
-    { ssr: false },
-  ),
-  "progress-circle-demo-indeterminate": dynamic(
-    () =>
-      import("./demos/ui/progress-circle-demo").then((mod) => ({
-        default: mod.ProgressCircleDemoIndeterminate,
-      })),
-    { ssr: false },
-  ),
-  "progress-circle-demo-values": dynamic(
-    () =>
-      import("./demos/ui/progress-circle-demo").then((mod) => ({
-        default: mod.ProgressCircleDemoValues,
-      })),
-    { ssr: false },
-  ),
-  "progress-circle-demo-complete": dynamic(
-    () =>
-      import("./demos/ui/progress-circle-demo").then((mod) => ({
-        default: mod.ProgressCircleDemoComplete,
-      })),
-    { ssr: false },
-  ),
-  "progress-circle-demo-sizes": dynamic(
-    () =>
-      import("./demos/ui/progress-circle-demo").then((mod) => ({
-        default: mod.ProgressCircleDemoSizes,
-      })),
-    { ssr: false },
-  ),
-  "progress-circle-demo-controlled": dynamic(
-    () =>
-      import("./demos/ui/progress-circle-demo").then((mod) => ({
-        default: mod.ProgressCircleDemoControlled,
-      })),
-    { ssr: false },
-  ),
-  "progress-circle-demo-filled": dynamic(
-    () =>
-      import("./demos/ui/progress-circle-demo").then((mod) => ({
-        default: mod.ProgressCircleDemoFilled,
-      })),
-    { ssr: false },
-  ),
-  "progress-circle-demo-filled-controlled": dynamic(
-    () =>
-      import("./demos/ui/progress-circle-demo").then((mod) => ({
-        default: mod.ProgressCircleDemoFilledControlled,
-      })),
-    { ssr: false },
-  ),
-  "progress-circle-demo-status": dynamic(
-    () =>
-      import("./demos/ui/progress-circle-demo").then((mod) => ({
-        default: mod.ProgressCircleDemoStatus,
-      })),
-    { ssr: false },
-  ),
-  // Progress Rovo
-  "progress-rovo-demo-default": dynamic(
-    () => import("./demos/ui/progress-rovo/progress-rovo-demo-default"),
-    { ssr: false },
-  ),
-  "progress-rovo-demo-completed": dynamic(
-    () => import("./demos/ui/progress-rovo/progress-rovo-demo-completed"),
-    { ssr: false },
-  ),
-  "progress-rovo-demo-determinate": dynamic(
-    () => import("./demos/ui/progress-rovo/progress-rovo-demo-determinate"),
-    { ssr: false },
-  ),
-  "progress-rovo-demo-controlled": dynamic(
-    () =>
-      import("./demos/ui/progress-rovo-demo").then((mod) => ({
-        default: mod.ProgressRovoDemoControlled,
-      })),
-    { ssr: false },
-  ),
-  "progress-rovo-demo-transition": dynamic(
-    () =>
-      import("./demos/ui/progress-rovo-demo").then((mod) => ({
-        default: mod.ProgressRovoDemoTransition,
       })),
     { ssr: false },
   ),
@@ -4378,69 +4259,6 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  "sidebar-nav-item-demo-default": dynamic(
-    () =>
-      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
-        default: mod.SidebarNavItemDemoDefault,
-      })),
-    { ssr: false },
-  ),
-  "sidebar-nav-item-demo-expanded": dynamic(
-    () =>
-      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
-        default: mod.SidebarNavItemDemoExpanded,
-      })),
-    { ssr: false },
-  ),
-  "sidebar-nav-item-demo-hovered": dynamic(
-    () =>
-      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
-        default: mod.SidebarNavItemDemoHovered,
-      })),
-    { ssr: false },
-  ),
-  "sidebar-nav-item-demo-selected": dynamic(
-    () =>
-      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
-        default: mod.SidebarNavItemDemoSelected,
-      })),
-    { ssr: false },
-  ),
-  "sidebar-nav-item-demo-focus-visible": dynamic(
-    () =>
-      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
-        default: mod.SidebarNavItemDemoFocusVisible,
-      })),
-    { ssr: false },
-  ),
-  "sidebar-nav-item-demo-with-count": dynamic(
-    () =>
-      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
-        default: mod.SidebarNavItemDemoWithCount,
-      })),
-    { ssr: false },
-  ),
-  "sidebar-nav-item-demo-project-count": dynamic(
-    () =>
-      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
-        default: mod.SidebarNavItemDemoProjectCount,
-      })),
-    { ssr: false },
-  ),
-  "sidebar-nav-item-demo-with-description": dynamic(
-    () =>
-      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
-        default: mod.SidebarNavItemDemoWithDescription,
-      })),
-    { ssr: false },
-  ),
-  "sidebar-nav-item-demo-nested-levels": dynamic(
-    () =>
-      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
-        default: mod.SidebarNavItemDemoNestedLevels,
-      })),
-    { ssr: false },
-  ),
   // Sonner
   "sonner-demo-default": dynamic(
     () =>
@@ -5006,49 +4824,6 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  // Object Tile
-  "object-tile-demo-default": dynamic(
-    () =>
-      import("./demos/ui/object-tile-demo").then((mod) => ({
-        default: mod.ObjectTileDemoDefault,
-      })),
-    { ssr: false },
-  ),
-  "object-tile-demo-description": dynamic(
-    () =>
-      import("./demos/ui/object-tile-demo").then((mod) => ({
-        default: mod.ObjectTileDemoDescription,
-      })),
-    { ssr: false },
-  ),
-  "object-tile-demo-meta": dynamic(
-    () =>
-      import("./demos/ui/object-tile-demo").then((mod) => ({
-        default: mod.ObjectTileDemoMeta,
-      })),
-    { ssr: false },
-  ),
-  "object-tile-demo-link": dynamic(
-    () =>
-      import("./demos/ui/object-tile-demo").then((mod) => ({
-        default: mod.ObjectTileDemoLink,
-      })),
-    { ssr: false },
-  ),
-  "object-tile-demo-list": dynamic(
-    () =>
-      import("./demos/ui/object-tile-demo").then((mod) => ({
-        default: mod.ObjectTileDemoList,
-      })),
-    { ssr: false },
-  ),
-  "object-tile-demo-with-avatar": dynamic(
-    () =>
-      import("./demos/ui/object-tile-demo").then((mod) => ({
-        default: mod.ObjectTileDemoWithAvatar,
-      })),
-    { ssr: false },
-  ),
   // Page Header
   "page-header-demo-default": dynamic(
     () =>
@@ -5190,78 +4965,6 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
     () =>
       import("./demos/ui/split-button-demo").then((mod) => ({
         default: mod.SplitButtonDemoVariants,
-      })),
-    { ssr: false },
-  ),
-  // Skill Card
-  "skill-card-demo-default": dynamic(
-    () =>
-      import("./demos/ui/skill-card-demo").then((mod) => ({
-        default: mod.default,
-      })),
-    { ssr: false },
-  ),
-  "skill-card-demo-app-source": dynamic(
-    () =>
-      import("./demos/ui/skill-card-demo").then((mod) => ({
-        default: mod.SkillCardDemoAppSource,
-      })),
-    { ssr: false },
-  ),
-  "skill-card-demo-custom-source": dynamic(
-    () =>
-      import("./demos/ui/skill-card-demo").then((mod) => ({
-        default: mod.SkillCardDemoCustomSource,
-      })),
-    { ssr: false },
-  ),
-  "skill-card-demo-no-description": dynamic(
-    () =>
-      import("./demos/ui/skill-card-demo").then((mod) => ({
-        default: mod.SkillCardDemoWithoutDescription,
-      })),
-    { ssr: false },
-  ),
-  // Skill Tag
-  "skill-tag-demo-default": dynamic(
-    () =>
-      import("./demos/ui/skill-tag-demo").then((mod) => ({
-        default: mod.SkillTagDemoDefault,
-      })),
-    { ssr: false },
-  ),
-  "skill-tag-demo-colors": dynamic(
-    () =>
-      import("./demos/ui/skill-tag-demo").then((mod) => ({
-        default: mod.SkillTagDemoColors,
-      })),
-    { ssr: false },
-  ),
-  "skill-tag-demo-with-icon": dynamic(
-    () =>
-      import("./demos/ui/skill-tag-demo").then((mod) => ({
-        default: mod.SkillTagDemoWithIcon,
-      })),
-    { ssr: false },
-  ),
-  "skill-tag-demo-interactive": dynamic(
-    () =>
-      import("./demos/ui/skill-tag-demo").then((mod) => ({
-        default: mod.SkillTagDemoInteractive,
-      })),
-    { ssr: false },
-  ),
-  "skill-tag-demo-group": dynamic(
-    () =>
-      import("./demos/ui/skill-tag-demo").then((mod) => ({
-        default: mod.SkillTagDemoGroup,
-      })),
-    { ssr: false },
-  ),
-  "skill-tag-demo-inline": dynamic(
-    () =>
-      import("./demos/ui/skill-tag-demo").then((mod) => ({
-        default: mod.SkillTagDemoInline,
       })),
     { ssr: false },
   ),
@@ -5433,6 +5136,171 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
 };
 
 const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
+
+  // Migrated UI custom components
+  "footer-demo-default": dynamic(
+    () => import("./demos/ui-custom/footer-demo").then((mod) => ({ default: mod.FooterDemoDefault })),
+    { ssr: false },
+  ),
+  "footer-demo-custom-text": dynamic(
+    () => import("./demos/ui-custom/footer-demo").then((mod) => ({ default: mod.FooterDemoCustomText })),
+    { ssr: false },
+  ),
+  "footer-demo-no-icon": dynamic(
+    () => import("./demos/ui-custom/footer-demo").then((mod) => ({ default: mod.FooterDemoNoIcon })),
+    { ssr: false },
+  ),
+  "footer-demo-keyboard-hints": dynamic(
+    () => import("./demos/ui-custom/footer-demo").then((mod) => ({ default: mod.FooterDemoKeyboardHints })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-default": dynamic(
+    () => import("./demos/ui-custom/progress-circle-demo").then((mod) => ({ default: mod.ProgressCircleDemoDefault })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-indeterminate": dynamic(
+    () => import("./demos/ui-custom/progress-circle-demo").then((mod) => ({ default: mod.ProgressCircleDemoIndeterminate })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-values": dynamic(
+    () => import("./demos/ui-custom/progress-circle-demo").then((mod) => ({ default: mod.ProgressCircleDemoValues })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-complete": dynamic(
+    () => import("./demos/ui-custom/progress-circle-demo").then((mod) => ({ default: mod.ProgressCircleDemoComplete })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-sizes": dynamic(
+    () => import("./demos/ui-custom/progress-circle-demo").then((mod) => ({ default: mod.ProgressCircleDemoSizes })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-controlled": dynamic(
+    () => import("./demos/ui-custom/progress-circle-demo").then((mod) => ({ default: mod.ProgressCircleDemoControlled })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-filled": dynamic(
+    () => import("./demos/ui-custom/progress-circle-demo").then((mod) => ({ default: mod.ProgressCircleDemoFilled })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-filled-controlled": dynamic(
+    () => import("./demos/ui-custom/progress-circle-demo").then((mod) => ({ default: mod.ProgressCircleDemoFilledControlled })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-status": dynamic(
+    () => import("./demos/ui-custom/progress-circle-demo").then((mod) => ({ default: mod.ProgressCircleDemoStatus })),
+    { ssr: false },
+  ),
+  "progress-rovo-demo-default": dynamic(() => import("./demos/ui-custom/progress-rovo/progress-rovo-demo-default"), { ssr: false }),
+  "progress-rovo-demo-completed": dynamic(() => import("./demos/ui-custom/progress-rovo/progress-rovo-demo-completed"), { ssr: false }),
+  "progress-rovo-demo-determinate": dynamic(() => import("./demos/ui-custom/progress-rovo/progress-rovo-demo-determinate"), { ssr: false }),
+  "progress-rovo-demo-controlled": dynamic(
+    () => import("./demos/ui-custom/progress-rovo-demo").then((mod) => ({ default: mod.ProgressRovoDemoControlled })),
+    { ssr: false },
+  ),
+  "progress-rovo-demo-transition": dynamic(
+    () => import("./demos/ui-custom/progress-rovo-demo").then((mod) => ({ default: mod.ProgressRovoDemoTransition })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-default": dynamic(
+    () => import("./demos/ui-custom/sidebar-nav-item-demo").then((mod) => ({ default: mod.SidebarNavItemDemoDefault })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-expanded": dynamic(
+    () => import("./demos/ui-custom/sidebar-nav-item-demo").then((mod) => ({ default: mod.SidebarNavItemDemoExpanded })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-hovered": dynamic(
+    () => import("./demos/ui-custom/sidebar-nav-item-demo").then((mod) => ({ default: mod.SidebarNavItemDemoHovered })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-selected": dynamic(
+    () => import("./demos/ui-custom/sidebar-nav-item-demo").then((mod) => ({ default: mod.SidebarNavItemDemoSelected })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-focus-visible": dynamic(
+    () => import("./demos/ui-custom/sidebar-nav-item-demo").then((mod) => ({ default: mod.SidebarNavItemDemoFocusVisible })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-with-count": dynamic(
+    () => import("./demos/ui-custom/sidebar-nav-item-demo").then((mod) => ({ default: mod.SidebarNavItemDemoWithCount })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-project-count": dynamic(
+    () => import("./demos/ui-custom/sidebar-nav-item-demo").then((mod) => ({ default: mod.SidebarNavItemDemoProjectCount })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-with-description": dynamic(
+    () => import("./demos/ui-custom/sidebar-nav-item-demo").then((mod) => ({ default: mod.SidebarNavItemDemoWithDescription })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-nested-levels": dynamic(
+    () => import("./demos/ui-custom/sidebar-nav-item-demo").then((mod) => ({ default: mod.SidebarNavItemDemoNestedLevels })),
+    { ssr: false },
+  ),
+  "object-tile-demo-default": dynamic(
+    () => import("./demos/ui-custom/object-tile-demo").then((mod) => ({ default: mod.ObjectTileDemoDefault })),
+    { ssr: false },
+  ),
+  "object-tile-demo-description": dynamic(
+    () => import("./demos/ui-custom/object-tile-demo").then((mod) => ({ default: mod.ObjectTileDemoDescription })),
+    { ssr: false },
+  ),
+  "object-tile-demo-meta": dynamic(
+    () => import("./demos/ui-custom/object-tile-demo").then((mod) => ({ default: mod.ObjectTileDemoMeta })),
+    { ssr: false },
+  ),
+  "object-tile-demo-link": dynamic(
+    () => import("./demos/ui-custom/object-tile-demo").then((mod) => ({ default: mod.ObjectTileDemoLink })),
+    { ssr: false },
+  ),
+  "object-tile-demo-list": dynamic(
+    () => import("./demos/ui-custom/object-tile-demo").then((mod) => ({ default: mod.ObjectTileDemoList })),
+    { ssr: false },
+  ),
+  "object-tile-demo-with-avatar": dynamic(
+    () => import("./demos/ui-custom/object-tile-demo").then((mod) => ({ default: mod.ObjectTileDemoWithAvatar })),
+    { ssr: false },
+  ),
+  "skill-card-demo-default": dynamic(
+    () => import("./demos/ui-custom/skill-card-demo"),
+    { ssr: false },
+  ),
+  "skill-card-demo-app-source": dynamic(
+    () => import("./demos/ui-custom/skill-card-demo").then((mod) => ({ default: mod.SkillCardDemoAppSource })),
+    { ssr: false },
+  ),
+  "skill-card-demo-custom-source": dynamic(
+    () => import("./demos/ui-custom/skill-card-demo").then((mod) => ({ default: mod.SkillCardDemoCustomSource })),
+    { ssr: false },
+  ),
+  "skill-card-demo-no-description": dynamic(
+    () => import("./demos/ui-custom/skill-card-demo").then((mod) => ({ default: mod.SkillCardDemoWithoutDescription })),
+    { ssr: false },
+  ),
+  "skill-tag-demo-default": dynamic(
+    () => import("./demos/ui-custom/skill-tag-demo").then((mod) => ({ default: mod.SkillTagDemoDefault })),
+    { ssr: false },
+  ),
+  "skill-tag-demo-colors": dynamic(
+    () => import("./demos/ui-custom/skill-tag-demo").then((mod) => ({ default: mod.SkillTagDemoColors })),
+    { ssr: false },
+  ),
+  "skill-tag-demo-with-icon": dynamic(
+    () => import("./demos/ui-custom/skill-tag-demo").then((mod) => ({ default: mod.SkillTagDemoWithIcon })),
+    { ssr: false },
+  ),
+  "skill-tag-demo-interactive": dynamic(
+    () => import("./demos/ui-custom/skill-tag-demo").then((mod) => ({ default: mod.SkillTagDemoInteractive })),
+    { ssr: false },
+  ),
+  "skill-tag-demo-group": dynamic(
+    () => import("./demos/ui-custom/skill-tag-demo").then((mod) => ({ default: mod.SkillTagDemoGroup })),
+    { ssr: false },
+  ),
+  "skill-tag-demo-inline": dynamic(
+    () => import("./demos/ui-custom/skill-tag-demo").then((mod) => ({ default: mod.SkillTagDemoInline })),
+    { ssr: false },
+  ),
   "audio-player-demo-full": dynamic(
     () =>
       import("./demos/ui-custom/audio-player-demo").then((mod) => ({
@@ -6277,10 +6145,10 @@ const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  "panel-demo-status-badge": dynamic(
+  "panel-demo-status-lozenge": dynamic(
     () =>
       import("./demos/ui-custom/panel-demo").then((mod) => ({
-        default: mod.PanelDemoStatusBadge,
+        default: mod.PanelDemoStatusLozenge,
       })),
     { ssr: false },
   ),

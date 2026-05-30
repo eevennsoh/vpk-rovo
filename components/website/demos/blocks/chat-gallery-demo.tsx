@@ -20,7 +20,7 @@ import {
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { composerUpwardShadow, composerPromptInputClassName, composerTextareaClassName, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
 import { SpeechInput } from "@/components/ui-custom/speech-input";
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/ui-custom/footer";
 import Heading from "@/components/blocks/shared-ui/heading";
 import Image from "next/image";
 import { token } from "@/lib/tokens";

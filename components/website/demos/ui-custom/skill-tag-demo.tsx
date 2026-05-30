@@ -11,7 +11,7 @@ import SearchIcon from "@atlaskit/icon/core/search";
 import StarIcon from "@atlaskit/icon/core/star-starred";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
 
-import { SkillTag, SkillTagGroup } from "@/components/ui/skill-tag";
+import { SkillTag, SkillTagGroup } from "@/components/ui-custom/skill-tag";
 
 export default function SkillTagDemo() {
 	return (

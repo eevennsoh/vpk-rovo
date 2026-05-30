@@ -12,7 +12,7 @@ import type { VisualIdentity } from "@/components/projects/shared/lib/visual-ide
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import CrossCircleIcon from "@atlaskit/icon/core/cross-circle";
-import { ProgressCircle } from "@/components/ui/progress-circle";
+import { ProgressCircle } from "@/components/ui-custom/progress-circle";
 import RetryIcon from "@atlaskit/icon/core/retry";
 import VideoStopOverlayIcon from "@atlaskit/icon/core/video-stop-overlay";
 import DeleteIcon from "@atlaskit/icon/core/delete";

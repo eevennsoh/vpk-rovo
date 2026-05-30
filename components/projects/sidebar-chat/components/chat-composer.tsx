@@ -24,7 +24,7 @@ import { composerUpwardShadow, composerPromptInputClassName, composerTextareaCla
 import { Queue, QueueItem, QueueItemActions, QueueItemContent, QueueItemIndicator, QueueList } from "@/components/ui-custom/queue";
 import { Button } from "@/components/ui/button";
 import DeleteIcon from "@atlaskit/icon/core/delete";
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/ui-custom/footer";
 import ChatContextBar from "./chat-context-bar";
 import type { ChatContextBarDescriptor } from "../lib/chat-context-bar";
 import AddIcon from "@atlaskit/icon/core/add";

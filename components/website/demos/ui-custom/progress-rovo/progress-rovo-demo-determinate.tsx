@@ -1,6 +1,6 @@
 "use client";
 
-import { ProgressRovo } from "@/components/ui/progress-rovo";
+import { ProgressRovo } from "@/components/ui-custom/progress-rovo";
 
 export default function ProgressRovoDemoDeterminate() {
 	return (
