@@ -77,12 +77,10 @@ import { Footer } from "@/components/ui/footer";
 import { useClicky } from "@/components/projects/studio/hooks/use-clicky";
 import { useClickyVoice } from "@/components/projects/studio/hooks/use-clicky-voice";
 import { ClickyOverlay } from "@/components/projects/studio/components/clicky/clicky-overlay";
-import { parseClickyResponse } from "@/components/projects/studio/lib/clicky-point-parser";
 import {
 	createStudioScreenAssistantSnapshot,
 	groundStudioScreenAssistantTarget,
 	normalizeAgentDraftPatch,
-	type StudioScreenAssistantResult,
 	type StudioScreenAssistantTarget,
 } from "@/components/projects/studio/lib/studio-screen-assistant";
 import { useSidebarResize } from "@/components/projects/studio/hooks/use-sidebar-resize";
@@ -1320,7 +1318,6 @@ type RealtimeAssistantTextCompletedPayload =
 type RealtimeVoiceShellOptions = Parameters<typeof useRealtimeVoice>[0] & {
 	onAssistantTextCompleted?: (payload: string | { messageId?: string; text?: string }) => void;
 	onAssistantTextDelta?: (payload: string | { delta?: string; messageId?: string; text?: string }) => void;
-	onScreenAssistantResult?: (payload: StudioScreenAssistantResult) => void;
 	onSpeechTranscriptCompleted?: (payload: string | { messageId?: string; transcript?: string; text?: string }) => void;
 	onSpeechTranscriptDelta?: (payload: string | { delta?: string; messageId?: string; text?: string }) => void;
 	onTextResponseStart?: (payload?: { messageId?: string }) => void;
@@ -2578,7 +2575,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		returnToIdle: clickyReturnToIdle,
 		addExchange: clickyAddExchange,
 		screenshotDimensions: clickyScreenshotDimensions,
-		setScreenshotDimensions: clickySetScreenshotDimensions,
 	} = clicky;
 	const screenAssistantPointerRef = useRef<{ x: number; y: number } | null>(null);
 	const screenAssistantComposerRef = useRef<{
@@ -2587,7 +2583,16 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	}>({
 		placeholder: DEFAULT_COMPOSER_PLACEHOLDER,
 	});
-	const lastScreenAssistantMutationTurnIdRef = useRef<string | null>(null);
+	// Refs let the screen-assistant tool executor (created with the realtime hook
+	// below) reach values defined later in this component without re-creating the
+	// hook on every change.
+	const sendFunctionCallOutputRef = useRef<
+		((payload: { callId: string; output: unknown; createResponse?: boolean }) => void) | null
+	>(null);
+	const handleComposerSubmitRef = useRef<
+		((payload: { files: FileUIPart[]; text: string }) => void | Promise<void>) | null
+	>(null);
+	const prefillTextRef = useRef<string | null>(null);
 
 	const handleToggleClicky = useCallback(() => {
 		toggleClicky();
@@ -2799,84 +2804,92 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					replace: true,
 				});
 
-				// Rovo: parse POINT tag and transition to speaking/pointing
+				// Cursor companion: animate "speaking" while the assistant talks.
+				// Pointing is driven separately by the point_at_target tool.
 				if (isClickyActive) {
-					const parsed = parseClickyResponse(text, clickyScreenshotDimensions);
-					clickyAddExchange({ role: "assistant", content: parsed.text || text });
-					if (parsed.point) {
-						clickyStartPointing(parsed.point, parsed.text);
-					} else {
-						clickyStartSpeaking(text);
-					}
+					clickyAddExchange({ role: "assistant", content: text });
+					clickyStartSpeaking(text);
 				}
 			},
-			[ensureRealtimeAssistantMessage, updateRealtimeMessage, isClickyActive, clickyStartPointing, clickyStartSpeaking, clickyAddExchange, clickyScreenshotDimensions],
+			[ensureRealtimeAssistantMessage, updateRealtimeMessage, isClickyActive, clickyStartSpeaking, clickyAddExchange],
 		),
-		onScreenAssistantResult: useCallback(
-			async (payload: StudioScreenAssistantResult) => {
-				const text = payload.text.trim();
-				const snapshot = getScreenAssistantSnapshot();
-				const groundedTarget = groundStudioScreenAssistantTarget({
-					fieldId: payload.target?.fieldId,
-					id: payload.target?.id,
-					label: payload.target?.label ?? payload.point?.label,
-					pointerTarget: snapshot.pointerContext?.target ?? null,
-					visibleTargets: snapshot.visibleTargets,
-				}) ?? payload.target ?? null;
-				const targetPoint = getViewportPointFromScreenAssistantTarget(groundedTarget);
-				const normalizedPatch = normalizeAgentDraftPatch(payload.agentDraftPatch);
-				let didApplyPatch = false;
-
-				if (
-					normalizedPatch &&
-					activeSessionAgentEntry &&
-					lastScreenAssistantMutationTurnIdRef.current !== payload.turnId
-				) {
-					const patch = normalizedPatch.description && !normalizedPatch.summary
-						? { ...normalizedPatch, summary: normalizedPatch.description }
-						: normalizedPatch;
-					const nextEntry = studioAgentRegistry.updateSessionAgentDraft?.(
-						activeSessionAgentEntry.profile.id,
-						patch,
-					);
-					if (nextEntry) {
-						didApplyPatch = true;
-						lastScreenAssistantMutationTurnIdRef.current = payload.turnId;
-					}
-				}
-
-				if (text) {
-					const messageId = await ensureRealtimeAssistantMessage();
-					await updateRealtimeMessage(messageId, text, {
-						replace: true,
+		onToolCall: useCallback(
+			({ name, args, callId }: { name: string; args: Record<string, unknown>; callId: string }) => {
+				const respond = (output: unknown, createResponse?: boolean) =>
+					sendFunctionCallOutputRef.current?.({
+						callId,
+						output,
+						...(createResponse === false ? { createResponse: false } : {}),
 					});
-				}
 
-				if (isClickyActive) {
-					const displayText = text || (didApplyPatch ? "Updated the agent draft." : "");
-					if (displayText) {
-						clickyAddExchange({ role: "assistant", content: displayText });
+				switch (name) {
+					case "get_screen_state": {
+						respond(getScreenAssistantSnapshot());
+						return;
 					}
-
-					if (targetPoint) {
-						clickyStartPointing(targetPoint, displayText);
-					} else if (payload.point) {
-						clickyStartPointing(payload.point, displayText);
-					} else if (displayText) {
-						clickyStartSpeaking(displayText);
+					case "point_at_target": {
+						const snapshot = getScreenAssistantSnapshot();
+						const grounded = groundStudioScreenAssistantTarget({
+							fieldId: typeof args.fieldId === "string" ? args.fieldId : undefined,
+							id: typeof args.targetId === "string" ? args.targetId : undefined,
+							label: typeof args.label === "string" ? args.label : undefined,
+							pointerTarget: snapshot.pointerContext?.target ?? null,
+							visibleTargets: snapshot.visibleTargets,
+						});
+						const point = getViewportPointFromScreenAssistantTarget(grounded);
+						const label =
+							typeof args.label === "string" ? args.label : grounded?.label ?? "";
+						if (point && isClickyActive) {
+							clickyStartPointing(point, label);
+						}
+						respond({
+							ok: Boolean(point),
+							pointed: grounded ? { id: grounded.id, label: grounded.label } : null,
+						});
+						return;
 					}
+					case "set_composer_text": {
+						const text = typeof args.text === "string" ? args.text : "";
+						setPrefillText(text);
+						respond({ ok: Boolean(text) });
+						return;
+					}
+					case "submit_composer": {
+						const text = prefillTextRef.current ?? "";
+						if (text.trim()) {
+							void handleComposerSubmitRef.current?.({ files: [], text });
+						}
+						respond({ ok: Boolean(text.trim()) });
+						return;
+					}
+					case "apply_agent_draft_patch": {
+						const normalized = normalizeAgentDraftPatch(args.patch);
+						let ok = false;
+						if (normalized && activeSessionAgentEntry) {
+							const patch =
+								normalized.description && !normalized.summary
+									? { ...normalized, summary: normalized.description }
+									: normalized;
+							const nextEntry = studioAgentRegistry.updateSessionAgentDraft?.(
+								activeSessionAgentEntry.profile.id,
+								patch,
+							);
+							ok = Boolean(nextEntry);
+						}
+						respond({ ok });
+						return;
+					}
+					default:
+						respond({ ok: false, error: "unknown_tool" });
 				}
 			},
 			[
 				activeSessionAgentEntry,
-				clickyAddExchange,
 				clickyStartPointing,
-				clickyStartSpeaking,
-				ensureRealtimeAssistantMessage,
 				getScreenAssistantSnapshot,
 				isClickyActive,
+				setPrefillText,
 				studioAgentRegistry,
-				updateRealtimeMessage,
 			],
 		),
 		chatMessages: chat.messages,
@@ -2885,16 +2898,12 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 	const isRealtimeActive = realtime.voiceState !== "idle";
 
-	// --- Rovo voice bridge ---
+	// --- Rovo voice bridge (connect + inject tool-based system prompt) ---
 	useClickyVoice({
-		clickyState: clicky.state,
 		isClickyActive,
-		sendImageInput: realtime.sendImageInput,
 		isRealtimeConnected: realtime.isConnected,
 		connectRealtime: realtime.connect,
 		injectContext: realtime.injectContext,
-		onScreenshotCaptured: clickySetScreenshotDimensions,
-		getScreenAssistantSnapshot,
 	});
 
 	const realtimeStatusMessage = resolveRealtimeStatusMessage(realtime);
@@ -3103,6 +3112,12 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			chat.runtimeThreadId,
 		],
 	);
+
+	// Keep the screen-assistant tool executor (created with the realtime hook
+	// above) pointed at the latest handlers without re-creating the hook.
+	sendFunctionCallOutputRef.current = realtime.sendFunctionCallOutput;
+	handleComposerSubmitRef.current = handleComposerSubmit;
+	prefillTextRef.current = prefillText;
 
 	const displayMessages = useMemo(() => {
 		if (!optimisticUserMessage) {

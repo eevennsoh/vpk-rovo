@@ -284,40 +284,123 @@ export function getStudioScreenAssistantPointerContext(
 	};
 }
 
+// Interactive/landmark elements worth surfacing to the model even when they
+// are not explicitly tagged with a screen-assistant attribute. This lets the
+// assistant "see" and point at general chrome (profile avatar, nav, search,
+// Create button, agent cards) — not only the composer.
+const AUTO_TARGET_SELECTOR = [
+	"button",
+	"a[href]",
+	"[role='button']",
+	"[role='link']",
+	"[role='tab']",
+	"[role='menuitem']",
+	"[role='switch']",
+	"input:not([type='hidden'])",
+	"select",
+	"textarea",
+	"img[alt]",
+	"[aria-label]",
+	"[data-testid]",
+].join(", ");
+
+function isVisibleInViewport(element: Element): boolean {
+	if (typeof window === "undefined") {
+		return false;
+	}
+	const rect = element.getBoundingClientRect();
+	if (rect.width <= 0 || rect.height <= 0) {
+		return false;
+	}
+	// Must intersect the current viewport.
+	if (
+		rect.bottom <= 0 ||
+		rect.right <= 0 ||
+		rect.top >= window.innerHeight ||
+		rect.left >= window.innerWidth
+	) {
+		return false;
+	}
+	const style = window.getComputedStyle(element);
+	if (style.visibility === "hidden" || style.display === "none" || style.opacity === "0") {
+		return false;
+	}
+	return true;
+}
+
+function slugifyTargetId(role: string, label: string): string {
+	const base = `${role}-${label}`
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/gu, "-")
+		.replace(/(^-+|-+$)/gu, "")
+		.slice(0, 60);
+	return `auto:${base || role}`;
+}
+
 export function getStudioScreenAssistantVisibleTargets(
-	limit = 40,
+	limit = 60,
 ): StudioScreenAssistantVisibleTarget[] {
 	if (typeof document === "undefined") {
 		return [];
 	}
 
-	const elements = Array.from(
+	const targets: StudioScreenAssistantVisibleTarget[] = [];
+	const seenElements = new Set<Element>();
+	const seenIds = new Set<string>();
+
+	const push = (element: Element, id: string, target: StudioScreenAssistantTarget) => {
+		if (seenElements.has(element) || seenIds.has(id)) {
+			return;
+		}
+		seenElements.add(element);
+		seenIds.add(id);
+		targets.push({ ...target, id });
+	};
+
+	// 1) Explicitly tagged targets take priority (stable ids/fieldIds).
+	const tagged = Array.from(
 		document.querySelectorAll(
 			`[${SCREEN_ASSISTANT_TARGET_ATTR}], [${SCREEN_ASSISTANT_AGENT_FIELD_ATTR}]`,
 		),
 	);
-	const targets: StudioScreenAssistantVisibleTarget[] = [];
-
-	for (const element of elements) {
+	for (const element of tagged) {
+		if (targets.length >= limit) {
+			return targets;
+		}
 		const target = targetFromElement(element);
 		const id =
 			target?.id ??
 			target?.fieldId ??
 			normalizeText(element.getAttribute(SCREEN_ASSISTANT_TARGET_ATTR)) ??
 			normalizeText(element.getAttribute(SCREEN_ASSISTANT_AGENT_FIELD_ATTR));
-
-		if (!target || !id) {
-			continue;
+		if (target && id) {
+			push(element, id, target);
 		}
+	}
 
-		targets.push({
-			...target,
-			id,
-		});
-
+	// 2) Auto-detected interactive/landmark elements visible in the viewport.
+	const auto = Array.from(document.querySelectorAll(AUTO_TARGET_SELECTOR));
+	for (const element of auto) {
 		if (targets.length >= limit) {
 			break;
 		}
+		if (seenElements.has(element) || !isVisibleInViewport(element)) {
+			continue;
+		}
+		const target = targetFromElement(element);
+		if (!target) {
+			continue;
+		}
+		// Require something the model can refer to: a label, an explicit id, or a
+		// test id. Skip unlabeled structural noise.
+		const label = target.label;
+		const id =
+			target.id ??
+			(label ? slugifyTargetId(target.role ?? "element", label) : null);
+		if (!id || (!label && !target.id)) {
+			continue;
+		}
+		push(element, id, target);
 	}
 
 	return targets;

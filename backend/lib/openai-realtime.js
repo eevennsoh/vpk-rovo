@@ -13,7 +13,7 @@
  */
 
 const WebSocket = require("ws");
-const { getRealtimeConfig, getAuthToken, getEnvVars, streamBedrockGatewayManualSse } = require("./ai-gateway-helpers");
+const { getRealtimeConfig, getAuthToken, getEnvVars } = require("./ai-gateway-helpers");
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -85,148 +85,8 @@ const SUPPORTED_CONTEXT_TYPES = new Set([
 	"delegation_error",
 ]);
 
-const POINT_TAG_RE = /\[POINT:(\d+),(\d+):([^\]]+)\]/u;
-const SCREEN_ASSISTANT_JSON_FENCE_RE = /```(?:json|screen-assistant|screen_assistant_result)?\s*([\s\S]*?)\s*```/iu;
-const SCREEN_ASSISTANT_MARKER_RE = /\[SCREEN_ASSISTANT:(\{[\s\S]*\})\]/iu;
 
-function isPlainObject(value) {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
-function normalizeNonEmptyString(value) {
-	return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function normalizeScreenAssistantPoint(value) {
-	if (!isPlainObject(value)) {
-		return null;
-	}
-
-	const x = Number(value.x);
-	const y = Number(value.y);
-	const label = normalizeNonEmptyString(value.label) || "Target";
-
-	if (!Number.isFinite(x) || !Number.isFinite(y)) {
-		return null;
-	}
-
-	return {
-		x: Math.max(0, Math.round(x)),
-		y: Math.max(0, Math.round(y)),
-		label,
-	};
-}
-
-function normalizeScreenAssistantRect(value) {
-	if (!isPlainObject(value)) {
-		return null;
-	}
-
-	const x = Number(value.x);
-	const y = Number(value.y);
-	const width = Number(value.width);
-	const height = Number(value.height);
-
-	if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) {
-		return null;
-	}
-
-	return {
-		x: Math.round(x),
-		y: Math.round(y),
-		width: Math.round(width),
-		height: Math.round(height),
-	};
-}
-
-function normalizeScreenAssistantTarget(value) {
-	if (!isPlainObject(value)) {
-		return null;
-	}
-
-	const target = {};
-	const id = normalizeNonEmptyString(value.id);
-	const fieldId = normalizeNonEmptyString(value.fieldId);
-	const label = normalizeNonEmptyString(value.label);
-	const role = normalizeNonEmptyString(value.role);
-	const rect = normalizeScreenAssistantRect(value.rect);
-
-	if (id) target.id = id;
-	if (fieldId) target.fieldId = fieldId;
-	if (label) target.label = label;
-	if (role) target.role = role;
-	if (rect) target.rect = rect;
-
-	return Object.keys(target).length > 0 ? target : null;
-}
-
-function extractScreenAssistantJson(rawText) {
-	const trimmed = normalizeNonEmptyString(rawText);
-	if (!trimmed) {
-		return null;
-	}
-
-	const candidates = [];
-	const fenceMatch = trimmed.match(SCREEN_ASSISTANT_JSON_FENCE_RE);
-	if (fenceMatch?.[1]) {
-		candidates.push(fenceMatch[1]);
-	}
-	const markerMatch = trimmed.match(SCREEN_ASSISTANT_MARKER_RE);
-	if (markerMatch?.[1]) {
-		candidates.push(markerMatch[1]);
-	}
-	if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-		candidates.push(trimmed);
-	}
-
-	for (const candidate of candidates) {
-		try {
-			const parsed = JSON.parse(candidate);
-			if (isPlainObject(parsed)) {
-				return parsed;
-			}
-		} catch {
-			// Try the next candidate.
-		}
-	}
-
-	return null;
-}
-
-function parseScreenAssistantVisionResponse(rawText, fallbackTurnId = "screen-assistant") {
-	const parsed = extractScreenAssistantJson(rawText);
-	if (parsed) {
-		const text = normalizeNonEmptyString(parsed.text) || "";
-		const point = normalizeScreenAssistantPoint(parsed.point);
-		const target = normalizeScreenAssistantTarget(parsed.target);
-		const turnId = normalizeNonEmptyString(parsed.turnId) || fallbackTurnId;
-		return {
-			type: "screen_assistant_result",
-			turnId,
-			text,
-			...(point ? { point } : {}),
-			...(target ? { target } : {}),
-			...(isPlainObject(parsed.agentDraftPatch) ? { agentDraftPatch: parsed.agentDraftPatch } : {}),
-		};
-	}
-
-	const pointMatch = rawText.match(POINT_TAG_RE);
-	const point = pointMatch
-		? {
-				x: Number(pointMatch[1]),
-				y: Number(pointMatch[2]),
-				label: pointMatch[3].trim() || "Target",
-			}
-		: null;
-	const text = rawText.replace(POINT_TAG_RE, "").trim();
-
-	return {
-		type: "screen_assistant_result",
-		turnId: fallbackTurnId,
-		text,
-		...(point ? { point } : {}),
-	};
-}
 
 // ─── Tools ────────────────────────────────────────────────────────────────────
 
@@ -280,6 +140,78 @@ const SESSION_TOOLS = [
 				},
 			},
 			required: ["prompt", "intent_type"],
+		},
+	},
+	// ── Screen-assistant tools (app-owned actions on the Studio surface) ──────
+	// These are executed by the browser client, which returns a
+	// `function_call_output` back through the relay. The model never touches the
+	// DOM directly — it only requests whitelisted app actions and reads
+	// structured screen state.
+	{
+		type: "function",
+		name: "get_screen_state",
+		description:
+			"Read the current Studio screen as structured state before answering or acting. " +
+			"Returns the active route/panel, composer text, what the pointer is over, and a " +
+			"list of visible targets (id, label, role) you can point at or act on. " +
+			"Call this first whenever the user asks about what is on screen, 'this', 'here', " +
+			"or refers to a control you need to locate.",
+		parameters: { type: "object", properties: {}, required: [] },
+	},
+	{
+		type: "function",
+		name: "point_at_target",
+		description:
+			"Move the on-screen cursor to a visible target to direct the user's attention. " +
+			"Identify the target using one of the ids/labels returned by get_screen_state.",
+		parameters: {
+			type: "object",
+			properties: {
+				targetId: { type: "string", description: "The target.id from get_screen_state." },
+				fieldId: { type: "string", description: "The target.fieldId, when pointing at a form field." },
+				label: { type: "string", description: "Human label of the target, used as a fallback match." },
+			},
+			required: [],
+		},
+	},
+	{
+		type: "function",
+		name: "set_composer_text",
+		description:
+			"Set the text of the Studio agent-builder composer (does not submit). " +
+			"Use when the user asks you to draft, write, or fill in the prompt/message.",
+		parameters: {
+			type: "object",
+			properties: {
+				text: { type: "string", description: "The composer text to set." },
+			},
+			required: ["text"],
+		},
+	},
+	{
+		type: "function",
+		name: "submit_composer",
+		description:
+			"Submit the Studio composer's current text. Only call after the user clearly asks to send/submit.",
+		parameters: { type: "object", properties: {}, required: [] },
+	},
+	{
+		type: "function",
+		name: "apply_agent_draft_patch",
+		description:
+			"Update the session-local Studio agent-builder draft with a safe patch. " +
+			"Never publishes or activates an agent. Allowed fields only: name, description, " +
+			"summary, instructions, contextDescription, trigger, guardrail, tools, " +
+			"conversationStarters, byline, avatarFallback, action.",
+		parameters: {
+			type: "object",
+			properties: {
+				patch: {
+					type: "object",
+					description: "Partial agent draft. Only whitelisted fields are applied client-side.",
+				},
+			},
+			required: ["patch"],
 		},
 	},
 ];
@@ -429,7 +361,11 @@ class RealtimeSession {
 		this._awaitingOpenAIPong = false;
 		this._sessionRefreshTimer = null;
 		this._plannedCloseReason = null;
-		this._clickyTtsResponseId = null; // suppress text for Rovo TTS responses
+		// Track the in-flight OpenAI response so we never request a new one while
+		// another is active (OpenAI rejects that). Tool outputs that arrive during
+		// an active response defer their response.create until response.done.
+		this._activeResponseId = null;
+		this._pendingResponseCreate = false;
 	}
 
 	get state() {
@@ -654,6 +590,9 @@ class RealtimeSession {
 			case "response_create":
 				this._handleResponseCreate();
 				break;
+			case "function_call_output":
+				this._handleFunctionCallOutput(msg);
+				break;
 			default:
 				this._log("REALTIME", `Unknown client message type: ${msg.type}`);
 		}
@@ -766,7 +705,22 @@ class RealtimeSession {
 	// ── Response creation ─────────────────────────────────────────────────
 
 	_handleResponseCreate() {
+		this._requestResponse();
+	}
+
+	/**
+	 * Request a model response, but never while another response is already in
+	 * flight — OpenAI rejects that with "Conversation already has an active
+	 * response in progress". If one is active, defer until RESPONSE_DONE.
+	 */
+	_requestResponse() {
 		if (!this.isReady || !this._openaiWs) {
+			return;
+		}
+
+		if (this._activeResponseId) {
+			this._pendingResponseCreate = true;
+			this._log("REALTIME", "Response create deferred — active response in progress");
 			return;
 		}
 
@@ -775,6 +729,47 @@ class RealtimeSession {
 			response: {},
 		});
 		this._log("REALTIME", "Response creation requested");
+	}
+
+	// ── Tool results ──────────────────────────────────────────────────────
+	//
+	// The browser executes app-owned tools (get_screen_state, point_at_target,
+	// set_composer_text, submit_composer, apply_agent_draft_patch) and returns
+	// the result here. We hand the output to OpenAI as a function_call_output
+	// item, then request a new response so the model can continue grounded in
+	// the result. Client sends:
+	//   { type: "function_call_output", callId: string, output: string|object,
+	//     createResponse?: boolean }
+	_handleFunctionCallOutput(msg) {
+		if (!this.isReady || !this._openaiWs) {
+			return;
+		}
+
+		const callId = typeof msg.callId === "string" ? msg.callId : msg.call_id;
+		if (!callId) {
+			this._log("REALTIME", "function_call_output missing callId");
+			return;
+		}
+
+		const output =
+			typeof msg.output === "string" ? msg.output : JSON.stringify(msg.output ?? {});
+
+		this._sendToOpenAI({
+			type: OPENAI_EVENT.CONVERSATION_ITEM_CREATE,
+			item: {
+				type: "function_call_output",
+				call_id: callId,
+				output,
+			},
+		});
+
+		// Default to letting the model continue; the client can suppress this for
+		// fire-and-forget actions by passing createResponse: false. Routed through
+		// _requestResponse so it waits for any in-flight response to finish.
+		if (msg.createResponse !== false) {
+			this._requestResponse();
+		}
+		this._log("REALTIME", `function_call_output relayed for ${callId}`);
 	}
 
 	_handleTextMessageFromUser(msg) {
@@ -823,12 +818,6 @@ class RealtimeSession {
 			return;
 		}
 
-		// Route Rovo screenshots to Claude via AI Gateway
-		if (msg.clicky) {
-			this._handleClickyVision(msg);
-			return;
-		}
-
 		const content = [
 			{
 				type: "input_image",
@@ -861,108 +850,6 @@ class RealtimeSession {
 		this._log("REALTIME", `Image message received from user (${image.length} chars, detail: ${msg.detail || "low"})`);
 	}
 
-	// ── Rovo vision (Claude via AI Gateway) ────────────────────────────
-
-	async _handleClickyVision(msg) {
-		const envVars = getEnvVars();
-		const gatewayUrl = envVars.AI_GATEWAY_URL;
-
-		if (!gatewayUrl) {
-			this._log("CLICKY_VISION", "AI_GATEWAY_URL not configured — falling back to OpenAI");
-			this._handleImageMessageFromUser({ ...msg, clicky: false });
-			return;
-		}
-
-		const image = typeof msg.image === "string" ? msg.image : "";
-		const textContext = typeof msg.text === "string" ? msg.text.trim() : "";
-		const systemPrompt = typeof msg.systemPrompt === "string" ? msg.systemPrompt : "";
-		const screenAssistant = isPlainObject(msg.screenAssistant) ? msg.screenAssistant : null;
-		const turnId = normalizeNonEmptyString(screenAssistant?.turnId) || `screen-assistant-${Date.now()}`;
-
-		this._log("CLICKY_VISION", `Sending screenshot to Claude (${image.length} chars)`);
-
-		// Build Anthropic messages with image
-		const userContent = [
-			{
-				type: "image",
-				source: {
-					type: "base64",
-					media_type: "image/jpeg",
-					data: image,
-				},
-			},
-		];
-		if (textContext) {
-			userContent.push({
-				type: "text",
-				text: textContext,
-			});
-		}
-		if (screenAssistant) {
-			userContent.push({
-				type: "text",
-				text: `Structured Studio context. Use this to ground targets before relying on pixels:\n${JSON.stringify(screenAssistant)}`,
-			});
-		}
-
-		try {
-			const result = await streamBedrockGatewayManualSse({
-				gatewayUrl,
-				envVars,
-				system: systemPrompt || undefined,
-				messages: [{ role: "user", content: userContent }],
-				maxOutputTokens: 300,
-			});
-
-			const responseText = result?.text || "";
-			if (!responseText) {
-				this._log("CLICKY_VISION", "Claude returned empty response");
-				this._sendToClient({ type: "response_done" });
-				return;
-			}
-
-			this._log("CLICKY_VISION", `Claude response: ${responseText.slice(0, 100)}...`);
-
-			const screenAssistantResult = parseScreenAssistantVisionResponse(responseText, turnId);
-
-			this._sendToClient(screenAssistantResult);
-
-			// Strip POINT tag for TTS — OpenAI should only read the spoken text
-			const spokenText = screenAssistantResult.text.trim();
-
-			if (spokenText && this.isReady && this._openaiWs) {
-				// Mark the next response as a Rovo TTS response (suppress its text output)
-				this._clickyTtsResponseId = "pending";
-
-				// Inject Claude's response into OpenAI Realtime for TTS generation
-				this._sendToOpenAI({
-					type: OPENAI_EVENT.CONVERSATION_ITEM_CREATE,
-					item: {
-						type: "message",
-						role: "user",
-						content: [
-							{
-								type: "input_text",
-								text: `Read this response aloud exactly as written, without adding anything: "${spokenText}"`,
-							},
-						],
-					},
-				});
-				this._sendToOpenAI({
-					type: OPENAI_EVENT.RESPONSE_CREATE,
-					response: {},
-				});
-			} else {
-				// No spoken text (POINT-only response) — send synthetic response_done
-				// so the frontend voice state machine resets
-				this._sendToClient({ type: "response_done" });
-			}
-		} catch (error) {
-			this._log("CLICKY_VISION", `Claude vision error: ${error.message}`);
-			// Fall back to OpenAI
-			this._handleImageMessageFromUser({ ...msg, clicky: false });
-		}
-	}
 
 	// ── OpenAI event handling ─────────────────────────────────────────────
 
@@ -980,6 +867,9 @@ class RealtimeSession {
 		switch (normalizedEventType) {
 			case OPENAI_EVENT.SESSION_CREATED:
 				this._state = SESSION_STATE.READY;
+				// Fresh session — no response can be in flight from a prior connection.
+				this._activeResponseId = null;
+				this._pendingResponseCreate = false;
 				this._log("REALTIME", `Session created: ${event.session?.id || "unknown"}`);
 				this._sendSessionUpdate(getRealtimeConfig());
 				this._sendToClient({ type: "session_ready", sessionId: event.session?.id });
@@ -997,11 +887,7 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_CREATED:
-				// Track Rovo TTS responses to suppress their text output
-				if (this._clickyTtsResponseId === "pending") {
-					this._clickyTtsResponseId = event.response?.id ?? event.response_id ?? null;
-					this._log("CLICKY_VISION", `TTS response created: ${this._clickyTtsResponseId}`);
-				}
+				this._activeResponseId = event.response?.id ?? event.response_id ?? null;
 				this._sendToClient({
 					type: "response_created",
 					responseId: event.response?.id ?? event.response_id,
@@ -1013,10 +899,6 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_TEXT_DELTA:
-				// Suppress text from Rovo TTS responses (Claude already sent the text)
-				if (this._clickyTtsResponseId && event.response_id === this._clickyTtsResponseId) {
-					break;
-				}
 				this._sendToClient({
 					type: "text_delta",
 					delta: event.delta,
@@ -1030,10 +912,6 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_AUDIO_TRANSCRIPT_DELTA:
-				// Suppress transcript from Rovo TTS responses
-				if (this._clickyTtsResponseId && event.response_id === this._clickyTtsResponseId) {
-					break;
-				}
 				this._sendToClient({
 					type: "audio_transcript_delta",
 					delta: event.delta,
@@ -1047,14 +925,17 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_DONE:
-				// Clear Rovo TTS tracking when its response completes
-				if (this._clickyTtsResponseId && (event.response?.id ?? event.response_id) === this._clickyTtsResponseId) {
-					this._clickyTtsResponseId = null;
-				}
+				this._activeResponseId = null;
 				this._sendToClient({
 					type: "response_done",
 					responseId: event.response?.id ?? event.response_id,
 				});
+				// A tool output (or other request) arrived mid-response and deferred
+				// its response.create — now that the response is done, fire it.
+				if (this._pendingResponseCreate) {
+					this._pendingResponseCreate = false;
+					this._requestResponse();
+				}
 				break;
 
 			case OPENAI_EVENT.CONVERSATION_ITEM_INPUT_AUDIO_TRANSCRIPTION_DELTA:
@@ -1093,10 +974,7 @@ class RealtimeSession {
 							output: JSON.stringify({ status: "delegated", message: "Task sent to Rovo for processing." }),
 						},
 					});
-					this._sendToOpenAI({
-						type: OPENAI_EVENT.RESPONSE_CREATE,
-						response: {},
-					});
+					this._requestResponse();
 				}
 				// Forward all function calls to the client
 				this._sendToClient({
@@ -1110,8 +988,11 @@ class RealtimeSession {
 			case OPENAI_EVENT.ERROR: {
 				const errorCode = event.error?.code || "unknown";
 				const errorMessage = event.error?.message || "Unknown error";
-				// input_audio_buffer_commit_empty is a warning, not a fatal error
-				if (errorCode === "input_audio_buffer_commit_empty") {
+				const isActiveResponseRace =
+					errorCode === "conversation_already_has_active_response" ||
+					/active response in progress/iu.test(errorMessage);
+				// These are recoverable, non-fatal warnings — don't surface to the client.
+				if (errorCode === "input_audio_buffer_commit_empty" || isActiveResponseRace) {
 					this._log("REALTIME", `OpenAI warning: ${errorMessage}`);
 				} else {
 					this._log("REALTIME", `OpenAI error: ${errorCode} — ${errorMessage}`);
@@ -1168,7 +1049,6 @@ class RealtimeSession {
 // ─── Exports ─────────────────────────────────────────────────────────────────
 
 module.exports = {
-	parseScreenAssistantVisionResponse,
 	RealtimeSession,
 	ROVO_SYSTEM_INSTRUCTIONS,
 	SESSION_STATE,
