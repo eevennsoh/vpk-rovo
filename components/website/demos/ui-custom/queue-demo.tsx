@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { Icon } from "@/components/ui/icon";
 import {
 	Queue,
 	QueueList,
 	QueueItem,
 	QueueItemContent,
 	QueueItemDescription,
+	QueueItemDragHandle,
 	QueueItemIndicator,
 	QueueItemActions,
 	QueueItemAction,
@@ -16,58 +18,84 @@ import {
 	QueueSectionContent,
 } from "@/components/ui-custom/queue";
 import { Button } from "@/components/ui/button";
+import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import DeleteIcon from "@atlaskit/icon/core/delete";
-import { CheckIcon, CircleIcon, CopyIcon, PencilIcon, TrashIcon } from "@/components/ui/vpk-icons";
+import EditIcon from "@atlaskit/icon/core/edit";
+
+const queueDemoRootClassName = "w-full max-w-sm border-border border-b-0 rounded-b-none bg-surface-raised px-2 pt-2 pb-2 shadow-none";
+const queueDemoListClassName = "mt-0 mb-0 w-full [&_[data-slot=scroll-area-viewport]>div]:max-h-28 [&_[data-slot=scroll-area-viewport]>div]:pr-0 [&_ul]:flex [&_ul]:w-full [&_ul]:flex-col [&_ul]:gap-1";
+const queueDemoItemClassName = "h-8 w-full justify-center gap-0 bg-surface hover:bg-surface-hovered";
+const queueDemoItemWithDescriptionClassName = "h-auto min-h-16 w-full justify-center gap-2 bg-surface py-2 hover:bg-surface-hovered";
+const queueDemoRowClassName = "flex min-w-0 items-center gap-2";
+const queueDemoContentClassName = "text-text-subtle";
+const queueDemoCompletedContentClassName = "text-text-subtlest";
+const queueDemoDescriptionClassName = "text-text-subtlest";
+const queueDemoAttachmentClassName = "mt-0 ml-5 gap-1.5";
+const queueDemoSectionTriggerClassName = "bg-surface text-text-subtle hover:bg-surface-hovered";
+const queueDemoActionsClassName = "gap-0";
+const queueDemoActionClassName = "text-icon-subtlest";
+const queueDemoDragHandleClassName = "";
 
 // — Default: todo list with collapsible sections —
 
 export default function QueueDemo() {
 	return (
-		<Queue className="w-full max-w-sm">
+		<Queue className={queueDemoRootClassName}>
 			<QueueSection>
-				<QueueSectionTrigger>
-					<QueueSectionLabel label="Completed" count={3} icon={<CheckIcon className="size-3.5 text-muted-foreground" />} />
+				<QueueSectionTrigger className={queueDemoSectionTriggerClassName}>
+					<QueueSectionLabel
+						label="Completed"
+						count={3}
+					/>
 				</QueueSectionTrigger>
 				<QueueSectionContent>
-					<QueueList>
-						<QueueItem>
-							<div className="flex items-center gap-2">
+					<QueueList className={queueDemoListClassName}>
+						<QueueItem className={queueDemoItemClassName}>
+							<div className={queueDemoRowClassName}>
+								<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 								<QueueItemIndicator completed />
-								<QueueItemContent completed>Install dependencies</QueueItemContent>
+								<QueueItemContent className={queueDemoCompletedContentClassName} completed>Install dependencies</QueueItemContent>
 							</div>
 						</QueueItem>
-						<QueueItem>
-							<div className="flex items-center gap-2">
+						<QueueItem className={queueDemoItemClassName}>
+							<div className={queueDemoRowClassName}>
+								<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 								<QueueItemIndicator completed />
-								<QueueItemContent completed>Set up database schema</QueueItemContent>
+								<QueueItemContent className={queueDemoCompletedContentClassName} completed>Set up database schema</QueueItemContent>
 							</div>
 						</QueueItem>
-						<QueueItem>
-							<div className="flex items-center gap-2">
+						<QueueItem className={queueDemoItemClassName}>
+							<div className={queueDemoRowClassName}>
+								<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 								<QueueItemIndicator completed />
-								<QueueItemContent completed>Configure authentication</QueueItemContent>
+								<QueueItemContent className={queueDemoCompletedContentClassName} completed>Configure authentication</QueueItemContent>
 							</div>
 						</QueueItem>
 					</QueueList>
 				</QueueSectionContent>
 			</QueueSection>
 			<QueueSection>
-				<QueueSectionTrigger>
-					<QueueSectionLabel label="Pending" count={2} icon={<CircleIcon className="size-3.5 text-muted-foreground" />} />
+				<QueueSectionTrigger className={queueDemoSectionTriggerClassName}>
+					<QueueSectionLabel
+						label="Pending"
+						count={2}
+					/>
 				</QueueSectionTrigger>
 				<QueueSectionContent>
-					<QueueList>
-						<QueueItem>
-							<div className="flex items-center gap-2">
+					<QueueList className={queueDemoListClassName}>
+						<QueueItem className={queueDemoItemWithDescriptionClassName}>
+							<div className={queueDemoRowClassName}>
+								<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 								<QueueItemIndicator />
-								<QueueItemContent>Write API endpoints</QueueItemContent>
+								<QueueItemContent className={queueDemoContentClassName}>Write API endpoints</QueueItemContent>
 							</div>
-							<QueueItemDescription>Create REST endpoints for user CRUD operations</QueueItemDescription>
+							<QueueItemDescription className={queueDemoDescriptionClassName}>Create REST endpoints for user CRUD operations</QueueItemDescription>
 						</QueueItem>
-						<QueueItem>
-							<div className="flex items-center gap-2">
+						<QueueItem className={queueDemoItemClassName}>
+							<div className={queueDemoRowClassName}>
+								<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 								<QueueItemIndicator />
-								<QueueItemContent>Add unit tests</QueueItemContent>
+								<QueueItemContent className={queueDemoContentClassName}>Add unit tests</QueueItemContent>
 							</div>
 						</QueueItem>
 					</QueueList>
@@ -81,55 +109,58 @@ export default function QueueDemo() {
 
 export function QueueDemoWithActions() {
 	return (
-		<Queue className="w-full max-w-sm">
-			<QueueList>
-				<QueueItem>
-					<div className="flex items-center gap-2">
+		<Queue className={queueDemoRootClassName}>
+			<QueueList className={queueDemoListClassName}>
+				<QueueItem className={queueDemoItemClassName}>
+					<div className={queueDemoRowClassName}>
+						<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 						<QueueItemIndicator />
-						<QueueItemContent>Review pull request #42</QueueItemContent>
-						<QueueItemActions>
-							<QueueItemAction aria-label="Edit">
-								<PencilIcon className="size-3.5" />
+						<QueueItemContent className={queueDemoContentClassName}>Review pull request #42</QueueItemContent>
+						<QueueItemActions className={queueDemoActionsClassName}>
+							<QueueItemAction aria-label="Edit" className={queueDemoActionClassName}>
+								<Icon aria-hidden render={<EditIcon label="" size="small" />} />
 							</QueueItemAction>
-							<QueueItemAction aria-label="Copy">
-								<CopyIcon className="size-3.5" />
+							<QueueItemAction aria-label="Send immediately" className={queueDemoActionClassName}>
+								<Icon aria-hidden render={<ArrowUpIcon label="" size="small" />} />
 							</QueueItemAction>
-							<QueueItemAction aria-label="Delete">
-								<TrashIcon className="size-3.5" />
+							<QueueItemAction aria-label="Delete" className={queueDemoActionClassName}>
+								<Icon aria-hidden render={<DeleteIcon label="" size="small" />} />
 							</QueueItemAction>
 						</QueueItemActions>
 					</div>
 				</QueueItem>
-				<QueueItem>
-					<div className="flex items-center gap-2">
+				<QueueItem className={queueDemoItemClassName}>
+					<div className={queueDemoRowClassName}>
+						<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 						<QueueItemIndicator />
-						<QueueItemContent>Update documentation</QueueItemContent>
-						<QueueItemActions>
-							<QueueItemAction aria-label="Edit">
-								<PencilIcon className="size-3.5" />
+						<QueueItemContent className={queueDemoContentClassName}>Update documentation</QueueItemContent>
+						<QueueItemActions className={queueDemoActionsClassName}>
+							<QueueItemAction aria-label="Edit" className={queueDemoActionClassName}>
+								<Icon aria-hidden render={<EditIcon label="" size="small" />} />
 							</QueueItemAction>
-							<QueueItemAction aria-label="Copy">
-								<CopyIcon className="size-3.5" />
+							<QueueItemAction aria-label="Send immediately" className={queueDemoActionClassName}>
+								<Icon aria-hidden render={<ArrowUpIcon label="" size="small" />} />
 							</QueueItemAction>
-							<QueueItemAction aria-label="Delete">
-								<TrashIcon className="size-3.5" />
+							<QueueItemAction aria-label="Delete" className={queueDemoActionClassName}>
+								<Icon aria-hidden render={<DeleteIcon label="" size="small" />} />
 							</QueueItemAction>
 						</QueueItemActions>
 					</div>
 				</QueueItem>
-				<QueueItem>
-					<div className="flex items-center gap-2">
+				<QueueItem className={queueDemoItemClassName}>
+					<div className={queueDemoRowClassName}>
+						<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 						<QueueItemIndicator completed />
-						<QueueItemContent completed>Fix CI pipeline</QueueItemContent>
-						<QueueItemActions>
-							<QueueItemAction aria-label="Edit">
-								<PencilIcon className="size-3.5" />
+						<QueueItemContent className={queueDemoCompletedContentClassName} completed>Fix CI pipeline</QueueItemContent>
+						<QueueItemActions className={queueDemoActionsClassName}>
+							<QueueItemAction aria-label="Edit" className={queueDemoActionClassName}>
+								<Icon aria-hidden render={<EditIcon label="" size="small" />} />
 							</QueueItemAction>
-							<QueueItemAction aria-label="Copy">
-								<CopyIcon className="size-3.5" />
+							<QueueItemAction aria-label="Send immediately" className={queueDemoActionClassName}>
+								<Icon aria-hidden render={<ArrowUpIcon label="" size="small" />} />
 							</QueueItemAction>
-							<QueueItemAction aria-label="Delete">
-								<TrashIcon className="size-3.5" />
+							<QueueItemAction aria-label="Delete" className={queueDemoActionClassName}>
+								<Icon aria-hidden render={<DeleteIcon label="" size="small" />} />
 							</QueueItemAction>
 						</QueueItemActions>
 					</div>
@@ -143,24 +174,26 @@ export function QueueDemoWithActions() {
 
 export function QueueDemoWithAttachments() {
 	return (
-		<Queue className="w-full max-w-sm">
-			<QueueList>
-				<QueueItem>
-					<div className="flex items-center gap-2">
+		<Queue className={queueDemoRootClassName}>
+			<QueueList className={queueDemoListClassName}>
+				<QueueItem className={queueDemoItemWithDescriptionClassName}>
+					<div className={queueDemoRowClassName}>
+						<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 						<QueueItemIndicator />
-						<QueueItemContent>Process uploaded documents</QueueItemContent>
+						<QueueItemContent className={queueDemoContentClassName}>Process uploaded documents</QueueItemContent>
 					</div>
-					<QueueItemAttachment>
+					<QueueItemAttachment className={queueDemoAttachmentClassName}>
 						<QueueItemFile>report-q4.pdf</QueueItemFile>
 						<QueueItemFile>summary.docx</QueueItemFile>
 					</QueueItemAttachment>
 				</QueueItem>
-				<QueueItem>
-					<div className="flex items-center gap-2">
+				<QueueItem className={queueDemoItemWithDescriptionClassName}>
+					<div className={queueDemoRowClassName}>
+						<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 						<QueueItemIndicator completed />
-						<QueueItemContent completed>Analyze dataset</QueueItemContent>
+						<QueueItemContent className={queueDemoCompletedContentClassName} completed>Analyze dataset</QueueItemContent>
 					</div>
-					<QueueItemAttachment>
+					<QueueItemAttachment className={queueDemoAttachmentClassName}>
 						<QueueItemFile>data.csv</QueueItemFile>
 					</QueueItemAttachment>
 				</QueueItem>
@@ -173,24 +206,27 @@ export function QueueDemoWithAttachments() {
 
 export function QueueDemoMinimal() {
 	return (
-		<Queue className="w-full max-w-sm">
-			<QueueList>
-				<QueueItem>
-					<div className="flex items-center gap-2">
+		<Queue className={queueDemoRootClassName}>
+			<QueueList className={queueDemoListClassName}>
+				<QueueItem className={queueDemoItemClassName}>
+					<div className={queueDemoRowClassName}>
+						<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 						<QueueItemIndicator completed />
-						<QueueItemContent completed>Install deps</QueueItemContent>
+						<QueueItemContent className={queueDemoCompletedContentClassName} completed>Install deps</QueueItemContent>
 					</div>
 				</QueueItem>
-				<QueueItem>
-					<div className="flex items-center gap-2">
+				<QueueItem className={queueDemoItemClassName}>
+					<div className={queueDemoRowClassName}>
+						<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 						<QueueItemIndicator />
-						<QueueItemContent>Run tests</QueueItemContent>
+						<QueueItemContent className={queueDemoContentClassName}>Run tests</QueueItemContent>
 					</div>
 				</QueueItem>
-				<QueueItem>
-					<div className="flex items-center gap-2">
+				<QueueItem className={queueDemoItemClassName}>
+					<div className={queueDemoRowClassName}>
+						<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 						<QueueItemIndicator />
-						<QueueItemContent>Deploy to staging</QueueItemContent>
+						<QueueItemContent className={queueDemoContentClassName}>Deploy to staging</QueueItemContent>
 					</div>
 				</QueueItem>
 			</QueueList>
@@ -230,30 +266,28 @@ export function QueueDemoPromptQueue() {
 
 	return (
 		<div className="flex w-full max-w-sm flex-col gap-2">
-			<Queue className="border-border border-b-0 rounded-b-none bg-surface-raised px-2 pt-2 pb-2 shadow-none">
-				<QueueList className="w-full [&_[data-slot=scroll-area-viewport]>div]:max-h-28 [&_[data-slot=scroll-area-viewport]>div]:pr-0 [&_ul]:w-full">
+			<Queue className={queueDemoRootClassName}>
+				<QueueList className={queueDemoListClassName}>
 					{prompts.map((prompt) => (
-						<QueueItem key={prompt.id} className="h-8 w-full justify-center gap-0 bg-surface hover:bg-surface-hovered">
-							<div className="flex items-center gap-2">
+						<QueueItem key={prompt.id} className={queueDemoItemClassName}>
+							<div className={queueDemoRowClassName}>
+								<QueueItemDragHandle className={queueDemoDragHandleClassName} />
 								<QueueItemIndicator />
-								<QueueItemContent className="text-text-subtle">{prompt.text}</QueueItemContent>
+								<QueueItemContent className={queueDemoContentClassName}>{prompt.text}</QueueItemContent>
 								<QueueItemActions>
-									<Button
+									<QueueItemAction
 										aria-label="Remove queued message"
+										className={queueDemoActionClassName}
 										onClick={() => handleRemove(prompt.id)}
-										size="icon-sm"
-										variant="ghost"
-										className="size-7 rounded-full text-icon-subtle opacity-0 transition-opacity group-hover:opacity-100"
 									>
-										<DeleteIcon label="" size="small" />
-									</Button>
+										<Icon aria-hidden render={<DeleteIcon label="" size="small" />} />
+									</QueueItemAction>
 								</QueueItemActions>
 							</div>
 						</QueueItem>
 					))}
 				</QueueList>
 			</Queue>
-			<p className="text-center text-xs text-muted-foreground">Hover an item and click the delete icon to remove it</p>
 		</div>
 	);
 }

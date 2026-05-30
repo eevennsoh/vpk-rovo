@@ -1220,6 +1220,7 @@ import AddIcon from "@atlaskit/icon/core/add";
   QueueSectionContent,
   QueueList,
   QueueItem,
+  QueueItemDragHandle,
   QueueItemIndicator,
   QueueItemContent,
   QueueItemDescription,
@@ -1238,6 +1239,7 @@ import AddIcon from "@atlaskit/icon/core/add";
       <QueueList>
         <QueueItem>
           <div className="flex items-center gap-2">
+            <QueueItemDragHandle />
             <QueueItemIndicator />
             <QueueItemContent>Write API endpoints</QueueItemContent>
           </div>
@@ -1262,9 +1264,10 @@ import AddIcon from "@atlaskit/icon/core/add";
 			{ name: "QueueSectionContent", description: "Animated content area within a collapsible section." },
 			{ name: "QueueList", description: "Scrollable list container (max-h-40) wrapping items in a ul." },
 			{ name: "QueueItem", description: "Individual list item with hover highlight and group context for actions." },
-			{ name: "QueueItemIndicator", description: "Circular status indicator. Accepts completed prop for visual state." },
+			{ name: "QueueItemDragHandle", description: "Hover-revealed drag affordance that expands the row content to the right." },
+			{ name: "QueueItemIndicator", description: "VPK-wrapped status dot icon. Pending uses icon subtle; completed uses icon disabled." },
 			{ name: "QueueItemContent", description: "Primary item text with line-clamp. Accepts completed prop for strikethrough." },
-			{ name: "QueueItemDescription", description: "Secondary descriptive text below the item content." },
+			{ name: "QueueItemDescription", description: "Secondary descriptive text aligned under item content, including drag-handle hover offset." },
 			{ name: "QueueItemActions", description: "Container for hover-revealed action buttons." },
 			{ name: "QueueItemAction", description: "Ghost icon button that appears on item hover." },
 			{ name: "QueueItemAttachment", description: "Flex-wrap container for file and image attachments." },
@@ -1273,7 +1276,7 @@ import AddIcon from "@atlaskit/icon/core/add";
 		],
 		examples: [
 			{ title: "Prompt queue", description: "Chat-style prompt queue with removable items, as used in agent team composers.", demoSlug: "queue-demo-prompt-queue" },
-			{ title: "With actions", description: "Items with hover-revealed edit, copy, and delete action buttons.", demoSlug: "queue-demo-with-actions" },
+			{ title: "With actions", description: "Items with hover-revealed edit, send-immediately, and delete action buttons.", demoSlug: "queue-demo-with-actions" },
 			{ title: "With attachments", description: "Items with file attachment badges.", demoSlug: "queue-demo-with-attachments" },
 			{ title: "Minimal", description: "Simple flat list without collapsible sections.", demoSlug: "queue-demo-minimal" },
 		],
