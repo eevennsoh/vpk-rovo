@@ -316,6 +316,9 @@ const UI_CUSTOM_DEMO: Record<string, ComponentType> = {
   "twg-tool": dynamic(() => import("./demos/ui-custom/twg-tool-demo"), {
     ssr: false,
   }),
+  "twg-loader": dynamic(() => import("./demos/ui-custom/twg-loader-demo"), {
+    ssr: false,
+  }),
   toolbar: dynamic(() => import("./demos/ui-custom/toolbar-demo"), { ssr: false }),
   transcription: dynamic(() => import("./demos/ui-custom/transcription-demo"), {
     ssr: false,
@@ -5502,6 +5505,20 @@ const UI_CUSTOM_VARIANT_DEMOS: Record<string, ComponentType> = {
   ),
   "animated-rovo-demo": dynamic(
     () => import("./demos/ui-custom/animated-rovo-demo"),
+    { ssr: false },
+  ),
+  "twg-loader-demo-sizes": dynamic(
+    () =>
+      import("./demos/ui-custom/twg-loader-demo").then((mod) => ({
+        default: mod.TWGLoaderDemoSizes,
+      })),
+    { ssr: false },
+  ),
+  "twg-loader-demo-on-dark": dynamic(
+    () =>
+      import("./demos/ui-custom/twg-loader-demo").then((mod) => ({
+        default: mod.TWGLoaderDemoOnDark,
+      })),
     { ssr: false },
   ),
   "rovo-generation-demo-default": dynamic(

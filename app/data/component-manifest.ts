@@ -156,6 +156,7 @@ export const CUSTOM_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	customComponent("test-results", "Test Results"),
 	customComponent("tool"),
 	customComponent("twg-tool", "TWG Tool"),
+	customComponent("twg-loader", "TWG Loader"),
 	customComponent("toolbar"),
 	customComponent("transcription"),
 	customComponent("voice-selector", "Voice Selector"),
@@ -215,7 +216,7 @@ export const UI_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	{
 		name: "Forms",
 		slug: "forms",
-		importPath: "@/components/ui/forms",
+		importPath: "@/components/ui/form",
 		category: "ui",
 	},
 	uiComponent("footer", "Footer"),
