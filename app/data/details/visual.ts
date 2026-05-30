@@ -236,7 +236,7 @@ import { configForEffect, RAINBOW_COLOR_STOPS } from "@/components/visual/text-e
 		usage: `<TextEffects config={configForEffect("soft-blur-in")} colorStops={RAINBOW_COLOR_STOPS} text={"Designed to move.\\nBuilt to focus."} />`,
 		props: [
 			{ name: "config", type: "TextEffectConfig", description: "Effect id, split granularity (char/word/line), per-unit duration and stagger, and auto-loop settings. Build one with configForEffect(effectId) to seed the effect's specced timing." },
-			{ name: "colorStops", type: "readonly string[]", default: "undefined", description: "Optional colour palette. Omit to inherit the ambient text colour; supply two or more stops (e.g. RAINBOW_COLOR_STOPS) to carry a gradient through the reveal — sampled discretely per split unit, or as one continuous background-clip gradient for whole effects." },
+			{ name: "colorStops", type: "readonly string[]", default: "undefined", description: "Optional colour palette layered on top of the neutral text (it does not replace it). Omit for plain neutral text; supply two or more stops (e.g. RAINBOW_COLOR_STOPS) to blend a gradient over the animated glyphs via mix-blend-mode: color — glyphs keep their neutral luminance (legible in light and dark) and take on the gradient's hue." },
 			{ name: "text", type: "string", default: "SAMPLE_TEXT", description: "Passage to animate. Newlines split into lines; the active granularity then splits each line into units." },
 		],
 	},

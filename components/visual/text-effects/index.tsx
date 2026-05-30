@@ -13,10 +13,11 @@ import { buildPlan, frameToProps, gradientTextStyle, willChangeFor } from "./lib
 type TextEffectsProps = Readonly<{
 	config: TextEffectConfig;
 	/**
-	 * Optional per-unit colour palette. Omit to inherit the ambient text colour;
-	 * supply two or more stops (e.g. `RAINBOW_COLOR_STOPS`) to carry a gradient
-	 * through the reveal — sampled discretely per split unit, or as one
-	 * continuous `background-clip` gradient for `whole` effects.
+	 * Optional colour palette layered *on top of* the neutral text — it does not
+	 * replace it. Omit to render plain neutral text; supply two or more stops
+	 * (e.g. `RAINBOW_COLOR_STOPS`) to blend a gradient over the animated glyphs
+	 * via `mix-blend-mode: color`, so they keep their neutral luminance (legible
+	 * in light and dark) and pick up the gradient's hue.
 	 */
 	colorStops?: ColorStops;
 	text?: string;
@@ -26,8 +27,10 @@ export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: 
 	const spec = TEXT_EFFECTS[config.effect];
 	const reduced = useReducedMotion();
 
-	// `whole` spans and the reduced-motion fallback paint the palette as one
-	// continuous gradient; split units sample discrete colours per unit below.
+	// Style for the gradient *overlay* layer. `whole` spans and the reduced-motion
+	// fallback paint one continuous `background-clip` gradient; split units sample
+	// a discrete colour per unit (see renderUnits). The overlay is blended down
+	// onto the neutral base with `mix-blend-mode: color`.
 	const wholeGradientStyle = useMemo(
 		() => (colorStops ? gradientTextStyle(colorStops) : null),
 		[colorStops],
@@ -79,6 +82,68 @@ export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: 
 		return { duration, delay, ease: [...spec.easing] as [number, number, number, number] };
 	};
 
+	// The animated glyph tree, rendered for one of two stacked layers. `base` is
+	// the neutral text; `overlay` is an identical, in-sync copy that carries the
+	// gradient (continuous for `whole`, per-unit for split) and is blended down
+	// onto the base by its wrapper's `mix-blend-mode: color`.
+	const renderUnits = (variant: "base" | "overlay") => {
+		if (isWhole) {
+			return (
+				<motion.span
+					style={{
+						display: "inline-block",
+						whiteSpace: "pre-line",
+						willChange,
+						...(variant === "overlay" ? wholeGradientStyle : null),
+					}}
+					initial={fromProps}
+					animate={animateTo}
+					transition={transitionFor(0)}
+				>
+					{text}
+				</motion.span>
+			);
+		}
+		return plan?.lines.map((tokens, lineIndex) => (
+			<span key={lineIndex} className="block">
+				{tokens.map((token, tokenIndex) =>
+					token.animate ? (
+						<motion.span
+							key={tokenIndex}
+							style={{
+								display: "inline-block",
+								whiteSpace: "pre",
+								willChange,
+								// Overlay glyphs take a discrete colour sampled by reading
+								// order; the base layer stays neutral. Colour is static —
+								// only opacity/transform/filter animate.
+								...(variant === "overlay" && colorStops
+									? { color: resolveWaveHighlightColor(colorStops, token.colorIndex, plan?.count ?? 1) }
+									: null),
+							}}
+							initial={fromProps}
+							animate={animateTo}
+							transition={transitionFor(token.slot)}
+						>
+							{token.text}
+						</motion.span>
+					) : (
+						<span key={tokenIndex} style={{ whiteSpace: "pre" }}>
+							{token.text}
+						</span>
+					),
+				)}
+			</span>
+		));
+	};
+
+	// `isolation: isolate` scopes the overlay's `mix-blend-mode` to the base
+	// layer beneath it, so the gradient blends with the neutral text rather than
+	// with whatever is painted behind the component.
+	const layerWrapperStyle = colorStops
+		? ({ position: "relative", display: "inline-block", isolation: "isolate" } as const)
+		: undefined;
+
 	return (
 		<div className="flex w-full flex-col items-center gap-8">
 			<div
@@ -89,52 +154,30 @@ export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: 
 				{/* Screen readers get the whole passage; the split/animated glyphs are decorative. */}
 				<span className="sr-only">{text}</span>
 				{reduced ? (
-					<span aria-hidden style={{ whiteSpace: "pre-line", ...wholeGradientStyle }}>
-						{text}
-					</span>
-				) : (
-					<span key={animationKey} aria-hidden>
-						{isWhole ? (
-							<motion.span
-								style={{ display: "inline-block", whiteSpace: "pre-line", willChange, ...wholeGradientStyle }}
-								initial={fromProps}
-								animate={animateTo}
-								transition={transitionFor(0)}
+					colorStops ? (
+						<span aria-hidden style={layerWrapperStyle}>
+							<span style={{ whiteSpace: "pre-line" }}>{text}</span>
+							<span
+								aria-hidden
+								className="absolute inset-0"
+								style={{ whiteSpace: "pre-line", mixBlendMode: "color", ...wholeGradientStyle }}
 							>
 								{text}
-							</motion.span>
-						) : (
-							plan?.lines.map((tokens, lineIndex) => (
-								<span key={lineIndex} className="block">
-									{tokens.map((token, tokenIndex) =>
-										token.animate ? (
-											<motion.span
-												key={tokenIndex}
-												style={{
-													display: "inline-block",
-													whiteSpace: "pre",
-													willChange,
-													// Static per-unit colour sampled by reading order;
-													// only opacity/transform/filter animate.
-													...(colorStops
-														? { color: resolveWaveHighlightColor(colorStops, token.colorIndex, plan?.count ?? 1) }
-														: null),
-												}}
-												initial={fromProps}
-												animate={animateTo}
-												transition={transitionFor(token.slot)}
-											>
-												{token.text}
-											</motion.span>
-										) : (
-											<span key={tokenIndex} style={{ whiteSpace: "pre" }}>
-												{token.text}
-											</span>
-										),
-									)}
-								</span>
-							))
-						)}
+							</span>
+						</span>
+					) : (
+						<span aria-hidden style={{ whiteSpace: "pre-line" }}>
+							{text}
+						</span>
+					)
+				) : (
+					<span key={animationKey} aria-hidden style={layerWrapperStyle}>
+						{renderUnits("base")}
+						{colorStops ? (
+							<span aria-hidden className="absolute inset-0" style={{ mixBlendMode: "color" }}>
+								{renderUnits("overlay")}
+							</span>
+						) : null}
 					</span>
 				)}
 			</div>

@@ -228,10 +228,11 @@ export const DEFAULT_CONFIG: TextEffectConfig = configForEffect("soft-blur-in");
 export const SAMPLE_TEXT = "Designed to move.\nBuilt to focus.\nReady for anything.";
 
 /**
- * Optional per-unit colour palette. When omitted the text inherits the ambient
- * colour (`text-text`); when supplied, each animated unit samples a colour along
- * the palette so the reveal carries a gradient. Two or more stops blend; one
- * stop is a flat tint.
+ * Optional colour palette layered on top of the neutral text. When omitted the
+ * text stays its ambient colour (`text-text`); when supplied, a gradient drawn
+ * from the palette is blended over the glyphs (`mix-blend-mode: color`) so they
+ * keep their neutral luminance and take on the gradient's hue. Two or more stops
+ * blend across the passage; one stop is a flat tint.
  */
 export type ColorStops = readonly string[];
 
