@@ -131,7 +131,7 @@ export function AgentTemplatesDialog({
 				className="grid h-[min(725px,calc(100svh-2rem))] max-h-[calc(100svh-2rem)] w-[min(1248px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-xl border border-border bg-surface p-0 shadow-xl sm:max-w-[1248px]"
 				showCloseButton={false}
 			>
-				<header className="border-b border-border px-6 py-6">
+				<header className="px-6 py-6">
 					<div className="flex h-8 items-center justify-between gap-4">
 						<div
 							aria-label="Template categories"
@@ -162,7 +162,7 @@ export function AgentTemplatesDialog({
 				<div className="relative min-h-0 overflow-hidden">
 					<div
 						aria-label="Agent templates"
-						className="flex h-full gap-4 overflow-x-auto overflow-y-hidden px-6 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+						className="flex h-full gap-4 overflow-x-auto overflow-y-hidden px-6 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 						data-agent-templates-carousel
 						ref={scrollRef}
 					>
