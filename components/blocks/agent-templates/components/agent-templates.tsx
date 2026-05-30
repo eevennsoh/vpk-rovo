@@ -128,7 +128,7 @@ export function AgentTemplatesDialog({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
-				className="grid h-[min(725px,calc(100svh-2rem))] max-h-[calc(100svh-2rem)] w-[min(1248px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] grid-rows-[192px_minmax(0,1fr)] gap-0 overflow-hidden rounded-xl border border-border bg-surface p-0 shadow-xl sm:max-w-[1248px]"
+				className="grid h-[min(725px,calc(100svh-2rem))] max-h-[calc(100svh-2rem)] w-[min(1248px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-xl border border-border bg-surface p-0 shadow-xl sm:max-w-[1248px]"
 				showCloseButton={false}
 			>
 				<header className="border-b border-border px-6 py-6">
@@ -152,7 +152,7 @@ export function AgentTemplatesDialog({
 						</DialogClose>
 					</div>
 					<DialogTitle
-						className="mt-4 max-w-[760px] text-text"
+						className="mt-4 text-text"
 						style={{ font: token("font.heading.xlarge") }}
 					>
 						{title}
