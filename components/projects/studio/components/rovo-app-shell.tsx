@@ -25,6 +25,7 @@ import { formatAnnotationsForVoiceContext } from "@/components/ui-custom/lib/art
 import type { ArtifactAnnotation } from "@/components/ui-custom/lib/artifact-annotations";
 import { useRovoApp } from "@/components/projects/studio/hooks/use-rovo-app";
 import { useHmrReloadSuppression } from "@/components/projects/studio/hooks/use-hmr-reload-suppression";
+import { useAgentUrlSync } from "@/hooks/use-agent-url-sync";
 import {
 	buildRovoAppBrowserArtifactKey,
 	shouldAutoOpenRovoAppBrowserArtifact,
@@ -1469,6 +1470,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		smartGenerationLayout,
 	});
 	useHmrReloadSuppression(chat.isStreaming);
+	// Mirror the selected/created agent into the URL (`?agent=`) so it is
+	// deep-linkable, survives reload, and works with browser back/forward.
+	useAgentUrlSync({ enabled: !embedded });
 	const chatRef = useRef(chat);
 	chatRef.current = chat;
 	const [wikiMemoryStatus, setWikiMemoryStatus] = useState<WikiStatus | null>(null);
