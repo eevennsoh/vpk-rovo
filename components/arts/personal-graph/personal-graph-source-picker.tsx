@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { resolveWaveHighlightColor } from "@/components/ui-custom/lib/shimmer-colors";
 import { TWGLoader } from "@/components/ui-custom/twg-loader";
 import { motion, useReducedMotion, type Transition } from "motion/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { PixelVaultIcon } from "./personal-graph-pixel-icons";
 
 const TWG_LABEL = "Connect Team Work Graph";
@@ -13,27 +13,22 @@ const TWG_LABEL = "Connect Team Work Graph";
 // soft-blur reveal carries a rainbow gradient on hover.
 const TWG_RAINBOW_GRADIENT = ["#1868db", "#bf63f3", "#fca700"] as const;
 
-// "Soft Blur" frames (Pixel Point `animate-text` preset). Values mirror the
-// showcase spec in components/visual/text-effects/data.ts.
-// - ORIGIN: the rest/enter-from frame — blurred, transparent, nudged down so a
-//   fresh hover rises up into place.
-// - SHOWN: the revealed frame.
-// - LEAVE: the exit destination — a plain blur-out in position (no y travel), so
-//   hover-out dissolves where the glyphs sit instead of sliding back down.
-const SOFT_BLUR_ORIGIN = { opacity: 0, y: 16, filter: "blur(12px)" } as const;
-const SOFT_BLUR_SHOWN = { opacity: 1, y: 0, filter: "blur(0px)" } as const;
-const SOFT_BLUR_LEAVE = { opacity: 0, y: 0, filter: "blur(12px)" } as const;
+// "Soft Blur" frames: the rainbow only fades + blurs, no vertical travel. Keeping
+// HIDDEN and SHOWN symmetric (opacity + filter only) means Motion just interpolates
+// from each glyph's current value in either direction — fully deterministic on
+// rapid hover in/out, with no stateful reset that could race.
+const SOFT_BLUR_HIDDEN = { opacity: 0, filter: "blur(12px)" } as const;
+const SOFT_BLUR_SHOWN = { opacity: 1, filter: "blur(0px)" } as const;
 
 // Enter is per-glyph staggered for the cascading reveal.
 const SOFT_BLUR_ENTER_DURATION = 0.6;
 const SOFT_BLUR_ENTER_STAGGER = 0.02;
 const SOFT_BLUR_ENTER_EASE = [0.22, 1, 0.36, 1] as const;
 
-// Leave is uniform (no stagger) and eases out gently — reusing the enter curve
-// family — so hover-out settles back gracefully instead of snapping. The rainbow
-// glyphs AND the resting copy share this one clock, so they cross-fade as a
-// single motion rather than the copy popping in while the rainbow still lingers.
-const SOFT_BLUR_LEAVE_DURATION = 0.35;
+// Leave is uniform (no stagger) and slow + gentle, so the rainbow gradient drifts
+// back to blur instead of snapping. The rainbow glyphs AND the resting copy share
+// this one clock, so they cross-fade as a single motion.
+const SOFT_BLUR_LEAVE_DURATION = 0.7;
 const SOFT_BLUR_LEAVE_EASE = [0.22, 1, 0.36, 1] as const;
 
 // On hover-in the resting copy ducks out quickly so the rising rainbow owns the
@@ -46,9 +41,10 @@ const RESTING_COPY_ENTER_DURATION = 0.12;
  * A plain in-flow copy owns layout (the button never reflows). The rainbow is
  * an `absolute inset-0` overlay of the same per-glyph boxes that stays
  * permanently mounted and simply animates between a hidden and a shown frame as
- * `active` toggles. Because the glyphs never unmount, Motion always interpolates
- * each one from its current value — so mousing out mid-reveal reverses smoothly
- * instead of snapping (the failure mode of mount/unmount via `AnimatePresence`).
+ * `active` toggles. The frames differ only in opacity + blur (no transform), so
+ * Motion always interpolates each glyph from its current value in either
+ * direction — mousing in/out mid-reveal reverses smoothly and behaves the same
+ * no matter how rapidly it's toggled (no stateful reset to race).
  */
 function TwgRainbowSoftBlur({ active, label }: Readonly<{ active: boolean; label: string }>) {
 	const reduced = useReducedMotion();
@@ -61,21 +57,11 @@ function TwgRainbowSoftBlur({ active, label }: Readonly<{ active: boolean; label
 		ease: [...SOFT_BLUR_LEAVE_EASE],
 	};
 
-	// The visible exit blurs out in position (LEAVE, y unchanged). Once it
-	// finishes, the now-transparent glyphs snap back to the below ORIGIN so the
-	// next hover rises again — the y reset happens at opacity 0, so it's unseen.
-	const [restAtOrigin, setRestAtOrigin] = useState(true);
-	useEffect(() => {
-		if (showRainbow) setRestAtOrigin(false);
-	}, [showRainbow]);
-	const hiddenFrame = restAtOrigin ? SOFT_BLUR_ORIGIN : SOFT_BLUR_LEAVE;
-	const hiddenTransition: Transition = restAtOrigin ? { duration: 0 } : leaveTransition;
-
 	return (
 		<span aria-hidden className="pointer-events-none relative inline-flex whitespace-pre">
 			{/* Layout owner + default appearance; fades under the rainbow so the
-			    rising glyphs don't ghost over the resting copy while active. Shares
-			    the rainbow's leave clock on hover-out so both cross-fade as one. */}
+			    glyphs don't ghost over the resting copy while active. Shares the
+			    rainbow's leave clock on hover-out so both cross-fade as one. */}
 			<motion.span
 				className="inline-flex whitespace-pre"
 				style={{ willChange: "opacity" }}
@@ -101,10 +87,10 @@ function TwgRainbowSoftBlur({ active, label }: Readonly<{ active: boolean; label
 						className="inline-block whitespace-pre"
 						style={{
 							color: rainbowFor(index),
-							willChange: "opacity, transform, filter",
+							willChange: "opacity, filter",
 						}}
 						initial={false}
-						animate={showRainbow ? SOFT_BLUR_SHOWN : hiddenFrame}
+						animate={showRainbow ? SOFT_BLUR_SHOWN : SOFT_BLUR_HIDDEN}
 						transition={
 							showRainbow
 								? {
@@ -112,11 +98,8 @@ function TwgRainbowSoftBlur({ active, label }: Readonly<{ active: boolean; label
 										duration: SOFT_BLUR_ENTER_DURATION,
 										ease: [...SOFT_BLUR_ENTER_EASE],
 									}
-								: hiddenTransition
+								: leaveTransition
 						}
-						onAnimationComplete={() => {
-							if (!showRainbow && !restAtOrigin) setRestAtOrigin(true);
-						}}
 					>
 						{character}
 					</motion.span>
