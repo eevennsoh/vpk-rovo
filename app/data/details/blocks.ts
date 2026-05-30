@@ -138,6 +138,8 @@ const agents: AgentsDirectoryAgent[] = [
 		usage: `import { AgentTemplatesDialog } from "@/components/blocks/agent-templates";
 import type { AgentTemplatesAgent } from "@/components/blocks/agent-templates";
 
+// Cards render via CardDirectoryAgentExpanded. The detail fields below are
+// optional — omit them and the card falls back to identity + a derived publisher.
 const agents: AgentTemplatesAgent[] = [
   {
     id: "feedback-analyzer",
@@ -145,6 +147,24 @@ const agents: AgentTemplatesAgent[] = [
     byline: "Product agent by Atlassian",
     avatarSrc: "/avatar-agent/product-agents/feedback-analyzer.svg",
     description: "Clusters customer feedback and surfaces themes.",
+    verified: true,
+    capabilities: [
+      "Surfaces recurring themes from raw feedback",
+      "Scores sentiment shifts across releases",
+      "Drafts a weekly digest for your team",
+    ],
+    sources: [
+      { id: "jira", label: "Jira", provider: "jira" },
+      { id: "confluence", label: "Confluence", provider: "confluence" },
+    ],
+    skills: [
+      { color: "software", label: "jql-search" },
+      { color: "teamwork", label: "theme-grouping" },
+    ],
+    stats: [
+      { label: "Remix", value: "1.4K" },
+      { label: "Last update", value: "2 weeks ago" },
+    ],
   },
 ];
 
