@@ -3,6 +3,8 @@
 import AiChatIcon from "@atlaskit/icon/core/ai-chat";
 import StarUnstarredIcon from "@atlaskit/icon/core/star-unstarred";
 
+import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import { SkillTag, SkillTagGroup } from "@/components/ui-custom/skill-tag";
 import { TwgToolSourceStack, type TwgToolSource } from "@/components/ui-custom/twg-tool";
 
@@ -34,6 +36,12 @@ export interface CardDirectoryAgentExpandedProps {
 	sources?: ReadonlyArray<TwgToolSource>;
 	/** Skill tags shown in the "Skills" section. */
 	skills?: ReadonlyArray<CardDirectoryTemplateSkill>;
+	/** Footer metadata blocks (value over label), e.g. remix count, last update. */
+	stats?: ReadonlyArray<{ value: string; label: string }>;
+	/** Collaborator avatars shown at the footer's trailing edge. */
+	collaborators?: ReadonlyArray<{ src: string; name: string }>;
+	/** Overflow count appended to the collaborator group (e.g. 4 → "+4"). */
+	collaboratorOverflow?: number;
 	/** Override the avatar-category-derived cover color. */
 	coverBackgroundColor?: string;
 	verified?: boolean;
@@ -58,6 +66,9 @@ export function CardDirectoryAgentExpanded({
 	capabilitiesLabel,
 	sources = [],
 	skills = [],
+	stats = [],
+	collaborators = [],
+	collaboratorOverflow,
 	coverBackgroundColor,
 	verified = false,
 	rating,
@@ -67,8 +78,11 @@ export function CardDirectoryAgentExpanded({
 	onMoreActions,
 	className,
 }: Readonly<CardDirectoryAgentExpandedProps>) {
-	const showRating = typeof rating === "number";
-	const showChats = typeof chatCount === "number";
+	const showStats = stats.length > 0;
+	const showRating = !showStats && typeof rating === "number";
+	const showChats = !showStats && typeof chatCount === "number";
+	const showCollaborators = collaborators.length > 0;
+	const showFooter = showStats || showRating || showChats || showCollaborators;
 
 	return (
 		<CardDirectory className={className} onSelect={onSelect} selectLabel={`Select ${name}`}>
@@ -106,26 +120,57 @@ export function CardDirectoryAgentExpanded({
 				</CardDirectorySection>
 			) : null}
 
+			<Separator />
+
 			<CardDirectoryCapabilities items={capabilities} label={capabilitiesLabel} />
 
-			{showRating || showChats ? (
-				<CardDirectoryFooter>
-					{showRating ? (
-						<CardDirectoryStat
-							icon={<StarUnstarredIcon label="" size="small" spacing="none" color="currentColor" />}
-						>
-							{rating.toFixed(1)}
-							{typeof feedbackCount === "number" ? ` (${formatCompact(feedbackCount)} feedback)` : null}
-						</CardDirectoryStat>
-					) : null}
-					{showChats ? (
-						<CardDirectoryStat
-							icon={<AiChatIcon label="" size="small" spacing="none" color="currentColor" />}
-						>
-							{formatCompact(chatCount)} chats
-						</CardDirectoryStat>
-					) : null}
-				</CardDirectoryFooter>
+			{showFooter ? (
+				<>
+					<Separator />
+					<CardDirectoryFooter className="justify-between">
+						<div className="flex items-center gap-6">
+							{showStats ? (
+								stats.map((stat) => (
+									<div className="flex flex-col" key={stat.label}>
+										<span className="text-sm font-semibold leading-5 text-text">{stat.value}</span>
+										<span className="leading-4">{stat.label}</span>
+									</div>
+								))
+							) : (
+								<div className="flex items-center gap-4">
+									{showRating ? (
+										<CardDirectoryStat
+											icon={<StarUnstarredIcon label="" size="small" spacing="none" color="currentColor" />}
+										>
+											{rating.toFixed(1)}
+											{typeof feedbackCount === "number" ? ` (${formatCompact(feedbackCount)} feedback)` : null}
+										</CardDirectoryStat>
+									) : null}
+									{showChats ? (
+										<CardDirectoryStat
+											icon={<AiChatIcon label="" size="small" spacing="none" color="currentColor" />}
+										>
+											{formatCompact(chatCount)} chats
+										</CardDirectoryStat>
+									) : null}
+								</div>
+							)}
+						</div>
+						{showCollaborators ? (
+							<AvatarGroup label="Collaborators">
+								{collaborators.map((person) => (
+									<Avatar key={person.src} size="sm">
+										<AvatarImage alt={person.name} src={person.src} />
+										<AvatarFallback>{person.name.slice(0, 2)}</AvatarFallback>
+									</Avatar>
+								))}
+								{typeof collaboratorOverflow === "number" ? (
+									<AvatarGroupCount>+{collaboratorOverflow}</AvatarGroupCount>
+								) : null}
+							</AvatarGroup>
+						) : null}
+					</CardDirectoryFooter>
+				</>
 			) : null}
 		</CardDirectory>
 	);

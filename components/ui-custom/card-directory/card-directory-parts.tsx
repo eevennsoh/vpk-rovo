@@ -2,12 +2,13 @@
 
 import { type MouseEvent, type ReactElement, type ReactNode } from "react";
 import Image from "next/image";
-import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
+import AiModelIcon from "@atlaskit/icon-lab/core/ai-model";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import StatusVerifiedIcon from "@atlaskit/icon/core/status-verified";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { Tile } from "@/components/ui/tile";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +31,12 @@ export interface CardDirectoryHeaderProps {
 
 export function CardDirectoryHeader({ leading, title, byline, action }: Readonly<CardDirectoryHeaderProps>) {
 	return (
-		<div className="flex items-start gap-2" data-slot="card-directory-header">
+		// Center the title against the leading visual for single-line headers; top-align
+		// once a byline adds a second line so the avatar tops with the name.
+		<div
+			className={cn("flex gap-2", byline ? "items-start" : "items-center")}
+			data-slot="card-directory-header"
+		>
 			{leading ? <span className="shrink-0">{leading}</span> : null}
 			<div className="min-w-0 flex-1">
 				<h3 className="truncate text-text" style={{ font: token("font.heading.xsmall") }}>
@@ -212,31 +218,28 @@ export function CardDirectoryBanner({ avatarSrc, backgroundColor }: Readonly<Car
 export interface CardDirectoryCapabilitiesProps {
 	/** Optional section label above the list. Omit to render the bare list. */
 	label?: string;
-	/** Capability lines rendered as a scrollable check-marked list. */
+	/** Capability lines rendered as a scrollable icon-tile feature list. */
 	items: readonly string[];
 }
 
 /**
- * Scrollable capabilities list — reuses the bordered panel idiom from the agent
- * knowledge panel, made scrollable with a native `overflow-y-auto` affordance.
+ * Scrollable feature list — borderless icon-tile rows (one per capability),
+ * made scrollable with a native `overflow-y-auto` affordance.
  */
 export function CardDirectoryCapabilities({ label, items }: Readonly<CardDirectoryCapabilitiesProps>) {
 	return (
 		<div className="flex flex-col gap-1" data-slot="card-directory-capabilities">
 			{label ? <span className="text-xs font-semibold leading-4 text-text-subtlest">{label}</span> : null}
-			<div className="rounded-xl border border-border bg-bg-input p-1.5">
-				<ul className="flex max-h-32 flex-col gap-0.5 overflow-y-auto">
-					{items.map((item) => (
-						<li key={item} className="flex items-start gap-2 rounded-lg px-1.5 py-1">
-							<Icon
-								className="mt-0.5 size-3.5 shrink-0 text-icon-success [&_svg]:size-3.5"
-								render={<CheckMarkIcon label="" size="small" color="currentColor" />}
-							/>
-							<span className="text-sm leading-5 text-text-subtle">{item}</span>
-						</li>
-					))}
-				</ul>
-			</div>
+			<ul className="flex max-h-44 flex-col overflow-y-auto">
+				{items.map((item) => (
+					<li key={item} className="flex items-center gap-3 py-1.5">
+						<Tile aria-hidden className="shrink-0 text-icon-subtle" label="" size="small" variant="neutral">
+							<Icon render={<AiModelIcon label="" />} aria-hidden />
+						</Tile>
+						<span className="min-w-0 flex-1 truncate text-sm leading-5 text-text">{item}</span>
+					</li>
+				))}
+			</ul>
 		</div>
 	);
 }

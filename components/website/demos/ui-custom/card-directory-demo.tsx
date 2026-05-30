@@ -35,14 +35,18 @@ export default function CardDirectoryDemo() {
 						"Links findings back to source tickets and pages",
 						"Drafts a weekly digest for your team",
 					]}
-					chatCount={9400}
+					collaboratorOverflow={4}
+					collaborators={[
+						{ name: "Priya Hansra", src: "/avatar-human/priya-hansra.png" },
+						{ name: "Raul Gonzalez", src: "/avatar-human/raul-gonzalez.png" },
+						{ name: "Michael Chu", src: "/avatar-human/michael-chu.png" },
+						{ name: "Melanie Lee", src: "/avatar-human/melanie-lee.png" },
+					]}
 					description="Surfaces themes and sentiment from raw customer feedback in seconds."
-					feedbackCount={1280}
 					name="Feedback analyzer"
 					onMoreActions={() => {}}
 					onSelect={() => {}}
 					publisher="Atlassian"
-					rating={4.6}
 					skills={[
 						{ color: "software", label: "jql-search" },
 						{ color: "teamwork", label: "theme-grouping" },
@@ -52,6 +56,10 @@ export default function CardDirectoryDemo() {
 						{ id: "jira", label: "Jira", provider: "jira" },
 						{ id: "confluence", label: "Confluence", provider: "confluence" },
 						{ id: "google-drive", label: "Google Drive", provider: "google-drive" },
+					]}
+					stats={[
+						{ label: "Remix", value: "1.4K" },
+						{ label: "Last update", value: "2 weeks ago" },
 					]}
 					verified
 				/>
@@ -65,14 +73,17 @@ export default function CardDirectoryDemo() {
 						"Summarizes the change for reviewers",
 						"Flags risky migrations and breaking changes",
 					]}
-					chatCount={1500}
+					collaboratorOverflow={2}
+					collaborators={[
+						{ name: "David Hsieh", src: "/avatar-human/david-hsieh.png" },
+						{ name: "Aoife Burke", src: "/avatar-human/aoife-burke.png" },
+						{ name: "Issac Varghese", src: "/avatar-human/issac-varghese.png" },
+					]}
 					description="Reviews PRs for style, correctness, and security gotchas."
-					feedbackCount={340}
 					name="Code reviewer"
 					onMoreActions={() => {}}
 					onSelect={() => {}}
 					publisher="Mei Tan"
-					rating={4.2}
 					skills={[
 						{ color: "software", label: "diff-review" },
 						{ color: "product", label: "security-scan" },
@@ -80,6 +91,10 @@ export default function CardDirectoryDemo() {
 					sources={[
 						{ id: "bitbucket", label: "Bitbucket", provider: "bitbucket" },
 						{ id: "jira", label: "Jira", provider: "jira" },
+					]}
+					stats={[
+						{ label: "Remix", value: "820" },
+						{ label: "Last update", value: "3 days ago" },
 					]}
 				/>
 			</DemoSection>

@@ -68,10 +68,10 @@ test("banner part bleeds the shell padding and draws the hexagon-outlined cover 
 	assert.match(PARTS_SOURCE, /stroke-surface/u);
 });
 
-test("capabilities part renders a scrollable check-marked list", () => {
-	assert.match(PARTS_SOURCE, /@atlaskit\/icon\/core\/check-mark/u);
-	assert.match(PARTS_SOURCE, /max-h-32 flex-col gap-0\.5 overflow-y-auto/u);
-	assert.match(PARTS_SOURCE, /rounded-xl border border-border bg-bg-input/u);
+test("capabilities part renders a borderless scrollable icon-tile feature list", () => {
+	assert.match(PARTS_SOURCE, /@atlaskit\/icon-lab\/core\/ai-model/u);
+	assert.match(PARTS_SOURCE, /max-h-44 flex-col overflow-y-auto/u);
+	assert.doesNotMatch(PARTS_SOURCE, /rounded-xl border border-border bg-bg-input/u);
 });
 
 test("agent variant renders a hexagon avatar with rating and chat stats", () => {
@@ -96,6 +96,14 @@ test("expanded agent variant renders Works with sources and Skills tags", () => 
 	assert.match(AGENT_EXPANDED_SOURCE, /SkillTagGroup/u);
 	assert.match(AGENT_EXPANDED_SOURCE, /label="Works with"/u);
 	assert.match(AGENT_EXPANDED_SOURCE, /label="Skills"/u);
+});
+
+test("expanded agent variant divides content and renders a metadata + collaborator footer", () => {
+	assert.match(AGENT_EXPANDED_SOURCE, /<Separator \/>/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /<AvatarGroup/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /AvatarGroupCount/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /stats\?: ReadonlyArray/u);
+	assert.match(AGENT_EXPANDED_SOURCE, /collaborators\?: ReadonlyArray/u);
 });
 
 test("capabilities label is optional and omitted when not provided", () => {
