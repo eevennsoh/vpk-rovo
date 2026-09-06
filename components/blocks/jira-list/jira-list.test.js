@@ -24,6 +24,13 @@ const COLUMN_CONTROLS_SOURCE = readFileSync(
 	"utf8",
 );
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
+const FOR_YOU_STAGE_SOURCE = readFileSync(
+	join(
+		process.cwd(),
+		"components/projects/jira-golden-journeys-v1/components/for-you-stage.tsx",
+	),
+	"utf8",
+);
 const DATA_SOURCE = readFileSync(join(__dirname, "data.ts"), "utf8");
 const DETAILS_SOURCE = readFileSync(
 	join(process.cwd(), "app/data/details/blocks/jira-list.ts"),
@@ -483,6 +490,29 @@ test("JiraList centers an accessible refresh button with the footer count", () =
 	assert.match(SOURCE, /onClick=\{onRefresh\}/u);
 	assert.match(SOURCE, /size="icon"/u);
 	assert.match(SOURCE, /variant="ghost"/u);
+});
+
+test("JiraList omits footer actions when the consumer supplies no capability", () => {
+	assert.match(TYPES_SOURCE, /onCreate\?: \(insertion\?: JiraListInsertion\) => void;/u);
+	assert.match(TYPES_SOURCE, /onRefresh\?: \(\) => void;/u);
+	assert.match(
+		SOURCE,
+		/onCreate \? \(\s*<div data-testid="jira-list-footer-controls">[\s\S]*?onClick=\{\(\) => onCreate\(\)\}[\s\S]*?<\/div>\s*\) : null/u,
+	);
+	assert.match(
+		SOURCE,
+		/onRefresh \? \([\s\S]*?aria-label="Refresh work items"[\s\S]*?onClick=\{onRefresh\}[\s\S]*?<\/Button>\s*\) : null/u,
+	);
+	assert.match(FOR_YOU_STAGE_SOURCE, /<JiraList[\s\S]*?rows=\{rows\}/u);
+	assert.doesNotMatch(FOR_YOU_STAGE_SOURCE, /<JiraList[\s\S]*?on(?:Create|Refresh)=/u);
+	assert.match(
+		DETAILS_SOURCE,
+		/name: "onCreate"[\s\S]*?Omit it to remove Create controls/u,
+	);
+	assert.match(
+		DETAILS_SOURCE,
+		/name: "onRefresh"[\s\S]*?Omit it to remove the footer refresh action/u,
+	);
 });
 
 test("JiraList sample refresh restores rows and transient demo state", () => {

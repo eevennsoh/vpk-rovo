@@ -830,17 +830,19 @@ export function JiraList({
 						</div>
 					) : (
 						<>
-							<div data-testid="jira-list-footer-controls">
-								<Button
-									className="-ml-2 text-text-subtle hover:text-text"
-									onClick={() => onCreate?.()}
-									size="default"
-									variant="ghost"
-								>
-									<Icon className="text-icon-subtle" render={<AddIcon label="" size="small" />} />
-									{createLabel}
-								</Button>
-							</div>
+							{onCreate ? (
+								<div data-testid="jira-list-footer-controls">
+									<Button
+										className="-ml-2 text-text-subtle hover:text-text"
+										onClick={() => onCreate()}
+										size="default"
+										variant="ghost"
+									>
+										<Icon className="text-icon-subtle" render={<AddIcon label="" size="small" />} />
+										{createLabel}
+									</Button>
+								</div>
+							) : null}
 							<div
 								className="absolute left-1/2 inline-flex -translate-x-1/2 items-center gap-1"
 								data-testid="jira-list-footer-count"
@@ -848,15 +850,17 @@ export function JiraList({
 								<p className="text-sm font-medium text-text-subtle tabular-nums">
 									{visibleCount} of {totalCountLabel}
 								</p>
-								<Button
-									aria-label="Refresh work items"
-									onClick={onRefresh}
-									size="icon"
-									title="Refresh work items"
-									variant="ghost"
-								>
-									<Icon render={<RefreshIcon label="" size="small" />} />
-								</Button>
+								{onRefresh ? (
+									<Button
+										aria-label="Refresh work items"
+										onClick={onRefresh}
+										size="icon"
+										title="Refresh work items"
+										variant="ghost"
+									>
+										<Icon render={<RefreshIcon label="" size="small" />} />
+									</Button>
+								) : null}
 							</div>
 						</>
 					)}

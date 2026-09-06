@@ -114,6 +114,7 @@ export interface JiraListProps {
 	onAssignedAgentIdsChange?: (issueKey: string, agentIds: readonly string[]) => void;
 	onAssignedAgentSelect?: (issueKey: string, agent: JiraListAssignedAgent) => void;
 	onAgentAssign?: (issueKey: string, agent: AgentSelectorAgent) => void;
+	/** Creates a work item. Omit to remove Create controls from the list. */
 	onCreate?: (insertion?: JiraListInsertion) => void;
 	onAddColumn?: (afterColumnId: JiraListColumnAnchorId) => void;
 	onCopyLink?: (row: JiraListRowData) => void;
@@ -127,6 +128,7 @@ export interface JiraListProps {
 	/** Activates an issue key. Omit to render issue keys as plain text. */
 	onIssueKeyClick?: (row: JiraListRowData) => void;
 	onMoveRow?: (issueKey: string, targetIndex: number) => void;
+	/** Refreshes the list. Omit to remove the footer refresh action. */
 	onRefresh?: () => void;
 	onSelectAllRows?: (checked: boolean) => void;
 	onSelectRow?: (issueKey: string, checked: boolean) => void;
