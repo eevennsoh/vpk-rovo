@@ -2,13 +2,14 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const SPINNER_DETAIL: ComponentDetail = {
     description:
-      "A loading spinner with an icon-subtlest default arc that sweeps around the circle. Supports an `inherit` text-color variant, an `invert` variant for dark surfaces, and a `rainbow` variant that paints the arc with the Rovo brand gradient.",
+      "A loading spinner with an icon-subtlest default arc that sweeps around the circle. Supports `inherit`, `invert`, and `rainbow` treatments plus an explicit `experimental` sparkle-to-hex morph ported from Jira's agent status prototype.",
     adsUrl: "https://atlassian.design/components/spinner",
     usage: `import { Spinner } from "@/components/ui/spinner";
 
 <Spinner />
 <Spinner size="xl" />
-<Spinner variant="rainbow" />`,
+<Spinner variant="rainbow" />
+<Spinner variant="experimental" />`,
     props: [
       {
         name: "size",
@@ -18,10 +19,10 @@ export const SPINNER_DETAIL: ComponentDetail = {
       },
       {
         name: "variant",
-        type: `"default" | "inherit" | "invert" | "rainbow"`,
+        type: `"default" | "experimental" | "inherit" | "invert" | "rainbow"`,
         default: `"default"`,
         description:
-          "Stroke color. `default` uses icon subtlest, `inherit` follows currentColor, `invert` paints the background token, and `rainbow` uses the Rovo brand gradient.",
+          "Treatment. `default` uses icon subtlest, `experimental` morphs a sparkle into a hex, `inherit` follows currentColor, `invert` paints the background token, and `rainbow` uses the Rovo brand gradient.",
       },
       {
         name: "className",
@@ -40,6 +41,11 @@ export const SPINNER_DETAIL: ComponentDetail = {
         title: "Rainbow",
         description: "Rovo brand-gradient variant used for agent loading states.",
         demoSlug: "spinner-demo-rainbow",
+      },
+      {
+        title: "Experimental",
+        description: "Sparkle-to-hex loader from the Jira agent status prototype.",
+        demoSlug: "spinner-demo-experimental",
       },
       { title: "Basic", demoSlug: "spinner-demo-basic" },
       {

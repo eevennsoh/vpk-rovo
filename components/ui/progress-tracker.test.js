@@ -5,6 +5,8 @@ const test = require("node:test");
 
 const PROGRESS_TRACKER_SOURCE = fs.readFileSync(path.join(__dirname, "progress-tracker.tsx"), "utf8");
 const SPINNER_SOURCE = fs.readFileSync(path.join(__dirname, "spinner.tsx"), "utf8");
+const EXPERIMENTAL_SPINNER_SOURCE = fs.readFileSync(path.join(__dirname, "spinner-experimental.tsx"), "utf8");
+const EXPERIMENTAL_SPINNER_STYLES = fs.readFileSync(path.join(__dirname, "spinner-experimental.module.css"), "utf8");
 const SPINNER_DETAIL_SOURCE = fs.readFileSync(path.join(__dirname, "../../app/data/details/ui/spinner.ts"), "utf8");
 const TAILWIND_THEME_SOURCE = fs.readFileSync(path.join(__dirname, "../../app/tailwind-theme.css"), "utf8");
 
@@ -67,6 +69,21 @@ test("Spinner preserves the CodePen chasing-tail motion without competing rotati
 		/<animate[\s\S]*attributeName="stroke-dashoffset"[\s\S]*dur="1\.2s"[\s\S]*keyTimes="0;0\.5;1"[\s\S]*repeatCount="indefinite"[\s\S]*values="0;-35;-124"/u,
 	);
 	assert.match(SPINNER_SOURCE, /const tailAnimations = shouldReduceMotion \? null : \(/u);
+});
+
+test("Spinner exposes the Jira prototype morph only as an experimental variant", () => {
+	assert.match(SPINNER_SOURCE, /experimental: ""/u);
+	assert.match(SPINNER_SOURCE, /variant === "experimental"/u);
+	assert.match(SPINNER_SOURCE, /<ExperimentalSpinner/u);
+	assert.match(EXPERIMENTAL_SPINNER_SOURCE, /const HEX =/u);
+	assert.match(EXPERIMENTAL_SPINNER_SOURCE, /const SPARKLE =/u);
+	assert.match(EXPERIMENTAL_SPINNER_SOURCE, /styles\.rotatorMotion/u);
+	assert.match(EXPERIMENTAL_SPINNER_SOURCE, /styles\.morphMotion/u);
+	assert.match(EXPERIMENTAL_SPINNER_STYLES, /@keyframes rotate-shape/u);
+	assert.match(EXPERIMENTAL_SPINNER_STYLES, /@keyframes morph-shape/u);
+	assert.match(EXPERIMENTAL_SPINNER_SOURCE, /shouldReduceMotion \? HEX : SPARKLE/u);
+	assert.match(SPINNER_DETAIL_SOURCE, /`experimental`/u);
+	assert.match(SPINNER_DETAIL_SOURCE, /spinner-demo-experimental/u);
 });
 
 test("Shimmer keeps its token-backed CSS sweep animation", () => {

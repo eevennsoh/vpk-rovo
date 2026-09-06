@@ -1,0 +1,12 @@
+.wave {
+	display: inline-block;
+	transform-origin: 70% 70%;
+	animation: wave calc(var(--duration-slower) * 2) var(--ease-in-out) 1;
+}
+
+@keyframes wave {
+	0%, 100% { transform: rotate(0deg); }
+	20% { transform: rotate(12deg); }
+	45% { transform: rotate(-8deg); }
+	70% { transform: rotate(8deg); }
+}

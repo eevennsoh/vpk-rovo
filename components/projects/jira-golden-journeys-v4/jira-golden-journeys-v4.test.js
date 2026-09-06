@@ -162,7 +162,7 @@ test("chin-row agent activity indicators follow the design variation", () => {
 	assert.match(INDICATORS_SOURCE, /import \{ Spinner \} from "@\/components\/ui\/spinner";/u);
 	assert.match(
 		INDICATORS_SOURCE,
-		/renderTeamEuAgentActivityIndicator[\s\S]*state === "awaiting-input" \? \(\s*<QuestionCircleFilledIcon color=\{token\("color\.icon\.information"\)\} label="" size="small" \/>\s*\) : \(\s*<Spinner label="" size="xs" \/>\s*\)/u,
+		/renderTeamEuAgentActivityIndicator[\s\S]*state === "awaiting-input" \? \(\s*<QuestionCircleFilledIcon color=\{token\("color\.icon\.information"\)\} label="" size="small" \/>\s*\) : \(\s*<Spinner label="" size="xs" variant="experimental" \/>\s*\)/u,
 	);
 	// A finished run gets the filled success status in the ADS success green,
 	// pairing with the filled error status a failed run already shows. The

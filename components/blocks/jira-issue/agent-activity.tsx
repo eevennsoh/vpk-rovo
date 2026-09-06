@@ -26,6 +26,11 @@ import {
 	type JiraIssueAgentActivityLayout,
 } from "@/components/blocks/jira-issue/agent-activity-model";
 import {
+	JiraIssueAgentIntroLabel,
+	JiraIssueShimmeringAgentLabel,
+	useJiraIssueAgentStartupPhase,
+} from "@/components/blocks/jira-issue/agent-activity-startup";
+import {
 	sessionDragChipViewportStyle,
 	type JiraIssueAgentSessionDragBinding,
 } from "@/components/blocks/jira-issue/agent-session-drag";
@@ -46,6 +51,7 @@ import {
 	type PointerDragPosition,
 } from "@/components/ui-custom/hooks/use-pointer-drag";
 import { Shimmer } from "@/components/ui-custom/shimmer";
+import { TWGLoader } from "@/components/ui-custom/twg-loader";
 import type { ThirdPartyLogoName } from "@/components/ui/data/logo-third-party-data";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
@@ -90,6 +96,7 @@ export interface JiraIssueAgentActivity {
 	initialElapsedSeconds?: number;
 	cycleIntervalJitterMs?: number;
 	cycleIntervalMs?: number;
+	startupSequence?: "jira-work-item-start";
 	question?: QuestionCardQuestion;
 	state: JiraIssueAgentActivityState;
 }
@@ -280,6 +287,14 @@ function JiraIssueAgentActivityRow({
 	const shouldCycleSingleAgentLabel = isSingleAgent && !isAwaitingInput;
 	const canOpenChat = isSingleAgent && Boolean(onViewChat);
 	const activityKey = activities.map((activity) => activity.id).join("\n");
+	const startupSequenceKey = isSingleAgent && featuredActivity?.startupSequence === "jira-work-item-start"
+		? activityKey
+		: null;
+	const startupPhase = useJiraIssueAgentStartupPhase(
+		startupSequenceKey,
+		shouldReduceMotion,
+		featuredActivity?.startedAtMs,
+	);
 	const [assignedIdDraft, setAssignedIdDraft] = useState<{
 		key: string;
 		ids: readonly string[];
@@ -487,7 +502,25 @@ function JiraIssueAgentActivityRow({
 	}
 
 	const showUnlinkControl = Boolean(sessionDrag?.onUnlink) && !isDraggedOut;
-	const statusIcon = renderAgentActivityIndicator ? (
+	const statusIcon = !isAwaitingInput && startupPhase === "intro" ? (
+		<span
+			aria-hidden="true"
+			className={cn(
+				"grid shrink-0 place-items-center",
+				usesStrokeChrome ? "size-4" : "-my-1 size-6",
+			)}
+		/>
+	) : !isAwaitingInput && startupPhase === "gathering-context" ? (
+		<span
+			aria-hidden="true"
+			className={cn(
+				"grid shrink-0 place-items-center",
+				usesStrokeChrome ? "size-4" : "-my-1 size-6",
+			)}
+		>
+			<TWGLoader label="" size="small" />
+		</span>
+	) : renderAgentActivityIndicator ? (
 		<span
 			className={cn(
 				"grid shrink-0 place-items-center text-icon",
@@ -575,6 +608,13 @@ function JiraIssueAgentActivityRow({
 						</span>
 						<AnimatedDots className={usesStrokeChrome ? "[&>span]:text-xs" : undefined} />
 					</span>
+				) : startupPhase === "intro" ? (
+					<JiraIssueAgentIntroLabel usesStrokeChrome={usesStrokeChrome} />
+				) : startupPhase === "gathering-context" ? (
+					<JiraIssueShimmeringAgentLabel
+						label="Gathering context"
+						usesStrokeChrome={usesStrokeChrome}
+					/>
 				) : shouldCycleSingleAgentLabel ? (
 					<JiraIssueCyclingAgentLabel
 						cycleIntervalJitterMs={activities[0]?.cycleIntervalJitterMs ?? JIRA_ISSUE_AGENT_LABEL_CYCLE_JITTER_MS}
@@ -623,6 +663,7 @@ function JiraIssueAgentActivityRow({
 					? "h-auto w-fit max-w-full justify-start bg-transparent p-0"
 					: "h-6 w-full justify-between rounded-md px-2 py-1 hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 			)}
+			data-agent-startup-phase={startupSequenceKey ? startupPhase : undefined}
 			data-session-chin=""
 			data-slot="jira-issue-agent-row"
 		>

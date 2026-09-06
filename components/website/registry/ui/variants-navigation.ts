@@ -92,6 +92,13 @@ export const UI_NAVIGATION_VARIANT_DEMOS: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
+	"spinner-demo-experimental": dynamic(
+		() =>
+			import("../../demos/ui/spinner-demo").then((mod) => ({
+				default: mod.SpinnerDemoExperimental,
+			})),
+		{ ssr: false },
+	),
 	"spinner-demo-basic": dynamic(
 		() =>
 			import("../../demos/ui/spinner-demo").then((mod) => ({

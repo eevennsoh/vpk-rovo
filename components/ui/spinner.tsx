@@ -4,6 +4,7 @@ import { useId } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { useReducedMotion } from "motion/react"
 
+import { ExperimentalSpinner } from "@/components/ui/spinner-experimental"
 import { cn } from "@/lib/utils"
 
 const spinnerVariants = cva(
@@ -19,6 +20,7 @@ const spinnerVariants = cva(
 			},
 			variant: {
 				default: "text-icon-subtlest",
+				experimental: "",
 				inherit: "",
 				invert: "text-background",
 				rainbow: "",
@@ -102,6 +104,16 @@ function Spinner({
 			/>
 		</>
 	)
+
+	if (variant === "experimental") {
+		return (
+			<ExperimentalSpinner
+				className={cn(spinnerVariants({ size, variant }), className)}
+				label={label}
+				style={style}
+			/>
+		)
+	}
 
 	return (
 		<svg

@@ -9,8 +9,8 @@ import type { DesignVariationId } from "@/components/utils/design-variation";
 import { token } from "@/lib/tokens";
 
 /**
- * Team EU is the "what ships today" variation, so its chin rows use the same
- * spinner `JiraIssueAgentActivityRow` falls back to when no renderer is passed.
+ * Team EU is the "what ships today" variation. Its working chin uses the
+ * explicit experimental sparkle-to-hex spinner from the Jira prototype.
  * The two departures are the outcome glyphs. Awaiting-input: a question circle
  * says the agent is blocked on an answer, which a neutral status dot does not.
  * Finished: the filled success status names the outcome and pairs with the
@@ -18,9 +18,8 @@ import { token } from "@/lib/tokens";
  * only said "this row ended".
  *
  * The renderer prop is all-or-nothing — one function covers every state — so
- * the working case restates the block's own default instead of falling through
- * to it. Keep `<Spinner size="xs" />` in step with `agent-activity.tsx` if that
- * default ever moves.
+ * the working case names that opt-in treatment directly while the shared
+ * spinner's neutral default remains unchanged.
  *
  * The filled question circle lives in `@atlaskit/icon-lab`, not `@atlaskit/icon`
  * — it is the design system's only filled question glyph, and it first ships in
@@ -37,7 +36,7 @@ const renderTeamEuAgentActivityIndicator: JiraIssueAgentActivityIndicatorRendere
 	return state === "awaiting-input" ? (
 		<QuestionCircleFilledIcon color={token("color.icon.information")} label="" size="small" />
 	) : (
-		<Spinner label="" size="xs" />
+		<Spinner label="" size="xs" variant="experimental" />
 	);
 };
 

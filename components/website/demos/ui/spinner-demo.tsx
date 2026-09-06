@@ -137,3 +137,14 @@ export function SpinnerDemoRainbow() {
 		</div>
 	);
 }
+
+export function SpinnerDemoExperimental() {
+	return (
+		<div className="flex items-center gap-4 text-icon">
+			<Spinner variant="experimental" size="sm" />
+			<Spinner variant="experimental" />
+			<Spinner variant="experimental" size="lg" />
+			<Spinner variant="experimental" size="xl" />
+		</div>
+	);
+}

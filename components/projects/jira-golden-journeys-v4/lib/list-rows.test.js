@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 
 const { linkJiraKanbanAgentSession } = require("../../../blocks/jira-kanban/state.ts");
-
 const {
 	applyAssignedAgentIdsToColumns,
 	applyListOrder,
@@ -12,6 +11,7 @@ const {
 	insertListOrderKey,
 	insertWorkItemCard,
 	moveListOrder,
+	progressJiraGoldenJourneysV4WorkItemOnStart,
 	toKanbanCardFromDraft,
 } = require("./list-rows.ts");
 
@@ -195,12 +195,14 @@ test("applyAssignedAgentIdsToColumns archives and assigns against board columns"
 
 	const assigned = applyAssignedAgentIdsToColumns(COLUMNS, "PAY-118", ["test-agent"], PAY_BOARD_CATALOG);
 	const assignedCard = assigned
-		.find((column) => column.title === "To do")
+		.find((column) => column.title === "In progress")
 		?.cards.find((card) => card.code === "PAY-118");
 
 	assert.equal(assignedCard?.agentActivities?.[0]?.id, "PAY-118:test-agent");
 	assert.equal(assignedCard?.agentActivities?.[0]?.name, "Test Author Agent");
 	assert.equal(assignedCard?.agentActivities?.[0]?.state, "working");
+	assert.equal(assignedCard?.agentActivities?.[0]?.startupSequence, "jira-work-item-start");
+	assert.equal(typeof assignedCard?.agentActivities?.[0]?.startedAtMs, "number");
 
 	const unchanged = applyAssignedAgentIdsToColumns(
 		COLUMNS,
@@ -213,6 +215,52 @@ test("applyAssignedAgentIdsToColumns archives and assigns against board columns"
 		?.cards.find((card) => card.code === "PAY-101");
 	assert.equal(unchangedCard?.agentActivities?.[0]?.name, "Claude Code");
 	assert.equal(unchangedCard?.agentDoneRuns?.[0]?.agentName, "Review Agent");
+});
+
+test("starting an agent session progresses only To do and Done work items", () => {
+	const columns = [
+		{ title: "To do", count: 1, cards: [{ code: "PAY-201", title: "Todo card" }] },
+		{ title: "In progress", count: 0, cards: [] },
+		{ title: "In review", count: 1, cards: [{ code: "PAY-202", title: "Review card" }] },
+		{ title: "Done", count: 1, cards: [{ code: "PAY-203", title: "Done card" }] },
+	];
+	const activity = {
+		id: "test-agent",
+		label: "Reading the Jira context",
+		name: "Test Author Agent",
+		state: "working",
+	};
+
+	const fromTodo = progressJiraGoldenJourneysV4WorkItemOnStart(
+		linkJiraKanbanAgentSession(columns, "PAY-201", activity),
+		"PAY-201",
+	);
+	assert.deepEqual(fromTodo.find((column) => column.title === "To do")?.cards, []);
+	assert.equal(
+		fromTodo.find((column) => column.title === "In progress")?.cards[0]?.code,
+		"PAY-201",
+	);
+	assert.equal(fromTodo.find((column) => column.title === "In progress")?.count, 1);
+
+	const fromDone = progressJiraGoldenJourneysV4WorkItemOnStart(
+		linkJiraKanbanAgentSession(columns, "PAY-203", activity),
+		"PAY-203",
+	);
+	assert.deepEqual(fromDone.find((column) => column.title === "Done")?.cards, []);
+	assert.equal(
+		fromDone.find((column) => column.title === "In progress")?.cards[0]?.code,
+		"PAY-203",
+	);
+
+	const fromReview = progressJiraGoldenJourneysV4WorkItemOnStart(
+		linkJiraKanbanAgentSession(columns, "PAY-202", activity),
+		"PAY-202",
+	);
+	assert.equal(
+		fromReview.find((column) => column.title === "In review")?.cards[0]?.code,
+		"PAY-202",
+	);
+	assert.equal(fromReview.find((column) => column.title === "In progress")?.count, 0);
 });
 
 test("createListWorkItemFromSession mints a To-do card titled from the session and attaches the activity", () => {

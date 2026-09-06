@@ -26,6 +26,37 @@ const STATUS_VARIANTS: Readonly<Record<string, JiraListRowData["statusVariant"]>
 	Done: "success",
 };
 
+const JIRA_AGENT_AUTO_PROGRESS_SOURCES = new Set(["To do", "Done"]);
+const JIRA_AGENT_ACTIVE_COLUMN = "In progress";
+
+export function progressJiraGoldenJourneysV4WorkItemOnStart(
+	columns: readonly JiraKanbanColumnData[],
+	issueKey: string,
+): JiraKanbanColumnData[] {
+	const sourceColumn = columns.find((column) => (
+		column.cards.some((card) => card.code === issueKey)
+	));
+	const activeColumn = columns.find((column) => column.title === JIRA_AGENT_ACTIVE_COLUMN);
+
+	if (!sourceColumn || !activeColumn || !JIRA_AGENT_AUTO_PROGRESS_SOURCES.has(sourceColumn.title)) {
+		return [...columns];
+	}
+
+	const card = sourceColumn.cards.find((candidate) => candidate.code === issueKey);
+	if (!card) {
+		return [...columns];
+	}
+
+	return columns.map((column) => {
+		const cards = column.title === sourceColumn.title
+			? column.cards.filter((candidate) => candidate.code !== issueKey)
+			: column.title === JIRA_AGENT_ACTIVE_COLUMN
+				? [card, ...column.cards]
+				: column.cards;
+		return cards === column.cards ? column : { ...column, cards, count: cards.length };
+	});
+}
+
 function slugAgentName(name: string): string {
 	return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
@@ -164,6 +195,8 @@ function createAssignedActivity(
 		agentBrandName: agent.brandName,
 		label: `Assigned to ${card.title}`,
 		message: `${agent.name} is working and will post the next result to the Jira work item.`,
+		startedAtMs: Date.now(),
+		startupSequence: "jira-work-item-start",
 		state: "working",
 	};
 }
@@ -206,18 +239,30 @@ export function applyAssignedAgentIdsToColumns(
 	agentIds: readonly string[],
 	catalog: readonly JiraKanbanAgentData[],
 ): JiraKanbanColumnData[] {
-	return columns.map((column) => {
-		const cards = column.cards.map((card) => (
-			card.code === issueKey
-				? applyAssignedAgentIdsToCard(card, agentIds, catalog)
-				: card
-		));
+	let started = false;
+	const nextColumns = columns.map((column) => {
+		const cards = column.cards.map((card) => {
+			if (card.code !== issueKey) {
+				return card;
+			}
+
+			const nextCard = applyAssignedAgentIdsToCard(card, agentIds, catalog);
+			const previousActivityIds = new Set(card.agentActivities?.map((activity) => activity.id) ?? []);
+			started = nextCard.agentActivities?.some((activity) => (
+				activity.state === "working" && !previousActivityIds.has(activity.id)
+			)) ?? false;
+			return nextCard;
+		});
 		return {
 			...column,
 			cards,
 			count: cards.length,
 		};
 	});
+
+	return started
+		? progressJiraGoldenJourneysV4WorkItemOnStart(nextColumns, issueKey)
+		: nextColumns;
 }
 
 export function createListRows(
