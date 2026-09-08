@@ -9,7 +9,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 	usage: `import { AgentSessionColumn } from "@/components/blocks/agent-session-column";
 
 <AgentSessionColumn
-  title="Untracked work"
+  title="Unattached sessions"
   headerSurface="panel"
   hasScrollingEffect
   onCreateWorkItem={(item) => console.log("create", item.id)}
@@ -40,7 +40,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 		{
 			name: "title",
 			type: "string",
-			default: '"Untracked work"',
+			default: '"Unattached sessions"',
 			description:
 				"Header label. Also seeds the column's accessible name and its `data-agent-session-column` attribute.",
 		},
@@ -68,7 +68,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 		{
 			name: "emptyLabel",
 			type: "string",
-			default: '"No untracked sessions"',
+			default: '"No unattached sessions"',
 			description: "Copy shown in place of the list when there are no sessions.",
 		},
 		{

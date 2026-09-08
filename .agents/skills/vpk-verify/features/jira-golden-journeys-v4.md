@@ -1,12 +1,12 @@
 # Jira Golden Journeys v4
 
-Jira Golden Journeys v4 lets a user inspect the Payments SDK v2 migration board in full Jira chrome, switch Board and List, and review Untracked work without a Golden Journeys gallery.
+Jira Golden Journeys v4 lets a user inspect the Payments SDK v2 migration board in full Jira chrome, switch Board and List, and review Unattached sessions without a Golden Journeys gallery.
 
 ## Sub-features
 
 - `jira-v4-route` opens `/jira-golden-journeys-v4` and shows heading `Jira Design` (there is no on-page `Jira Golden Journeys v4` heading, chapter group, or Reset).
 - `jira-v4-board-list` switches `Work items view` tabs `Board` and `List` and shows PAY-101 plus pull-request badges.
-- `jira-v4-untracked-view` keeps the `Untracked work` column visible and opens `Configure board view`.
+- `jira-v4-untracked-view` keeps the `Unattached sessions` column visible and opens `Configure board view`.
 - `jira-v4-narrow-a11y` covers a 390×844 reduced-motion viewport and a route-scoped accessibility scan.
 
 ## How to get to it (user POV)
@@ -23,7 +23,7 @@ Preconditions:
 - Set `EVIDENCE="$(control-vpk evidence-dir)/jira-golden-journeys-v4"` and create it before capture.
 
 - **Open and identify.** Start the scoped browser with `control-vpk browser open --headed "$ORIGIN/"`, run `control-vpk browser goto "$ORIGIN/jira-golden-journeys-v4"`, and wait for heading `Jira Design`. Confirm there is no chapter group and no `Reset` button. Region `Track the Payments SDK v2 migration. Scroll horizontally to review all delivery statuses.` is present.
-- **Prove Board markers.** Snapshot and confirm tab `Board` selected, region `Untracked work, N sessions`, card `PAY-101`, and a pull-request control whose name includes `#1839`.
+- **Prove Board markers.** Snapshot and confirm tab `Board` selected, region `Unattached sessions, N sessions`, card `PAY-101`, and a pull-request control whose name includes `#1839`.
 - **Prove List.** Run `control-vpk browser find role tab click --name List`. Region `Payments SDK v2 migration work items list` is present. Return with `control-vpk browser find role tab click --name Board`.
 - **Prove view chrome.** Run `control-vpk browser find role button click --name "Configure board view"` and confirm menuitem `Agent`. Press Escape until the menu closes before another tab click — a leftover menu covers Summary / Work items.
 - **Prove Summary.** Run `control-vpk browser find role tab click --name Summary`. Tab `Summary` is selected and tabpanel `Summary` is present. Return to `Work items`.

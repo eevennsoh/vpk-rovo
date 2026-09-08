@@ -129,7 +129,7 @@ test("the Panel design variant floats untracked work over the board and the list
 	assert.doesNotMatch(EXPERIMENTAL_PAGE_SOURCE, /onToggleAgentSessionPanel/u);
 	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /agentSessionPanelOpen/u);
 	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /onToggleAgentSessionPanel/u);
-	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /Untracked work panel/u);
+	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /Unattached sessions panel/u);
 	assert.doesNotMatch(PANEL_SOURCE, /PanelActionClose|onClose/u);
 	// Collapse stays on the column-owned header so the rail is not a trap.
 	assert.match(PANEL_SOURCE, /headerSurface="panel"/u);

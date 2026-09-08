@@ -131,7 +131,7 @@ export const BOARD_AGENT_STATE_OPTIONS: readonly BoardVisibilityOption[] = [
 	{ id: "working", label: "Working", shown: true },
 	{ id: "needs-input", label: "Needs input", shown: true },
 	{ id: "finished", label: "Finished", shown: true },
-	{ id: "untracked", label: "Untracked", shown: true, separatorBefore: true },
+	{ id: "untracked", label: "Unattached", shown: true, separatorBefore: true },
 ];
 
 /**

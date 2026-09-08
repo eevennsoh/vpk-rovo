@@ -61,7 +61,7 @@ test("PR state lists the pull-request lifecycle in order", () => {
 test("Agent lists the session states by session shape, not alphabetically", () => {
 	assert.deepEqual(
 		BOARD_AGENT_STATE_OPTIONS.map((option) => option.label),
-		["Working", "Needs input", "Finished", "Untracked"],
+		["Working", "Needs input", "Finished", "Unattached"],
 	);
 	assert.ok(BOARD_AGENT_STATE_OPTIONS.every((option) => option.shown));
 	// The state that wants a human sits between the one the agent holds on its
@@ -71,7 +71,7 @@ test("Agent lists the session states by session shape, not alphabetically", () =
 	const labels = BOARD_AGENT_STATE_OPTIONS.map((option) => option.label);
 	assert.equal(labels.indexOf("Needs input"), 1);
 	assert.equal(labels.indexOf("Finished"), 2);
-	assert.equal(labels.at(-1), "Untracked");
+	assert.equal(labels.at(-1), "Unattached");
 	const untracked = BOARD_AGENT_STATE_OPTIONS.find((option) => option.id === "untracked");
 	assert.equal(untracked?.separatorBefore, true);
 	assert.ok(

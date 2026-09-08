@@ -14,13 +14,13 @@ export type AgentSessionColumnWellFooterMode = "hidden" | "back";
  * well can own the outer stroke and bottom radius.
  *
  * `hidden` is Archived N and opens the archived list. `back` is Back to
- * untracked work N (the active/untracked count) and returns to that list.
+ * unattached sessions N (the active/unattached count) and returns to that list.
  */
 export function AgentSessionColumnHiddenFooter({
 	count,
 	mode,
 	onClick,
-	title = "Untracked work",
+	title = "Unattached sessions",
 }: Readonly<{
 	count: number;
 	mode: AgentSessionColumnWellFooterMode;
@@ -45,7 +45,7 @@ export function AgentSessionColumnHiddenFooter({
 		>
 			<span className="flex min-w-0 items-center gap-1.5">
 				<span className="truncate text-xs font-medium leading-4 text-text-subtle">
-					{isBack ? "Back to untracked work" : "Archived"}
+					{isBack ? "Back to unattached sessions" : "Archived"}
 				</span>
 				<span className="shrink-0 text-xs font-normal text-text-subtlest">
 					{count}
