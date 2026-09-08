@@ -72,7 +72,7 @@ export function JiraDropzone({
 	const copy = resolveJiraDropzoneCopy(phase);
 	const flyPath = useMemo(
 		() => arc(resolveJiraDropzoneArcOptions(profile)),
-		[profile.arcDirection, profile.arcPeak, profile.arcRotate, profile.arcStrength],
+		[profile],
 	);
 	const resolveLandingPoint = useCallback((): ViewportPoint | null => {
 		const rect = targetRef.current?.getBoundingClientRect();

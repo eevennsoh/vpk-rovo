@@ -11,12 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
+import { JiraDropzoneDemoArcPanel } from "./jira-dropzone-demo-arc-panel";
 import {
-	JiraDropzoneDemoArcPanel,
 	JIRA_DROPZONE_DEMO_ARC_DEFAULTS,
 	toFlightProfileOverride,
 	type JiraDropzoneDemoArc,
-} from "./jira-dropzone-demo-arc-panel";
+} from "./lib/jira-dropzone-demo-arc";
 import { JiraDropzoneDemoChip } from "./jira-dropzone-demo-chip";
 import {
 	JiraDropzone,

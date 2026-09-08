@@ -4,27 +4,11 @@ import type { ReactElement } from "react";
 
 import { GUI } from "@/components/utils/gui";
 
-import { JIRA_DROPZONE_FULL_MOTION_PROFILE } from "./lib/jira-dropzone-motion";
-import type {
-	FlightProfile,
-	JiraDropzoneArcDirection,
-} from "./lib/jira-dropzone-types";
-
-export interface JiraDropzoneDemoArc {
-	readonly direction: JiraDropzoneArcDirection;
-	readonly durationMs: number;
-	readonly peak: number;
-	readonly rotate: number;
-	readonly strength: number;
-}
-
-export const JIRA_DROPZONE_DEMO_ARC_DEFAULTS: JiraDropzoneDemoArc = {
-	direction: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcDirection,
-	durationMs: JIRA_DROPZONE_FULL_MOTION_PROFILE.durationMs,
-	peak: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcPeak,
-	rotate: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcRotate,
-	strength: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcStrength,
-};
+import {
+	JIRA_DROPZONE_DEMO_ARC_DEFAULTS,
+	type JiraDropzoneDemoArc,
+} from "./lib/jira-dropzone-demo-arc";
+import type { JiraDropzoneArcDirection } from "./lib/jira-dropzone-types";
 
 const DIRECTION_OPTIONS = [
 	{ value: "automatic", label: "Auto" },
@@ -34,21 +18,6 @@ const DIRECTION_OPTIONS = [
 	value: JiraDropzoneArcDirection;
 	label: string;
 }[];
-
-export function toFlightProfileOverride(
-	arc: JiraDropzoneDemoArc,
-): Pick<
-	FlightProfile,
-	"arcDirection" | "arcPeak" | "arcRotate" | "arcStrength" | "durationMs"
-> {
-	return {
-		arcDirection: arc.direction,
-		arcPeak: arc.peak,
-		arcRotate: arc.rotate,
-		arcStrength: arc.strength,
-		durationMs: arc.durationMs,
-	};
-}
 
 export function JiraDropzoneDemoArcPanel({
 	arc,
