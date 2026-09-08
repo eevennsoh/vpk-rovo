@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { AgentSessionProps } from "@/components/blocks/agent-session";
 import type { UntrackedWorkTriage } from "@/components/blocks/agent-session/untracked-work-triage";
 
@@ -47,6 +48,8 @@ export interface AgentSessionColumnProps extends Omit<
 	 * to `"column"`.
 	 */
 	collapsedPresentation?: "column" | "gutter";
+	/** Host-provided next expansion step for a staged column reveal. */
+	collapsedExpandAction?: { label: string; icon: ReactNode };
 	/**
 	 * Extra horizontal pointer space on each side of the collapsed rail,
 	 * without moving its markers.

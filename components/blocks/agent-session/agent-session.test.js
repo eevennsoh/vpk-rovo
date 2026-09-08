@@ -581,6 +581,14 @@ test("every size variant opens the shared agent-session flyout", () => {
 		INDEX_SOURCE,
 		/<JiraSessionFlyoutSurface[\s\S]*content=\{isAttached \? "details" : "untracked-work"\}[\s\S]*handle=\{flyoutHandle\}/u,
 	);
+	// The list and the collapsed rail are the same hover surface at two widths,
+	// so both snap. Dropping `instantPosition` here would animate the shell on
+	// every row-to-row hover and diverge from the rail mid-collapse.
+	assert.match(
+		INDEX_SOURCE,
+		/<JiraSessionFlyoutSurface[\s\S]*handle=\{flyoutHandle\}\s*instantPosition\s/u,
+	);
+	assert.match(COLUMN_RAIL_SOURCE, /<JiraSessionFlyoutSurface[\s\S]*instantPosition/u);
 	assert.doesNotMatch(INDEX_SOURCE, /\{variant === "large" \? \(\s*<JiraSessionFlyoutSurface/u);
 });
 
