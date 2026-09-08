@@ -314,6 +314,9 @@ test("the timeline stops magnifying during a session drag and resumes on hover",
 	const source = notches.first();
 	await source.hover();
 	await expect.poll(maxScale).toBeGreaterThan(1);
+	await page.mouse.down();
+	await page.mouse.up();
+	await expect.poll(maxScale).toBeGreaterThan(1);
 	const box = (await source.boundingBox())!;
 	await page.mouse.down();
 	await page.mouse.move(box.x + box.width / 2 + 4, box.y + box.height / 2 + 4);

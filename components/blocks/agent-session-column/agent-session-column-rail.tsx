@@ -222,6 +222,24 @@ function useNotchDock(itemCount: number, enabled: boolean) {
 		}
 	}
 
+	function handlePointerUp(event: PointerEvent<HTMLUListElement>) {
+		const list = listRef.current;
+		if (event.pointerType === "touch" || list === null) {
+			return;
+		}
+		const rect = list.getBoundingClientRect();
+		if (
+			event.clientX < rect.left
+			|| event.clientX > rect.right
+			|| event.clientY < rect.top
+			|| event.clientY > rect.bottom
+		) {
+			return;
+		}
+		trackPointer(event.clientY);
+		animate(magnify, 1, AGENT_SESSION_NOTCH_MAGNIFY_IN);
+	}
+
 	function handlePointerLeave() {
 		clientYRef.current = null;
 		// Selection stays put through the retreat so the colour drains on the same
@@ -243,7 +261,7 @@ function useNotchDock(itemCount: number, enabled: boolean) {
 		trackPointer(clientY);
 	}
 
-	return { centersRef, handlePointerEnter, handlePointerLeave, handlePointerMove, handleScroll, listRef, magnify, nearestIndex, pointerY, resetPointer };
+	return { centersRef, handlePointerEnter, handlePointerLeave, handlePointerMove, handlePointerUp, handleScroll, listRef, magnify, nearestIndex, pointerY, resetPointer };
 }
 
 function AgentSessionGutterIntro({
@@ -686,6 +704,7 @@ export function AgentSessionColumnRail({
 				onPointerEnter={isDocked ? dock.handlePointerEnter : undefined}
 				onPointerLeave={isDocked ? dock.handlePointerLeave : undefined}
 				onPointerMove={isDocked ? dock.handlePointerMove : undefined}
+				onPointerUp={isDocked ? dock.handlePointerUp : undefined}
 				onScroll={isDocked ? dock.handleScroll : undefined}
 				ref={setListRef}
 				style={{
