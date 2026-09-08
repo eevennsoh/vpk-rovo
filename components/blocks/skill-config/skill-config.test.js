@@ -8,6 +8,7 @@ function readProjectFile(relativePath) {
 }
 
 const SKILL_CONFIG_SOURCE = readProjectFile("components/blocks/skill-config/components/skill-config.tsx");
+const FRONTMATTER_NODE_VIEW_SOURCE = readProjectFile("components/ui-custom/rich-text-editor/frontmatter-node-view.tsx");
 const AGENT_CONFIG_CORE_INDEX_SOURCE = readProjectFile("components/blocks/agent-config-core/index.ts");
 const AGENT_CONFIG_CORE_COMPACT_HEADER_NAV_SOURCE = readProjectFile("components/blocks/agent-config-core/components/agent-compact-header-nav.tsx");
 const AGENT_CONFIG_CORE_COMPACT_HEADER_NAV_DATA_SOURCE = readProjectFile("components/blocks/agent-config-core/components/agent-compact-header-nav-data.tsx");
@@ -57,4 +58,9 @@ test("Skill Config toolbar visibility is an explicit apps-only model", () => {
 		SKILL_CONFIG_SOURCE,
 		/filter\(\(row\) => row\.key === "apps"/u,
 	);
+});
+
+test("Skill Config frontmatter renders allowed tools as non-pill tags", () => {
+	assert.match(FRONTMATTER_NODE_VIEW_SOURCE, /<Tag[\s\S]*type="default"/u);
+	assert.doesNotMatch(FRONTMATTER_NODE_VIEW_SOURCE, /getRichTextMentionTagType/u);
 });

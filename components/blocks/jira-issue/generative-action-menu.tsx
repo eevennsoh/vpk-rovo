@@ -1,12 +1,28 @@
 "use client";
 
-import { useLayoutEffect, useState, type CSSProperties, type ReactElement } from "react";
+import {
+	isValidElement,
+	useLayoutEffect,
+	useMemo,
+	useState,
+	type CSSProperties,
+	type ReactElement,
+} from "react";
 
+import type { SkillsDirectorySkill } from "@/app/data/directory";
+import { ROVO_AGENT_SELECTOR_AGENTS } from "@/app/data/directory/agents";
+import { AgentSelector, type AgentSelectorAgent } from "@/components/blocks/agent-selector";
 import { EDITOR_PALETTE_MENTION_SOURCES } from "@/components/blocks/editor-palette/data/mention-sources";
+import {
+	DEFAULT_PINNED_SPACE_AGENT_IDS,
+	DEFAULT_PINNED_WORK_ITEM_SKILL_IDS,
+	WORK_ITEM_PINNED_ITEMS_LABEL,
+	WORK_ITEM_SKILLS,
+} from "@/components/blocks/jira-work-item/lib/work-item-picker-options";
+import { SkillSelector } from "@/components/blocks/skill-selector";
 import {
 	RovoSparkle,
 	RovoSparkleButton,
-	RovoSparkleMenu,
 	type RovoSparkleActionKind,
 	type RovoSparkleActionRequest,
 	type RovoSparkleItem,
@@ -34,6 +50,10 @@ export interface JiraIssueGenerativeActionRequest {
 export interface JiraIssueGenerativeActionConfig {
 	agents?: readonly RovoSparkleItem[];
 	ariaLabel?: string;
+	onBrowseAgents?: () => void;
+	onBrowseSkills?: () => void;
+	onCreateAgent?: () => void;
+	onCreateSkill?: () => void;
 	onSubmit: (request: JiraIssueGenerativeActionRequest) => void | Promise<void>;
 	skills?: readonly RovoSparkleItem[];
 }
@@ -51,7 +71,7 @@ interface JiraIssueGenerativeActionMenuProps {
 	triggerElement?: ReactElement;
 }
 
-interface JiraIssueAgentAndSkillSubmenuProps {
+interface JiraIssueAgentAndSkillSubmenusProps {
 	action: JiraIssueGenerativeActionConfig;
 	issue: JiraIssueGenerativeActionIssue;
 	onRequestClose: () => void;
@@ -117,31 +137,145 @@ function submitJiraIssueGenerativeAction(
 	submitJiraIssueAssignment(action, issue, request.kind, request.selectedItem);
 }
 
-export function JiraIssueAgentAndSkillSubmenu({
+function mapRovoItemToAgent(item: RovoSparkleItem): AgentSelectorAgent {
+	return {
+		id: item.id,
+		name: item.label,
+		byline: item.description ?? "Agent",
+		avatarSrc: item.visual?.kind === "avatar" || item.visual?.kind === "image"
+			? item.visual.src
+			: undefined,
+		visual: isValidElement(item.leadingVisual) ? item.leadingVisual : undefined,
+	};
+}
+
+function mapRovoItemToSkill(item: RovoSparkleItem): SkillsDirectorySkill {
+	return {
+		id: item.id,
+		name: item.label,
+		description: item.description ?? "",
+		icon: "skill",
+		source: "platform",
+	};
+}
+
+function resolvePinnedItemIds(
+	items: readonly Readonly<{ id: string }>[],
+	defaultIds: readonly string[],
+): readonly string[] {
+	return defaultIds.flatMap((defaultId) => {
+		const item = items.find((candidate) => (
+			candidate.id === defaultId || candidate.id.endsWith(`:${defaultId}`)
+		));
+		return item ? [item.id] : [];
+	});
+}
+
+export function JiraIssueAgentAndSkillSubmenus({
 	action,
 	issue,
 	onRequestClose,
-}: Readonly<JiraIssueAgentAndSkillSubmenuProps>) {
-	const agents = action.agents ?? JIRA_ISSUE_GENERATIVE_AGENTS;
-	const skills = action.skills ?? JIRA_ISSUE_GENERATIVE_SKILLS;
+}: Readonly<JiraIssueAgentAndSkillSubmenusProps>) {
+	const agents = useMemo(
+		() => action.agents?.map(mapRovoItemToAgent) ?? ROVO_AGENT_SELECTOR_AGENTS,
+		[action.agents],
+	);
+	const skills = useMemo(
+		() => action.skills?.map(mapRovoItemToSkill) ?? WORK_ITEM_SKILLS,
+		[action.skills],
+	);
+	const [agentQuery, setAgentQuery] = useState("");
+	const [skillQuery, setSkillQuery] = useState("");
+	const [pinnedAgentIds, setPinnedAgentIds] = useState<readonly string[]>(() => (
+		resolvePinnedItemIds(agents, DEFAULT_PINNED_SPACE_AGENT_IDS)
+	));
+	const [pinnedSkillIds, setPinnedSkillIds] = useState<readonly string[]>(() => (
+		resolvePinnedItemIds(skills, DEFAULT_PINNED_WORK_ITEM_SKILL_IDS)
+	));
+	const browseAgents = action.onBrowseAgents;
+	const browseSkills = action.onBrowseSkills;
+	const createAgent = action.onCreateAgent;
+	const createSkill = action.onCreateSkill;
+
+	function closeThenRun(callback: () => void) {
+		onRequestClose();
+		callback();
+	}
+
+	function handleAgentToggle(agentId: string) {
+		const agent = agents.find((candidate) => candidate.id === agentId);
+		if (!agent) {
+			return;
+		}
+
+		onRequestClose();
+		submitJiraIssueAssignment(action, issue, "agent", {
+			id: agent.id,
+			label: agent.name,
+			description: agent.byline,
+			avatarSrc: agent.avatarSrc,
+		});
+	}
+
+	function handleSkillToggle(skillId: string) {
+		const skill = skills.find((candidate) => candidate.id === skillId);
+		if (!skill) {
+			return;
+		}
+
+		onRequestClose();
+		submitJiraIssueAssignment(action, issue, "skill", {
+			id: skill.id,
+			label: skill.name,
+			description: skill.description,
+		});
+	}
 
 	return (
-		<DropdownMenuSub>
-			<DropdownMenuSubTrigger>Assign agent and use skill</DropdownMenuSubTrigger>
-			<DropdownMenuSubContent
-				className="max-h-none min-w-0 overflow-visible rounded-none bg-transparent p-0 shadow-none"
-				onClick={(event) => event.stopPropagation()}
-			>
-				<RovoSparkleMenu
-					agents={agents}
-					emptyLabel="No Jira issue actions found"
-					menuTitle="Jira issue actions"
-					onRequestClose={onRequestClose}
-					onSubmit={(request) => submitJiraIssueGenerativeAction(action, issue, request)}
-					skills={skills}
-				/>
-			</DropdownMenuSubContent>
-		</DropdownMenuSub>
+		<>
+			<DropdownMenuSub onOpenChange={(open) => open ? undefined : setAgentQuery("")}>
+				<DropdownMenuSubTrigger>Assign agents</DropdownMenuSubTrigger>
+				<DropdownMenuSubContent
+					className="max-h-none w-[360px] overflow-hidden p-0"
+					onClick={(event) => event.stopPropagation()}
+				>
+					<AgentSelector
+						agents={agents}
+						onAgentToggle={handleAgentToggle}
+						onBrowseAgents={browseAgents ? () => closeThenRun(browseAgents) : undefined}
+						onCreateAgent={createAgent ? () => closeThenRun(createAgent) : undefined}
+						onPinnedAgentIdsChange={setPinnedAgentIds}
+						onQueryChange={setAgentQuery}
+						pinnedAgentIds={pinnedAgentIds}
+						pinnedItemsLabel={WORK_ITEM_PINNED_ITEMS_LABEL}
+						query={agentQuery}
+						searchVariant="palette"
+						selectionMode="single"
+					/>
+				</DropdownMenuSubContent>
+			</DropdownMenuSub>
+			<DropdownMenuSub onOpenChange={(open) => open ? undefined : setSkillQuery("")}>
+				<DropdownMenuSubTrigger>Use skills</DropdownMenuSubTrigger>
+				<DropdownMenuSubContent
+					className="max-h-none w-[360px] overflow-hidden p-0"
+					onClick={(event) => event.stopPropagation()}
+				>
+					<SkillSelector
+						onBrowseSkills={browseSkills ? () => closeThenRun(browseSkills) : undefined}
+						onCreateSkill={createSkill ? () => closeThenRun(createSkill) : undefined}
+						onPinnedSkillIdsChange={setPinnedSkillIds}
+						onQueryChange={setSkillQuery}
+						onSkillToggle={handleSkillToggle}
+						pinnedItemsLabel={WORK_ITEM_PINNED_ITEMS_LABEL}
+						pinnedSkillIds={pinnedSkillIds}
+						query={skillQuery}
+						searchVariant="palette"
+						selectionMode="single"
+						skills={skills}
+					/>
+				</DropdownMenuSubContent>
+			</DropdownMenuSub>
+		</>
 	);
 }
 

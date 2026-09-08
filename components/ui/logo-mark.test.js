@@ -37,3 +37,11 @@ test("logo sizes demo adds the Atlassian company logo at every size", () => {
 	assert.match(sizesDemoMatch[0], /<AtlassianLogo name="jira" label="Jira" variant="lockup" size=\{size\} \/>/u);
 	assert.match(sizesDemoMatch[0], /<AtlassianLogo name="atlassian" label="Atlassian" size=\{size\} \/>/u);
 });
+
+test("GitHub package glyphs invert inside the shared chip owner in dark mode", () => {
+	assert.match(LOGO_MARK_SOURCE, /const packageGlyphContrastClassName = name === "github" \? "dark:\[&_svg\]:invert" : undefined;/u);
+	assert.match(
+		LOGO_MARK_SOURCE,
+		/"\[&>span\]:bg-transparent! \[&>span\]:border-0!",\s*packageGlyphContrastClassName,\s*className,/u,
+	);
+});

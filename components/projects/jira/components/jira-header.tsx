@@ -10,15 +10,15 @@ import { resolveJiraTab } from "../lib/jira-tab-model";
 
 interface JiraViewTabsProps {
 	/**
-	 * Selection is tracked by label, not index: the design variation and Simple
-	 * views property decide whether work items is one tab or two, so an index
-	 * would silently point at a different destination after a flip.
+	 * Selection is tracked by label, not index: the Simple views property
+	 * decides whether work items is one tab or two, so an index would silently
+	 * point at a different destination after a flip.
 	 */
 	selectedTabLabel: string;
 	onTabChange: (tabLabel: string) => void;
 	/**
 	 * Current board/list choice. Only consulted when the selected label is absent
-	 * from this variation's tabs, so the reader keeps their view across a flip.
+	 * from this catalog, so the reader keeps their view across a Simple views flip.
 	 */
 	workItemView?: JiraWorkItemView;
 	/**

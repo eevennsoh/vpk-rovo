@@ -1,23 +1,18 @@
 /**
- * Global "design variants" preferences — the independent on/off siblings of the
- * single-choice design *variation* preference (`design-variation.ts`) that sits
- * directly above them in the top navigation's settings menu.
+ * Global "design variants" preferences — independent on/off toggles in the
+ * top navigation's settings menu.
  *
- * A variation is exclusive ("which world am I in"); a variant is additive
- * ("also turn this on"). Each variant is an independent boolean, so the store's
- * snapshot is a frozen map rather than a single id.
+ * Each variant is an independent boolean, so the store's snapshot is a frozen
+ * map rather than a single id.
  *
- * This module is deliberately React-free (like `design-variation.ts` and
- * `theme-storage.ts`) so the selection logic can be unit-tested without a
- * renderer; `useDesignVariants` in `components/hooks/use-design-variants.ts` is
- * the React binding.
+ * This module is deliberately React-free (like `theme-storage.ts`) so the
+ * selection logic can be unit-tested without a renderer; `useDesignVariants`
+ * in `components/hooks/use-design-variants.ts` is the React binding.
  *
- * Deliberate asymmetry with `design-variation.ts`: there is **no DOM
- * mirroring** here. A variation only changes CSS, so it is mirrored onto the
- * document root as `data-design-variation="<id>"`. A variant changes component
- * *structure* (which components mount, and where), so it is only ever read in
- * JS through `useDesignVariants()`. Do not add a `data-design-variants`
- * attribute — nothing would consume it.
+ * There is **no DOM mirroring** here. A variant changes component *structure*
+ * (which components mount, and where), so it is only ever read in JS through
+ * `useDesignVariants()`. Do not add a `data-design-variants` attribute —
+ * nothing would consume it.
  *
  * Snapshot identity matters: `useSyncExternalStore` calls both snapshot getters
  * on every render and compares with `Object.is`. `getDesignVariants()` and
@@ -27,6 +22,17 @@
  */
 
 export const DESIGN_VARIANTS_STORAGE_KEY = "ui-design-variants";
+
+/**
+ * Written next to the variant booleans. Missing or older payloads are treated
+ * as schema 1: Simple kanban was still an off default then, so a stored
+ * `false` is incidental — the whole map is persisted when a variant is
+ * toggled — and must not block the on-default rollout.
+ */
+export const DESIGN_VARIANTS_STORAGE_SCHEMA_VERSION = 2;
+
+/** Schema that first shipped Simple kanban as an on default. */
+const SIMPLE_KANBAN_ON_DEFAULT_SCHEMA_VERSION = 2;
 
 export const DESIGN_VARIANTS = [
 	{ id: "panel", label: "Panel" },
@@ -45,17 +51,17 @@ export type DesignVariantState = Readonly<Record<DesignVariantId, boolean>>;
  * Panel starts off: Golden Journeys v4 ships untracked work in the in-flow
  * board column unless the user turns the floating side surface on.
  *
- * Simple views starts on: Team EU (the default variation) ships one Work items
- * tab and moves Board/List into the board header, unless the user turns it off
- * to restore Board and List as sibling space tabs.
+ * Simple views starts on: Team EU ships one Work items tab and moves
+ * Board/List into the board header, unless the user turns it off to restore
+ * Board and List as sibling space tabs.
  *
- * Simple kanban starts off: expanded columns keep the sunken well unless the
- * user turns it on.
+ * Simple kanban starts on: expanded columns drop the sunken well unless the
+ * user turns it off to restore the default column chrome.
  */
 const DEFAULT_DESIGN_VARIANTS: DesignVariantState = Object.freeze({
 	panel: false,
 	"simple-views": true,
-	simpleKanban: false,
+	simpleKanban: true,
 });
 
 export function isDesignVariantId(value: unknown): value is DesignVariantId {
@@ -92,12 +98,18 @@ export function getDefaultDesignVariants(): DesignVariantState {
 	return DEFAULT_DESIGN_VARIANTS;
 }
 
+function storedSchemaVersion(record: Record<string, unknown>): number {
+	const value = record.schemaVersion;
+	return typeof value === "number" && Number.isInteger(value) && value >= 1 ? value : 1;
+}
+
 /**
  * Read the persisted map, normalising it against the known variant ids so a
  * partial, stale, or hostile payload can never produce a state object with a
  * missing key. Unknown keys are dropped. Present non-boolean values coerce to
- * off; absent keys keep the store default. Returns `null` only when there is
- * nothing usable to adopt.
+ * off; absent keys keep the store default. Schema 1 (or missing) Simple kanban
+ * values are ignored so an incidental stored `false` cannot block the on
+ * default. Returns `null` only when there is nothing usable to adopt.
  */
 export function readStoredDesignVariants(): DesignVariantState | null {
 	try {
@@ -112,11 +124,16 @@ export function readStoredDesignVariants(): DesignVariantState | null {
 		}
 
 		const record = parsed as Record<string, unknown>;
+		const schemaVersion = storedSchemaVersion(record);
 		const next: Record<DesignVariantId, boolean> = { ...DEFAULT_DESIGN_VARIANTS };
 		for (const variant of DESIGN_VARIANTS) {
-			if (Object.hasOwn(record, variant.id)) {
-				next[variant.id] = record[variant.id] === true;
+			if (!Object.hasOwn(record, variant.id)) {
+				continue;
 			}
+			if (variant.id === "simpleKanban" && schemaVersion < SIMPLE_KANBAN_ON_DEFAULT_SCHEMA_VERSION) {
+				continue;
+			}
+			next[variant.id] = record[variant.id] === true;
 		}
 		return Object.freeze(next);
 	} catch {
@@ -144,7 +161,10 @@ export function setDesignVariant(id: DesignVariantId, enabled: boolean) {
 	const next: DesignVariantState = Object.freeze({ ...currentDesignVariants, [id]: enabled });
 
 	try {
-		globalThis.localStorage?.setItem(DESIGN_VARIANTS_STORAGE_KEY, JSON.stringify(next));
+		globalThis.localStorage?.setItem(
+			DESIGN_VARIANTS_STORAGE_KEY,
+			JSON.stringify({ ...next, schemaVersion: DESIGN_VARIANTS_STORAGE_SCHEMA_VERSION }),
+		);
 	} catch {
 		// Non-fatal: the selection still applies for this session.
 	}

@@ -3,6 +3,8 @@ import type { UntrackedWorkTriage } from "@/components/blocks/agent-session/untr
 
 import type { AgentSessionColumnFrame } from "./agent-session-column-frame";
 
+export type AgentSessionColumnNotchShape = "circle" | "line";
+
 /**
  * Column chrome around the Agent Session cards.
  *
@@ -30,12 +32,30 @@ export interface AgentSessionColumnProps extends Omit<
 	/** Copy shown in place of the list when there are no sessions. */
 	emptyLabel?: string;
 	/**
-	 * Whether the column starts collapsed into its notch rail. The column owns
+	 * Whether the column starts collapsed into its compact marker rail. The column owns
 	 * the state from there — the hover-revealed shrink/grow control toggles it.
 	 *
 	 * Ignored once {@link AgentSessionColumnProps.collapsed} is supplied.
 	 */
 	defaultCollapsed?: boolean;
+	/** Collapsed marker treatment. Defaults to circular user dots. */
+	notchShape?: AgentSessionColumnNotchShape;
+	/**
+	 * `"gutter"` hides the visual count and expand icon at rest while leaving
+	 * the rail top-aligned. The expand control remains keyboard-reachable.
+	 * Hover preview should pass `"column"` so that chrome returns. Defaults
+	 * to `"column"`.
+	 */
+	collapsedPresentation?: "column" | "gutter";
+	/**
+	 * Extra horizontal pointer space on each side of the collapsed rail,
+	 * without moving its markers.
+	 */
+	collapsedRailHitSlopPx?: number;
+	/** Plays the collapsed gutter rail's one-time staggered dot introduction. */
+	playGutterIntro?: boolean;
+	/** Called after the final dot finishes the gutter introduction. */
+	onGutterIntroComplete?: () => void;
 	/**
 	 * Controlled collapse. Supply it when the host renders its own collapse
 	 * affordance — a docked surface with a minimise control, say — and needs the
@@ -58,9 +78,8 @@ export interface AgentSessionColumnProps extends Omit<
 	 * Which chrome the header wears.
 	 *
 	 * `"column"` is the in-flow board title row. `"panel"` is the docked
-	 * rail's PanelHeader skin. The collapsed rail keeps its compact header
-	 * in both modes, because at 32px that header is the chrome and it
-	 * carries the only control that can expand the column again.
+	 * rail's PanelHeader skin. The collapsed rail normally keeps its compact
+	 * header in both modes; `collapsedPresentation="gutter"` hides the count at rest.
 	 */
 	headerSurface?: "column" | "panel";
 	/**
@@ -69,9 +88,16 @@ export interface AgentSessionColumnProps extends Omit<
 	 */
 	columnFrame?: AgentSessionColumnFrame;
 	/**
+	 * Enables the bottom depth tail, scroll fade, and end summary on the
+	 * expanded list. Defaults to `false`.
+	 */
+	hasScrollingEffect?: boolean;
+	/**
 	 * Expanded width in px. Defaults to the board column's 280. A wider host
 	 * (the docked rail) passes its content-box width so the well fills that
 	 * surface instead of leaving a 280px column inside a larger panel.
 	 */
 	expandedWidthPx?: number;
+	/** Disable the column's width transition while a host drives live resizing. */
+	widthTransitionDisabled?: boolean;
 }

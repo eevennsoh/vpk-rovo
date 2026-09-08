@@ -1,3 +1,4 @@
+import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue";
 import type {
 	JiraKanbanAgentData,
@@ -25,6 +26,37 @@ const STATUS_VARIANTS: Readonly<Record<string, JiraListRowData["statusVariant"]>
 	"In review": "warning",
 	Done: "success",
 };
+
+const JIRA_AGENT_AUTO_PROGRESS_SOURCES = new Set(["To do", "Done"]);
+const JIRA_AGENT_ACTIVE_COLUMN = "In progress";
+
+export function progressJiraGoldenJourneysV4WorkItemOnStart(
+	columns: readonly JiraKanbanColumnData[],
+	issueKey: string,
+): JiraKanbanColumnData[] {
+	const sourceColumn = columns.find((column) => (
+		column.cards.some((card) => card.code === issueKey)
+	));
+	const activeColumn = columns.find((column) => column.title === JIRA_AGENT_ACTIVE_COLUMN);
+
+	if (!sourceColumn || !activeColumn || !JIRA_AGENT_AUTO_PROGRESS_SOURCES.has(sourceColumn.title)) {
+		return [...columns];
+	}
+
+	const card = sourceColumn.cards.find((candidate) => candidate.code === issueKey);
+	if (!card) {
+		return [...columns];
+	}
+
+	return columns.map((column) => {
+		const cards = column.title === sourceColumn.title
+			? column.cards.filter((candidate) => candidate.code !== issueKey)
+			: column.title === JIRA_AGENT_ACTIVE_COLUMN
+				? [card, ...column.cards]
+				: column.cards;
+		return cards === column.cards ? column : { ...column, cards, count: cards.length };
+	});
+}
 
 function slugAgentName(name: string): string {
 	return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -164,6 +196,8 @@ function createAssignedActivity(
 		agentBrandName: agent.brandName,
 		label: `Assigned to ${card.title}`,
 		message: `${agent.name} is working and will post the next result to the Jira work item.`,
+		startedAtMs: Date.now(),
+		startupSequence: "jira-work-item-start",
 		state: "working",
 	};
 }
@@ -206,18 +240,30 @@ export function applyAssignedAgentIdsToColumns(
 	agentIds: readonly string[],
 	catalog: readonly JiraKanbanAgentData[],
 ): JiraKanbanColumnData[] {
-	return columns.map((column) => {
-		const cards = column.cards.map((card) => (
-			card.code === issueKey
-				? applyAssignedAgentIdsToCard(card, agentIds, catalog)
-				: card
-		));
+	let started = false;
+	const nextColumns = columns.map((column) => {
+		const cards = column.cards.map((card) => {
+			if (card.code !== issueKey) {
+				return card;
+			}
+
+			const nextCard = applyAssignedAgentIdsToCard(card, agentIds, catalog);
+			const previousActivityIds = new Set(card.agentActivities?.map((activity) => activity.id) ?? []);
+			started = nextCard.agentActivities?.some((activity) => (
+				activity.state === "working" && !previousActivityIds.has(activity.id)
+			)) ?? false;
+			return nextCard;
+		});
 		return {
 			...column,
 			cards,
 			count: cards.length,
 		};
 	});
+
+	return started
+		? progressJiraGoldenJourneysV4WorkItemOnStart(nextColumns, issueKey)
+		: nextColumns;
 }
 
 export function createListRows(
@@ -328,6 +374,24 @@ export function insertListOrderKey(
 	];
 }
 
+export function appendBoardCreatedListOrder({
+	columns,
+	issueKey,
+	listOrder,
+	visibleKeys,
+}: Readonly<{
+	columns: readonly JiraKanbanColumnData[];
+	issueKey: string;
+	listOrder: readonly string[];
+	visibleKeys: readonly string[];
+}>): string[] {
+	const insertionKeys = visibleKeys.length > 0
+		? visibleKeys
+		: columns.flatMap((column) => column.cards.map((card) => card.code));
+
+	return insertListOrderKey(listOrder, insertionKeys, issueKey, null);
+}
+
 export function getNextPayIssueKey(columns: readonly JiraKanbanColumnData[]): string {
 	const highestIssueNumber = columns.flatMap((column) => column.cards).reduce((maxIssueNumber, card) => {
 		const parsedIssueNumber = Number.parseInt(card.code.split("-")[1] ?? "0", 10);
@@ -341,6 +405,7 @@ export function insertWorkItemCard(
 	columns: readonly JiraKanbanColumnData[],
 	card: JiraKanbanCardData,
 	columnTitle: string,
+	insertAtIndex?: number,
 ): JiraKanbanColumnData[] {
 	const targetTitle = columns.some((column) => column.title === columnTitle)
 		? columnTitle
@@ -354,7 +419,15 @@ export function insertWorkItemCard(
 			return column;
 		}
 
-		const cards = [...column.cards, card];
+		// Omitted index means append, which is what every create-well caller wants.
+		// A gap drop names the slot it landed in, clamped because the column can
+		// have changed between the drag resolving and the drop committing.
+		const cards = [...column.cards];
+		if (insertAtIndex === undefined) {
+			cards.push(card);
+		} else {
+			cards.splice(Math.min(Math.max(insertAtIndex, 0), cards.length), 0, card);
+		}
 		return {
 			...column,
 			cards,
@@ -370,14 +443,21 @@ export function toKanbanCardFromDraft(input: Readonly<{
 	issueType?: JiraKanbanCardData["issueType"];
 	summary: string;
 }>): JiraKanbanCardData {
+	const assignee = input.assignee
+		? {
+			id: input.assignee.id,
+			name: input.assignee.name,
+			avatarSrc: input.assignee.avatarSrc ?? "",
+		}
+		: undefined;
+
 	return {
-		assignee: input.assignee
-			? {
-				id: input.assignee.id,
-				name: input.assignee.name,
-				avatarSrc: input.assignee.avatarSrc ?? "",
-			}
-			: undefined,
+		assignee,
+		avatarShape: input.assignee?.avatarShape,
+		avatarSrc: assignee?.avatarSrc || undefined,
+		avatarUnassignedKind: input.assignee
+			? input.assignee.avatarUnassignedKind
+			: "person",
 		code: input.issueKey,
 		dueDate: input.dueDate,
 		issueType: input.issueType ?? "task",
@@ -397,9 +477,38 @@ export interface CreateListWorkItemFromSessionInput {
 		activity: JiraIssueAgentActivity,
 	) => readonly JiraKanbanColumnData[];
 	listOrder: readonly string[];
-	session: Readonly<{ id: string; title: string }>;
+	session: Readonly<Pick<AgentSessionItem, "id" | "invokedBy" | "title">>;
 	visibleKeys: readonly string[];
 }
+
+export interface CreateBoardWorkItemFromSessionInput {
+	activity: JiraIssueAgentActivity;
+	columns: readonly JiraKanbanColumnData[];
+	columnTitle: string;
+	/**
+	 * Slot the card lands in within its column. Omitted by the create well,
+	 * which appends; supplied by a drop in the gap between two cards.
+	 */
+	insertAtIndex?: number;
+	linkSession: (
+		columns: readonly JiraKanbanColumnData[],
+		issueKey: string,
+		activity: JiraIssueAgentActivity,
+	) => readonly JiraKanbanColumnData[];
+	session: Readonly<Pick<AgentSessionItem, "id" | "invokedBy" | "title">>;
+}
+
+export type CreateBoardWorkItemFromSessionResult =
+	| {
+		kind: "created";
+		columns: readonly JiraKanbanColumnData[];
+		issueKey: string;
+	}
+	| {
+		kind: "already-attached";
+		columns: readonly JiraKanbanColumnData[];
+		issueKey: string;
+	};
 
 export type CreateListWorkItemFromSessionResult =
 	| {
@@ -415,9 +524,9 @@ export type CreateListWorkItemFromSessionResult =
 		listOrder: readonly string[];
 	};
 
-export function createListWorkItemFromSession(
-	input: CreateListWorkItemFromSessionInput,
-): CreateListWorkItemFromSessionResult {
+export function createBoardWorkItemFromSession(
+	input: CreateBoardWorkItemFromSessionInput,
+): CreateBoardWorkItemFromSessionResult {
 	const attachedCard = input.columns
 		.flatMap((column) => column.cards)
 		.find((card) => card.agentActivities?.some((activity) => activity.id === input.activity.id));
@@ -426,7 +535,6 @@ export function createListWorkItemFromSession(
 			kind: "already-attached",
 			columns: input.columns,
 			issueKey: attachedCard.code,
-			listOrder: input.listOrder,
 		};
 	}
 
@@ -436,19 +544,51 @@ export function createListWorkItemFromSession(
 		issueType: "task",
 		summary: input.session.title,
 	});
-	const columnsWithCard = insertWorkItemCard(input.columns, card, "To do");
-	const columns = input.linkSession(columnsWithCard, issueKey, input.activity);
-	const listOrder = insertListOrderKey(
-		input.listOrder,
-		input.visibleKeys,
-		issueKey,
-		input.insertion.insertAtIndex,
+	const columnsWithCard = insertWorkItemCard(
+		input.columns,
+		card,
+		input.columnTitle,
+		input.insertAtIndex,
 	);
+	const columns = input.linkSession(columnsWithCard, issueKey, input.activity);
 
 	return {
 		kind: "created",
 		columns,
 		issueKey,
+	};
+}
+
+export function createListWorkItemFromSession(
+	input: CreateListWorkItemFromSessionInput,
+): CreateListWorkItemFromSessionResult {
+	const result = createBoardWorkItemFromSession({
+		activity: input.activity,
+		columns: input.columns,
+		columnTitle: "To do",
+		linkSession: input.linkSession,
+		session: input.session,
+	});
+	if (result.kind === "already-attached") {
+		return {
+			kind: "already-attached",
+			columns: result.columns,
+			issueKey: result.issueKey,
+			listOrder: input.listOrder,
+		};
+	}
+
+	const listOrder = insertListOrderKey(
+		input.listOrder,
+		input.visibleKeys,
+		result.issueKey,
+		input.insertion.insertAtIndex,
+	);
+
+	return {
+		kind: "created",
+		columns: result.columns,
+		issueKey: result.issueKey,
 		listOrder,
 	};
 }

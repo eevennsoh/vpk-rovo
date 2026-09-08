@@ -25,6 +25,7 @@ const REGISTRY_SOURCE_FILES = [
 	"components/website/registry/ui-custom/variants-runtime.ts",
 	"components/website/registry/blocks.ts",
 	"components/website/registry/blocks-variants.ts",
+	"components/website/registry/blocks-variants-catalog.ts",
 	"components/website/registry/projects.ts",
 	"components/website/registry/arts.ts",
 	"components/website/registry/charts.ts",

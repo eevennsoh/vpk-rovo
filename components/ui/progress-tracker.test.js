@@ -5,7 +5,14 @@ const test = require("node:test");
 
 const PROGRESS_TRACKER_SOURCE = fs.readFileSync(path.join(__dirname, "progress-tracker.tsx"), "utf8");
 const SPINNER_SOURCE = fs.readFileSync(path.join(__dirname, "spinner.tsx"), "utf8");
+const EXPERIMENTAL_SPINNER_SOURCE = fs.readFileSync(path.join(__dirname, "spinner-experimental.tsx"), "utf8");
+const EXPERIMENTAL_SPINNER_STYLES = fs.readFileSync(path.join(__dirname, "../../app/jira-agent-motion.css"), "utf8");
 const SPINNER_DETAIL_SOURCE = fs.readFileSync(path.join(__dirname, "../../app/data/details/ui/spinner.ts"), "utf8");
+const SPINNER_DEMO_SOURCE = fs.readFileSync(path.join(__dirname, "../website/demos/ui/spinner-demo.tsx"), "utf8");
+const BOARD_VIEW_MENU_SOURCE = fs.readFileSync(
+	path.join(__dirname, "../blocks/jira-kanban/experimental/components/board-view-menu.tsx"),
+	"utf8",
+);
 const TAILWIND_THEME_SOURCE = fs.readFileSync(path.join(__dirname, "../../app/tailwind-theme.css"), "utf8");
 
 test("ProgressTracker supports optional bylines and warning steps without replacing default labels", () => {
@@ -67,6 +74,54 @@ test("Spinner preserves the CodePen chasing-tail motion without competing rotati
 		/<animate[\s\S]*attributeName="stroke-dashoffset"[\s\S]*dur="1\.2s"[\s\S]*keyTimes="0;0\.5;1"[\s\S]*repeatCount="indefinite"[\s\S]*values="0;-35;-124"/u,
 	);
 	assert.match(SPINNER_SOURCE, /const tailAnimations = shouldReduceMotion \? null : \(/u);
+});
+
+test("Spinner exposes the Jira prototype iconic orb only as an experimental variant", () => {
+	assert.match(SPINNER_SOURCE, /experimental: "text-icon-subtlest!"/u);
+	assert.match(SPINNER_SOURCE, /variant === "experimental"/u);
+	assert.match(SPINNER_SOURCE, /<ExperimentalSpinner/u);
+	assert.match(SPINNER_SOURCE, /pulse\?: boolean/u);
+	assert.match(SPINNER_SOURCE, /pulse = false/u);
+	assert.match(SPINNER_SOURCE, /pulse=\{pulse\}/u);
+	assert.match(EXPERIMENTAL_SPINNER_SOURCE, /data-iconic-orb=""/u);
+	assert.match(EXPERIMENTAL_SPINNER_SOURCE, /pulse = false/u);
+	assert.match(EXPERIMENTAL_SPINNER_SOURCE, /spinner-experimental-orb-rotator-motion/u);
+	assert.match(
+		EXPERIMENTAL_SPINNER_SOURCE,
+		/canAnimate && pulse && "spinner-experimental-orb-dot-motion"/u,
+	);
+	assert.match(
+		EXPERIMENTAL_SPINNER_SOURCE,
+		/canAnimate && pulse && "spinner-experimental-orb-rotator-pulse-delay"/u,
+	);
+	assert.match(EXPERIMENTAL_SPINNER_SOURCE, /spinner-experimental-orb-dot-top-right/u);
+	assert.match(EXPERIMENTAL_SPINNER_SOURCE, /ORB_DOTS/u);
+	assert.match(EXPERIMENTAL_SPINNER_STYLES, /@keyframes spinner-experimental-orb-morph/u);
+	assert.match(EXPERIMENTAL_SPINNER_STYLES, /0%, 5% \{ transform: translate\(0, 0\); \}/u);
+	assert.doesNotMatch(EXPERIMENTAL_SPINNER_STYLES, /--orb-inner-/u);
+	assert.doesNotMatch(EXPERIMENTAL_SPINNER_STYLES, /@keyframes spinner-experimental-orb-opacity/u);
+	assert.doesNotMatch(EXPERIMENTAL_SPINNER_STYLES, /--orb-expanded-opacity|--orb-pulse-opacity/u);
+	assert.match(EXPERIMENTAL_SPINNER_STYLES, /@utility spinner-experimental-orb-dot-motion/u);
+	assert.match(
+		EXPERIMENTAL_SPINNER_STYLES,
+		/animation: spinner-experimental-orb-morph calc\(var\(--duration-slowest\) \* 16\) var\(--ease-in-out\) infinite both;/u,
+	);
+	assert.match(
+		EXPERIMENTAL_SPINNER_STYLES,
+		/transform: translate\(var\(--orb-outer-x\), var\(--orb-outer-y\)\);/u,
+	);
+	assert.match(EXPERIMENTAL_SPINNER_STYLES, /@keyframes spinner-experimental-orb-rotate/u);
+	assert.match(EXPERIMENTAL_SPINNER_STYLES, /@utility spinner-experimental-orb-rotator-pulse-delay/u);
+	assert.doesNotMatch(EXPERIMENTAL_SPINNER_SOURCE, /const HEX =/u);
+	assert.doesNotMatch(EXPERIMENTAL_SPINNER_SOURCE, /const SPARKLE =/u);
+	assert.match(SPINNER_DETAIL_SOURCE, /six-dot iconic orb/u);
+	assert.match(SPINNER_DETAIL_SOURCE, /name: "pulse"/u);
+	assert.match(SPINNER_DETAIL_SOURCE, /spinner-demo-experimental/u);
+	assert.match(SPINNER_DEMO_SOURCE, /id="spinner-experimental-pulse"/u);
+	assert.match(SPINNER_DEMO_SOURCE, /<Switch[\s\S]*onCheckedChange=\{setPulse\}/u);
+	assert.match(SPINNER_DEMO_SOURCE, /pulse=\{pulse\}[\s\S]*variant="experimental"/u);
+	assert.match(BOARD_VIEW_MENU_SOURCE, /variant="experimental"/u);
+	assert.doesNotMatch(BOARD_VIEW_MENU_SOURCE, /pulse/u);
 });
 
 test("Shimmer keeps its token-backed CSS sweep animation", () => {

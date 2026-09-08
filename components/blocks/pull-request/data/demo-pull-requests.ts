@@ -16,7 +16,7 @@ export const DEMO_PULL_REQUESTS: readonly PullRequestProps[] = [
 		additions: 86,
 		deletions: 21,
 		filesChanged: 6,
-		relativeTime: "2hr ago",
+		relativeTime: "1h ago",
 	},
 	{
 		number: 1847,
@@ -32,6 +32,6 @@ export const DEMO_PULL_REQUESTS: readonly PullRequestProps[] = [
 		additions: 148,
 		deletions: 37,
 		filesChanged: 12,
-		relativeTime: "yesterday",
+		relativeTime: "Yesterday",
 	},
 ];

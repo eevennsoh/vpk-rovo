@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import {
-	JiraIssueAgentAndSkillSubmenu,
+	JiraIssueAgentAndSkillSubmenus,
 	type JiraIssueGenerativeActionConfig,
 	type JiraIssueGenerativeActionIssue,
 } from "./generative-action-menu";
@@ -74,7 +74,7 @@ function JiraIssueMoreMenu({ generativeAction, generativeActionIssue, issueKey, 
 			<DropdownMenuContent align="start" className="max-h-none w-[280px]" side="right" sideOffset={8}>
 				{generativeAction && generativeActionIssue ? (
 					<>
-						<JiraIssueAgentAndSkillSubmenu
+						<JiraIssueAgentAndSkillSubmenus
 							action={generativeAction}
 							issue={generativeActionIssue}
 							onRequestClose={() => handleOpenChange(false)}

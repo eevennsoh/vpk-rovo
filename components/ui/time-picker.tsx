@@ -16,6 +16,8 @@ export interface TimePickerProps {
 	placeholder?: string
 	stepMinutes?: 15 | 30 | 60
 	disabled?: boolean
+	/** Positioner stacking class for the time list. Raise above nested popovers. */
+	contentPositionerClassName?: string
 }
 
 function buildTimeOptions(stepMinutes: TimePickerProps["stepMinutes"]) {
@@ -35,13 +37,14 @@ function TimePicker({
 	placeholder = "Select time",
 	stepMinutes = 30,
 	disabled,
+	contentPositionerClassName,
 }: Readonly<TimePickerProps>) {
 	const options = React.useMemo(() => buildTimeOptions(stepMinutes), [stepMinutes])
 
 	return (
 		<Select
 			data-slot="time-picker"
-			value={value}
+			value={value ?? ""}
 			onValueChange={(nextValue) => {
 				if (nextValue !== null) {
 					onChange?.(nextValue)
@@ -52,7 +55,7 @@ function TimePicker({
 			<SelectTrigger className="min-w-32">
 				<SelectValue placeholder={placeholder} />
 			</SelectTrigger>
-			<SelectContent>
+			<SelectContent positionerClassName={contentPositionerClassName}>
 				{options.map((option) => (
 					<SelectItem key={option} value={option}>
 						{option}

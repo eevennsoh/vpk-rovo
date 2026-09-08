@@ -24,7 +24,7 @@ interface UseDesignVariantsResult {
  *
  * Hydration-safe: `useSyncExternalStore` renders the store default on the
  * server and during hydration, then an effect adopts the stored preferences —
- * the same shape `useDesignVariation` uses for `ui-design-variation`. Any
+ * the same shape `ThemeWrapper` uses for `ui-theme`. Any
  * variant-driven UI must therefore tolerate one paint at the default before
  * a stored override applies.
  */

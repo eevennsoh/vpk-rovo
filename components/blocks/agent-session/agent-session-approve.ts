@@ -57,7 +57,7 @@ export function resolveApproveTarget<T>(
 export function approveActionLabel<T>(target: ApproveTarget<T>): string {
 	switch (target.kind) {
 		case "work-item":
-			return `Approve, link to ${target.key}`;
+			return `Link to ${target.key}`;
 		case "unavailable":
 			switch (target.reason) {
 				case "already-attached":

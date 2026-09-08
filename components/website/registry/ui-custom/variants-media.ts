@@ -55,6 +55,13 @@ export const UI_CUSTOM_MEDIA_VARIANT_DEMOS: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
+	"animated-dots-demo-variants": dynamic(
+		() =>
+			import("../../demos/ui-custom/animated-dots-demo").then((mod) => ({
+				default: mod.AnimatedDotsDemoVariants,
+			})),
+		{ ssr: false },
+	),
 	"animated-dots-demo-custom-colors": dynamic(
 		() =>
 			import("../../demos/ui-custom/animated-dots-demo").then((mod) => ({

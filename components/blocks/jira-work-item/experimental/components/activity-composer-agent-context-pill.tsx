@@ -15,7 +15,7 @@ import { ContextBarPill } from "@/components/ui-custom/context-bar";
 import {
 	DEFAULT_PINNED_SPACE_AGENT_IDS,
 	WORK_ITEM_PINNED_ITEMS_LABEL,
-} from "@/components/blocks/jira-work-item/experimental/lib/work-item-picker-options";
+} from "@/components/blocks/jira-work-item/lib/work-item-picker-options";
 
 interface ActivityComposerAgentContextPillProps {
 	onInvokeAgent: (agent: Pick<AgentSelectorAgent, "id" | "name" | "avatarSrc" | "brandName">) => void;

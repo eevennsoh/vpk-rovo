@@ -9,6 +9,17 @@ import { ROVO_WAVEFORM_COLOR_CSS_VARS } from "@/lib/rovo-colors";
 import { cn } from "@/lib/utils";
 
 export type PromptInputDictationState = "idle" | "listening" | "processing";
+export type PromptInputDictationControlSize = "icon-sm" | "icon-xs";
+
+const DICTATION_IDLE_SIZE_CLASS_NAME = {
+	"icon-sm": "size-8 hover:opacity-90 active:opacity-80",
+	"icon-xs": "size-6 hover:opacity-90 active:opacity-80",
+} as const;
+
+const DICTATION_ACTIVE_SIZE_CLASS_NAME = {
+	"icon-sm": "flex h-8 items-center gap-1 overflow-hidden rounded-md bg-bg-neutral-bold pl-1 pr-3 text-text-inverse shadow-sm",
+	"icon-xs": "flex h-6 items-center gap-1 overflow-hidden rounded-md bg-bg-neutral-bold pl-1 pr-3 text-text-inverse shadow-sm",
+} as const;
 
 export interface PromptInputDictationControlProps {
 	className?: string;
@@ -17,6 +28,7 @@ export interface PromptInputDictationControlProps {
 	onStart?: () => void;
 	onStop?: () => void;
 	screenAssistantTarget?: string;
+	size?: PromptInputDictationControlSize;
 	state?: PromptInputDictationState;
 	supported?: boolean;
 	transcriptPreview?: string | null;
@@ -36,6 +48,7 @@ export const PromptInputDictationControl = ({
 	onStart,
 	onStop,
 	screenAssistantTarget,
+	size = "icon-sm",
 	state = "idle",
 	supported = true,
 	transcriptPreview = null,
@@ -48,14 +61,15 @@ export const PromptInputDictationControl = ({
 		return (
 			<PromptInputButton
 				aria-label="Start dictation"
-				className={cn("size-8 hover:opacity-90 active:opacity-80", className)}
+				className={cn(DICTATION_IDLE_SIZE_CLASS_NAME[size], className)}
 				data-screen-assistant-target={screenAssistantTarget}
 				disabled={disabled}
 				onClick={onStart}
+				size={size}
 				tooltip={{ content: "Dictate", delay: 0 }}
 				variant="ghost"
 			>
-				<MicrophoneIcon label="" />
+				<MicrophoneIcon label="" size={size === "icon-xs" ? "small" : undefined} />
 			</PromptInputButton>
 		);
 	}
@@ -64,10 +78,7 @@ export const PromptInputDictationControl = ({
 
 	return (
 		<div
-			className={cn(
-				"flex h-8 items-center gap-1 overflow-hidden rounded-md bg-bg-neutral-bold pl-1 pr-3 text-text-inverse shadow-sm",
-				className,
-			)}
+			className={cn(DICTATION_ACTIVE_SIZE_CLASS_NAME[size], className)}
 			data-dictation-state={state}
 		>
 			<button

@@ -26,6 +26,7 @@ import { SCROLL_MASK_DETAIL } from "./visual/scroll-mask";
 import { SCROLLING_DETAIL } from "./visual/scrolling";
 import { TEXT_EFFECTS_DETAIL } from "./visual/text-effects";
 import { TEXT_MORPHING_DETAIL } from "./visual/text-morphing";
+import { TEXT_CONTINUITY_DETAIL } from "./visual/text-continuity";
 import { ASCII_DETAIL } from "./visual/ascii";
 import { DITHERING_DETAIL } from "./visual/dithering";
 import { PARTICLES_DETAIL } from "./visual/particles";
@@ -51,6 +52,8 @@ import { MESH_V2_DETAIL } from "./visual/mesh-v2";
 import { CHROMATIC_ABERRATION_DETAIL } from "./visual/chromatic-aberration";
 import { PATTERN_TILE_DETAIL } from "./visual/pattern-tile";
 import { BORDER_BEAM_DETAIL } from "./visual/border-beam";
+import { DROPZONE_EFFECT_DETAIL } from "./visual/dropzone-effect";
+import { HEATMAP_DETAIL } from "./visual/heatmap";
 import { INK_WASH_DETAIL } from "./visual/ink-wash";
 import { LIQUID_METAL_DETAIL } from "./visual/liquid-metal";
 import { NOISE_DETAIL } from "./visual/noise";
@@ -170,6 +173,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	color: COLOR_DETAIL,
 	shadow: SHADOW_DETAIL,
 	"shadow-overlay": SHADOW_OVERLAY_DETAIL,
+	"dropzone-effect": DROPZONE_EFFECT_DETAIL,
 	"card-glow": CARD_GLOW_DETAIL,
 	melt: MELT_DETAIL,
 	scribbles: SCRIBBLES_DETAIL,
@@ -183,6 +187,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	scrolling: SCROLLING_DETAIL,
 	"text-effects": TEXT_EFFECTS_DETAIL,
 	"text-morphing": TEXT_MORPHING_DETAIL,
+	"text-continuity": TEXT_CONTINUITY_DETAIL,
 	ascii: ASCII_DETAIL,
 	dithering: DITHERING_DETAIL,
 	particles: PARTICLES_DETAIL,
@@ -208,6 +213,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	"chromatic-aberration": CHROMATIC_ABERRATION_DETAIL,
 	"pattern-tile": PATTERN_TILE_DETAIL,
 	"border-beam": BORDER_BEAM_DETAIL,
+	heatmap: HEATMAP_DETAIL,
 	"ink-wash": INK_WASH_DETAIL,
 	"liquid-metal": LIQUID_METAL_DETAIL,
 	noise: NOISE_DETAIL,

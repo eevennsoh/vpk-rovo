@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import type { AgentListItem } from "@/components/blocks/agent-list";
+import type { AgentListAgent, AgentListItem } from "@/components/blocks/agent-list";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
 
 import type { ApproveTarget } from "./agent-session-approve";
@@ -17,8 +17,39 @@ import type { SessionCohort } from "./session-cohort";
  */
 export type AgentSessionItem = AgentListItem;
 
+/**
+ * Visible identity for an agent session.
+ *
+ * Session behavior still belongs to `item.agent`; the leading face belongs to
+ * the person who invoked it. Returning the original object when no invoker is
+ * known keeps agent-only payloads backward compatible.
+ */
+export function toAgentSessionVisibleIdentity(item: AgentSessionItem): AgentListAgent {
+	if (item.invokedBy === undefined) {
+		return item.agent;
+	}
+
+	return {
+		avatarSrc: item.invokedBy.avatarSrc,
+		kind: "person",
+		name: item.invokedBy.name,
+	};
+}
+
 /** Visual footprint and work-item relationship of each session. */
 export type AgentSessionVariant = "large" | "medium-detached" | "medium-attached" | "small";
+
+/**
+ * Finder-style modifiers for a selection gesture.
+ *
+ * `additive` is Command on macOS and Control elsewhere. `range` is Shift.
+ * Together they match file browsing: click replaces, Shift selects the
+ * span from the anchor, Command toggles, Shift+Command unions the span.
+ */
+export interface AgentSessionSelectionGesture {
+	readonly additive: boolean;
+	readonly range: boolean;
+}
 
 /**
  * Per-row triage affordances, or `null` on a surface that has none.
@@ -35,8 +66,9 @@ export interface AgentSessionTriageRow {
 		readonly cohort: () => SessionCohort<AgentSessionItem>;
 	} | null;
 	readonly mark: {
+		readonly isLead: boolean;
 		readonly isMarked: boolean;
-		readonly onToggle: () => void;
+		readonly onActivate: (gesture: AgentSessionSelectionGesture) => void;
 	} | null;
 }
 
@@ -92,6 +124,8 @@ export interface AgentSessionProps {
 	 * the menu option as unavailable.
 	 */
 	onSubtasks?: (item: AgentSessionItem) => void;
+	/** Archives a session from the untracked-work flyout. Omit to expose the action as unavailable. */
+	onArchiveSession?: (item: AgentSessionItem) => void;
 	/** Overrides the shell command the hover Resume control copies. */
 	getResumeCommand?: (item: AgentSessionItem) => string | undefined;
 	/**

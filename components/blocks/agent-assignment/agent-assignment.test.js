@@ -243,10 +243,17 @@ test("Agent Assignment filled pins follow the space pin set, not assignment or u
 	const source = readProjectFile("components/blocks/agent-assignment/components/agent-assignment.tsx");
 	const page = readProjectFile("components/blocks/agent-assignment/page.tsx");
 	const selector = readProjectFile("components/blocks/agent-selector/components/agent-selector.tsx");
-	const pickerOptions = readProjectFile(
+	const variantPickerOptions = readProjectFile(
 		"components/blocks/jira-work-item/experimental-v3/lib/work-item-picker-options.ts",
 	);
+	const pickerOptions = readProjectFile(
+		"components/blocks/jira-work-item/lib/work-item-picker-options.ts",
+	);
 
+	assert.match(
+		variantPickerOptions,
+		/from "@\/components\/blocks\/jira-work-item\/lib\/work-item-picker-options";/u,
+	);
 	assert.match(
 		pickerOptions,
 		/export const DEFAULT_PINNED_SPACE_AGENT_IDS = \[\s*"rfp-drafting-agent",\s*"readiness-checker",\s*\] as const;/u,

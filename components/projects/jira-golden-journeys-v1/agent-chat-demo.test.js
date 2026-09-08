@@ -89,6 +89,31 @@ test("JGP agent chat playback deterministically advances from thinking to final 
 	assert.equal(playback.frames[3].parts.at(-1).state, "done");
 });
 
+test("JGP skill playback preserves structured invocation metadata for the user bubble", async () => {
+	const { buildJgpAgentChatPlayback } = await loadHarness();
+	const playback = buildJgpAgentChatPlayback({
+		agentId: "rovo-dev",
+		agentName: "Rovo",
+		issueKey: "PAY-124",
+		issueSummary: "Confirm the English-only account allow-list",
+		request: "Use the Design landing page skill for Jira issue PAY-124.",
+		skillInvocation: {
+			id: "skill:design-landing-page",
+			label: "Design landing page",
+			instruction: "for Jira issue PAY-124: Confirm the English-only account allow-list.",
+		},
+	}, "skill-run", 0);
+
+	assert.deepEqual(playback.userMessage.metadata, {
+		source: "jira-issue-generative-action",
+		skillInvocation: {
+			id: "skill:design-landing-page",
+			label: "Design landing page",
+			instruction: "for Jira issue PAY-124: Confirm the English-only account allow-list.",
+		},
+	});
+});
+
 test("JGP awaiting-input chat playback exposes the same question as a chat question card", async () => {
 	const { buildJgpAgentChatPlayback } = await loadHarness();
 	const playback = buildJgpAgentChatPlayback({

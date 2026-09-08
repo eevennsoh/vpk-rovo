@@ -2,13 +2,13 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const PULL_REQUEST_DETAIL: ComponentDetail = {
 	description:
-		"Pull-request summary card in two densities. `compact` is a single-row list card (author avatar, split `#N` + title, diff stats, status lozenge, repo pill, `source → target` branch path) built for selectable lists such as the Jira work-item Pull requests select. `spacious` rearranges the same data into three rows: status lozenge + title, GitHub mark + `source → target` branch path, then an author / changed-files / diff footer.",
+		"Pull-request summary card in three layouts. `dropdown` is a compact single-row list card (author avatar, split `#N` + title, diff stats, status lozenge, repo pill, `source → target` branch path) built for selectable lists such as the Jira work-item Pull requests select. `spacious` is the original three-row dropdown/summary card: glyph status lozenge + wrapping `#N` + title, GitHub mark + `source → target`, then an author / files / diff footer. `flyout` is the overlay summary card: wrapping `#N` + title with a trailing status lozenge, author avatar + `Name · relativeTime`, then a divided GitHub mark + `source → target` path and files / `+add` `−del` footer.",
 	importStatement: `import { PullRequest } from "@/components/blocks/pull-request";
 import type { PullRequestProps } from "@/components/blocks/pull-request";`,
 	usage: `import { PullRequest } from "@/components/blocks/pull-request";
 
 <PullRequest
-  variant="spacious"
+  variant="flyout"
   number={1306}
   title="Add guest checkout to the storefront"
   status="Open"
@@ -19,20 +19,39 @@ import type { PullRequestProps } from "@/components/blocks/pull-request";`,
   additions={86}
   deletions={21}
   filesChanged={6}
-  selected
-  onActivate={() => {}}
+  relativeTime="1h ago"
 />`,
 	demoLayout: {
 		previewContentWidth: "full",
 		examplesContentWidth: "full",
 	},
+	examples: [
+		{
+			title: "Dropdown compact",
+			description:
+				"Single-row list card for select menus and other dropdown surfaces. Avatar, `#N` + title, diffs, status lozenge, repo pill, and `source → target`.",
+			demoSlug: "pull-request-demo-dropdown",
+		},
+		{
+			title: "Dropdown spacious",
+			description:
+				"Original three-row summary card for dropdowns: glyph status lozenge + wrapping title, GitHub `source → target`, then author / files / diffs. Selectable list chrome.",
+			demoSlug: "pull-request-demo-spacious",
+		},
+		{
+			title: "Flyout",
+			description:
+				"Overlay summary card: wrapping `#N` + title with a trailing status lozenge, author · time, then GitHub `source → target` and files / diff stats.",
+			demoSlug: "pull-request-demo-flyout",
+		},
+	],
 	props: [
 		{
 			name: "variant",
-			type: '"compact" | "spacious"',
-			default: '"compact"',
+			type: '"dropdown" | "spacious" | "flyout"',
+			default: '"dropdown"',
 			description:
-				"Card density. `compact` keeps everything on one row; `spacious` splits the same data across three rows.",
+				"Card layout. `dropdown` is the compact list row; `spacious` is the original three-row dropdown card; `flyout` is the overlay summary card.",
 		},
 		{
 			name: "number",
@@ -44,7 +63,8 @@ import type { PullRequestProps } from "@/components/blocks/pull-request";`,
 			name: "title",
 			type: "string",
 			required: true,
-			description: "Pull request title shown after the number.",
+			description:
+				"Pull request title shown after the number. Wraps on spacious and flyout cards; truncates on the compact dropdown row.",
 		},
 		{
 			name: "status",
@@ -55,13 +75,14 @@ import type { PullRequestProps } from "@/components/blocks/pull-request";`,
 		{
 			name: "author",
 			type: "PullRequestAuthor",
-			description: "Author name and optional avatar URL for the leading circular avatar.",
+			description:
+				"Author name and optional avatar URL. Leads the compact dropdown row; spacious footer avatar; on the flyout, pairs with `relativeTime`.",
 		},
 		{
 			name: "repository",
 			type: "string",
 			description:
-				"Owner/name path shown in the GitHub repository pill on the compact card. Ignored by the spacious card, which keeps the GitHub mark beside the branch path.",
+				"Owner/name path shown in the GitHub repository pill on the compact dropdown card. Ignored by spacious and flyout cards, which keep the GitHub mark beside the branch path.",
 		},
 		{
 			name: "branch",
@@ -89,7 +110,7 @@ import type { PullRequestProps } from "@/components/blocks/pull-request";`,
 			name: "filesChanged",
 			type: "number",
 			description:
-				"Number of changed files, rendered as `N files` in the spacious footer. Ignored by the compact card.",
+				"Number of changed files, rendered as `N files` in the spacious and flyout footers. Ignored by the compact dropdown card.",
 		},
 		{
 			name: "timestampMs",
@@ -99,13 +120,14 @@ import type { PullRequestProps } from "@/components/blocks/pull-request";`,
 		{
 			name: "relativeTime",
 			type: "string",
-			description: "Optional static relative label reserved for callers; not rendered on the card.",
+			description: "Optional static relative label. Rendered on the flyout as `Name · relativeTime`.",
 		},
 		{
 			name: "selected",
 			type: "boolean",
 			default: "false",
-			description: "Marks the card as the active selection in a list.",
+			description:
+				"Marks the card as the active selection in a list. Applied to dropdown compact and spacious chrome; ignored by the flyout overlay.",
 		},
 		{
 			name: "onActivate",

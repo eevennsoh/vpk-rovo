@@ -103,8 +103,11 @@ import { AGENT_LIST_DETAIL } from "./blocks/agent-list";
 import { JIRA_ACTIVITY_DETAIL } from "./blocks/jira-activity";
 import { JIRA_INSIGHTS_DETAIL } from "./blocks/jira-insights";
 import { JIRA_ISSUE_DETAIL } from "./blocks/jira-issue";
+import { JIRA_LINKING_DETAIL } from "./blocks/jira-linking";
 import { JIRA_LIST_DETAIL } from "./blocks/jira-list";
 import { JIRA_KANBAN_DETAIL } from "./blocks/jira-kanban";
+import { JIRA_CREATE_DETAIL } from "./blocks/jira-create";
+import { JIRA_DROPZONE_DETAIL } from "./blocks/jira-dropzone";
 import { JIRA_TOOLBAR_DETAIL } from "./blocks/jira-toolbar";
 import { GENERATIVE_DETAIL } from "./blocks/generative";
 import { GALLERY_DETAIL } from "./blocks/gallery";
@@ -215,8 +218,11 @@ export const BLOCK_DETAILS: Record<string, ComponentDetail> = {
 	"jira-activity": JIRA_ACTIVITY_DETAIL,
 	"jira-insights": JIRA_INSIGHTS_DETAIL,
 	"jira-issue": JIRA_ISSUE_DETAIL,
+	"jira-linking": JIRA_LINKING_DETAIL,
 	"jira-list": JIRA_LIST_DETAIL,
 	"jira-kanban": JIRA_KANBAN_DETAIL,
+	"jira-create": JIRA_CREATE_DETAIL,
+	"jira-dropzone": JIRA_DROPZONE_DETAIL,
 	"jira-toolbar": JIRA_TOOLBAR_DETAIL,
 	generative: GENERATIVE_DETAIL,
 	gallery: GALLERY_DETAIL,

@@ -3,6 +3,8 @@
 import { useId, useRef, useState, type ComponentProps, type CSSProperties, type FocusEvent, type PointerEvent, type ReactNode } from "react";
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
 
+export type { JiraIssueAgentLinkFlash } from "@/components/blocks/jira-issue/agent-link-flash";
+import type { JiraIssueAgentLinkFlash } from "@/components/blocks/jira-issue/agent-link-flash";
 import {
 	JiraIssueAgentActivityRows,
 	type JiraIssueAgentActivity,
@@ -14,6 +16,16 @@ import {
 	type JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue/agent-activity";
 import { JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE } from "@/components/blocks/jira-issue/agent-session-drag";
+import { JiraIssueDetachedSessionTransferSlot } from "@/components/blocks/jira-issue/attach-chin";
+import {
+	linkAgentSessionChinCopy,
+	resolveLinkAgentSessionChinCount,
+} from "@/components/blocks/jira-issue/attach-chin-copy";
+import {
+	isJiraIssueAttachChinArmed,
+	JIRA_ISSUE_MOTION_BACKDROP_NEARNESS,
+	resolveJiraIssueAttachNearness,
+} from "@/components/blocks/jira-issue/attach-proximity";
 import { isJiraIssueSessionAttachPreview } from "@/components/blocks/jira-issue/agent-session-transfer-model";
 import {
 	JIRA_ISSUE_SESSION_TRANSFER_GROUP_CLASS,
@@ -127,7 +139,18 @@ export interface JiraIssueParticipant {
  * their local transfer state when this is absent.
  */
 export interface JiraIssueAgentSessionDragControl {
+	/**
+	 * 0..1 approach ramp for the travelling session. Drives only the grey
+	 * backdrop's opacity continuously; the chin and shell switch at a threshold.
+	 */
+	attachNearness?: number;
 	binding: JiraIssueAgentSessionDragBinding;
+	/**
+	 * Sessions in the current drag transfer. Needed on receiving cards (their
+	 * `state` stays idle) and during fusion after pointer-up. Falls back to
+	 * `state.transfer.members.length` on a live source drag.
+	 */
+	dragCount?: number;
 	dropTarget?: "attach" | "unlink" | null;
 	sourceActive: boolean;
 	state: JiraIssueAgentSessionDragState;
@@ -194,8 +217,12 @@ export interface JiraIssueDefaultProps extends Omit<ComponentProps<"button">, "c
 	agentActivities?: readonly JiraIssueAgentActivity[];
 	agentDoneRuns?: readonly JiraIssueCompletedAgentRun[];
 	agentActivityMode?: JiraIssueAgentActivityMode;
+	/** Stable preview capability for Agent Session column targeting. Keep present while highlighted changes. */
+	agentSessionTargetPreview?: Readonly<{ highlighted: boolean }>;
 	/** Merged collapses active agents into one prioritized chin row; split gives each agent its own row. */
 	agentActivityLayout?: JiraIssueAgentActivityLayout;
+	/** One-shot brand sweep across the chin row a session was just linked into. */
+	agentLinkFlash?: JiraIssueAgentLinkFlash;
 	/** Optional board context that makes attached activity rows open session details on hover. */
 	agentSessionFlyout?: JiraIssueAgentSessionFlyoutContext;
 	onAgentActivityOpenChange?: (open: boolean) => void;
@@ -243,7 +270,9 @@ function JiraIssueDefault({
 	agentActivityLayout = "merged",
 	agentSessionFlyout,
 	agentSessionDragControl,
+	agentSessionTargetPreview,
 	agentDoneRuns = [],
+	agentLinkFlash,
 	agentSessionTransfer,
 	assigneeAvatarLabel,
 	assigneeAvatarShape = "circle",
@@ -357,30 +386,65 @@ function JiraIssueDefault({
 		? []
 		: nonCompletedAgentActivities;
 	const hasAgentDoneNotification = resolvedAgentActivityMode === "completed" && agentDoneRuns.length > 0;
+	const agentSessionTargetHighlighted = agentSessionTargetPreview?.highlighted ?? false;
 	const inferredPullRequestNumber = agentDoneRuns.find((run) => run.pullRequestNumber)?.pullRequestNumber;
 	const resolvedPullRequestNumber = pullRequestNumber ?? inferredPullRequestNumber;
+	// A session travelling toward this card publishes a continuous 0..1 ramp.
+	// Only the grey backdrop's opacity follows it; the chin below flips once, at
+	// a threshold, so the card's height change stays one crisp transition.
+	const attachNearness = resolveJiraIssueAttachNearness(
+		agentSessionDragControl?.attachNearness,
+		shouldReduceMotion,
+	);
 	const isAttachingSession = agentSessionDragControl
 		? agentSessionDragControl.dropTarget === "attach"
+			|| isJiraIssueAttachChinArmed(attachNearness)
 		: isJiraIssueSessionAttachPreview(
 			resolvedAgentSessionDragState.dragging,
 			resolvedAgentSessionDragState.source,
 		);
+	const attachSessionCount = resolveLinkAgentSessionChinCount(
+		agentSessionDragControl?.dragCount,
+		resolvedAgentSessionDragState.dragging
+			? resolvedAgentSessionDragState.transfer.members.length
+			: undefined,
+	);
+	const attachChinCopy = isAttachingSession
+		? linkAgentSessionChinCopy(attachSessionCount)
+		: undefined;
+	// Nearby/detached pills already occupy the last chin. Swap that slot for
+	// attach copy instead of opening a second row under the shell.
+	const replaceDetachedTransfer = Boolean(attachChinCopy && sessionTransferAfter);
 	// Unlink keeps `working` with an empty chin so the grey backdrop stays
 	// around the issue. The shell keys off mode, not a mounted row.
 	const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"
 		|| resolvedAgentActivityMode === "awaiting-input"
 		|| hasAgentDoneNotification
-		|| isAttachingSession;
+		|| isAttachingSession
+		|| agentSessionTargetHighlighted;
 	const hasAgentActivityChin = activeAgentActivities.length > 0
 		|| hasAgentDoneNotification
 		|| isAttachingSession;
 	const hasIssueRows = hasSubtasks;
 	const hasAgentActivityPresentation = agentActivityMode !== undefined || Boolean(agentActivities?.length) || hasAgentDoneNotification;
-	const usesAgentActivityShell = hasAgentActivityPresentation || Boolean(agentSessionTransfer);
+	// The approach also mounts the shell. With `initial={false}` on the backdrop,
+	// a shell that only appears once the pointer is already inside the rect has
+	// nothing to fade from and snaps to full grey. Mounting early is visually
+	// neutral: `hasActiveAgentActivityShell` is still false, so the surface layer
+	// paints the same card chrome at the same inset. It keys off stable drag and
+	// target-preview capabilities rather than the live ramp or hover because
+	// swapping the shell in is a React
+	// element-type change on the article's first child: a per-frame gate would
+	// remount the whole card — dropping keyboard focus — every time a pointer
+	// passed within the proximity range.
+	const usesAgentActivityShell = hasAgentActivityPresentation
+		|| Boolean(agentSessionTransfer)
+		|| agentSessionDragControl !== undefined
+		|| Boolean(agentSessionTargetPreview);
 	const chromeStyles = resolveJiraIssueChrome(chrome);
 	const usesStrokeChrome = chrome === "stroke";
 	const usesCompactVisual = compact || usesStrokeChrome;
-	const hasInteractiveContent = showMoreAction || hasSubtasks || Boolean(parentEpicControl) || hasAgentActivityPresentation || Boolean(generativeAction) || Boolean(agentSessionTransfer) || usesCompactVisual;
+	const hasInteractiveContent = showMoreAction || hasSubtasks || Boolean(parentEpicControl) || hasAgentActivityPresentation || Boolean(generativeAction) || Boolean(agentSessionTransfer) || usesCompactVisual || Boolean(agentSessionTargetPreview);
 	const shouldRenderIssueClickButton = Boolean(props.onClick && !parentEpicControl);
 	const issueRowsClassName = cn("pt-1", !(hasSubtasks && resolvedSubtasksExpanded) && "pb-1");
 	const layoutTransition = getJiraIssueLayoutTransition(shouldReduceMotion);
@@ -405,7 +469,7 @@ function JiraIssueDefault({
 	const rootBaseStyle: CSSProperties = {
 		borderRadius: token("radius.large"),
 		boxShadow: chromeStyles.boxShadow,
-		cursor: dragging ? "grabbing" : draggable ? "grab" : "default",
+		cursor: dragging ? "grabbing" : "default",
 		opacity: dragging ? 0.5 : 1,
 		textAlign: "left",
 		transformOrigin: "top center",
@@ -485,10 +549,16 @@ function JiraIssueDefault({
 	const agentActivityBackdropAnimation = {
 		bottom: 0,
 		left: 0,
-		opacity: hasActiveAgentActivityShell ? 1 : 0,
+		opacity: hasActiveAgentActivityShell ? 1 : attachNearness,
 		right: 0,
 		top: 0,
 	};
+	// Opacity is the one value here that chases a pointer, so it gets its own
+	// per-value timing. The reduced-motion branch keeps the object plain numbers
+	// because it is spread straight into `style`.
+	const agentActivityBackdropTransition = shouldReduceMotion
+		? layoutTransition
+		: { ...layoutTransition, opacity: JIRA_ISSUE_MOTION_BACKDROP_NEARNESS };
 	const agentActivitySurfacePosition = agentActivitySurfaceInset - 1;
 	const agentActivitySurfaceAnimation = {
 		bottom: -1,
@@ -697,11 +767,14 @@ function JiraIssueDefault({
 			<motion.div
 				aria-hidden="true"
 				animate={shouldReduceMotion ? undefined : agentActivityBackdropAnimation}
-				className="pointer-events-none absolute bg-bg-neutral"
+				className={cn(
+					"pointer-events-none absolute transition-colors duration-xxshort ease-out-practical motion-reduce:transition-none",
+					agentSessionTargetHighlighted ? "bg-bg-neutral-hovered" : "bg-bg-neutral",
+				)}
 				data-slot="jira-issue-agent-backdrop"
 				initial={false}
 				style={shouldReduceMotion ? { ...AGENT_ACTIVITY_BACKDROP_STYLE, ...agentActivityBackdropAnimation } : AGENT_ACTIVITY_BACKDROP_STYLE}
-				transition={layoutTransition}
+				transition={agentActivityBackdropTransition}
 			/>
 			<LayoutGroup id={agentActivityLayoutGroupId}>
 				<motion.div
@@ -724,9 +797,14 @@ function JiraIssueDefault({
 					/>
 					{richIssueContent}
 				</motion.div>
-					<JiraIssueAgentActivityRows
-						activities={activeAgentActivities}
-						instantSessionTransfer={agentSessionDragControl !== undefined}
+				{/* Running sessions already occupy the chin; attach copy takes the last
+				    row instead of stacking. Split layouts keep the other rows so the
+				    card height — and drop-zone geometry — stays put. */}
+				<JiraIssueAgentActivityRows
+					activities={activeAgentActivities}
+					attachPreviewCopy={replaceDetachedTransfer ? undefined : attachChinCopy}
+					linkFlash={agentLinkFlash}
+					instantSessionTransfer={agentSessionDragControl !== undefined}
 					layout={agentActivityLayout}
 					onOpenChange={handleAgentActivityOpenChange}
 					onViewChat={onAgentActivityViewChat}
@@ -736,15 +814,6 @@ function JiraIssueDefault({
 					shouldReduceMotion={shouldReduceMotion}
 					usesStrokeChrome={usesCompactVisual}
 				/>
-				{isAttachingSession ? (
-					<div className="px-1 py-1" data-slot="jira-issue-attach-chin">
-						<div
-							aria-hidden
-							className="pointer-events-none h-6 w-full rounded-md"
-							data-slot="jira-issue-attach-chin-slot"
-						/>
-					</div>
-				) : null}
 				<AnimatePresence initial={false} mode="popLayout">
 					{hasAgentDoneNotification ? (
 						<motion.div
@@ -794,8 +863,17 @@ function JiraIssueDefault({
 					sessionLabel={resolvedAgentSessionDragState.activities[0]?.name}
 					source={resolvedAgentSessionDragState.source}
 			/>
+			{/* Detached/proximity pills sit under the shell. Attach copy covers
+			    that occupied slot so the chin does not grow a second row, but
+			    the drag source stays mounted through pointer release. */}
 			{agentSessionDragBinding && sessionTransferAfter
-				? sessionTransferAfter(agentSessionDragBinding)
+				? (
+					<JiraIssueDetachedSessionTransferSlot
+						attachCopy={replaceDetachedTransfer ? attachChinCopy : undefined}
+					>
+						{sessionTransferAfter(agentSessionDragBinding)}
+					</JiraIssueDetachedSessionTransferSlot>
+				)
 				: null}
 		</div>
 	) : agentActivityShell;

@@ -176,7 +176,7 @@ export const SCROLLING_ITEMS: readonly AgentSessionItem[] = [
 		},
 		shortTitle: "3-D Secure retry guard",
 		state: "complete",
-		timeLabel: "9 mins ago",
+		timeLabel: "9m ago",
 		title: "3-D Secure retry loop double-charges when the issuer times out twice",
 	},
 	{
@@ -198,7 +198,7 @@ export const SCROLLING_ITEMS: readonly AgentSessionItem[] = [
 		},
 		shortTitle: "Idempotency key TTL",
 		state: "complete",
-		timeLabel: "42 mins ago",
+		timeLabel: "42m ago",
 		title: "Idempotency keys expire before the settlement webhook ever lands",
 	},
 	{
@@ -260,7 +260,7 @@ export const SCROLLING_ITEMS: readonly AgentSessionItem[] = [
 		},
 		shortTitle: "Sandbox key rotation",
 		state: "needs-input",
-		timeLabel: "2 hours ago",
+		timeLabel: "2hr ago",
 		title: "Sandbox key rotation is waiting on a confirmed retention window",
 	},
 	{

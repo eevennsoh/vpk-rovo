@@ -62,6 +62,95 @@ test("Agent States demo exposes distinct content for each state", () => {
 	assert.doesNotMatch(PAGE_SOURCE, /\bmessage=/u);
 });
 
+test("Agent States composer opts into 24px prompt-input action hits", () => {
+	assert.match(
+		SOURCE,
+		/<PromptInputButton aria-label="Add" size="icon-xs" variant="ghost">/u,
+	);
+	assert.match(SOURCE, /<AddIcon label="" size="small" \/>/u);
+	assert.match(
+		SOURCE,
+		/<RovoComposerActionButton[\s\S]*experimentalDarkCta[\s\S]*showSubmitWhenEmpty[\s\S]*size="icon-xs"/u,
+	);
+	assert.doesNotMatch(SOURCE, /size="icon-sm"/u);
+});
+
+test("24px prompt-input icon buttons keep the medium corner radius", () => {
+	const inputGroupSource = readFileSync(
+		join(__dirname, "../../ui/input-group.tsx"),
+		"utf8",
+	);
+	assert.match(
+		inputGroupSource,
+		/"icon-xs": "size-6 rounded-md p-0 has-\[>svg\]:p-0"/u,
+	);
+	assert.match(
+		inputGroupSource,
+		/size=\{size === "icon-xs" \? "icon-compact" : undefined\}/u,
+	);
+	assert.doesNotMatch(
+		inputGroupSource,
+		/"icon-xs": "size-6 rounded-\[calc\(var\(--radius\)-5px\)\]/u,
+	);
+});
+
+test("compact catalog prompt input keeps the default 32/36 action hits", () => {
+	const promptInputDemoSource = readFileSync(
+		join(__dirname, "../../website/demos/ui-custom/prompt-input-demo.tsx"),
+		"utf8",
+	);
+	const sendControlsSource = readFileSync(
+		join(
+			__dirname,
+			"../../projects/shared/components/rovo-composer-send-controls.tsx",
+		),
+		"utf8",
+	);
+	const compactTextSendStart = promptInputDemoSource.indexOf(
+		"export function PromptInputDemoFloatingBarTextSend()",
+	);
+	const iconXsTextSendStart = promptInputDemoSource.indexOf(
+		"export function PromptInputDemoFloatingBarTextSendIconXs()",
+	);
+	assert.notEqual(compactTextSendStart, -1);
+	assert.notEqual(iconXsTextSendStart, -1);
+	assert.ok(iconXsTextSendStart > compactTextSendStart);
+	const compactTextSendExport = promptInputDemoSource.slice(
+		compactTextSendStart,
+		iconXsTextSendStart,
+	);
+	const iconXsTextSendExport = promptInputDemoSource.slice(iconXsTextSendStart);
+	assert.match(compactTextSendExport, /<FloatingBarTextSendDemo size="icon-sm" \/>/u);
+	assert.doesNotMatch(compactTextSendExport, /size="icon-xs"/u);
+	assert.match(iconXsTextSendExport, /<FloatingBarTextSendDemo size="icon-xs" \/>/u);
+	assert.match(
+		promptInputDemoSource,
+		/<PromptInputButton aria-label="Add" size=\{size\} variant="ghost">/u,
+	);
+	assert.match(
+		promptInputDemoSource,
+		/<AddIcon label="" size=\{size === "icon-xs" \? "small" : undefined\} \/>/u,
+	);
+	assert.match(
+		AGENT_PROFILE_SOURCE,
+		/<PromptInputButton aria-label="Add" size="icon-sm" variant="ghost">/u,
+	);
+	assert.doesNotMatch(AGENT_PROFILE_SOURCE, /size="icon-xs"/u);
+	assert.match(sendControlsSource, /size = "icon-sm"/u);
+	assert.match(
+		sendControlsSource,
+		/"icon-sm": ACTION_FRAME_CLASS_NAME,[\s\S]*"icon-xs": "flex h-6 shrink-0 items-center justify-center"/u,
+	);
+	assert.match(
+		sendControlsSource,
+		/"icon-sm": "flex h-9 items-center gap-1",[\s\S]*"icon-xs": "flex h-6 items-center gap-1"/u,
+	);
+	assert.match(
+		sendControlsSource,
+		/"icon-sm": "size-8 hover:opacity-90 active:opacity-80",[\s\S]*"icon-xs": "size-6 hover:opacity-90 active:opacity-80"/u,
+	);
+});
+
 test("compact agent surfaces use their intended elevation treatment", () => {
 	assert.match(SOURCE, /className=\{className\}/u);
 	assert.doesNotMatch(SOURCE, /\bborder-0\b/u);

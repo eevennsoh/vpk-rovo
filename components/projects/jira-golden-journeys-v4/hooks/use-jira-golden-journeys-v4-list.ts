@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
+import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue";
 import { linkJiraKanbanAgentSession, moveJiraKanbanCardsToColumn } from "@/components/blocks/jira-kanban/state";
 import type { JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
@@ -20,6 +21,8 @@ import { JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS } from "../data/presentation-s
 import {
 	applyAssignedAgentIdsToColumns,
 	applyListOrder,
+	appendBoardCreatedListOrder,
+	createBoardWorkItemFromSession,
 	createListRows,
 	createListWorkItemFromSession,
 	getNextPayIssueKey,
@@ -42,11 +45,21 @@ interface ListDraftWorkItem {
 export interface CreateFromAgentSessionInput {
 	activity: JiraIssueAgentActivity;
 	insertion: JiraListInsertion;
-	session: Readonly<{ id: string; title: string }>;
+	session: Readonly<Pick<AgentSessionItem, "id" | "invokedBy" | "title">>;
+}
+
+export interface CreateBoardFromAgentSessionInput {
+	activity: JiraIssueAgentActivity;
+	columnTitle: string;
+	/** Slot within the column. Omitted by the create well, which appends. */
+	insertAtIndex?: number;
+	session: Readonly<Pick<AgentSessionItem, "id" | "invokedBy" | "title">>;
 }
 
 export interface UseJiraGoldenJourneysV4ListResult {
-	createFromAgentSession: (input: CreateFromAgentSessionInput) => void;
+	createBoardFromAgentSession: (input: CreateBoardFromAgentSessionInput) => string | undefined;
+	/** Returns the row the session landed in, so the caller can acknowledge it. */
+	createFromAgentSession: (input: CreateFromAgentSessionInput) => string;
 	getProps: (columns: readonly JiraKanbanColumnData[]) => JiraListProps;
 }
 
@@ -195,6 +208,14 @@ export function useJiraGoldenJourneysV4List({
 		));
 	}, [setBoardColumns]);
 
+	// One drop can carry several marked sessions, and the transfer plan replays
+	// this callback once per session inside a single event. Every read is
+	// therefore taken from a ref and written straight back: `visibleKeys`
+	// included, because the second session's insertion index is measured against
+	// a list that already contains the first session's new row.
+	//
+	// The created rows are deliberately left unselected — the caller flashes them
+	// instead. Checking them would claim the drop made a bulk selection.
 	const createFromAgentSession = useCallback((input: CreateFromAgentSessionInput) => {
 		const result = createListWorkItemFromSession({
 			activity: input.activity,
@@ -207,9 +228,44 @@ export function useJiraGoldenJourneysV4List({
 		});
 		boardColumnsRef.current = result.columns;
 		listOrderRef.current = result.listOrder;
+		if (result.kind === "created") {
+			visibleKeysRef.current = insertListOrderKey(
+				visibleKeysRef.current,
+				visibleKeysRef.current,
+				result.issueKey,
+				input.insertion.insertAtIndex,
+			);
+		}
 		setBoardColumns([...result.columns]);
 		setListOrder(result.listOrder);
-		setSelectedIssueKeys(new Set([result.issueKey]));
+		return result.issueKey;
+	}, [setBoardColumns]);
+
+	const createBoardFromAgentSession = useCallback((input: CreateBoardFromAgentSessionInput) => {
+		const columnsBeforeCreate = boardColumnsRef.current;
+		const result = createBoardWorkItemFromSession({
+			activity: input.activity,
+			columns: columnsBeforeCreate,
+			columnTitle: input.columnTitle,
+			insertAtIndex: input.insertAtIndex,
+			linkSession: linkJiraKanbanAgentSession,
+			session: input.session,
+		});
+		if (result.kind === "already-attached") {
+			return undefined;
+		}
+
+		const nextListOrder = appendBoardCreatedListOrder({
+			columns: columnsBeforeCreate,
+			issueKey: result.issueKey,
+			listOrder: listOrderRef.current,
+			visibleKeys: visibleKeysRef.current,
+		});
+		boardColumnsRef.current = result.columns;
+		listOrderRef.current = nextListOrder;
+		setBoardColumns([...result.columns]);
+		setListOrder(nextListOrder);
+		return result.issueKey;
 	}, [setBoardColumns]);
 
 	const getProps = useCallback((columns: readonly JiraKanbanColumnData[]): JiraListProps => {
@@ -294,5 +350,5 @@ export function useJiraGoldenJourneysV4List({
 		selectedIssueKeys,
 	]);
 
-	return { createFromAgentSession, getProps };
+	return { createBoardFromAgentSession, createFromAgentSession, getProps };
 }

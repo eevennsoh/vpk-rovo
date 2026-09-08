@@ -15,7 +15,7 @@
  * to avoid re-rendering React 60 times/sec.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -87,14 +87,11 @@ export function TWGLoader({
 }: Readonly<TWGLoaderProps>) {
 	const sizePx = SIZE_PX[size];
 	const reducedMotion = usePrefersReducedMotion();
+	const instanceId = useId().replaceAll(":", "");
+	const holesMaskId = `twg-loader-holes-${instanceId}`;
 
 	// Dot ring colors render as CSS variables with fallbacks so SSR and client
 	// hydration see the same attribute strings while the browser resolves theme.
-	// The mask color is driven by CSS (`currentColor`) so it tracks the surface
-	// the loader actually sits on — see the wrapper's `text-surface`.
-	// The `<svg>` forces `color: inherit` so the mask reads that wrapper color even
-	// when an ancestor (e.g. a Button's `[&_svg]:text-icon-subtle`) tries to recolor
-	// descendant svgs — without it, the mask holes pick up the ancestor's icon color.
 	const dotColors = getDotColors();
 	const lineColor = getLineColor();
 
@@ -147,7 +144,7 @@ export function TWGLoader({
 			data-slot="twg-loader"
 			aria-label={label}
 			data-testid={testId}
-			className={cn("inline-flex leading-[0] text-surface", className)}
+			className={cn("inline-flex leading-[0]", className)}
 		>
 			<svg
 				ref={svgRef}
@@ -157,10 +154,37 @@ export function TWGLoader({
 				fill="none"
 				aria-hidden="true"
 				focusable="false"
-				style={{ color: "inherit" }}
 			>
-				{/* Snake / connector lines. One <path> per segment. */}
-				<g>
+				<defs>
+					<mask
+						id={holesMaskId}
+						maskUnits="userSpaceOnUse"
+						x="0"
+						y="0"
+						width={VIEWBOX_SIZE}
+						height={VIEWBOX_SIZE}
+					>
+						<rect
+							width={VIEWBOX_SIZE}
+							height={VIEWBOX_SIZE}
+							fill="white"
+						/>
+						{DOT_ORDER.map((i) => (
+							<circle
+								key={`mask-${i}`}
+								data-type="mask"
+								data-idx={i}
+								cx={VIEWBOX_CENTER}
+								cy={VIEWBOX_CENTER}
+								r={DOT_RADIUS}
+								fill="black"
+							/>
+						))}
+					</mask>
+				</defs>
+
+				{/* Snake / connector lines. Masked so they stop at each ring. */}
+				<g mask={`url(#${holesMaskId})`}>
 					{Array.from({ length: MAX_LINE_COUNT }, (_, i) => (
 						<path
 							key={`line-${i}`}
@@ -174,23 +198,7 @@ export function TWGLoader({
 					))}
 				</g>
 
-				{/* Background masks — punch a hole under each dot. */}
-				<g>
-					{DOT_ORDER.map((i) => (
-						<circle
-							key={`mask-${i}`}
-							data-type="mask"
-							data-idx={i}
-							cx={VIEWBOX_CENTER}
-							cy={VIEWBOX_CENTER}
-							r={DOT_RADIUS}
-							fill="currentColor"
-							stroke="none"
-						/>
-					))}
-				</g>
-
-				{/* Dot rings — drawn in brand color, on top of the masks. */}
+				{/* Dot rings — stroke only, interiors stay transparent. */}
 				<g>
 					{DOT_ORDER.map((i) => (
 						<circle

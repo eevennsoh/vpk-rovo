@@ -32,6 +32,34 @@ const EXPERIMENTAL_DARK_CTA_CLASS_NAME = "bg-bg-neutral-bold text-text-inverse h
 // underlying ghost button pins it to text-icon-subtle.
 const BRAND_CTA_CLASS_NAME = "bg-primary text-primary-foreground [&_svg]:text-primary-foreground hover:bg-primary-hovered active:bg-primary-pressed";
 const ACTION_FRAME_CLASS_NAME = "flex h-9 shrink-0 items-center justify-center";
+const ACTION_FRAME_CLASS_NAME_BY_SIZE = {
+	"icon-sm": ACTION_FRAME_CLASS_NAME,
+	"icon-xs": "flex h-6 shrink-0 items-center justify-center",
+} as const;
+const ACTION_CLUSTER_CLASS_NAME_BY_SIZE = {
+	"icon-sm": "flex h-9 items-center gap-1",
+	"icon-xs": "flex h-6 items-center gap-1",
+} as const;
+const ACTION_ICON_BUTTON_CLASS_NAME_BY_SIZE = {
+	"icon-sm": "size-8 hover:opacity-90 active:opacity-80",
+	"icon-xs": "size-6 hover:opacity-90 active:opacity-80",
+} as const;
+const LIVE_VOICE_STOP_BUTTON_SIZE_CLASS_NAME_BY_SIZE = {
+	"icon-sm": "size-8",
+	"icon-xs": "size-6",
+} as const;
+const CURSOR_RAIL_FRAME_CLASS_NAME_BY_SIZE = {
+	"icon-sm": "relative flex h-9 w-[68px] items-center justify-center overflow-hidden rounded-[8px]",
+	"icon-xs": "relative flex h-6 w-[52px] items-center justify-center overflow-hidden rounded-md",
+} as const;
+const CURSOR_RAIL_INNER_CLASS_NAME_BY_SIZE = {
+	"icon-sm": "relative z-10 flex h-8 w-16 items-center gap-0",
+	"icon-xs": "relative z-10 flex h-6 w-12 items-center gap-0",
+} as const;
+const CURSOR_RAIL_PILL_WIDTH_CLASS_NAME_BY_SIZE = {
+	"icon-sm": { active: "w-16", idle: "w-8" },
+	"icon-xs": { active: "w-12", idle: "w-6" },
+} as const;
 const ROVO_CURSOR_BUTTON_TRANSITION = { type: "spring", bounce: 0.18, visualDuration: 0.22 } as const;
 const ROVO_CURSOR_BUTTON_VARIANTS = {
 	rest: { transform: "scale(1)" },
@@ -91,9 +119,14 @@ function ComposerVoiceWaveform({
 	);
 }
 
-function ComposerActionFrame({ children }: Readonly<{ children: ReactNode }>): ReactElement {
+export type RovoComposerActionSize = "icon-sm" | "icon-xs";
+
+function ComposerActionFrame({
+	children,
+	size = "icon-sm",
+}: Readonly<{ children: ReactNode; size?: RovoComposerActionSize }>): ReactElement {
 	return (
-		<div className={ACTION_FRAME_CLASS_NAME}>
+		<div className={ACTION_FRAME_CLASS_NAME_BY_SIZE[size]}>
 			{children}
 		</div>
 	);
@@ -185,6 +218,7 @@ export interface RovoComposerActionButtonProps {
 	screenAssistantTargetPrefix?: string;
 	showBackgroundStop?: boolean;
 	showSubmitWhenEmpty?: boolean;
+	size?: RovoComposerActionSize;
 	submitButtonClassName?: string;
 	submitDisabled?: boolean;
 	voiceStartButtonClassName?: string;
@@ -210,10 +244,12 @@ export function RovoComposerActionButton({
 	screenAssistantTargetPrefix,
 	showBackgroundStop = false,
 	showSubmitWhenEmpty = false,
+	size = "icon-sm",
 	submitButtonClassName,
 	submitDisabled = false,
 	voiceStartButtonClassName,
 }: Readonly<RovoComposerActionButtonProps>): ReactElement {
+	const glyphSize = size === "icon-xs" ? "small" : undefined;
 	const realtimeWaveformIntroTimeoutRef = useRef<number | null>(null);
 	const shouldReduceMotion = useReducedMotion();
 	const [isRealtimeWaveformIntroActive, setIsRealtimeWaveformIntroActive] = useState(false);
@@ -310,10 +346,11 @@ export function RovoComposerActionButton({
 						transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
 						style={{ willChange: "transform, opacity" }}
 					>
-						<ComposerActionFrame>
+						<ComposerActionFrame size={size}>
 							<PromptInputDictationControl
 								mediaStream={micStream}
 								onStop={handleStopDictation}
+								size={size}
 								state={isDictationRecording ? "listening" : "processing"}
 								transcriptPreview={dictationTranscriptPreview}
 							/>
@@ -330,7 +367,7 @@ export function RovoComposerActionButton({
 					>
 						<div
 							className={cn(
-								"relative flex h-9 w-[68px] items-center justify-center overflow-hidden rounded-[8px]",
+								CURSOR_RAIL_FRAME_CLASS_NAME_BY_SIZE[size],
 								clickyActive ? "text-text-inverse" : undefined,
 							)}
 						>
@@ -339,16 +376,19 @@ export function RovoComposerActionButton({
 								aria-hidden="true"
 								className={cn(
 									"absolute top-0.5 right-0.5 bottom-0.5 rounded-md bg-bg-neutral-bold shadow-sm transition-[width] duration-medium ease-in-out motion-reduce:transition-none",
-									clickyActive ? "w-16" : "w-8",
+									clickyActive
+										? CURSOR_RAIL_PILL_WIDTH_CLASS_NAME_BY_SIZE[size].active
+										: CURSOR_RAIL_PILL_WIDTH_CLASS_NAME_BY_SIZE[size].idle,
 								)}
 							/>
-							<div className="relative z-10 flex h-8 w-16 items-center gap-0">
+							<div className={CURSOR_RAIL_INNER_CLASS_NAME_BY_SIZE[size]}>
 								<motion.button
 									aria-label="Rovo cursor"
 									aria-pressed={clickyActive}
 									animate="rest"
 									className={cn(
-										"group/rovo-cursor-button flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent p-0 outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+										"group/rovo-cursor-button flex shrink-0 items-center justify-center rounded-md border border-transparent p-0 outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+										LIVE_VOICE_STOP_BUTTON_SIZE_CLASS_NAME_BY_SIZE[size],
 										clickyActive
 											? "text-text-inverse"
 											: "text-icon-subtle",
@@ -371,7 +411,10 @@ export function RovoComposerActionButton({
 								</motion.button>
 								<button
 									aria-label="Stop live voice"
-									className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md p-0 text-text-inverse outline-none transition-colors hover:bg-bg-neutral-bold-hovered focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-bg-neutral-bold-pressed"
+									className={cn(
+										"flex shrink-0 items-center justify-center overflow-hidden rounded-md p-0 text-text-inverse outline-none transition-colors hover:bg-bg-neutral-bold-hovered focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-bg-neutral-bold-pressed",
+										LIVE_VOICE_STOP_BUTTON_SIZE_CLASS_NAME_BY_SIZE[size],
+									)}
 									data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:voice` : undefined}
 									onClick={handleToggleRealtimeVoice}
 									type="button"
@@ -396,10 +439,13 @@ export function RovoComposerActionButton({
 						transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
 						style={{ willChange: "transform, opacity" }}
 					>
-						<ComposerActionFrame>
+						<ComposerActionFrame size={size}>
 							<button
 								aria-label="Stop live voice"
-								className="flex size-8 items-center justify-center overflow-hidden rounded-md bg-bg-neutral-bold p-0 text-text-inverse shadow-sm outline-none transition-colors hover:bg-bg-neutral-bold-hovered focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-bg-neutral-bold-pressed"
+								className={cn(
+									"flex items-center justify-center overflow-hidden rounded-md bg-bg-neutral-bold p-0 text-text-inverse shadow-sm outline-none transition-colors hover:bg-bg-neutral-bold-hovered focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-bg-neutral-bold-pressed",
+									LIVE_VOICE_STOP_BUTTON_SIZE_CLASS_NAME_BY_SIZE[size],
+								)}
 								onClick={handleToggleRealtimeVoice}
 								type="button"
 							>
@@ -422,29 +468,31 @@ export function RovoComposerActionButton({
 						transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
 						style={{ willChange: "transform, opacity" }}
 					>
-						<ComposerActionFrame>
-							<div className="flex h-9 items-center gap-1">
+						<ComposerActionFrame size={size}>
+							<div className={ACTION_CLUSTER_CLASS_NAME_BY_SIZE[size]}>
 								{shouldShowDictationStart ? (
 									<PromptInputDictationControl
 										onStart={handleStartDictation}
 										screenAssistantTarget={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:dictation` : undefined}
+										size={size}
 									/>
 								) : null}
 								{idleAction === "submit" ? (
-									<PromptInputSubmit aria-label="Submit" className={cn("hover:opacity-90 active:opacity-80", experimentalDarkCtaClassName, submitButtonClassName)} disabled={submitDisabled || !canSubmit} onStop={() => void onStop()} size="icon-sm" status={composerStatus}>
-										<ArrowUpIcon label="" />
+									<PromptInputSubmit aria-label="Submit" className={cn("hover:opacity-90 active:opacity-80", experimentalDarkCtaClassName, submitButtonClassName)} disabled={submitDisabled || !canSubmit} onStop={() => void onStop()} size={size} status={composerStatus}>
+										<ArrowUpIcon label="" size={glyphSize} />
 									</PromptInputSubmit>
 								) : null}
 								{shouldShowRealtimeVoiceStart ? (
 									<PromptInputButton
 										aria-label="Start live voice"
-										className={cn("size-8 hover:opacity-90 active:opacity-80", liveVoiceCtaClassName, voiceStartButtonClassName)}
+										className={cn(ACTION_ICON_BUTTON_CLASS_NAME_BY_SIZE[size], liveVoiceCtaClassName, voiceStartButtonClassName)}
 										data-screen-assistant-target={screenAssistantTargetPrefix ? `${screenAssistantTargetPrefix}:voice` : undefined}
 										onClick={handleToggleRealtimeVoice}
+										size={size}
 										tooltip={{ content: "Live chat", delay: 0 }}
 										variant="ghost"
 									>
-										<AudioWaveformIcon label="" />
+										<AudioWaveformIcon label="" size={glyphSize} />
 									</PromptInputButton>
 								) : null}
 							</div>
@@ -459,14 +507,14 @@ export function RovoComposerActionButton({
 						transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
 						style={{ willChange: "transform, opacity" }}
 					>
-						<ComposerActionFrame>
+						<ComposerActionFrame size={size}>
 							<PromptInputSubmit
 								aria-label="Stop background work"
 								onStop={() => void onStop()}
-								size="icon-sm"
+								size={size}
 								status="streaming"
 							>
-								<ArrowUpIcon label="" />
+								<ArrowUpIcon label="" size={glyphSize} />
 							</PromptInputSubmit>
 						</ComposerActionFrame>
 					</motion.div>
@@ -482,9 +530,9 @@ export function RovoComposerActionButton({
 						transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
 						style={{ willChange: "transform, opacity" }}
 					>
-						<ComposerActionFrame>
-							<PromptInputSubmit aria-label="Stop" onStop={() => void onStop()} size="icon-sm" status={composerStatus}>
-								<ArrowUpIcon label="" />
+						<ComposerActionFrame size={size}>
+							<PromptInputSubmit aria-label="Stop" onStop={() => void onStop()} size={size} status={composerStatus}>
+								<ArrowUpIcon label="" size={glyphSize} />
 							</PromptInputSubmit>
 						</ComposerActionFrame>
 					</motion.div>
@@ -528,6 +576,7 @@ export function RovoComposerSendControls({
 	selectedReasoning,
 	showBackgroundStop,
 	showSubmitWhenEmpty,
+	size,
 	submitButtonClassName,
 	submitDisabled,
 	voiceStartButtonClassName,
@@ -586,6 +635,7 @@ export function RovoComposerSendControls({
 				screenAssistantTargetPrefix={screenAssistantTargetPrefix}
 				showBackgroundStop={showBackgroundStop}
 				showSubmitWhenEmpty={showSubmitWhenEmpty}
+				size={size}
 				submitButtonClassName={submitButtonClassName}
 				submitDisabled={submitDisabled}
 				voiceStartButtonClassName={voiceStartButtonClassName}

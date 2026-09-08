@@ -735,8 +735,14 @@ test("experimental v2 opens the agent and skill pickers with the editor-palette 
 });
 
 test("the work-item skill picker has enough skills to scroll and keeps its pinned pair", () => {
-	const optionsSource = readBlockFile("experimental-v2/lib/work-item-picker-options.ts");
+	const variantOptionsSource = readBlockFile("experimental-v2/lib/work-item-picker-options.ts");
+	const optionsSource = readBlockFile("lib/work-item-picker-options.ts");
 	const skillIds = [...optionsSource.matchAll(/^\t\tid: "([^"]+)",$/gmu)].map((match) => match[1]);
+
+	assert.match(
+		variantOptionsSource,
+		/from "@\/components\/blocks\/jira-work-item\/lib\/work-item-picker-options";/u,
+	);
 
 	// The list is a scroll-mask fixture as much as a menu: the picker viewport is
 	// ~287px and rows are 44px, so it needs well over 7 skills to overflow and

@@ -163,7 +163,7 @@ test("global-session Kanban adds the custom-agent directory while retaining codi
 test("global-session Kanban reuses the exact ASX work-item skill picker configuration", () => {
 	assert.match(
 		STAGE_SOURCE,
-		/import \{\s*DEFAULT_PINNED_WORK_ITEM_SKILL_IDS,\s*WORK_ITEM_PINNED_ITEMS_LABEL,\s*WORK_ITEM_SKILLS,\s*\} from "@\/components\/blocks\/jira-work-item\/experimental\/lib\/work-item-picker-options";/u,
+		/import \{\s*DEFAULT_PINNED_WORK_ITEM_SKILL_IDS,\s*WORK_ITEM_PINNED_ITEMS_LABEL,\s*WORK_ITEM_SKILLS,\s*\} from "@\/components\/blocks\/jira-work-item\/lib\/work-item-picker-options";/u,
 	);
 	assert.match(STAGE_SOURCE, /defaultPinnedSkillIds: DEFAULT_PINNED_WORK_ITEM_SKILL_IDS/u);
 	assert.match(STAGE_SOURCE, /pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL/u);

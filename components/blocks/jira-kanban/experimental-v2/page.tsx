@@ -595,6 +595,7 @@ export default function ExperimentalV2JiraKanbanPage({
 						agentActivityLayout={agentActivityLayout}
 						agentSessionColumn={showAgentSessionColumn ? {
 							capturedItemIds: capturedLooseWorkIds,
+							hasScrollingEffect: true,
 							items: agentSessionItems,
 							...agentSessionHandlers,
 						} : undefined}

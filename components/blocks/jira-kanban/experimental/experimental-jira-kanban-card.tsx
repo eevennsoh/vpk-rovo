@@ -9,6 +9,7 @@ import {
 	type JiraIssueAgentActivityIndicatorRenderer,
 	type JiraIssueAgentActivityLayout,
 	type JiraIssueAgentSessionDragControl,
+	type JiraIssueAgentLinkFlash,
 	type JiraIssueChrome,
 	type JiraIssueGenerativeActionConfig,
 	type JiraIssueGenerativeActionPresentation,
@@ -30,7 +31,10 @@ import type {
 interface ExperimentalJiraKanbanCardProps {
 	active: boolean;
 	agentActivityLayout: JiraIssueAgentActivityLayout;
+	/** One-shot brand sweep across the chin rows a drop just added. */
+	agentLinkFlash?: JiraIssueAgentLinkFlash;
 	agentSessionDragControl?: JiraIssueAgentSessionDragControl;
+	agentSessionTargetHighlighted: boolean;
 	card: JiraKanbanCardData;
 	chrome: JiraIssueChrome;
 	columnTitle: string;
@@ -71,11 +75,15 @@ interface ExperimentalJiraKanbanCardProps {
 	selected: boolean;
 }
 
+function getCardAssigneeAvatarSrc(card: JiraKanbanCardData) {
+	return card.avatarSrc ?? card.assignee?.avatarSrc;
+}
+
 function getCardAssigneeAvatarShape(card: JiraKanbanCardData) {
 	if (card.avatarShape) {
 		return card.avatarShape;
 	}
-	return card.avatarSrc?.startsWith("/avatar-agent/") ? "hexagon" as const : undefined;
+	return getCardAssigneeAvatarSrc(card)?.startsWith("/avatar-agent/") ? "hexagon" as const : undefined;
 }
 
 function toSessionFlyoutPriority(priority: JiraKanbanCardData["priority"]) {
@@ -87,7 +95,9 @@ function toSessionFlyoutPriority(priority: JiraKanbanCardData["priority"]) {
 export function ExperimentalJiraKanbanCard({
 	active,
 	agentActivityLayout,
+	agentLinkFlash,
 	agentSessionDragControl,
+	agentSessionTargetHighlighted,
 	capturedItemIds,
 	card,
 	chrome,
@@ -154,8 +164,10 @@ export function ExperimentalJiraKanbanCard({
 			active={active}
 			agentActivities={card.agentActivities}
 			agentActivityLayout={agentActivityLayout}
+			agentLinkFlash={agentLinkFlash}
 			agentActivityMode={agentActivityMode}
 			agentSessionDragControl={agentSessionDragControl}
+			agentSessionTargetPreview={{ highlighted: agentSessionTargetHighlighted }}
 			agentSessionFlyout={{
 			assignee: card.assignee
 				? { name: card.assignee.name, src: card.assignee.avatarSrc }
@@ -184,7 +196,7 @@ export function ExperimentalJiraKanbanCard({
 			} : undefined}
 			assigneeAvatarLabel={card.assignee?.name}
 			assigneeAvatarShape={getCardAssigneeAvatarShape(card)}
-			assigneeAvatarSrc={card.avatarSrc}
+			assigneeAvatarSrc={getCardAssigneeAvatarSrc(card)}
 			assigneePulse={card.avatarPulse}
 			assigneeUnassignedKind={card.avatarUnassignedKind}
 			chrome={chrome}
@@ -220,9 +232,9 @@ export function ExperimentalJiraKanbanCard({
 			pullRequestStatus={card.pullRequestStatus}
 			selected={selected}
 			renderAgentActivityIndicator={renderAgentActivityIndicator}
-			sessionTransferAfter={(localSessionDrag) => (
-				<AnimatePresence>
-					{detachedAgentSessions.length > 0 ? (
+			sessionTransferAfter={detachedAgentSessions.length > 0
+				? (localSessionDrag) => (
+					<AnimatePresence>
 						<motion.div
 							animate={proximityMotion.animate}
 							className="has-[[data-session-dragging]]:relative has-[[data-session-dragging]]:z-30"
@@ -249,9 +261,9 @@ export function ExperimentalJiraKanbanCard({
 								variant="medium-detached"
 							/>
 						</motion.div>
-					) : null}
-				</AnimatePresence>
-			)}
+					</AnimatePresence>
+				)
+				: undefined}
 			summary={card.title}
 			tags={card.tags}
 		/>

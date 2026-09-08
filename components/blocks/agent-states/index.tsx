@@ -91,12 +91,13 @@ export function AgentStatesComposer({
 					onStartDictation={startPreviewDictation}
 					onStop={() => undefined}
 					showSubmitWhenEmpty
+					size="icon-xs"
 					submitDisabled={onSubmit === undefined}
 				/>
 			}
 			addButton={
-				<PromptInputButton aria-label="Add" size="icon-sm" variant="ghost">
-					<AddIcon label="" />
+				<PromptInputButton aria-label="Add" size="icon-xs" variant="ghost">
+					<AddIcon label="" size="small" />
 				</PromptInputButton>
 			}
 			allowOverflow

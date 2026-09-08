@@ -6,6 +6,7 @@ import type { JiraKanbanCardData } from "../../index";
 import type {
 	BoardAgentSessionDragOrigin,
 	BoardAgentSessionDropAction,
+	BoardCardInsertion,
 } from "./board-agent-session-drag";
 
 export type SessionTransferStep =
@@ -33,6 +34,21 @@ export type SessionTransferStep =
 		readonly kind: "create-board";
 		readonly session: AgentSessionItem;
 		readonly columnTitle: string;
+	}
+	| {
+		readonly kind: "create-board-gap";
+		/**
+		 * The whole cohort, in drag order, in ONE step.
+		 *
+		 * Deliberately unlike `create-list`, which fans a cohort out into one step
+		 * per session and advances `insertAtIndex` for each. A board gap is
+		 * described by both an index and a neighbour card code, and a consumer that
+		 * re-resolves the neighbour after every insert would resolve the same slot
+		 * every time and land the cohort reversed. Handing the slot over once, with
+		 * every session attached to it, leaves exactly one owner of the ordering.
+		 */
+		readonly sessions: readonly [AgentSessionItem, ...AgentSessionItem[]];
+		readonly insertion: BoardCardInsertion;
 	}
 	| {
 		readonly kind: "create-list";
@@ -80,6 +96,16 @@ export interface SessionTransferLookups {
 }
 
 export interface SessionTransferPorts {
+	/**
+	 * Creates work items at a specific gap in a board column's card stack, with
+	 * the dragged sessions already linked to them. The board twin of
+	 * `onListCreate`, but cohort-at-a-time: the port owns resolving the gap once
+	 * and placing every session after it in drag order.
+	 */
+	readonly onBoardGapCreate?: (
+		sessions: readonly [AgentSessionItem, ...AgentSessionItem[]],
+		insertion: BoardCardInsertion,
+	) => void;
 	readonly onCreate?: (session: AgentSessionItem, columnTitle: string) => void;
 	readonly onLink?: (
 		session: AgentSessionItem,
@@ -111,7 +137,9 @@ export function resolveDragEnablement(
 ): BoardAgentSessionDragEnablement {
 	return {
 		attached: Boolean(ports.onMove && ports.onUnlink),
-		transferable: Boolean(ports.onLink || ports.onCreate || ports.onListCreate),
+		transferable: Boolean(
+			ports.onLink || ports.onCreate || ports.onListCreate || ports.onBoardGapCreate,
+		),
 	};
 }
 
@@ -185,6 +213,24 @@ export function expandListCreateSteps(
 	];
 }
 
+/**
+ * The board twin of `expandListCreateSteps` — except it does not expand.
+ *
+ * A list insertion is a bare index into one flat ordering, so N sessions can be
+ * N independent steps at N consecutive indices. A board insertion also names a
+ * neighbour card, which the host needs in order to survive an assignee filter
+ * thinning the column it measured. Those two facts cannot both advance: whoever
+ * re-resolves the neighbour after each insert lands every member back at the
+ * same slot, in reverse. So the cohort stays whole and the host places it in
+ * one pass.
+ */
+export function toBoardGapCreateStep(
+	sessions: readonly [AgentSessionItem, ...AgentSessionItem[]],
+	insertion: BoardCardInsertion,
+): readonly [SessionTransferStep, ...SessionTransferStep[]] {
+	return [{ kind: "create-board-gap", sessions, insertion }];
+}
+
 export function planSessionTransfer(
 	action: BoardAgentSessionDropAction,
 	origin: BoardAgentSessionDragOrigin,
@@ -235,6 +281,23 @@ export function planSessionTransfer(
 					})),
 				],
 				{ count: sessions.length, targetLabel: action.columnTitle, verb: "create-board" },
+			);
+		}
+		case "create-board-gap": {
+			if (origin.kind !== "untracked") {
+				return refuse(action.sessionIds.length, "ineligible-origin");
+			}
+			const sessions = resolveTransferableMembers(action.sessionIds, origin, lookups);
+			if (sessions === null) {
+				return refuse(action.sessionIds.length, "unresolved-member");
+			}
+			return commit(
+				toBoardGapCreateStep(sessions, action.insertion),
+				{
+					count: sessions.length,
+					targetLabel: `${action.insertion.columnTitle} #${action.insertion.insertAtIndex}`,
+					verb: "create-board-gap",
+				},
 			);
 		}
 		case "create-list": {
@@ -341,6 +404,9 @@ export function executeSessionTransferPlan(
 				break;
 			case "create-board":
 				ports.onCreate?.(step.session, step.columnTitle);
+				break;
+			case "create-board-gap":
+				ports.onBoardGapCreate?.(step.sessions, step.insertion);
 				break;
 			case "create-list":
 				ports.onListCreate?.(step.session, step.insertion);

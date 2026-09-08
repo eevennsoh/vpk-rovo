@@ -82,9 +82,15 @@ export type {
 	JiraListPriority,
 	JiraListProps,
 	JiraListRowData,
+	JiraListRowFlash,
 	JiraListStatusOption,
 	JiraListTag,
 } from "@/components/blocks/jira-list/jira-list-types";
+
+export {
+	NO_JIRA_LIST_ROW_FLASH,
+	useJiraListRowFlashSource,
+} from "@/components/blocks/jira-list/jira-list-row-flash";
 
 import {
 	getAgentSessionAttachCellClassName,
@@ -95,11 +101,14 @@ import {
 	getDragInsertionPosition,
 	getInsertionLineClassName,
 	getRowAnchorName,
+	getRowFlashCellClassName,
 	getRowZone,
+	isAgentSessionAttachTarget,
 	type JiraListColumnBoundaryIndex,
 	type JiraListInsertionTarget,
 	type JiraListRowTarget,
 } from "@/components/blocks/jira-list/jira-list-dnd";
+import { useJiraListRowFlashKeys } from "@/components/blocks/jira-list/jira-list-row-flash";
 import { createJiraListBaseColumns } from "@/components/blocks/jira-list/jira-list-base-columns";
 import {
 	IssueTypeGlyph,
@@ -237,6 +246,7 @@ export function JiraList({
 	onStatusChange,
 	onToggleExpand,
 	agentSessionDropIntent,
+	rowFlash,
 	onTrailingContentUnderlapChange,
 	scrollEndInset = 0,
 	trailingOverlayRef,
@@ -275,6 +285,7 @@ export function JiraList({
 	const [dragOverIssueKey, setDragOverIssueKey] = useState<string | null>(null);
 	const [openCopyTooltipIssueKey, setOpenCopyTooltipIssueKey] = useState<string | null>(null);
 	const sessionInsertionTarget = getAgentSessionInsertionTarget(agentSessionDropIntent);
+	const flashingIssueKeys = useJiraListRowFlashKeys(rowFlash);
 	const activeInsertionTarget = sessionInsertionTarget ?? focusedCreateTarget ?? hoveredCreateTarget;
 	const draggingIndex = draggingIssueKey
 		? rows.findIndex((row) => row.issueKey === draggingIssueKey)
@@ -344,9 +355,6 @@ export function JiraList({
 	};
 	const baseColumns = createJiraListBaseColumns({
 		agentCatalog,
-		agentSessionAttachIssueKey: agentSessionDropIntent?.kind === "attach"
-			? agentSessionDropIntent.issueKey
-			: undefined,
 		copiedIssueKey,
 		onAgentAssign,
 		onAssignedAgentIdsChange,
@@ -606,7 +614,7 @@ export function JiraList({
 			)}
 			data-testid="jira-list"
 		>
-			<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]">
+			<div className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]">
 				{/* Positioned wrapper so the fades stay on the scrollport
 				    edges instead of scrolling away with the rows. The footer
 				    itself must stay unpositioned, because its centred
@@ -709,10 +717,22 @@ export function JiraList({
 									draggingIndex,
 									dragOverIndex,
 								);
+								const hoverInsertionPosition = (
+									onCreate
+									&& hoveredRowTarget?.issueKey === row.issueKey
+									&& hoveredRowTarget.zone !== "drag"
+								)
+									? hoveredRowTarget.zone
+									: undefined;
 								const insertionLinePosition = activeInsertionTarget?.issueKey === row.issueKey
 									? activeInsertionTarget.position
-									: dragInsertionPosition;
+									: hoverInsertionPosition ?? dragInsertionPosition;
 								const insertionLineClassName = getInsertionLineClassName(insertionLinePosition);
+								const isSessionAttachTarget = isAgentSessionAttachTarget(
+									agentSessionDropIntent,
+									row.issueKey,
+								);
+								const isFlashing = flashingIssueKeys.has(row.issueKey);
 								const isLastRow = rowIndex === rows.length - 1
 									&& draftWorkItem?.insertAtIndex !== rows.length;
 
@@ -752,6 +772,8 @@ export function JiraList({
 														: "before:bg-transparent group-hover/row:before:bg-bg-neutral-subtle-hovered group-focus-within/row:before:bg-bg-neutral-subtle-hovered",
 													insertionLinePosition ? "z-30" : "z-10",
 													insertionLineClassName,
+													getRowFlashCellClassName(isFlashing, "sticky"),
+													getAgentSessionAttachCellClassName(isSessionAttachTarget, "sticky"),
 												)}
 												data-insertion-line={insertionLinePosition}
 												style={{ anchorName: getRowAnchorName(insertionAnchorId, rowIndex) }}
@@ -775,12 +797,8 @@ export function JiraList({
 															isLastRow,
 														}),
 														insertionLineClassName,
-														column.id === "agentSessions"
-															? getAgentSessionAttachCellClassName(
-																agentSessionDropIntent?.kind === "attach"
-																&& agentSessionDropIntent.issueKey === row.issueKey,
-															)
-															: undefined,
+														getRowFlashCellClassName(isFlashing),
+														getAgentSessionAttachCellClassName(isSessionAttachTarget),
 													)}
 													data-insertion-line={insertionLinePosition}
 													key={column.id}

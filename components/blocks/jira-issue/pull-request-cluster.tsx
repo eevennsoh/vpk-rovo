@@ -133,11 +133,12 @@ export function JiraIssuePullRequestCluster({
 					deletions={pullRequestPreview?.deletions ?? 0}
 					filesChanged={pullRequestPreview?.filesChanged}
 					number={pullRequestNumber}
+					relativeTime={pullRequestPreview?.relativeTime}
 					repository={pullRequestPreview?.repository}
 					status={toPullRequestCardStatus(pullRequestStatus)}
 					targetBranch={pullRequestPreview?.targetBranch}
 					title={overlayTitle}
-					variant="spacious"
+					variant="flyout"
 				/>
 			</HoverCardContent>
 		</HoverCard>
