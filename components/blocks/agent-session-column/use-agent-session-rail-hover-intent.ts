@@ -11,7 +11,7 @@ type Point = { x: number; y: number };
 const HOVER_INTENT_GRACE_MS = 300;
 
 /** The cone ends at the popup's near edge and works for either collision-resolved side. */
-function isHeadingIntoPopup(origin: Point, point: Point, popup: DOMRect): boolean {
+export function isHeadingIntoPopup(origin: Point, point: Point, popup: DOMRect): boolean {
 	const edge = popup.left > origin.x ? popup.left : popup.right;
 	const distance = edge - origin.x;
 	const progress = (point.x - origin.x) / distance;

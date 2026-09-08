@@ -60,6 +60,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/agent-list/agent-list-session.test.js",
 		"components/blocks/agent-session-column/agent-session-column-end-state.test.js",
 		"components/blocks/agent-session-column/agent-session-column-scrolling-effect.test.js",
+		"components/blocks/agent-session-column/use-agent-session-rail-hover-intent.test.js",
 		"components/blocks/agent-session-column/untracked-selection.test.ts",
 		"components/blocks/agent-session-column/deck/deck-model.test.ts",
 		"components/blocks/agent-session-column/deck/deck-scroll-activity.test.ts",
