@@ -294,6 +294,7 @@ export function AgentSessionColumn({
 	className,
 	collapsed: collapsedProp,
 	collapsedPresentation = "column",
+	collapsedExpandAction,
 	collapsedRailHitSlopPx = 0,
 	count,
 	defaultCollapsed = false,
@@ -599,7 +600,7 @@ export function AgentSessionColumn({
 				<TooltipTrigger
 					render={
 						<Button
-							aria-label={`Expand ${title} column`}
+							aria-label={`${collapsedExpandAction?.label ?? "Expand"} ${title} column`}
 							className={isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL}
 							onClick={handleToggleCollapsed}
 							size="icon-compact"
@@ -609,9 +610,9 @@ export function AgentSessionColumn({
 						/>
 					}
 				>
-					<Icon className="text-icon-subtle" render={<GrowHorizontalIcon label="" />} />
+					{collapsedExpandAction?.icon ?? <Icon className="text-icon-subtle" render={<GrowHorizontalIcon label="" />} />}
 				</TooltipTrigger>
-				<TooltipContent>Expand</TooltipContent>
+				<TooltipContent>{collapsedExpandAction?.label ?? "Expand"}</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
 	);
