@@ -7,6 +7,7 @@ const { test } = require("node:test");
 // demo phases, the drop well, the pull-out, and the split review chin.
 // Split out of jira-issue.test.js to keep both files under the 1000-line budget.
 const SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
+const ATTACH_CHIN_SOURCE = readFileSync(join(__dirname, "attach-chin.tsx"), "utf8");
 const AGENT_ACTIVITY_SOURCE = readFileSync(join(__dirname, "agent-activity.tsx"), "utf8");
 const COMPLETED_RUNS_SOURCE = readFileSync(join(__dirname, "completed-agent-runs.tsx"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
@@ -148,7 +149,10 @@ test("Jira issue experimental demo composes one running chin with two detached u
 		join(__dirname, "../agent-session/data.ts"),
 		"utf8",
 	);
-	assert.match(sessionDataSource, /export const AGENT_SESSION_ITEMS[\s\S]*invokedBy: \{[\s\S]*avatarSrc: "\/avatar-user\/andrew-park/u);
+	assert.match(
+		sessionDataSource,
+		/export const AGENT_SESSION_ITEMS[\s\S]*invokedBy: \{[\s\S]*avatarSrc: "\/avatar-user\//u,
+	);
 	assert.match(PAGE_SOURCE, /const isRunningUnlinkPhase = isTransferPhase && agentActivityState === "agent-session-running-unlink";/u);
 	assert.match(PAGE_SOURCE, /sessionTransferAfter=\{showDetachedSessions/u);
 	assert.match(PAGE_SOURCE, /items=\{detachedSessions\}/u);
@@ -416,16 +420,15 @@ test("Jira issue splits the finished review chin into one row per completed run"
 	// Split rows reuse the working-row chrome so Review reads like 1-n agents.
 	assert.match(COMPLETED_RUNS_SOURCE, /function JiraIssueCompletedRunRow\(/u);
 	assert.match(COMPLETED_RUNS_SOURCE, /<JiraIssueCompletedRunRow[\s\S]*key=\{run\.id\}/u);
-	assert.match(COMPLETED_RUNS_SOURCE, /className="flex h-6 w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-1[^"]*"/u);
+	assert.match(COMPLETED_RUNS_SOURCE, /className="flex h-6 w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-1[^"]*hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed[^"]*"/u);
 	assert.match(COMPLETED_RUNS_SOURCE, /<AgentAvatarVisual[\s\S]*avatarSrc=\{run\.agentAvatarSrc\}[\s\S]*label=\{run\.agentName\}[\s\S]*sizePx=\{16\}/u);
 	// Per-run outcome icon replaces the aggregate's failure-only indicator.
 	// Failed stays the filled error status — never a host renderer's call — and
-	// an unhandled finished run falls back to the extra-large stroke ADS dot in
-	// subtle icon color, not the smaller tree Node glyph.
-	assert.match(COMPLETED_RUNS_SOURCE, /import StrokeWeightExtraLargeIcon from "@atlaskit\/icon\/core\/stroke-weight-extra-large";/u);
+	// an unhandled finished run falls back to the filled ADS success status.
+	assert.match(COMPLETED_RUNS_SOURCE, /import StatusSuccessIcon from "@atlaskit\/icon\/core\/status-success";/u);
 	assert.match(
 		COMPLETED_RUNS_SOURCE,
-		/hasFailed \? \([\s\S]*<StatusErrorIcon[\s\S]*\) : renderAgentActivityIndicator \? \(\s*renderAgentActivityIndicator\("finished"\)\s*\) : \([\s\S]*<StrokeWeightExtraLargeIcon/u,
+		/hasFailed \? \([\s\S]*<StatusErrorIcon[\s\S]*\) : renderAgentActivityIndicator \? \(\s*renderAgentActivityIndicator\("finished"\)\s*\) : \([\s\S]*<StatusSuccessIcon color=\{token\("color\.icon\.success"\)\}/u,
 	);
 	// The finished glyph is the existing chin-row renderer seam, not a second
 	// prop chain, so a host that already styles working rows styles this too.
@@ -438,7 +441,7 @@ test("Jira issue splits the finished review chin into one row per completed run"
 		SOURCE,
 		/<JiraIssueAgentDone[\s\S]*renderAgentActivityIndicator=\{renderAgentActivityIndicator\}/u,
 	);
-	assert.doesNotMatch(COMPLETED_RUNS_SOURCE, /StatusSuccessIcon/u);
+	assert.doesNotMatch(COMPLETED_RUNS_SOURCE, /StrokeWeightExtraLargeIcon/u);
 	assert.doesNotMatch(COMPLETED_RUNS_SOURCE, /CheckMarkIcon/u);
 	assert.doesNotMatch(COMPLETED_RUNS_SOURCE, /NodeIcon/u);
 	assert.match(COMPLETED_RUNS_SOURCE, /hasFailed \? "text-icon-danger" : "text-icon-subtle"/u);
@@ -605,7 +608,7 @@ test("Jira issue card hugs its content the moment the chip leaves the chin", () 
 	// The row flags itself; the list closes its gutter off that flag with `:has()`.
 	assert.match(AGENT_ACTIVITY_SOURCE, /data-session-chip-out=\{isDraggedOut \|\| undefined\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /data-slot="jira-issue-agent-row-wrap"/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /hasActivities && "px-1 py-1 has-\[\[data-session-chip-out\]\]:py-0",/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /\(hasActivities \|\| hasAttachPreview\) && "px-1 py-1 has-\[\[data-session-chip-out\]\]:py-0",/u);
 	assert.match(
 		SOURCE,
 		/has-\[\[data-session-chip-out\]\]:not-has-\[\[data-slot=jira-issue-agent-row-wrap\]:not\(\[data-session-chip-out\]\)\]:pb-1/u,
@@ -691,9 +694,9 @@ test("Jira issue attach has no dashed well and grows the backdrop chin instead",
 	);
 	assert.match(SOURCE, /const isAttachingSession = agentSessionDragControl[\s\S]*isJiraIssueSessionAttachPreview\(\s*\n\s*resolvedAgentSessionDragState\.dragging,\s*\n\s*resolvedAgentSessionDragState\.source,/u);
 	assert.match(SOURCE, /\|\| isAttachingSession;/u);
-	assert.match(SOURCE, /data-slot="jira-issue-attach-chin"/u);
 	assert.match(SOURCE, /data-slot="jira-issue-agent-shell"/u);
 	assert.match(SOURCE, /data-session-dragging=\{resolvedAgentSessionDragState\.dragging \|\| undefined\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /data-slot="jira-issue-attach-chin"/u);
 	// Attach hit-tests the shell, not the article that also wraps detached pills.
 	assert.match(
 		SOURCE,
@@ -702,5 +705,57 @@ test("Jira issue attach has no dashed well and grows the backdrop chin instead",
 	assert.doesNotMatch(
 		SOURCE,
 		/ref=\{\(node\) => \{\s*\n\s*setGenerativeActionAnchor\(node\);\s*\n\s*cardMeasureRef\.current = node;/u,
+	);
+});
+
+test("attach chin replaces the last occupied session row instead of stacking or collapsing split rows", () => {
+	// Occupied cards keep their chin height: the placeholder takes the last
+	// row. Split layouts keep every earlier row so drop-zone geometry stays put.
+	assert.match(
+		SOURCE,
+		/const attachChinCopy = isAttachingSession\s*\n\s*\? linkAgentSessionChinCopy\(attachSessionCount\)\s*\n\s*: undefined;/u,
+	);
+	assert.match(
+		SOURCE,
+		/const replaceDetachedTransfer = Boolean\(attachChinCopy && sessionTransferAfter\);/u,
+	);
+	assert.match(
+		SOURCE,
+		/attachPreviewCopy=\{replaceDetachedTransfer \? undefined : attachChinCopy\}/u,
+	);
+	assert.match(AGENT_ACTIVITY_SOURCE, /attachPreviewCopy\?: string;/u);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/const replaceLastRowWithAttach = hasAttachPreview && index === rowGroups.length - 1;/u,
+	);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/\{rowGroups.length === 0 && attachPreviewCopy \? \([\s\S]*data-slot="jira-issue-attach-chin"[\s\S]*<JiraIssueAttachChinSlot copy=\{attachPreviewCopy\} \/>/u,
+	);
+	assert.doesNotMatch(
+		SOURCE,
+		/\{isAttachingSession \? \(\s*\n\s*<div className="px-1 py-1" data-slot="jira-issue-attach-chin">/u,
+	);
+	assert.match(
+		ATTACH_CHIN_SOURCE,
+		/export function JiraIssueDetachedAttachChinSlot\([\s\S]*h-\[33px\][\s\S]*data-slot="jira-issue-attach-chin"/u,
+	);
+	// Nearby/detached pills already occupy the last chin. Attach copy covers
+	// that slot, but `AgentSessionMediumDrag` stays mounted so pointer capture
+	// and the window pointerup fallback survive the first armed move.
+	assert.match(
+		SOURCE,
+		/<JiraIssueDetachedSessionTransferSlot\s*\n\s*attachCopy=\{replaceDetachedTransfer \? attachChinCopy : undefined\}\s*\n\s*>\s*\n\s*\{sessionTransferAfter\(agentSessionDragBinding\)\}/u,
+	);
+	assert.doesNotMatch(
+		SOURCE,
+		/replaceDetachedTransfer && attachChinCopy\s*\n\s*\? <JiraIssueDetachedAttachChinSlot copy=\{attachChinCopy\} \/>/u,
+	);
+	assert.match(ATTACH_CHIN_SOURCE, /export function JiraIssueDetachedSessionTransferSlot/u);
+	assert.match(ATTACH_CHIN_SOURCE, /inert=\{replace \|\| undefined\}/u);
+	assert.match(ATTACH_CHIN_SOURCE, /invisible col-start-1 row-start-1/u);
+	assert.match(
+		ATTACH_CHIN_SOURCE,
+		/attachCopy \? \(\s*\n\s*<div className="pointer-events-none col-start-1 row-start-1">\s*\n\s*<JiraIssueDetachedAttachChinSlot copy=\{attachCopy\} \/>/u,
 	);
 });

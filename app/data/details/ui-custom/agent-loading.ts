@@ -33,6 +33,12 @@ export const AGENT_LOADING_DETAIL: ComponentDetail = {
 				"Agents to display. Fewer than two agents render nothing; multiple agents cycle while at least one has a working status.",
 		},
 		{
+			name: "size",
+			type: '"default" | "small"',
+			default: '"default"',
+			description: "Canvas size. Default is the authored 24×24 Ferris; small scales the same geometry to 16×16.",
+		},
+		{
 			name: "label",
 			type: "ReactNode",
 			description: "Optional visible status copy rendered beside the agent visual.",
@@ -59,6 +65,11 @@ export const AGENT_LOADING_DETAIL: ComponentDetail = {
 			title: "Finished",
 			description: "All agents are finished, so the avatar stack remains still.",
 			demoSlug: "agent-loading-demo-finished",
+		},
+		{
+			title: "Small",
+			description: "16×16 scaled-down canvas for compact rows such as a Jira issue chin.",
+			demoSlug: "agent-loading-demo-small",
 		},
 	],
 	adsLinks: [

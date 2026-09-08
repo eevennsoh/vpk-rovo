@@ -24,8 +24,8 @@ export type AgentListState = "running" | "complete" | "needs-input" | "attention
  */
 export type AgentListActorKind = "agent" | "person";
 
-/** Pull-request status shown in the metadata row, when a PR exists. */
-export type AgentListPrStatus = "created" | "merged";
+/** Pull-request lifecycle shown in the metadata row, when a PR exists. */
+export type AgentListPrStatus = "created" | "merged" | "failed";
 
 /** Visual density for Jira agent-session rows. */
 export type AgentListVariant = "default" | "compact";
@@ -141,9 +141,12 @@ export interface AgentListItem {
 	metadataPrefix?: string;
 	/**
 	 * Pre-formatted time shown verbatim in place of the live runtime or relative
-	 * clock (e.g. `"Tue 18 Aug 11:05"`). Historical rows use it so the list does
-	 * not run a per-row one-second interval to age a fact that cannot change.
-	 * Local sessions always read as a static stamp, even without this field.
+	 * clock. Relative labels use compact units (`"32m ago"`, `"1hr ago"`,
+	 * `"3d ago"`) and title-case named periods (`"Just now"`, `"Yesterday"`,
+	 * `"Last week"`). Calendar stamps (`"Tue 18 Aug"`) are also allowed.
+	 * Historical rows use it so the list does not run a per-row one-second
+	 * interval to age a fact that cannot change. Local sessions always read as
+	 * a static stamp, even without this field.
 	 */
 	timeLabel?: string;
 	/**

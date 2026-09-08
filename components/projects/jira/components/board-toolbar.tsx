@@ -15,10 +15,12 @@ import {
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { token } from "@/lib/tokens";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import CustomizeIcon from "@atlaskit/icon/core/customize";
+import FilterIcon from "@atlaskit/icon/core/filter";
 import RefreshIcon from "@atlaskit/icon/core/refresh";
 import SearchIcon from "@atlaskit/icon/core/search";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
@@ -103,9 +105,9 @@ export default function BoardToolbar({ avatars, onReset }: Readonly<BoardToolbar
 							</div>
 						)}
 					</div>
-					<Button className="gap-2" variant="outline">
-						<span>Filter</span>
-						<ChevronDownIcon label="" size="small" />
+					<Button variant="outline">
+						<Icon render={<FilterIcon label="" />} />
+						Filter
 					</Button>
 				</div>
 
@@ -141,11 +143,11 @@ export default function BoardToolbar({ avatars, onReset }: Readonly<BoardToolbar
 						<span>Group: RFP stage</span>
 						<ChevronDownIcon label="" size="small" />
 					</Button>
-					<Button aria-disabled aria-label="More board controls" size="icon" variant="outline">
-						<ShowMoreHorizontalIcon label="" />
+					<Button aria-disabled aria-label="Customize" size="icon" variant="outline">
+						<Icon render={<CustomizeIcon label="" />} />
 					</Button>
-					<Button aria-label="Customize" size="icon" variant="ghost">
-						<CustomizeIcon label="" />
+					<Button aria-disabled aria-label="More board controls" size="icon" variant="outline">
+						<Icon render={<ShowMoreHorizontalIcon label="" />} />
 					</Button>
 				</div>
 			</div>

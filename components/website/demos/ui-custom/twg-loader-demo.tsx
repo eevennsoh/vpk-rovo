@@ -18,13 +18,7 @@ export function TWGLoaderDemoSizes() {
 export function TWGLoaderDemoOnDark() {
 	return (
 		<div className="flex items-center justify-center rounded-xl bg-[#111213] p-10">
-			{/* The dot masks read `currentColor`, so match the loader's text
-			    color to the chrome behind it instead of the page surface. */}
-			<TWGLoader
-				size="xlarge"
-				label="Loading Teamwork Graph"
-				className="text-[#111213]"
-			/>
+			<TWGLoader size="xlarge" label="Loading Teamwork Graph" />
 		</div>
 	);
 }

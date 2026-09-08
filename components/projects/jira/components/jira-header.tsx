@@ -1,30 +1,24 @@
 "use client";
 
-import Heading from "@/components/ui/heading";
-import { token } from "@/lib/tokens";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { ExperimentalJiraKanbanBoardHeader } from "@/components/blocks/jira-kanban/experimental/experimental-board-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { token } from "@/lib/tokens";
 
 import { DEFAULT_JIRA_WORK_ITEM_VIEW, type JiraWorkItemView } from "../data/tabs";
 import { useJiraTabs } from "../hooks/use-jira-tabs";
 import { resolveJiraTab } from "../lib/jira-tab-model";
-import ExpandHorizontalIcon from "@atlaskit/icon/core/expand-horizontal";
-import ShareIcon from "@atlaskit/icon/core/share";
-import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
-import TeamsIcon from "@atlaskit/icon/core/teams";
 
 interface JiraViewTabsProps {
 	/**
-	 * Selection is tracked by label, not index: the design variation and Simple
-	 * views property decide whether work items is one tab or two, so an index
-	 * would silently point at a different destination after a flip.
+	 * Selection is tracked by label, not index: the Simple views property
+	 * decides whether work items is one tab or two, so an index would silently
+	 * point at a different destination after a flip.
 	 */
 	selectedTabLabel: string;
 	onTabChange: (tabLabel: string) => void;
 	/**
 	 * Current board/list choice. Only consulted when the selected label is absent
-	 * from this variation's tabs, so the reader keeps their view across a flip.
+	 * from this catalog, so the reader keeps their view across a Simple views flip.
 	 */
 	workItemView?: JiraWorkItemView;
 	/**
@@ -95,55 +89,17 @@ export default function JiraHeader({
 	supportedWorkItemViews,
 }: Readonly<JiraViewTabsProps>) {
 	return (
-		<div className="pt-4">
-			<div className="flex flex-col gap-1">
-				{/* Top row: Spaces label and heading with buttons */}
-				<div
-					className="flex justify-between items-center gap-2"
-				>
-					<div className="px-4">
-						<div className="flex flex-col gap-0.5">
-							<span className="text-sm text-text-subtle font-medium">
-								Spaces
-							</span>
-							<div className="flex items-center gap-2">
-								<Avatar shape="square" size="xs">
-									<AvatarImage src="/avatar-project/rocket.svg" alt="" />
-									<AvatarFallback>ER</AvatarFallback>
-								</Avatar>
-								<Heading size="medium">Enterprise RFP Response</Heading>
-								<Button aria-label="Teams" size="icon-compact" variant="ghost">
-									<TeamsIcon label="" size="small" />
-								</Button>
-								<Button aria-label="More options" size="icon-compact" variant="ghost">
-									<ShowMoreHorizontalIcon label="" size="small" />
-								</Button>
-							</div>
-						</div>
-					</div>
-
-					<div className="px-4">
-						<div className="flex gap-2">
-							<Button aria-label="Share" size="icon" variant="ghost">
-								<ShareIcon label="" />
-							</Button>
-							<Button aria-label="Expand" size="icon" variant="ghost">
-								<ExpandHorizontalIcon label="" />
-							</Button>
-						</div>
-					</div>
-				</div>
-
-				{/* Tabs */}
-				<div>
-					<JiraViewTabs
-						selectedTabLabel={selectedTabLabel}
-						onTabChange={onTabChange}
-						supportedWorkItemViews={supportedWorkItemViews}
-						workItemView={workItemView}
-					/>
-				</div>
-			</div>
-		</div>
+		<ExperimentalJiraKanbanBoardHeader
+			showBoardControls={false}
+			title="Enterprise RFP Response"
+			viewTabs={(
+				<JiraViewTabs
+					selectedTabLabel={selectedTabLabel}
+					onTabChange={onTabChange}
+					supportedWorkItemViews={supportedWorkItemViews}
+					workItemView={workItemView}
+				/>
+			)}
+		/>
 	);
 }

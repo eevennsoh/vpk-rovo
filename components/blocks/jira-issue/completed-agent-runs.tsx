@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import StatusErrorIcon from "@atlaskit/icon/core/status-error";
-import StrokeWeightExtraLargeIcon from "@atlaskit/icon/core/stroke-weight-extra-large";
+import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
 
 import {
 	AgentList,
@@ -25,6 +25,7 @@ import type { ArtifactListItem } from "@/components/ui-custom/artifact-list";
 import type { ThirdPartyLogoName } from "@/components/ui/data/logo-third-party-data";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { IconTile } from "@/components/ui/icon-tile";
+import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
 export type JiraIssueCompletedAgentRunState = "done" | "failed" | "review";
@@ -87,7 +88,8 @@ function getCompletedRunInitial(name: string): string {
  * row opens that run's detail card instead of the shared aggregate list.
  *
  * A host renderer owns the finished glyph when one is supplied, so a design
- * variation can say "success" in its own vocabulary. Failed always stays the
+ * variation can say "success" in its own vocabulary. Without a renderer the
+ * row falls back to the filled success status. Failed always stays the
  * block's filled error status.
  */
 function JiraIssueCompletedRunRow({
@@ -114,7 +116,7 @@ function JiraIssueCompletedRunRow({
 	const trigger = (
 		<button
 			aria-label={label ? `${run.agentName} ${label}` : `${run.agentName} ${outcomeLabel}: ${run.summary}`}
-			className="flex h-6 w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-1 text-left outline-none transition-colors duration-fast ease-out hover:bg-bg-neutral-subtle-hovered focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+			className="flex h-6 w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-1 text-left outline-none transition-colors duration-fast ease-out hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
 			data-slot="jira-issue-agent-row"
 			onClick={showFlyout ? undefined : () => onView?.(run)}
 			type="button"
@@ -150,7 +152,7 @@ function JiraIssueCompletedRunRow({
 				) : renderAgentActivityIndicator ? (
 					renderAgentActivityIndicator("finished")
 				) : (
-					<StrokeWeightExtraLargeIcon color="currentColor" label="" size="small" />
+					<StatusSuccessIcon color={token("color.icon.success")} label="" size="small" />
 				)}
 			</span>
 		</button>
@@ -289,7 +291,7 @@ function JiraIssueAgentDoneMerged({
 						<button
 							aria-expanded={aggregateOpen}
 							aria-label={hasFailedRun ? `${finishedLabel}, includes errors` : finishedLabel}
-							className="flex h-6 w-full min-w-0 items-center justify-between gap-2 rounded-b-[6px] rounded-t-sm px-2 py-1 text-left outline-none transition-colors duration-fast ease-out hover:bg-bg-neutral-subtle-hovered focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+							className="flex h-6 w-full min-w-0 items-center justify-between gap-2 rounded-b-[6px] rounded-t-sm px-2 py-1 text-left outline-none transition-colors duration-fast ease-out hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
 							data-slot="jira-issue-agent-row"
 							type="button"
 						>

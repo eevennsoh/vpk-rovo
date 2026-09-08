@@ -84,6 +84,7 @@ export function JiraIssueSeparator({
 
 export function JiraIssueSubtasks({
 	chrome,
+	compact = false,
 	completedCount,
 	controlId,
 	expanded,
@@ -94,6 +95,7 @@ export function JiraIssueSubtasks({
 	subtasks,
 }: Readonly<{
 	chrome: JiraIssueChrome;
+	compact?: boolean;
 	completedCount: number;
 	controlId: string;
 	expanded: boolean;
@@ -104,7 +106,7 @@ export function JiraIssueSubtasks({
 	subtasks: readonly JiraIssueSubtask[];
 }>) {
 	const chromeStyles = resolveJiraIssueChrome(chrome);
-	const usesStrokeChrome = chrome === "stroke";
+	const usesStrokeChrome = compact || chrome === "stroke";
 	const totalCount = subtasks.length;
 	const subtasksToggleLabel = `${expanded ? "Hide" : "Show"} ${label.toLowerCase()}`;
 	const layoutTransition = getJiraIssueLayoutTransition(shouldReduceMotion);

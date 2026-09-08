@@ -429,7 +429,7 @@ test("Insights reads the board's own Filter rather than a second one", () => {
 	// uses. There must be exactly one filter in this directory.
 	assert.doesNotMatch(withoutComments(SCOPE_SOURCES.header), /disableAssigneeFilter/u, "the boolean must not return");
 	assert.doesNotMatch(withoutComments(SCOPE_SOURCES.page), /disableAssigneeFilter/u);
-	assert.match(SCOPE_SOURCES.header, /filterControl: ReactNode;/u);
+	assert.match(SCOPE_SOURCES.header, /filterControl\?: ReactNode;/u);
 	assert.doesNotMatch(
 		SCOPE_SOURCES.header,
 		/filterFields|ExperimentalBoardFilterField/u,

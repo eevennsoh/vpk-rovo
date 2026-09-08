@@ -1,14 +1,17 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import GrowHorizontalIcon from "@atlaskit/icon/core/grow-horizontal";
 import ShrinkHorizontalIcon from "@atlaskit/icon/core/shrink-horizontal";
 
+import type { AgentSessionColumnFrame } from "@/components/blocks/agent-session-column/agent-session-column-frame";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
+import type { KanbanCollapsedChromeStyles } from "../../column-chrome";
 import { BOARD_COLUMN_ACTION_REVEAL } from "../lib/board-column-action-reveal";
 
 const COLLAPSED_HEAD_COUNT_AT_REST = cn(
@@ -65,62 +68,111 @@ export function BoardColumnResizeButton({
 }
 
 /**
- * The collapsed form of a board column: the count stays in the same header
- * row the expanded column uses (`space.100` below, `text-xs` tally), and the
- * title reads top-to-bottom inside the pill under that header. A number
- * painted on the pill is in the wrong place — it would sit inside the
- * bordered container instead of on the board surface next to `To do` / the
- * session count.
+ * The collapsed form of a board column.
  *
- * The pill hugs its content rather than running the column's full height. A
- * status is a label, and a label stretched down a 700px board reads as an empty
- * lane with a caption at the top. The shell around it still stretches, so the
- * drop target keeps the full height every other column has. The Agent Session
- * column is the deliberate exception — it collapses into a rail of per-session
- * notches, which is content, and content needs the height.
+ * Caption: the count stays in the header row above a stroked pill, and the
+ * title reads top-to-bottom inside that pill. Enclosed: count and title live
+ * inside one sunken box. The count uses the same 24px row Untracked uses, inset
+ * by the expanded well header's top padding, so a collapsed Untracked number
+ * shares a row with an expanded status count. Title padding sits below. The
+ * pill hugs its content rather than running the column's full height. The
+ * shell around it still stretches, so the drop target keeps the full height
+ * every other column has.
  *
- * No `overflow-hidden` on the pill: the title carries its own `truncate`, and
- * the expand control lives in the header above, where the shell still clips
- * for the width transition.
+ * No `overflow-hidden` on the pill: the title carries its own `truncate`,
+ * and enclosed puts the expand control inside the same box, where clipping
+ * would slice its focus ring. The 32px inner width is the shell content
+ * box — do not reuse `space.150` as inline pad.
  */
 export function CollapsedBoardColumn({
+	chrome,
 	count,
+	headerFrame,
 	onExpand,
 	title,
-}: Readonly<{ count: number; onExpand: () => void; title: string }>) {
-	return (
-		<div className="flex w-full flex-col">
-			<div
-				className="group/collapsed-column w-full"
-				style={{ paddingBottom: token("space.100") }}
-			>
-				<div className="relative flex h-6 w-full items-center justify-center">
-					<span className={COLLAPSED_HEAD_COUNT_AT_REST}>
-						{count}
-					</span>
-					<BoardColumnResizeButton
-						className={cn(
-							BOARD_COLUMN_ACTION_REVEAL,
-							"group-hover/collapsed-column:pointer-events-auto group-hover/collapsed-column:opacity-100",
-							"group-has-[:focus-visible]/collapsed-column:pointer-events-auto group-has-[:focus-visible]/collapsed-column:opacity-100",
-						)}
-						collapsed
-						onToggle={onExpand}
-						title={title}
-					/>
-				</div>
-			</div>
-			<div
-				className="flex w-full flex-col items-center justify-center border border-border-disabled"
-				style={{
-					borderRadius: token("radius.large"),
-					paddingBlock: token("space.150"),
-				}}
-			>
-				<span className="min-h-0 truncate text-xs font-medium leading-4 text-text-subtle [writing-mode:vertical-rl]">
-					{title}
+}: Readonly<{
+	chrome: KanbanCollapsedChromeStyles;
+	count: number;
+	headerFrame: AgentSessionColumnFrame;
+	onExpand: () => void;
+	title: string;
+}>): ReactNode {
+	const countRow = (
+		<div className="group/collapsed-column w-full">
+			<div className="relative flex h-6 w-full items-center justify-center">
+				<span className={COLLAPSED_HEAD_COUNT_AT_REST}>
+					{count}
 				</span>
+				<BoardColumnResizeButton
+					className={cn(
+						BOARD_COLUMN_ACTION_REVEAL,
+						"group-hover/collapsed-column:pointer-events-auto group-hover/collapsed-column:opacity-100",
+						"group-has-[:focus-visible]/collapsed-column:pointer-events-auto group-has-[:focus-visible]/collapsed-column:opacity-100",
+					)}
+					collapsed
+					onToggle={onExpand}
+					title={title}
+				/>
 			</div>
 		</div>
 	);
+	const titleLabel = (
+		<span className="min-h-0 truncate text-xs font-medium leading-4 text-text-subtle [writing-mode:vertical-rl]">
+			{title}
+		</span>
+	);
+	const pillStyle = {
+		borderRadius: chrome.pillRadius,
+		paddingBlock: chrome.pillPaddingBlock,
+	};
+
+	switch (headerFrame) {
+		case "caption":
+			return (
+				<div className="flex w-full flex-col">
+					<div
+						className="w-full"
+						style={{ paddingBottom: chrome.captionPaddingBottom }}
+					>
+						{countRow}
+					</div>
+					<div
+						className={cn(
+							"flex w-full flex-col items-center justify-center",
+							chrome.pillClassName,
+						)}
+						style={pillStyle}
+					>
+						{titleLabel}
+					</div>
+				</div>
+			);
+		case "enclosed":
+			return (
+				<div className="flex w-full flex-col">
+					<div
+						className={cn(
+							"flex w-full flex-col items-center",
+							chrome.pillClassName,
+						)}
+						style={{
+							borderRadius: chrome.pillRadius,
+							paddingTop: chrome.countPaddingTop,
+						}}
+					>
+						{countRow}
+						<div
+							className="flex w-full flex-col items-center justify-center"
+							style={{ paddingBlock: chrome.pillPaddingBlock }}
+						>
+							{titleLabel}
+						</div>
+					</div>
+				</div>
+			);
+		default: {
+			const exhaustive: never = headerFrame;
+			return exhaustive;
+		}
+	}
 }

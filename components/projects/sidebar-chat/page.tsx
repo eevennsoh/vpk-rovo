@@ -360,6 +360,8 @@ interface ChatPanelProps {
 	 * auto-prefill a newly-created skill's tag.
 	 */
 	composerPrefillRequest?: { mention?: RichTextMentionItem; text?: string; requestKey: number };
+	/** Called after the rich composer applies the keyed mention request. */
+	onComposerPrefillConsumed?: (requestKey: number) => void;
 	/**
 	 * Opt-in: route docked question-card answers back through `onInterceptSubmit`
 	 * (via the clarification summary prompt) instead of the model. Lets a
@@ -540,6 +542,7 @@ export default function ChatPanel({
 	startRealtimeVoiceRequestKey = 0,
 	resolveComposerPlaceholder,
 	composerPrefillRequest,
+	onComposerPrefillConsumed,
 	interceptClarificationAnswers = false,
 	composerMentionSources,
 	markAnsweredQuestionTraces = false,
@@ -1928,6 +1931,7 @@ export default function ChatPanel({
 						onToggleRealtimeVoice={handleToggleRealtimeVoice}
 						onRemoveQueuedPrompt={removeQueuedPrompt}
 						onReasoningChange={setSelectedReasoning}
+						onPrefillMentionConsumed={onComposerPrefillConsumed}
 						realtimeVoiceActive={isRealtimeVoiceActive}
 						realtimeVoiceState={realtime.voiceState}
 						screenAssistantTargetPrefix="sidebar-composer"

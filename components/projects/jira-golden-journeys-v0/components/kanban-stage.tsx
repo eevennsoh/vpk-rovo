@@ -15,7 +15,7 @@ import {
 	DEFAULT_PINNED_WORK_ITEM_SKILL_IDS,
 	WORK_ITEM_PINNED_ITEMS_LABEL,
 	WORK_ITEM_SKILLS,
-} from "@/components/blocks/jira-work-item/experimental/lib/work-item-picker-options";
+} from "@/components/blocks/jira-work-item/lib/work-item-picker-options";
 import { ASX_KANBAN_AGENTS, ASX_KANBAN_DEFAULT_AGENT_ID } from "@/components/projects/jira-golden-journeys-v0/data/kanban-data";
 import { useAsxAgentChatDemo } from "@/components/projects/jira-golden-journeys-v0/hooks/use-jira-golden-journeys-v0-agent-chat-demo";
 import { useAsxKanbanLifecycle } from "@/components/projects/jira-golden-journeys-v0/hooks/use-kanban-lifecycle";

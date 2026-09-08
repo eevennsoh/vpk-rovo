@@ -56,6 +56,15 @@ export interface QueuedPromptItem {
 	createdAt: number;
 }
 
+export function clearSkillInvocationForEdit(
+	metadata: RovoMessageMetadata | undefined,
+): RovoMessageMetadata | undefined {
+	if (!metadata?.skillInvocation) return metadata;
+	const nextMetadata = { ...metadata };
+	delete nextMetadata.skillInvocation;
+	return nextMetadata;
+}
+
 type RovoUIMessagePart = RovoUIMessage["parts"][number];
 
 const INLINE_DATA_PLACEHOLDER = "[inline data omitted]";

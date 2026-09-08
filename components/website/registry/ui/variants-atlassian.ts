@@ -610,31 +610,10 @@ export const UI_ATLASSIAN_VARIANT_DEMOS: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
-	"page-header-demo-with-description": dynamic(
+	"page-header-demo-complex": dynamic(
 		() =>
 			import("../../demos/ui/page-header-demo").then((mod) => ({
-				default: mod.PageHeaderDemoWithDescription,
-			})),
-		{ ssr: false },
-	),
-	"page-header-demo-with-actions": dynamic(
-		() =>
-			import("../../demos/ui/page-header-demo").then((mod) => ({
-				default: mod.PageHeaderDemoWithActions,
-			})),
-		{ ssr: false },
-	),
-	"page-header-demo-with-breadcrumbs": dynamic(
-		() =>
-			import("../../demos/ui/page-header-demo").then((mod) => ({
-				default: mod.PageHeaderDemoWithBreadcrumbs,
-			})),
-		{ ssr: false },
-	),
-	"page-header-demo-title-only": dynamic(
-		() =>
-			import("../../demos/ui/page-header-demo").then((mod) => ({
-				default: mod.PageHeaderDemoTitleOnly,
+				default: mod.PageHeaderDemoComplex,
 			})),
 		{ ssr: false },
 	),

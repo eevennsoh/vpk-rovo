@@ -7,6 +7,7 @@ import { useRovoChat } from "@/app/contexts";
 import type { SendPromptOptions } from "@/app/contexts";
 import type { ChatContextBarDescriptor } from "@/components/projects/shared/lib/chat-context-bar";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
+import type { RichTextMentionItem } from "@/components/ui-custom/rich-text-editor";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
 import type {
 	ChatPanelCustomAgentTabs,
@@ -21,6 +22,8 @@ interface RovoFloatingChatProps {
 	placement?: "embedded" | "floating";
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	chatContextBar?: ChatContextBarDescriptor | null;
+	composerPrefillRequest?: { mention: RichTextMentionItem; requestKey: number };
+	onComposerPrefillConsumed?: (requestKey: number) => void;
 	greeting?: ChatPanelGreetingProps;
 	customAgentTabs?: ChatPanelCustomAgentTabs;
 	hideComposerSourceAndModelControls?: boolean;
@@ -51,6 +54,8 @@ export default function RovoFloatingChat({
 	placement = "floating",
 	onSurfaceSwitch,
 	chatContextBar,
+	composerPrefillRequest,
+	onComposerPrefillConsumed,
 	greeting,
 	customAgentTabs,
 	hideComposerSourceAndModelControls = false,
@@ -131,6 +136,8 @@ export default function RovoFloatingChat({
 					onInterceptSubmit={onInterceptSubmit}
 					onSurfaceSwitch={onSurfaceSwitch}
 					chatContextBar={chatContextBar}
+					composerPrefillRequest={composerPrefillRequest}
+					onComposerPrefillConsumed={onComposerPrefillConsumed}
 					onArtifactDialogOpen={onArtifactDialogOpen}
 					preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
 					startRealtimeVoiceRequestKey={startRealtimeVoiceRequestKey}

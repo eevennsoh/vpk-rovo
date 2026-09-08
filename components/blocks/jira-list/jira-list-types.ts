@@ -97,6 +97,17 @@ export type JiraListAgentSessionDropIntent =
 	| { kind: "attach"; issueKey: string }
 	| { kind: "create"; insertion: JiraListInsertion };
 
+/**
+ * Rows to acknowledge with a one-shot background flash, plus the drop that
+ * asked for it. Sessions dropped into the list create or join rows without
+ * selecting them, so the flash is the only thing that points at the result.
+ */
+export interface JiraListRowFlash {
+	readonly issueKeys: readonly string[];
+	/** Bumped once per drop, so a repeat drop replays the acknowledgement. */
+	readonly token: number;
+}
+
 export interface JiraListProps {
 	rows: readonly JiraListRowData[];
 	activeIssueKey?: string;
@@ -133,6 +144,8 @@ export interface JiraListProps {
 	onStatusChange?: (issueKey: string, status: JiraListStatusOption) => void;
 	onToggleExpand?: (issueKey: string) => void;
 	agentSessionDropIntent?: JiraListAgentSessionDropIntent;
+	/** One-shot acknowledgement for rows a dropped session created or joined. */
+	rowFlash?: JiraListRowFlash;
 	/**
 	 * Scroll room after the table, used when a docked trailing surface overlaps
 	 * the list viewport.

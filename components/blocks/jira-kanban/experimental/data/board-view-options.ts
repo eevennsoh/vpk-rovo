@@ -87,10 +87,30 @@ export const BOARD_AGENT_SESSION_STATE_IDS = ["working", "needs-input", "finishe
 
 export type BoardAgentSessionStateId = (typeof BOARD_AGENT_SESSION_STATE_IDS)[number];
 
+/** Linked session states plus Untracked, the View → Agents focus rows. */
+export type BoardAgentFilterId = BoardAgentSessionStateId | "untracked";
+
 const BOARD_AGENT_SESSION_STATE_ID_SET: ReadonlySet<string> = new Set(BOARD_AGENT_SESSION_STATE_IDS);
 
 export function isBoardAgentSessionStateId(id: string): id is BoardAgentSessionStateId {
 	return BOARD_AGENT_SESSION_STATE_ID_SET.has(id);
+}
+
+export function shownSessionStateIdsForAgentFilter(
+	filterId: BoardAgentFilterId,
+): Set<BoardAgentSessionStateId> {
+	switch (filterId) {
+		case "untracked":
+			return new Set();
+		case "working":
+		case "needs-input":
+		case "finished":
+			return new Set([filterId]);
+		default: {
+			const _exhaustive: never = filterId;
+			return _exhaustive;
+		}
+	}
 }
 
 export const ALL_BOARD_AGENT_SESSION_STATE_IDS: ReadonlySet<BoardAgentSessionStateId> = new Set(

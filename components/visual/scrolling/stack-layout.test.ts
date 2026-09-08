@@ -193,7 +193,7 @@ function loopFrame(
 	});
 }
 
-test("stackZIndex paints later cards above earlier ones by default", () => {
+test("stackZIndex paints later cards above earlier ones for last-on-top", () => {
 	const layers = STARTS.map((start) => stackZIndex("last-on-top", start));
 	for (let i = 1; i < layers.length; i += 1) {
 		assert.ok(layers[i] > layers[i - 1], `index=${i}`);

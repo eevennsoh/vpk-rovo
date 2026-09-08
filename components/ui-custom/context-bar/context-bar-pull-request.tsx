@@ -155,7 +155,7 @@ function PullRequestNumberLink({
 					additions={additions}
 					author={author}
 					branch={branch}
-					className="border-0"
+					className="border-0 bg-transparent shadow-none"
 					deletions={deletions}
 					filesChanged={filesChanged}
 					number={number}
@@ -163,7 +163,7 @@ function PullRequestNumberLink({
 					status={status}
 					targetBranch={targetBranch}
 					title={title}
-					variant="spacious"
+					variant="flyout"
 				/>
 			</HoverCardContent>
 		</HoverCard>
@@ -172,7 +172,7 @@ function PullRequestNumberLink({
 
 /**
  * Composer-facing pull-request variation of `ContextBar`: status + hoverable
- * `#N` (spacious PR card flyout) + branch + diff stats + optional CI menu,
+ * `#N` (flyout PR card) + branch + diff stats + optional CI menu,
  * with the shared dismiss affordance.
  */
 export function ContextBarPullRequest({

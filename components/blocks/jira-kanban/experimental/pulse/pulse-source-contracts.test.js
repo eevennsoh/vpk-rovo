@@ -584,10 +584,14 @@ test("Insights owns the unread activity pill instead of a separate Timeline butt
 });
 
 test("Experimental board header keeps Filter clickable and badges new timeline activity", () => {
-	assert.match(EXPERIMENTAL_HEADER_SOURCE, /filterControl: ReactNode;/u);
+	assert.match(EXPERIMENTAL_HEADER_SOURCE, /filterControl\?: ReactNode;/u);
 	assert.match(EXPERIMENTAL_HEADER_SOURCE, /endSlot\?: ReactNode;/u);
 	assert.match(EXPERIMENTAL_HEADER_SOURCE, /\{filterControl\}/u);
 	assert.match(EXPERIMENTAL_HEADER_SOURCE, /\{endSlot \? endSlot : null\}/u);
+	assert.match(
+		EXPERIMENTAL_HEADER_SOURCE,
+		/if \(!onSelectedAssigneeIdsChange\) \{\s*return \(\s*<span className="rounded-full">/u,
+	);
 	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /disableAssigneeFilter|aria-disabled[\s\S]*Filter board is unavailable/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /<BoardFilterPopover/u);
 	assert.doesNotMatch(EXPERIMENTAL_PAGE_SOURCE, /TimelineActivityBadge|timeline-activity-badge/u);

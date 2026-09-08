@@ -22,7 +22,7 @@ import { Tag, TagGroup } from "@/components/ui/tag";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
-import { getIssueInitial } from "@/components/blocks/jira-issue/lib";
+import { getIssueInitial, resolveIssueAssigneeUnassignedKind } from "@/components/blocks/jira-issue/lib";
 import { JiraIssuePullRequestCluster } from "@/components/blocks/jira-issue/pull-request-cluster";
 import type {
 	JiraIssuePriority,
@@ -36,6 +36,10 @@ const PRIORITY_ICONS = {
 	medium: PriorityMediumIcon,
 	minor: PriorityMinorIcon,
 } as const;
+
+/** Rest as the default gray Tag; reveal the label color while the issue card is hovered or focused. */
+const ISSUE_TAG_IDLE_BORDER_CLASS =
+	"duration-fast ease-out-practical motion-reduce:transition-none [@media(hover:hover)]:group-[:not(:hover):not(:focus-within)]/jira-issue:border-border-accent-gray-subtle";
 
 const PRIORITY_COLORS = {
 	major: token("color.icon.danger"),
@@ -60,13 +64,17 @@ function JiraIssueAssignee({
 	issueKey: string;
 	size?: NonNullable<AvatarProps["size"]>;
 }>) {
-	if (assigneeUnassignedKind) {
+	const unassignedKind = resolveIssueAssigneeUnassignedKind(
+		assigneeAvatarSrc,
+		assigneeUnassignedKind,
+	);
+	if (unassignedKind) {
 		return (
 			<AvatarUnassigned
 				className={cn(
 					assigneePulse && "motion-safe:animate-pulse ring-2 ring-border-focused ring-offset-2 ring-offset-surface",
 				)}
-				kind={assigneeUnassignedKind}
+				kind={unassignedKind}
 				size={size}
 			/>
 		);
@@ -224,7 +232,11 @@ export function JiraIssueSummary({
 			{tags && tags.length > 0 ? (
 				<TagGroup className="min-w-0 gap-1 overflow-hidden">
 					{tags.map((tag, index) => (
-						<Tag key={`${tag.text}-${index}`} color={tag.color}>
+						<Tag
+							key={`${tag.text}-${index}`}
+							className={ISSUE_TAG_IDLE_BORDER_CLASS}
+							color={tag.color}
+						>
 							{tag.text}
 						</Tag>
 					))}

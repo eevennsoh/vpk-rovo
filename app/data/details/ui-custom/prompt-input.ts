@@ -119,5 +119,6 @@ import AddIcon from "@atlaskit/icon/core/add";
 		{ title: "Microphone + live chat — compact", description: "A compact floating composer with both dictation and the opt-in live chat CTA.", demoSlug: "prompt-input-demo-floating-bar" },
 		{ title: "Microphone + live chat — compact dark CTA", description: "The compact live-chat composer with the experimental neutral-bold CTA treatment used in Studio.", demoSlug: "prompt-input-demo-floating-bar-dark-cta" },
 		{ title: "Microphone + text send — compact", description: "A compact text-send composer that keeps dictation available and the send CTA visible, disabled while the prompt is empty and enabled once text is entered.", demoSlug: "prompt-input-demo-floating-bar-text-send" },
+		{ title: "Microphone + text send — 24px", description: "The same compact text-send composer with 24×24 (`icon-xs`) Add, microphone, and send hits instead of the default 32/36 cluster.", demoSlug: "prompt-input-demo-floating-bar-text-send-icon-xs" },
 	],
 };

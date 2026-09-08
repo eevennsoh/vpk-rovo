@@ -213,14 +213,12 @@ function toListAssignedAgent(agent: AgentAssignmentAgent): JiraListAssignedAgent
 export function JiraListAgentSessionsCell({
 	agentCatalog = ROVO_AGENT_SELECTOR_AGENTS,
 	agentSessions,
-	isAttachTarget = false,
 	onAgentAssign,
 	onAssignedAgentIdsChange,
 	onAssignedAgentSelect,
 }: Readonly<{
 	agentCatalog?: readonly AgentSelectorAgent[];
 	agentSessions: readonly JiraListAssignedAgent[] | undefined;
-	isAttachTarget?: boolean;
 	onAgentAssign?: (agent: AgentSelectorAgent) => void;
 	onAssignedAgentIdsChange?: (agentIds: readonly string[]) => void;
 	onAssignedAgentSelect?: (agent: JiraListAssignedAgent) => void;
@@ -239,15 +237,9 @@ export function JiraListAgentSessionsCell({
 	if (!canMutateAgents) {
 		const shown = assignedAgents.slice(0, LIST_ASSIGNED_AGENT_MAX_VISIBLE);
 		return shown.length === 0 ? (
-			<span
-				className="text-sm text-text-subtle"
-				data-agent-session-attach-target={isAttachTarget || undefined}
-			/>
+			<span className="text-sm text-text-subtle" />
 		) : (
-			<div
-				className="flex min-h-8 min-w-0 items-center gap-0.5 overflow-visible px-2"
-				data-agent-session-attach-target={isAttachTarget || undefined}
-			>
+			<div className="flex min-h-8 min-w-0 items-center gap-0.5 overflow-visible px-2">
 				{shown.map((agent) => {
 					const statusKind = resolveAssignedAgentStatusKind(agent);
 					const avatarStatus = statusKind === "needs-input" || statusKind === "finished"
@@ -271,7 +263,7 @@ export function JiraListAgentSessionsCell({
 	}
 
 	return (
-		<div data-agent-session-attach-target={isAttachTarget || undefined}>
+		<div>
 			<AgentAssignment
 				agents={agents}
 				assignedAgents={assignedAgents}

@@ -300,13 +300,17 @@ test("compact chat opts its Rovo composer textarea into visual trace auto-taggin
 
 	assert.match(promptInput, /enableVisualTraceAutoTagging\?: boolean;/u);
 	assert.match(promptInput, /prefillMentionRequest\?: \{ mention: RichTextMentionItem; requestKey: number \};/u);
+	assert.match(promptInput, /onPrefillMentionConsumed\?: \(requestKey: number\) => void;/u);
+	assert.match(promptInput, /onPrefillMentionConsumed\?\.\(requestKey\);/u);
 	assert.match(promptInput, /enableVisualTraceAutoTagging = false/u);
 	assert.match(sidebarPanel, /composerPrefillRequest\?: \{ mention\?: RichTextMentionItem; text\?: string; requestKey: number \};/u);
 	assert.match(sidebarPanel, /if \(!composerPrefillRequest\?\.mention\) \{[\s\S]*setPrompt\(composerPrefillRequest\?\.text \?\? ""\);[\s\S]*\}/u);
+	assert.match(sidebarPanel, /onPrefillMentionConsumed=\{onComposerPrefillConsumed\}/u);
 	assert.match(sidebarPanel, /prefillMentionRequest=\{[\s\S]*composerPrefillRequest\?\.mention[\s\S]*mention: composerPrefillRequest\.mention,[\s\S]*requestKey: composerPrefillRequest\.requestKey/u);
 	assert.match(sidebarComposer, /prefillMentionRequest\?: \{ mention: RichTextMentionItem; requestKey: number \};/u);
+	assert.match(sidebarComposer, /onPrefillMentionConsumed\?: \(requestKey: number\) => void;/u);
 	assert.match(sidebarComposer, /<PromptInputTextarea[\s\S]*directoryAutocompleteListVisible=\{directoryAutocompleteListVisible\}[\s\S]*enableVisualTraceAutoTagging[\s\S]*onChange=\{\(event\) => onPromptChange\(event\.currentTarget\.value\)\}/u);
-	assert.match(sidebarComposer, /<PromptInputTextarea[\s\S]*prefillMentionRequest=\{prefillMentionRequest\}/u);
+	assert.match(sidebarComposer, /<PromptInputTextarea[\s\S]*onPrefillMentionConsumed=\{onPrefillMentionConsumed\}[\s\S]*prefillMentionRequest=\{prefillMentionRequest\}/u);
 });
 
 test("Rovo app sources selector opens a reasoning-free customize popover", () => {

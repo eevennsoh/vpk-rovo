@@ -7,10 +7,6 @@ import PageIcon from "@atlaskit/icon/core/page";
 import TableIcon from "@atlaskit/icon/core/table";
 import WorkItemIcon from "@atlaskit/icon/core/work-item";
 
-import {
-	DEFAULT_DESIGN_VARIATION,
-	type DesignVariationId,
-} from "@/components/utils/design-variation";
 import { getDefaultDesignVariants } from "@/components/utils/design-variants";
 
 import type { JiraTabSelection, JiraWorkItemView } from "../lib/jira-tab-model";
@@ -24,7 +20,7 @@ export interface TabDefinition extends JiraTabSelection {
 
 const SUMMARY_TAB: TabDefinition = { label: "Summary", icon: GlobeIcon, hasContent: false };
 
-/** Everything after the work items destination is identical in both variations. */
+/** Everything after the work items destination is identical in both catalogs. */
 const SUPPORTING_TABS: readonly TabDefinition[] = [
 	{ label: "Forms", icon: FormIcon, hasContent: false },
 	{ label: "Pages", icon: PageIcon, hasContent: false },
@@ -34,46 +30,36 @@ const SUPPORTING_TABS: readonly TabDefinition[] = [
 
 /**
  * Team EU keeps Board and List as sibling destinations, so the tab bar itself
- * is the view switcher. 2000 years later folds them into one Work items tab and
- * hands the switch to the board header. Simple views applies that collapsed
- * catalog on top of whichever variation is active.
+ * is the view switcher. Simple views folds them into one Work items tab and
+ * hands the switch to the board header.
  */
-const JIRA_TABS_BY_DESIGN_VARIATION: Readonly<Record<DesignVariationId, readonly TabDefinition[]>> = {
-	"team-eu": [
-		SUMMARY_TAB,
-		{ label: "Board", icon: BoardIcon, hasContent: true, view: "board" },
-		{ label: "List", icon: TableIcon, hasContent: true, view: "list" },
-		...SUPPORTING_TABS,
-	],
-	"2000-years-later": [
-		SUMMARY_TAB,
-		{ label: "Work items", icon: WorkItemIcon, hasContent: true },
-		...SUPPORTING_TABS,
-	],
-};
+const TEAM_EU_TABS: readonly TabDefinition[] = [
+	SUMMARY_TAB,
+	{ label: "Board", icon: BoardIcon, hasContent: true, view: "board" },
+	{ label: "List", icon: TableIcon, hasContent: true, view: "list" },
+	...SUPPORTING_TABS,
+];
 
-export function getJiraTabs(
-	variation: DesignVariationId,
-	simpleViews = false,
-): readonly TabDefinition[] {
-	if (simpleViews) {
-		return JIRA_TABS_BY_DESIGN_VARIATION["2000-years-later"];
-	}
-	return JIRA_TABS_BY_DESIGN_VARIATION[variation];
+const SIMPLE_VIEWS_TABS: readonly TabDefinition[] = [
+	SUMMARY_TAB,
+	{ label: "Work items", icon: WorkItemIcon, hasContent: true },
+	...SUPPORTING_TABS,
+];
+
+export function getJiraTabs(simpleViews = false): readonly TabDefinition[] {
+	return simpleViews ? SIMPLE_VIEWS_TABS : TEAM_EU_TABS;
 }
 
 /** Baseline tab set, for callers that do not read the design stores. */
 export const JIRA_TABS: readonly TabDefinition[] = getJiraTabs(
-	DEFAULT_DESIGN_VARIATION,
 	getDefaultDesignVariants()["simple-views"],
 );
 
 /**
  * Hydration-stable starting label for routes that open on work items. Both
- * server and first client render use the default variation and variant map,
- * matching `useDesignVariation` / `useDesignVariants` server snapshots; stored
- * preferences are adopted after mount and `resolveJiraTab` carries the
- * selection over.
+ * server and first client render use the default variant map, matching
+ * `useDesignVariants` server snapshots; stored preferences are adopted after
+ * mount and `resolveJiraTab` carries the selection over.
  */
 export const DEFAULT_JIRA_WORK_ITEMS_TAB_LABEL: string = getJiraWorkItemsTabLabel(JIRA_TABS);
 

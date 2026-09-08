@@ -7,22 +7,25 @@ import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 
+import { selectionGestureFromModifierKeys } from "./agent-session-selection-gesture";
+import type { AgentSessionSelectionGesture } from "./agent-session-types";
+
 export function AgentSessionSelectMark({
 	identity,
 	isCompact = false,
 	isMarked,
 	label,
-	onToggle,
+	onActivate,
 }: Readonly<{
 	identity: ReactNode;
 	isCompact?: boolean;
 	isMarked: boolean;
 	label: string;
-	onToggle: () => void;
+	onActivate: (gesture: AgentSessionSelectionGesture) => void;
 }>): ReactElement {
-	const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+	const handleClick = (event: MouseEvent<HTMLSpanElement>) => {
 		event.stopPropagation();
-		onToggle();
+		onActivate(selectionGestureFromModifierKeys(event));
 	};
 
 	return (
@@ -40,9 +43,8 @@ export function AgentSessionSelectMark({
 			>
 				{identity}
 			</span>
-			<button
-				aria-checked={isMarked}
-				aria-label={label}
+			<span
+				aria-hidden="true"
 				className={cn(
 					"relative z-10 col-start-1 row-start-1 grid place-items-center rounded-full transition-none",
 					isCompact ? "size-6" : "size-8",
@@ -56,11 +58,10 @@ export function AgentSessionSelectMark({
 				)}
 				data-session-drag-ignore=""
 				onClick={handleClick}
-				role="checkbox"
-				type="button"
+				title={label}
 			>
 				<Icon render={<StatusSuccessIcon label="" />} />
-			</button>
+			</span>
 		</span>
 	);
 }

@@ -53,6 +53,8 @@ import { cn } from "@/lib/utils";
 import {
 	DEFAULT_KANBAN_COLUMN_CHROME,
 	resolveKanbanColumnChrome,
+	setKanbanColumnDropArmed,
+	withKanbanDropRingClipGutter,
 	type KanbanColumnChrome,
 	type KanbanColumnChromeStyles,
 } from "./column-chrome";
@@ -403,9 +405,12 @@ function BoardColumn({
 				width: "100%",
 				height: "100%",
 				borderRadius: token("radius.xlarge"),
+				...chrome.dropContentPadding,
 			}}
 		>
-			<div style={{ ...chrome.header, paddingBottom: headerPaddingBlock }}>
+			<div
+				style={{ ...chrome.header, paddingBottom: headerPaddingBlock }}
+			>
 				<div className={cn("flex min-w-0 items-center gap-2", showAgentAssignment && "justify-between")}>
 					<div className="flex min-w-0 items-center gap-2">
 						<span
@@ -510,6 +515,7 @@ export function JiraKanban({
 	selectionToolbar,
 }: Readonly<JiraKanbanProps>) {
 	const chrome = resolveKanbanColumnChrome(columnChrome);
+	const scrollportPaddingTop = withKanbanDropRingClipGutter(paddingTop, chrome).paddingTop;
 	const cardLayoutGroupId = useId();
 	const shouldReduceMotion = useReducedMotion();
 	const shouldAnimateCardMoves = animateCardMoves && !shouldReduceMotion;
@@ -551,19 +557,16 @@ export function JiraKanban({
 	const handleColumnDragOver = (event: React.DragEvent<HTMLDivElement>) => {
 		event.preventDefault();
 		event.dataTransfer.dropEffect = "move";
-		event.currentTarget.classList.add("border-ring");
-		event.currentTarget.classList.remove("border-transparent");
+		setKanbanColumnDropArmed(event.currentTarget, chrome, true);
 	};
 
 	const handleColumnDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-		event.currentTarget.classList.add("border-transparent");
-		event.currentTarget.classList.remove("border-ring");
+		setKanbanColumnDropArmed(event.currentTarget, chrome, false);
 	};
 
 	const handleColumnDrop = (event: React.DragEvent<HTMLDivElement>, targetColumnTitle: string) => {
 		event.preventDefault();
-		event.currentTarget.classList.add("border-transparent");
-		event.currentTarget.classList.remove("border-ring");
+		setKanbanColumnDropArmed(event.currentTarget, chrome, false);
 		onCardDrop?.(targetColumnTitle);
 	};
 
@@ -637,7 +640,7 @@ export function JiraKanban({
 				className="flex min-h-0 flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
 				style={{
 					flex: 1,
-					paddingTop,
+					paddingTop: scrollportPaddingTop,
 					paddingBottom,
 					paddingInline: token("space.200"),
 					overflowX: "auto",
@@ -651,7 +654,7 @@ export function JiraKanban({
 						<div
 							data-jira-kanban-column={column.title}
 							key={column.title}
-							className="border-2 border-transparent transition-colors"
+							className={chrome.dropShellClassName}
 							onDragOver={handleColumnDragOver}
 							onDragLeave={handleColumnDragLeave}
 							onDrop={(event) => handleColumnDrop(event, column.title)}

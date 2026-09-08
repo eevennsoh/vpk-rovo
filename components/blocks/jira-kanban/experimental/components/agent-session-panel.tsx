@@ -228,7 +228,7 @@ export function AgentSessionPanel({
 					 * built to stand on a board, not to fill a docked surface — and
 					 * the list has to reach the bottom of the panel. Row gap and
 					 * side inset share `space.050` (`gap-1 p-1`, 4px). The in-flow
-					 * column keeps `gap-0` and is not passed this class.
+					 * column applies the same spacing when `headerSurface="column"`.
 					 */}
 					<AgentSessionColumn
 						{...agentSessionColumn}

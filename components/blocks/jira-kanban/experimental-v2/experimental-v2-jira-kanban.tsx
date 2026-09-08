@@ -9,7 +9,7 @@ import AiAgentAddIcon from "@atlaskit/icon-lab/core/ai-agent-add";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import AddIcon from "@atlaskit/icon/core/add";
 
-import { AgentSessionColumn, type AgentSessionColumnProps } from "@/components/blocks/agent-session-column";
+import { type AgentSessionColumnProps } from "@/components/blocks/agent-session-column";
 import {
 	JiraIssue,
 	type JiraIssueAgentActivityLayout,
@@ -46,6 +46,7 @@ import {
 	BoardColumnResizeButton,
 	CollapsedBoardColumn,
 } from "../experimental/components/collapsed-board-column";
+import { InFlowAgentSessionColumn } from "../experimental/components/in-flow-agent-session-column";
 import { BOARD_COLUMN_ACTION_REVEAL } from "../experimental/lib/board-column-action-reveal";
 import {
 	EMPTY_COLLAPSED_BOARD_COLUMNS,
@@ -67,6 +68,9 @@ import type {
 import {
 	DEFAULT_KANBAN_COLUMN_CHROME,
 	resolveKanbanColumnChrome,
+	setKanbanColumnDropArmed,
+	withKanbanDropContentGutter,
+	withKanbanDropRingClipGutter,
 	type KanbanColumnChrome,
 	type KanbanColumnChromeStyles,
 } from "../column-chrome";
@@ -106,12 +110,13 @@ const JIRA_KANBAN_CARD_DEPART: Transition = { duration: 0.4, ease: [0.6, 0, 0.8,
 /**
  * Collapsing a column repositions everything to its right, so the width change
  * uses the bold in-place transition profile (`duration-medium` + `ease-in-out`).
- * The drag-target border keeps its own interaction profile.
+ * The drag-target ring keeps its own interaction profile.
  */
 const BOARD_COLUMN_SHELL_TRANSITION = [
 	"min-width var(--duration-medium) var(--ease-in-out)",
 	"max-width var(--duration-medium) var(--ease-in-out)",
 	"border-color var(--duration-normal) var(--ease-out-practical)",
+	"outline-color var(--duration-normal) var(--ease-out-practical)",
 ].join(", ");
 
 function getJiraKanbanCardScale(
@@ -343,11 +348,12 @@ function BoardColumn({
 				minWidth: `${BOARD_COLUMN_WIDTH_PX}px`,
 				height: "100%",
 				borderRadius: token("radius.xlarge"),
+				...chrome.dropContentPadding,
 			}}
 		>
 			<div
 				className="flex min-w-0 items-center justify-between gap-2"
-				style={{ ...chrome.header, paddingBottom: token("space.100") }}
+				style={{ paddingBottom: token("space.100"), ...chrome.header }}
 			>
 				<div className="flex min-w-0 items-center gap-1.5">
 					<span className="truncate text-xs font-medium leading-4 text-text-subtle">
@@ -370,6 +376,7 @@ function BoardColumn({
 					<BoardColumnResizeButton
 						className={cn(
 							BOARD_COLUMN_ACTION_REVEAL,
+							chrome.resizeButtonClassName,
 							"group-hover/board-column:pointer-events-auto group-hover/board-column:opacity-100",
 							"group-has-[:focus-visible]/board-column:pointer-events-auto group-has-[:focus-visible]/board-column:opacity-100",
 						)}
@@ -418,7 +425,9 @@ function BoardColumn({
 
 function BoardColumnShell({
 	children,
+	chrome,
 	collapsed,
+	columnChrome,
 	count,
 	onDragLeave,
 	onDragOver,
@@ -428,7 +437,9 @@ function BoardColumnShell({
 }: Readonly<{
 	/** Receives the collapse handler so the column header can render the control. */
 	children: (onCollapse: () => void) => ReactNode;
+	chrome: KanbanColumnChromeStyles;
 	collapsed: boolean;
+	columnChrome: KanbanColumnChrome;
 	count: number;
 	onDragLeave: (event: React.DragEvent<HTMLDivElement>) => void;
 	onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
@@ -459,9 +470,11 @@ function BoardColumnShell({
 	return (
 		<div
 			data-jira-kanban-column={title}
+			data-kanban-column-chrome={columnChrome}
 			data-collapsed={collapsed || undefined}
 			className={cn(
-				"min-w-0 border-2 border-transparent",
+				chrome.dropShellClassName,
+				"min-w-0",
 				collapsed || isResizing ? "overflow-hidden" : "overflow-visible",
 			)}
 			onDragOver={onDragOver}
@@ -477,43 +490,18 @@ function BoardColumnShell({
 			}}
 		>
 			{collapsed ? (
-				<CollapsedBoardColumn count={count} onExpand={handleToggleCollapsed} title={title} />
+				<div style={{ paddingTop: chrome.dropContentPadding?.paddingTop }}>
+					<CollapsedBoardColumn
+						chrome={chrome.collapsed}
+						count={count}
+						headerFrame={chrome.headerFrame}
+						onExpand={handleToggleCollapsed}
+						title={title}
+					/>
+				</div>
 			) : (
 				children(handleToggleCollapsed)
 			)}
-		</div>
-	);
-}
-
-function BoardAddColumnButton() {
-	return (
-		<div className="flex shrink-0 flex-col self-start overflow-visible border-2 border-transparent">
-			<div
-				aria-hidden
-				className="flex items-center"
-				style={{ paddingBottom: token("space.100") }}
-			>
-				<span className="size-6" />
-			</div>
-			<TooltipProvider>
-				<Tooltip>
-					<TooltipTrigger
-						render={
-							<Button
-								aria-label="Create column"
-								className="shrink-0"
-								data-jira-kanban-add-column=""
-								size="icon"
-								type="button"
-								variant="outline"
-							/>
-						}
-					>
-						<Icon render={<AddIcon label="" />} />
-					</TooltipTrigger>
-					<TooltipContent>Create column</TooltipContent>
-				</Tooltip>
-			</TooltipProvider>
 		</div>
 	);
 }
@@ -576,6 +564,8 @@ export function ExperimentalV2JiraKanban({
 	selectionToolbar,
 }: Readonly<ExperimentalV2JiraKanbanProps>) {
 	const chrome = resolveKanbanColumnChrome(columnChrome);
+	const scrollportPaddingTop = withKanbanDropRingClipGutter(paddingTop, chrome).paddingTop;
+	const untrackedPaddingTop = withKanbanDropContentGutter(paddingTop, chrome).paddingTop;
 	const cardLayoutGroupId = useId();
 	const shouldReduceMotion = useReducedMotion();
 	const shouldAnimateCardMoves = animateCardMoves && !shouldReduceMotion;
@@ -621,19 +611,16 @@ export function ExperimentalV2JiraKanban({
 	const handleColumnDragOver = (event: React.DragEvent<HTMLDivElement>) => {
 		event.preventDefault();
 		event.dataTransfer.dropEffect = "move";
-		event.currentTarget.classList.add("border-ring");
-		event.currentTarget.classList.remove("border-transparent");
+		setKanbanColumnDropArmed(event.currentTarget, chrome, true);
 	};
 
 	const handleColumnDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-		event.currentTarget.classList.add("border-transparent");
-		event.currentTarget.classList.remove("border-ring");
+		setKanbanColumnDropArmed(event.currentTarget, chrome, false);
 	};
 
 	const handleColumnDrop = (event: React.DragEvent<HTMLDivElement>, targetColumnTitle: string) => {
 		event.preventDefault();
-		event.currentTarget.classList.add("border-transparent");
-		event.currentTarget.classList.remove("border-ring");
+		setKanbanColumnDropArmed(event.currentTarget, chrome, false);
 		onCardDrop?.(targetColumnTitle);
 	};
 
@@ -713,16 +700,14 @@ export function ExperimentalV2JiraKanban({
 		<div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
 			<div className="flex min-h-0 min-w-0 flex-1 items-stretch">
 				{agentSessionColumn ? (
-					// Top/left/bottom match the status columns' 2px drop-target
-					// box so the headers share a baseline. No right border:
-					// Untracked work is not a drop target, and that 2px reads as
-					// a white seam once the plane is `bg-surface`.
-					<div
-						className="flex min-h-0 shrink-0 border-2 border-transparent border-r-0 ps-6"
-						style={{ paddingTop, paddingBottom }}
-					>
-						<AgentSessionColumn {...agentSessionColumn} />
-					</div>
+					<InFlowAgentSessionColumn
+						agentSessionColumn={agentSessionColumn}
+						columnFrame={chrome.headerFrame}
+						paddingBottom={paddingBottom}
+						paddingTop={untrackedPaddingTop}
+						sessionFlyoutsSuspended={draggedCardCode !== null}
+						untrackedDropArmed={false}
+					/>
 				) : null}
 				<section
 					tabIndex={0}
@@ -730,7 +715,7 @@ export function ExperimentalV2JiraKanban({
 					className="flex min-h-0 min-w-0 flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
 					style={{
 						flex: 1,
-						paddingTop,
+						paddingTop: scrollportPaddingTop,
 						paddingBottom,
 						overflowX: "auto",
 						overflowY: "hidden",
@@ -738,16 +723,13 @@ export function ExperimentalV2JiraKanban({
 					}}
 				>
 				<LayoutGroup id={cardLayoutGroupId}>
-					<div
-						className={cn(
-							"flex min-h-full w-max min-w-full items-stretch",
-							agentSessionColumn ? "ps-2" : "ps-6",
-						)}
-					>
+					<div className="flex min-h-full w-max min-w-full items-stretch ps-6">
 						<div className="flex min-h-full flex-1 items-stretch gap-2">
 						{boardColumns.map((column) => (
 						<BoardColumnShell
+							chrome={chrome}
 							collapsed={isBoardColumnCollapsed(collapsedColumns, column.title)}
+							columnChrome={columnChrome}
 							count={column.cards.length}
 							key={column.title}
 							onDragOver={handleColumnDragOver}
@@ -874,7 +856,6 @@ export function ExperimentalV2JiraKanban({
 							)}
 						</BoardColumnShell>
 						))}
-						<BoardAddColumnButton />
 						</div>
 						<div aria-hidden className="w-6 shrink-0" />
 					</div>

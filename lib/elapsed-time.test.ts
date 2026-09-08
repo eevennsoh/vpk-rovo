@@ -27,6 +27,6 @@ test("formatRelativeTime uses contextual minute, hour, and day labels", () => {
 	assert.equal(formatRelativeTime(5), "Just now");
 	assert.equal(formatRelativeTime(5 * 60), "5m ago");
 	assert.equal(formatRelativeTime(60 * 60), "1hr ago");
-	assert.equal(formatRelativeTime(24 * 60 * 60), "yesterday");
+	assert.equal(formatRelativeTime(24 * 60 * 60), "Yesterday");
 	assert.equal(formatRelativeTime(3 * 24 * 60 * 60), "3d ago");
 });

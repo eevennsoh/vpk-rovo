@@ -189,8 +189,8 @@ export function ScrollingCard({
 	useStackOrder(wrapperRef, stackOrder, loopPosition);
 
 	// A single-item list makes the card's `<li>` both `:first-child` and
-	// `:last-child`, which is what turns the fused well into a detached card
-	// with all four radii and a full border — with zero edits to the block.
+	// `:last-child`, so this owner can restore the detached frame without
+	// changing the shared borderless in-flow Agent Session card.
 	const listItems = useMemo(() => [item], [item]);
 
 	return (
@@ -248,15 +248,11 @@ export function ScrollingCard({
 			 * which would install pointer handlers that fight Ticker's drag.
 			 */}
 			<AgentSession
-				// The card's own `[li:not(:last-child)_&]:border-b-0` compiles to a
-				// DESCENDANT selector, so Ticker's `<li class="ticker-item">` — never
-				// `:last-child` once clones follow it — strips the bottom stroke off
-				// every detached card. Re-assert it from the list this block actually
-				// owns: `.cls li:last-child article` is (0,2,2) and beats the block's
-				// (0,2,1), and this single-item `<li>` genuinely IS `:last-child`.
-				// Same shape and same target as `AGENT_SESSION_WELL_LIST` in
-				// `components/blocks/agent-session-column/index.tsx`.
-				className="w-full min-w-0 [&_li:last-child_article]:border-b"
+				// Large Agent Session cards are borderless in their shared in-flow
+				// list. Each Ticker item is detached, so restore the complete disabled
+				// frame at this boundary instead of leaking Scrolling chrome back into
+				// the shared block.
+				className="w-full min-w-0 [&_li:last-child_article]:border [&_li:last-child_article]:border-border-disabled"
 				items={listItems}
 				// The block's hover pair is not optional: `AgentSessionCard` always
 				// builds the archive control, and its handler only optional-chains

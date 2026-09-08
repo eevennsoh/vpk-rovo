@@ -21,8 +21,13 @@ import ExperimentalV2JiraKanbanPage from "@/components/blocks/jira-kanban/experi
 		},
 		{
 			title: "Experimental v2",
-			description: "Standalone fork of Experimental that starts identical to it. Owns its own board, header, and page tree so v2 can diverge independently; shares the established experimental support contracts.",
+			description: "Standalone fork of Experimental. Default chrome frames status headers and the Untracked title inside their wells. Use Default / Simple on the board to switch chrome.",
 			demoSlug: "jira-kanban-demo-experimental-v2",
+		},
+		{
+			title: "Experimental v2 simple",
+			description: "Same v2 board, starting on simple chrome. Toggle back to Default on the board.",
+			demoSlug: "jira-kanban-demo-experimental-v2-simple",
 		},
 	],
 	props: [

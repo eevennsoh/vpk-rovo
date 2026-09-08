@@ -52,7 +52,7 @@ export const JIRA_ISSUE_DETAIL: ComponentDetail = {
 		{ name: "dragging", type: "boolean", default: "false", description: "Applies the drag cursor and faded drag state." },
 		{ name: "assigneeAvatarSrc", type: "string", description: "Assignee avatar image source." },
 		{ name: "assigneeUnassignedKind", type: '"person" | "agent"', description: "Renders the shared unassigned avatar placeholder instead of an assignee image." },
-		{ name: "agentActivities", type: "readonly JiraIssueAgentActivity[]", description: "Active agents aggregated into one priority row; multiple agents reveal the shared Agent List flyout." },
+		{ name: "agentActivities", type: "readonly JiraIssueAgentActivity[]", description: "Active agents aggregated into one priority row; multiple agents show the cycling Agent Loading visual and reveal the shared Agent List flyout." },
 		{ name: "agentActivityMode", type: '"none" | "working" | "awaiting-input" | "completed"', default: '"none"', description: "Presentation mode for showing active agent rows or completed-work notification states." },
 		{ name: "agentActivityLayout", type: '"merged" | "split"', default: '"merged"', description: "Merged collapses active agents into one prioritized chin row; split gives each active agent its own row with its own status and chat entry point." },
 		{ name: "agentDoneRuns", type: "readonly JiraIssueCompletedAgentRun[]", description: "Completed agent runs shown with the shared Jira Activity output-card design." },

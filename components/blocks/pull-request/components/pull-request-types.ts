@@ -1,11 +1,13 @@
 export type PullRequestStatus = "Open" | "Merged";
 
 /**
- * Card density. `compact` is the single-row list card (avatar leads, title and
- * metadata stack beside it). `spacious` is the three-row summary card: status +
- * title, then GitHub mark + branch path, then an author/diff footer.
+ * Card layout. `dropdown` is the compact single-row list card used in select
+ * menus. `spacious` is the original three-row dropdown/summary card (status +
+ * title, GitHub branch path, author/diff footer). `flyout` is the overlay
+ * summary card: title + lozenge, author · time, then a divided GitHub branch
+ * path and files / diff footer.
  */
-export type PullRequestVariant = "compact" | "spacious";
+export type PullRequestVariant = "dropdown" | "spacious" | "flyout";
 
 export interface PullRequestAuthor {
 	name: string;
@@ -13,7 +15,7 @@ export interface PullRequestAuthor {
 }
 
 export interface PullRequestProps {
-	/** Layout density. Defaults to the compact list card. */
+	/** Layout. Defaults to the compact dropdown list card. */
 	variant?: PullRequestVariant;
 	/** Pull request number (shown as `#1306` in subtle text). */
 	number: number;
@@ -21,9 +23,9 @@ export interface PullRequestProps {
 	title: string;
 	/** Review state shown as a status lozenge. */
 	status: PullRequestStatus;
-	/** Author shown as a leading circular avatar. */
+	/** Author shown as a circular avatar, and on the flyout as name · time. */
 	author?: PullRequestAuthor;
-	/** Owner/name path (e.g. `eevensoh/vpk-rovo`). */
+	/** Owner/name path (e.g. `eevensoh/vpk-rovo`). Compact dropdown card only. */
 	repository?: string;
 	/** Source / head branch name shown before the arrow. */
 	branch?: string;
@@ -32,16 +34,17 @@ export interface PullRequestProps {
 	additions: number;
 	deletions: number;
 	/**
-	 * Number of changed files, rendered as `N files` in the spacious footer.
-	 * Ignored by the compact card, which has no room for the metric.
+	 * Number of changed files, rendered as `N files` on spacious and flyout
+	 * cards. Ignored by the compact dropdown card, which has no room for the
+	 * metric.
 	 */
 	filesChanged?: number;
 	/**
 	 * Absolute timestamp (ms). Reserved for callers that already track PR age;
-	 * the compact card no longer renders a relative-time label.
+	 * the card renders `relativeTime` when provided.
 	 */
 	timestampMs?: number;
-	/** Static relative label reserved for callers; not rendered on the card. */
+	/** Static relative label. Rendered on the flyout as `Name · relativeTime`. Ignored by dropdown variants. */
 	relativeTime?: string;
 	/** Marks the card as the active selection, including read-only summaries. */
 	selected?: boolean;

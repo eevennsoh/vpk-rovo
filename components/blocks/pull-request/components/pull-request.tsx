@@ -1,6 +1,7 @@
 "use client";
 
 import ArrowRightIcon from "@atlaskit/icon/core/arrow-right";
+import FileIcon from "@atlaskit/icon/core/file";
 import PullRequestIcon from "@atlaskit/icon/core/pull-request";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -85,7 +86,7 @@ function PullRequestDiffStats({
 		<span
 			aria-label={`${additions} additions, ${deletions} deletions`}
 			className={cn(
-				"inline-flex shrink-0 items-center gap-1 text-xs font-medium tabular-nums leading-4",
+				"inline-flex shrink-0 items-center text-xs font-medium tabular-nums leading-4",
 				className,
 			)}
 			role="group"
@@ -124,7 +125,30 @@ function PullRequestGitHubMark() {
 	);
 }
 
-/** GitHub-marked repository pill. Compact density only. */
+/** `#N` + title as one wrapping text run so line 2 starts under the number. */
+function PullRequestInlineTitle({
+	number,
+	title,
+	className,
+}: Readonly<{ number: number; title: string; className?: string }>) {
+	return (
+		<span className={cn("min-w-0 whitespace-normal text-sm leading-5", className)}>
+			<span className="text-text-subtlest">#{number} </span>
+			<span className="text-text">{title}</span>
+		</span>
+	);
+}
+
+/** Leading file glyph matching session-flyout `DetailsMetaRow`. */
+function PullRequestMetaLeadingIcon() {
+	return (
+		<span className="grid size-4 shrink-0 place-items-center text-icon-subtlest" aria-hidden="true">
+			<Icon aria-hidden render={<FileIcon label="" size="small" />} />
+		</span>
+	);
+}
+
+/** GitHub-marked repository pill. Dropdown card only. */
 function PullRequestRepositoryTag({
 	repository,
 }: Readonly<{ repository?: string }>) {
@@ -155,6 +179,7 @@ function PullRequestBranchPath({
 					: (branch ?? targetBranch)
 			}
 			className="inline-flex min-w-0 shrink items-center gap-1 overflow-hidden text-xs leading-5"
+			role="group"
 		>
 			{/* Source truncates; target/base stays full (`main`, not `m…`). */}
 			{branch ? <BranchName name={branch} /> : null}
@@ -170,7 +195,7 @@ function PullRequestBranchPath({
 	);
 }
 
-function PullRequestCompactBody({
+function PullRequestDropdownBody({
 	number,
 	title,
 	status,
@@ -245,12 +270,13 @@ function PullRequestSpaciousBody({
 >) {
 	return (
 		<>
-			<div className="flex min-w-0 items-center gap-2">
+			<div className="flex min-w-0 items-start gap-2">
 				<PullRequestStatusLozenge status={status} withIcon />
-				<span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden text-sm font-medium leading-5">
-					<span className="shrink-0 text-text-subtlest">#{number}</span>
-					<span className="min-w-0 truncate text-text">{title}</span>
-				</span>
+				<PullRequestInlineTitle
+					className="flex-1 font-medium"
+					number={number}
+					title={title}
+				/>
 			</div>
 			<div className="flex min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden">
 				<PullRequestGitHubMark />
@@ -282,16 +308,97 @@ function PullRequestSpaciousBody({
 }
 
 /**
- * Pull-request summary card in two densities.
+ * Flyout body (Figma 3134:2238): `#N` + title with the status lozenge trailing,
+ * author avatar + `Name · relativeTime`, then a divided GitHub branch path and
+ * files / diff footer.
+ */
+function PullRequestFlyoutBody({
+	number,
+	title,
+	status,
+	author,
+	branch,
+	targetBranch,
+	additions,
+	deletions,
+	filesChanged,
+	relativeTime,
+}: Readonly<
+	Pick<
+		PullRequestProps,
+		| "number"
+		| "title"
+		| "status"
+		| "author"
+		| "branch"
+		| "targetBranch"
+		| "additions"
+		| "deletions"
+		| "filesChanged"
+		| "relativeTime"
+	>
+>) {
+	const authorMeta = author ? (
+		<span className="flex min-w-0 items-center gap-1 overflow-hidden text-xs leading-4 text-text-subtlest">
+			<PullRequestAuthorAvatar author={author} size="xs" />
+			<span className="min-w-0 truncate">{author.name}</span>
+			{relativeTime ? (
+				<>
+					<span className="shrink-0">·</span>
+					<span className="shrink-0">{relativeTime}</span>
+				</>
+			) : null}
+		</span>
+	) : relativeTime ? (
+		<span className="text-xs leading-4 text-text-subtlest">{relativeTime}</span>
+	) : null;
+
+	return (
+		<>
+			<div className="flex w-full min-w-0 items-start gap-3 px-3">
+				<div className="flex min-w-0 flex-1 flex-col gap-1">
+					<PullRequestInlineTitle number={number} title={title} />
+					{authorMeta}
+				</div>
+				<PullRequestStatusLozenge status={status} />
+			</div>
+			<div className="flex w-full min-w-0 flex-col gap-2 border-t border-border-disabled p-3">
+				<div className="flex min-w-0 items-center gap-1 text-xs leading-5">
+					<PullRequestGitHubMark />
+					<PullRequestBranchPath branch={branch} targetBranch={targetBranch} />
+				</div>
+				<div className="flex min-w-0 items-center gap-1 text-xs leading-5">
+					<PullRequestMetaLeadingIcon />
+					{filesChanged != null ? (
+						<span className="text-xs leading-4 text-text-subtle tabular-nums">
+							{filesChanged} {filesChanged === 1 ? "file" : "files"}
+						</span>
+					) : null}
+					<PullRequestDiffStats
+						additions={additions}
+						deletions={deletions}
+						className="font-normal"
+					/>
+				</div>
+			</div>
+		</>
+	);
+}
+
+/**
+ * Pull-request summary card in three layouts.
  *
- * - `compact`: one row — author avatar, split `#N` + title, diff stats, then a
+ * - `dropdown`: one row — author avatar, split `#N` + title, diff stats, then a
  *   metadata line of status lozenge, repo pill, and `source → target` path.
- * - `spacious`: three rows — status lozenge (with glyph) + `#N` + title, then
- *   GitHub mark + `source → target` path, then an author / changed-files /
- *   diff footer.
+ * - `spacious`: three rows — status lozenge (with glyph) + wrapping `#N` +
+ *   title, then GitHub mark + `source → target` path, then an author /
+ *   changed-files / diff footer. Selectable dropdown-style chrome.
+ * - `flyout`: overlay card — wrapping `#N` + title with a trailing status
+ *   lozenge, author · time, then a divided GitHub mark + `source → target`
+ *   path and files / diff footer.
  */
 export function PullRequest({
-	variant = "compact",
+	variant = "dropdown",
 	number,
 	title,
 	status,
@@ -302,6 +409,7 @@ export function PullRequest({
 	additions,
 	deletions,
 	filesChanged,
+	relativeTime,
 	selected = false,
 	onActivate,
 	className,
@@ -310,8 +418,22 @@ export function PullRequest({
 	// cards with onActivate). Dropdown options should omit `selected` and keep
 	// an idle surface — SelectItem owns activation; the trigger shows state.
 	const activeSelected = selected;
+	const isFlyout = variant === "flyout";
 	const isSpacious = variant === "spacious";
-	const body = isSpacious ? (
+	const body = isFlyout ? (
+		<PullRequestFlyoutBody
+			additions={additions}
+			author={author}
+			branch={branch}
+			deletions={deletions}
+			filesChanged={filesChanged}
+			number={number}
+			relativeTime={relativeTime}
+			status={status}
+			targetBranch={targetBranch}
+			title={title}
+		/>
+	) : isSpacious ? (
 		<PullRequestSpaciousBody
 			additions={additions}
 			author={author}
@@ -324,7 +446,7 @@ export function PullRequest({
 			title={title}
 		/>
 	) : (
-		<PullRequestCompactBody
+		<PullRequestDropdownBody
 			additions={additions}
 			author={author}
 			branch={branch}
@@ -339,16 +461,18 @@ export function PullRequest({
 
 	const surfaceClassName = cn(
 		"flex w-full min-w-0 text-text",
-		isSpacious
-			? "flex-col items-stretch gap-2 rounded-xl border border-border p-3"
-			: "items-center gap-2 rounded-lg border border-border px-3 py-1.5",
+		isFlyout
+			? "flex-col items-stretch gap-3 rounded-lg bg-surface-raised pt-3 shadow-2xl"
+			: isSpacious
+				? "flex-col items-stretch gap-2 rounded-xl border border-border p-3"
+				: "items-center gap-2 rounded-lg border border-border px-3 py-1.5",
 		onActivate
 			? "cursor-pointer text-left outline-none transition-[background-color,border-color] duration-normal ease-out-practical hover:bg-surface-hovered focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 			: null,
-		activeSelected
+		activeSelected && !isFlyout
 			? "border-border-selected bg-bg-selected text-text-selected"
 			: null,
-		onActivate && activeSelected
+		onActivate && activeSelected && !isFlyout
 			? "hover:bg-bg-selected-hovered"
 			: null,
 		className,

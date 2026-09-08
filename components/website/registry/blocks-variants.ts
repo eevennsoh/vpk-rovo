@@ -1,7 +1,10 @@
 import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
 
+import { BLOCK_VARIANT_CATALOG_DEMO_ENTRIES } from "./blocks-variants-catalog";
+
 export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
+	...BLOCK_VARIANT_CATALOG_DEMO_ENTRIES,
 	"agent-list-demo-compact": dynamic(
 		() =>
 			import("../demos/blocks/agent-list-demo").then((mod) => ({
@@ -13,6 +16,27 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 		() =>
 			import("../demos/blocks/agent-list-demo").then((mod) => ({
 				default: mod.AgentListDemoComposer,
+			})),
+		{ ssr: false },
+	),
+	"pull-request-demo-dropdown": dynamic(
+		() =>
+			import("../demos/blocks/pull-request-demo").then((mod) => ({
+				default: mod.PullRequestDemoDropdown,
+			})),
+		{ ssr: false },
+	),
+	"pull-request-demo-spacious": dynamic(
+		() =>
+			import("../demos/blocks/pull-request-demo").then((mod) => ({
+				default: mod.PullRequestDemoSpacious,
+			})),
+		{ ssr: false },
+	),
+	"pull-request-demo-flyout": dynamic(
+		() =>
+			import("../demos/blocks/pull-request-demo").then((mod) => ({
+				default: mod.PullRequestDemoFlyout,
 			})),
 		{ ssr: false },
 	),
@@ -51,6 +75,13 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
+	"agent-session-flyout-demo-details": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-flyout-demo").then((mod) => ({
+				default: mod.AgentSessionFlyoutDemoDetails,
+			})),
+		{ ssr: false },
+	),
 	"agent-session-flyout-demo-composer": dynamic(
 		() =>
 			import("../demos/blocks/agent-session-flyout-demo").then((mod) => ({
@@ -62,6 +93,13 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 		() =>
 			import("../demos/blocks/agent-session-flyout-demo").then((mod) => ({
 				default: mod.AgentSessionFlyoutDemoUntrackedWork,
+			})),
+		{ ssr: false },
+	),
+	"agent-session-flyout-demo-coding-lifecycle": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-flyout-demo").then((mod) => ({
+				default: mod.AgentSessionFlyoutDemoCodingLifecycle,
 			})),
 		{ ssr: false },
 	),
@@ -86,6 +124,27 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
+	"agent-session-column-demo": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-column-demo").then((mod) => ({
+				default: mod.default,
+			})),
+		{ ssr: false },
+	),
+	"agent-session-column-demo-simple": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-column-demo").then((mod) => ({
+				default: mod.AgentSessionColumnDemoSimple,
+			})),
+		{ ssr: false },
+	),
+	"agent-session-column-demo-panel": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-column-demo").then((mod) => ({
+				default: mod.AgentSessionColumnDemoPanel,
+			})),
+		{ ssr: false },
+	),
 	"jira-kanban-demo-standard": dynamic(
 		() =>
 			import("../demos/blocks/jira-kanban-demo").then((mod) => ({
@@ -104,6 +163,13 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 		() =>
 			import("../demos/blocks/jira-kanban-demo").then((mod) => ({
 				default: mod.JiraKanbanDemoExperimentalV2,
+			})),
+		{ ssr: false },
+	),
+	"jira-kanban-demo-experimental-v2-simple": dynamic(
+		() =>
+			import("../demos/blocks/jira-kanban-demo").then((mod) => ({
+				default: mod.JiraKanbanDemoExperimentalV2Simple,
 			})),
 		{ ssr: false },
 	),
@@ -265,149 +331,6 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 		() =>
 			import("../demos/blocks/agent-profile-card-demo").then((mod) => ({
 				default: mod.AgentProfileCardPreviewExample,
-			})),
-		{ ssr: false },
-	),
-	"artifact-demo-code-preview": dynamic(
-		() =>
-			import("../demos/blocks/artifact-demo").then((mod) => ({
-				default: mod.ArtifactDemoCodePreview,
-			})),
-		{ ssr: false },
-	),
-	"artifact-demo-image-preview": dynamic(
-		() =>
-			import("../demos/blocks/artifact-demo").then((mod) => ({
-				default: mod.ArtifactDemoImagePreview,
-			})),
-		{ ssr: false },
-	),
-	"artifact-demo-streaming": dynamic(
-		() =>
-			import("../demos/blocks/artifact-demo").then((mod) => ({
-				default: mod.ArtifactDemoStreaming,
-			})),
-		{ ssr: false },
-	),
-	"artifact-demo-chip": dynamic(
-		() =>
-			import("../demos/blocks/artifact-demo").then((mod) => ({
-				default: mod.ArtifactDemoChip,
-			})),
-		{ ssr: false },
-	),
-	"artifact-demo-compound": dynamic(
-		() =>
-			import("../demos/blocks/artifact-demo").then((mod) => ({
-				default: mod.ArtifactDemoCompound,
-			})),
-		{ ssr: false },
-	),
-
-	// Spotlight
-	"spotlight-basic": dynamic(
-		() =>
-			import("../demos/blocks/spotlight-demo").then((mod) => ({
-				default: mod.SpotlightBasicExample,
-			})),
-		{ ssr: false },
-	),
-	"spotlight-media": dynamic(
-		() =>
-			import("../demos/blocks/spotlight-demo").then((mod) => ({
-				default: mod.SpotlightMediaExample,
-			})),
-		{ ssr: false },
-	),
-	"spotlight-tour": dynamic(
-		() =>
-			import("../demos/blocks/spotlight-demo").then((mod) => ({
-				default: mod.SpotlightTourExample,
-			})),
-		{ ssr: false },
-	),
-	"spotlight-target": dynamic(
-		() =>
-			import("../demos/blocks/spotlight-demo").then((mod) => ({
-				default: mod.SpotlightTargetExample,
-			})),
-		{ ssr: false },
-	),
-	"spotlight-placements": dynamic(
-		() =>
-			import("../demos/blocks/spotlight-demo").then((mod) => ({
-				default: mod.SpotlightPlacementsExample,
-			})),
-		{ ssr: false },
-	),
-
-	// Editor palette
-	"editor-palette-nested": dynamic(
-		() =>
-			import("../demos/blocks/editor-palette-demo").then((mod) => ({
-				default: mod.EditorPaletteNested,
-			})),
-		{ ssr: false },
-	),
-	"editor-palette-flat": dynamic(
-		() =>
-			import("../demos/blocks/editor-palette-demo").then((mod) => ({
-				default: mod.EditorPaletteFlat,
-			})),
-		{ ssr: false },
-	),
-	"editor-palette-search": dynamic(
-		() =>
-			import("../demos/blocks/editor-palette-demo").then((mod) => ({
-				default: mod.EditorPaletteSearch,
-			})),
-		{ ssr: false },
-	),
-
-	// Agent
-	"agent-demo-full": dynamic(
-		() =>
-			import("../demos/blocks/agent-demo").then((mod) => ({
-				default: mod.AgentDemoFull,
-			})),
-		{ ssr: false },
-	),
-	"agent-demo-empty": dynamic(
-		() =>
-			import("../demos/blocks/agent-demo").then((mod) => ({
-				default: mod.AgentDemoEmpty,
-			})),
-		{ ssr: false },
-	),
-
-	// Skill Config
-	"skill-config-demo-full": dynamic(
-		() =>
-			import("../demos/blocks/skill-config-demo").then((mod) => ({
-				default: mod.SkillConfigDemoFull,
-			})),
-		{ ssr: false },
-	),
-	"skill-config-demo-empty": dynamic(
-		() =>
-			import("../demos/blocks/skill-config-demo").then((mod) => ({
-				default: mod.SkillConfigDemoEmpty,
-			})),
-		{ ssr: false },
-	),
-
-	// Trigger Config
-	"trigger-config-demo-full": dynamic(
-		() =>
-			import("../demos/blocks/trigger-config-demo").then((mod) => ({
-				default: mod.TriggerConfigDemoFull,
-			})),
-		{ ssr: false },
-	),
-	"trigger-config-demo-empty": dynamic(
-		() =>
-			import("../demos/blocks/trigger-config-demo").then((mod) => ({
-				default: mod.TriggerConfigDemoEmpty,
 			})),
 		{ ssr: false },
 	),
@@ -628,6 +551,12 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 	})), { ssr: false }),
 	"jira-issue-demo-agent-activity-states-experimental": dynamic(() => import("../demos/blocks/jira-issue-demo").then((mod) => ({
 		default: mod.JiraIssueDemoAgentActivityStatesExperimental,
+	})), { ssr: false }),
+	"jira-create-demo-work-item": dynamic(() => import("../demos/blocks/jira-create-demo").then((mod) => ({
+		default: mod.JiraCreateDemoWorkItem,
+	})), { ssr: false }),
+	"jira-create-demo-sessions": dynamic(() => import("../demos/blocks/jira-create-demo").then((mod) => ({
+		default: mod.JiraCreateDemoSessions,
 	})), { ssr: false }),
 	"jira-activity-demo-activity-card": dynamic(
 		() =>

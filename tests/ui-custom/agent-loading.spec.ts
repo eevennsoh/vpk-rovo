@@ -4,10 +4,27 @@ const AGENT_LOADING_URL = `${
 	process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000"
 }/components/ui-custom/agent-loading`;
 
+test("the live demo can cycle two, three, and four agents", async ({ page }) => {
+	await page.goto(AGENT_LOADING_URL, { waitUntil: "domcontentloaded" });
+
+	const demo = page.getByRole("status").filter({ hasText: "Needs input" }).first();
+	await expect(demo).toContainText("3 agents working");
+
+	await page.getByRole("button", { name: "2 agents" }).click();
+	await expect(page.getByRole("status").filter({ hasText: "Needs input" }).first()).toContainText(
+		"2 agents working",
+	);
+
+	await page.getByRole("button", { name: "4 agents" }).click();
+	await expect(page.getByRole("status").filter({ hasText: "Needs input" }).first()).toContainText(
+		"4 agents working",
+	);
+});
+
 test("a live reduced-motion preference stops Agent Loading before it resumes", async ({ page }) => {
 	await page.goto(AGENT_LOADING_URL, { waitUntil: "domcontentloaded" });
 
-	const activeStatus = page.getByRole("status").filter({ hasText: "Needs input" });
+	const activeStatus = page.getByRole("status").filter({ hasText: "Needs input" }).first();
 	const finishButton = page.getByRole("button", { name: "Finish all agents" });
 	await expect(activeStatus).toHaveCount(1);
 
@@ -21,44 +38,38 @@ test("a live reduced-motion preference stops Agent Loading before it resumes", a
 	));
 	await page.getByRole("button", { name: "Resume agents" }).press("Enter");
 
-	const resumedStatus = page.getByRole("status").filter({ hasText: "Needs input" });
+	const resumedStatus = page.getByRole("status").filter({ hasText: "Needs input" }).first();
+	const loading = resumedStatus.locator(".agent-loading");
+	await expect(loading).toHaveAttribute("data-reduced-motion", "true");
 	const frontAvatar = resumedStatus.locator('[data-agent-loading-slot="front"]');
-	const initialFrontFingerprint = await frontAvatar.innerHTML();
+	const initialFrontAgentId = await frontAvatar.getAttribute("data-agent-id");
 	await page.waitForTimeout(2_300);
 
-	expect((await frontAvatar.innerHTML()) === initialFrontFingerprint).toBe(true);
-	expect(await resumedStatus.locator(".agent-loading").getAttribute("data-swapping")).not.toBe("true");
+	expect(await frontAvatar.getAttribute("data-agent-id")).toBe(initialFrontAgentId);
+	expect(await loading.getAttribute("data-swapping")).not.toBe("true");
 });
 
-test("re-enabling motion after an interrupted swap does not resurface the swapped layout", async ({ page }) => {
-	// A frozen clock makes the 150ms swap window reachable; wall-clock timing
-	// would only land inside it for 7% of each 2150ms cycle.
+test("re-enabling motion after an interrupted swap does not resurface a mid-flight layout", async ({ page }) => {
 	await page.clock.install();
 	await page.goto(AGENT_LOADING_URL, { waitUntil: "domcontentloaded" });
 
 	const cycling = page
 		.getByRole("status")
 		.filter({ hasText: "Needs input" })
+		.first()
 		.locator(".agent-loading");
 	await expect(cycling).toHaveAttribute("data-cycling", "true");
 
-	// Advance in small steps until the swap phase opens. Stepping rather than
-	// jumping keeps this correct no matter when hydration schedules the hold.
 	await expect(async () => {
 		await page.clock.runFor(50);
 		expect(await cycling.getAttribute("data-swapping")).toBe("true");
 	}).toPass({ timeout: 30_000 });
 
-	// Interrupt the swap in flight.
 	await page.emulateMedia({ reducedMotion: "reduce" });
 	await expect.poll(async () => cycling.getAttribute("data-swapping")).not.toBe("true");
 
-	// Restore motion before any new swap timer exists, then settle the
-	// media-query re-render.
 	await page.emulateMedia({ reducedMotion: "no-preference" });
 	await page.waitForTimeout(1_000);
 
-	// The clock is still paused, so no legitimate swap can have started; a
-	// swapped layout here is the stale latch resurfacing.
 	expect(await cycling.getAttribute("data-swapping")).not.toBe("true");
 });

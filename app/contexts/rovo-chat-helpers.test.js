@@ -27,11 +27,26 @@ const {
 	buildSendMessageBody,
 	deriveCompactThreadTitle,
 	didAssistantCompleteActivePrompt,
+	clearSkillInvocationForEdit,
 	hasTurnCompleteForPrompt,
 	isPayloadTooLargeError,
 	mergeSendPromptOptions,
 	sanitizeMessagesForTransport,
 } = loadHelpers();
+
+test("editing a structured skill invocation removes only its stale display metadata", () => {
+	assert.deepEqual(clearSkillInvocationForEdit({
+		source: "jira-issue-generative-action",
+		skillInvocation: {
+			id: "skill:design-landing-page",
+			label: "Design landing page",
+			instruction: "for Jira issue PAY-124.",
+		},
+	}), {
+		source: "jira-issue-generative-action",
+	});
+	assert.equal(clearSkillInvocationForEdit(undefined), undefined);
+});
 
 test("buildSelectableAgents keeps static order while session profiles override matching ids", () => {
 	const agents = buildSelectableAgents(

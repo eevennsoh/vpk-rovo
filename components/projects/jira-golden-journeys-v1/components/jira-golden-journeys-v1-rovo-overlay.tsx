@@ -10,9 +10,12 @@ import type { ChatSubmitInterceptOutcome } from "@/components/projects/sidebar-c
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
 import type { FloatingRovoButtonInsightsConfig } from "@/components/projects/shared/components/floating-rovo-button";
 import type { ChatContextBarDescriptor } from "@/components/projects/shared/lib/chat-context-bar";
+import type { RichTextMentionItem } from "@/components/ui-custom/rich-text-editor";
 
 interface JgpRovoOverlayProps {
 	chatContextBar?: ChatContextBarDescriptor | null;
+	composerPrefillRequest?: { mention: RichTextMentionItem; requestKey: number };
+	onComposerPrefillConsumed?: (requestKey: number) => void;
 	externalThinkingMessageId?: string | null;
 	/**
 	 * Hide the viewport floating chat. Work-item and Pulse Insights surfaces
@@ -35,6 +38,8 @@ interface JgpRovoOverlayProps {
 /** Keeps JGP Rovo surfaces in the viewport stacking context above the Gallery dock. */
 export function JgpRovoOverlay({
 	chatContextBar,
+	composerPrefillRequest,
+	onComposerPrefillConsumed,
 	externalThinkingMessageId,
 	chat = "auto",
 	insights = null,
@@ -102,6 +107,8 @@ export function JgpRovoOverlay({
 					<RovoFloatingChat
 						key="floating-chat"
 						chatContextBar={chatContextBar}
+						composerPrefillRequest={composerPrefillRequest}
+						onComposerPrefillConsumed={onComposerPrefillConsumed}
 						externalThinkingMessageId={externalThinkingMessageId}
 						hideComposerSourceAndModelControls
 						interceptClarificationAnswers={Boolean(onInterceptSubmit || onQuestionAnswer)}

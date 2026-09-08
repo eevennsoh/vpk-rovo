@@ -1,46 +1,29 @@
-/* Harvested from wiv-v2 TeamEU's 24px Ferris visual. The three slots use
-   composite-only transform/opacity equivalents of the upstream 16px front,
-   12px back, and 4px hidden geometry. */
-@keyframes agent-loading-front-to-back {
-	to {
-		transform: translate3d(12px, 12px, 0) scale(0.75);
-		opacity: 0.8;
-		z-index: 2;
-	}
-}
-
-@keyframes agent-loading-back-to-front {
-	to {
-		transform: translate3d(0, 0, 0) scale(1);
-		opacity: 1;
-		z-index: 3;
-	}
-}
-
-@keyframes agent-loading-front-to-hidden {
-	to {
-		transform: translate3d(0, 20px, 0) scale(0.25);
-		opacity: 0;
-		z-index: 1;
-	}
-}
-
-@keyframes agent-loading-hidden-to-back {
-	to {
-		transform: translate3d(12px, 12px, 0) scale(0.75);
-		opacity: 0.8;
-		z-index: 2;
-	}
-}
-
+/* Harvested from wiv-v2 TeamEU's 24px Ferris visual. Slot x/y/scale live in
+   Motion so cycling eases between states; this utility only owns canvas size. */
 @utility agent-loading {
-	--agent-loading-swap-duration: var(--duration-normal);
-	--agent-loading-swap-easing: var(--ease-out-practical);
 	position: relative;
 	width: calc(var(--spacing) * 6);
 	height: calc(var(--spacing) * 6);
 	flex-shrink: 0;
 	overflow: visible;
+
+	&[data-size="small"] {
+		width: calc(var(--spacing) * 4);
+		height: calc(var(--spacing) * 4);
+	}
+
+	& [data-agent-loading-canvas] {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: calc(var(--spacing) * 6);
+		height: calc(var(--spacing) * 6);
+		transform-origin: top left;
+	}
+
+	&[data-size="small"] [data-agent-loading-canvas] {
+		transform: scale(calc(4 / 6));
+	}
 
 	& [data-agent-loading-slot] {
 		position: absolute;
@@ -51,51 +34,5 @@
 		transform-origin: top left;
 		pointer-events: none;
 		will-change: transform, opacity;
-	}
-
-	& [data-agent-loading-slot="front"] {
-		z-index: 3;
-		transform: translate3d(0, 0, 0) scale(1);
-		opacity: 1;
-	}
-
-	& [data-agent-loading-slot="back"] {
-		z-index: 2;
-		transform: translate3d(12px, 12px, 0) scale(0.75);
-		opacity: 0.8;
-	}
-
-	& [data-agent-loading-slot="hidden"] {
-		z-index: 1;
-		transform: translate3d(0, 20px, 0) scale(0.25);
-		opacity: 0;
-	}
-
-	&[data-swapping="true"] [data-agent-loading-slot] {
-		animation-duration: var(--agent-loading-swap-duration);
-		animation-timing-function: var(--agent-loading-swap-easing);
-		animation-fill-mode: forwards;
-	}
-
-	&[data-swapping="true"] [data-agent-loading-slot="front"] {
-		animation-name: agent-loading-front-to-back;
-	}
-
-	&[data-swapping="true"] [data-agent-loading-slot="back"] {
-		animation-name: agent-loading-back-to-front;
-	}
-
-	&[data-swapping="true"][data-cycling="true"] [data-agent-loading-slot="front"] {
-		animation-name: agent-loading-front-to-hidden;
-	}
-
-	&[data-swapping="true"][data-cycling="true"] [data-agent-loading-slot="hidden"] {
-		animation-name: agent-loading-hidden-to-back;
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		&[data-swapping="true"] [data-agent-loading-slot] {
-			animation: none;
-		}
 	}
 }

@@ -7,39 +7,57 @@ import type { PullRequestVariant } from "@/components/blocks/pull-request/compon
 import { DEMO_PULL_REQUESTS } from "@/components/blocks/pull-request/data/demo-pull-requests";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-export default function PullRequestPage() {
-	const [variant, setVariant] = useState<PullRequestVariant>("compact");
+export default function PullRequestPage({
+	variant: lockedVariant,
+}: Readonly<{ variant?: PullRequestVariant }> = {}) {
+	const [variantState, setVariantState] = useState<PullRequestVariant>(
+		lockedVariant ?? "dropdown",
+	);
+	const variant = lockedVariant ?? variantState;
+	const isFlyout = variant === "flyout";
 	const [selectedNumber, setSelectedNumber] = useState<number | null>(
 		DEMO_PULL_REQUESTS[0]?.number ?? null,
 	);
 
 	return (
 		<div className="flex h-full min-h-[360px] w-full items-center justify-center bg-surface p-6 text-text">
-			<div className="flex w-full max-w-xl flex-col gap-3">
-				<ToggleGroup
-					aria-label="Pull request card density"
-					onValueChange={(values) => {
-						const nextVariant = values[0] as PullRequestVariant | undefined;
-						if (nextVariant) {
-							setVariant(nextVariant);
-						}
-					}}
-					value={[variant]}
-					variant="outline"
-				>
-					<ToggleGroupItem value="compact">Compact</ToggleGroupItem>
-					<ToggleGroupItem value="spacious">Spacious</ToggleGroupItem>
-				</ToggleGroup>
+			<div
+				className={
+					isFlyout
+						? "flex w-[344px] flex-col gap-3"
+						: "flex w-full max-w-xl flex-col gap-3"
+				}
+			>
+				{lockedVariant ? null : (
+					<ToggleGroup
+						aria-label="Pull request card variant"
+						onValueChange={(values) => {
+							const nextVariant = values[0] as PullRequestVariant | undefined;
+							if (nextVariant) {
+								setVariantState(nextVariant);
+							}
+						}}
+						value={[variant]}
+						variant="outline"
+					>
+						<ToggleGroupItem value="dropdown">Dropdown compact</ToggleGroupItem>
+						<ToggleGroupItem value="spacious">Dropdown spacious</ToggleGroupItem>
+						<ToggleGroupItem value="flyout">Flyout</ToggleGroupItem>
+					</ToggleGroup>
+				)}
 				{DEMO_PULL_REQUESTS.map((item) => (
 					<PullRequest
 						key={item.number}
 						{...item}
 						variant={variant}
-						selected={item.number === selectedNumber}
-						onActivate={() =>
-							setSelectedNumber((current) => (
-								current === item.number ? null : item.number
-							))
+						selected={isFlyout ? false : item.number === selectedNumber}
+						onActivate={
+							isFlyout
+								? undefined
+								: () =>
+									setSelectedNumber((current) => (
+										current === item.number ? null : item.number
+									))
 						}
 					/>
 				))}

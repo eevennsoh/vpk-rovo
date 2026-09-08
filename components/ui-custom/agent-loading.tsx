@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion, type MotionStyle, type Transition } from "motion/react";
 
 import {
 	AgentAvatarVisual,
@@ -9,19 +10,37 @@ import {
 import {
 	areAllAgentLoadingAgentsFinished,
 	getAgentLoadingSlots,
+	getAgentLoadingSlotStyle,
+	listAgentLoadingSlots,
 	shouldCycleAgentLoading,
+	type AgentLoadingSize,
+	type AgentLoadingSlotName,
 	type AgentLoadingStatus,
 } from "@/components/ui-custom/agent-loading-model";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 const AGENT_LOADING_HOLD_MS = 2_000;
-const AGENT_LOADING_SWAP_MS = 150; // duration-normal
+const AGENT_LOADING_SWAP_MS = 600; // duration-slowest
+const AGENT_LOADING_MOTION_SWAP: Transition = { duration: 0.6, ease: [0.4, 0, 0, 1] }; // duration-slowest + ease-in-out
+const AGENT_LOADING_MOTION_EXIT: Transition = { duration: 0.4, ease: [0.6, 0, 0.8, 0.6] }; // duration-slower + ease-in
+const AGENT_LOADING_MOTION_REDUCED: Transition = { duration: 0 };
+const AGENT_LOADING_SLOT_STYLE: MotionStyle = {
+	originX: 0,
+	originY: 0,
+	willChange: "transform, opacity",
+};
+const AGENT_LOADING_HIDDEN_EXIT = {
+	opacity: 0,
+	scale: 0.25,
+	y: 20,
+} as const;
 
 type AgentLoadingAvatar = Omit<
 	AgentAvatarVisualProps,
 	"avatarClassName" | "children" | "label" | "sizePx" | "status"
 >;
+
+export type { AgentLoadingSize };
 
 export interface AgentLoadingAgent {
 	id: string;
@@ -39,16 +58,37 @@ export interface AgentLoadingProps {
 	/** Set false when an enclosing control already announces the agent state. */
 	announce?: boolean;
 	className?: string;
+	/** `default` is the authored 24×24 canvas; `small` scales it to 16×16. */
+	size?: AgentLoadingSize;
 }
 
-type AgentLoadingSlot = "front" | "back" | "hidden";
+function renderAgentLoadingAvatar(
+	agent: AgentLoadingAgent,
+	slot: AgentLoadingSlotName,
+	shouldReduceMotion: boolean | null,
+) {
+	const slotStyle = getAgentLoadingSlotStyle(slot);
+	const transition = shouldReduceMotion ? AGENT_LOADING_MOTION_REDUCED : AGENT_LOADING_MOTION_SWAP;
 
-function AgentLoadingAvatar({
-	agent,
-	slot,
-}: Readonly<{ agent: AgentLoadingAgent; slot: AgentLoadingSlot }>) {
 	return (
-		<span aria-hidden="true" data-agent-loading-slot={slot}>
+		<motion.span
+			animate={{
+				opacity: slotStyle.opacity,
+				scale: slotStyle.scale,
+				x: slotStyle.x,
+				y: slotStyle.y,
+				zIndex: slotStyle.zIndex,
+			}}
+			aria-hidden="true"
+			className="pointer-events-none absolute top-0 left-0 size-4 origin-top-left"
+			data-agent-id={agent.id}
+			data-agent-loading-slot={slot}
+			exit={shouldReduceMotion ? undefined : { ...AGENT_LOADING_HIDDEN_EXIT, transition: AGENT_LOADING_MOTION_EXIT }}
+			initial={false}
+			key={agent.id}
+			style={AGENT_LOADING_SLOT_STYLE}
+			transition={transition}
+		>
 			<AgentAvatarVisual
 				{...agent.avatar}
 				avatarClassName="size-4"
@@ -56,7 +96,7 @@ function AgentLoadingAvatar({
 				loading={agent.avatar.loading ?? "eager"}
 				sizePx={16}
 			/>
-		</span>
+		</motion.span>
 	);
 }
 
@@ -81,6 +121,24 @@ function AgentLoadingAnnouncementText({
 	return <span className="sr-only">{announcement}. </span>;
 }
 
+function useAgentLoadingReducedMotion(resyncKey: string): boolean {
+	const motionPreference = useReducedMotion();
+	const [mediaPreference, setMediaPreference] = useState(false);
+
+	useEffect(() => {
+		const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+		const sync = () => {
+			setMediaPreference(media.matches);
+		};
+
+		sync();
+		media.addEventListener("change", sync);
+		return () => media.removeEventListener("change", sync);
+	}, [resyncKey]);
+
+	return motionPreference === true || mediaPreference;
+}
+
 /**
  * A compact agent-presence indicator harvested from the wiv-v2 TeamEU Ferris
  * visual. Multiple agents rotate through front, back, and hidden slots until
@@ -92,36 +150,34 @@ export function AgentLoading({
 	"aria-label": ariaLabel,
 	announce = true,
 	className,
+	size = "default",
 }: Readonly<AgentLoadingProps>) {
-	const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 	const [frontAgentId, setFrontAgentId] = useState<string | null>(
 		() => agents[0]?.id ?? null,
 	);
-	const [activeSwapKey, setActiveSwapKey] = useState<string | null>(null);
+	const [isSwapping, setIsSwapping] = useState(false);
 	const agentsRef = useRef(agents);
 	const agentStateKey = useMemo(
 		() => JSON.stringify(agents.map((agent) => [agent.id, agent.status])),
 		[agents],
 	);
+	const shouldReduceMotion = useAgentLoadingReducedMotion(agentStateKey);
 	const finished = areAllAgentLoadingAgentsFinished(agents);
-	const canCycle = shouldCycleAgentLoading(agents) && !reduceMotion;
+	const canCycle = shouldCycleAgentLoading(agents) && !shouldReduceMotion;
 	const resolvedFrontIndex = Math.max(
 		0,
 		agents.findIndex((agent) => agent.id === frontAgentId),
 	);
 	const slots = getAgentLoadingSlots(agents, resolvedFrontIndex);
-	const isSwapping = canCycle && activeSwapKey === agentStateKey;
+	const slottedAgents = slots ? listAgentLoadingSlots(slots) : [];
 
 	useEffect(() => {
 		agentsRef.current = agents;
 	}, [agents]);
 
 	useEffect(() => {
-		// Reduced motion can interrupt a swap mid-flight. Clearing the latch here
-		// keeps `isSwapping` from resurfacing the half-applied swapped layout when
-		// motion is re-enabled before a new swap timer exists.
 		if (!canCycle) {
-			setActiveSwapKey(null);
+			setIsSwapping(false);
 			return undefined;
 		}
 
@@ -129,10 +185,10 @@ export function AgentLoading({
 		let swapTimer = 0;
 		let cancelled = false;
 
-		const cycle = () => {
-			setActiveSwapKey(agentStateKey);
-			swapTimer = window.setTimeout(() => {
+		const queueHold = () => {
+			holdTimer = window.setTimeout(() => {
 				if (cancelled) return;
+				setIsSwapping(true);
 				setFrontAgentId((currentId) => {
 					const currentAgents = agentsRef.current;
 					if (currentAgents.length === 0) return null;
@@ -140,12 +196,15 @@ export function AgentLoading({
 					const nextIndex = (Math.max(0, currentIndex) + 1) % currentAgents.length;
 					return currentAgents[nextIndex]?.id ?? null;
 				});
-				setActiveSwapKey(null);
-				holdTimer = window.setTimeout(cycle, AGENT_LOADING_HOLD_MS);
-			}, AGENT_LOADING_SWAP_MS);
+				swapTimer = window.setTimeout(() => {
+					if (cancelled) return;
+					setIsSwapping(false);
+					queueHold();
+				}, AGENT_LOADING_SWAP_MS);
+			}, AGENT_LOADING_HOLD_MS);
 		};
 
-		holdTimer = window.setTimeout(cycle, AGENT_LOADING_HOLD_MS);
+		queueHold();
 
 		return () => {
 			cancelled = true;
@@ -174,13 +233,17 @@ export function AgentLoading({
 				aria-hidden="true"
 				className="agent-loading"
 				data-cycling={agents.length > 2 ? "true" : undefined}
+				data-reduced-motion={shouldReduceMotion ? "true" : undefined}
+				data-size={size}
 				data-swapping={canCycle && isSwapping ? "true" : undefined}
 			>
-				{slots.hidden ? (
-					<AgentLoadingAvatar agent={slots.hidden} slot="hidden" />
-				) : null}
-				{slots.back ? <AgentLoadingAvatar agent={slots.back} slot="back" /> : null}
-				<AgentLoadingAvatar agent={slots.front} slot="front" />
+				<span data-agent-loading-canvas="">
+					<AnimatePresence initial={false}>
+						{slottedAgents.map(({ agent, slot }) => (
+							renderAgentLoadingAvatar(agent, slot, shouldReduceMotion)
+						))}
+					</AnimatePresence>
+				</span>
 			</span>
 			{label ? (
 				<span className="min-w-0 self-center whitespace-nowrap text-sm text-text">

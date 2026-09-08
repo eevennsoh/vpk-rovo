@@ -48,9 +48,9 @@ export type { ScrollingProps } from "./scrolling-viewport";
 export function Scrolling({
 	className = "",
 	depth = "bottom",
-	entranceOrigin = "centre",
+	entranceOrigin = "bottom",
 	items = SCROLLING_ITEMS,
-	stackOrder = "last-on-top",
+	stackOrder = "first-on-top",
 	viewportHeight = SCROLLING_VIEWPORT_PX,
 	wheel = true,
 }: Readonly<ScrollingProps>) {

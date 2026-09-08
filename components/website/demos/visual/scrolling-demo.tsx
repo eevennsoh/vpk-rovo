@@ -36,8 +36,8 @@ const DEPTH_OPTIONS: readonly { value: ScrollingDepth; label: string }[] = [
 export default function ScrollingDemo() {
 	const [viewportHeight, setViewportHeight] = useState(DEFAULT_VIEWPORT_HEIGHT);
 	const [wheel, setWheel] = useState(true);
-	const [entranceOrigin, setEntranceOrigin] = useState<ScrollingEntranceOrigin>("centre");
-	const [stackOrder, setStackOrder] = useState<ScrollingStackOrder>("last-on-top");
+	const [entranceOrigin, setEntranceOrigin] = useState<ScrollingEntranceOrigin>("bottom");
+	const [stackOrder, setStackOrder] = useState<ScrollingStackOrder>("first-on-top");
 	const [depth, setDepth] = useState<ScrollingDepth>("bottom");
 	const [replayKey, setReplayKey] = useState(0);
 

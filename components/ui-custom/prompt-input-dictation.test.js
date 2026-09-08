@@ -72,6 +72,35 @@ test("PromptInput dictation has accessible labels, tooltip, and host callbacks",
 	);
 });
 
+test("PromptInput dictation defaults to 32px hits and accepts the 24px icon-xs size", () => {
+	assert.match(
+		DICTATION_SOURCE,
+		/export type PromptInputDictationControlSize = "icon-sm" \| "icon-xs";/u,
+	);
+	assert.match(DICTATION_SOURCE, /size = "icon-sm"/u);
+	assert.match(DICTATION_SOURCE, /size=\{size\}/u);
+	assert.match(
+		DICTATION_SOURCE,
+		/<MicrophoneIcon label="" size=\{size === "icon-xs" \? "small" : undefined\} \/>/u,
+	);
+	assert.match(
+		DICTATION_SOURCE,
+		/"icon-sm": "size-8 hover:opacity-90 active:opacity-80"/u,
+	);
+	assert.match(
+		DICTATION_SOURCE,
+		/"icon-xs": "size-6 hover:opacity-90 active:opacity-80"/u,
+	);
+	assert.match(
+		DICTATION_SOURCE,
+		/"icon-sm": "flex h-8 items-center gap-1 overflow-hidden rounded-md bg-bg-neutral-bold pl-1 pr-3 text-text-inverse shadow-sm"/u,
+	);
+	assert.match(
+		DICTATION_SOURCE,
+		/"icon-xs": "flex h-6 items-center gap-1 overflow-hidden rounded-md bg-bg-neutral-bold pl-1 pr-3 text-text-inverse shadow-sm"/u,
+	);
+});
+
 test("sidebar send controls delegate dictation rendering to PromptInput", () => {
 	assert.match(SIDEBAR_COMPOSER_SOURCE, /<RovoComposerSendControls/u);
 	assert.match(SEND_CONTROLS_SOURCE, /PromptInputDictationControl/u);

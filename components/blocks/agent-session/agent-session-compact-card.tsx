@@ -34,7 +34,7 @@ function AttachedAgentSession({
 		<motion.div
 			animate={shouldPlayArrival ? { opacity: 1, y: 0 } : undefined}
 			className={cn(
-				"relative w-[276px] rounded-[10px] bg-bg-accent-gray-subtlest",
+				"relative w-[276px] rounded-[10px] bg-bg-neutral",
 				isNew ? "ring-1 ring-border-discovery" : null,
 			)}
 			data-new={isNew || undefined}
@@ -45,7 +45,7 @@ function AttachedAgentSession({
 			{isNew ? (
 				<>
 					<span className="sr-only">Newly synced, not yet reviewed</span>
-					<span aria-hidden="true" className="absolute left-1 top-1 size-1 rounded-full bg-icon-discovery" />
+					<span aria-hidden="true" className="absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-icon-information" />
 				</>
 			) : null}
 			<JiraIssueAgentActivityRows

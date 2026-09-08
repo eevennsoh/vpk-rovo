@@ -15,6 +15,13 @@ export const BOARD_COLUMN_WIDTH_PX = 276;
 /** Collapsed pill width in px, excluding the 2px transparent drop-target border. */
 export const BOARD_COLUMN_COLLAPSED_WIDTH_PX = 32;
 
+/**
+ * Restores the simple column's 4px content inset when the first column is
+ * collapsed. The shell's existing 2px border supplies the rest of the 6px
+ * chrome that expanded cards receive.
+ */
+export const BOARD_FIRST_COLLAPSED_COLUMN_INSET_PX = 4;
+
 /** Outer width in px, including the 2px transparent drop-target border on both edges. */
 export function getBoardColumnOuterWidthPx(isCollapsed: boolean): number {
 	return (isCollapsed ? BOARD_COLUMN_COLLAPSED_WIDTH_PX : BOARD_COLUMN_WIDTH_PX) + 4;
@@ -25,6 +32,23 @@ export function isBoardColumnCollapsed(
 	columnTitle: string,
 ): boolean {
 	return collapsedColumns.has(columnTitle);
+}
+
+export function resolveBoardColumnRowPaddingInlineStart(
+	columnRowPaddingInlineStart: string,
+	firstColumnTitle: string | undefined,
+	hasDropContentPadding: boolean,
+	collapsedColumns: CollapsedBoardColumns,
+): string {
+	if (
+		!firstColumnTitle
+		|| !hasDropContentPadding
+		|| !isBoardColumnCollapsed(collapsedColumns, firstColumnTitle)
+	) {
+		return columnRowPaddingInlineStart;
+	}
+
+	return `calc(${columnRowPaddingInlineStart} + ${BOARD_FIRST_COLLAPSED_COLUMN_INSET_PX}px)`;
 }
 
 export function toggleCollapsedBoardColumn(

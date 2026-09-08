@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import type { Transition } from "motion/react";
 
+import type { AvatarUnassignedKind } from "@/components/ui/avatar";
+
 /**
  * Pure helpers and motion tokens shared by the Jira issue card and the subtask
  * list it renders. They live here rather than in `index.tsx` so `subtasks.tsx`
@@ -17,6 +19,17 @@ export const JIRA_ISSUE_MOTION_STYLE: CSSProperties = { willChange: "transform, 
 
 export function getIssueInitial(issueKey: string): string {
 	return issueKey[0]?.toUpperCase() ?? "U";
+}
+
+export function resolveIssueAssigneeUnassignedKind(
+	assigneeAvatarSrc: string | undefined,
+	assigneeUnassignedKind?: AvatarUnassignedKind,
+): AvatarUnassignedKind | undefined {
+	if (assigneeUnassignedKind) {
+		return assigneeUnassignedKind;
+	}
+
+	return assigneeAvatarSrc ? undefined : "person";
 }
 
 export function uncapturedWorkLinkLabel(suggestedWorkItemKey?: string): string {

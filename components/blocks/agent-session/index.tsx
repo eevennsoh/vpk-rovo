@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 
 import {
 	isCodingAgentListItem,
@@ -64,7 +64,7 @@ function buildArrivalDelays(
  * Local coding sessions that never became work items.
  *
  * Large sessions are solid uncaptured-work cards: the shared Agent List row
- * (identity, static stamp, viewer machine) sits on a single surface and reveals
+ * (identity, optional linked PR metadata, and timestamp) sits on a single surface and reveals
  * the same hover/focus action pair Agent List rows use — Resume, plus
  * Archive / Unarchive where Agent List puts Archive. Work-item capture lives on the
  * shared untracked-work session flyout, the same surface
@@ -90,6 +90,7 @@ export function AgentSession({
 	isResumable,
 	newItemIds,
 	onCopyResume,
+	onArchiveSession,
 	onCreateWorkItem,
 	onArrivalComplete,
 	onLinkWorkItem,
@@ -141,16 +142,32 @@ export function AgentSession({
 	const flyoutActions = useMemo(
 		() => bindAgentSessionFlyoutActions(items, {
 			capturedItemIds,
+			onArchiveSession,
 			onCreateWorkItem,
 			onLinkWorkItem,
 			onSubtasks,
 		}),
-		[capturedItemIds, items, onCreateWorkItem, onLinkWorkItem, onSubtasks],
+		[capturedItemIds, items, onArchiveSession, onCreateWorkItem, onLinkWorkItem, onSubtasks],
 	);
+	const isMultiSelectList = items.some(
+		(item: AgentSessionItem) => rowTriage?.get(item.id)?.mark != null,
+	);
+	const selectionHintId = useId();
 
 	return (
 		<>
+			{isMultiSelectList ? (
+				<p className="sr-only" id={selectionHintId}>
+					Click additional sessions to add or remove them. Shift-click selects
+					a range. Command-click on a Mac, or Control-click on Windows, also
+					adds or removes individual sessions. Arrow keys move the selection.
+					Shift-arrow extends it. Command-A or Control-A selects all. Escape
+					clears.
+				</p>
+			) : null}
 			<ul
+				aria-describedby={isMultiSelectList ? selectionHintId : undefined}
+				aria-multiselectable={isMultiSelectList ? true : undefined}
 				className={cn(
 					"flex flex-col",
 					variant === "large"
@@ -158,12 +175,14 @@ export function AgentSession({
 						: variant === "medium-detached"
 							? undefined
 							: "gap-2",
+					isMultiSelectList ? "select-none" : null,
 					className,
 				)}
 				data-variant={variant}
-				// In-flow large column stays flush. A panel host overrides
-				// `gap-0` via `listClassName`. Detached compact rows sit 2px
-				// apart (`space.025`).
+				role={isMultiSelectList ? "grid" : undefined}
+				// Large defaults to flush. Column and panel hosts override
+				// `gap-0` via `listClassName` (`gap-1 p-1`) so marked rows can
+				// fuse. Detached compact rows sit 2px apart (`space.025`).
 				style={variant === "medium-detached"
 					? { ...style, gap: token("space.025") }
 					: style}
@@ -263,10 +282,12 @@ export function AgentSession({
 				})}
 			</ul>
 			<JiraSessionFlyoutSurface
+				archiveActionLabel={visibilityLabel}
 				capturedSessionIds={capturedItemIds}
 				content={isAttached ? "details" : "untracked-work"}
 				handle={flyoutHandle}
 				onAddAsSubtask={flyoutActions.onAddAsSubtask}
+				onArchiveSession={flyoutActions.onArchiveSession}
 				onCreateWorkItem={flyoutActions.onCreateWorkItem}
 				onLinkWorkItem={flyoutActions.onLinkWorkItem}
 			/>
@@ -288,6 +309,7 @@ export {
 export type {
 	AgentSessionItem,
 	AgentSessionProps,
+	AgentSessionSelectionGesture,
 	AgentSessionTriageRow,
 	AgentSessionVariant,
 } from "./agent-session-types";

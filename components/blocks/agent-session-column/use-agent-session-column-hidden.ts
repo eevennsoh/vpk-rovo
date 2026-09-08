@@ -14,6 +14,7 @@ type HiddenState = {
 type HiddenAction =
 	| { type: "close" }
 	| { id: string; type: "forget" }
+	| { id: string; type: "hide" }
 	| { type: "open" }
 	| { id: string; type: "toggle" };
 
@@ -57,6 +58,23 @@ export function forgetHiddenSessionIds(
 	return next;
 }
 
+/**
+ * Add-only. Bulk Archive from the archived view must not unhide a session
+ * that is already in the column-owned hidden set.
+ */
+export function hideSessionId(
+	hiddenIds: ReadonlySet<string>,
+	id: string,
+): ReadonlySet<string> {
+	if (hiddenIds.has(id)) {
+		return hiddenIds;
+	}
+
+	const next = new Set(hiddenIds);
+	next.add(id);
+	return next;
+}
+
 export function splitSessionItemsByHidden(
 	items: readonly AgentSessionItem[],
 	hiddenIds: ReadonlySet<string>,
@@ -83,32 +101,36 @@ function hiddenViewAfterIds(
 	return view === "hidden" && hiddenIds.size === 0 ? "active" : view;
 }
 
+function hiddenStateForIds(
+	state: HiddenState,
+	hiddenIds: ReadonlySet<string>,
+): HiddenState {
+	if (hiddenIds === state.hiddenIds) {
+		return state;
+	}
+	return {
+		hiddenIds,
+		view: hiddenViewAfterIds(state.view, hiddenIds),
+	};
+}
+
 function reduceHiddenState(state: HiddenState, action: HiddenAction): HiddenState {
 	switch (action.type) {
 		case "toggle": {
-			const hiddenIds = new Set(state.hiddenIds);
-			if (hiddenIds.has(action.id)) {
-				hiddenIds.delete(action.id);
-			} else {
-				hiddenIds.add(action.id);
-			}
-			return {
-				hiddenIds,
-				view: hiddenViewAfterIds(state.view, hiddenIds),
-			};
+			const hiddenIds = state.hiddenIds.has(action.id)
+				? forgetHiddenSessionIds(state.hiddenIds, action.id)
+				: hideSessionId(state.hiddenIds, action.id);
+			return hiddenStateForIds(state, hiddenIds);
 		}
 		case "close":
 			return state.view === "active" ? state : { ...state, view: "active" };
-		case "forget": {
-			const hiddenIds = forgetHiddenSessionIds(state.hiddenIds, action.id);
-			if (hiddenIds === state.hiddenIds) {
-				return state;
-			}
-			return {
-				hiddenIds,
-				view: hiddenViewAfterIds(state.view, hiddenIds),
-			};
-		}
+		case "forget":
+			return hiddenStateForIds(
+				state,
+				forgetHiddenSessionIds(state.hiddenIds, action.id),
+			);
+		case "hide":
+			return hiddenStateForIds(state, hideSessionId(state.hiddenIds, action.id));
 		case "open":
 			return state.hiddenIds.size === 0 || state.view === "hidden"
 				? state
@@ -138,6 +160,9 @@ export function useAgentSessionColumnHidden(items: readonly AgentSessionItem[]) 
 	const toggleHidden = useCallback((item: AgentSessionItem) => {
 		dispatch({ id: item.id, type: "toggle" });
 	}, []);
+	const hideHidden = useCallback((item: AgentSessionItem) => {
+		dispatch({ id: item.id, type: "hide" });
+	}, []);
 	const openHiddenView = useCallback(() => {
 		dispatch({ type: "open" });
 	}, []);
@@ -151,6 +176,7 @@ export function useAgentSessionColumnHidden(items: readonly AgentSessionItem[]) 
 	return {
 		closeHiddenView,
 		forgetHidden,
+		hideHidden,
 		hiddenCount: state.hiddenIds.size,
 		hiddenItems,
 		openHiddenView,

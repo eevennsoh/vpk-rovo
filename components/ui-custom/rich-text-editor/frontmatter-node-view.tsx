@@ -13,10 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Tag, TagGroup } from "@/components/ui/tag";
 import { Textarea } from "@/components/ui/textarea";
 
-import {
-	getRichTextMentionTagType,
-	RichTextMentionVisualMark,
-} from "./mention-visual";
+import { RichTextMentionVisualMark } from "./mention-visual";
 import type { RichTextMentionVisual, RichTextReferenceCategory } from "./types";
 import { FrontmatterPortalContext } from "./frontmatter-portal";
 
@@ -173,9 +170,9 @@ export function FrontmatterNodeView({ node, updateAttributes, editor }: ReactNod
 										<span className="text-text-subtlest">None</span>
 									) : (
 										entry.value.map((item, index) => {
-											// Match the editor palette token: logo/icon front slot,
-											// accent color, and chip shape all derived from the same
-											// resolved visual. `removeVariant="overlay"` mirrors the
+											// Match the editor palette token's logo/icon and accent while
+											// retaining the compact non-pill Tag shape.
+											// `removeVariant="overlay"` mirrors the
 											// agent config panel reference chips so the remove control
 											// floats over the colored chip instead of widening it.
 											const mention = resolveAllowedToolMention(item);
@@ -216,7 +213,7 @@ export function FrontmatterNodeView({ node, updateAttributes, editor }: ReactNod
 															/>
 														)
 													}
-													type={getRichTextMentionTagType(visual)}
+													type="default"
 													onRemove={editable ? () => removeListItem(entry.key, index) : undefined}
 													removeButtonLabel={`Remove ${item}`}
 													removeVariant="overlay"

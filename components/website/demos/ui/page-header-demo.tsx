@@ -1,64 +1,100 @@
-"use client";
+"use client"
 
-import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
+import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal"
+
+import {
+	Breadcrumb,
+	BreadcrumbItem,
+	BreadcrumbLink,
+	BreadcrumbList,
+	BreadcrumbPage,
+	BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
+import { Icon } from "@/components/ui/icon"
+import { Input } from "@/components/ui/input"
+import { PageHeader } from "@/components/ui/page-header"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select"
+
+function PageHeaderBreadcrumbs({
+	ariaLabel,
+	current,
+}: Readonly<{ ariaLabel: string; current: string }>) {
+	return (
+		<Breadcrumb aria-label={ariaLabel}>
+			<BreadcrumbList>
+				<BreadcrumbItem>
+					<BreadcrumbLink href="#">Teams</BreadcrumbLink>
+				</BreadcrumbItem>
+				<BreadcrumbSeparator />
+				<BreadcrumbItem>
+					<BreadcrumbPage>{current}</BreadcrumbPage>
+				</BreadcrumbItem>
+			</BreadcrumbList>
+		</Breadcrumb>
+	)
+}
 
 export default function PageHeaderDemo() {
 	return (
 		<PageHeader
-			title="Page title"
-			description="A short description of the page content."
+			title="How to use the page header component"
+			breadcrumbs={
+				<PageHeaderBreadcrumbs ariaLabel="Preview hierarchy" current="Design System" />
+			}
 		/>
-	);
+	)
 }
 
 export function PageHeaderDemoDefault() {
-	return <PageHeader title="Projects" />;
-}
-
-export function PageHeaderDemoWithDescription() {
 	return (
 		<PageHeader
-			title="Team settings"
-			description="Manage your team members and their permissions."
-		/>
-	);
-}
-
-export function PageHeaderDemoWithActions() {
-	return (
-		<PageHeader
-			title="Issues"
-			description="Track and manage issues across your projects."
-			actions={
-				<>
-					<Button variant="outline" size="default">Export</Button>
-					<Button size="default">Create issue</Button>
-				</>
-			}
-		/>
-	);
-}
-
-export function PageHeaderDemoWithBreadcrumbs() {
-	return (
-		<PageHeader
-			title="Sprint board"
-			description="Current sprint tasks and progress."
+			title="How to use the page header component"
 			breadcrumbs={
-				<nav className="flex items-center gap-1.5 text-sm text-text-subtle">
-					<a href="#" className="hover:text-text hover:underline">Projects</a>
-					<span>/</span>
-					<a href="#" className="hover:text-text hover:underline">My project</a>
-					<span>/</span>
-					<span className="text-text">Sprint board</span>
-				</nav>
+				<PageHeaderBreadcrumbs ariaLabel="Default example hierarchy" current="Design System" />
 			}
-			actions={<Button size="default">Complete sprint</Button>}
 		/>
-	);
+	)
 }
 
-export function PageHeaderDemoTitleOnly() {
-	return <PageHeader title="Dashboard" />;
+export function PageHeaderDemoComplex() {
+	return (
+		<PageHeader
+			title="Introducing the Design System Team"
+			description="Manage the team, share its work, and refine the page content."
+			breadcrumbs={
+				<PageHeaderBreadcrumbs ariaLabel="Team hierarchy" current="Design System Team" />
+			}
+			actions={
+				<ButtonGroup variant="separated" aria-label="Content actions">
+					<Button>Edit page</Button>
+					<Button variant="outline">Share</Button>
+					<Button variant="outline" size="icon" aria-label="More actions">
+						<Icon render={<ShowMoreHorizontalIcon label="" />} />
+					</Button>
+				</ButtonGroup>
+			}
+			bottomBar={
+				<div className="flex flex-wrap items-center gap-2">
+					<Input aria-label="Filter" placeholder="Filter" className="w-50" />
+					<Select>
+						<SelectTrigger className="w-50" aria-label="Choose a team">
+							<SelectValue placeholder="Choose an option" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="design-system">Design System</SelectItem>
+							<SelectItem value="platform">Platform</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+			}
+		/>
+	)
 }

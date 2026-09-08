@@ -67,12 +67,12 @@ function clamp01(value: number): number {
  * is always fully visible whatever the card's height:
  *
  * - `"centre"` — the middle of the scrollport. Cards above it fan down and cards
- *   below it fan up, so the deck opens symmetrically. This is the default and
- *   matches the reference recording.
+ *   below it fan up, so the deck opens symmetrically and matches the reference
+ *   recording.
  * - `"top"` — the card's own top edge lands flush with the top of the
  *   scrollport, so the deck opens downward.
- * - `"bottom"` — the card's own bottom edge lands flush with the bottom of the
- *   scrollport, so the deck opens upward.
+ * - `"bottom"` — the default. The card's own bottom edge lands flush with the
+ *   bottom of the scrollport, so the deck opens upward.
  *
  * Anchoring on `cardHeight / 2` rather than on `0` / `containerLength` matters:
  * collapsing onto the raw edge would centre every card ON the edge, leaving half

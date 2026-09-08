@@ -194,10 +194,11 @@ test("the subline names the board, not a scope inside it", async () => {
 		join(process.cwd(), "components/blocks/jira-kanban/experimental/experimental-board-header.tsx"),
 		"utf8",
 	);
-	const boardHeading = headerSource.match(/<Heading as="h1"[^>]*>([^<]+)<\/Heading>/u)?.[1];
+	assert.match(headerSource, /title = JIRA_DESIGN_PROJECT\.name/u);
+	assert.match(headerSource, /<Heading as="h1"[^>]*>\{title\}<\/Heading>/u);
 	assert.equal(
 		EXPERIMENTAL_BOARD_SPACE_NAME,
-		boardHeading,
+		"Jira Design",
 		"the card's space name must be the same board name the header renders",
 	);
 

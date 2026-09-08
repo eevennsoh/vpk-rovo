@@ -777,7 +777,7 @@ test("ContextBarPullRequest is a generic PR variation of ContextBar", () => {
 	assert.match(CONTEXT_BAR_PR_SOURCE, /<ContextBar/u);
 	assert.match(CONTEXT_BAR_PR_SOURCE, /"mb-2 w-full max-w-\[calc\(100vw-7rem\)\] gap-2 overflow-hidden px-2\.5 py-0 sm:max-w-full"/u);
 	assert.match(CONTEXT_BAR_PR_SOURCE, /className="min-w-0 flex-1 truncate text-sm text-text-subtle" title=\{branch\}/u);
-	assert.match(CONTEXT_BAR_PR_SOURCE, /variant="spacious"/u);
+	assert.match(CONTEXT_BAR_PR_SOURCE, /variant="flyout"/u);
 	assert.match(CONTEXT_BAR_PR_SOURCE, /token\("elevation.shadow.overlay"\)/u);
 	assert.match(CONTEXT_BAR_PR_SOURCE, /className="w-auto overflow-hidden rounded-xl border-0 bg-surface-overlay p-0 text-text shadow-none"/u);
 	assert.match(CONTEXT_BAR_PR_SOURCE, /hover:underline[\s\S]*data-pr-number-link/u);
@@ -833,7 +833,7 @@ test("ContextBarPullRequest is a generic PR variation of ContextBar", () => {
 	assert.match(CONTEXT_BAR_PR_SOURCE, /<ContextBarPullRequestAutomation/u);
 });
 
-test("ContextBarPullRequest renders a hoverable PR number and spacious overlay card", async () => {
+test("ContextBarPullRequest renders a hoverable PR number and flyout overlay card", async () => {
 	const harness = await loadContextBarPullRequestHarness();
 	const markup = harness.renderPullRequestBar();
 
@@ -853,13 +853,13 @@ test("ContextBarPullRequest renders a hoverable PR number and spacious overlay c
 	assert.match(markup, /\+86/u);
 	assert.match(markup, /−21/u);
 	assert.match(markup, />CI</u);
-	assert.match(markup, /data-pull-request="42" data-status="Open" data-variant="spacious"/u);
+	assert.match(markup, /data-pull-request="42" data-status="Open" data-variant="flyout"/u);
 	assert.match(markup, /#42 Add guest checkout/u);
 	assert.match(
 		markup,
 		/data-hover-card-content="true" class="w-auto overflow-hidden rounded-xl border-0 bg-surface-overlay p-0 text-text shadow-none" style="box-shadow:overlay-elevation-shadow"/u,
 	);
-	assert.match(markup, /class="border-0" data-pull-request="42"/u);
+	assert.match(markup, /class="border-0 bg-transparent shadow-none" data-pull-request="42"/u);
 	assert.match(markup, /aria-label="Dismiss pull request context"/u);
 });
 
@@ -880,7 +880,7 @@ test("ContextBarPullRequest can hide the status lozenge and show the repository"
 	assert.match(markup, /acme\/app/u);
 	assert.match(markup, /hotfix\/tax/u);
 	assert.match(markup, /font-medium text-text-discovery/u);
-	assert.match(markup, /data-pull-request="9" data-status="Merged" data-variant="spacious"/u);
+	assert.match(markup, /data-pull-request="9" data-status="Merged" data-variant="flyout"/u);
 });
 
 test("ContextBarPullRequest owns the CI checks menu", async () => {

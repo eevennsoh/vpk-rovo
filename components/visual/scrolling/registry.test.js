@@ -30,18 +30,40 @@ test("Scrolling docs register the detail leaf and the preview demo", () => {
 	);
 });
 
-test("the detached card re-asserts its own bottom border", () => {
-	// `agent-session-card.tsx` kills the bottom stroke with
-	// `[li:not(:last-child)_&]:border-b-0`, which Tailwind compiles to a
-	// DESCENDANT selector — so Ticker's `<li class="ticker-item">`, which stops
-	// being `:last-child` as soon as the loop appends clones, strips the border
-	// off every card. `.cls li:last-child article` is (0,2,2) and beats the
-	// block's (0,2,1) without `!important`. Same shape as `AGENT_SESSION_WELL_LIST`
-	// in `components/blocks/agent-session-column/index.tsx`.
+test("Scrolling defaults to a bottom entrance with the first card on top everywhere", () => {
 	assert.match(
-		readProjectFile("components/visual/scrolling/scrolling-card.tsx"),
-		/\[&_li:last-child_article\]:border-b(?!-)/u,
+		readProjectFile("components/visual/scrolling/index.tsx"),
+		/stackOrder = "first-on-top"/u,
 	);
+	assert.match(
+		readProjectFile("components/visual/scrolling/index.tsx"),
+		/entranceOrigin = "bottom"/u,
+	);
+	assert.match(
+		readProjectFile("components/website/demos/visual/scrolling-demo.tsx"),
+		/useState<ScrollingStackOrder>\("first-on-top"\)/u,
+	);
+	assert.match(
+		readProjectFile("components/website/demos/visual/scrolling-demo.tsx"),
+		/useState<ScrollingEntranceOrigin>\("bottom"\)/u,
+	);
+	assert.match(
+		readProjectFile("app/data/details/visual/scrolling.ts"),
+		/name: "stackOrder"[\s\S]*?default: `"first-on-top"`/u,
+	);
+	assert.match(
+		readProjectFile("app/data/details/visual/scrolling.ts"),
+		/name: "entranceOrigin"[\s\S]*?default: `"bottom"`/u,
+	);
+});
+
+test("the detached card restores the full frame omitted by the shared in-flow card", () => {
+	// Large Agent Session cards are intentionally borderless in their shared
+	// in-flow list. Scrolling renders each one as a detached card, so this owner
+	// must restore all four edges rather than leaving only a bottom stroke.
+	const card = readProjectFile("components/visual/scrolling/scrolling-card.tsx");
+	assert.match(card, /\[&_li:last-child_article\]:border(?!-)/u);
+	assert.match(card, /\[&_li:last-child_article\]:border-border-disabled/u);
 });
 
 test("the depth tail subscribes to Ticker's motion 12 values explicitly", () => {

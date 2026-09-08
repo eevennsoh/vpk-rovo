@@ -12,6 +12,10 @@ const BOARD_TOOLBAR_SOURCE = fs.readFileSync(
 	path.join(__dirname, "components/board-toolbar.tsx"),
 	"utf8",
 );
+const JIRA_HEADER_SOURCE = fs.readFileSync(
+	path.join(__dirname, "components/jira-header.tsx"),
+	"utf8",
+);
 const COLUMN_AGENT_ASSIGNMENT_SOURCE = fs.readFileSync(
 	path.join(__dirname, "components/column-agent-assignment.tsx"),
 	"utf8",
@@ -362,4 +366,29 @@ test("the RFP More control is display-only until a menu capability exists", () =
 		BOARD_TOOLBAR_SOURCE,
 		/<Button aria-label="More board controls" size="icon" variant="outline">/u,
 	);
+	assert.match(
+		BOARD_TOOLBAR_SOURCE,
+		/<Button variant="outline">\s*<Icon render=\{<FilterIcon label="" \/>\} \/>\s*Filter/u,
+	);
+	assert.match(
+		BOARD_TOOLBAR_SOURCE,
+		/<Button aria-disabled aria-label="Customize" size="icon" variant="outline">/u,
+	);
+	assert.doesNotMatch(
+		BOARD_TOOLBAR_SOURCE,
+		/<Button aria-label="Customize" size="icon" variant="ghost">/u,
+	);
+	const customizeIndex = BOARD_TOOLBAR_SOURCE.indexOf('aria-label="Customize"');
+	const moreIndex = BOARD_TOOLBAR_SOURCE.indexOf('aria-label="More board controls"');
+	assert.ok(customizeIndex > 0 && customizeIndex < moreIndex);
+});
+
+test("JiraHeader reuses the golden-journeys experimental board header", () => {
+	assert.match(
+		JIRA_HEADER_SOURCE,
+		/import \{ ExperimentalJiraKanbanBoardHeader \} from "@\/components\/blocks\/jira-kanban\/experimental\/experimental-board-header";/u,
+	);
+	assert.match(JIRA_HEADER_SOURCE, /<ExperimentalJiraKanbanBoardHeader/u);
+	assert.match(JIRA_HEADER_SOURCE, /showBoardControls=\{false\}/u);
+	assert.match(JIRA_HEADER_SOURCE, /title="Enterprise RFP Response"/u);
 });

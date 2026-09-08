@@ -94,7 +94,7 @@ test("suggested-key overrides win over the session details key", () => {
 test("approveActionLabel names the work item or the reason", () => {
 	assert.equal(
 		approveActionLabel({ kind: "work-item", key: "PAY-107", target: { code: "PAY-107" } }),
-		"Approve, link to PAY-107",
+		"Link to PAY-107",
 	);
 	assert.equal(
 		approveActionLabel({ kind: "unavailable", reason: "already-attached" }),

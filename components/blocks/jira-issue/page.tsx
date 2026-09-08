@@ -377,13 +377,8 @@ function getDemoAgentActivityMode(
 }
 
 function getExperimentalDemoPullRequest(
-	chrome: JiraIssueChrome,
 	agentActivityState: JiraIssueAgentActivityDemoState,
 ): { pullRequestNumber?: number; pullRequestStatus?: JiraIssuePullRequestStatus } {
-	if (chrome !== "stroke") {
-		return {};
-	}
-
 	switch (agentActivityState) {
 		case "awaiting-user-input":
 			return { pullRequestNumber: 812, pullRequestStatus: "open" };
@@ -518,6 +513,7 @@ const EXPERIMENTAL_DEMO_PULL_REQUEST_PREVIEW: JiraIssuePullRequestPreview = {
 	branch: "feat/pd-40-date-range-filter",
 	deletions: 21,
 	filesChanged: 6,
+	relativeTime: "1h ago",
 	repository: "eevensoh/vpk-rovo",
 	targetBranch: "main",
 	title: "Add date-range filter query params",
@@ -526,6 +522,8 @@ const EXPERIMENTAL_DEMO_PULL_REQUEST_PREVIEW: JiraIssuePullRequestPreview = {
 interface JiraIssueAgentActivityStatesDemoProps {
 	agentActivityLayout?: JiraIssueAgentActivityLayout;
 	chrome?: JiraIssueChrome;
+	/** Keeps experimental compact internals when chrome toggles to raised. */
+	compact?: boolean;
 	onChromeChange?: (chrome: JiraIssueChrome) => void;
 	/** Adds the Unlink / Move / Link session-transfer phases to the tab list. */
 	showSessionTransferStates?: boolean;
@@ -539,6 +537,7 @@ function JiraIssueExperimentalAgentActivityStatesPage(): React.ReactElement {
 			<JiraIssueAgentActivityStatesDemo
 				agentActivityLayout="split"
 				chrome={chrome}
+				compact
 				onChromeChange={setChrome}
 				showSessionTransferStates
 			/>
@@ -549,6 +548,7 @@ function JiraIssueExperimentalAgentActivityStatesPage(): React.ReactElement {
 function JiraIssueAgentActivityStatesDemo({
 	agentActivityLayout = "merged",
 	chrome = "raised",
+	compact = false,
 	onChromeChange,
 	showSessionTransferStates = false,
 }: Readonly<JiraIssueAgentActivityStatesDemoProps> = {}): React.ReactElement {
@@ -558,7 +558,9 @@ function JiraIssueAgentActivityStatesDemo({
 	// ASX Kanban "View chat" behavior instead of a blank vanilla Rovo chat.
 	const { chatContextBar, externalThinkingMessageId, openAgentChat } = useAsxAgentChatDemo();
 	const [pendingChatQuestion, setPendingChatQuestion] = useState<Readonly<{ submit: () => void }> | null>(null);
-	const experimentalPullRequest = getExperimentalDemoPullRequest(chrome, agentActivityState);
+	const experimentalPullRequest = compact
+		? getExperimentalDemoPullRequest(agentActivityState)
+		: {};
 	const [unlinkedSessionIds, setUnlinkedSessionIds] = useState<readonly string[]>([]);
 	const [linkedDetachedIds, setLinkedDetachedIds] = useState<readonly string[]>([]);
 	const isTransferPhase = showSessionTransferStates && isSessionTransferDemoState(agentActivityState);
@@ -730,6 +732,7 @@ function JiraIssueAgentActivityStatesDemo({
 						assigneeAvatarSrc="/avatar-user/andrea-wilson/color/asow-service-yellow.png"
 						chrome={chrome}
 						className="w-full"
+						compact={compact}
 						generativeAction={{
 							onSubmit: handleGenerativeActionSubmit,
 						}}

@@ -123,7 +123,7 @@ export function ExperimentalV2JiraKanbanBoardHeader({
 	};
 
 	return (
-		<header className={cn("shrink-0 pt-3", showBoardControls ? "pb-4" : "pb-0")}>
+		<header className={cn("shrink-0 pt-3", showBoardControls ? "pb-6" : "pb-0")}>
 			<div className="flex min-w-0 items-center gap-2 px-6">
 				<JiraProjectAvatar label={JIRA_DESIGN_PROJECT.name} src={JIRA_DESIGN_PROJECT.imageSrc} />
 				<Heading as="h1" className="truncate" size="large">Jira Design</Heading>

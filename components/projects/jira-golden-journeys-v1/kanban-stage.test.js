@@ -105,12 +105,12 @@ test("JGP Kanban reuses the Jira Issue aggregate row for working agents", () => 
 	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /import \{ AgentAvatarVisual \} from "@\/components\/ui-custom\/agent-avatar-visual";/u);
 	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /agentBrandName\?: ThirdPartyLogoName;/u);
 	// Dragged-out uses the shared mention chip (avatar lives inside it). The chin
-	// row keeps one AgentAvatarVisual. Neither site maps per-agent — the
-	// aggregate row shows exactly one featured avatar however many agents work.
+	// row keeps one AgentAvatarVisual for a featured agent. Multiple agents share
+	// the Agent Loading ferris instead of mapping a visual per agent.
 	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<AgentSessionMentionChip/u);
 	assert.equal(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE.match(/<AgentAvatarVisual/g)?.length, 1);
 	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /activities\.map\([\s\S]{0,400}<AgentAvatarVisual/u);
-	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<AiAgentIcon label="" \/>/u);
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<AgentLoading[\s\S]*agents=\{activities\.map\(toAgentLoadingAgent\)\}[\s\S]*size="small"/u);
 	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<Spinner label="" size="xs" \/>/u);
 	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /\$\{summary\.activityCount\} agents: \$\{summary\.label\}/u);
 	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /variant="rainbow"/u);
@@ -163,7 +163,7 @@ test("global-session Kanban adds the custom-agent directory while retaining codi
 test("global-session Kanban reuses the exact ASX work-item skill picker configuration", () => {
 	assert.match(
 		STAGE_SOURCE,
-		/import \{\s*DEFAULT_PINNED_WORK_ITEM_SKILL_IDS,\s*WORK_ITEM_PINNED_ITEMS_LABEL,\s*WORK_ITEM_SKILLS,\s*\} from "@\/components\/blocks\/jira-work-item\/experimental\/lib\/work-item-picker-options";/u,
+		/import \{\s*DEFAULT_PINNED_WORK_ITEM_SKILL_IDS,\s*WORK_ITEM_PINNED_ITEMS_LABEL,\s*WORK_ITEM_SKILLS,\s*\} from "@\/components\/blocks\/jira-work-item\/lib\/work-item-picker-options";/u,
 	);
 	assert.match(STAGE_SOURCE, /defaultPinnedSkillIds: DEFAULT_PINNED_WORK_ITEM_SKILL_IDS/u);
 	assert.match(STAGE_SOURCE, /pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL/u);
