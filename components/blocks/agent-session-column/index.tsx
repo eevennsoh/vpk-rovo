@@ -602,6 +602,7 @@ export function AgentSessionColumn({
 						<Button
 							aria-label={`${collapsedExpandAction?.label ?? "Expand"} ${title} column`}
 							className={isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL}
+							data-agent-session-column-expand-control=""
 							onClick={handleToggleCollapsed}
 							size="icon-compact"
 							style={{ width: "100%" }}
