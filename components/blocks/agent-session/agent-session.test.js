@@ -139,6 +139,14 @@ test("large uncaptured-work rows keep timestamps after a truncating linked PR wh
 	assert.match(DATA_SOURCE, /pullRequestNumber: 1306,/u);
 	assert.match(DATA_SOURCE, /pullRequestTitle: "Add guest checkout to the storefront",/u);
 	assert.match(DATA_SOURCE, /pullRequestUrl: "https:\/\/github\.com\/eevensoh\/vpk-rovo\/pull\/1306",/u);
+	assert.match(DATA_SOURCE, /repository: GITHUB_REPOSITORY/u);
+	assert.match(DATA_SOURCE, /targetBranch: GITHUB_TARGET_BRANCH/u);
+	assert.match(DATA_SOURCE, /branch: "feature\/shop-4821-guest-checkout"/u);
+	assert.match(DATA_SOURCE, /files: 6,/u);
+	assert.match(DATA_SOURCE, /additions: 86,/u);
+	assert.match(DATA_SOURCE, /deletions: 21,/u);
+	assert.match(DATA_SOURCE, /pullRequestAuthor: GITHUB_PR_AUTHOR/u);
+	assert.match(DATA_SOURCE, /pullRequestDescription:/u);
 	assert.match(DATA_SOURCE, /prStatus: "created"/u);
 	assert.match(DATA_SOURCE, /prStatus: "merged"/u);
 	assert.match(DATA_SOURCE, /prStatus: "failed"/u);
@@ -765,10 +773,11 @@ test("the untracked-work flyout offers the first candidate key", () => {
 	assert.match(UNTRACKED_CARD_SOURCE, /const linkLabel = hasIssueKey \? `Link to \$\{issueKey\}` : "Link work item";/u);
 	assert.match(FLYOUT_SOURCE, /captureLocked \|\| onLinkWorkItem === undefined/u);
 	assert.match(INDEX_SOURCE, /onArchiveSession=\{flyoutActions\.onArchiveSession\}/u);
+	assert.match(INDEX_SOURCE, /archiveActionLabel=\{visibilityLabel\}/u);
 });
 
 test("collapsed session rail forwards archive capability to its shared flyout", () => {
-	assert.match(COLUMN_SOURCE, /onArchiveSession=\{sessionProps\.onArchiveSession\}/u);
+	assert.match(COLUMN_SOURCE, /onArchiveSession=\{handleArchiveSession\}/u);
 	assert.match(COLUMN_RAIL_SOURCE, /onArchiveSession\?: \(item: AgentSessionItem\) => void;/u);
 	assert.match(COLUMN_RAIL_SOURCE, /onArchiveSession,\s*onCreateWorkItem,/u);
 	assert.match(COLUMN_RAIL_SOURCE, /onArchiveSession=\{flyoutActions\.onArchiveSession\}/u);

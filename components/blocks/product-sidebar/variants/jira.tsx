@@ -105,6 +105,8 @@ export interface JiraSidebarSessionItem {
 	completedAtMs?: number;
 	completedSecondsAgo?: number;
 	deletions?: number;
+	/** Number of files in the PR diff, shown on the pull-request Smart Link hover card. */
+	files?: number;
 	host: JiraSidebarSessionHost;
 	id: string;
 	initialElapsedSeconds?: number;
@@ -113,11 +115,17 @@ export interface JiraSidebarSessionItem {
 	/** Board/work-item status shown on the Jira smart-link chip. Overrides the session-lifecycle default. */
 	issueStatus?: string;
 	priority?: JiraSidebarWorkItemPriority;
+	/** PR author shown on the pull-request Smart Link hover card. Falls back to `invokedBy`. */
+	pullRequestAuthor?: JiraSidebarAssignee;
+	/** PR summary shown on the pull-request Smart Link hover card. */
+	pullRequestDescription?: string;
 	pullRequestNumber?: number;
 	pullRequestTitle?: string;
 	pullRequestUrl?: string;
 	repository?: string;
 	status: JiraSidebarSessionStatus;
+	/** Branch the PR merges into (e.g. `main`). */
+	targetBranch?: string;
 	startedAtMs?: number;
 	title: string;
 	worktreePath?: string;

@@ -53,8 +53,18 @@ test("shared hover flyout defaults to session details and exposes composer and u
 	assert.match(cardShellSource, /flex w-\[320px\] max-w-\[calc\(100vw-48px\)\] flex-col gap-3 pt-3 text-text/u);
 	assert.match(cardShellSource, /border-t border-border-disabled p-3/u);
 	assert.match(cardShellSource, /body\?: ReactNode;/u);
-	assert.match(cardShellSource, /\{body \|\| footer \? \(/u);
-	assert.match(cardShellSource, /\{body \? \(/u);
+	assert.match(cardShellSource, /artifacts\?: readonly SmartLinkItem\[\];/u);
+	assert.match(cardShellSource, /\{hasBodyRegion \|\| footer \? \(/u);
+	assert.match(cardShellSource, /\{hasBodyRegion \? \(/u);
+	assert.match(cardShellSource, /import \{ SmartLink, type SmartLinkItem \} from "@\/components\/blocks\/smart-link";/u);
+	assert.match(
+		cardShellSource,
+		/<h3 className="text-xs leading-4 font-medium text-text" id=\{artifactsId\}>[\s\S]*?Artifacts[\s\S]*?<\/h3>/u,
+	);
+	assert.match(
+		cardShellSource,
+		/<SmartLink[\s\S]*className="max-w-full"[\s\S]*item=\{item\}[\s\S]*showStatus=\{item\.variant === "pull-request"\}[\s\S]*side="right"[\s\S]*\/>/u,
+	);
 	assert.match(
 		cardShellSource,
 		/\{footer \? \(\s*<div className=\{cn\("flex flex-col border-t border-border-disabled p-3", footerClassName\)\}/u,
@@ -64,18 +74,13 @@ test("shared hover flyout defaults to session details and exposes composer and u
 	assert.match(cardSource, /<JiraSessionFlyoutCard/u);
 	assert.match(cardSource, /<JiraSessionDetailsBody hideAgentRow hideSessionRow session=\{session\} \/>/u);
 	assert.match(cardSource, /bodyClassName="gap-1"/u);
+	assert.match(cardSource, /artifacts=\{artifacts\}/u);
 	assert.match(
 		cardSource,
-		/body=\{\s*artifacts\.length > 0 \? \(\s*<>[\s\S]*?<JiraSessionDetailsBody hideAgentRow hideSessionRow session=\{session\} \/>[\s\S]*?\) : undefined/u,
+		/body=\{\s*artifacts\.length > 0 \? \(\s*<JiraSessionDetailsBody hideAgentRow hideSessionRow session=\{session\} \/>\s*\) : undefined/u,
 	);
-	assert.match(cardSource, /import \{[\s\S]*SmartLink[\s\S]*\} from "@\/components\/blocks\/smart-link";/u);
-	assert.match(
-		cardSource,
-		/<h3 className="text-xs leading-4 font-medium text-text" id=\{artifactsId\}>[\s\S]*?Artifacts[\s\S]*?<\/h3>/u,
-	);
-	assert.match(cardSource, /session\.pullRequestNumber === undefined \|\| session\.pullRequestUrl === undefined/u);
-	assert.match(cardSource, /href: session\.pullRequestUrl/u);
-	assert.match(cardSource, /variant: "pull-request"/u);
+	assert.doesNotMatch(cardSource, /from "@\/components\/blocks\/smart-link"/u);
+	assert.doesNotMatch(cardSource, />\s*Artifacts\s*<\/h3>/u);
 	assert.doesNotMatch(cardSource, /variant: "confluence"/u);
 	assert.match(cardSource, /artifacts\.length > 0 \?/u);
 	assert.match(cardSource, /High confidence to link/u);
@@ -106,11 +111,11 @@ test("shared hover flyout defaults to session details and exposes composer and u
 	);
 	assert.match(
 		cardSource,
-		/<DropdownMenuItem[\s\S]*disabled=\{createUnavailable\}[\s\S]*onSelect=\{\(\) => onCreateWorkItem\?\.\(\)\}[\s\S]*>\s*Create new work item[\s\S]*?<\/DropdownMenuItem>\s*<DropdownMenuItem[\s\S]*disabled=\{archiveUnavailable\}[\s\S]*>\s*Archive\s*<\/DropdownMenuItem>/u,
+		/<DropdownMenuItem[\s\S]*disabled=\{createUnavailable\}[\s\S]*onSelect=\{\(\) => onCreateWorkItem\?\.\(\)\}[\s\S]*>\s*Create new work item[\s\S]*?<\/DropdownMenuItem>\s*<DropdownMenuItem[\s\S]*disabled=\{archiveUnavailable\}[\s\S]*>\s*\{archiveActionLabel\}\s*<\/DropdownMenuItem>/u,
 	);
 	assert.match(
 		cardSource,
-		/<DropdownMenuItem[\s\S]*disabled=\{archiveUnavailable\}[\s\S]*onSelect=\{\(\) => onArchiveSession\?\.\(\)\}[\s\S]*>\s*Archive\s*<\/DropdownMenuItem>/u,
+		/<DropdownMenuItem[\s\S]*disabled=\{archiveUnavailable\}[\s\S]*onSelect=\{\(\) => onArchiveSession\?\.\(\)\}[\s\S]*>\s*\{archiveActionLabel\}\s*<\/DropdownMenuItem>/u,
 	);
 	assert.match(
 		cardSource,
@@ -121,17 +126,24 @@ test("shared hover flyout defaults to session details and exposes composer and u
 		/\{hasIssueKey \? \([\s\S]*?<DropdownMenu>[\s\S]*?<\/DropdownMenu>[\s\S]*?\) : \([\s\S]*?\{createButton\}[\s\S]*?\{archiveButton\}[\s\S]*?\)\}/u,
 	);
 	assert.match(cardSource, /const createButton = \([\s\S]*?Create new work item/u);
-	assert.match(cardSource, /const archiveButton = \([\s\S]*?aria-label=\{archiveUnavailable \? "Archive unavailable" : "Archive"\}/u);
+	assert.match(cardSource, /const archiveButton = \([\s\S]*?aria-label=\{archiveUnavailable \? `\$\{archiveActionLabel\} unavailable` : archiveActionLabel\}/u);
 	assert.doesNotMatch(cardSource, /Add new subtask to|onSelect=\{\(\) => onAddAsSubtask/u);
 	assert.doesNotMatch(cardSource, /onClick=\{onCreateWorkItem\}/u);
 	assert.doesNotMatch(cardSource, /aria-disabled=\{createUnavailable\}/u);
 	assert.match(source, /onLinkWorkItem\?: \(session: JiraSidebarSessionItem, workItemKey: string\) => void;/u);
 	assert.match(source, /onCreateWorkItem\?: \(session: JiraSidebarSessionItem\) => void;/u);
 	assert.match(source, /onArchiveSession\?: \(session: JiraSidebarSessionItem\) => void;/u);
+	assert.match(source, /archiveActionLabel\?: string;/u);
+	assert.match(source, /archiveActionLabel = "Archive",/u);
+	assert.match(cardSource, /archiveActionLabel = "Archive",/u);
 	assert.match(source, /onAddAsSubtask\?: \(session: JiraSidebarSessionItem, workItemKey: string\) => void;/u);
 	assert.match(
 		source,
-		/function resolveJiraSessionUntrackedWorkActions[\s\S]*captureLocked \|\| onArchiveSession === undefined[\s\S]*\(\) => onArchiveSession\(session\)/u,
+		/function resolveJiraSessionUntrackedWorkActions[\s\S]*onArchiveSession: onArchiveSession === undefined[\s\S]*\(\) => onArchiveSession\(session\)/u,
+	);
+	assert.match(
+		source,
+		/onArchiveSession: onArchiveSession === undefined\s*\n\s*\? undefined\s*\n\s*: \(\) => onArchiveSession\(session\),/u,
 	);
 	assert.match(
 		source,
@@ -179,15 +191,16 @@ test("details hover card uses Figma chrome without panel property rows", () => {
 		detailsSource,
 		/<Tag[\s\S]*color="gray"[\s\S]*type="agent"[\s\S]*variant="editor"/u,
 	);
-	assert.match(detailsSource, /text-icon-success[\s\S]*<PullRequestIcon color="currentColor" label="Pull request open"/u);
-	assert.match(detailsSource, /text-icon-discovery[\s\S]*<MergeSuccessIcon color="currentColor" label="Pull request merged"/u);
-	assert.match(detailsSource, /text-icon-danger[\s\S]*<MergeFailureIcon color="currentColor" label="Pull request failed"/u);
+	assert.match(detailsSource, /artifacts=\{sessionArtifactItems\(session\)\}/u);
+	assert.doesNotMatch(detailsSource, /DetailsPullRequestRow/u);
+	assert.doesNotMatch(detailsSource, /PullRequestIcon/u);
+	assert.doesNotMatch(detailsSource, /MergeSuccessIcon/u);
+	assert.doesNotMatch(detailsSource, /MergeFailureIcon/u);
+	assert.doesNotMatch(detailsSource, /text-text-success">\+\{session\.additions\}/u);
 	assert.match(
 		detailsSource,
-		/<MetadataPathLink[\s\S]*className="min-w-0 flex-1 truncate text-xs leading-5 text-text"/u,
+		/<MetadataPathLink[\s\S]*className="min-w-0 truncate text-xs leading-5"[\s\S]*segmented title=\{session\.branch\}/u,
 	);
-	assert.match(detailsSource, /text-xs leading-5">\s*<span className="text-text-success">\+\{session\.additions\}/u);
-	assert.match(detailsSource, /text-text-danger">-\{session\.deletions\}/u);
 	assert.match(detailsSource, /const visibleChecks = session\.status === "merged" && session\.checks\?\.failed === 0/u);
 	assert.match(detailsSource, /if \(!visibleChecks\) \{\s*return null;/u);
 	assert.match(detailsSource, /formatSessionChecks\(visibleChecks\)/u);
@@ -195,6 +208,42 @@ test("details hover card uses Figma chrome without panel property rows", () => {
 	assert.match(source, /function hostIcon\(/u);
 	assert.match(source, /<DevicesIcon label="" size="small" \/>/u);
 	assert.doesNotMatch(source, /ScreenIcon/u);
+});
+
+test("session flyout Artifacts render the PR as a GitHub Smart Link", () => {
+	const cardShellSource = readRepoFile(FLYOUT_CARD_PATH);
+	const detailsSource = readRepoFile(DETAILS_CARD_PATH);
+	const cardSource = readRepoFile(UNTRACKED_CARD_PATH);
+	const dataSource = readRepoFile(FLYOUT_HANDLE_PATH);
+
+	assert.match(dataSource, /toPullRequestSmartLink/u);
+	assert.match(dataSource, /export function toSessionPullRequestSmartLinkStatus/u);
+	assert.match(dataSource, /case "merged":\s*return "Merged"/u);
+	assert.match(dataSource, /case "stopped":\s*return "Failed"/u);
+	assert.match(dataSource, /case "pr-open":\s*return "Open"/u);
+	assert.match(dataSource, /export function toSessionPullRequestSmartLink/u);
+	assert.match(dataSource, /if \(session\.pullRequestNumber === undefined\) \{\s*return null;/u);
+	assert.match(dataSource, /id: `\$\{session\.id\}-pull-request`/u);
+	assert.match(dataSource, /href: session\.pullRequestUrl/u);
+	assert.match(dataSource, /files: session\.files,/u);
+	assert.match(dataSource, /targetBranch: session\.targetBranch,/u);
+	assert.match(dataSource, /author: session\.pullRequestAuthor \?\? session\.invokedBy,/u);
+	assert.match(dataSource, /description: session\.pullRequestDescription,/u);
+	assert.match(dataSource, /export function sessionArtifactItems/u);
+	assert.match(
+		dataSource,
+		/const pullRequest = toSessionPullRequestSmartLink\(session\);\s*return pullRequest === null \? \[\] : \[pullRequest\]/u,
+	);
+	assert.match(detailsSource, /artifacts=\{sessionArtifactItems\(session\)\}/u);
+	assert.match(cardSource, /artifacts=\{artifacts\}/u);
+	assert.match(cardSource, /sessionArtifactItems/u);
+	assert.match(cardShellSource, /Artifacts/u);
+	assert.match(
+		cardShellSource,
+		/<SmartLink[\s\S]*className="max-w-full"[\s\S]*item=\{item\}[\s\S]*showStatus=\{item\.variant === "pull-request"\}[\s\S]*side="right"[\s\S]*\/>/u,
+	);
+	assert.doesNotMatch(detailsSource, /MetadataPathLink[\s\S]*#\$\{session\.pullRequestNumber\}/u);
+	assert.doesNotMatch(cardSource, /<SmartLink /u);
 });
 
 test("shared Agent States flyout forwards submission, timing, and stopped lifecycle data", () => {

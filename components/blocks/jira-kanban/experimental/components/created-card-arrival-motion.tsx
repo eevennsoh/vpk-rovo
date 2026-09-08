@@ -1,14 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { use, type ReactNode } from "react";
 import { motion, type MotionProps } from "motion/react";
 
+import { JiraCreateEntrance } from "@/components/blocks/jira-create/components/jira-create-entrance";
+import { getJiraCreateArrivalDelayS } from "@/components/blocks/jira-create/lib/jira-create-motion";
 import type { JiraKanbanCardMoveAnimation } from "@/components/blocks/jira-kanban";
 import { cn } from "@/lib/utils";
 
 import type { JiraKanbanCreatedCardArrival } from "../hooks/use-created-card-arrival";
 import type { BoardCardInsertion } from "../lib/board-agent-session-drag";
-import { BoardCardInsertionLine } from "./board-card-insertion-line";
 import {
 	getBoardCardInsertionAnchorClassName,
 	resolveBoardCardInsertionPosition,
@@ -20,6 +21,8 @@ import {
 	JIRA_KANBAN_CARD_DEPART,
 	JIRA_KANBAN_CARD_MOVE,
 } from "../lib/card-motion";
+import { BoardCardHoverInsertionContext } from "./board-card-hover-insertion-context";
+import { BoardCardInsertionLine } from "./board-card-insertion-line";
 
 interface CreatedCardArrivalMotionProps {
 	arrival?: JiraKanbanCreatedCardArrival;
@@ -52,6 +55,13 @@ function isLastArrivingCard(
 	arriving: boolean,
 ): boolean {
 	return arriving && arrival?.cardCodes.at(-1) === cardCode;
+}
+
+function isCreateWellArriving(
+	arrival: JiraKanbanCreatedCardArrival | undefined,
+	arriving: boolean,
+): boolean {
+	return arriving && arrival?.appended === true;
 }
 
 function getCardMoveAnimation(
@@ -120,12 +130,15 @@ export function CreatedCardArrivalMotion({
 	shouldAnimateCardMoves,
 	shouldReduceMotion,
 }: Readonly<CreatedCardArrivalMotionProps>) {
-	const insertionPosition = resolveBoardCardInsertionPosition(cardInsertion, {
+	const hoverInsertion = use(BoardCardHoverInsertionContext);
+	const insertionPosition = resolveBoardCardInsertionPosition(cardInsertion ?? hoverInsertion, {
 		cardCount,
 		cardIndex,
 		columnTitle,
 	});
 	const isArriving = isCardArriving(arrival, cardCode);
+	const isCreateWellArrival = isCreateWellArriving(arrival, isArriving);
+	const isGapArriving = isArriving && !isCreateWellArrival;
 	const isFinalArrivingCard = isLastArrivingCard(arrival, cardCode, isArriving);
 	const cardMoveAnimation = getCardMoveAnimation(shouldAnimateCardMoves, cardMovePhase);
 	const arrivalId = getArrivalId(arrival, isArriving);
@@ -134,20 +147,29 @@ export function CreatedCardArrivalMotion({
 		isFinalArrivingCard,
 		onArrivalComplete,
 	);
-	const motionStyle = getCardMotionStyle(isArriving, shouldReduceMotion, cardMovePhase);
-	const motionTransition = getCardMotionTransition(isArriving, shouldReduceMotion, cardMovePhase);
+	const motionStyle = getCardMotionStyle(isGapArriving, shouldReduceMotion, cardMovePhase);
+	const motionTransition = getCardMotionTransition(isGapArriving, shouldReduceMotion, cardMovePhase);
+	const createDelayS = isCreateWellArrival && arrival
+		? getJiraCreateArrivalDelayS(arrival.cardCodes, cardCode)
+		: 0;
+
+	const insertionLine = insertionPosition ? (
+		<BoardCardInsertionLine position={insertionPosition} seam={insertionPosition === "before" && cardIndex > 0 ? "gap" : "edge"} />
+	) : null;
 
 	return (
 		<motion.div
-			animate={isArriving
-				? { opacity: 1, y: 0 }
-				: cardMoveAnimation}
+			animate={isCreateWellArrival
+				? undefined
+				: isGapArriving
+					? { opacity: 1, y: 0 }
+					: cardMoveAnimation}
 			className={cn(
 				"flex w-full min-w-0 max-w-[280px] flex-col gap-2 rounded-lg",
 				"transition-[background-color,opacity] duration-normal ease-out-practical motion-reduce:transition-none",
 				"[&_[data-slot=jira-issue-agent-backdrop]]:transition-colors [&_[data-slot=jira-issue-agent-backdrop]]:duration-normal [&_[data-slot=jira-issue-agent-backdrop]]:ease-out-practical",
 				"motion-reduce:[&_[data-slot=jira-issue-agent-backdrop]]:transition-none",
-				isArriving && "[&_[data-slot=jira-issue-agent-backdrop]]:bg-bg-accent-blue-subtlest",
+				isGapArriving && "[&_[data-slot=jira-issue-agent-backdrop]]:bg-bg-accent-blue-subtlest",
 				getBoardCardInsertionAnchorClassName(insertionPosition),
 				className,
 			)}
@@ -156,19 +178,30 @@ export function CreatedCardArrivalMotion({
 			data-board-card-count={cardCount}
 			data-board-card-index={cardIndex}
 			data-board-column-title={columnTitle}
-			data-created-card-backdrop={isArriving || undefined}
+			data-created-card-backdrop={isGapArriving || undefined}
 			data-created-card-arrival-id={arrivalId}
 			data-created-card-arrival-last={isFinalArrivingCard || undefined}
+			data-jira-create-well-arrival={isCreateWellArrival || undefined}
 			data-issue-key={cardCode}
-			initial={isArriving && !shouldReduceMotion ? { opacity: 0, y: 8 } : false}
-			onAnimationComplete={handleAnimationComplete}
+			initial={isGapArriving && !shouldReduceMotion ? { opacity: 0, y: 8 } : false}
+			onAnimationComplete={isCreateWellArrival ? undefined : handleAnimationComplete}
 			style={motionStyle}
 			transition={motionTransition}
 		>
-			{insertionPosition ? (
-				<BoardCardInsertionLine position={insertionPosition} seam={insertionPosition === "before" && cardIndex > 0 ? "gap" : "edge"} />
-			) : null}
-			{children}
+			{isCreateWellArrival ? (
+				<JiraCreateEntrance
+					enterDelayS={createDelayS}
+					onAnimationComplete={handleAnimationComplete}
+				>
+					{insertionLine}
+					{children}
+				</JiraCreateEntrance>
+			) : (
+				<>
+					{insertionLine}
+					{children}
+				</>
+			)}
 		</motion.div>
 	);
 }

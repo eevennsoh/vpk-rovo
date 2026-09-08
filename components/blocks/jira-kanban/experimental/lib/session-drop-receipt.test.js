@@ -1,7 +1,11 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { sessionReceiptId } = require("../../../jira-dropzone/lib/jira-dropzone-receipts.ts");
+const { JIRA_DROPZONE_FULL_MOTION_PROFILE } = require("../../../jira-dropzone/lib/jira-dropzone-motion.ts");
+const {
+	flightsFromReceipt,
+	sessionReceiptId,
+} = require("../../../jira-dropzone/lib/jira-dropzone-receipts.ts");
 const { toSessionDropReceipt } = require("./session-drop-receipt.ts");
 
 function session(id, name = id) {
@@ -60,8 +64,14 @@ test("a create commit yields one member per step in step order", () => {
 		receipt.members.map((member) => [member.id, member.name]),
 		[["lw-a", "Ada"], ["lw-b", "Bea"]],
 	);
-	assert.equal(receipt.drop, undefined);
+	assert.equal(receipt.drop, "stagger");
 	assert.equal(receipt.bounce, undefined);
+	const flights = flightsFromReceipt(receipt, JIRA_DROPZONE_FULL_MOTION_PROFILE);
+	assert.equal(flights.length, 2);
+	assert.deepEqual(
+		flights.map((flight) => flight.delayMs),
+		[0, JIRA_DROPZONE_FULL_MOTION_PROFILE.staggerMs],
+	);
 	assert.equal(
 		receipt.id,
 		sessionReceiptId({

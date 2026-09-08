@@ -1,5 +1,6 @@
 "use client";
 
+import { use, useId, type CSSProperties } from "react";
 import AddIcon from "@atlaskit/icon/core/add";
 
 import { Icon } from "@/components/ui/icon";
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 import type { BoardCardInsertion } from "../lib/board-agent-session-drag";
 import type { BoardCardInsertionSeam } from "../lib/board-card-insertion";
+import { BoardCardHoverInsertionContext } from "./board-card-hover-insertion-context";
 
 /**
  * The single insertion seam of a column that holds no cards.
@@ -21,13 +23,16 @@ export function BoardEmptyColumnInsertionSlot({
 	armed,
 	columnTitle,
 }: Readonly<{ armed: boolean; columnTitle: string }>) {
+	const hoverInsertion = use(BoardCardHoverInsertionContext);
+	const showLine = armed || hoverInsertion?.columnTitle === columnTitle;
+
 	return (
 		<div
 			className="relative min-h-8 flex-1"
 			data-board-agent-session-drop-zone="card-gap"
 			data-board-column-title={columnTitle}
 		>
-			{armed ? <BoardCardInsertionLine position="before" seam="edge" /> : null}
+			{showLine ? <BoardCardInsertionLine position="before" seam="edge" /> : null}
 		</div>
 	);
 }
@@ -53,6 +58,9 @@ export function BoardCardInsertionLine({
 	position,
 	seam,
 }: Readonly<{ position: BoardCardInsertion["position"]; seam: BoardCardInsertionSeam }>) {
+	const insertionAnchorId = useId().replaceAll(":", "");
+	const anchorName = `--board-insertion-${insertionAnchorId}`;
+
 	return (
 		<div
 			aria-hidden
@@ -67,28 +75,45 @@ export function BoardCardInsertionLine({
 			)}
 			data-insertion-line={position}
 			data-insertion-seam={seam}
-			style={seam === "gap" ? { [position === "before" ? "top" : "bottom"]: GAP_CENTRED_OFFSET } : undefined}
+			style={{
+				anchorName,
+				...(seam === "gap"
+					? { [position === "before" ? "top" : "bottom"]: GAP_CENTRED_OFFSET }
+					: undefined),
+			} as CSSProperties}
 		>
 			{/*
 			 * The "+" anchoring the rule's left end, matching the list view's
-			 * `RowBoundaryCreateControls` treatment: a 24px outline square on the
-			 * overlay surface with a subtle icon — not an accent-coloured circle.
+			 * `JiraListColumnBoundary` / `RowBoundaryCreateControls` treatment:
+			 * a 24px outline square on the overlay surface with a subtle icon —
+			 * not an accent-coloured circle, and no overlay shadow that would
+			 * draw a second edge against the 1px grid border.
 			 *
-			 * Inert on purpose: the affordance here is the drag itself, so there is
-			 * nothing to click and nothing to focus. That is also why it is a `span`
-			 * and not `components/ui/button` — `Button` renders a real focusable Base
-			 * UI `<button>`, and a focusable node inside `aria-hidden` is an
-			 * accessibility violation. The list's tooltip goes with the button.
+			 * Inert on purpose: hover paints the same affordance as a session
+			 * drag, but the board does not mint a work item from a click here.
+			 * The list's tooltip goes with its real create button. A focusable
+			 * node inside `aria-hidden` would be an accessibility violation, so
+			 * this stays a `span`.
 			 *
-			 * `left-0` keeps it inside the card horizontally. The list can hang its
-			 * control fully outside because it lives in an anchor-positioned overlay;
-			 * here the card list clips the inline axis too (`overflow-y-auto` computes
-			 * `overflow-x` to `auto`), so a half-outside marker would be cut.
+			 * `fixed` + CSS anchors hang the marker halfway outside the card's
+			 * left edge. The card list is a scrollport (`overflow-y-auto`
+			 * computes `overflow-x` to `auto`), so an absolutely positioned
+			 * half-outside marker would be clipped — the same reason the list
+			 * column controls use `fixed`.
 			 */}
 			<span
-				className="absolute left-0 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md border border-border bg-surface-overlay"
+				className="fixed z-30 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border bg-surface-overlay text-icon-subtle"
 				data-board-insertion-marker={position}
-				style={{ boxShadow: token("elevation.shadow.overlay") }}
+				style={{
+					// This node mounts in the same commit as its anchor. Until the
+					// browser resolves that anchor, bare anchor() insets compute to
+					// `auto` and paint the fixed node at its clipped static position.
+					// Keep that unresolved frame offscreen and non-painting instead.
+					left: "anchor(left, -100vw)",
+					positionAnchor: anchorName,
+					positionVisibility: "anchors-visible",
+					top: "anchor(center, -100vh)",
+				}}
 			>
 				{/*
 				 * ADS icons ship unlayered Compiled CSS, so a Tailwind text colour

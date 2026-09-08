@@ -282,6 +282,7 @@ export function AgentSession({
 				})}
 			</ul>
 			<JiraSessionFlyoutSurface
+				archiveActionLabel={visibilityLabel}
 				capturedSessionIds={capturedItemIds}
 				content={isAttached ? "details" : "untracked-work"}
 				handle={flyoutHandle}

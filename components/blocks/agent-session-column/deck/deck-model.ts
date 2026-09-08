@@ -1,7 +1,7 @@
 import type { Transition } from "motion/react";
 
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
-import { SCROLLING_DEPTH_LIFT_PX, SCROLLING_DEPTH_MIN_SCALE, SCROLLING_DEPTH_ZONE_PX, SCROLLING_ENTRANCE_SPRING } from "../../../visual/scrolling/data.ts";
+import { SCROLLING_DEPTH_LIFT_PX, SCROLLING_DEPTH_MIN_SCALE, SCROLLING_DEPTH_ZONE_PX } from "../../../visual/scrolling/data.ts";
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
 import { FAN_OPACITY_INPUT, fanOffset, fanOpacity } from "../../../visual/scrolling/lib.ts";
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
@@ -29,10 +29,7 @@ export const AGENT_SESSION_DECK_FLAT: AgentSessionDeck = {
 
 export const AGENT_SESSION_DECK_STACKED: AgentSessionDeck = {
 	depth: "bottom",
-	entrance: {
-		origin: "top",
-		transition: SCROLLING_ENTRANCE_SPRING,
-	},
+	entrance: null,
 	stackOrder: "first-on-top",
 };
 

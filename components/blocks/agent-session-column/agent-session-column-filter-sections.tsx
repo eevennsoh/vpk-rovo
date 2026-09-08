@@ -35,8 +35,8 @@ import {
 
 const DAYS_PRESET_LABELS: Readonly<Record<AgentSessionFilterDaysPreset, string>> = {
 	custom: "Custom",
-	"last-7-days": "Last 7 days",
-	"last-30-days": "Last 30 days",
+	"last-7-days": "Last 7d",
+	"last-30-days": "Last 30d",
 	today: "Today",
 };
 
@@ -241,7 +241,7 @@ export function DaysFilterSection({
 
 	return (
 		<FilterSection title="Date/time range">
-			<div className="flex flex-wrap gap-1.5">
+			<div className="flex flex-wrap gap-1.5 pb-2 min-[22rem]:flex-nowrap">
 				{AGENT_SESSION_FILTER_DAYS_PRESETS.filter((preset) => preset !== "custom").map((preset) => (
 					<FilterChoice
 						ariaLabel={`Date/time range: ${DAYS_PRESET_LABELS[preset]}`}

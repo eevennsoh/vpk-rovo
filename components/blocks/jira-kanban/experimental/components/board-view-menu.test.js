@@ -51,6 +51,7 @@ test("View picker exposes unselected filter-action submenus with a selected coun
 	assert.match(VIEW_MENU_SOURCE, /<Badge variant="information">\{selectedQuickViewCount\}<\/Badge>/u);
 	assert.match(VIEW_MENU_SOURCE, /<DropdownMenuSeparator \/>[\s\S]*Clear selection/u);
 	assert.match(VIEW_MENU_SOURCE, /<DropdownMenuSubTrigger>\{label\}<\/DropdownMenuSubTrigger>/u);
+	assert.doesNotMatch(VIEW_MENU_SOURCE, /<DropdownMenuSubTrigger selected=/u);
 	assert.match(
 		VIEW_MENU_SOURCE,
 		/label="Pull request"[\s\S]*onSelect=\{handlePullRequestSelect\}[\s\S]*options=\{BOARD_PR_STATE_OPTIONS\}/u,
@@ -75,10 +76,21 @@ test("View picker exposes unselected filter-action submenus with a selected coun
 		VIEW_MENU_SOURCE,
 		/const BOARD_SESSION_TYPE_OPTIONS[\s\S]*BOARD_AGENT_HOST_OPTIONS\.filter\([\s\S]*option\.id !== "all"/u,
 	);
-	assert.match(VIEW_MENU_SOURCE, /<DropdownMenuItem[\s\S]*onSelect=\{\(\) => onSelect\(option\.id\)\}/u);
 	assert.match(
 		VIEW_MENU_SOURCE,
-		/className=\{stateIcon \? "gap-2 \[&>span:first-child\]:size-3" : undefined\}/u,
+		/<DropdownMenuRadioGroup[\s\S]*aria-label=\{label\}[\s\S]*value=\{selectedId \?\? ""\}/u,
+	);
+	assert.match(
+		VIEW_MENU_SOURCE,
+		/<DropdownMenuRadioItem[\s\S]*indicatorPlacement="end"[\s\S]*value=\{option\.id\}/u,
+	);
+	assert.match(VIEW_MENU_SOURCE, /selectedId=\{pullRequestFilterId\}/u);
+	assert.match(VIEW_MENU_SOURCE, /selectedId=\{agentFilterId\}/u);
+	assert.match(VIEW_MENU_SOURCE, /selectedId=\{sessionTypeFilterId\}/u);
+	assert.match(VIEW_MENU_SOURCE, /selectedId=\{groupByFilterId\}/u);
+	assert.match(
+		VIEW_MENU_SOURCE,
+		/className=\{stateIcon \? "gap-2" : undefined\}/u,
 	);
 	assert.match(VIEW_MENU_SOURCE, /setSessionTypeFilterId\(id\)/u);
 	assert.doesNotMatch(VIEW_MENU_SOURCE, /AiAgentIcon/u);
@@ -88,7 +100,7 @@ test("View picker exposes unselected filter-action submenus with a selected coun
 	);
 	assert.doesNotMatch(
 		VIEW_MENU_SOURCE,
-		/DropdownMenuCheckboxItem|DropdownMenuRadioGroup|DropdownMenuRadioItem|checked=|defaultChecked|CheckMarkIcon/u,
+		/DropdownMenuCheckboxItem|checked=|defaultChecked|CheckMarkIcon/u,
 	);
 	assert.doesNotMatch(VIEW_MENU_SOURCE, /<DropdownMenuSubTrigger onClick=/u);
 	assert.doesNotMatch(VIEW_MENU_SOURCE, /option\.separatorBefore/u);

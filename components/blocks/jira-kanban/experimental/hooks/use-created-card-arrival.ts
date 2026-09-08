@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
+import { subscribeCreatedCardBottomReveal } from "@/components/blocks/jira-create/lib/jira-create-column-scroll";
 
 export interface JiraKanbanCreatedCardArrival {
 	readonly id: number;
@@ -17,8 +18,9 @@ export interface JiraKanbanCreatedCardArrival {
 	readonly cardCodes: readonly string[];
 	/**
 	 * Whether the cards landed at the end of the column. The create well always
-	 * appends, so scrolling to the bottom reveals what it made. A gap drop lands
-	 * mid-column, already under the pointer, and must not yank the column away.
+	 * appends, so the column follows the last card's bottom (chin included). A
+	 * gap drop lands mid-column, already under the pointer, and must not yank
+	 * the column away.
 	 */
 	readonly appended: boolean;
 }
@@ -69,6 +71,7 @@ export function useBoardCreatedCardArrival({
 
 export function useCreatedCardArrivalCompletion(
 	onComplete: ((arrivalId: number) => void) | undefined,
+	holdMs: number = JIRA_KANBAN_CREATED_CARD_BACKDROP_HOLD_MS,
 ): (arrivalId: number) => void {
 	const completedIdsRef = useRef(new Set<number>());
 	const holdTimeoutRef = useRef<number | null>(null);
@@ -84,12 +87,17 @@ export function useCreatedCardArrivalCompletion(
 		completedIdsRef.current.add(arrivalId);
 		if (holdTimeoutRef.current !== null) {
 			window.clearTimeout(holdTimeoutRef.current);
+			holdTimeoutRef.current = null;
+		}
+		if (holdMs <= 0) {
+			onComplete?.(arrivalId);
+			return;
 		}
 		holdTimeoutRef.current = window.setTimeout(() => {
 			holdTimeoutRef.current = null;
 			onComplete?.(arrivalId);
-		}, JIRA_KANBAN_CREATED_CARD_BACKDROP_HOLD_MS);
-	}, [onComplete]);
+		}, holdMs);
+	}, [holdMs, onComplete]);
 }
 
 export function useCreatedCardArrivalScroll({
@@ -104,7 +112,6 @@ export function useCreatedCardArrivalScroll({
 	title: string;
 }>): RefCallback<HTMLDivElement> {
 	const cardListElementRef = useRef<HTMLDivElement | null>(null);
-	const lastScrolledArrivalIdRef = useRef<number | null>(null);
 	const setCardListRef = useCallback((node: HTMLDivElement | null) => {
 		cardListElementRef.current = node;
 		onCardListRef(node);
@@ -115,21 +122,21 @@ export function useCreatedCardArrivalScroll({
 			arrival === undefined
 			|| arrival.columnTitle !== title
 			|| arrival.cardCodes.length === 0
-			// A gap drop lands where the pointer already is; scrolling to the end
-			// would pull the new card out from under the user.
+			// A gap drop lands where the pointer already is; following the new
+			// group's bottom would pull the card out from under the user.
 			|| !arrival.appended
-			|| lastScrolledArrivalIdRef.current === arrival.id
 		) return;
 
 		const cardList = cardListElementRef.current;
 		if (cardList === null) return;
-		const arrivedCardCount = cardList.querySelectorAll(
+		const arrivedCards = [...cardList.querySelectorAll<HTMLElement>(
 			`[data-created-card-arrival-id="${arrival.id}"]`,
-		).length;
-		if (arrivedCardCount < arrival.cardCodes.length) return;
+		)];
+		if (arrivedCards.length < arrival.cardCodes.length) return;
 
-		cardList.scrollTo({ behavior: "auto", top: cardList.scrollHeight });
-		lastScrolledArrivalIdRef.current = arrival.id;
+		// Follow the last arriving card's bottom as the slot grows so the chin
+		// stays on screen. Observing the scrollport itself would miss that growth.
+		return subscribeCreatedCardBottomReveal(cardList, arrivedCards);
 	}, [arrival, cardCount, title]);
 
 	return setCardListRef;

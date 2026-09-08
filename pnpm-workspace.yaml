@@ -45,6 +45,14 @@ minimumReleaseAgeExclude:
   # simply be deleted after that.
   - "@atlaskit/icon@37.6.0"
   - "@atlaskit/icon-lab@7.8.0"
+  # Text Continuity visual component. Place-value number matching (`numbers`,
+  # `decimals`) and caret matching (`cursorIndex`) first ship in 0.1.3; 0.1.0 is
+  # the newest version clearing the gate and lacks all of them, which is most of
+  # what the ported examples demonstrate. Taken ahead of the 7-day gate by
+  # explicit request. Version-pinned so the gate re-applies on any future bump;
+  # 0.1.3 clears the window on its own (published 2026-09-07), so this can be
+  # deleted after 2026-09-14.
+  - torph@0.1.3
 trustPolicy: no-downgrade
 trustPolicyExclude:
   # Existing transitive dependency blocks lockfile refresh under no-downgrade.

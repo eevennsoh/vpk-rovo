@@ -12,6 +12,10 @@ const {
 	toChinFreeBoardCardBounds,
 	toListSessionDropIntent,
 } = require("./board-agent-session-drag.ts");
+const {
+	BOARD_CARD_INSERTION_BAND_PX,
+	pickBoardCardInsertionAtPoint,
+} = require("./board-card-insertion.ts");
 
 function session(id = "review-agent") {
 	return { id, label: "Review Agent", name: "Review Agent", state: "working" };
@@ -284,4 +288,19 @@ test("attach proximity reports nothing while the pointer sits in a gap band", ()
 	);
 	assert.equal(attached.cardCode, "PAY-118");
 	assert.equal(attached.distance, 0);
+});
+
+test("hover picking uses the same gap bands a session drag would arm", () => {
+	assert.equal(BOARD_CARD_INSERTION_BAND_PX, GAP_BAND_PX);
+	const gapZones = [...CARD_A_GAPS, ...CARD_B_GAPS];
+
+	assert.deepEqual(
+		pickBoardCardInsertionAtPoint({ x: 100, y: 95 }, gapZones),
+		CARD_A_GAPS[1].insertion,
+	);
+	assert.deepEqual(
+		pickBoardCardInsertionAtPoint({ x: 100, y: 5 }, gapZones),
+		CARD_A_GAPS[0].insertion,
+	);
+	assert.equal(pickBoardCardInsertionAtPoint({ x: 100, y: 50 }, gapZones), null);
 });

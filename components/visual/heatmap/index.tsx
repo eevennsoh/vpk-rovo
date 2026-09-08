@@ -1,9 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useReducedMotion } from "motion/react";
 import { Suspense, useMemo, useRef, type CSSProperties, type Ref } from "react";
 
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { resolveHeatmapColors, resolveHeatmapConfig, type HeatmapConfig } from "./data";
@@ -118,7 +118,7 @@ export function Heatmap({
 	style,
 	ref,
 }: Readonly<HeatmapProps>) {
-	const shouldReduceMotion = useReducedMotion() ?? false;
+	const shouldReduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 	const config = useMemo(
 		() =>
 			resolveHeatmapConfig({

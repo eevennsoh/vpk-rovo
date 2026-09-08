@@ -50,6 +50,9 @@ export const VISUAL_DEMOS: Record<string, ComponentType> = {
 	"text-morphing": dynamic(() => import("../demos/visual/text-morphing-demo"), {
 		ssr: false,
 	}),
+	"text-continuity": dynamic(() => import("../demos/visual/text-continuity-demo"), {
+		ssr: false,
+	}),
 	ascii: dynamic(() => import("../demos/visual/ascii-demo"), {
 		ssr: false,
 	}),

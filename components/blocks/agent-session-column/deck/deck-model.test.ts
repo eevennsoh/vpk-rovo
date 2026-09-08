@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
-import { AGENT_SESSION_DECK_END_SPACE_PX, AGENT_SESSION_DECK_FLAT, AGENT_SESSION_DECK_STACKED, deckRunFrame, groupDeckRuns, isAgentSessionDeckActive, isIdentityFrame, resolveAgentSessionDeckMotion, type DeckRow } from "./deck-model.ts";
+import { SCROLLING_ENTRANCE_SPRING } from "../../../visual/scrolling/data.ts";
+// @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
+import { AGENT_SESSION_DECK_END_SPACE_PX, AGENT_SESSION_DECK_FLAT, AGENT_SESSION_DECK_STACKED, deckRunFrame, groupDeckRuns, isAgentSessionDeckActive, isIdentityFrame, resolveAgentSessionDeckMotion, type AgentSessionDeck, type DeckRow } from "./deck-model.ts";
+
+const STACKED_WITH_ENTRANCE: AgentSessionDeck = {
+	...AGENT_SESSION_DECK_STACKED,
+	entrance: {
+		origin: "top",
+		transition: SCROLLING_ENTRANCE_SPRING,
+	},
+};
 
 function row(top: number, marked = false, height = 62): DeckRow {
 	return { height, marked, top };
@@ -13,8 +23,8 @@ test("FLAT is inactive and STACKED is active", () => {
 	assert.equal(isAgentSessionDeckActive(AGENT_SESSION_DECK_STACKED), true);
 });
 
-test("STACKED entrance deals from top to bottom", () => {
-	assert.equal(AGENT_SESSION_DECK_STACKED.entrance?.origin, "top");
+test("STACKED has no entrance and starts laid out", () => {
+	assert.equal(AGENT_SESSION_DECK_STACKED.entrance, null);
 });
 
 test("reduced motion keeps deck order but removes movement", () => {
@@ -109,7 +119,7 @@ test("depth tail still tucks a card whose top sits just below the clip", () => {
 test("fansIn still gates the entrance fan, not the depth tail", () => {
 	const run = groupDeckRuns([row(500)])[0];
 	assert.ok(run);
-	const frame = deckRunFrame(run, 480, 0, 0.65, AGENT_SESSION_DECK_STACKED);
+	const frame = deckRunFrame(run, 480, 0, 0.65, STACKED_WITH_ENTRANCE);
 	assert.equal(frame.opacity, 1);
 	assert.equal(frame.scale, 1);
 });
@@ -123,7 +133,7 @@ test("FLAT at rest is an identity frame", () => {
 test("depthGate holds scale at 1 while entrance opacity is still ramping", () => {
 	const run = groupDeckRuns([row(400)])[0];
 	assert.ok(run);
-	const frame = deckRunFrame(run, 480, 0, 0.65, AGENT_SESSION_DECK_STACKED);
+	const frame = deckRunFrame(run, 480, 0, 0.65, STACKED_WITH_ENTRANCE);
 	assert.equal(frame.scale, 1);
 	assert.ok(frame.opacity < 1);
 });
@@ -131,7 +141,7 @@ test("depthGate holds scale at 1 while entrance opacity is still ramping", () =>
 test("depthGate pins opacity at 1 once the tail is allowed to run", () => {
 	const run = groupDeckRuns([row(400)])[0];
 	assert.ok(run);
-	const frame = deckRunFrame(run, 480, 0, 0.45, AGENT_SESSION_DECK_STACKED);
+	const frame = deckRunFrame(run, 480, 0, 0.45, STACKED_WITH_ENTRANCE);
 	assert.equal(frame.opacity, 1);
 	assert.ok(frame.scale < 1);
 });

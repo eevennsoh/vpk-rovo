@@ -20,5 +20,7 @@ test("the deck end cap congratulates the viewer with animated copy and count", (
 		/<TextEffects[\s\S]*?text="sessions now accounted for\."/u,
 	);
 	assert.match(source, /autoLoop: false/u);
+	assert.match(source, /durationMs: 600/u);
+	assert.match(source, /staggerMs: 150/u);
 	assert.match(source, /minHeight: AGENT_SESSION_DECK_END_SPACE_PX/u);
 });

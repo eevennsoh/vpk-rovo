@@ -1,6 +1,13 @@
 "use client";
 
-import { useMemo, type CSSProperties, type ReactNode } from "react";
+import {
+	useCallback,
+	useMemo,
+	useState,
+	type CSSProperties,
+	type PointerEvent as ReactPointerEvent,
+	type ReactNode,
+} from "react";
 
 import { useHasVerticalOverflow } from "@/components/hooks/use-has-vertical-overflow";
 import { buildScrollMaskStyle } from "@/components/visual/scroll-mask/lib";
@@ -12,7 +19,63 @@ import {
 	useCreatedCardArrivalScroll,
 	type JiraKanbanCreatedCardArrival,
 } from "../hooks/use-created-card-arrival";
+import {
+	parseBoardCardGapZones,
+	parseBoardEmptyColumnGapZone,
+	toChinFreeBoardCardBounds,
+	type BoardAgentSessionDropBounds,
+	type BoardCardInsertion,
+} from "../lib/board-agent-session-drag";
+import {
+	BOARD_CARD_INSERTION_BAND_PX,
+	pickBoardCardInsertionAtPoint,
+} from "../lib/board-card-insertion";
+import { BoardCardHoverInsertionContext } from "./board-card-hover-insertion-context";
 import { BoardEmptyColumnInsertionSlot } from "./board-card-insertion-line";
+
+function toDropBounds(rect: DOMRectReadOnly): BoardAgentSessionDropBounds {
+	return {
+		bottom: rect.bottom,
+		left: rect.left,
+		right: rect.right,
+		top: rect.top,
+	};
+}
+
+function collectHoverGapZones(cardList: HTMLElement) {
+	const clip = toDropBounds(cardList.getBoundingClientRect());
+	const emptySlot = cardList.querySelector<HTMLElement>(
+		'[data-board-agent-session-drop-zone="card-gap"]',
+	);
+	const emptyZones = emptySlot
+		? parseBoardEmptyColumnGapZone(
+			emptySlot.dataset.boardColumnTitle,
+			toDropBounds(emptySlot.getBoundingClientRect()),
+		)
+		: [];
+	const cardZones = Array.from(
+		cardList.querySelectorAll<HTMLElement>('[data-board-agent-session-drop-zone="issue"]'),
+	).flatMap((node) => {
+		const chin = node.querySelector('[data-slot="jira-issue-attach-chin"]');
+		return parseBoardCardGapZones(
+			node.dataset.boardColumnTitle,
+			node.dataset.issueKey,
+			node.dataset.boardCardIndex,
+			node.dataset.boardCardCount,
+			toChinFreeBoardCardBounds(
+				toDropBounds(node.getBoundingClientRect()),
+				chin?.getBoundingClientRect().height ?? 0,
+			),
+			BOARD_CARD_INSERTION_BAND_PX,
+		);
+	});
+
+	return [...emptyZones, ...cardZones].flatMap((zone) => {
+		const top = Math.max(zone.bounds.top, clip.top);
+		const bottom = Math.min(zone.bounds.bottom, clip.bottom);
+		return bottom > top ? [{ ...zone, bounds: { ...zone.bounds, bottom, top } }] : [];
+	});
+}
 
 /**
  * The scrolling card stack of a board column.
@@ -41,6 +104,7 @@ export function BoardColumnCardList({
 	isEmpty: boolean;
 }>) {
 	const { ref, showBottomScrollMask, showTopScrollMask } = useHasVerticalOverflow<HTMLDivElement>();
+	const [hoverInsertion, setHoverInsertion] = useState<BoardCardInsertion | null>(null);
 	const setCardListRef = useCreatedCardArrivalScroll({
 		arrival: createdCardArrival,
 		cardCount: count,
@@ -56,38 +120,73 @@ export function BoardColumnCardList({
 		}),
 		[showBottomScrollMask, showTopScrollMask],
 	);
+	const paintInsertion = insertionArmed || hoverInsertion !== null;
+
+	const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+		if (event.pointerType === "touch") {
+			return;
+		}
+		if (insertionArmed) {
+			setHoverInsertion((current) => (current === null ? current : null));
+			return;
+		}
+
+		const nextInsertion = pickBoardCardInsertionAtPoint(
+			{ x: event.clientX, y: event.clientY },
+			collectHoverGapZones(event.currentTarget),
+		);
+		setHoverInsertion((current) => {
+			if (
+				current?.columnTitle === nextInsertion?.columnTitle
+				&& current?.insertAtIndex === nextInsertion?.insertAtIndex
+				&& current?.position === nextInsertion?.position
+				&& current?.relativeToCardCode === nextInsertion?.relativeToCardCode
+			) {
+				return current;
+			}
+			return nextInsertion;
+		});
+	}, [insertionArmed]);
+
+	const handlePointerLeave = useCallback(() => {
+		setHoverInsertion((current) => (current === null ? current : null));
+	}, []);
 
 	return (
-		<div
-			ref={setCardListRef}
-			data-created-card-arrival-id={createdCardArrival?.id}
-			data-jira-kanban-card-list=""
-			className={cn(
-				"min-w-0 overflow-y-auto has-[[data-session-dragging]]:overflow-visible",
-				// The mask fades the top and bottom 3rem, which would wash out a line
-				// drawn near a scrolled edge. Stand down the mask only — dropping
-				// `overflow-y-auto` would make the browser discard the scroll offset.
-				insertionArmed && "[mask-image:none]! [-webkit-mask-image:none]!",
-			)}
-			style={{
-				// An empty column puts its create action first, so the always-visible
-				// well reads as the column's content rather than sitting under a void.
-				order: isEmpty ? 1 : 0,
-				flexGrow: 1,
-				display: "flex",
-				flexDirection: "column",
-				gap: token("space.100"),
-				...scrollMaskStyle,
-				...chrome.cardList,
-				// A child cannot read its parent's `gap`, and the value is chrome
-				// dependent, so an insertion line is handed the track it centres in.
-				"--board-card-gap": chrome.cardList.gap ?? token("space.100"),
-			} as CSSProperties}
-		>
-			{isEmpty ? (
-				<BoardEmptyColumnInsertionSlot armed={insertionArmed} columnTitle={columnTitle} />
-			) : null}
-			{children}
-		</div>
+		<BoardCardHoverInsertionContext value={hoverInsertion}>
+			<div
+				ref={setCardListRef}
+				data-created-card-arrival-id={createdCardArrival?.id}
+				data-jira-kanban-card-list=""
+				className={cn(
+					"min-w-0 overflow-y-auto has-[[data-session-dragging]]:overflow-visible",
+					// The mask fades the top and bottom 3rem, which would wash out a line
+					// drawn near a scrolled edge. Stand down the mask only — dropping
+					// `overflow-y-auto` would make the browser discard the scroll offset.
+					paintInsertion && "[mask-image:none]! [-webkit-mask-image:none]!",
+				)}
+				onPointerLeave={handlePointerLeave}
+				onPointerMove={handlePointerMove}
+				style={{
+					// An empty column puts its create action first, so the always-visible
+					// well reads as the column's content rather than sitting under a void.
+					order: isEmpty ? 1 : 0,
+					flexGrow: 1,
+					display: "flex",
+					flexDirection: "column",
+					gap: token("space.100"),
+					...scrollMaskStyle,
+					...chrome.cardList,
+					// A child cannot read its parent's `gap`, and the value is chrome
+					// dependent, so an insertion line is handed the track it centres in.
+					"--board-card-gap": chrome.cardList.gap ?? token("space.100"),
+				} as CSSProperties}
+			>
+				{isEmpty ? (
+					<BoardEmptyColumnInsertionSlot armed={insertionArmed} columnTitle={columnTitle} />
+				) : null}
+				{children}
+			</div>
+		</BoardCardHoverInsertionContext>
 	);
 }

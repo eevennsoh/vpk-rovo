@@ -81,6 +81,31 @@ test("drop receipts land in the geometric center of the well", () => {
 	assert.doesNotMatch(DROPZONE, /JIRA_DROPZONE_FLIGHT_LANDING_INSET_PX/u);
 });
 
+test("board insertion marker avoids clipped paint before its anchor resolves", () => {
+	const lineSource = readFileSync(join(__dirname, "board-card-insertion-line.tsx"), "utf8");
+	const contextSource = readFileSync(
+		join(__dirname, "board-card-hover-insertion-context.tsx"),
+		"utf8",
+	);
+	const motionSource = readFileSync(join(__dirname, "created-card-arrival-motion.tsx"), "utf8");
+
+	assert.match(lineSource, /fixed z-30 flex size-6 -translate-x-1\/2 -translate-y-1\/2/u);
+	assert.match(lineSource, /left: "anchor\(left, -100vw\)"/u);
+	assert.match(lineSource, /positionAnchor: anchorName/u);
+	assert.match(lineSource, /positionVisibility: "anchors-visible"/u);
+	assert.match(lineSource, /top: "anchor\(center, -100vh\)"/u);
+	assert.match(lineSource, /border border-border bg-surface-overlay/u);
+	assert.doesNotMatch(lineSource, /boxShadow|elevation\.shadow\.overlay/u);
+	assert.doesNotMatch(lineSource, /absolute left-0 top-1\/2 flex size-6 -translate-y-1\/2/u);
+	assert.doesNotMatch(lineSource, /export const BoardCardHoverInsertionContext/u);
+	assert.match(contextSource, /export const BoardCardHoverInsertionContext/u);
+	assert.match(CARD_LIST, /pickBoardCardInsertionAtPoint/u);
+	assert.match(CARD_LIST, /function toDropBounds\(rect: DOMRectReadOnly\)/u);
+	assert.match(CARD_LIST, /onPointerMove=\{handlePointerMove\}/u);
+	assert.match(CARD_LIST, /event\.pointerType === "touch"/u);
+	assert.match(motionSource, /cardInsertion \?\? hoverInsertion/u);
+});
+
 test("create button rests icon-subtlest and solidifies on hover", () => {
 	assert.match(
 		FOOTER,

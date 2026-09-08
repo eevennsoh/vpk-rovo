@@ -1,4 +1,36 @@
-import type { BoardCardInsertion } from "./board-agent-session-drag";
+import type {
+	BoardAgentSessionDropBounds,
+	BoardAgentSessionDragPointer,
+	BoardCardInsertion,
+} from "./board-agent-session-drag";
+
+/**
+ * How far a card-gap insertion band reaches either side of the card edge it
+ * straddles. Board cards are separated by a real gutter (4px on the default
+ * column chrome, 8px on simple), which belongs to no card's rect, so the band
+ * has to reach outward to cover the pixels the pointer actually aims at.
+ */
+export const BOARD_CARD_INSERTION_BAND_PX = 12;
+
+export function pickBoardCardInsertionAtPoint(
+	pointer: BoardAgentSessionDragPointer,
+	zones: readonly Readonly<{
+		bounds: BoardAgentSessionDropBounds;
+		insertion: BoardCardInsertion;
+	}>[],
+): BoardCardInsertion | null {
+	for (const zone of zones) {
+		if (
+			pointer.x >= zone.bounds.left
+			&& pointer.x <= zone.bounds.right
+			&& pointer.y >= zone.bounds.top
+			&& pointer.y <= zone.bounds.bottom
+		) {
+			return zone.insertion;
+		}
+	}
+	return null;
+}
 
 /**
  * Which edge of one board card the active insertion line belongs to, or
@@ -65,7 +97,9 @@ export function getBoardCardInsertionAnchorClassName(
  *   last. There is no gap track there, only the card list's own boundary, and
  *   the list stays a real scrollport for the whole gesture (dropping
  *   `overflow-y-auto` would make the browser discard its scroll offset and
- *   jump every scrolled column to its first card). So these sit flush inside
- *   the card, where nothing can clip them at any scroll position.
+ *   jump every scrolled column to its first card). The rule still sits flush
+ *   inside the card; the "+" marker is `position: fixed` and CSS-anchored so
+ *   it can straddle the card's left edge without being clipped by the
+ *   scrollport.
  */
 export type BoardCardInsertionSeam = "edge" | "gap";
