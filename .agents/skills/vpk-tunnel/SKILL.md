@@ -47,12 +47,11 @@ the catalog unless they explicitly asked for it.
 ## Public-sharing boundary
 
 Atlas Tunnel makes the selected local application reachable from the public
-internet. Invoking this skill authorizes public sharing for the requested
-prototype, so no synthetic-data or fake-data confirmation prompt is needed.
-Always show the exact local URL before starting and pass the helper's existing
-`--confirm-public` flag internally. The helper still refuses to start without
-that flag when it is called directly. Status and stop operations do not need
-confirmation.
+internet. Invoking this skill or manually running `vpk-tunnel <Portless URL>`
+authorizes public sharing for that prototype. Do not ask for a separate
+synthetic-data or fake-data confirmation, and do not require an additional
+confirmation flag. Always show the exact local URL before starting through an
+agent workflow.
 
 ## One-time setup
 
@@ -86,11 +85,11 @@ brew install cloudflared
    name one, ask before continuing.
 5. Show the resolved local URL. Invocation of this skill already authorizes
    public sharing; do not ask a synthetic-data or fake-data confirmation
-   question. Pass the helper's existing `--confirm-public` flag internally.
+   question.
 6. Start the scoped tunnel:
 
    ```bash
-   node .agents/skills/vpk-tunnel/scripts/vpk-tunnel.js start [Portless URL] --confirm-public
+   vpk-tunnel [Portless URL]
    ```
 
    The helper refuses to start when `next.config.ts` `allowedDevOrigins` is
