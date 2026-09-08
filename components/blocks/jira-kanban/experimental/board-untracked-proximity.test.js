@@ -190,6 +190,21 @@ test("release re-hit-tests the current pointer against current board geometry", 
 	assert.match(DRAG_HOOK_SOURCE, /commitDrop\(finalTransaction\)/u);
 });
 
+test("list-row hit testing reads shared scrollport geometry once per drag evaluation", () => {
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/const listScrollportClipCache = new Map<HTMLElement, ListScrollportClip>\(\);/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/clipBoundsToScrollport\(node, rect, listScrollportClipCache\)/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/let scrollportClip = clipCache\.get\(scrollport\);[\s\S]*if \(scrollportClip === undefined\) \{[\s\S]*clipCache\.set\(scrollport, scrollportClip\);/u,
+	);
+});
+
 test("card-link drops commit the transfer before decorative flights start", () => {
 	const source = withoutComments(DRAG_HOOK_SOURCE);
 	assert.match(
