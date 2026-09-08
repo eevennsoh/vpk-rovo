@@ -191,13 +191,28 @@ function useNotchDock(itemCount: number, enabled: boolean) {
 	function handlePointerEnter(event: PointerEvent<HTMLUListElement>) {
 		// Touch has no hover: a finger sliding here is a scroll, and docking under
 		// it would fight the gesture. Tap still opens the flyout.
-		if (event.pointerType === "touch") {
+		if (event.pointerType === "touch" || event.buttons !== 0) {
 			return;
 		}
 		remeasure();
 	}
 
+	function resetPointer() {
+		clientYRef.current = null;
+		magnify.stop();
+		magnify.set(0);
+		pointerY.set(AGENT_SESSION_NOTCH_POINTER_AWAY);
+		nearestIndex.set(AGENT_SESSION_NOTCH_NO_NEAREST);
+	}
+
 	function handlePointerMove(event: PointerEvent<HTMLUListElement>) {
+		// A dragged notch retains pointer capture: its moves still bubble here
+		// while the pointer searches the board for a drop target. Docking is hover
+		// feedback only, so pressed pointers must also clear any parked position.
+		if (event.buttons !== 0) {
+			resetPointer();
+			return;
+		}
 		if (event.pointerType === "touch") {
 			return;
 		}
@@ -228,7 +243,7 @@ function useNotchDock(itemCount: number, enabled: boolean) {
 		trackPointer(clientY);
 	}
 
-	return { centersRef, handlePointerEnter, handlePointerLeave, handlePointerMove, handleScroll, listRef, magnify, nearestIndex, pointerY };
+	return { centersRef, handlePointerEnter, handlePointerLeave, handlePointerMove, handleScroll, listRef, magnify, nearestIndex, pointerY, resetPointer };
 }
 
 function AgentSessionGutterIntro({
@@ -667,6 +682,7 @@ export function AgentSessionColumnRail({
 			    column height. Arrival layout stays on each `motion.li`. */}
 			<ul
 				className="scrollbar-none flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto overscroll-contain px-1 py-0.5"
+				onPointerDown={isDocked ? dock.resetPointer : undefined}
 				onPointerEnter={isDocked ? dock.handlePointerEnter : undefined}
 				onPointerLeave={isDocked ? dock.handlePointerLeave : undefined}
 				onPointerMove={isDocked ? dock.handlePointerMove : undefined}
