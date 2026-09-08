@@ -66,7 +66,32 @@ async function openAgentViewMenu(page: Page): Promise<void> {
 	await page.getByRole("button", { name: "Configure board view" }).click();
 	// Click, not hover: Base UI does not reliably expand this submenu on hover.
 	await page.getByRole("menuitem", { name: "Agent" }).click();
+
 }
+
+async function selectAgentViewOption(page: Page, name: "Untracked" | "Working"): Promise<void> {
+	await page.getByRole("button", { name: "Configure board view" }).click();
+	await page.getByRole("menuitem", { name: /^Agents/u }).evaluate((element) => {
+		(element as HTMLElement).click();
+	});
+	await page.getByRole("menuitemradio", { name, exact: true }).evaluate((element) => {
+		(element as HTMLElement).click();
+	});
+}
+
+test("agent filter collapse clears a previously pinned timeline", async ({ page }) => {
+	await openCollapsedBoard(page);
+	await revealCollapsedAgentSessionColumn(page);
+	await page.getByRole("button", { name: "Expand Untracked work column" }).click();
+	const host = page.locator("[data-agent-session-column-expansion]");
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "pinned");
+	await selectAgentViewOption(page, "Untracked");
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
+	await expect(page.locator("[data-agent-session-column]")).toHaveCSS("width", "280px");
+	await selectAgentViewOption(page, "Working");
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
+	await expect(page.locator("[data-agent-session-column-hit-area]")).toHaveCount(1);
+});
 
 async function revealCollapsedAgentSessionColumn(page: Page): Promise<void> {
 	const hitArea = page.locator("[data-agent-session-column-hit-area]");

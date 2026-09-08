@@ -75,6 +75,17 @@ function useInFlowAgentSessionColumnInteraction(
 ) {
 	const [isHovered, setIsHovered] = useState(false);
 	const [expansion, setExpansion] = useState<"gutter" | "pinned" | "expanded">("gutter");
+	const previousCollapsedRef = useRef(collapsed);
+	useEffect(() => {
+		if (previousCollapsedRef.current === collapsed) {
+			return;
+		}
+		previousCollapsedRef.current = collapsed;
+		if (collapsed) {
+			setExpansion("gutter");
+			setIsHovered(false);
+		}
+	}, [collapsed]);
 	const isCollapsedControlled = collapsed !== undefined;
 	const isPersistentExpanded = isCollapsedControlled
 		? !collapsed
