@@ -22,11 +22,11 @@ async function openBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({
 		timeout: 15_000,
 	});
-	const expandUntracked = page.getByRole("button", { name: "Expand Untracked work column" });
-	if (await expandUntracked.isVisible()) {
+	const expandSessions = page.getByRole("button", { name: "Expand Unattached sessions column" });
+	if (await expandSessions.isVisible()) {
 		await revealCollapsedAgentSessionColumn(page);
-		await expandUntracked.click();
-		await page.getByRole("button", { name: "Expand more Untracked work column" }).click();
+		await expandSessions.click();
+		await page.getByRole("button", { name: "Expand more Unattached sessions column" }).click();
 	}
 	await expect(
 		page.locator("[data-agent-session-column]").getByTestId("agent-session-row-lw-scope-thread"),
@@ -35,8 +35,8 @@ async function openBoard(page: Page): Promise<void> {
 
 test("session timestamps stay beside their labels and remain visible while resizing", async ({ page }) => {
 	await openBoard(page);
-	const column = page.getByLabel(/^Untracked work,/u);
-	const handle = page.getByRole("separator", { name: "Resize Untracked work column" });
+	const column = page.getByLabel(/^Unattached sessions,/u);
+	const handle = page.getByRole("separator", { name: "Resize Unattached sessions column" });
 	const shortLabel = column.locator('a[title^="#"]').first();
 	await expect(shortLabel).toBeAttached();
 	// A short PR title must not acquire the spare width reserved for longer titles.
@@ -62,12 +62,12 @@ test("session timestamps stay beside their labels and remain visible while resiz
 
 test("end-state digits do not animate their position during panel resizing", async ({ page }) => {
 	await openBoard(page);
-	const column = page.getByLabel(/^Untracked work,/u);
+	const column = page.getByLabel(/^Unattached sessions,/u);
 	await column.locator(".overflow-y-auto").evaluate((element) => { element.scrollTop = element.scrollHeight; });
 	const count = column.locator('p > span[aria-hidden="true"] > span[aria-label]');
 	await expect(count).toBeVisible();
 	await expect.poll(() => count.evaluate((element) => [...element.children].every((digit) => getComputedStyle(digit).transform === "none"))).toBe(true);
-	const handle = page.getByRole("separator", { name: "Resize Untracked work column" });
+	const handle = page.getByRole("separator", { name: "Resize Unattached sessions column" });
 	const box = (await handle.boundingBox())!;
 	await page.mouse.move(box.x + box.width / 2, box.y + 80);
 	await page.mouse.down();
