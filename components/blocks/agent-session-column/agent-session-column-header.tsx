@@ -43,22 +43,15 @@ const AGENT_SESSION_COLUMN_HEADER_STYLE: Record<AgentSessionColumnFrame, CSSProp
 	},
 };
 
+const HEADER_ACTIONS_VISIBLE = "flex shrink-0 items-center";
+
 const HEADER_ACTIONS_REVEAL = cn(
-	"flex shrink-0 items-center",
-	"opacity-0 transition-[width,opacity] duration-normal ease-out-practical",
+	HEADER_ACTIONS_VISIBLE,
+	"opacity-0 transition-opacity duration-normal ease-out-practical",
 	"group-hover/session-column:opacity-100 group-has-[:focus-visible]/session-column:opacity-100",
 	"motion-reduce:transition-none",
 	"has-[[data-popup-open]]:opacity-100",
-);
-
-const HEADER_ACTIONS_PINNED = cn(
-	HEADER_ACTIONS_REVEAL,
-	"overflow-hidden",
-	"w-0",
-	"group-hover/session-column:w-12 group-has-[:focus-visible]/session-column:w-12",
-	"group-has-[[data-popup-open]]/header-actions:w-12",
-	"has-[[data-popup-open]]:w-12",
-	"has-[:focus-visible]:w-12 has-[:focus-visible]:overflow-visible",
+	"group-has-[[data-popup-open]]/header-actions:opacity-100",
 );
 
 const HEADER_ACTION_ICON: Record<SelectionActionId, ComponentType<NewCoreIconProps>> = {
@@ -323,7 +316,10 @@ function renderColumnChrome({
 	overflow: ReactElement;
 }>): ReactElement {
 	const isSelecting = model.kind === "selecting";
-	const pinFilterEnd = hasActiveFilters && !isSelecting;
+	const revealHeaderActions = hasActiveFilters && !isSelecting;
+	const headerActionsClass = revealHeaderActions
+		? HEADER_ACTIONS_VISIBLE
+		: HEADER_ACTIONS_REVEAL;
 
 	return (
 		<>
@@ -354,21 +350,16 @@ function renderColumnChrome({
 				</div>
 			) : (
 				<div className="group/header-actions ms-auto flex shrink-0 items-center">
-					{pinFilterEnd ? (
-						<>
-							{filter}
-							<div className={HEADER_ACTIONS_PINNED} data-session-header-reveal="">
-								{overflow}
-								<CollapseButton label={collapseLabel} onCollapse={onCollapse} />
-							</div>
-						</>
-					) : (
-						<div className={HEADER_ACTIONS_REVEAL} data-session-header-reveal="">
-							{filter}
-							{overflow}
-							<CollapseButton label={collapseLabel} onCollapse={onCollapse} />
-						</div>
-					)}
+					<div className={headerActionsClass}>
+						{filter}
+					</div>
+					<div
+						className={headerActionsClass}
+						data-session-header-reveal=""
+					>
+						{overflow}
+						<CollapseButton label={collapseLabel} onCollapse={onCollapse} />
+					</div>
 				</div>
 			)}
 		</>

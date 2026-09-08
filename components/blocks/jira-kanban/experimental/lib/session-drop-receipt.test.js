@@ -68,7 +68,10 @@ test("a create commit yields one member per step in step order", () => {
 	assert.equal(receipt.bounce, undefined);
 	const flights = flightsFromReceipt(receipt, JIRA_DROPZONE_FULL_MOTION_PROFILE);
 	assert.equal(flights.length, 2);
-	assert.deepEqual(flights.map((flight) => flight.delayMs), [0, 70]);
+	assert.deepEqual(
+		flights.map((flight) => flight.delayMs),
+		[0, JIRA_DROPZONE_FULL_MOTION_PROFILE.staggerMs],
+	);
 	assert.equal(
 		receipt.id,
 		sessionReceiptId({

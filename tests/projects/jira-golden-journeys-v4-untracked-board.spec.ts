@@ -153,6 +153,40 @@ test("attaching onto a running session replaces that chin row instead of stackin
 	await page.mouse.up();
 });
 
+test("attaching onto PAY-118 replaces any session chin instead of stacking the dragged title", async ({ page }) => {
+	await openBoard(page);
+
+	const targetCard = page.locator("[data-issue-key='PAY-118']");
+	await targetCard.scrollIntoViewIfNeeded();
+
+	const untrackedSession = page.locator("[data-agent-session-column]")
+		.getByTestId("agent-session-row-lw-scope-thread");
+	const sourceBox = await untrackedSession.boundingBox();
+	const dropZone = getIssueDropZone(page, "PAY-118");
+	const targetBox = await dropZone.boundingBox();
+	expect(sourceBox).not.toBeNull();
+	expect(targetBox).not.toBeNull();
+	if (!sourceBox || !targetBox) return;
+
+	await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(sourceBox.x + sourceBox.width / 2 + 4, sourceBox.y + sourceBox.height / 2 + 4);
+	await page.mouse.move(
+		targetBox.x + targetBox.width / 2,
+		targetBox.y + targetBox.height / 2,
+		{ steps: 12 },
+	);
+	await expect(dropZone).toHaveAttribute("data-board-agent-session-target", "attach");
+	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin"]')).toHaveCount(1);
+	await expect(targetCard.getByText("Link 1 agent session")).toBeVisible();
+	await expect(targetCard.locator('[data-testid^="agent-session-row-"]:visible')).toHaveCount(0);
+	await expect(targetCard.getByText("Why the wallet was cut")).not.toBeVisible();
+	await expect(targetCard.getByText("The adapter keep-or-delete")).not.toBeVisible();
+	await expect(targetCard.getByText("Keep or delete the adapter")).not.toBeVisible();
+
+	await page.mouse.up();
+});
+
 test("Untracked is on by default and PAY-101 shows a nearby untracked row", async ({ page }) => {
 	await openBoard(page);
 
@@ -163,7 +197,7 @@ test("Untracked is on by default and PAY-101 shows a nearby untracked row", asyn
 	await expect(page.getByRole("menuitemcheckbox", { name: "Untracked" })).toBeChecked();
 });
 
-test("the collapsed Untracked rail blues the plain Jira issue suggested by a session", async ({ page }) => {
+test("the collapsed Untracked rail hovers the plain Jira issue suggested by a session", async ({ page }) => {
 	await openCollapsedBoard(page);
 
 	const sessionId = "lw-figma-parked";
@@ -172,11 +206,13 @@ test("the collapsed Untracked rail blues the plain Jira issue suggested by a ses
 		.locator("[data-slot='jira-issue-agent-backdrop']");
 
 	await expect(pay118Backdrop).toHaveClass(/bg-bg-neutral/);
+	await expect(pay118Backdrop).not.toHaveClass(/bg-bg-neutral-hovered/);
 	await hoverCollapsedAgentSession(page, sessionId);
-	await expect(pay118Backdrop).toHaveClass(/bg-bg-accent-blue-subtlest/);
+	await expect(pay118Backdrop).toHaveClass(/bg-bg-neutral-hovered/);
 
 	await page.getByRole("heading", { name: "Jira Design" }).hover();
 	expect(await railNotch.evaluate((element) => element.matches(":hover"))).toBe(false);
+	await expect(pay118Backdrop).not.toHaveClass(/bg-bg-neutral-hovered/);
 	await expect(pay118Backdrop).toHaveClass(/bg-bg-neutral/);
 });
 
@@ -320,7 +356,7 @@ test("unchecking Untracked hides board-adjacent rows and leaves the column", asy
 	).toBeVisible();
 });
 
-test("hovering a column session blues the matching existing-agent backdrop without focus or movement", async ({ page }) => {
+test("hovering a column session lights the matching existing-agent backdrop without focus or movement", async ({ page }) => {
 	await openBoard(page);
 
 	const statusScrollport = page.locator("[data-jira-kanban-scrollport]");
@@ -337,7 +373,7 @@ test("hovering a column session blues the matching existing-agent backdrop witho
 
 	await expect(pay121).not.toHaveClass(/bg-bg-accent-blue-subtlest/);
 	await expect(pay121.locator("[data-slot='jira-issue-agent-backdrop']"))
-		.toHaveClass(/bg-bg-accent-blue-subtlest/);
+		.toHaveClass(/bg-bg-neutral-hovered/);
 	await expect(pay101).not.toHaveClass(/opacity-40/);
 	expect(await statusScrollport.evaluate((element) => element.scrollLeft)).toBe(scrollLeftBefore);
 	expect(await pay121ColumnScrollport.evaluate((element) => element.scrollTop)).toBe(scrollTopBefore);

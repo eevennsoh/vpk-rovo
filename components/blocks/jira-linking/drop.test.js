@@ -35,8 +35,12 @@ test("a four-member stagger receipt is N flights with well-matching delays", () 
 		}),
 		JIRA_LINKING_FULL_DROP_PROFILE,
 	);
+	const staggerMs = JIRA_LINKING_FULL_DROP_PROFILE.staggerMs;
 	assert.equal(flights.length, 4);
-	assert.deepEqual(flights.map((flight) => flight.delayMs), [0, 70, 140, 210]);
+	assert.deepEqual(
+		flights.map((flight) => flight.delayMs),
+		[0, staggerMs, staggerMs * 2, staggerMs * 3],
+	);
 	assert.deepEqual(
 		flights.map((flight) => flight.members.map((item) => item.id)),
 		[["a"], ["b"], ["c"], ["d"]],
@@ -48,9 +52,10 @@ test("a four-member stagger receipt fans launch points", () => {
 		members: [member("a"), member("b"), member("c"), member("d")],
 	});
 	const flights = flightsFromLinkingDrop(next, JIRA_LINKING_FULL_DROP_PROFILE);
+	const spread = JIRA_LINKING_FULL_DROP_PROFILE.launchSpreadPx;
 	assert.deepEqual(
 		flights.map((flight) => flight.from.x - next.from.x),
-		[-21, -7, 7, 21],
+		[-1.5, -0.5, 0.5, 1.5].map((step) => step * spread),
 	);
 	assert.deepEqual(
 		flights.map((flight) => flight.from.y),
@@ -100,11 +105,27 @@ test("the drop profile follows reduced motion the way the well does", () => {
 });
 
 test("card-drop flights use automatic arc direction; peak and stagger stay with the well", () => {
-	assert.equal(JIRA_LINKING_FULL_DROP_PROFILE.arcPeak, 0.5);
-	assert.equal(JIRA_LINKING_FULL_DROP_PROFILE.arcStrength, 0.42);
+	const {
+		JIRA_DROPZONE_FULL_MOTION_PROFILE,
+	} = require("../jira-dropzone/lib/jira-dropzone-motion.ts");
+	assert.equal(JIRA_LINKING_FULL_DROP_PROFILE.arcPeak, JIRA_DROPZONE_FULL_MOTION_PROFILE.arcPeak);
+	assert.equal(
+		JIRA_LINKING_FULL_DROP_PROFILE.arcStrength,
+		JIRA_DROPZONE_FULL_MOTION_PROFILE.arcStrength,
+	);
 	assert.equal(JIRA_LINKING_FULL_DROP_PROFILE.direction, "automatic");
-	assert.equal(JIRA_LINKING_FULL_DROP_PROFILE.durationMs, 400);
-	assert.equal(JIRA_LINKING_FULL_DROP_PROFILE.staggerMs, 70);
+	assert.equal(
+		JIRA_LINKING_FULL_DROP_PROFILE.durationMs,
+		JIRA_DROPZONE_FULL_MOTION_PROFILE.durationMs,
+	);
+	assert.equal(
+		JIRA_LINKING_FULL_DROP_PROFILE.staggerMs,
+		JIRA_DROPZONE_FULL_MOTION_PROFILE.staggerMs,
+	);
+	assert.equal(
+		JIRA_LINKING_FULL_DROP_PROFILE.launchSpreadPx,
+		JIRA_DROPZONE_FULL_MOTION_PROFILE.launchSpreadPx,
+	);
 	assert.deepEqual(resolveJiraLinkingArcOptions(JIRA_LINKING_FULL_DROP_PROFILE), {
 		peak: 0.5,
 		strength: 0.42,

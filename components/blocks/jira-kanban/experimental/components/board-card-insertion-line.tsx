@@ -84,8 +84,10 @@ export function BoardCardInsertionLine({
 		>
 			{/*
 			 * The "+" anchoring the rule's left end, matching the list view's
-			 * `RowBoundaryCreateControls` treatment: a 24px outline square on the
-			 * overlay surface with a subtle icon — not an accent-coloured circle.
+			 * `JiraListColumnBoundary` / `RowBoundaryCreateControls` treatment:
+			 * a 24px outline square on the overlay surface with a subtle icon —
+			 * not an accent-coloured circle, and no overlay shadow that would
+			 * draw a second edge against the 1px grid border.
 			 *
 			 * Inert on purpose: hover paints the same affordance as a session
 			 * drag, but the board does not mint a work item from a click here.
@@ -100,10 +102,9 @@ export function BoardCardInsertionLine({
 			 * column controls use `fixed`.
 			 */}
 			<span
-				className="fixed z-30 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border bg-surface-overlay"
+				className="fixed z-30 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border bg-surface-overlay text-icon-subtle"
 				data-board-insertion-marker={position}
 				style={{
-					boxShadow: token("elevation.shadow.overlay"),
 					// This node mounts in the same commit as its anchor. Until the
 					// browser resolves that anchor, bare anchor() insets compute to
 					// `auto` and paint the fixed node at its clipped static position.

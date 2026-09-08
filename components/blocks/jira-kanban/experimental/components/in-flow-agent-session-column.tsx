@@ -13,7 +13,6 @@ import {
 import { JiraSessionFlyoutSuspensionProvider } from "@/components/blocks/product-sidebar/variants/jira-session-flyout";
 import { useSidebarResize } from "@/components/projects/rovo-core/hooks/use-sidebar-resize";
 import { SidebarResizeHandle } from "@/components/ui/sidebar";
-import { ScrollMaskEdgeOverlay } from "@/components/visual/scroll-mask";
 import { cn } from "@/lib/utils";
 
 import {
@@ -213,7 +212,7 @@ function InFlowAgentSessionColumnSurface({
 			<AgentSessionColumn
 				{...agentSessionColumn}
 				collapsed={!isPersistentExpanded}
-				collapsedPresentation="gutter"
+				collapsedPresentation={isEmbedded ? "column" : "gutter"}
 				collapsedRailHitSlopPx={isEmbedded && !isPersistentExpanded
 					? IN_FLOW_AGENT_SESSION_COLUMN_RAIL_HIT_SLOP_PX
 					: 0}
@@ -252,13 +251,13 @@ function InFlowAgentSessionColumnSurface({
 
 /**
  * The Untracked rail rests in the page's leading gutter. Hover temporarily
- * returns that same compact timeline to the board's original 24px column inset;
- * it never swaps dots for cards, and the session total stays hidden. The
- * hover-scaled hit area shows extra space without revealing the header count.
- * Only the column's expand control promotes the full column, and that
- * deliberate state persists after the pointer leaves. The full-height gutter
- * target sits behind each session row so a row can own its whole 24px band
- * while empty gutter space still opens the column preview.
+ * returns that same compact timeline to the board's original 24px column inset
+ * and reveals the collapsed header chrome — the session total and the expand
+ * control — without swapping dots for cards. Gutter rest is the only state
+ * that hides that chrome. Only the column's expand control promotes the full
+ * column, and that deliberate state persists after the pointer leaves. The
+ * full-height gutter target sits behind each session row so a row can own its
+ * whole 24px band while empty gutter space still opens the column preview.
  */
 export function InFlowAgentSessionColumn({
 	agentSessionColumn,
@@ -306,18 +305,11 @@ export function InFlowAgentSessionColumn({
 		>
 			<div
 				ref={hostRef}
-				className="relative flex min-h-0 shrink-0 self-stretch"
+				className="relative z-30 flex min-h-0 shrink-0 self-stretch"
 				onPointerDown={isEmbedded ? undefined : handleGutterPointerDown}
 				onPointerEnter={handlePointerEnter}
 				onPointerLeave={handlePointerLeave}
 			>
-				{showGutterScrollMask ? (
-					<ScrollMaskEdgeOverlay
-						data-agent-session-column-gutter-mask=""
-						edge="left"
-						fadeSize={IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX}
-					/>
-				) : null}
 				{isEmbedded ? null : (
 					<div
 						aria-hidden="true"
@@ -329,7 +321,16 @@ export function InFlowAgentSessionColumn({
 							width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX
 								+ IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_LEADING_BORDER_PX,
 						}}
-					/>
+					>
+						{showGutterScrollMask ? (
+							<div
+								aria-hidden="true"
+								className="pointer-events-none absolute inset-y-0 start-0 z-40 bg-surface"
+								data-agent-session-column-gutter-fill=""
+								style={{ width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX }}
+							/>
+						) : null}
+					</div>
 				)}
 				<InFlowAgentSessionColumnFootprint
 					columnFrame={columnFrame}

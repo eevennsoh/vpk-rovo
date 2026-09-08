@@ -443,14 +443,21 @@ export function toKanbanCardFromDraft(input: Readonly<{
 	issueType?: JiraKanbanCardData["issueType"];
 	summary: string;
 }>): JiraKanbanCardData {
+	const assignee = input.assignee
+		? {
+			id: input.assignee.id,
+			name: input.assignee.name,
+			avatarSrc: input.assignee.avatarSrc ?? "",
+		}
+		: undefined;
+
 	return {
-		assignee: input.assignee
-			? {
-				id: input.assignee.id,
-				name: input.assignee.name,
-				avatarSrc: input.assignee.avatarSrc ?? "",
-			}
-			: undefined,
+		assignee,
+		avatarShape: input.assignee?.avatarShape,
+		avatarSrc: assignee?.avatarSrc || undefined,
+		avatarUnassignedKind: input.assignee
+			? input.assignee.avatarUnassignedKind
+			: "person",
 		code: input.issueKey,
 		dueDate: input.dueDate,
 		issueType: input.issueType ?? "task",
@@ -533,13 +540,6 @@ export function createBoardWorkItemFromSession(
 
 	const issueKey = getNextPayIssueKey(input.columns);
 	const card = toKanbanCardFromDraft({
-		assignee: input.session.invokedBy
-			? {
-				avatarSrc: input.session.invokedBy.avatarSrc,
-				id: slugAgentName(input.session.invokedBy.name),
-				name: input.session.invokedBy.name,
-			}
-			: undefined,
 		issueKey,
 		issueType: "task",
 		summary: input.session.title,

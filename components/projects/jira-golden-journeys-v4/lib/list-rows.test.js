@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 
 const {
-	filterJiraKanbanColumnsByAssignee,
 	linkJiraKanbanAgentSession,
 } = require("../../../blocks/jira-kanban/state.ts");
 const {
@@ -171,6 +170,9 @@ test("toKanbanCardFromDraft keeps the create editor issue type and due date", ()
 
 	assert.equal(card.issueType, "bug");
 	assert.equal(card.dueDate, "2026-09-04");
+	assert.equal(card.avatarUnassignedKind, "person");
+	assert.equal(card.avatarSrc, undefined);
+	assert.equal(card.assignee, undefined);
 	assert.equal(rows[0]?.issueType, "bug");
 	assert.equal(rows[0]?.dueDate, "2026-09-04");
 });
@@ -186,7 +188,27 @@ test("insertWorkItemCard appends to the named status column", () => {
 
 	assert.equal(inProgress?.cards.at(-1)?.code, "PAY-200");
 	assert.equal(inProgress?.count, 2);
+	assert.equal(card.avatarSrc, "/maya.png");
+	assert.equal(card.avatarUnassignedKind, undefined);
 	assert.equal(next.find((column) => column.title === "To do")?.count, 2);
+});
+
+test("toKanbanCardFromDraft keeps a selected subagent avatar kind", () => {
+	const card = toKanbanCardFromDraft({
+		issueKey: "PAY-201",
+		summary: "Agent-owned work",
+		assignee: {
+			id: "review-agent",
+			name: "Codex",
+			avatarShape: "hexagon",
+			avatarUnassignedKind: "agent",
+		},
+	});
+
+	assert.equal(card.assignee?.id, "review-agent");
+	assert.equal(card.avatarSrc, undefined);
+	assert.equal(card.avatarShape, "hexagon");
+	assert.equal(card.avatarUnassignedKind, "agent");
 });
 
 test("applyAssignedAgentIdsToColumns archives and assigns against board columns", () => {
@@ -293,6 +315,8 @@ test("createListWorkItemFromSession mints a To-do card titled from the session a
 		?.cards.find((card) => card.code === "PAY-119");
 	assert.equal(todoCard?.title, "Scope the adapter keep-or-delete argument");
 	assert.equal(todoCard?.issueType, "task");
+	assert.equal(todoCard?.assignee, undefined);
+	assert.equal(todoCard?.avatarUnassignedKind, "person");
 	assert.equal(todoCard?.agentActivities?.[0], activity);
 	assert.equal(todoCard?.agentActivities?.[0]?.id, "lw-scope-thread");
 
@@ -387,18 +411,9 @@ test("createBoardWorkItemFromSession appends a task to the requested status and 
 	assert.equal(createdCard?.title, "Review the board drop behavior");
 	assert.equal(createdCard?.issueType, "task");
 	assert.equal(createdCard?.agentActivities?.[0], activity);
-	assert.deepEqual(createdCard?.assignee, {
-		avatarSrc: "/maya.png",
-		id: "maya-ferreira",
-		name: "Maya Ferreira",
-	});
-	assert.equal(
-		filterJiraKanbanColumnsByAssignee(
-			created.columns,
-			new Set(["maya-ferreira"]),
-		).find((column) => column.title === "In progress")?.cards.at(-1)?.code,
-		"PAY-119",
-	);
+	assert.equal(createdCard?.assignee, undefined);
+	assert.equal(createdCard?.avatarSrc, undefined);
+	assert.equal(createdCard?.avatarUnassignedKind, "person");
 
 	const again = createBoardWorkItemFromSession({
 		activity,

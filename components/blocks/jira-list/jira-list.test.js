@@ -24,6 +24,13 @@ const COLUMN_CONTROLS_SOURCE = readFileSync(
 	"utf8",
 );
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
+const FOR_YOU_STAGE_SOURCE = readFileSync(
+	join(
+		process.cwd(),
+		"components/projects/jira-golden-journeys-v1/components/for-you-stage.tsx",
+	),
+	"utf8",
+);
 const DATA_SOURCE = readFileSync(join(__dirname, "data.ts"), "utf8");
 const DETAILS_SOURCE = readFileSync(
 	join(process.cwd(), "app/data/details/blocks/jira-list.ts"),
@@ -332,6 +339,8 @@ test("JiraList column controls use outside-top overlay geometry without reservin
 		/left: anchorSide === "left" \? "anchor\(left\)" : "anchor\(right\)"/u,
 	);
 	assert.match(COLUMN_CONTROLS_SOURCE, /top: 0/u);
+	assert.match(COLUMN_CONTROLS_SOURCE, /top: "anchor\(top, -100vh\)"/u);
+	assert.doesNotMatch(COLUMN_CONTROLS_SOURCE, /anchor\(center\)/u);
 });
 
 test("JiraList column add overlay paints above the sticky checkbox column", () => {
@@ -345,7 +354,8 @@ test("JiraList column add overlay paints above the sticky checkbox column", () =
 		/pointer-events-none contents[\s\S]*?data-testid="jira-list-column-boundary-overlay"/u,
 	);
 	assert.match(COLUMN_CONTROLS_SOURCE, /fixed z-50 size-6 -translate-x-1\/2 -translate-y-1\/2/u);
-	assert.match(COLUMN_CONTROLS_SOURCE, /top: "anchor\(center\)"/u);
+	assert.match(COLUMN_CONTROLS_SOURCE, /top: "anchor\(top, -100vh\)"/u);
+	assert.match(COLUMN_CONTROLS_SOURCE, /positionVisibility: "anchors-visible"/u);
 	assert.match(COLUMN_CONTROLS_SOURCE, /absolute top-0 bottom-10 z-40 w-0 overflow-visible/u);
 	assert.match(
 		SOURCE,
@@ -503,6 +513,29 @@ test("JiraList centers an accessible refresh button with the footer count", () =
 	assert.match(SOURCE, /onClick=\{onRefresh\}/u);
 	assert.match(SOURCE, /size="icon"/u);
 	assert.match(SOURCE, /variant="ghost"/u);
+});
+
+test("JiraList omits footer actions when the consumer supplies no capability", () => {
+	assert.match(TYPES_SOURCE, /onCreate\?: \(insertion\?: JiraListInsertion\) => void;/u);
+	assert.match(TYPES_SOURCE, /onRefresh\?: \(\) => void;/u);
+	assert.match(
+		SOURCE,
+		/onCreate \? \(\s*<div data-testid="jira-list-footer-controls">[\s\S]*?onClick=\{\(\) => onCreate\(\)\}[\s\S]*?<\/div>\s*\) : null/u,
+	);
+	assert.match(
+		SOURCE,
+		/onRefresh \? \([\s\S]*?aria-label="Refresh work items"[\s\S]*?onClick=\{onRefresh\}[\s\S]*?<\/Button>\s*\) : null/u,
+	);
+	assert.match(FOR_YOU_STAGE_SOURCE, /<JiraList[\s\S]*?rows=\{rows\}/u);
+	assert.doesNotMatch(FOR_YOU_STAGE_SOURCE, /<JiraList[\s\S]*?on(?:Create|Refresh)=/u);
+	assert.match(
+		DETAILS_SOURCE,
+		/name: "onCreate"[\s\S]*?Omit it to remove Create controls/u,
+	);
+	assert.match(
+		DETAILS_SOURCE,
+		/name: "onRefresh"[\s\S]*?Omit it to remove the footer refresh action/u,
+	);
 });
 
 test("JiraList sample refresh restores rows and transient demo state", () => {

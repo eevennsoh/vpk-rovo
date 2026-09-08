@@ -22,7 +22,7 @@ import { Tag, TagGroup } from "@/components/ui/tag";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
-import { getIssueInitial } from "@/components/blocks/jira-issue/lib";
+import { getIssueInitial, resolveIssueAssigneeUnassignedKind } from "@/components/blocks/jira-issue/lib";
 import { JiraIssuePullRequestCluster } from "@/components/blocks/jira-issue/pull-request-cluster";
 import type {
 	JiraIssuePriority,
@@ -64,13 +64,17 @@ function JiraIssueAssignee({
 	issueKey: string;
 	size?: NonNullable<AvatarProps["size"]>;
 }>) {
-	if (assigneeUnassignedKind) {
+	const unassignedKind = resolveIssueAssigneeUnassignedKind(
+		assigneeAvatarSrc,
+		assigneeUnassignedKind,
+	);
+	if (unassignedKind) {
 		return (
 			<AvatarUnassigned
 				className={cn(
 					assigneePulse && "motion-safe:animate-pulse ring-2 ring-border-focused ring-offset-2 ring-offset-surface",
 				)}
-				kind={assigneeUnassignedKind}
+				kind={unassignedKind}
 				size={size}
 			/>
 		);

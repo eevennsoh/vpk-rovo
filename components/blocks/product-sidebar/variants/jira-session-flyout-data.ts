@@ -76,9 +76,13 @@ export function toSessionPullRequestSmartLink(
 		status: toSessionPullRequestSmartLinkStatus(session.status),
 		additions: session.additions ?? 0,
 		deletions: session.deletions ?? 0,
+		files: session.files,
 		repository: session.repository,
 		branch: session.branch,
+		targetBranch: session.targetBranch,
 		href: session.pullRequestUrl,
+		author: session.pullRequestAuthor ?? session.invokedBy,
+		description: session.pullRequestDescription,
 	});
 
 	if (session.additions === undefined && session.deletions === undefined) {

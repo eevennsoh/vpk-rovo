@@ -4,7 +4,7 @@ import test from "node:test";
 import type { AgentSessionItem } from "../agent-session/agent-session-types";
 
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
-import { AGENT_SESSION_FILTER_AGENT_OPTIONS, EMPTY_AGENT_SESSION_COLUMN_FILTER, UNASSIGNED_OWNER_ID, agentSessionContainsArtifacts, agentSessionFilterToggleTriState, agentSessionHasLinkSuggestion, agentSessionOwnerId, applyAgentSessionColumnFilter, collectAgentSessionFilterOwners, countAgentSessionColumnFilterSelections, resolveAgentSessionFilterAgentId, resolveAgentSessionFilterDaysRange, toggleFilterId, toggleFilterTriState, toLocalIsoDate } from "./agent-session-column-filter.ts";
+import { AGENT_SESSION_FILTER_AGENT_OPTIONS, EMPTY_AGENT_SESSION_COLUMN_FILTER, UNASSIGNED_OWNER_ID, agentSessionContainsArtifacts, agentSessionFilterToggleTriState, agentSessionHasLinkSuggestion, agentSessionOwnerId, applyAgentSessionColumnFilter, collectAgentSessionFilterOwners, countAgentSessionColumnFilterSelections, resolveAgentSessionFilterAgentId, resolveAgentSessionFilterDaysRange, shouldKeepAgentSessionFilterMenuOpen, toggleFilterId, toggleFilterTriState, toLocalIsoDate } from "./agent-session-column-filter.ts";
 
 function session(
 	id: string,
@@ -39,6 +39,66 @@ test("toggleFilterTriState treats a second click as clear", () => {
 test("overflow-style toggles map on to yes and off to an inactive filter", () => {
 	assert.equal(agentSessionFilterToggleTriState(true), "yes");
 	assert.equal(agentSessionFilterToggleTriState(false), null);
+});
+
+test("the filter menu stays open for in-menu clicks and nested calendar presses", () => {
+	assert.equal(
+		shouldKeepAgentSessionFilterMenuOpen({
+			customCalendarOpen: false,
+			nextOpen: true,
+			reason: "trigger-press",
+		}),
+		false,
+	);
+	assert.equal(
+		shouldKeepAgentSessionFilterMenuOpen({
+			customCalendarOpen: false,
+			focusOutStayedInside: true,
+			nextOpen: false,
+			reason: "focus-out",
+		}),
+		true,
+	);
+	assert.equal(
+		shouldKeepAgentSessionFilterMenuOpen({
+			customCalendarOpen: false,
+			nextOpen: false,
+			reason: "focus-out",
+		}),
+		false,
+	);
+	assert.equal(
+		shouldKeepAgentSessionFilterMenuOpen({
+			customCalendarOpen: false,
+			nextOpen: false,
+			reason: "outside-press",
+		}),
+		false,
+	);
+	assert.equal(
+		shouldKeepAgentSessionFilterMenuOpen({
+			customCalendarOpen: true,
+			nextOpen: false,
+			reason: "outside-press",
+		}),
+		true,
+	);
+	assert.equal(
+		shouldKeepAgentSessionFilterMenuOpen({
+			customCalendarOpen: true,
+			nextOpen: false,
+			reason: "escape-key",
+		}),
+		false,
+	);
+	assert.equal(
+		shouldKeepAgentSessionFilterMenuOpen({
+			customCalendarOpen: false,
+			nextOpen: false,
+			reason: "trigger-press",
+		}),
+		false,
+	);
 });
 
 test("owners collect uniquely and keep Unassigned when a session has no invoker", () => {

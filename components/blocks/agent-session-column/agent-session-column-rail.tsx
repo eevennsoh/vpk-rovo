@@ -66,11 +66,11 @@ export { AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS } from "./agent-session-column-rai
  * a 12px cap; the dot under the pointer or keyboard focus reveals that person's
  * face. An arriving session flashes that same face, holds, then morphs —
  * the face shrinks 12→4 as one disc — before the photo is dropped and the
- * unread rest takes default icon color. Reviewed sessions rest at 4px
+ * unread rest takes `icon.subtle`. Reviewed sessions rest at 4px
  * `icon.disabled`. Line markers retain the original horizontal treatment
  * and falloff.
  *
- * Circle unread uses `color.icon`; reviewed dots stay `icon.disabled`. Size
+ * Circle unread uses `color.icon.subtle`; reviewed dots stay `icon.disabled`. Size
  * carries proximity and the face carries direct interest. Lifecycle remains
  * spoken, while line mode retains its previous selected/new tone treatment.
  *
@@ -360,7 +360,7 @@ function AgentSessionUserNotch({
 					data-arrival-rest-hidden={hideRestDisc || undefined}
 					style={{
 						backgroundColor: isNew
-							? AGENT_SESSION_NOTCH_TONE.selected
+							? AGENT_SESSION_NOTCH_TONE.unread
 							: AGENT_SESSION_NOTCH_TONE.rest,
 						transform: proximity === undefined
 							? `scale(${restingScale})`

@@ -7,6 +7,11 @@
  * tested without a DOM or a motion runtime.
  */
 
+import {
+	JIRA_DROPZONE_FULL_MOTION_PROFILE,
+	JIRA_DROPZONE_REDUCED_MOTION_PROFILE,
+	// @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
+} from "../jira-dropzone/lib/jira-dropzone-motion.ts";
 import type { ThirdPartyLogoName } from "@/components/ui/data/logo-third-party-data";
 
 export interface JiraLinkingPoint {
@@ -62,30 +67,29 @@ export interface JiraLinkingFlight {
 }
 
 /**
- * `duration-slower` + `ease-out-practical`, matching the create-well flights.
- * Strength stays positive and `direction` is `"automatic"` so Motion picks a
- * stable screen-space bulge instead of locking clockwise or counter-clockwise.
+ * The create-well flight recipe, plus `direction: "automatic"` so Motion picks
+ * a stable screen-space bulge instead of locking clockwise or counter-clockwise.
  */
 export const JIRA_LINKING_FULL_DROP_PROFILE: JiraLinkingDropProfile = {
-	arcPeak: 0.5,
-	arcStrength: 0.42,
+	arcPeak: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcPeak,
+	arcStrength: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcStrength,
 	direction: "automatic",
-	durationMs: 400,
-	ease: [0.4, 1, 0.6, 1],
-	launchSpreadPx: 14,
-	staggerMs: 70,
-	travel: "arc",
+	durationMs: JIRA_DROPZONE_FULL_MOTION_PROFILE.durationMs,
+	ease: JIRA_DROPZONE_FULL_MOTION_PROFILE.ease,
+	launchSpreadPx: JIRA_DROPZONE_FULL_MOTION_PROFILE.launchSpreadPx,
+	staggerMs: JIRA_DROPZONE_FULL_MOTION_PROFILE.staggerMs,
+	travel: JIRA_DROPZONE_FULL_MOTION_PROFILE.travel,
 };
 
 export const JIRA_LINKING_REDUCED_DROP_PROFILE: JiraLinkingDropProfile = {
-	arcPeak: 0.5,
-	arcStrength: 0,
+	arcPeak: JIRA_DROPZONE_REDUCED_MOTION_PROFILE.arcPeak,
+	arcStrength: JIRA_DROPZONE_REDUCED_MOTION_PROFILE.arcStrength,
 	direction: "automatic",
-	durationMs: 0,
-	ease: [0, 0, 1, 1],
-	launchSpreadPx: 0,
-	staggerMs: 0,
-	travel: "none",
+	durationMs: JIRA_DROPZONE_REDUCED_MOTION_PROFILE.durationMs,
+	ease: JIRA_DROPZONE_REDUCED_MOTION_PROFILE.ease,
+	launchSpreadPx: JIRA_DROPZONE_REDUCED_MOTION_PROFILE.launchSpreadPx,
+	staggerMs: JIRA_DROPZONE_REDUCED_MOTION_PROFILE.staggerMs,
+	travel: JIRA_DROPZONE_REDUCED_MOTION_PROFILE.travel,
 };
 
 export function resolveJiraLinkingDropProfile(

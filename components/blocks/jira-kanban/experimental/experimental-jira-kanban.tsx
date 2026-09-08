@@ -632,6 +632,7 @@ function ExperimentalJiraKanbanView({
 	const dragImageRef = useRef<HTMLDivElement | null>(null);
 	const handleCreatedCardArrivalComplete = useCreatedCardArrivalCompletion(
 		onCreatedCardArrivalComplete,
+		createdCardArrival?.appended ? 0 : undefined,
 	);
 	const [uncontrolledCollapsedColumns, setUncontrolledCollapsedColumns] = useState(
 		EMPTY_COLLAPSED_BOARD_COLUMNS,
@@ -964,7 +965,7 @@ function ExperimentalJiraKanbanView({
 												cardInsertion={boardSessionDrag.cardInsertion}
 												cardMovePhase={cardMovePhase}
 												className={cn(
-													spotlightIssueKey === card.code && "bg-bg-accent-blue-subtlest",
+													spotlightIssueKey === card.code && "bg-bg-accent-blue-subtlest [&_[data-slot=jira-issue-agent-backdrop]]:bg-bg-accent-blue-subtlest",
 													spotlightIssueKey !== null && spotlightIssueKey !== card.code && "opacity-40",
 												)}
 												columnTitle={column.title}
@@ -980,7 +981,7 @@ function ExperimentalJiraKanbanView({
 														? boardSessionDrag.linkFlash.flash
 														: undefined}
 													agentSessionDragControl={agentSessionDragControl}
-													agentSessionTargetHighlighted={hoveredIssueKey === card.code}
+													agentSessionTargetHighlighted={hoveredIssueKey === card.code && spotlightIssueKey !== card.code}
 												capturedItemIds={proximityActions.capturedItemIds}
 												card={card}
 												chrome={chrome.cardChrome}

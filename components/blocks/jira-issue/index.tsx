@@ -16,6 +16,7 @@ import {
 	type JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue/agent-activity";
 import { JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE } from "@/components/blocks/jira-issue/agent-session-drag";
+import { JiraIssueDetachedSessionTransferSlot } from "@/components/blocks/jira-issue/attach-chin";
 import {
 	linkAgentSessionChinCopy,
 	resolveLinkAgentSessionChinCount,
@@ -408,6 +409,12 @@ function JiraIssueDefault({
 			? resolvedAgentSessionDragState.transfer.members.length
 			: undefined,
 	);
+	const attachChinCopy = isAttachingSession
+		? linkAgentSessionChinCopy(attachSessionCount)
+		: undefined;
+	// Nearby/detached pills already occupy the last chin. Swap that slot for
+	// attach copy instead of opening a second row under the shell.
+	const replaceDetachedTransfer = Boolean(attachChinCopy && sessionTransferAfter);
 	// Unlink keeps `working` with an empty chin so the grey backdrop stays
 	// around the issue. The shell keys off mode, not a mounted row.
 	const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"
@@ -762,7 +769,7 @@ function JiraIssueDefault({
 				animate={shouldReduceMotion ? undefined : agentActivityBackdropAnimation}
 				className={cn(
 					"pointer-events-none absolute transition-colors duration-xxshort ease-out-practical motion-reduce:transition-none",
-					agentSessionTargetHighlighted ? "bg-bg-accent-blue-subtlest" : "bg-bg-neutral",
+					agentSessionTargetHighlighted ? "bg-bg-neutral-hovered" : "bg-bg-neutral",
 				)}
 				data-slot="jira-issue-agent-backdrop"
 				initial={false}
@@ -795,7 +802,7 @@ function JiraIssueDefault({
 				    card height — and drop-zone geometry — stays put. */}
 				<JiraIssueAgentActivityRows
 					activities={activeAgentActivities}
-					attachPreviewCopy={isAttachingSession ? linkAgentSessionChinCopy(attachSessionCount) : undefined}
+					attachPreviewCopy={replaceDetachedTransfer ? undefined : attachChinCopy}
 					linkFlash={agentLinkFlash}
 					instantSessionTransfer={agentSessionDragControl !== undefined}
 					layout={agentActivityLayout}
@@ -856,8 +863,17 @@ function JiraIssueDefault({
 					sessionLabel={resolvedAgentSessionDragState.activities[0]?.name}
 					source={resolvedAgentSessionDragState.source}
 			/>
+			{/* Detached/proximity pills sit under the shell. Attach copy covers
+			    that occupied slot so the chin does not grow a second row, but
+			    the drag source stays mounted through pointer release. */}
 			{agentSessionDragBinding && sessionTransferAfter
-				? sessionTransferAfter(agentSessionDragBinding)
+				? (
+					<JiraIssueDetachedSessionTransferSlot
+						attachCopy={replaceDetachedTransfer ? attachChinCopy : undefined}
+					>
+						{sessionTransferAfter(agentSessionDragBinding)}
+					</JiraIssueDetachedSessionTransferSlot>
+				)
 				: null}
 		</div>
 	) : agentActivityShell;

@@ -369,7 +369,10 @@ test("the board enables board-wide Jira issue agent-session transfer", () => {
 		EXPERIMENTAL_CARD_SOURCE,
 		/const canTransferAgentSession = canUnlinkAgentSession \|\| canLinkAgentSession \|\| isBoardDropTarget;/u,
 	);
-	assert.match(EXPERIMENTAL_CARD_SOURCE, /sessionTransferAfter=\{\(localSessionDrag\) =>/u);
+	assert.match(
+		EXPERIMENTAL_CARD_SOURCE,
+		/sessionTransferAfter=\{detachedAgentSessions\.length > 0/u,
+	);
 	assert.match(
 		EXPERIMENTAL_CARD_SOURCE,
 		/sessionDrag=\{canLinkAgentSession[\s\S]*\? detachedSessionDrag \?\? localSessionDrag[\s\S]*: undefined\}/u,

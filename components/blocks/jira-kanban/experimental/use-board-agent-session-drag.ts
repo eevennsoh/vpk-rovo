@@ -52,6 +52,11 @@ import {
 
 const SESSION_UNLINK_DROP_HALO_PX = 24;
 
+interface ListScrollportClip {
+	clip: DOMRect;
+	headerBottom: number;
+}
+
 /**
  * The card's agent shell rect, so the fusion field knows what shape it is
  * becoming. The shell is the whole card surface — the grey backdrop, the card
@@ -111,10 +116,10 @@ function resolveIssueLandRect(node: HTMLElement): BoardAgentSessionDropBounds | 
 	return lastRow ? toDropBounds(lastRow) : null;
 }
 
-
 function clipBoundsToScrollport(
 	node: HTMLElement,
 	rect: DOMRect,
+	clipCache: Map<HTMLElement, ListScrollportClip>,
 ): BoardAgentSessionDropBounds | null {
 	const scrollport = node.closest<HTMLElement>("[data-testid='jira-list-table-scroll']");
 	if (!scrollport) {
@@ -126,9 +131,17 @@ function clipBoundsToScrollport(
 		};
 	}
 
-	const clip = scrollport.getBoundingClientRect();
-	const header = scrollport.querySelector("thead");
-	const headerBottom = header?.getBoundingClientRect().bottom ?? clip.top;
+	let scrollportClip = clipCache.get(scrollport);
+	if (scrollportClip === undefined) {
+		const clip = scrollport.getBoundingClientRect();
+		const header = scrollport.querySelector("thead");
+		scrollportClip = {
+			clip,
+			headerBottom: header?.getBoundingClientRect().bottom ?? clip.top,
+		};
+		clipCache.set(scrollport, scrollportClip);
+	}
+	const { clip, headerBottom } = scrollportClip;
 	const top = Math.max(rect.top, headerBottom, clip.top);
 	const bottom = Math.min(rect.bottom, clip.bottom);
 	const left = Math.max(rect.left, clip.left);
@@ -196,6 +209,9 @@ function gateCardGapZones(
 
 function collectDropZones(root: HTMLElement | null): BoardAgentSessionDropZone[] {
 	if (!root) return [];
+	// Every pointer update gets a fresh scan, but all list rows in that scan
+	// share one scrollport and sticky header clip.
+	const listScrollportClipCache = new Map<HTMLElement, ListScrollportClip>();
 
 	return Array.from(
 		root.querySelectorAll<HTMLElement>("[data-board-agent-session-drop-zone]"),
@@ -238,7 +254,7 @@ function collectDropZones(root: HTMLElement | null): BoardAgentSessionDropZone[]
 		}
 		const issueKey = node.closest<HTMLElement>("[data-issue-key]")?.dataset.issueKey;
 		if (kind === "list-row") {
-			const bounds = clipBoundsToScrollport(node, rect);
+			const bounds = clipBoundsToScrollport(node, rect, listScrollportClipCache);
 			if (!bounds) return [];
 			const zone = parseListRowDropZone(issueKey, node.dataset.listRowIndex, bounds);
 			return zone ? [zone] : [];

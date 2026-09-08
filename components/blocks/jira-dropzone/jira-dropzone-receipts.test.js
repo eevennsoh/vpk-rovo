@@ -357,7 +357,11 @@ test("matrix: stagger drop + bounce once is N flights and one first-land impact"
 	const started = receiveFour({ bounce: "once", drop: "stagger" });
 	const channel = started.channels.get("To Do");
 	assert.equal(channel.flights.length, 4);
-	assert.deepEqual(channel.flights.map((flight) => flight.delayMs), [0, 70, 140, 210]);
+	const staggerMs = JIRA_DROPZONE_FULL_MOTION_PROFILE.staggerMs;
+	assert.deepEqual(
+		channel.flights.map((flight) => flight.delayMs),
+		[0, staggerMs, staggerMs * 2, staggerMs * 3],
+	);
 	const afterFirst = jiraDropzoneFieldReducer(started, {
 		flightKey: channel.flights[0].key,
 		kind: "land",
@@ -393,9 +397,10 @@ test("a four-member stagger receipt fans launch points", () => {
 		flights.map((flight) => flight.members.map((item) => item.id)),
 		[["a"], ["b"], ["c"], ["d"]],
 	);
+	const spread = JIRA_DROPZONE_FULL_MOTION_PROFILE.launchSpreadPx;
 	assert.deepEqual(
 		flights.map((flight) => flight.from.x - next.from.x),
-		[-21, -7, 7, 21],
+		[-1.5, -0.5, 0.5, 1.5].map((step) => step * spread),
 	);
 });
 

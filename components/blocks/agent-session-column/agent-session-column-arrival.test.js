@@ -68,13 +68,13 @@ test("an arrival is a transient beat plus a mark that outlives it", () => {
 	assert.doesNotMatch(CARD_SOURCE, /bg-icon-discovery/u);
 	assert.match(
 		RAIL_COLUMN_SOURCE,
-		/backgroundColor: isNew\s*\? AGENT_SESSION_NOTCH_TONE\.selected/u,
+		/backgroundColor: isNew\s*\? AGENT_SESSION_NOTCH_TONE\.unread/u,
 	);
 	assert.match(RAIL_COLUMN_SOURCE, /AGENT_SESSION_NOTCH_TONE\.rest/u);
 	// A reviewed session rests as a quiet 4px `icon.disabled` dot; hover and
 	// keyboard focus reveal the same human face used by the expanded card,
 	// capped at 12x12. Newly synced sessions rest at that same 4px in
-	// `color.icon` after the arrival face morphs down.
+	// `color.icon.subtle` after the arrival face morphs down.
 	assert.match(RAIL_COLUMN_SOURCE, /size-3[^"\n]*rounded-full object-cover/u);
 	assert.match(RAIL_COLUMN_SOURCE, /"size-1 rounded-full/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /isNew \? "size-3" : "size-1"/u);
@@ -136,15 +136,15 @@ test("the rest disc stays hidden while the arrival face is on screen", () => {
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /scale-75/u);
 });
 
-test("circle unread rest uses default icon color", () => {
+test("circle unread rest uses icon subtle color", () => {
 	assert.match(CARD_SOURCE, /<span className="sr-only">Newly synced, not yet reviewed<\/span>/u);
 	assert.match(RAIL_COLUMN_SOURCE, /isNew \? ", newly synced" : ""/u);
 	// Size is no longer the persistent unread mark. Circle rests stay 4px;
-	// unread paints `color.icon`, reviewed stays `icon.disabled`. Line mode
-	// already used selected/new tone.
+	// unread paints `color.icon.subtle`, reviewed stays `icon.disabled`. Line
+	// mode already used selected/new tone.
 	assert.match(
 		RAIL_COLUMN_SOURCE,
-		/backgroundColor: isNew\s*\? AGENT_SESSION_NOTCH_TONE\.selected/u,
+		/backgroundColor: isNew\s*\? AGENT_SESSION_NOTCH_TONE\.unread/u,
 	);
 	assert.match(NOTCH_MAGNIFY_SOURCE, /toAgentSessionNotchTone\(isSelected: boolean, isNew: boolean\)/u);
 	assert.match(NOTCH_MAGNIFY_SOURCE, /return isNew \|\| isSelected/u);

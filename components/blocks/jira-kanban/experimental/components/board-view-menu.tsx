@@ -30,6 +30,8 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubContent,
@@ -148,6 +150,7 @@ interface QuickViewActionSubmenuProps<TId extends string> {
 	label: string;
 	options: readonly QuickViewOption<TId>[];
 	icons?: StateIcons;
+	selectedId?: TId | null;
 	onSelect: (id: TId) => void;
 }
 
@@ -155,25 +158,38 @@ function QuickViewActionSubmenu<TId extends string>({
 	label,
 	options,
 	icons,
+	selectedId = null,
 	onSelect,
 }: Readonly<QuickViewActionSubmenuProps<TId>>) {
 	return (
 		<DropdownMenuSub>
 			<DropdownMenuSubTrigger>{label}</DropdownMenuSubTrigger>
 			<DropdownMenuSubContent>
-				{options.map((option) => {
-					const stateIcon = icons?.[option.id];
-					return (
-						<DropdownMenuItem
-							className={stateIcon ? "gap-2 [&>span:first-child]:size-3" : undefined}
-							elemBefore={stateIcon ? <MenuLeadingIcon icon={stateIcon} /> : undefined}
-							key={option.id}
-							onSelect={() => onSelect(option.id)}
-						>
-							{option.label}
-						</DropdownMenuItem>
-					);
-				})}
+				<DropdownMenuRadioGroup
+					aria-label={label}
+					onValueChange={(id) => {
+						const option = options.find((entry) => entry.id === id);
+						if (option) {
+							onSelect(option.id);
+						}
+					}}
+					value={selectedId ?? ""}
+				>
+					{options.map((option) => {
+						const stateIcon = icons?.[option.id];
+						return (
+							<DropdownMenuRadioItem
+								className={stateIcon ? "gap-2" : undefined}
+								indicatorPlacement="end"
+								key={option.id}
+								value={option.id}
+							>
+								{stateIcon ? <MenuLeadingIcon icon={stateIcon} /> : null}
+								{option.label}
+							</DropdownMenuRadioItem>
+						);
+					})}
+				</DropdownMenuRadioGroup>
 			</DropdownMenuSubContent>
 		</DropdownMenuSub>
 	);
@@ -258,6 +274,7 @@ export function BoardViewMenu({
 					label="Pull request"
 					onSelect={handlePullRequestSelect}
 					options={BOARD_PR_STATE_OPTIONS}
+					selectedId={pullRequestFilterId}
 				/>
 
 				<QuickViewActionSubmenu
@@ -265,6 +282,7 @@ export function BoardViewMenu({
 					label="Agents"
 					onSelect={handleAgentSelect}
 					options={BOARD_AGENT_STATE_OPTIONS}
+					selectedId={agentFilterId}
 				/>
 
 				<QuickViewActionSubmenu
@@ -272,12 +290,14 @@ export function BoardViewMenu({
 					label="Session type"
 					onSelect={handleSessionTypeSelect}
 					options={BOARD_SESSION_TYPE_OPTIONS}
+					selectedId={sessionTypeFilterId}
 				/>
 
 				<QuickViewActionSubmenu
 					label="Group by"
 					onSelect={handleGroupBySelect}
 					options={BOARD_GROUP_OPTIONS}
+					selectedId={groupByFilterId}
 				/>
 
 				{hasQuickViewSelection ? (

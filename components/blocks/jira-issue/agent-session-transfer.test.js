@@ -7,6 +7,7 @@ const { test } = require("node:test");
 // demo phases, the drop well, the pull-out, and the split review chin.
 // Split out of jira-issue.test.js to keep both files under the 1000-line budget.
 const SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
+const ATTACH_CHIN_SOURCE = readFileSync(join(__dirname, "attach-chin.tsx"), "utf8");
 const AGENT_ACTIVITY_SOURCE = readFileSync(join(__dirname, "agent-activity.tsx"), "utf8");
 const COMPLETED_RUNS_SOURCE = readFileSync(join(__dirname, "completed-agent-runs.tsx"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
@@ -712,7 +713,15 @@ test("attach chin replaces the last occupied session row instead of stacking or 
 	// row. Split layouts keep every earlier row so drop-zone geometry stays put.
 	assert.match(
 		SOURCE,
-		/attachPreviewCopy=\{isAttachingSession \? linkAgentSessionChinCopy\(attachSessionCount\) : undefined\}/u,
+		/const attachChinCopy = isAttachingSession\s*\n\s*\? linkAgentSessionChinCopy\(attachSessionCount\)\s*\n\s*: undefined;/u,
+	);
+	assert.match(
+		SOURCE,
+		/const replaceDetachedTransfer = Boolean\(attachChinCopy && sessionTransferAfter\);/u,
+	);
+	assert.match(
+		SOURCE,
+		/attachPreviewCopy=\{replaceDetachedTransfer \? undefined : attachChinCopy\}/u,
 	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /attachPreviewCopy\?: string;/u);
 	assert.match(
@@ -726,5 +735,27 @@ test("attach chin replaces the last occupied session row instead of stacking or 
 	assert.doesNotMatch(
 		SOURCE,
 		/\{isAttachingSession \? \(\s*\n\s*<div className="px-1 py-1" data-slot="jira-issue-attach-chin">/u,
+	);
+	assert.match(
+		ATTACH_CHIN_SOURCE,
+		/export function JiraIssueDetachedAttachChinSlot\([\s\S]*h-\[33px\][\s\S]*data-slot="jira-issue-attach-chin"/u,
+	);
+	// Nearby/detached pills already occupy the last chin. Attach copy covers
+	// that slot, but `AgentSessionMediumDrag` stays mounted so pointer capture
+	// and the window pointerup fallback survive the first armed move.
+	assert.match(
+		SOURCE,
+		/<JiraIssueDetachedSessionTransferSlot\s*\n\s*attachCopy=\{replaceDetachedTransfer \? attachChinCopy : undefined\}\s*\n\s*>\s*\n\s*\{sessionTransferAfter\(agentSessionDragBinding\)\}/u,
+	);
+	assert.doesNotMatch(
+		SOURCE,
+		/replaceDetachedTransfer && attachChinCopy\s*\n\s*\? <JiraIssueDetachedAttachChinSlot copy=\{attachChinCopy\} \/>/u,
+	);
+	assert.match(ATTACH_CHIN_SOURCE, /export function JiraIssueDetachedSessionTransferSlot/u);
+	assert.match(ATTACH_CHIN_SOURCE, /inert=\{replace \|\| undefined\}/u);
+	assert.match(ATTACH_CHIN_SOURCE, /invisible col-start-1 row-start-1/u);
+	assert.match(
+		ATTACH_CHIN_SOURCE,
+		/attachCopy \? \(\s*\n\s*<div className="pointer-events-none col-start-1 row-start-1">\s*\n\s*<JiraIssueDetachedAttachChinSlot copy=\{attachCopy\} \/>/u,
 	);
 });

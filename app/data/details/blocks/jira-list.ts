@@ -2,7 +2,7 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const JIRA_LIST_DETAIL: ComponentDetail = {
 	description:
-		"Compact Jira list view with hierarchical work rows, checkbox selection, status lozenges, assignees, labels, priorities, contributors, and a sticky footer action.",
+		"Compact Jira list view with hierarchical work rows, checkbox selection, status lozenges, assignees, labels, priorities, contributors, and capability-backed sticky footer actions.",
 	demoLayout: { previewHeight: "fit" },
 	importStatement: `import { JiraList } from "@/components/blocks/jira-list";`,
 	usage: `import { JiraList } from "@/components/blocks/jira-list";
@@ -27,6 +27,8 @@ export const JIRA_LIST_DETAIL: ComponentDetail = {
 		{ name: "onToggleExpand", type: '(issueKey: string) => void', description: "Called when a parent row expand or collapse control is activated." },
 		{ name: "onIssueClick", type: '(row: JiraListRowData) => void', description: "Called when the summary text is activated." },
 		{ name: "onIssueKeyClick", type: '(row: JiraListRowData) => void', description: "Called when the issue key link is activated." },
+		{ name: "onCreate", type: '(insertion?: JiraListInsertion) => void', description: "Creates a work item from the footer or a row boundary. Omit it to remove Create controls." },
+		{ name: "onRefresh", type: "() => void", description: "Refreshes the list. Omit it to remove the footer refresh action." },
 		{ name: "visibleCount", type: "number", default: "rows.length", description: "Visible issue count shown in the sticky footer." },
 		{ name: "totalCountLabel", type: "string", default: "rows.length as text", description: "Total issue count label shown in the sticky footer." },
 	],

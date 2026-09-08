@@ -69,7 +69,12 @@ export function JiraSessionFlyoutCard({
 									<ul className="flex flex-col gap-1">
 										{artifactItems.map((item) => (
 											<li className="flex min-w-0" key={item.id}>
-												<SmartLink className="max-w-full" item={item} side="right" />
+												<SmartLink
+													className="max-w-full"
+													item={item}
+													showStatus={item.variant === "pull-request"}
+													side="right"
+												/>
 											</li>
 										))}
 									</ul>

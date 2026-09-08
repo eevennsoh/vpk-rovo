@@ -232,8 +232,8 @@ export function AgentSessionColumnPanelDemo() {
 				<p className="text-xs text-text-subtlest">
 					Sync prepends untracked work: the cards step in from above and hold a
 					discovery-toned dash, while each new user dot reveals the same
-					human avatar as its card, holds, then shrinks into a 4px rest in the
-					default icon color and pushes the ones below it down. Hovering or
+					human avatar as its card, holds, then shrinks into a 4px rest in
+					icon.subtle and pushes the ones below it down. Hovering or
 					focusing a dot reveals that face again. Mark reviewed decays the mark, which
 					is what the watermark does when the column is expanded. Hover a card
 					to select it; the header then offers Link, Create, Archive, and Clear.

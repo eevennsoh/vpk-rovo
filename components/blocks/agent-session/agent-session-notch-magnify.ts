@@ -54,7 +54,7 @@ export const AGENT_SESSION_USER_NOTCH_DIAMETER = {
 } as const;
 
 /**
- * Notch colour, as the two named icon tokens.
+ * Notch colour, as named icon tokens.
  *
  * Colour is a **selection** signal, not a slope one. Only the notch the pointer
  * has landed on takes `color.icon`; every other notch — near neighbours on the
@@ -66,12 +66,15 @@ export const AGENT_SESSION_USER_NOTCH_DIAMETER = {
  * These are the tokens themselves, not an alpha of `color.icon` mixed over the
  * plane. A 0.66–0.68 opacity used to approximate a subtler grey over the old
  * fill; once the plane became `bg-surface` that mix was a third grey, and a
- * 1px hairline has no weight to spare on a wrong one. New notches stay on
- * `color.icon` — already lit — rather than introducing a fourth hue.
+ * 1px hairline has no weight to spare on a wrong one. Line-mode new
+ * notches stay on `color.icon` — already lit. Circle unread rest uses
+ * `color.icon.subtle`, a step quieter than default icon and still
+ * distinct from reviewed `icon.disabled`.
  */
 export const AGENT_SESSION_NOTCH_TONE = {
 	rest: "var(--color-icon-disabled)",
 	selected: "var(--color-icon)",
+	unread: "var(--color-icon-subtle)",
 } as const;
 
 /** Swell in at the list-item interaction profile; out faster, as every exit is. */

@@ -94,7 +94,10 @@ test("Heatmap docs describe the decorative, reduced-motion-safe contract", () =>
 test("Heatmap freezes rather than disappears under reduced motion", () => {
 	const source = readProjectFile("components/visual/heatmap/index.tsx");
 
-	assert.match(source, /const shouldReduceMotion = useReducedMotion\(\) \?\? false;/u);
+	assert.match(
+		source,
+		/const shouldReduceMotion = useMediaQuery\("\(prefers-reduced-motion: reduce\)"\);/u,
+	);
 	assert.match(source, /speed: shouldReduceMotion \? 0 : speed,/u);
 	assert.doesNotMatch(source, /if \(shouldReduceMotion\) return null;/u);
 });

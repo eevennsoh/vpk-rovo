@@ -378,7 +378,7 @@ test("Kanban card renders explicit unassigned avatars with the shared placeholde
 	assert.match(SOURCE, /assigneeAvatarLabel=\{card\.assignee\?\.name\}/);
 	assert.match(
 		JIRA_ISSUE_SUMMARY_SOURCE,
-		/function JiraIssueAssignee[\s\S]*size = "sm"[\s\S]*if \(assigneeUnassignedKind\) \{[\s\S]*<AvatarUnassigned[\s\S]*kind=\{assigneeUnassignedKind\}[\s\S]*size=\{size\}/,
+		/function JiraIssueAssignee[\s\S]*size = "sm"[\s\S]*const unassignedKind = resolveIssueAssigneeUnassignedKind\([\s\S]*assigneeAvatarSrc[\s\S]*assigneeUnassignedKind[\s\S]*if \(unassignedKind\) \{[\s\S]*<AvatarUnassigned[\s\S]*kind=\{unassignedKind\}[\s\S]*size=\{size\}/,
 	);
 });
 
@@ -772,9 +772,11 @@ test("Experimental kanban renders detached sessions beneath their source card wi
 });
 
 test("Experimental kanban cards use the hexagon avatar for agent assignees", () => {
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /function getCardAssigneeAvatarSrc\(card: JiraKanbanCardData\)/);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /function getCardAssigneeAvatarShape\(card: JiraKanbanCardData\)/);
-	assert.match(EXPERIMENTAL_CARD_SOURCE, /card\.avatarSrc\?\.startsWith\("\/avatar-agent\/"\) \? "hexagon" as const : undefined/);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /getCardAssigneeAvatarSrc\(card\)\?\.startsWith\("\/avatar-agent\/"\) \? "hexagon" as const : undefined/);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /assigneeAvatarShape=\{getCardAssigneeAvatarShape\(card\)\}/);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /assigneeAvatarSrc=\{getCardAssigneeAvatarSrc\(card\)\}/);
 	assert.match(
 		EXPERIMENTAL_PULSE_RAIL_SOURCE,
 		/assigneeAvatarShape=\{face\.kind === "agent" \? "hexagon" : "circle"\}/,

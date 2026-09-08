@@ -196,7 +196,9 @@ function resolveCollapsedHeaderStyle(
 /**
  * Hover/focus swap on the collapsed header slot: the count at rest, the expand
  * control once the pointer or keyboard arrives. Both sit in the same 24px row
- * the expanded collapse control uses, so the number does not move.
+ * the expanded collapse control uses, so the number does not move. Gutter rest
+ * keeps this pair hidden; `focus-visible` still unfades the control so keyboard
+ * users can expand without a pointer.
  */
 const HEADER_COUNT_AT_REST = cn(
 	"pointer-events-none transition-opacity duration-normal ease-out-practical",
@@ -208,6 +210,11 @@ const HEADER_CONTROL_ON_REVEAL = cn(
 	"peer/expand-control opacity-0 transition-opacity duration-normal ease-out-practical",
 	"hover:opacity-100 focus-visible:opacity-100",
 	"motion-reduce:transition-none",
+);
+
+const HEADER_CONTROL_IN_GUTTER = cn(
+	HEADER_CONTROL_ON_REVEAL,
+	"hover:opacity-0",
 );
 
 /**
@@ -272,7 +279,8 @@ const AGENT_SESSION_PLANE_BOTTOM_FADE_SIZE = `${AGENT_SESSION_DECK_END_SPACE_PX}
  * {@link AgentSessionColumnRail}. Collapsed drops the well so the count
  * shares the status pill's 24px header slot instead of sitting inside a
  * full-height bordered rail. `collapsedPresentation="gutter"` hides that
- * count while keeping the expand control in the same slot.
+ * count and the expand icon at rest, while keeping the expand control in
+ * the same slot for keyboard. Hover preview uses `"column"` so both return.
  *
  * Two capabilities exist for hosts that dock the column into their own surface
  * rather than stand it on the board: `collapsed` makes the rail state
@@ -577,9 +585,9 @@ export function AgentSessionColumn({
 		resolveAgentSessionPlaneClassName(layout, collapsed),
 		isGutterCollapsed ? "bg-transparent" : null,
 	);
-	// Gutter presentation hides the digits so the rail can sit in the page
-	// inset — at rest, during the hover preview, and when newly synced
-	// sessions arrive. The expand control stays in the same 24px slot.
+	// Gutter rest hides the digits and the expand icon so the rail can sit
+	// in the page inset. Hover preview switches to column presentation, so
+	// the same 24px slot shows the count and the expand control again.
 	// Screen-reader copy still names the pool count.
 	const hideGutterCount = isGutterCollapsed;
 	const collapsedCountLabel = newCount > 0
@@ -592,7 +600,7 @@ export function AgentSessionColumn({
 					render={
 						<Button
 							aria-label={`Expand ${title} column`}
-							className={HEADER_CONTROL_ON_REVEAL}
+							className={isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL}
 							onClick={handleToggleCollapsed}
 							size="icon-compact"
 							style={{ width: "100%" }}

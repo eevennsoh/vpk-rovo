@@ -97,6 +97,7 @@ test("colour is the named icon tokens, never an alpha mix", () => {
 	// resting grey over the old plane; that mix is a third grey on `bg-surface`.
 	assert.equal(AGENT_SESSION_NOTCH_TONE.rest, "var(--color-icon-disabled)");
 	assert.equal(AGENT_SESSION_NOTCH_TONE.selected, "var(--color-icon)");
+	assert.equal(AGENT_SESSION_NOTCH_TONE.unread, "var(--color-icon-subtle)");
 	assert.equal(toAgentSessionNotchTone(false, false), AGENT_SESSION_NOTCH_TONE.rest);
 	assert.equal(toAgentSessionNotchTone(true, false), AGENT_SESSION_NOTCH_TONE.selected);
 	// Newly synced notches stay on `color.icon` whether or not they are nearest.

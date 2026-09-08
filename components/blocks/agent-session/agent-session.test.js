@@ -139,6 +139,14 @@ test("large uncaptured-work rows keep timestamps after a truncating linked PR wh
 	assert.match(DATA_SOURCE, /pullRequestNumber: 1306,/u);
 	assert.match(DATA_SOURCE, /pullRequestTitle: "Add guest checkout to the storefront",/u);
 	assert.match(DATA_SOURCE, /pullRequestUrl: "https:\/\/github\.com\/eevensoh\/vpk-rovo\/pull\/1306",/u);
+	assert.match(DATA_SOURCE, /repository: GITHUB_REPOSITORY/u);
+	assert.match(DATA_SOURCE, /targetBranch: GITHUB_TARGET_BRANCH/u);
+	assert.match(DATA_SOURCE, /branch: "feature\/shop-4821-guest-checkout"/u);
+	assert.match(DATA_SOURCE, /files: 6,/u);
+	assert.match(DATA_SOURCE, /additions: 86,/u);
+	assert.match(DATA_SOURCE, /deletions: 21,/u);
+	assert.match(DATA_SOURCE, /pullRequestAuthor: GITHUB_PR_AUTHOR/u);
+	assert.match(DATA_SOURCE, /pullRequestDescription:/u);
 	assert.match(DATA_SOURCE, /prStatus: "created"/u);
 	assert.match(DATA_SOURCE, /prStatus: "merged"/u);
 	assert.match(DATA_SOURCE, /prStatus: "failed"/u);

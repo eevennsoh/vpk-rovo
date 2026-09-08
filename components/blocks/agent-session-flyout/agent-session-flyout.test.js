@@ -61,7 +61,10 @@ test("shared hover flyout defaults to session details and exposes composer and u
 		cardShellSource,
 		/<h3 className="text-xs leading-4 font-medium text-text" id=\{artifactsId\}>[\s\S]*?Artifacts[\s\S]*?<\/h3>/u,
 	);
-	assert.match(cardShellSource, /<SmartLink className="max-w-full" item=\{item\} side="right" \/>/u);
+	assert.match(
+		cardShellSource,
+		/<SmartLink[\s\S]*className="max-w-full"[\s\S]*item=\{item\}[\s\S]*showStatus=\{item\.variant === "pull-request"\}[\s\S]*side="right"[\s\S]*\/>/u,
+	);
 	assert.match(
 		cardShellSource,
 		/\{footer \? \(\s*<div className=\{cn\("flex flex-col border-t border-border-disabled p-3", footerClassName\)\}/u,
@@ -222,6 +225,10 @@ test("session flyout Artifacts render the PR as a GitHub Smart Link", () => {
 	assert.match(dataSource, /if \(session\.pullRequestNumber === undefined\) \{\s*return null;/u);
 	assert.match(dataSource, /id: `\$\{session\.id\}-pull-request`/u);
 	assert.match(dataSource, /href: session\.pullRequestUrl/u);
+	assert.match(dataSource, /files: session\.files,/u);
+	assert.match(dataSource, /targetBranch: session\.targetBranch,/u);
+	assert.match(dataSource, /author: session\.pullRequestAuthor \?\? session\.invokedBy,/u);
+	assert.match(dataSource, /description: session\.pullRequestDescription,/u);
 	assert.match(dataSource, /export function sessionArtifactItems/u);
 	assert.match(
 		dataSource,
@@ -231,7 +238,10 @@ test("session flyout Artifacts render the PR as a GitHub Smart Link", () => {
 	assert.match(cardSource, /artifacts=\{artifacts\}/u);
 	assert.match(cardSource, /sessionArtifactItems/u);
 	assert.match(cardShellSource, /Artifacts/u);
-	assert.match(cardShellSource, /<SmartLink className="max-w-full" item=\{item\} side="right" \/>/u);
+	assert.match(
+		cardShellSource,
+		/<SmartLink[\s\S]*className="max-w-full"[\s\S]*item=\{item\}[\s\S]*showStatus=\{item\.variant === "pull-request"\}[\s\S]*side="right"[\s\S]*\/>/u,
+	);
 	assert.doesNotMatch(detailsSource, /MetadataPathLink[\s\S]*#\$\{session\.pullRequestNumber\}/u);
 	assert.doesNotMatch(cardSource, /<SmartLink /u);
 });

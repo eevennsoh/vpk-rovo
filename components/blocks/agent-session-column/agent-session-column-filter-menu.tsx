@@ -14,6 +14,7 @@ import {
 	agentSessionFilterToggleTriState,
 	collectAgentSessionFilterOwners,
 	countAgentSessionColumnFilterSelections,
+	shouldKeepAgentSessionFilterMenuOpen,
 	toggleFilterId,
 	type AgentSessionColumnFilterState,
 	type AgentSessionFilterAgentId,
@@ -25,6 +26,15 @@ import {
 	FilterToggleRow,
 	SessionOwnerFilterRow,
 } from "./agent-session-column-filter-sections";
+
+function didFilterFocusOutStayInside(event: Event): boolean {
+	const relatedTarget = "relatedTarget" in event ? event.relatedTarget : null;
+	if (!(relatedTarget instanceof Node)) {
+		return true;
+	}
+	const origin = event.target instanceof Element ? event.target : null;
+	return origin?.closest("[data-slot='popover-content']")?.contains(relatedTarget) ?? false;
+}
 
 export interface AgentSessionColumnFilterMenuProps {
 	filter: AgentSessionColumnFilterState;
@@ -52,8 +62,16 @@ export function AgentSessionColumnFilterMenu({
 
 	return (
 		<Popover
-			onOpenChange={(nextOpen) => {
-				if (!nextOpen && customCalendarOpen) {
+			onOpenChange={(nextOpen, eventDetails) => {
+				if (
+					shouldKeepAgentSessionFilterMenuOpen({
+						customCalendarOpen,
+						focusOutStayedInside: didFilterFocusOutStayInside(eventDetails.event),
+						nextOpen,
+						reason: eventDetails.reason,
+					})
+				) {
+					eventDetails.cancel();
 					return;
 				}
 				setOpen(nextOpen);
@@ -80,7 +98,7 @@ export function AgentSessionColumnFilterMenu({
 			</PopoverTrigger>
 			<PopoverContent
 				align="end"
-				className="w-80 max-w-[calc(100vw-32px)] gap-0 rounded-xl p-1"
+				className="w-max min-w-[min(20rem,calc(100vw-32px))] max-w-[calc(100vw-32px)] gap-0 rounded-xl p-1"
 			>
 				<PopoverTitle className="sr-only">Filter sessions</PopoverTitle>
 				<div className="flex flex-col">
