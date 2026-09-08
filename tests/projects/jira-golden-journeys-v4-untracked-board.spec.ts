@@ -363,6 +363,40 @@ test("the rail preserves flyout spacing and assigns the gaps to neighboring dots
 	}
 });
 
+test("the timeline stops magnifying during a session drag and resumes on hover", async ({ page }) => {
+	await openCollapsedBoard(page);
+	await revealCollapsedAgentSessionColumn(page);
+	const notches = page.locator("[data-agent-session-column] [data-agent-session-notch]");
+	const dots = notches.locator("span.size-1");
+	const maxScale = () => dots.evaluateAll((nodes) => Math.max(...nodes.map(
+		(node) => new DOMMatrixReadOnly(getComputedStyle(node).transform).a,
+	)));
+	const source = notches.first();
+	await source.hover();
+	await expect.poll(maxScale).toBeGreaterThan(1);
+	await page.mouse.down();
+	await page.mouse.up();
+	await expect.poll(maxScale).toBeGreaterThan(1);
+	const box = (await source.boundingBox())!;
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width / 2 + 4, box.y + box.height / 2 + 4);
+	await expect(page.locator("[data-session-drag-overlay]")).toHaveCount(1);
+	for (const offset of [72, 144, 216]) {
+		await page.mouse.move(box.x + 300, box.y + offset, { steps: 4 });
+		await expect.poll(maxScale).toBe(1);
+	}
+	await page.screenshot({ path: "output/agent-browser/session-drag-timeline.png" });
+	await page.mouse.move(700, 180);
+	await page.mouse.up();
+	await expect(page.locator("[data-session-drag-overlay]")).toHaveCount(0);
+	await revealCollapsedAgentSessionColumn(page);
+	await source.hover();
+	await expect.poll(maxScale).toBeGreaterThan(1);
+	const count = await getUntrackedSessionCount(page);
+	await dragPointer(source, getIssueDropZone(page, "PAY-118"), page);
+	await expect.poll(() => getUntrackedSessionCount(page)).toBe(count - 1);
+});
+
 test("diagonal travel keeps the current flyout while vertical scrubbing switches immediately", async ({ page }) => {
 	await openCollapsedBoard(page);
 	await revealCollapsedAgentSessionColumn(page);
