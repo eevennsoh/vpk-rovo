@@ -43,6 +43,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/jira-kanban/experimental/lib/session-drop-receipt.test.js",
 		"components/blocks/jira-dropzone/jira-dropzone-receipts.test.js",
 		"components/blocks/jira-dropzone/jira-dropzone-demo-drag.test.js",
+		"components/blocks/jira-dropzone/jira-dropzone-motion.test.js",
 		"components/blocks/jira-kanban/experimental/lib/board-untracked-sessions.test.js",
 		"components/blocks/jira-list/jira-list-horizontal-underlap.test.js",
 		"components/blocks/jira-list/jira-list-row-flash.test.js",
