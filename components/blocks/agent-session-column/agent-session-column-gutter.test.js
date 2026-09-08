@@ -55,8 +55,18 @@ test("the in-flow host pins the compact preview before expanding the full column
 	assert.match(IN_FLOW_COLUMN_SOURCE, /: expansion === "expanded"/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsed=\{!isPersistentExpanded\}/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /isEmbedded: isHovered \|\| isPinnedPreview \|\| isPersistentExpanded/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /const previousCollapsedRef = useRef\(collapsed\)/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /if \(collapsed\) \{\s*setExpansion\("gutter"\)/u);
+	assert.match(
+		EXPERIMENTAL_BOARD_SOURCE,
+		/key=\{agentSessionColumn\.collapsed \? "collapsed" : "expanded"\}/u,
+	);
+	assert.match(
+		BOARD_SOURCE,
+		/key=\{agentSessionColumn\.collapsed \? "collapsed" : "expanded"\}/u,
+	);
+	assert.match(
+		EXPERIMENTAL_PAGE_SOURCE,
+		/key=\{agentSessionColumnConfig\.collapsed \? "collapsed" : "expanded"\}/u,
+	);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation=\{isEmbedded \? "column" : "gutter"\}/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
