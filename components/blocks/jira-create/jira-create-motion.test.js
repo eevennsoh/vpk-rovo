@@ -12,6 +12,7 @@ async function loadMotionHarness() {
 				export {
 					getJiraCreateArrivalDelayS,
 					getJiraCreateMotion,
+					getJiraCreateSlotTransition,
 					JIRA_CREATE_CARD_STAGGER_S,
 					JIRA_CREATE_HIDDEN_SCALE,
 				} from "./components/blocks/jira-create/lib/jira-create-motion";
@@ -35,7 +36,7 @@ test("create motion treats the whole card as one fade-and-scale entrance", async
 	const motion = harness.getJiraCreateMotion(false);
 
 	assert.equal(motion.card.hidden.scale, harness.JIRA_CREATE_HIDDEN_SCALE);
-	assert.equal(motion.card.hidden.scale, 0.88);
+	assert.equal(motion.card.hidden.scale, 0.8);
 	assert.equal(motion.card.hidden.opacity, 0);
 	assert.equal(motion.card.show.scale, 1);
 	assert.equal(motion.card.show.opacity, 1);
@@ -44,6 +45,33 @@ test("create motion treats the whole card as one fade-and-scale entrance", async
 	assert.equal(motion.surface, undefined);
 	assert.equal(motion.card.show.transition.staggerChildren, undefined);
 	assert.equal(harness.JIRA_CREATE_CARD_STAGGER_S, 0.15);
+});
+
+test("the card scales up over duration-slower while opacity lands at duration-medium", async () => {
+	const harness = await loadMotionHarness();
+	const motion = harness.getJiraCreateMotion(false);
+
+	// duration-slower: long enough to watch the card grow into the seam it made.
+	assert.equal(motion.card.show.transition.duration, 0.4);
+	assert.deepEqual(motion.card.show.transition.ease, [0, 0.4, 0, 1]);
+	// duration-medium: readable well before the scale settles.
+	assert.equal(motion.card.show.transition.opacity.duration, 0.2);
+	// The slot pushes the cards below it apart on the same curve as the scale.
+	assert.deepEqual(harness.getJiraCreateSlotTransition(false), {
+		duration: 0.4,
+		ease: [0, 0.4, 0, 1],
+		delay: 0,
+	});
+});
+
+test("an arrival delay applies to the scale and the opacity override alike", async () => {
+	const harness = await loadMotionHarness();
+	const motion = harness.getJiraCreateMotion(false, harness.JIRA_CREATE_CARD_STAGGER_S);
+
+	assert.equal(motion.card.show.transition.delay, 0.15);
+	// A per-value transition replaces the defaults outright, so a delay that is
+	// only set at the top level would leave opacity starting early.
+	assert.equal(motion.card.show.transition.opacity.delay, 0.15);
 });
 
 test("create motion drops travel under reduced motion and keeps a fade", async () => {
@@ -75,7 +103,8 @@ test("create motion source names the VPK duration and easing tokens", () => {
 		"utf8",
 	);
 
-	assert.match(source, /duration-slow \+ ease-out/);
+	assert.match(source, /duration-slower \+ ease-out/);
+	assert.match(source, /duration-medium \+ ease-out/);
 	assert.match(source, /duration-fast \+ ease-in/);
 	assert.match(source, /duration-normal/);
 	assert.doesNotMatch(source, /staggerChildren/);

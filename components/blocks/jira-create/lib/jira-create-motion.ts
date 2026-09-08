@@ -1,15 +1,32 @@
 import type { CSSProperties } from "react";
 import type { Transition, Variants } from "motion/react";
 
-/** duration-slow + ease-out (bold entrance) */
-const CARD_ENTER: Transition = { duration: 0.25, ease: [0, 0.4, 0, 1] };
+/**
+ * duration-slower + ease-out (bold entrance).
+ *
+ * Minting a work item is a low-frequency, prominent moment, so it earns the
+ * large-transition duration: long enough for the eye to follow the card growing
+ * into its slot, and long enough for the surrounding cards to read as pushed
+ * apart rather than teleported.
+ */
+const CARD_ENTER: Transition = { duration: 0.4, ease: [0, 0.4, 0, 1] };
+/**
+ * duration-medium + ease-out — opacity lands well before the scale settles so
+ * the card is readable for most of its growth instead of hanging translucent
+ * over the cards behind it.
+ */
+const CARD_ENTER_OPACITY: Transition = { duration: 0.2, ease: [0, 0.4, 0, 1] };
 /** duration-fast + ease-in */
 const CARD_EXIT: Transition = { duration: 0.1, ease: [0.6, 0, 0.8, 0.6] };
 const REDUCED_ENTER: Transition = { duration: 0.15, ease: [0.4, 1, 0.6, 1] };
 const REDUCED_INSTANT: Transition = { duration: 0 };
 
-/** Hidden scale for the whole card — exaggerated pop-in, never 0. */
-export const JIRA_CREATE_HIDDEN_SCALE = 0.88;
+/**
+ * Hidden scale for the whole card — the card grows into its slot from
+ * noticeably smaller, never 0. Paired with the slot's `height: 0 -> auto`, this
+ * reads as the card inflating into the gap it just made.
+ */
+export const JIRA_CREATE_HIDDEN_SCALE = 0.8;
 /** duration-normal — gap between two arriving cards, not inner content. */
 export const JIRA_CREATE_CARD_STAGGER_S = 0.15;
 
@@ -41,7 +58,13 @@ export function getJiraCreateMotion(
 			show: {
 				opacity: 1,
 				scale: 1,
-				transition: { ...CARD_ENTER, delay: delayS },
+				transition: {
+					...CARD_ENTER,
+					delay: delayS,
+					// A per-value override replaces the defaults for that value
+					// outright, so the delay has to be repeated here.
+					opacity: { ...CARD_ENTER_OPACITY, delay: delayS },
+				},
 			},
 			exit: { opacity: 0, scale: 0.9, transition: CARD_EXIT },
 		},

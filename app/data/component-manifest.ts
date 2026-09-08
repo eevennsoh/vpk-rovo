@@ -421,7 +421,7 @@ export const BLOCK_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	blockComponent("jira-linking", "Jira Linking"),
 	blockComponent("jira-list", "Jira List"),
 	blockComponent("jira-kanban", "Jira Kanban"),
-	blockComponent("jira-create", "Jira Create"),
+	blockComponent("jira-create", "Jira Creating"),
 	blockComponent("jira-dropzone", "Jira Dropzone"),
 	blockComponent("jira-toolbar", "Jira Toolbar"),
 	blockComponent("apps-directory", "Apps Directory"),
