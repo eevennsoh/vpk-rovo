@@ -164,7 +164,13 @@ export function deckRunFrame(
 		opacity = fanOpacity(collapse);
 	}
 
-	const raw = depthProgress(centre, portLength, SCROLLING_DEPTH_ZONE_PX, deck.depth);
+	// A fused selection taller than the depth zone cannot tuck as one card.
+	// Scaling about its distant bottom shrinks visible rows and pulls the first
+	// row down into the viewport. Keep that run flat while preserving its joins.
+	const depth = run.rows.length > 1 && run.height > SCROLLING_DEPTH_ZONE_PX
+		? "none"
+		: deck.depth;
+	const raw = depthProgress(centre, portLength, SCROLLING_DEPTH_ZONE_PX, depth);
 	const tail = raw * depthGate(collapse, FAN_OPACITY_INPUT[1]);
 	const y = fanY + depthLift(tail, SCROLLING_DEPTH_LIFT_PX);
 	const scale = depthScale(tail, SCROLLING_DEPTH_MIN_SCALE);

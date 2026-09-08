@@ -153,6 +153,16 @@ test("fused runs share one origin at the run bottom for depth bottom", () => {
 	assert.equal(frame.originTop, run.top + run.height);
 });
 
+test("select all keeps a tall fused run at natural size throughout scrolling", () => {
+	const run = groupDeckRuns(Array.from({ length: 24 }, (_, index) => row(index * 62, true)))[0];
+	assert.ok(run);
+	for (const portLength of [320, 480, 720]) {
+		for (const scrollTop of [0, 300, run.height - portLength]) {
+			assert.equal(isIdentityFrame(deckRunFrame(run, portLength, scrollTop, 0, AGENT_SESSION_DECK_STACKED)), true);
+		}
+	}
+});
+
 test("STACKED tucks the last card when the list is scrolled to the end", () => {
 	const rows: DeckRow[] = [];
 	for (let index = 0; index < 16; index += 1) {
