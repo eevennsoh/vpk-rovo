@@ -281,11 +281,19 @@ export function AgentSession({
 					);
 				})}
 			</ul>
+			{/*
+				`instantPosition` keeps this list's flyout identical to the one the
+				collapsed rail shows: no enter, exit, reposition, or content-crossfade
+				motion. Both surfaces are hovered row-to-row at the same rate, so an
+				animated shell reads as lag rather than as a transition, and collapsing
+				the column would otherwise swap motion profiles mid-hover.
+			*/}
 			<JiraSessionFlyoutSurface
 				archiveActionLabel={visibilityLabel}
 				capturedSessionIds={capturedItemIds}
 				content={isAttached ? "details" : "untracked-work"}
 				handle={flyoutHandle}
+				instantPosition
 				onAddAsSubtask={flyoutActions.onAddAsSubtask}
 				onArchiveSession={flyoutActions.onArchiveSession}
 				onCreateWorkItem={flyoutActions.onCreateWorkItem}
