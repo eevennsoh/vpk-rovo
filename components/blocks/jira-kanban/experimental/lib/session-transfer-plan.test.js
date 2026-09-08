@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
 	executeSessionTransferPlan,
+	toBoardGapCreateStep,
 	expandListCreateSteps,
 	planSessionTransfer,
 	resolveDragEnablement,
@@ -87,6 +88,92 @@ test("list-gap create advances insertAtIndex so N sessions stay ordered", () => 
 		plan.steps.map((step) => [step.session.id, step.insertion.insertAtIndex]),
 		[["lw-a", 2], ["lw-b", 3], ["lw-c", 4]],
 	);
+});
+
+test("board-gap create keeps the cohort in one step so the host places it once", () => {
+	const a = session("lw-a");
+	const b = session("lw-b");
+	const c = session("lw-c");
+	const insertion = {
+		columnTitle: "In review",
+		insertAtIndex: 1,
+		position: "after",
+		relativeToCardCode: "PAY-118",
+	};
+	// Unlike the list twin, nothing is advanced. A board gap names a neighbour as
+	// well as an index, and a host that re-resolved that neighbour per session
+	// would return the same slot every time and stack the cohort in reverse.
+	assert.deepEqual(toBoardGapCreateStep([a, b, c], insertion), [{
+		kind: "create-board-gap",
+		sessions: [a, b, c],
+		insertion,
+	}]);
+
+	const plan = planSessionTransfer(
+		{ kind: "create-board-gap", insertion, sessionIds: ["lw-a", "lw-b", "lw-c"] },
+		{ kind: "untracked" },
+		lookups({ sessions: [a, b, c] }),
+	);
+	assert.equal(plan.kind, "commit");
+	assert.equal(plan.steps.length, 1);
+	assert.deepEqual(
+		plan.steps.map((step) => [step.kind, step.sessions.map((item) => item.id), step.insertion]),
+		[["create-board-gap", ["lw-a", "lw-b", "lw-c"], insertion]],
+	);
+	assert.deepEqual(plan.summary, {
+		count: 3,
+		targetLabel: "In review #1",
+		verb: "create-board-gap",
+	});
+});
+
+test("board-gap create is untracked-only and attached origins are refused", () => {
+	const insertion = {
+		columnTitle: "In review",
+		insertAtIndex: 0,
+		position: "before",
+		relativeToCardCode: "PAY-118",
+	};
+	assert.deepEqual(
+		planSessionTransfer(
+			{ kind: "create-board-gap", insertion, sessionIds: ["chin-a"] },
+			{ kind: "attached", sourceCardCode: "PAY-121" },
+			lookups({ attached: [{ id: "chin-a", name: "A" }] }),
+		),
+		{ kind: "refuse", cohortSize: 1, reason: "ineligible-origin" },
+	);
+	assert.deepEqual(
+		planSessionTransfer(
+			{ kind: "create-board-gap", insertion, sessionIds: ["chin-a"] },
+			{ kind: "detached", sourceCardCode: "PAY-121" },
+			lookups({ sessions: [session("chin-a")] }),
+		),
+		{ kind: "refuse", cohortSize: 1, reason: "ineligible-origin" },
+	);
+});
+
+test("executing a board-gap plan hands the whole cohort to onBoardGapCreate once", () => {
+	const a = session("lw-a");
+	const b = session("lw-b");
+	const insertion = {
+		columnTitle: "To do",
+		insertAtIndex: 2,
+		position: "before",
+		relativeToCardCode: "PAY-128",
+	};
+	const plan = planSessionTransfer(
+		{ kind: "create-board-gap", insertion, sessionIds: ["lw-a", "lw-b"] },
+		{ kind: "untracked" },
+		lookups({ sessions: [a, b] }),
+	);
+
+	const created = [];
+	executeSessionTransferPlan(plan, {
+		onBoardGapCreate: (items, stepInsertion) => {
+			created.push([items.map((item) => item.id), stepInsertion]);
+		},
+	});
+	assert.deepEqual(created, [[["lw-a", "lw-b"], insertion]]);
 });
 
 test("an unresolved member refuses the whole cohort", () => {
@@ -200,5 +287,9 @@ test("per-origin enablement does not invent move or unlink for attach-only hosts
 			onUnlink: () => undefined,
 		}),
 		{ attached: true, transferable: false },
+	);
+	assert.deepEqual(
+		resolveDragEnablement({ onBoardGapCreate: () => undefined }),
+		{ attached: false, transferable: true },
 	);
 });

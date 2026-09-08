@@ -531,6 +531,7 @@ function ExperimentalJiraKanbanPageContent({
 		// Controlled so View → Agents can expand or collapse Untracked without
 		// fighting the column's own post-mount state.
 		collapsed: displayedAgentSessionColumnCollapsed,
+		hasScrollingEffect: true,
 		items: untrackedAgentSessionItems,
 		newItemIds: newAgentSessionIds,
 		onCollapsedChange: handleAgentSessionColumnCollapsedChange,
@@ -797,6 +798,18 @@ function ExperimentalJiraKanbanPageContent({
 		boardColumns: filteredBoardColumns,
 		detachedSessionsByCard: proximityAgentSessionsByCard,
 		onCreate: onBoardAgentSessionCreate ? handleBoardAgentSessionCreate : undefined,
+		// Same create path as the well, with a slot. Each cohort member advances
+		// the index, and the refs behind `handleBoardAgentSessionCreate` grow with
+		// every call, so the sessions land in drag order rather than reversed.
+		onBoardGapCreate: onBoardAgentSessionCreate
+			? (sessions, insertion) => sessions.forEach((session, memberIndex) => (
+				handleBoardAgentSessionCreate(
+					session,
+					insertion.columnTitle,
+					insertion.insertAtIndex + memberIndex,
+				)
+			))
+			: undefined,
 		onCreateWellReceive: receiveCreateWell,
 		onListCreate: onListAgentSessionCreate ? handleListAgentSessionCreate : undefined,
 		onLink: onCardAgentSessionLink ? handleCardAgentSessionLink : undefined,

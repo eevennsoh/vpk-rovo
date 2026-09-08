@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type ReactNode,
+	type RefCallback,
+} from "react";
 import { useReducedMotion } from "motion/react";
 
 import GrowHorizontalIcon from "@atlaskit/icon/core/grow-horizontal";
@@ -21,18 +29,26 @@ import { cn } from "@/lib/utils";
 
 import { AgentSessionColumnFilterMenu } from "./agent-session-column-filter-menu";
 import { AgentSessionColumnHeader } from "./agent-session-column-header";
+import { AgentSessionColumnEndState } from "./agent-session-column-end-state";
 import { AgentSessionColumnHiddenFooter } from "./agent-session-column-hidden-footer";
 import { AgentSessionColumnOverflowMenu } from "./agent-session-column-overflow-menu";
 import {
 	AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS,
 	AgentSessionColumnRail,
 } from "./agent-session-column-rail";
+import { toAgentSessionRailHitSlopStyle } from "./agent-session-column-rail-viewport";
 import {
 	DEFAULT_AGENT_SESSION_COLUMN_FRAME,
 	resolveAgentSessionColumnLayout,
 	type AgentSessionColumnLayout,
 } from "./agent-session-column-frame";
 import type { AgentSessionColumnProps } from "./agent-session-column-types";
+import {
+	AGENT_SESSION_DECK_END_SPACE_PX,
+	AGENT_SESSION_DECK_FLAT,
+	AGENT_SESSION_DECK_STACKED,
+} from "./deck/deck-model";
+import { useAgentSessionDeck } from "./deck/use-agent-session-deck";
 import { useAgentSessionColumnFilter } from "./use-agent-session-column-filter";
 import { useAgentSessionColumnHidden } from "./use-agent-session-column-hidden";
 import { useUntrackedSelection } from "./use-untracked-selection";
@@ -180,7 +196,9 @@ function resolveCollapsedHeaderStyle(
 /**
  * Hover/focus swap on the collapsed header slot: the count at rest, the expand
  * control once the pointer or keyboard arrives. Both sit in the same 24px row
- * the expanded collapse control uses, so the number does not move.
+ * the expanded collapse control uses, so the number does not move. Gutter rest
+ * keeps this pair hidden; `focus-visible` still unfades the control so keyboard
+ * users can expand without a pointer.
  */
 const HEADER_COUNT_AT_REST = cn(
 	"pointer-events-none transition-opacity duration-normal ease-out-practical",
@@ -192,6 +210,11 @@ const HEADER_CONTROL_ON_REVEAL = cn(
 	"peer/expand-control opacity-0 transition-opacity duration-normal ease-out-practical",
 	"hover:opacity-100 focus-visible:opacity-100",
 	"motion-reduce:transition-none",
+);
+
+const HEADER_CONTROL_IN_GUTTER = cn(
+	HEADER_CONTROL_ON_REVEAL,
+	"hover:opacity-0",
 );
 
 /**
@@ -226,7 +249,8 @@ const HEAD_COUNT_MORPH: TextMorphConfig = {
 /** Matches `bg-surface` so edge fades dissolve into the plane. */
 const AGENT_SESSION_PLANE_FADE_COLOR = "var(--color-surface)";
 
-const AGENT_SESSION_PLANE_FADE_SIZE = "3rem";
+const AGENT_SESSION_PLANE_TOP_FADE_SIZE = "3rem";
+const AGENT_SESSION_PLANE_BOTTOM_FADE_SIZE = `${AGENT_SESSION_DECK_END_SPACE_PX}px`;
 
 /**
  * A kanban column of agent sessions that never became work items.
@@ -255,7 +279,8 @@ const AGENT_SESSION_PLANE_FADE_SIZE = "3rem";
  * {@link AgentSessionColumnRail}. Collapsed drops the well so the count
  * shares the status pill's 24px header slot instead of sitting inside a
  * full-height bordered rail. `collapsedPresentation="gutter"` hides that
- * count while keeping the expand control in the same slot.
+ * count and the expand icon at rest, while keeping the expand control in
+ * the same slot for keyboard. Hover preview uses `"column"` so both return.
  *
  * Two capabilities exist for hosts that dock the column into their own surface
  * rather than stand it on the board: `collapsed` makes the rail state
@@ -269,10 +294,12 @@ export function AgentSessionColumn({
 	className,
 	collapsed: collapsedProp,
 	collapsedPresentation = "column",
+	collapsedRailHitSlopPx = 0,
 	count,
 	defaultCollapsed = false,
 	emptyLabel = "No untracked sessions",
 	expandedWidthPx = AGENT_SESSION_COLUMN_WIDTH_PX,
+	hasScrollingEffect = false,
 	widthTransitionDisabled = false,
 	items = AGENT_SESSION_ITEMS,
 	listClassName,
@@ -280,6 +307,7 @@ export function AgentSessionColumn({
 	notchShape = "circle",
 	onCollapsedChange,
 	onGutterIntroComplete,
+	onArchiveSession: onArchiveSessionProp,
 	onSelectedItemIdChange,
 	onToggleVisibility,
 	playGutterIntro = false,
@@ -325,6 +353,25 @@ export function AgentSessionColumn({
 		getSuggestedWorkItemKeys: sessionProps.getSuggestedWorkItemKeys,
 		viewItems,
 	});
+	// Header Archive, the untracked-work flyout Archive, and the rail flyout
+	// all hide into the column-owned well the footer reads. In the archived
+	// view the same control Unarchives, matching the row.
+	const handleArchiveSession = useCallback((session: AgentSessionItem) => {
+		switch (view) {
+			case "hidden":
+				toggleHidden(session);
+				break;
+			case "active":
+				hideHidden(session);
+				break;
+			default: {
+				const exhaustive: never = view;
+				return exhaustive;
+			}
+		}
+		onToggleVisibility?.(session);
+		onArchiveSessionProp?.(session);
+	}, [hideHidden, onArchiveSessionProp, onToggleVisibility, toggleHidden, view]);
 	const selectionTriage = useMemo(() => {
 		if (triage === undefined) {
 			return undefined;
@@ -332,35 +379,28 @@ export function AgentSessionColumn({
 
 		return {
 			...triage,
-			// Header Archive hides into the column-owned well the footer reads.
-			// In the archived view the same control Unarchives, matching the row.
-			archive: (session: AgentSessionItem) => {
-				switch (view) {
-					case "hidden":
-						toggleHidden(session);
-						break;
-					case "active":
-						hideHidden(session);
-						break;
-					default: {
-						const exhaustive: never = view;
-						return exhaustive;
-					}
-				}
-				onToggleVisibility?.(session);
-			},
+			archive: handleArchiveSession,
 		};
-	}, [hideHidden, onToggleVisibility, toggleHidden, triage, view]);
+	}, [handleArchiveSession, triage]);
 	const displayTitle = view === "hidden" ? "Archived" : title;
 	// The rail and the card list have very different intrinsic widths, so the
 	// overflow has to be clipped for the duration of the width transition. Any
 	// longer and it would clip the 4px focus rings on the cards inside.
 	const [isResizing, setIsResizing] = useState(false);
+	const deck = hasScrollingEffect
+		? AGENT_SESSION_DECK_STACKED
+		: AGENT_SESSION_DECK_FLAT;
+	const deckListRef = useAgentSessionDeck(deck);
 	const {
-		ref: listRef,
+		hasScrolledToBottom,
+		ref: overflowListRef,
 		showBottomScrollMask,
 		showTopScrollMask,
 	} = useHasVerticalOverflow<HTMLDivElement>();
+	const listRef = useCallback<RefCallback<HTMLDivElement>>((node) => {
+		overflowListRef(node);
+		deckListRef(node);
+	}, [deckListRef, overflowListRef]);
 	const columnRef = useRef<HTMLElement>(null);
 	const untrackedCount = count ?? visibleItems.length;
 	const showWellFooter = view === "hidden" || hiddenCount > 0;
@@ -545,9 +585,9 @@ export function AgentSessionColumn({
 		resolveAgentSessionPlaneClassName(layout, collapsed),
 		isGutterCollapsed ? "bg-transparent" : null,
 	);
-	// Gutter presentation hides the digits so the rail can sit in the page
-	// inset — at rest, during the hover preview, and when newly synced
-	// sessions arrive. The expand control stays in the same 24px slot.
+	// Gutter rest hides the digits and the expand icon so the rail can sit
+	// in the page inset. Hover preview switches to column presentation, so
+	// the same 24px slot shows the count and the expand control again.
 	// Screen-reader copy still names the pool count.
 	const hideGutterCount = isGutterCollapsed;
 	const collapsedCountLabel = newCount > 0
@@ -560,9 +600,10 @@ export function AgentSessionColumn({
 					render={
 						<Button
 							aria-label={`Expand ${title} column`}
-							className={HEADER_CONTROL_ON_REVEAL}
+							className={isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL}
 							onClick={handleToggleCollapsed}
 							size="icon-compact"
+							style={{ width: "100%" }}
 							type="button"
 							variant="ghost"
 						/>
@@ -582,16 +623,22 @@ export function AgentSessionColumn({
 			)}
 			style={resolveCollapsedHeaderStyle(layout)}
 		>
-			<div className="relative flex h-6 w-full min-w-0 items-center justify-center">
+			<div
+				className="relative flex h-6 w-full min-w-0 items-center justify-center px-1"
+				style={collapsedRailHitSlopPx === 0
+					? undefined
+					: toAgentSessionRailHitSlopStyle(collapsedRailHitSlopPx)}
+			>
 				{collapsedExpandControl}
 				<span
 					aria-hidden="true"
 					className={cn(
-						"absolute inset-0 flex items-center justify-center text-xs font-normal",
+						"absolute inset-x-1 inset-y-0 flex items-center justify-center text-xs font-normal",
 						"text-text-subtlest",
 						HEADER_COUNT_AT_REST,
 						hideGutterCount ? "opacity-0" : "opacity-100",
 					)}
+					data-agent-session-column-count=""
 				>
 					<TextMorphing
 						config={HEAD_COUNT_MORPH}
@@ -624,14 +671,15 @@ export function AgentSessionColumn({
 			getSuggestedWorkItemKey={sessionProps.getSuggestedWorkItemKey}
 			getSuggestedWorkItemKeys={sessionProps.getSuggestedWorkItemKeys}
 			highlightedItemId={sessionProps.highlightedItemId}
+			hitSlopPx={collapsedRailHitSlopPx}
 			items={filteredViewItems}
-			maxVisibleItems={collapsedPresentation === "gutter"
+			maxVisibleItems={isGutterCollapsed && collapsedRailHitSlopPx === 0
 				? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS
 				: undefined}
 			newItemIds={newItemIds}
 			notchShape={notchShape}
 			onArrivalComplete={handleArrivalComplete}
-			onArchiveSession={sessionProps.onArchiveSession}
+			onArchiveSession={handleArchiveSession}
 			onCreateWorkItem={sessionProps.onCreateWorkItem}
 			onItemHover={sessionProps.onItemHover}
 			onIntroComplete={onGutterIntroComplete}
@@ -657,7 +705,7 @@ export function AgentSessionColumn({
 				) : (
 					<div
 						ref={listRef}
-						className="min-h-0 min-w-0 flex-1 overflow-y-auto has-[:focus-visible]:overflow-visible"
+						className="min-h-0 min-w-0 flex-1 overflow-y-auto has-[:focus-visible]:overflow-visible relative z-0 scrollbar-auto-hide [&[data-scrolling]>ul]:pointer-events-none"
 					>
 						<AgentSession
 							arrivingItemIds={arrivingItemIds}
@@ -669,31 +717,40 @@ export function AgentSessionColumn({
 							newItemIds={newItemIds}
 							onArrivalComplete={handleArrivalComplete}
 							{...sessionProps}
+							onArchiveSession={handleArchiveSession}
 							onSelectedItemIdChange={handleSelectedItemIdChange}
 							onToggleVisibility={handleToggleVisibility}
 							rowTriage={untrackedSelection.rows}
 							selectedItemId={selectedItemId}
 							visibilityLabel={view === "hidden" ? "Unarchive" : "Archive"}
 						/>
+						{hasScrollingEffect ? (
+							<AgentSessionColumnEndState
+								count={sessionCount}
+								visible={view === "active" && hasScrolledToBottom}
+							/>
+						) : null}
 					</div>
 				)}
 				{showTopScrollMask || showBottomScrollMask ? (
 					<div
 						aria-hidden="true"
-						className="pointer-events-none absolute inset-0"
+						className="pointer-events-none absolute inset-0 z-10"
 					>
 						{showTopScrollMask ? (
 							<ScrollMaskEdgeOverlay
 								color={AGENT_SESSION_PLANE_FADE_COLOR}
 								edge="top"
-								fadeSize={AGENT_SESSION_PLANE_FADE_SIZE}
+								fadeSize={AGENT_SESSION_PLANE_TOP_FADE_SIZE}
 							/>
 						) : null}
 						{showBottomScrollMask ? (
 							<ScrollMaskEdgeOverlay
 								color={AGENT_SESSION_PLANE_FADE_COLOR}
 								edge="bottom"
-								fadeSize={AGENT_SESSION_PLANE_FADE_SIZE}
+								fadeSize={hasScrollingEffect
+									? AGENT_SESSION_PLANE_BOTTOM_FADE_SIZE
+									: AGENT_SESSION_PLANE_TOP_FADE_SIZE}
 							/>
 						) : null}
 					</div>
@@ -716,7 +773,7 @@ export function AgentSessionColumn({
 			aria-label={`${displayTitle}, ${sessionCount} sessions`}
 			className={cn(
 				"group/session-column relative flex min-h-0 shrink-0 flex-col",
-				collapsed || isResizing ? "overflow-hidden" : null,
+				(collapsed && collapsedRailHitSlopPx === 0) || isResizing ? "overflow-hidden" : null,
 				className,
 			)}
 			data-agent-session-column={title}

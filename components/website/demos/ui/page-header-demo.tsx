@@ -42,26 +42,23 @@ function PageHeaderBreadcrumbs({
 	)
 }
 
-export default function PageHeaderDemo() {
+function PageHeaderDemoSimple({ ariaLabel }: Readonly<{ ariaLabel: string }>) {
 	return (
 		<PageHeader
 			title="How to use the page header component"
 			breadcrumbs={
-				<PageHeaderBreadcrumbs ariaLabel="Preview hierarchy" current="Design System" />
+				<PageHeaderBreadcrumbs ariaLabel={ariaLabel} current="Design System" />
 			}
 		/>
 	)
 }
 
+export default function PageHeaderDemo() {
+	return <PageHeaderDemoSimple ariaLabel="Preview hierarchy" />
+}
+
 export function PageHeaderDemoDefault() {
-	return (
-		<PageHeader
-			title="How to use the page header component"
-			breadcrumbs={
-				<PageHeaderBreadcrumbs ariaLabel="Default example hierarchy" current="Design System" />
-			}
-		/>
-	)
+	return <PageHeaderDemoSimple ariaLabel="Default example hierarchy" />
 }
 
 export function PageHeaderDemoComplex() {

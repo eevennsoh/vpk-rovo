@@ -47,6 +47,7 @@ export function toSessionDropReceipt(input: {
 	const from = { x: input.pointer.x, y: input.pointer.y };
 	const title = firstStep.columnTitle;
 	return {
+		drop: "stagger",
 		from,
 		id: `${members.map((member) => member.id).sort().join("|")}::${title}::${from.x},${from.y}` as SessionReceiptId,
 		members: [firstMember, ...restMembers],

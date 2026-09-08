@@ -63,10 +63,14 @@ export interface AsxQueueSession {
 	/** Jira work-item priority (shown in the work-item smart link). */
 	priority?: AsxQueueWorkItemPriority;
 	priorityRank: number;
+	pullRequestAuthor?: AsxQueueAssignee;
+	pullRequestDescription?: string;
 	pullRequestNumber?: number;
 	pullRequestTitle?: string;
 	question?: AsxQueueQuestion;
 	repository?: string;
+	/** Branch the PR merges into (e.g. `main`). */
+	targetBranch?: string;
 	spaceId: string;
 	status: AsxQueueSessionStatus;
 	title: string;
@@ -275,9 +279,12 @@ export const ASX_QUEUE_SESSION_SEEDS: readonly AsxQueueSession[] = [
 		invokedBy: ASX_QUEUE_INVOKER,
 		repository: "acme-corp/rfp-response-platform",
 		branch: "rovo/rfp-102-evidence-sync",
+		targetBranch: "main",
 		worktreePath: "~/src/rfp-response-platform/.worktrees/rfp-102",
 		pullRequestNumber: 1847,
 		pullRequestTitle: "RFP-102 Automate Northstar security evidence",
+		pullRequestDescription:
+			"## Summary - Automate Northstar security evidence collection with owner resolution, proof-link validation, and a no-write dry-run.",
 		commit: "7d3a91c",
 		checks: { passed: 2, failed: 1 },
 		fileChanges: {
@@ -340,9 +347,12 @@ export const ASX_QUEUE_SESSION_SEEDS: readonly AsxQueueSession[] = [
 		invokedBy: ASX_QUEUE_INVOKER,
 		repository: "acme-corp/rfp-response-platform",
 		branch: "rovo/rfp-103-response-validation",
+		targetBranch: "main",
 		worktreePath: "~/src/rfp-response-platform/.worktrees/rfp-103",
 		pullRequestNumber: 1842,
 		pullRequestTitle: "RFP-103 Validate security response evidence",
+		pullRequestDescription:
+			"## Summary - Add validation for missing, superseded, and unowned security evidence so every finding is actionable.",
 		commit: "2f6bc84",
 		checks: { passed: 6, failed: 0 },
 		fileChanges: {
@@ -525,14 +535,18 @@ export function createAsxQueueSidebarSessionItem(
 		checks: session.checks,
 		commit: session.commit,
 		deletions: session.fileChanges?.deletions,
+		files: session.fileChanges?.files.length,
 		host: session.host,
 		id: session.id,
 		issueKey: session.issueKey,
 		issueSummary: session.issueSummary,
 		priority: session.priority,
+		pullRequestAuthor: session.pullRequestAuthor ?? session.invokedBy,
+		pullRequestDescription: session.pullRequestDescription,
 		pullRequestNumber: session.pullRequestNumber,
 		pullRequestTitle: session.pullRequestTitle,
 		repository: session.repository,
+		targetBranch: session.targetBranch,
 		status: session.status,
 		title: session.title,
 		worktreePath: session.worktreePath,

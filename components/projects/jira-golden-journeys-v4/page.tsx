@@ -243,11 +243,13 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 	const handleBoardAgentSessionCreate = useCallback((
 		session: AgentSessionItem,
 		columnTitle: string,
+		insertAtIndex?: number,
 	) => {
 		const activity = consumeDetachedAgentSession(session);
 		return createBoardFromAgentSession({
 			activity,
 			columnTitle,
+			insertAtIndex,
 			session,
 		});
 	}, [consumeDetachedAgentSession, createBoardFromAgentSession]);

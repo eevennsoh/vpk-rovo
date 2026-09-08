@@ -17,6 +17,7 @@ import type {
 	JiraKanbanProps,
 } from "../index";
 import type { ExperimentalJiraKanbanProps } from "./experimental-jira-kanban";
+import type { BoardCardInsertion } from "./lib/board-agent-session-drag";
 import type { ExperimentalJiraKanbanView } from "./experimental-board-header";
 import type { ExperimentalJiraKanbanMode } from "./pulse/components/pulse-mode-controls";
 import type { PulseAgentSession, PulseLooseWork, PulseWorkItem } from "./pulse/types";
@@ -92,6 +93,11 @@ export interface ExperimentalJiraKanbanPageProps {
 	onBoardAgentSessionCreate?: (
 		session: AgentSessionItem,
 		columnTitle: string,
+		/**
+		 * Slot within the column. Omitted by the create well, which appends;
+		 * supplied when the session is dropped in the gap between two cards.
+		 */
+		insertAtIndex?: number,
 	) => string | undefined;
 	onCardClick?: (card: JiraKanbanCardData, columnTitle: string) => void;
 	onCardAgentActivityViewChat?: JiraKanbanProps["onCardAgentActivityViewChat"];
@@ -100,6 +106,15 @@ export interface ExperimentalJiraKanbanPageProps {
 	onCardAgentSessionLink?: ExperimentalJiraKanbanProps["onCardAgentSessionLink"];
 	onCardAgentSessionMove?: ExperimentalJiraKanbanProps["onCardAgentSessionMove"];
 	onCardAgentSessionUnlink?: ExperimentalJiraKanbanProps["onCardAgentSessionUnlink"];
+	/**
+	 * Mint work items at a specific slot in a board column, with the dropped
+	 * sessions already linked to them — the board twin of
+	 * `onListAgentSessionCreate`. Omit it and the board draws no insertion line,
+	 * because the gap affordance would have no capability behind it.
+	 *
+	 * The whole cohort arrives in one call, in drag order, so the host resolves
+	 * the gap once instead of re-resolving it per session and reversing them.
+	 */
 	onListAgentSessionCreate?: (
 		session: AgentSessionItem,
 		insertion: JiraListInsertion,

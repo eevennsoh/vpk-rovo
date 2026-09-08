@@ -5,7 +5,6 @@ import { useId } from "react";
 import ArchiveBoxIcon from "@atlaskit/icon/core/archive-box";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 
-import { SMART_LINK_MODAL_ACTIONS, SmartLink, type SmartLinkItem } from "@/components/blocks/smart-link";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -22,30 +21,19 @@ import { cn } from "@/lib/utils";
 import type { JiraSidebarSessionItem } from "./jira";
 import { JiraSessionFlyoutCard } from "./jira-session-flyout-card";
 import { JiraSessionDetailsBody } from "./jira-session-details-card";
-import { JIRA_SESSION_UPDATED_LABEL } from "./jira-session-flyout-data";
-
-function sessionArtifactItems(session: JiraSidebarSessionItem): SmartLinkItem[] {
-	if (session.pullRequestNumber === undefined || session.pullRequestUrl === undefined) {
-		return [];
-	}
-
-	return [{
-		id: `${session.id}-pull-request`,
-		href: session.pullRequestUrl,
-		title: `#${session.pullRequestNumber}: ${session.pullRequestTitle ?? `${session.issueKey}: ${session.issueSummary}`}`,
-		variant: "pull-request",
-		provider: { name: "GitHub", logo: { kind: "third-party", name: "github" } },
-		icon: { kind: "third-party", name: "github" },
-		actions: SMART_LINK_MODAL_ACTIONS,
-	}];
-}
+import {
+	JIRA_SESSION_UPDATED_LABEL,
+	sessionArtifactItems,
+} from "./jira-session-flyout-data";
 
 function JiraSessionUntrackedWorkActions({
+	archiveActionLabel = "Archive",
 	issueKey,
 	onArchiveSession,
 	onCreateWorkItem,
 	onLinkWorkItem,
 }: Readonly<{
+	archiveActionLabel?: string;
 	issueKey: string;
 	onAddAsSubtask?: (workItemKey: string) => void;
 	onArchiveSession?: () => void;
@@ -71,7 +59,7 @@ function JiraSessionUntrackedWorkActions({
 	);
 	const archiveButton = (
 		<Button
-			aria-label={archiveUnavailable ? "Archive unavailable" : "Archive"}
+			aria-label={archiveUnavailable ? `${archiveActionLabel} unavailable` : archiveActionLabel}
 			disabled={archiveUnavailable}
 			onClick={() => onArchiveSession?.()}
 			size="icon-compact"
@@ -129,7 +117,7 @@ function JiraSessionUntrackedWorkActions({
 									disabled={archiveUnavailable}
 									onSelect={() => onArchiveSession?.()}
 								>
-									Archive
+									{archiveActionLabel}
 								</DropdownMenuItem>
 							</DropdownMenuGroup>
 						</DropdownMenuContent>
@@ -147,17 +135,19 @@ function JiraSessionUntrackedWorkActions({
 
 /**
  * Hover-card suggestion for linking an untracked agent session to a Jira work
- * item. The body is the shared session-details middle layer plus artifacts, and
- * is omitted when there are none. The footer contains the link rationale and
- * actions.
+ * item. The body is the shared session-details middle layer; Artifacts live on
+ * the shared flyout card chrome. The body is omitted when there are no artifacts.
+ * The footer contains the link rationale and actions.
  */
 export function JiraSessionUntrackedWorkCard({
+	archiveActionLabel,
 	onAddAsSubtask,
 	onArchiveSession,
 	onCreateWorkItem,
 	onLinkWorkItem,
 	session,
 }: Readonly<{
+	archiveActionLabel?: string;
 	onAddAsSubtask?: (workItemKey: string) => void;
 	onArchiveSession?: () => void;
 	onCreateWorkItem?: () => void;
@@ -165,7 +155,6 @@ export function JiraSessionUntrackedWorkCard({
 	session: JiraSidebarSessionItem;
 }>) {
 	const titleId = useId();
-	const artifactsId = useId();
 	const rationaleId = useId();
 	const hasIssueKey = session.issueKey.length > 0;
 	const artifacts = sessionArtifactItems(session);
@@ -173,30 +162,14 @@ export function JiraSessionUntrackedWorkCard({
 	const confidenceRationale = hasIssueKey
 		? `This session appears related to ${session.issueKey} because the work item matches its activity and context.`
 		: "Create a work item to track it.";
-	const ariaLabelledBy = artifacts.length > 0
-		? `${titleId} ${artifactsId} ${rationaleId}`
-		: `${titleId} ${rationaleId}`;
 
 	return (
 		<JiraSessionFlyoutCard
-			aria-labelledby={ariaLabelledBy}
+			aria-labelledby={`${titleId} ${rationaleId}`}
+			artifacts={artifacts}
 			body={
 				artifacts.length > 0 ? (
-					<>
-						<JiraSessionDetailsBody hideAgentRow hideSessionRow session={session} />
-						<div className="flex flex-col gap-2">
-							<h3 className="text-xs leading-4 font-medium text-text" id={artifactsId}>
-								Artifacts
-							</h3>
-							<ul className="flex flex-col gap-1">
-								{artifacts.map((item) => (
-									<li className="flex min-w-0" key={item.id}>
-										<SmartLink className="max-w-full" item={item} side="right" />
-									</li>
-								))}
-							</ul>
-						</div>
-					</>
+					<JiraSessionDetailsBody hideAgentRow hideSessionRow session={session} />
 				) : undefined
 			}
 			bodyClassName="gap-1"
@@ -211,6 +184,7 @@ export function JiraSessionUntrackedWorkCard({
 						</p>
 					</div>
 					<JiraSessionUntrackedWorkActions
+						archiveActionLabel={archiveActionLabel}
 						issueKey={session.issueKey}
 						onAddAsSubtask={onAddAsSubtask}
 						onArchiveSession={onArchiveSession}

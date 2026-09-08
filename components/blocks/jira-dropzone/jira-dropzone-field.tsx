@@ -42,11 +42,16 @@ const JiraDropzoneFieldContext = createContext<JiraDropzoneFieldContextValue | n
 
 export function JiraDropzoneField({
 	children,
+	profile: profileOverride,
 }: Readonly<{
 	children: ReactNode;
+	profile?: Partial<FlightProfile>;
 }>): ReactElement {
 	const shouldReduceMotion = useReducedMotion();
-	const profile = resolveFlightProfile(shouldReduceMotion);
+	const profile = useMemo(
+		() => resolveFlightProfile(shouldReduceMotion, profileOverride),
+		[profileOverride, shouldReduceMotion],
+	);
 	const [state, setState] = useState(JIRA_DROPZONE_FIELD_INITIAL_STATE);
 	const stateRef = useRef(state);
 

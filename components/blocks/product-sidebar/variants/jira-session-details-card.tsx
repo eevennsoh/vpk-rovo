@@ -4,9 +4,6 @@ import { useId, type ReactNode } from "react";
 import { preload } from "react-dom";
 
 import BranchIcon from "@atlaskit/icon/core/branch";
-import MergeFailureIcon from "@atlaskit/icon/core/merge-failure";
-import MergeSuccessIcon from "@atlaskit/icon/core/merge-success";
-import PullRequestIcon from "@atlaskit/icon/core/pull-request";
 import ScreenIcon from "@atlaskit/icon/core/screen";
 import CloudIcon from "@atlaskit/icon-lab/core/cloud";
 
@@ -27,12 +24,12 @@ import { getAgentProfileBannerSrc } from "@/lib/agent-avatars";
 import type {
 	JiraSidebarSessionHost,
 	JiraSidebarSessionItem,
-	JiraSidebarSessionStatus,
 } from "./jira";
 import { JiraSessionFlyoutCard } from "./jira-session-flyout-card";
 import {
 	formatSessionChecks,
 	JIRA_SESSION_UPDATED_LABEL,
+	sessionArtifactItems,
 } from "./jira-session-flyout-data";
 
 function actorInitials(name: string): string {
@@ -51,41 +48,6 @@ function detailsHostIcon(host: JiraSidebarSessionHost): ReactNode {
 	) : (
 		<ScreenIcon label="" size="small" />
 	);
-}
-
-/**
- * PR glyph + color matching the board View legend and session-list trailing
- * icons: green open, discovery purple merged. Stopped sessions with a PR use
- * the failed-merge glyph in danger red — the list uses a stop icon for the
- * session, not the PR row.
- */
-function detailsPullRequestGlyph(status: JiraSidebarSessionStatus): ReactNode {
-	switch (status) {
-		case "merged":
-			return (
-				<span className="grid size-4 shrink-0 place-items-center text-icon-discovery" title="Pull request merged">
-					<MergeSuccessIcon color="currentColor" label="Pull request merged" size="small" />
-				</span>
-			);
-		case "stopped":
-			return (
-				<span className="grid size-4 shrink-0 place-items-center text-icon-danger" title="Pull request failed">
-					<MergeFailureIcon color="currentColor" label="Pull request failed" size="small" />
-				</span>
-			);
-		case "awaiting-input":
-		case "running":
-		case "pr-open":
-			return (
-				<span className="grid size-4 shrink-0 place-items-center text-icon-success" title="Pull request open">
-					<PullRequestIcon color="currentColor" label="Pull request open" size="small" />
-				</span>
-			);
-		default: {
-			const _exhaustive: never = status;
-			return _exhaustive;
-		}
-	}
 }
 
 function DetailsMetaRow({
@@ -187,38 +149,6 @@ function DetailsAgentTag({ session }: Readonly<{ session: JiraSidebarSessionItem
 	);
 }
 
-function detailsPullRequestTitle(session: JiraSidebarSessionItem): string | null {
-	if (session.pullRequestTitle) {
-		return `#${session.pullRequestNumber}: ${session.pullRequestTitle}`;
-	}
-	return session.pullRequestNumber ? `#${session.pullRequestNumber}` : null;
-}
-
-function DetailsPullRequestRow({ session }: Readonly<{ session: JiraSidebarSessionItem }>) {
-	const pullRequestTitle = detailsPullRequestTitle(session);
-	if (!session.pullRequestNumber || !pullRequestTitle) {
-		return null;
-	}
-	const hasCodeChanges = session.additions !== undefined && session.deletions !== undefined;
-	return (
-		<div className="flex min-w-0 items-center gap-1 text-xs leading-5">
-			{detailsPullRequestGlyph(session.status)}
-			<MetadataPathLink
-				className="min-w-0 flex-1 truncate text-xs leading-5 text-text"
-				title={pullRequestTitle}
-			>
-				{pullRequestTitle}
-			</MetadataPathLink>
-			{hasCodeChanges ? (
-				<span className="flex shrink-0 items-center gap-1 text-xs leading-5">
-					<span className="text-text-success">+{session.additions}</span>
-					<span className="text-text-danger">-{session.deletions}</span>
-				</span>
-			) : null}
-		</div>
-	);
-}
-
 function DetailsBranchRow({ session }: Readonly<{ session: JiraSidebarSessionItem }>) {
 	if (!session.branch || session.pullRequestNumber) {
 		return null;
@@ -278,7 +208,6 @@ export function JiraSessionDetailsBody({
 				</DetailsMetaRow>
 			)}
 			{hideAgentRow ? null : <DetailsAgentTag session={session} />}
-			<DetailsPullRequestRow session={session} />
 			<DetailsBranchRow session={session} />
 			<DetailsChecksRow session={session} />
 		</>
@@ -287,8 +216,8 @@ export function JiraSessionDetailsBody({
 
 /**
  * Compact session hover card: title, invoker meta, Local/Cloud, agent Tag,
- * PR icon + title + diffs, and checks when present. Branch appears only when
- * there is no PR yet. Repo, worktree, and work item stay on
+ * Artifacts Smart Link for the PR, and checks when present. Branch appears
+ * only when there is no PR yet. Repo, worktree, and work item stay on
  * `JiraSessionFlyoutBody` for detail panels.
  */
 export function JiraSessionDetailsCard({
@@ -298,6 +227,7 @@ export function JiraSessionDetailsCard({
 
 	return (
 		<JiraSessionFlyoutCard
+			artifacts={sessionArtifactItems(session)}
 			body={<JiraSessionDetailsBody session={session} />}
 			bodyClassName="gap-1"
 			meta={<DetailsInvokerMeta session={session} />}

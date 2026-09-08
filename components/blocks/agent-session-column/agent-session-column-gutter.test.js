@@ -10,6 +10,10 @@ const IN_FLOW_COLUMN_SOURCE = readFileSync(
 	join(__dirname, "../jira-kanban/experimental/components/in-flow-agent-session-column.tsx"),
 	"utf8",
 );
+const IN_FLOW_GEOMETRY_SOURCE = readFileSync(
+	join(__dirname, "../jira-kanban/experimental/lib/in-flow-agent-session-column-geometry.ts"),
+	"utf8",
+);
 const EXPERIMENTAL_BOARD_SOURCE = [
 	readFileSync(join(__dirname, "../jira-kanban/experimental/experimental-jira-kanban.tsx"), "utf8"),
 	readFileSync(join(__dirname, "../jira-kanban/experimental/components/created-card-arrival-motion.tsx"), "utf8"),
@@ -51,11 +55,20 @@ test("the in-flow host previews the compact rail before a click pins the full co
 	assert.match(IN_FLOW_COLUMN_SOURCE, /: uncontrolledPersistentExpanded/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsed=\{!isPersistentExpanded\}/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /isEmbedded: isHovered \|\| isPersistentExpanded/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation="gutter"/u);
-	// The absolute surface is translated into the leading gutter; a 16px
-	// footprint spacer resolves to the same visible 8px gap as status columns.
-	assert.match(IN_FLOW_COLUMN_SOURCE, /IN_FLOW_AGENT_SESSION_COLUMN_GAP_PX = 16/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /width: isEmbedded \? IN_FLOW_AGENT_SESSION_COLUMN_GAP_PX : 0/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation=\{isEmbedded \? "column" : "gutter"\}/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/from "\.\.\/lib\/in-flow-agent-session-column-geometry"/u,
+	);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/width: isEmbedded \? resolveInFlowAgentSessionColumnGapPx\(columnFrame\) : 0/u,
+	);
+	assert.match(IN_FLOW_GEOMETRY_SOURCE, /IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX = 24/u);
+	assert.match(
+		IN_FLOW_GEOMETRY_SOURCE,
+		/IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_LEADING_BORDER_PX = 2/u,
+	);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /width: isEmbedded \? columnWidthPx : 0/u);
 	const pointerEnterSource = IN_FLOW_COLUMN_SOURCE.match(
 		/const handlePointerEnter = \([\s\S]*?\n\t\};/u,
@@ -71,10 +84,65 @@ test("touch can intentionally expand the otherwise pointer-inert gutter", () => 
 	assert.match(IN_FLOW_COLUMN_SOURCE, /onPointerDown=\{handleGutterPointerDown\}/u);
 });
 
+test("gutter rest keeps the overlay and rail visually transparent", () => {
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/className="absolute inset-y-0 start-0 z-30"/u,
+	);
+	assert.doesNotMatch(
+		IN_FLOW_COLUMN_SOURCE,
+		/className="absolute inset-y-0 start-0 z-30 bg-surface"/u,
+	);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/isEmbedded[\s\S]{0,100}?\? "pointer-events-auto bg-surface"[\s\S]{0,140}?: "pointer-events-none bg-transparent \[&_\[data-agent-session-notch\]\]:pointer-events-auto"/u,
+	);
+	assert.doesNotMatch(
+		IN_FLOW_COLUMN_SOURCE,
+		/"group\/in-flow-agent-session-column[^"]*bg-surface"/u,
+	);
+});
+
+test("underlap paints a solid 24px surface gutter fill with no fade", () => {
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /ScrollMaskEdgeOverlay/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /@\/components\/visual\/scroll-mask/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /useInFlowGutterScrollMask\(hostRef\)/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/className="pointer-events-none absolute inset-y-0 start-0 z-40 bg-surface"[\s\S]*?data-agent-session-column-gutter-fill=""[\s\S]*?width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX/u,
+	);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /ref=\{hostRef\}/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/className="relative z-30 flex min-h-0 shrink-0 self-stretch"/u,
+	);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/data-agent-session-column-hit-area=""[\s\S]*?showGutterScrollMask \? \(/u,
+	);
+	assert.match(IN_FLOW_GEOMETRY_SOURCE, /export const IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX = 24/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /data-agent-session-column-gutter-mask=/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /bg-white/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /fadeSize/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /linear-gradient/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /mask-image/u);
+	assert.equal(
+		IN_FLOW_COLUMN_SOURCE.match(/data-agent-session-column-gutter-fill=""/gu)?.length,
+		1,
+	);
+	assert.doesNotMatch(
+		IN_FLOW_COLUMN_SOURCE,
+		/className="absolute inset-y-0 start-0 z-30 bg-surface"/u,
+	);
+});
+
 test("the entire visible gutter is a hover target without covering To do", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /data-agent-session-column-hit-area=""/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /absolute inset-y-0 start-0 z-30/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX \+ 2/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX\s*\+ IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_LEADING_BORDER_PX/u,
+	);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
 		/onPointerDown=\{isEmbedded \? undefined : handleGutterPointerDown\}\s*onPointerEnter=\{handlePointerEnter\}\s*onPointerLeave=\{handlePointerLeave\}/u,
@@ -83,10 +151,14 @@ test("the entire visible gutter is a hover target without covering To do", () =>
 		IN_FLOW_COLUMN_SOURCE,
 		/isEmbedded[\s\S]{0,100}?\? "pointer-events-auto bg-surface"[\s\S]{0,140}?: "pointer-events-none bg-transparent \[&_\[data-agent-session-notch\]\]:pointer-events-auto"/u,
 	);
-	assert.match(RAIL_SOURCE, /className="group\/notch flex h-5 w-full shrink-0 items-center"/u);
+	assert.doesNotMatch(
+		IN_FLOW_COLUMN_SOURCE,
+		/className="absolute inset-y-0 start-0 z-30 bg-surface"/u,
+	);
+	assert.match(RAIL_SOURCE, /className="group\/notch flex h-6 w-full shrink-0 items-center"/u);
 	assert.match(
 		RAIL_SOURCE,
-		/className="focus-visible:ring-ring flex h-5 w-full items-center justify-center[\s\S]{0,120}?data-agent-session-notch=""/u,
+		/className="flex h-6 shrink-0 items-center justify-center[\s\S]{0,120}?data-agent-session-notch=""/u,
 	);
 });
 
@@ -112,30 +184,49 @@ test("flyouts stay suspended in the gutter and open once the compact rail is emb
 		IN_FLOW_COLUMN_SOURCE,
 		/isHovered && !isPersistentExpanded/u,
 	);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation="gutter"/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation=\{isEmbedded \? "column" : "gutter"\}/u);
 });
 
-test("gutter presentation caps the rail; column presentation shows every notch", () => {
+test("gutter rest caps the rail; hover preview and column presentation show every notch", () => {
 	assert.match(
 		INDEX_SOURCE,
-		/maxVisibleItems=\{collapsedPresentation === "gutter"\s*\? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS\s*: undefined\}/u,
+		/maxVisibleItems=\{isGutterCollapsed && collapsedRailHitSlopPx === 0\s*\? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS\s*: undefined\}/u,
 	);
 });
 
-test("the tucked gutter hides the session total, including the hover preview", () => {
+test("the tucked gutter hides the session total; hover preview shows collapsed header chrome", () => {
 	assert.match(
 		INDEX_SOURCE,
 		/const hideGutterCount = isGutterCollapsed/u,
 	);
+	assert.match(
+		INDEX_SOURCE,
+		/className=\{isGutterCollapsed \? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL\}/u,
+	);
+	assert.match(INDEX_SOURCE, /const HEADER_CONTROL_IN_GUTTER = cn\(\s*HEADER_CONTROL_ON_REVEAL,\s*"hover:opacity-0",\s*\)/u);
+	assert.match(INDEX_SOURCE, /<TextMorphing\s+config=\{HEAD_COUNT_MORPH\}/u);
 	assert.match(INDEX_SOURCE, /text=\{String\(sessionCount\)\}/u);
 	assert.doesNotMatch(INDEX_SOURCE, /`\+\$\{newCount\}`/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation="gutter"/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation=\{isEmbedded \? "column" : "gutter"\}/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/collapsedRailHitSlopPx=\{isEmbedded && !isPersistentExpanded\s*\? IN_FLOW_AGENT_SESSION_COLUMN_RAIL_HIT_SLOP_PX\s*: 0\}/u,
+	);
+	assert.match(INDEX_SOURCE, /data-agent-session-column-count=""/u);
+	assert.match(
+		INDEX_SOURCE,
+		/toAgentSessionRailHitSlopStyle\(collapsedRailHitSlopPx\)/u,
+	);
+	assert.match(
+		RAIL_SOURCE,
+		/toAgentSessionRailHitSlopStyle\(hitSlopPx\)/u,
+	);
 });
 
 test("the gutter preview moves into the old in-flow inset with Motion", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /import \{ motion, useReducedMotion, type Variants \} from "motion\/react";/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /<motion\.div/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX = 24/u);
+	assert.match(IN_FLOW_GEOMETRY_SOURCE, /IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX = 24/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX = -5/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /animate=\{isEmbedded \? "embedded" : "gutter"\}/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /transform: `translateX\(\$\{IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX\}px\)`/u);
@@ -161,7 +252,7 @@ test("Board visible cards and List share the header's 24px leading alignment", (
 		JIRA_PROJECT_SOURCE,
 		/"min-h-0 flex-1 overflow-hidden pb-4 ps-6 md:pb-5"/u,
 	);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX = 24/u);
+	assert.match(IN_FLOW_GEOMETRY_SOURCE, /IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX = 24/u);
 });
 
 test("a collapsed first status column clears the fixed Untracked gutter without moving it", () => {
@@ -174,7 +265,10 @@ test("a collapsed first status column clears the fixed Untracked gutter without 
 		/const resolvedColumnRowPaddingInlineStart = resolveBoardColumnRowPaddingInlineStart\(columnRowPaddingInlineStart, boardColumns\[0\]\?\.title, Boolean\(chrome\.dropContentPadding\), collapsedColumns\);/u,
 	);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /absolute inset-y-0 start-0 z-40/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /style=\{\{ width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX \+ 2 \}\}/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/style=\{\{\s*width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX\s*\+ IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_LEADING_BORDER_PX,/u,
+	);
 });
 
 test("Board and List give the in-flow column identical geometry props", () => {
@@ -202,7 +296,7 @@ test("the first collapsed gutter mount plays a reduced-motion-safe staggered sca
 	);
 	assert.match(
 		EXPERIMENTAL_BOARD_SOURCE,
-		/initial=\{isArriving && !shouldReduceMotion \? \{ opacity: 0, y: 8 \} : false\}/u,
+		/initial=\{isGapArriving && !shouldReduceMotion \? \{ opacity: 0, y: 8 \} : false\}/u,
 	);
 	assert.match(RAIL_SOURCE, /AGENT_SESSION_GUTTER_INTRO_VISUAL_DURATION_SECONDS = 0\.3/u);
 	assert.match(RAIL_SOURCE, /AGENT_SESSION_GUTTER_INTRO_STAGGER_SECONDS = 0\.04/u);

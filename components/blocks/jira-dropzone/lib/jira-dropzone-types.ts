@@ -38,7 +38,7 @@ export interface SessionReceiptIdParts {
 
 export type JiraDropzoneDragState = "active" | "armed" | "idle";
 
-export type JiraDropzonePhase = "armed" | "proximate" | "receiving" | "resting";
+export type JiraDropzonePhase = "active" | "armed" | "proximate" | "receiving" | "resting";
 
 export interface JiraDropzonePhaseInput {
 	readonly drag: JiraDropzoneDragState;
@@ -58,6 +58,16 @@ export interface SessionFlight {
 
 export type FlightTravel = "arc" | "none";
 
+/** Motion `arc()` side. `"automatic"` omits `direction` so Motion picks a stable screen-space bulge. */
+export type JiraDropzoneArcDirection = "automatic" | "ccw" | "cw";
+
+export interface JiraDropzoneArcOptions {
+	readonly direction?: Exclude<JiraDropzoneArcDirection, "automatic">;
+	readonly peak: number;
+	readonly rotate?: number;
+	readonly strength: number;
+}
+
 export interface ImpactProfile {
 	readonly damping: number;
 	readonly impulseXPx: number;
@@ -66,7 +76,9 @@ export interface ImpactProfile {
 }
 
 export interface FlightProfile {
+	readonly arcDirection: JiraDropzoneArcDirection;
 	readonly arcPeak: number;
+	readonly arcRotate: number;
 	readonly arcStrength: number;
 	readonly durationMs: number;
 	readonly ease: readonly [number, number, number, number];

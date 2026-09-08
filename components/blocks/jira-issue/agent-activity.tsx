@@ -40,6 +40,7 @@ import {
 	JiraIssueAgentLinkFlashOverlay,
 	type JiraIssueAgentLinkFlash,
 } from "@/components/blocks/jira-issue/agent-link-flash";
+import { JiraIssueAttachChinSlot } from "@/components/blocks/jira-issue/attach-chin";
 import { useSessionDragChipPointer } from "@/components/blocks/jira-issue/use-session-drag-chip-pointer";
 import { JiraIssueAgentSessionUnlinkButton } from "@/components/blocks/jira-issue/agent-session-unlink-button";
 import {
@@ -804,6 +805,7 @@ function JiraIssueCyclingAgentLabel(props: Readonly<{
 
 export function JiraIssueAgentActivityRows({
 	activities,
+	attachPreviewCopy,
 	instantSessionTransfer = false,
 	linkFlash,
 	layout = "merged",
@@ -816,6 +818,8 @@ export function JiraIssueAgentActivityRows({
 	usesStrokeChrome,
 }: Readonly<{
 	activities: readonly JiraIssueAgentActivity[];
+	/** Occupies the last chin row while a session is approaching, or opens a chin when none exist. */
+	attachPreviewCopy?: string;
 	/** Board-controlled moves remount the presence boundary so one row cannot linger in two cards. */
 	instantSessionTransfer?: boolean;
 	/** One-shot brand sweep across the row a session was just linked into. */
@@ -836,6 +840,7 @@ export function JiraIssueAgentActivityRows({
 	const layoutTransition = getJiraIssueLayoutTransition(shouldReduceMotion);
 	const presenceMotion = getJiraIssuePresenceMotion(shouldReduceMotion);
 	const hasActivities = activities.length > 0;
+	const hasAttachPreview = Boolean(attachPreviewCopy);
 	const rowGroups = groupJiraIssueAgentActivityRows(activities, layout);
 	const rowPresenceKey = instantSessionTransfer
 		? rowGroups.map((rowGroup) => rowGroup.key).join("|")
@@ -858,22 +863,25 @@ export function JiraIssueAgentActivityRows({
 				// the card hugs what remains instead of trailing an empty band. The
 				// dragged row flags itself with `data-session-chip-out`, so this
 				// resolves in the same commit rather than through a state round-trip.
-				hasActivities && "px-1 py-1 has-[[data-session-chip-out]]:py-0",
+				(hasActivities || hasAttachPreview) && "px-1 py-1 has-[[data-session-chip-out]]:py-0",
 			)}
 			layout={rowLayout}
 			transition={layoutTransition}
 		>
 			<AnimatePresence key={rowPresenceKey} initial={false} mode="popLayout">
-				{rowGroups.map((rowGroup) => {
+				{rowGroups.map((rowGroup, index) => {
 					// A grouped chin is many agents, not one session. Session
 					// details belong on a single-agent row; the merged row
 					// opens assignment instead so hover lists every agent.
 					// Drag uses the same gate: transferring `activities[0]`
 					// would silently move one agent while the row still says "N".
+					const replaceLastRowWithAttach = hasAttachPreview && index === rowGroups.length - 1;
 					const isSingleAgentRow = rowGroup.activities.length === 1;
-					const rowSessionFlyout = isSingleAgentRow ? sessionFlyout : undefined;
-					const rowSessionDrag = isSingleAgentRow ? sessionDrag : undefined;
-					const row = (
+					const rowSessionFlyout = replaceLastRowWithAttach ? undefined : isSingleAgentRow ? sessionFlyout : undefined;
+					const rowSessionDrag = replaceLastRowWithAttach ? undefined : isSingleAgentRow ? sessionDrag : undefined;
+					const row = replaceLastRowWithAttach && attachPreviewCopy ? (
+						<JiraIssueAttachChinSlot copy={attachPreviewCopy} />
+					) : (
 						<JiraIssueAgentActivityRow
 							activities={rowGroup.activities}
 							linkFlash={linkFlash}
@@ -925,6 +933,7 @@ export function JiraIssueAgentActivityRows({
 						key={rowGroup.key}
 						animate={presenceMotion.animate}
 						className="min-w-0"
+						data-slot={replaceLastRowWithAttach ? "jira-issue-attach-chin" : undefined}
 						exit={presenceMotion.exit}
 						initial={presenceMotion.initial}
 						layout={rowLayout}
@@ -945,6 +954,11 @@ export function JiraIssueAgentActivityRows({
 					);
 				})}
 			</AnimatePresence>
+			{rowGroups.length === 0 && attachPreviewCopy ? (
+				<div data-slot="jira-issue-attach-chin">
+					<JiraIssueAttachChinSlot copy={attachPreviewCopy} />
+				</div>
+			) : null}
 			{sessionFlyout ? <JiraSessionFlyoutSurface handle={flyoutHandle} /> : null}
 		</motion.div>
 	);

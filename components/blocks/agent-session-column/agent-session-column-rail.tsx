@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode, type RefCallback } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode, type RefCallback } from "react";
 import { animate, motion, useMotionValue, useReducedMotion, useTransform, type Variants } from "motion/react";
 
 import type { AgentListState } from "@/components/blocks/agent-list";
@@ -41,9 +41,13 @@ import { useHasVerticalOverflow } from "@/components/hooks/use-has-vertical-over
 import { buildScrollMaskStyle } from "@/components/visual/scroll-mask/lib";
 import { cn } from "@/lib/utils";
 
-import { toAgentSessionRailViewportMaxHeight } from "./agent-session-column-rail-viewport";
+import {
+	toAgentSessionRailHitSlopStyle,
+	toAgentSessionRailViewportMaxHeight,
+} from "./agent-session-column-rail-viewport";
 import type { AgentSessionColumnNotchShape } from "./agent-session-column-types";
 import { useAgentSessionUserNotchArrival } from "./use-agent-session-user-notch-arrival";
+import { useAgentSessionRailHoverIntent } from "./use-agent-session-rail-hover-intent";
 
 export { AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS } from "./agent-session-column-rail-viewport";
 
@@ -62,11 +66,11 @@ export { AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS } from "./agent-session-column-rai
  * a 12px cap; the dot under the pointer or keyboard focus reveals that person's
  * face. An arriving session flashes that same face, holds, then morphs —
  * the face shrinks 12→4 as one disc — before the photo is dropped and the
- * unread rest takes default icon color. Reviewed sessions rest at 4px
+ * unread rest takes `icon.subtle`. Reviewed sessions rest at 4px
  * `icon.disabled`. Line markers retain the original horizontal treatment
  * and falloff.
  *
- * Circle unread uses `color.icon`; reviewed dots stay `icon.disabled`. Size
+ * Circle unread uses `color.icon.subtle`; reviewed dots stay `icon.disabled`. Size
  * carries proximity and the face carries direct interest. Lifecycle remains
  * spoken, while line mode retains its previous selected/new tone treatment.
  *
@@ -349,14 +353,14 @@ function AgentSessionUserNotch({
 					className={cn(
 						"size-1 rounded-full transition-opacity duration-normal ease-out-practical motion-reduce:transition-none",
 						avatarSrc
-							? "group-hover/notch:opacity-0 group-has-[:focus-visible]/notch:opacity-0"
+							? "group-data-[hovered]/notch:opacity-0 group-has-[:focus-visible]/notch:opacity-0"
 							: null,
 						hideRestDisc ? "opacity-0" : null,
 					)}
 					data-arrival-rest-hidden={hideRestDisc || undefined}
 					style={{
 						backgroundColor: isNew
-							? AGENT_SESSION_NOTCH_TONE.selected
+							? AGENT_SESSION_NOTCH_TONE.unread
 							: AGENT_SESSION_NOTCH_TONE.rest,
 						transform: proximity === undefined
 							? `scale(${restingScale})`
@@ -369,7 +373,7 @@ function AgentSessionUserNotch({
 						className={cn(
 							"absolute inset-0 size-3 rounded-full object-cover",
 							"motion-reduce:transition-none",
-							"group-hover/notch:scale-100 group-hover/notch:opacity-100",
+							"group-data-[hovered]/notch:scale-100 group-data-[hovered]/notch:opacity-100",
 							"group-has-[:focus-visible]/notch:scale-100 group-has-[:focus-visible]/notch:opacity-100",
 							arrivalExiting && !isHighlighted
 								? "opacity-100 scale-[var(--agent-session-user-notch-morph)] transition-transform duration-normal ease-in-out"
@@ -392,9 +396,9 @@ function AgentSessionUserNotch({
 }
 
 /**
- * One session, as a user dot. The whole 20px row is the hover target so the
- * flyout opens from anywhere across the 32px rail, while the visible face stays
- * capped at 12px.
+ * One session, as a user dot. Contiguous 24px targets divide the visual gap
+ * equally between neighbors. The centered 20px anchor keeps flyout placement
+ * and focus rings independent of the wider button; the face stays capped at 12px.
  *
  * Arrival layout lives on the list item, not the flyout trigger. Base UI closes
  * a preview card when its active trigger unmounts, and Motion's layout
@@ -410,21 +414,22 @@ function AgentSessionUserNotch({
  * button: `JiraSessionFlyoutTrigger` clones its child to add `onFocusCapture`,
  * and a component child would swallow that prop and cost the rail its
  * keyboard-opens-the-flyout behavior. `preserveSourceFootprint` holds the row at
- * its measured 20px while the chip travels, so lifting a notch out never
+ * its measured 24px while the chip travels, so lifting a notch out never
  * reflows the rail under the pointer.
  */
 function AgentSessionNotch({
 	flyoutHandle,
 	flyoutSession,
+	hitSlopPx,
 	introIndex,
 	isArriving,
 	isHighlighted,
+	isHovered,
 	isNew,
 	item,
 	notchShape,
 	onArrivalComplete,
 	onIntroComplete,
-	onItemHover,
 	onView,
 	playIntro,
 	proximity,
@@ -432,40 +437,30 @@ function AgentSessionNotch({
 }: Readonly<{
 	flyoutHandle: JiraSessionFlyoutHandle;
 	flyoutSession: JiraSidebarSessionItem;
+	hitSlopPx: number;
 	introIndex: number;
 	isArriving: boolean;
 	isHighlighted: boolean;
+	isHovered: boolean;
 	isNew: boolean;
 	item: AgentSessionItem;
 	notchShape: AgentSessionColumnNotchShape;
 	onArrivalComplete?: () => void;
 	onIntroComplete?: () => void;
-	onItemHover?: (item: AgentSessionItem | null) => void;
 	onView?: (item: AgentSessionItem) => void;
 	playIntro: boolean;
 	proximity?: AgentSessionNotchProximity;
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
 }>) {
 	const shouldReduceMotion = useReducedMotion();
-	const isHoveredRef = useRef(false);
-	const onItemHoverRef = useRef(onItemHover);
 	const visibleIdentity = toAgentSessionVisibleIdentity(item);
-
-	useEffect(() => {
-		onItemHoverRef.current = onItemHover;
-	}, [onItemHover]);
-
-	useEffect(() => () => {
-		if (isHoveredRef.current) {
-			onItemHoverRef.current?.(null);
-		}
-	}, []);
 
 	// The beat, not the mark: expanding and re-collapsing the column remounts the
 	// rail, and a notch that is still unreviewed stays lit without regrowing.
 	return (
 		<motion.li
-			className="group/notch flex h-5 w-full shrink-0 items-center"
+			className="group/notch flex h-6 w-full shrink-0 items-center"
+			data-hovered={isHovered || undefined}
 			layout={shouldReduceMotion ? false : "position"}
 			transition={AGENT_SESSION_ARRIVAL_TRANSITION}
 		>
@@ -483,32 +478,32 @@ function AgentSessionNotch({
 					{(bind) => (
 						<JiraSessionFlyoutTrigger
 							closeDelay={160}
+							data-session-id={item.id}
+							delay={0}
 							handle={flyoutHandle}
-							render={<div className="w-full" />}
+							render={
+								<div
+									className="mx-auto flex h-5 items-center rounded-xs has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
+									style={{ width: `calc(100% - ${hitSlopPx * 2}px)` }}
+								/>
+							}
 							session={flyoutSession}
 						>
 							<button
 								{...bind}
 								aria-roledescription={bind ? "Draggable agent session" : undefined}
-								className="focus-visible:ring-ring flex h-5 w-full items-center justify-center rounded-xs outline-none focus-visible:ring-2"
+								className="flex h-6 shrink-0 items-center justify-center rounded-xs outline-none"
 								data-agent-session-notch=""
 								data-highlighted={isHighlighted || undefined}
 								data-new={isNew || undefined}
 								data-testid={"agent-session-notch-" + item.id}
 								draggable={false}
+								style={toAgentSessionRailHitSlopStyle(hitSlopPx)}
 								// Spread first, then override: `usePointerDrag`'s own
 								// `onClick` is not the activation guard here — the drag
 								// host's `onClickCapture` already swallows the click that
 								// follows a published drag.
 								onClick={onView === undefined ? undefined : () => onView(item)}
-								onPointerEnter={() => {
-									isHoveredRef.current = true;
-									onItemHover?.(item);
-								}}
-								onPointerLeave={() => {
-									isHoveredRef.current = false;
-									onItemHover?.(null);
-								}}
 								type="button"
 							>
 								<span className="sr-only">
@@ -550,6 +545,7 @@ export function AgentSessionColumnRail({
 	getSuggestedWorkItemKey,
 	getSuggestedWorkItemKeys,
 	highlightedItemId,
+	hitSlopPx = 0,
 	items,
 	maxVisibleItems,
 	newItemIds,
@@ -571,10 +567,12 @@ export function AgentSessionColumnRail({
 	getSuggestedWorkItemKey?: (item: AgentSessionItem) => string | undefined;
 	getSuggestedWorkItemKeys?: (item: AgentSessionItem) => readonly string[] | undefined;
 	highlightedItemId?: string | null;
+	/** Widen the scrollport and its real buttons equally on both sides, preserving the marker axis. */
+	hitSlopPx?: number;
 	items: readonly AgentSessionItem[];
 	/**
 	 * Caps the scrollport to this many notches. Gutter rest passes ten;
-	 * embedded column presentation omits it so every session can show.
+	 * hover preview and column presentation omit it so every session can show.
 	 */
 	maxVisibleItems?: number;
 	newItemIds?: ReadonlySet<string>;
@@ -599,6 +597,13 @@ export function AgentSessionColumnRail({
 	// the popup stays mounted and follows the hovered notch, so sliding down the
 	// rail crossfades instead of remounting a card per notch.
 	const [flyoutHandle] = useState(createJiraSessionFlyoutHandle);
+	const hoverIntent = useAgentSessionRailHoverIntent(flyoutHandle);
+	const hoveredItem = items.find((item) => item.id === hoverIntent.activeItemId) ?? null;
+	const publishItemHover = useEffectEvent((item: AgentSessionItem | null) => onItemHover?.(item));
+	useEffect(() => {
+		publishItemHover(hoveredItem);
+		return () => publishItemHover(null);
+	}, [hoveredItem]);
 	const flyoutActions = useMemo(
 		() => bindAgentSessionFlyoutActions(items, {
 			capturedItemIds,
@@ -651,28 +656,32 @@ export function AgentSessionColumnRail({
 
 			    It is also the dock's pointer surface — one listener for the whole
 			    rail, rather than a hover handler per notch, because the swell is a
-			    property of the distance between them. `p-1` keeps the 4px
-			    focus-ring gutter *inside* the 32px column so the notches stay
-			    centered and remain unclipped at the scroll boundary.
-			    A negative horizontal margin here would shift them 4px left once
-			    the collapsed section clips overflow. Gutter rest still caps the
-			    viewport at ten notches; embedded column presentation omits that
-			    cap so every session can show inside the column height. Arrival
-			    layout stays on each `motion.li`. */}
+			    property of the distance between them. The 20px visual anchor
+			    sits 2px inside each 24px button, so py-0.5 leaves its focus ring
+			    the same clearance and preserves the original marker centers.
+			    Hosts can add equal hit slop with a wider list and matching negative
+			    margins; those hosts must allow the rail past the section edges.
+			    Gutter rest still caps the
+			    viewport at ten notches; a hover-scaled hit area and column
+			    presentation omit that cap so every session can show inside the
+			    column height. Arrival layout stays on each `motion.li`. */}
 			<ul
-				className="scrollbar-none flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto overscroll-contain px-1 py-1"
+				className="scrollbar-none flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto overscroll-contain px-1 py-0.5"
 				onPointerEnter={isDocked ? dock.handlePointerEnter : undefined}
 				onPointerLeave={isDocked ? dock.handlePointerLeave : undefined}
 				onPointerMove={isDocked ? dock.handlePointerMove : undefined}
 				onScroll={isDocked ? dock.handleScroll : undefined}
 				ref={setListRef}
-				style={railViewportMaxHeight === undefined
-					? scrollMaskStyle
-					: { ...scrollMaskStyle, maxHeight: railViewportMaxHeight }}
+				style={{
+					...scrollMaskStyle,
+					...(hitSlopPx === 0 ? {} : toAgentSessionRailHitSlopStyle(hitSlopPx)),
+					maxHeight: railViewportMaxHeight,
+				}}
 			>
 				{items.map((item: AgentSessionItem, index: number) => (
 					<AgentSessionNotch
 						flyoutHandle={flyoutHandle}
+						hitSlopPx={hitSlopPx}
 						flyoutSession={toAgentSessionUntrackedWorkFlyoutItem(
 							item,
 							resolveAgentSessionWorkItemKey(
@@ -684,6 +693,7 @@ export function AgentSessionColumnRail({
 						introIndex={index}
 						isArriving={(arrivingItemIds ?? newItemIds)?.has(item.id) ?? false}
 						isHighlighted={item.id === highlightedItemId}
+						isHovered={item.id === hoverIntent.activeItemId}
 						isNew={newItemIds?.has(item.id) ?? false}
 						item={item}
 						key={item.id}
@@ -694,7 +704,6 @@ export function AgentSessionColumnRail({
 						onIntroComplete={index === items.length - 1
 							? onIntroComplete
 							: undefined}
-						onItemHover={onItemHover}
 						onView={onView}
 						playIntro={playIntro}
 						proximity={isDocked ? {
@@ -713,6 +722,8 @@ export function AgentSessionColumnRail({
 				content="untracked-work"
 				handle={flyoutHandle}
 				instantPosition
+				onOpenChange={hoverIntent.onOpenChange}
+				popupRef={hoverIntent.popupRef}
 				onAddAsSubtask={flyoutActions.onAddAsSubtask}
 				onArchiveSession={flyoutActions.onArchiveSession}
 				onCreateWorkItem={flyoutActions.onCreateWorkItem}

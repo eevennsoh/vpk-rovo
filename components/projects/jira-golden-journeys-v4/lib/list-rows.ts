@@ -405,6 +405,7 @@ export function insertWorkItemCard(
 	columns: readonly JiraKanbanColumnData[],
 	card: JiraKanbanCardData,
 	columnTitle: string,
+	insertAtIndex?: number,
 ): JiraKanbanColumnData[] {
 	const targetTitle = columns.some((column) => column.title === columnTitle)
 		? columnTitle
@@ -418,7 +419,15 @@ export function insertWorkItemCard(
 			return column;
 		}
 
-		const cards = [...column.cards, card];
+		// Omitted index means append, which is what every create-well caller wants.
+		// A gap drop names the slot it landed in, clamped because the column can
+		// have changed between the drag resolving and the drop committing.
+		const cards = [...column.cards];
+		if (insertAtIndex === undefined) {
+			cards.push(card);
+		} else {
+			cards.splice(Math.min(Math.max(insertAtIndex, 0), cards.length), 0, card);
+		}
 		return {
 			...column,
 			cards,
@@ -434,14 +443,21 @@ export function toKanbanCardFromDraft(input: Readonly<{
 	issueType?: JiraKanbanCardData["issueType"];
 	summary: string;
 }>): JiraKanbanCardData {
+	const assignee = input.assignee
+		? {
+			id: input.assignee.id,
+			name: input.assignee.name,
+			avatarSrc: input.assignee.avatarSrc ?? "",
+		}
+		: undefined;
+
 	return {
-		assignee: input.assignee
-			? {
-				id: input.assignee.id,
-				name: input.assignee.name,
-				avatarSrc: input.assignee.avatarSrc ?? "",
-			}
-			: undefined,
+		assignee,
+		avatarShape: input.assignee?.avatarShape,
+		avatarSrc: assignee?.avatarSrc || undefined,
+		avatarUnassignedKind: input.assignee
+			? input.assignee.avatarUnassignedKind
+			: "person",
 		code: input.issueKey,
 		dueDate: input.dueDate,
 		issueType: input.issueType ?? "task",
@@ -469,6 +485,11 @@ export interface CreateBoardWorkItemFromSessionInput {
 	activity: JiraIssueAgentActivity;
 	columns: readonly JiraKanbanColumnData[];
 	columnTitle: string;
+	/**
+	 * Slot the card lands in within its column. Omitted by the create well,
+	 * which appends; supplied by a drop in the gap between two cards.
+	 */
+	insertAtIndex?: number;
 	linkSession: (
 		columns: readonly JiraKanbanColumnData[],
 		issueKey: string,
@@ -519,18 +540,16 @@ export function createBoardWorkItemFromSession(
 
 	const issueKey = getNextPayIssueKey(input.columns);
 	const card = toKanbanCardFromDraft({
-		assignee: input.session.invokedBy
-			? {
-				avatarSrc: input.session.invokedBy.avatarSrc,
-				id: slugAgentName(input.session.invokedBy.name),
-				name: input.session.invokedBy.name,
-			}
-			: undefined,
 		issueKey,
 		issueType: "task",
 		summary: input.session.title,
 	});
-	const columnsWithCard = insertWorkItemCard(input.columns, card, input.columnTitle);
+	const columnsWithCard = insertWorkItemCard(
+		input.columns,
+		card,
+		input.columnTitle,
+		input.insertAtIndex,
+	);
 	const columns = input.linkSession(columnsWithCard, issueKey, input.activity);
 
 	return {

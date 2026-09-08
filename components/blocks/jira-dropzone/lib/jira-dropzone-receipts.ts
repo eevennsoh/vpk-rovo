@@ -45,6 +45,9 @@ export function resolveJiraDropzonePhase(input: JiraDropzonePhaseInput): JiraDro
 	if (input.proximate && input.drag !== "idle") {
 		return "proximate";
 	}
+	if (input.drag === "active") {
+		return "active";
+	}
 	return "resting";
 }
 

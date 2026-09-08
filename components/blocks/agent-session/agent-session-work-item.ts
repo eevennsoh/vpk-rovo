@@ -102,9 +102,6 @@ export function bindAgentSessionFlyoutActions(
 		onArchiveSession: actions.onArchiveSession === undefined
 			? undefined
 			: (session: JiraSidebarSessionItem) => {
-				if (isCaptured(session)) {
-					return;
-				}
 				const item = resolve(session);
 				if (item !== undefined) {
 					actions.onArchiveSession?.(item);

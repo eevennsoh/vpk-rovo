@@ -159,8 +159,7 @@ export function AgentSessionColumnPanelDemo() {
 		},
 	}), [handleCapture]);
 
-	// Arrivals land at the top, under the header, because that is where sync sits
-	// and where the entrance animation starts from.
+	// Arrivals land at the top, under the header, because that is where sync sits.
 	const handleSync = useCallback(() => {
 		const batch = ARRIVAL_BATCHES[syncedBatches];
 		if (batch === undefined) {
@@ -233,8 +232,8 @@ export function AgentSessionColumnPanelDemo() {
 				<p className="text-xs text-text-subtlest">
 					Sync prepends untracked work: the cards step in from above and hold a
 					discovery-toned dash, while each new user dot reveals the same
-					human avatar as its card, holds, then shrinks into a 4px rest in the
-					default icon color and pushes the ones below it down. Hovering or
+					human avatar as its card, holds, then shrinks into a 4px rest in
+					icon.subtle and pushes the ones below it down. Hovering or
 					focusing a dot reveals that face again. Mark reviewed decays the mark, which
 					is what the watermark does when the column is expanded. Hover a card
 					to select it; the header then offers Link, Create, Archive, and Clear.
@@ -255,6 +254,7 @@ export function AgentSessionColumnPanelDemo() {
 							className="flex-1"
 							collapsed={collapsed}
 							expandedWidthPx={AGENT_SESSION_PANEL_DEMO_WIDTH_PX}
+							hasScrollingEffect
 							headerSurface="panel"
 							items={items}
 							listClassName="gap-1 p-1"

@@ -24,6 +24,13 @@ const COLUMN_CONTROLS_SOURCE = readFileSync(
 	"utf8",
 );
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
+const FOR_YOU_STAGE_SOURCE = readFileSync(
+	join(
+		process.cwd(),
+		"components/projects/jira-golden-journeys-v1/components/for-you-stage.tsx",
+	),
+	"utf8",
+);
 const DATA_SOURCE = readFileSync(join(__dirname, "data.ts"), "utf8");
 const DETAILS_SOURCE = readFileSync(
 	join(process.cwd(), "app/data/details/blocks/jira-list.ts"),
@@ -332,6 +339,8 @@ test("JiraList column controls use outside-top overlay geometry without reservin
 		/left: anchorSide === "left" \? "anchor\(left\)" : "anchor\(right\)"/u,
 	);
 	assert.match(COLUMN_CONTROLS_SOURCE, /top: 0/u);
+	assert.match(COLUMN_CONTROLS_SOURCE, /top: "anchor\(top, -100vh\)"/u);
+	assert.doesNotMatch(COLUMN_CONTROLS_SOURCE, /anchor\(center\)/u);
 });
 
 test("JiraList column add overlay paints above the sticky checkbox column", () => {
@@ -345,7 +354,8 @@ test("JiraList column add overlay paints above the sticky checkbox column", () =
 		/pointer-events-none contents[\s\S]*?data-testid="jira-list-column-boundary-overlay"/u,
 	);
 	assert.match(COLUMN_CONTROLS_SOURCE, /fixed z-50 size-6 -translate-x-1\/2 -translate-y-1\/2/u);
-	assert.match(COLUMN_CONTROLS_SOURCE, /top: "anchor\(center\)"/u);
+	assert.match(COLUMN_CONTROLS_SOURCE, /top: "anchor\(top, -100vh\)"/u);
+	assert.match(COLUMN_CONTROLS_SOURCE, /positionVisibility: "anchors-visible"/u);
 	assert.match(COLUMN_CONTROLS_SOURCE, /absolute top-0 bottom-10 z-40 w-0 overflow-visible/u);
 	assert.match(
 		SOURCE,
@@ -505,6 +515,29 @@ test("JiraList centers an accessible refresh button with the footer count", () =
 	assert.match(SOURCE, /variant="ghost"/u);
 });
 
+test("JiraList omits footer actions when the consumer supplies no capability", () => {
+	assert.match(TYPES_SOURCE, /onCreate\?: \(insertion\?: JiraListInsertion\) => void;/u);
+	assert.match(TYPES_SOURCE, /onRefresh\?: \(\) => void;/u);
+	assert.match(
+		SOURCE,
+		/onCreate \? \(\s*<div data-testid="jira-list-footer-controls">[\s\S]*?onClick=\{\(\) => onCreate\(\)\}[\s\S]*?<\/div>\s*\) : null/u,
+	);
+	assert.match(
+		SOURCE,
+		/onRefresh \? \([\s\S]*?aria-label="Refresh work items"[\s\S]*?onClick=\{onRefresh\}[\s\S]*?<\/Button>\s*\) : null/u,
+	);
+	assert.match(FOR_YOU_STAGE_SOURCE, /<JiraList[\s\S]*?rows=\{rows\}/u);
+	assert.doesNotMatch(FOR_YOU_STAGE_SOURCE, /<JiraList[\s\S]*?on(?:Create|Refresh)=/u);
+	assert.match(
+		DETAILS_SOURCE,
+		/name: "onCreate"[\s\S]*?Omit it to remove Create controls/u,
+	);
+	assert.match(
+		DETAILS_SOURCE,
+		/name: "onRefresh"[\s\S]*?Omit it to remove the footer refresh action/u,
+	);
+});
+
 test("JiraList sample refresh restores rows and transient demo state", () => {
 	const refreshSource = PAGE_SOURCE.match(
 		/const handleRefresh = \(\) => \{([\s\S]*?)\n\t\};/u,
@@ -553,6 +586,8 @@ test("JiraList exposes keyboard-accessible create controls at both row boundarie
 	assert.match(SOURCE, /onFocus=/u);
 	assert.match(SOURCE, /focus-visible:opacity-100/u);
 	assert.match(SOURCE, /data-insertion-line=/u);
+	assert.match(SOURCE, /onCreate\s*&&\s*hoveredRowTarget\?\.issueKey === row\.issueKey/u);
+	assert.match(SOURCE, /hoverInsertionPosition \?\? dragInsertionPosition/u);
 });
 
 test("JiraList uses equal top, drag, and bottom row interaction zones", () => {
@@ -586,7 +621,7 @@ test("JiraList middle zone exposes an anchored accessible drag handle", () => {
 	assert.match(SOURCE, /<DragHandleVerticalIcon/u);
 	assert.match(dragHandleClass, /cursor-grab touch-none border border-border bg-surface-overlay! text-icon-subtle/u);
 	assert.doesNotMatch(dragHandleClass, /shadow-/u);
-	assert.match(SOURCE, /absolute z-30 size-6 -translate-x-1\/2 -translate-y-1\/2/u);
+	assert.match(SOURCE, /fixed z-30 size-6 -translate-x-1\/2 -translate-y-1\/2/u);
 	assert.match(SOURCE, /hover:bg-surface-overlay-hovered!/u);
 	assert.match(SOURCE, /active:cursor-grabbing active:bg-surface-overlay-pressed!/u);
 	assert.match(SOURCE, /top: "anchor\(center\)"/u);
@@ -637,12 +672,12 @@ test("JiraList sticky selection cells remain opaque while preserving row state t
 	assert.match(SOURCE, /className="relative z-10 flex items-center justify-center"/u);
 });
 
-test("JiraList row boundary controls are absolute opaque overlays", () => {
+test("JiraList row boundary controls are fixed opaque overlays", () => {
 	const controlsSource = SOURCE.match(
 		/function RowBoundaryCreateControls\([\s\S]*?\n\}\n\n(?:export )?function JiraListSortableRow/u,
 	)?.[0] ?? "";
 
-	assert.match(controlsSource, /absolute z-30 size-6 -translate-x-1\/2 -translate-y-1\/2/u);
+	assert.match(controlsSource, /fixed z-30 size-6 -translate-x-1\/2 -translate-y-1\/2/u);
 	assert.match(controlsSource, /border border-border bg-surface-overlay! text-icon-subtle/u);
 	assert.doesNotMatch(controlsSource, /shadow-/u);
 	assert.match(controlsSource, /hover:bg-surface-overlay-hovered!/u);

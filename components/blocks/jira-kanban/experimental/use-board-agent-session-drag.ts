@@ -22,15 +22,20 @@ import type { JiraListInsertion } from "@/components/blocks/jira-list/jira-list-
 import type { JiraKanbanCardData, JiraKanbanColumnData } from "../index";
 import {
 	createBoardAgentSessionDragTransaction,
+	parseBoardCardGapZones,
+	parseBoardEmptyColumnGapZone,
 	parseListRowDropZone,
 	resolveBoardAgentSessionDropAction,
+	toChinFreeBoardCardBounds,
 	toListSessionDropIntent,
 	updateBoardAgentSessionDragTransaction,
 	type BoardAgentSessionDragOrigin,
 	type BoardAgentSessionDragTransaction,
 	type BoardAgentSessionDropBounds,
 	type BoardAgentSessionDropZone,
+	type BoardCardInsertion,
 } from "./lib/board-agent-session-drag";
+import { BOARD_CARD_INSERTION_BAND_PX } from "./lib/board-card-insertion";
 import { toSessionDropReceipt } from "./lib/session-drop-receipt";
 import {
 	executeSessionTransferPlan,
@@ -46,6 +51,11 @@ import {
 } from "./lib/session-fusion-overlay-state";
 
 const SESSION_UNLINK_DROP_HALO_PX = 24;
+
+interface ListScrollportClip {
+	clip: DOMRect;
+	headerBottom: number;
+}
 
 /**
  * The card's agent shell rect, so the fusion field knows what shape it is
@@ -106,10 +116,10 @@ function resolveIssueLandRect(node: HTMLElement): BoardAgentSessionDropBounds | 
 	return lastRow ? toDropBounds(lastRow) : null;
 }
 
-
 function clipBoundsToScrollport(
 	node: HTMLElement,
 	rect: DOMRect,
+	clipCache: Map<HTMLElement, ListScrollportClip>,
 ): BoardAgentSessionDropBounds | null {
 	const scrollport = node.closest<HTMLElement>("[data-testid='jira-list-table-scroll']");
 	if (!scrollport) {
@@ -121,9 +131,17 @@ function clipBoundsToScrollport(
 		};
 	}
 
-	const clip = scrollport.getBoundingClientRect();
-	const header = scrollport.querySelector("thead");
-	const headerBottom = header?.getBoundingClientRect().bottom ?? clip.top;
+	let scrollportClip = clipCache.get(scrollport);
+	if (scrollportClip === undefined) {
+		const clip = scrollport.getBoundingClientRect();
+		const header = scrollport.querySelector("thead");
+		scrollportClip = {
+			clip,
+			headerBottom: header?.getBoundingClientRect().bottom ?? clip.top,
+		};
+		clipCache.set(scrollport, scrollportClip);
+	}
+	const { clip, headerBottom } = scrollportClip;
 	const top = Math.max(rect.top, headerBottom, clip.top);
 	const bottom = Math.min(rect.bottom, clip.bottom);
 	const left = Math.max(rect.left, clip.left);
@@ -135,8 +153,65 @@ function clipBoundsToScrollport(
 	return { bottom, left, right, top };
 }
 
+/**
+ * The insertion bands that belong to one card node, clipped to the column's
+ * card list.
+ *
+ * Two adjustments the raw rect cannot supply:
+ *
+ * - The attach chin is subtracted first. A gap band outranks attach proximity,
+ *   so standing in one closes the chin; measuring the band off the live bottom
+ *   edge would then move the band out from under the pointer and strobe the
+ *   chin open and shut. See `toChinFreeBoardCardBounds`.
+ * - The clip is not optional. The card list is a real scrollport, and its
+ *   `has-[[data-session-dragging]]:overflow-visible` escape only fires for a
+ *   drag that started inside this column — an Untracked-rail drag, the only
+ *   origin a gap can serve, leaves every card list scrolling. Without the clip
+ *   a card scrolled out of sight would still arm an insertion line nobody can
+ *   see, and the first visible card's band would reach up into the header.
+ */
+function collectCardGapZones(
+	node: HTMLElement,
+	cardCode: string,
+	bounds: BoardAgentSessionDropBounds,
+): BoardAgentSessionDropZone[] {
+	const cardList = node.closest<HTMLElement>("[data-jira-kanban-card-list]");
+	if (!cardList) return [];
+
+	const chin = node.querySelector('[data-slot="jira-issue-attach-chin"]');
+	const clip = cardList.getBoundingClientRect();
+	return parseBoardCardGapZones(
+		node.dataset.boardColumnTitle,
+		cardCode,
+		node.dataset.boardCardIndex,
+		node.dataset.boardCardCount,
+		toChinFreeBoardCardBounds(bounds, chin?.getBoundingClientRect().height ?? 0),
+		BOARD_CARD_INSERTION_BAND_PX,
+	).flatMap((zone) => {
+		const top = Math.max(zone.bounds.top, clip.top);
+		const bottom = Math.min(zone.bounds.bottom, clip.bottom);
+		return bottom > top ? [{ ...zone, bounds: { ...zone.bounds, bottom, top } }] : [];
+	});
+}
+
+/**
+ * Card-gap seams are a capability, not a decoration. A board whose host cannot
+ * mint a work item at an index must not arm an insertion line over a drop that
+ * would quietly do nothing, and the card under the band must keep the ordinary
+ * attach affordance it has today.
+ */
+function gateCardGapZones(
+	zones: BoardAgentSessionDropZone[],
+	enabled: boolean,
+): BoardAgentSessionDropZone[] {
+	return enabled ? zones : zones.filter((zone) => zone.kind !== "card-gap");
+}
+
 function collectDropZones(root: HTMLElement | null): BoardAgentSessionDropZone[] {
 	if (!root) return [];
+	// Every pointer update gets a fresh scan, but all list rows in that scan
+	// share one scrollport and sticky header clip.
+	const listScrollportClipCache = new Map<HTMLElement, ListScrollportClip>();
 
 	return Array.from(
 		root.querySelectorAll<HTMLElement>("[data-board-agent-session-drop-zone]"),
@@ -167,9 +242,19 @@ function collectDropZones(root: HTMLElement | null): BoardAgentSessionDropZone[]
 				kind: "untracked",
 			}];
 		}
+		// Only an empty column's card list carries this kind directly: with no
+		// card wrappers to hang seams on, the list itself is the one gap.
+		if (kind === "card-gap") {
+			return [...parseBoardEmptyColumnGapZone(node.dataset.boardColumnTitle, {
+				bottom: rect.bottom,
+				left: rect.left,
+				right: rect.right,
+				top: rect.top,
+			})];
+		}
 		const issueKey = node.closest<HTMLElement>("[data-issue-key]")?.dataset.issueKey;
 		if (kind === "list-row") {
-			const bounds = clipBoundsToScrollport(node, rect);
+			const bounds = clipBoundsToScrollport(node, rect, listScrollportClipCache);
 			if (!bounds) return [];
 			const zone = parseListRowDropZone(issueKey, node.dataset.listRowIndex, bounds);
 			return zone ? [zone] : [];
@@ -193,13 +278,19 @@ function collectDropZones(root: HTMLElement | null): BoardAgentSessionDropZone[]
 			right: rect.right,
 			top: rect.top,
 		};
-		return [{
-			bounds,
-			cardCode: issueKey,
-			dockRect: resolveIssueDockRect(node, bounds),
-			kind,
-			landRect: resolveIssueLandRect(node),
-		}];
+		// The card's own zone is unchanged; the seams are additional zones on the
+		// same node, so attached and detached drags see exactly the board they
+		// saw before. The resolver drops them for any origin but Untracked.
+		return [
+			{
+				bounds,
+				cardCode: issueKey,
+				dockRect: resolveIssueDockRect(node, bounds),
+				kind,
+				landRect: resolveIssueLandRect(node),
+			},
+			...collectCardGapZones(node, issueKey, bounds),
+		];
 	});
 }
 
@@ -217,6 +308,7 @@ function findBoardCard(
 export function useBoardAgentSessionDrag({
 	boardColumns,
 	detachedSessionsByCard,
+	onBoardGapCreate,
 	onCreate,
 	onCreateWellReceive,
 	onListCreate,
@@ -227,6 +319,15 @@ export function useBoardAgentSessionDrag({
 }: Readonly<{
 	boardColumns: readonly JiraKanbanColumnData[];
 	detachedSessionsByCard?: Readonly<Record<string, readonly AgentSessionItem[]>>;
+	/**
+	 * Mint work items at a specific slot in a column's card stack, with the
+	 * sessions already linked to them. Omit it and no card-gap zone is ever
+	 * collected, so the board never draws an insertion line it cannot honour.
+	 */
+	onBoardGapCreate?: (
+		sessions: readonly [AgentSessionItem, ...AgentSessionItem[]],
+		insertion: BoardCardInsertion,
+	) => void;
 	onCreate?: (session: AgentSessionItem, columnTitle: string) => void;
 	onCreateWellReceive?: (receipt: SessionDropReceipt) => void;
 	onListCreate?: (
@@ -262,13 +363,15 @@ export function useBoardAgentSessionDrag({
 		flash: BoardAgentSessionLinkFlash | null;
 	} | null>(null);
 	const ports: SessionTransferPorts = useMemo(() => ({
+		onBoardGapCreate,
 		onCreate,
 		onLink,
 		onListCreate,
 		onMove,
 		onUnlink,
-	}), [onCreate, onLink, onListCreate, onMove, onUnlink]);
+	}), [onBoardGapCreate, onCreate, onLink, onListCreate, onMove, onUnlink]);
 	const enablement = resolveDragEnablement(ports);
+	const cardGapsEnabled = Boolean(onBoardGapCreate);
 
 	const commitDrop = useCallback((
 		current: BoardAgentSessionDragTransaction<JiraIssueAgentSessionTransferMember>,
@@ -333,7 +436,7 @@ export function useBoardAgentSessionDrag({
 			if (pendingAttachRef.current) {
 				flushPendingAttach();
 			}
-			const zones = collectDropZones(boardRootRef.current);
+			const zones = gateCardGapZones(collectDropZones(boardRootRef.current), cardGapsEnabled);
 			const current = transactionRef.current;
 			const next = current && current.cohort.key === cohort.key
 				? updateBoardAgentSessionDragTransaction(current, state.pointer, zones)
@@ -352,7 +455,7 @@ export function useBoardAgentSessionDrag({
 				? updateBoardAgentSessionDragTransaction(
 					current,
 					state.pointer,
-					collectDropZones(boardRootRef.current),
+					gateCardGapZones(collectDropZones(boardRootRef.current), cardGapsEnabled),
 				)
 				: current;
 			const action = resolveBoardAgentSessionDropAction(finalTransaction);
@@ -393,7 +496,7 @@ export function useBoardAgentSessionDrag({
 				? { ...JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE, cancelled: true }
 				: JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE,
 		);
-	}, [commitDrop, flushPendingAttach, shouldReduceMotion]);
+	}, [cardGapsEnabled, commitDrop, flushPendingAttach, shouldReduceMotion]);
 
 	function createBinding(
 		origin: BoardAgentSessionDragOrigin,
@@ -470,6 +573,14 @@ export function useBoardAgentSessionDrag({
 
 	return {
 		boardRootRef,
+		/**
+		 * The slot the board should draw its insertion line in, or null. Derived
+		 * here rather than plumbed as its own prop, the same way `listDropIntent`
+		 * is, so the target and the affordance can never disagree.
+		 */
+		cardInsertion: transaction?.target?.kind === "create-board-gap"
+			? transaction.target.insertion
+			: null,
 		draggingIds,
 		dragState,
 		enablement,

@@ -5403,7 +5403,7 @@
 	},
 	"components": {
 		"summary": {
-			"manifestEntryCount": 437,
+			"manifestEntryCount": 439,
 			"categoryCount": 9
 		},
 		"categories": [
@@ -5445,7 +5445,7 @@
 			},
 			{
 				"category": "blocks",
-				"entryCount": 112,
+				"entryCount": 113,
 				"entries": [
 					{
 						"category": "blocks",
@@ -5710,6 +5710,12 @@
 						"slug": "jira-activity",
 						"name": "Jira Activity",
 						"importPath": "@/components/blocks/jira-activity"
+					},
+					{
+						"category": "blocks",
+						"slug": "jira-create",
+						"name": "Jira Create",
+						"importPath": "@/components/blocks/jira-create"
 					},
 					{
 						"category": "blocks",
@@ -7455,7 +7461,7 @@
 			},
 			{
 				"category": "visual",
-				"entryCount": 104,
+				"entryCount": 105,
 				"entries": [
 					{
 						"category": "visual",
@@ -8026,6 +8032,12 @@
 						"slug": "svg-tracing",
 						"name": "SVG Tracing",
 						"importPath": "@/components/visual/svg-tracing"
+					},
+					{
+						"category": "visual",
+						"slug": "text-continuity",
+						"name": "Text Continuity",
+						"importPath": "@/components/visual/text-continuity"
 					},
 					{
 						"category": "visual",

@@ -12,8 +12,9 @@ import { Icon } from "@/components/ui/icon";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
-import { useExclusiveCreateWellProximity } from "./create-work-item-exclusive-proximity-context";
+import { resolveBoardCreateDropzoneDrag } from "../lib/board-agent-session-drag";
 import type { BoardAgentSessionDrag } from "../use-board-agent-session-drag";
+import { useExclusiveCreateWellProximity } from "./create-work-item-exclusive-proximity-context";
 
 /** Dashed well chrome shared by the create button and the session-drag dropzone. */
 const CREATE_WORK_ITEM_WELL_CHROME_CLASS = "rounded-lg border border-dashed";
@@ -31,15 +32,10 @@ export function BoardColumnCreateAction({
 }>) {
 	const targetRef = useRef<HTMLDivElement>(null);
 	const isExclusiveWinner = useExclusiveCreateWellProximity(title, targetRef);
-	const armed = Boolean(
-		sessionDragTransaction?.target?.kind === "create"
-		&& sessionDragTransaction.target.columnTitle === title,
+	const drag: JiraDropzoneDragState = resolveBoardCreateDropzoneDrag(
+		sessionDragTransaction,
+		title,
 	);
-	const drag: JiraDropzoneDragState = !sessionDragTransaction
-		? "idle"
-		: armed
-			? "armed"
-			: "active";
 
 	return (
 		<div className="w-full" style={{ paddingBlock: token("space.050") }}>

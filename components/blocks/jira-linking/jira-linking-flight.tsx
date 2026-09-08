@@ -11,6 +11,7 @@ import { toJiraLinkingCohort } from "./drop-cohort";
 import {
 	flightsFromLinkingDrop,
 	JIRA_LINKING_FULL_DROP_PROFILE,
+	resolveJiraLinkingArcOptions,
 	type JiraLinkingDrop,
 	type JiraLinkingDropProfile,
 	type JiraLinkingFlight,
@@ -34,8 +35,8 @@ export function JiraLinkingDropFlights({
 		[drop, profile],
 	);
 	const flyPath = useMemo(
-		() => arc({ peak: profile.arcPeak, strength: profile.arcStrength }),
-		[profile.arcPeak, profile.arcStrength],
+		() => arc(resolveJiraLinkingArcOptions(profile)),
+		[profile],
 	);
 	const landing = target?.anchor ?? null;
 	const resolveLandingPoint = useCallback(

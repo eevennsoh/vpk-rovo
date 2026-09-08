@@ -35,7 +35,64 @@ export type BoardAgentSessionDragOrigin =
 	| { kind: "detached"; sourceCardCode: string }
 	| { kind: "untracked" };
 
+/**
+ * Where a new work item lands in a board column's card stack.
+ *
+ * The board analogue of `JiraListInsertion`. It carries the column because a
+ * board index only means anything within one column, where a list index is
+ * global to the single visible ordering.
+ */
+export interface BoardCardInsertion {
+	columnTitle: string;
+	insertAtIndex: number;
+	position: "before" | "after";
+	/** Null for the sole gap of an empty column, which has no neighbour to describe itself against. */
+	relativeToCardCode: string | null;
+}
+
+/** Create wells accept drops only from the Untracked rail. */
+export function isCreateZoneEligible(origin: BoardAgentSessionDragOrigin): boolean {
+	switch (origin.kind) {
+		case "untracked":
+			return true;
+		case "attached":
+		case "detached":
+			return false;
+		default: {
+			const exhaustive: never = origin;
+			return exhaustive;
+		}
+	}
+}
+
+export type BoardCreateDropzoneDrag = "active" | "armed" | "idle";
+
+/**
+ * Open labeled create wells on every column only when this drag can actually
+ * land in one. Attached and detached origins keep the resting plus button.
+ */
+export function resolveBoardCreateDropzoneDrag(
+	transaction: BoardAgentSessionDragTransaction | null,
+	columnTitle: string,
+): BoardCreateDropzoneDrag {
+	if (!transaction || !isCreateZoneEligible(transaction.origin)) {
+		return "idle";
+	}
+	if (
+		transaction.target?.kind === "create"
+		&& transaction.target.columnTitle === columnTitle
+	) {
+		return "armed";
+	}
+	return "active";
+}
+
 export type BoardAgentSessionDropZone =
+	| {
+		bounds: BoardAgentSessionDropBounds;
+		insertion: BoardCardInsertion;
+		kind: "card-gap";
+	}
 	| {
 		bounds: BoardAgentSessionDropBounds;
 		columnTitle: string;
@@ -77,6 +134,7 @@ export type BoardAgentSessionDropZone =
 export type BoardAgentSessionDropTarget =
 	| { cardCode: string; kind: "attach" }
 	| { columnTitle: string; kind: "create" }
+	| { insertion: BoardCardInsertion; kind: "create-board-gap" }
 	| { insertion: JiraListInsertion; kind: "create-list" }
 	| { cardCode: string; kind: "unlink" }
 	| { kind: "untracked" };
@@ -94,6 +152,7 @@ export interface BoardAgentSessionDragTransaction<
 export type BoardAgentSessionDropAction =
 	| { kind: "none" }
 	| { kind: "create"; sessionIds: readonly [string, ...string[]]; columnTitle: string }
+	| { kind: "create-board-gap"; insertion: BoardCardInsertion; sessionIds: readonly [string, ...string[]] }
 	| { kind: "create-list"; insertion: JiraListInsertion; sessionIds: readonly [string, ...string[]] }
 	| { kind: "detach"; sessionIds: readonly [string, ...string[]]; sourceCardCode: string }
 	| { kind: "move"; sessionIds: readonly [string, ...string[]]; sourceCardCode: string; targetCardCode: string }
@@ -120,6 +179,11 @@ function dropTargetKey(target: BoardAgentSessionDropTarget): string {
 	switch (target.kind) {
 		case "create":
 			return `create:${target.columnTitle}`;
+		// Index-scoped: a column has one key per gap, so the after-gap of card i
+		// and the before-gap of card i+1 collapse into the single insertion they
+		// both describe instead of competing as two targets.
+		case "create-board-gap":
+			return `create-board-gap:${target.insertion.columnTitle}:${target.insertion.insertAtIndex}`;
 		case "create-list":
 			return `create-list:${target.insertion.insertAtIndex}`;
 		case "untracked":
@@ -140,8 +204,14 @@ function toEligibleTarget(
 	pointer: BoardAgentSessionDragPointer,
 ): BoardAgentSessionDropTarget | null {
 	switch (zone.kind) {
+		case "card-gap":
+			// Same rule as the create well and the list-row boundary strips: only a
+			// session that belongs to nothing yet can mint a work item.
+			return isCreateZoneEligible(origin)
+				? { insertion: zone.insertion, kind: "create-board-gap" }
+				: null;
 		case "create":
-			return origin.kind === "untracked"
+			return isCreateZoneEligible(origin)
 				? { columnTitle: zone.columnTitle, kind: "create" }
 				: null;
 		case "untracked":
@@ -202,6 +272,150 @@ export function parseListRowDropZone(
 	};
 }
 
+function isCardOrdinal(raw: string | undefined): boolean {
+	return raw !== undefined && raw !== "" && Number.isInteger(Number(raw)) && Number(raw) >= 0;
+}
+
+/**
+ * A card's rect with its attach chin subtracted, which is the only rect a gap
+ * band may be measured against.
+ *
+ * The chin is the one part of a card whose presence depends on the drag itself:
+ * it opens when attach proximity arms and closes when proximity reports
+ * nothing. A gap band is outranking, so standing in one *nulls* proximity — and
+ * if the band were measured off the live bottom edge, closing the chin would
+ * move the band out from under the pointer, re-arm proximity, re-open the chin,
+ * and move the band back. That two-cycle strobes the chin and jumps every card
+ * below it on alternate frames.
+ *
+ * Subtracting the chin breaks the loop by construction: the band sits at the
+ * same client y whether the chin is open or shut, so arming a gap can never
+ * change the geometry the gap was resolved from. It also preserves the
+ * self-stabilising promise `components/blocks/jira-issue/attach-proximity.ts`
+ * documents — the chin still only ever grows the card's bottom edge toward an
+ * approaching pointer.
+ */
+export function toChinFreeBoardCardBounds(
+	bounds: BoardAgentSessionDropBounds,
+	chinHeight: number,
+): BoardAgentSessionDropBounds {
+	if (!Number.isFinite(chinHeight) || chinHeight <= 0) {
+		return bounds;
+	}
+
+	return {
+		...bounds,
+		bottom: Math.max(bounds.bottom - chinHeight, bounds.top),
+	};
+}
+
+/**
+ * The sole gap of a column with no cards.
+ *
+ * Card gaps normally ride the per-card wrappers, so an empty column emits none
+ * and a drop there would arm nothing. The column's own card list stands in as
+ * that one seam, which is the only producer of a null `relativeToCardCode`:
+ * there is no neighbour to describe index 0 against.
+ */
+export function parseBoardEmptyColumnGapZone(
+	columnTitle: string | undefined,
+	bounds: BoardAgentSessionDropBounds,
+): readonly Extract<BoardAgentSessionDropZone, { kind: "card-gap" }>[] {
+	if (!columnTitle) {
+		return [];
+	}
+
+	return [{
+		bounds,
+		insertion: {
+			columnTitle,
+			insertAtIndex: 0,
+			position: "before",
+			relativeToCardCode: null,
+		},
+		kind: "card-gap",
+	}];
+}
+
+/**
+ * The one or two insertion bands that belong to a single board card.
+ *
+ * The board's counterpart to `parseListRowDropZone` + `getInsertionFromRowZone`
+ * in one call, because a board card owns both of its seams where a list row
+ * tiles its own height into three contiguous strips. Cards are separated by a
+ * real gutter, so each band straddles the card edge — it reaches `bandPx`
+ * outward to cover the gutter the pointer actually aims at, and `bandPx` inward
+ * so there is no dead pixel against the card itself.
+ *
+ * The two bands are clamped apart at the card's midpoint. A card shorter than
+ * `2 * bandPx` would otherwise overlap its own before- and after-bands, and the
+ * two distinct insertions under one pointer would resolve as ambiguous.
+ *
+ * `bounds` must be the card's chin-free rect (see `toChinFreeBoardCardBounds`),
+ * never its live rect, or the band moves whenever the attach chin it outranks
+ * opens or closes.
+ *
+ * Attribute-driven and defensive like `parseListRowDropZone` — missing or
+ * non-ordinal input yields no zones rather than a half-built insertion. The
+ * caller owns clipping the returned bounds to the column's scrollport.
+ */
+export function parseBoardCardGapZones(
+	columnTitle: string | undefined,
+	cardCode: string | undefined,
+	cardIndexRaw: string | undefined,
+	cardCountRaw: string | undefined,
+	bounds: BoardAgentSessionDropBounds,
+	bandPx: number,
+): readonly Extract<BoardAgentSessionDropZone, { kind: "card-gap" }>[] {
+	if (!columnTitle || !cardCode || !Number.isFinite(bandPx) || bandPx <= 0) {
+		return [];
+	}
+	if (!isCardOrdinal(cardIndexRaw) || !isCardOrdinal(cardCountRaw)) {
+		return [];
+	}
+
+	const cardIndex = Number(cardIndexRaw);
+	const cardCount = Number(cardCountRaw);
+	// `data-board-card-count` is the sanity check on the index: a card that claims
+	// a slot its own column does not have would name an unreachable insertion.
+	if (cardIndex >= cardCount) {
+		return [];
+	}
+
+	const midpoint = (bounds.top + bounds.bottom) / 2;
+
+	return [
+		{
+			bounds: {
+				...bounds,
+				bottom: Math.min(bounds.top + bandPx, midpoint),
+				top: bounds.top - bandPx,
+			},
+			insertion: {
+				columnTitle,
+				insertAtIndex: cardIndex,
+				position: "before",
+				relativeToCardCode: cardCode,
+			},
+			kind: "card-gap",
+		},
+		{
+			bounds: {
+				...bounds,
+				bottom: bounds.bottom + bandPx,
+				top: Math.max(bounds.bottom - bandPx, midpoint),
+			},
+			insertion: {
+				columnTitle,
+				insertAtIndex: cardIndex + 1,
+				position: "after",
+				relativeToCardCode: cardCode,
+			},
+			kind: "card-gap",
+		},
+	];
+}
+
 export function toListSessionDropIntent(
 	target: BoardAgentSessionDropTarget | null,
 ): JiraListAgentSessionDropIntent {
@@ -215,6 +429,9 @@ export function toListSessionDropIntent(
 		case "create-list":
 			return { kind: "create", insertion: target.insertion };
 		case "create":
+		// A board gap names a column and an index inside it, which the single
+		// flat list ordering cannot express. It is never a list intent.
+		case "create-board-gap":
 		case "unlink":
 		case "untracked":
 			return { kind: "none" };
@@ -264,6 +481,22 @@ export function resolveBoardAgentSessionDropTarget(
 		return untracked;
 	}
 
+	// A gap band straddles the seam between two cards, so it always overlaps at
+	// least one issue rect. The gap wins that overlap: the pointer is aimed
+	// between the cards, not at either of them, and letting the issue compete
+	// would make every seam ambiguous and resolve to nothing. Two *different*
+	// gaps under one pointer stay ambiguous, same as two create wells — the
+	// after-gap of one card and the before-gap of the next already share a key
+	// because they describe the same insertion.
+	const gapTargets = [...targetsByKey.values()].filter(
+		(target): target is Extract<BoardAgentSessionDropTarget, { kind: "create-board-gap" }> => (
+			target.kind === "create-board-gap"
+		),
+	);
+	if (gapTargets.length > 0) {
+		return gapTargets.length === 1 ? gapTargets[0] : null;
+	}
+
 	return targetsByKey.size === 1 ? [...targetsByKey.values()][0] : null;
 }
 
@@ -290,11 +523,14 @@ function attachNearnessFromDistance(distance: number): number {
 /**
  * Whether a zone that outranks every issue card already owns this pointer.
  *
- * `resolveBoardAgentSessionDropTarget` short-circuits on eligible `create` and
- * `untracked` zones because both deliberately overlap issue cards — the create
- * well overlaps the final card in its column, and the Untracked rail overlays
- * the trailing status columns. Proximity has to honour the same precedence or a
- * card that cannot receive the drop still arms its full attach affordance.
+ * `resolveBoardAgentSessionDropTarget` short-circuits on eligible `create`,
+ * `untracked` and `card-gap` zones because all three deliberately overlap issue
+ * cards — the create well overlaps the final card in its column, the Untracked
+ * rail overlays the trailing status columns, and a gap band straddles the seam
+ * between two cards. Proximity has to honour the same precedence or a card that
+ * cannot receive the drop still arms its full attach affordance: for a gap the
+ * pointer is *inside* the card rect, so the card would read distance 0 and light
+ * up completely while the insertion line is showing.
  */
 function hasOutrankingDropZone(
 	origin: BoardAgentSessionDragOrigin,
@@ -302,7 +538,7 @@ function hasOutrankingDropZone(
 	zones: readonly BoardAgentSessionDropZone[],
 ): boolean {
 	for (const zone of zones) {
-		if (zone.kind !== "create" && zone.kind !== "untracked") {
+		if (zone.kind !== "card-gap" && zone.kind !== "create" && zone.kind !== "untracked") {
 			continue;
 		}
 		if (!containsPointer(zone.bounds, pointer)) {
@@ -427,7 +663,7 @@ export function resolveBoardAgentSessionDropAction(
 
 	switch (target.kind) {
 		case "create":
-			return origin.kind === "untracked"
+			return isCreateZoneEligible(origin)
 				? { columnTitle: target.columnTitle, kind: "create", sessionIds }
 				: { kind: "none" };
 		case "untracked":
@@ -453,6 +689,10 @@ export function resolveBoardAgentSessionDropAction(
 		case "create-list":
 			return origin.kind === "untracked"
 				? { kind: "create-list", insertion: target.insertion, sessionIds }
+				: { kind: "none" };
+		case "create-board-gap":
+			return origin.kind === "untracked"
+				? { kind: "create-board-gap", insertion: target.insertion, sessionIds }
 				: { kind: "none" };
 		default: {
 			const exhaustive: never = target;

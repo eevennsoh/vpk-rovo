@@ -21,6 +21,7 @@ const PAGE_SOURCE = [
 const BOARD_SOURCE = [
 	readFileSync(join(EXPERIMENTAL_DIR, "experimental-jira-kanban.tsx"), "utf8"),
 	readFileSync(join(EXPERIMENTAL_DIR, "components", "created-card-arrival-motion.tsx"), "utf8"),
+	readFileSync(join(EXPERIMENTAL_DIR, "components", "board-column-card-list.tsx"), "utf8"),
 ].join("\n");
 const IN_FLOW_SOURCE = readFileSync(
 	join(EXPERIMENTAL_DIR, "components", "in-flow-agent-session-column.tsx"),
@@ -189,6 +190,21 @@ test("release re-hit-tests the current pointer against current board geometry", 
 	assert.match(DRAG_HOOK_SOURCE, /commitDrop\(finalTransaction\)/u);
 });
 
+test("list-row hit testing reads shared scrollport geometry once per drag evaluation", () => {
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/const listScrollportClipCache = new Map<HTMLElement, ListScrollportClip>\(\);/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/clipBoundsToScrollport\(node, rect, listScrollportClipCache\)/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/let scrollportClip = clipCache\.get\(scrollport\);[\s\S]*if \(scrollportClip === undefined\) \{[\s\S]*clipCache\.set\(scrollport, scrollportClip\);/u,
+	);
+});
+
 test("card-link drops commit the transfer before decorative flights start", () => {
 	const source = withoutComments(DRAG_HOOK_SOURCE);
 	assert.match(
@@ -206,14 +222,15 @@ test("unchecking Untracked exits board-adjacent sessions through the issue prese
 		/import \{\s*getJiraIssuePresenceMotion,\s*JIRA_ISSUE_MOTION_STYLE,\s*\} from "@\/components\/blocks\/jira-issue\/lib"/u,
 	);
 	assert.match(CARD_SOURCE, /const proximityMotion = getJiraIssuePresenceMotion\(shouldReduceMotion\)/u);
+	assert.match(CARD_SOURCE, /sessionTransferAfter=\{detachedAgentSessions\.length > 0/u);
 	assert.match(
 		withoutComments(CARD_SOURCE),
-		/<AnimatePresence>\s*\{detachedAgentSessions\.length > 0 \? \(\s*<motion\.div[\s\S]*exit=\{proximityMotion\.exit\}/u,
+		/<AnimatePresence>\s*<motion\.div[\s\S]*exit=\{proximityMotion\.exit\}/u,
 	);
 	assert.doesNotMatch(BOARD_SOURCE, /data-agent-session-column[\s\S]*showUntracked/u);
 });
 
-test("column session hover previews its suggested Jira issue in blue without scrolling or spotlighting", () => {
+test("column session hover previews its suggested Jira issue at the grey hover rung without scrolling or spotlighting", () => {
 	const boardWithoutComments = withoutComments(BOARD_SOURCE);
 	const hoverHandlerStart = boardWithoutComments.indexOf("const handleColumnSessionHover");
 	const hoverHandlerBody = boardWithoutComments.slice(
@@ -231,7 +248,7 @@ test("column session hover previews its suggested Jira issue in blue without scr
 	assert.match(BOARD_SOURCE, /proximityHighlightedWorkItemKey\?: string \| null;/u);
 	assert.match(BOARD_SOURCE, /const hostHoveredIssueKey = proximityHighlightedWorkItemKey === undefined/u);
 	assert.match(CARD_SOURCE, /agentSessionTargetPreview=\{\{ highlighted: agentSessionTargetHighlighted \}\}/u);
-	assert.match(JIRA_ISSUE_SOURCE, /agentSessionTargetHighlighted \? "bg-bg-accent-blue-subtlest" : "bg-bg-neutral"/u);
+	assert.match(JIRA_ISSUE_SOURCE, /agentSessionTargetHighlighted \? "bg-bg-neutral-hovered" : "bg-bg-neutral"/u);
 	// Hover previews the relationship with color only. Only a click owns focus,
 	// scroll, and the `opacity-40` veil, so the hover handler stays out of all three.
 	assert.doesNotMatch(hoverHandlerBody, /setFocusedIssueKey/u);
@@ -280,7 +297,14 @@ test("column card click scrolls the related issue and applies the blue-subtlest 
 		/const handleSessionSelectionChange = \(itemId: string \| null\) => \{\s*if \(itemId === null\) \{\s*setFocusedIssueKey\(null\);/u,
 	);
 	assert.match(BOARD_SOURCE, /data-issue-key=\{cardCode\}/u);
-	assert.match(BOARD_SOURCE, /spotlightIssueKey === card\.code && "bg-bg-accent-blue-subtlest"/u);
+	assert.match(
+		BOARD_SOURCE,
+		/spotlightIssueKey === card\.code && "bg-bg-accent-blue-subtlest \[&_\[data-slot=jira-issue-agent-backdrop\]\]:bg-bg-accent-blue-subtlest"/u,
+	);
+	assert.match(
+		BOARD_SOURCE,
+		/agentSessionTargetHighlighted=\{hoveredIssueKey === card\.code && spotlightIssueKey !== card\.code\}/u,
+	);
 	assert.match(
 		BOARD_SOURCE,
 		/spotlightIssueKey !== null && spotlightIssueKey !== card\.code && "opacity-40"/u,

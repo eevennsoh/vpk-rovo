@@ -40,8 +40,6 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getMentionChildItems } from "@/components/ui-custom/rich-text-editor";
-import { useHasVerticalOverflow } from "@/components/hooks/use-has-vertical-overflow";
-import { buildScrollMaskStyle } from "@/components/visual/scroll-mask/lib";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
@@ -51,11 +49,11 @@ import {
 } from "./components/collapsed-board-column";
 import { BoardColumnCreateAction } from "./components/create-work-item-drop-zone";
 import { CreatedCardArrivalMotion } from "./components/created-card-arrival-motion";
+import { BoardColumnCardList } from "./components/board-column-card-list";
 import { ExclusiveCreateWellProximityProvider } from "./components/create-work-item-exclusive-proximity-context";
 import { InFlowAgentSessionColumn } from "./components/in-flow-agent-session-column";
 import {
 	useCreatedCardArrivalCompletion,
-	useCreatedCardArrivalScroll,
 	type JiraKanbanCreatedCardArrival,
 } from "./hooks/use-created-card-arrival";
 import { BOARD_COLUMN_ACTION_REVEAL } from "./lib/board-column-action-reveal";
@@ -383,6 +381,7 @@ function ColumnAgentAssignment({
 function BoardColumn({
 	agents,
 	assignedAgentIds,
+	cardInsertion,
 	children,
 	chrome,
 	columnChrome,
@@ -397,6 +396,7 @@ function BoardColumn({
 }: Readonly<{
 	agents?: readonly JiraKanbanAgentData[];
 	assignedAgentIds: readonly string[];
+	cardInsertion: BoardAgentSessionDrag["cardInsertion"];
 	children: ReactNode;
 	chrome: KanbanColumnChromeStyles;
 	columnChrome: KanbanColumnChrome;
@@ -410,22 +410,7 @@ function BoardColumn({
 	title: string;
 }>) {
 	const showAgentAssignment = Boolean(agents?.length && onCreateAgent && onToggleAgent);
-	const { ref: cardListRef, showBottomScrollMask, showTopScrollMask } = useHasVerticalOverflow<HTMLDivElement>();
-	const setCardListRef = useCreatedCardArrivalScroll({
-		arrival: createdCardArrival,
-		cardCount: count,
-		onCardListRef: cardListRef,
-		title,
-	});
-	const cardListScrollMaskStyle = useMemo(
-		() => buildScrollMaskStyle({
-			fadeBottom: showBottomScrollMask,
-			fadeSize: "3rem",
-			fadeTop: showTopScrollMask,
-			scrollbarWidth: 0,
-		}),
-		[showBottomScrollMask, showTopScrollMask],
-	);
+	const insertionArmed = cardInsertion?.columnTitle === title;
 	const isEmptyColumn = count === 0;
 	const createAction = <BoardColumnCreateAction
 		dropZoneLabel={createWorkItemDropZoneLabel}
@@ -484,23 +469,16 @@ function BoardColumn({
 					/>
 				</div>
 			</div>
-			<div
-				ref={setCardListRef}
-				data-created-card-arrival-id={createdCardArrival?.id}
-				data-jira-kanban-card-list=""
-				className="min-w-0 overflow-y-auto has-[[data-session-dragging]]:overflow-visible"
-				style={{
-					order: isEmptyColumn ? 1 : 0,
-					flexGrow: 1,
-					display: "flex",
-					flexDirection: "column",
-					gap: token("space.100"),
-					...cardListScrollMaskStyle,
-					...chrome.cardList,
-				}}
+			<BoardColumnCardList
+				chrome={chrome}
+				columnTitle={title}
+				count={count}
+				createdCardArrival={createdCardArrival}
+				insertionArmed={insertionArmed}
+				isEmpty={isEmptyColumn}
 			>
 				{children}
-			</div>
+			</BoardColumnCardList>
 
 			<div style={{ order: isEmptyColumn ? 0 : 1, ...(!isEmptyColumn ? chrome.footer : {}) }}>{createAction}</div>
 		</div>
@@ -654,6 +632,7 @@ function ExperimentalJiraKanbanView({
 	const dragImageRef = useRef<HTMLDivElement | null>(null);
 	const handleCreatedCardArrivalComplete = useCreatedCardArrivalCompletion(
 		onCreatedCardArrivalComplete,
+		createdCardArrival?.appended ? 0 : undefined,
 	);
 	const [uncontrolledCollapsedColumns, setUncontrolledCollapsedColumns] = useState(
 		EMPTY_COLLAPSED_BOARD_COLUMNS,
@@ -913,6 +892,7 @@ function ExperimentalJiraKanbanView({
 							<BoardColumn
 								agents={agents}
 								assignedAgentIds={assignedAgentIdsByColumn[column.title] ?? []}
+								cardInsertion={boardSessionDrag.cardInsertion}
 								chrome={chrome}
 								columnChrome={columnChrome}
 								count={column.cards.length}
@@ -980,11 +960,15 @@ function ExperimentalJiraKanbanView({
 													? createdCardArrival
 													: undefined}
 												cardCode={card.code}
+												cardCount={column.cards.length}
+												cardIndex={cardIndex}
+												cardInsertion={boardSessionDrag.cardInsertion}
 												cardMovePhase={cardMovePhase}
 												className={cn(
-													spotlightIssueKey === card.code && "bg-bg-accent-blue-subtlest",
+													spotlightIssueKey === card.code && "bg-bg-accent-blue-subtlest [&_[data-slot=jira-issue-agent-backdrop]]:bg-bg-accent-blue-subtlest",
 													spotlightIssueKey !== null && spotlightIssueKey !== card.code && "opacity-40",
 												)}
+												columnTitle={column.title}
 												dropTarget={cardDropTarget}
 												onArrivalComplete={handleCreatedCardArrivalComplete}
 												shouldAnimateCardMoves={shouldAnimateCardMoves}
@@ -997,7 +981,7 @@ function ExperimentalJiraKanbanView({
 														? boardSessionDrag.linkFlash.flash
 														: undefined}
 													agentSessionDragControl={agentSessionDragControl}
-													agentSessionTargetHighlighted={hoveredIssueKey === card.code}
+													agentSessionTargetHighlighted={hoveredIssueKey === card.code && spotlightIssueKey !== card.code}
 												capturedItemIds={proximityActions.capturedItemIds}
 												card={card}
 												chrome={chrome.cardChrome}

@@ -26,6 +26,7 @@ import { SCROLL_MASK_DETAIL } from "./visual/scroll-mask";
 import { SCROLLING_DETAIL } from "./visual/scrolling";
 import { TEXT_EFFECTS_DETAIL } from "./visual/text-effects";
 import { TEXT_MORPHING_DETAIL } from "./visual/text-morphing";
+import { TEXT_CONTINUITY_DETAIL } from "./visual/text-continuity";
 import { ASCII_DETAIL } from "./visual/ascii";
 import { DITHERING_DETAIL } from "./visual/dithering";
 import { PARTICLES_DETAIL } from "./visual/particles";
@@ -186,6 +187,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	scrolling: SCROLLING_DETAIL,
 	"text-effects": TEXT_EFFECTS_DETAIL,
 	"text-morphing": TEXT_MORPHING_DETAIL,
+	"text-continuity": TEXT_CONTINUITY_DETAIL,
 	ascii: ASCII_DETAIL,
 	dithering: DITHERING_DETAIL,
 	particles: PARTICLES_DETAIL,

@@ -31,6 +31,11 @@ const {
 	resolveBoardColumnRowPaddingInlineStart,
 	toggleCollapsedBoardColumn,
 } = require("./board-column-collapse.ts");
+const {
+	resolveInFlowAgentSessionColumnGapPx,
+	resolveInFlowResizeHandleOffsetPx,
+	resolveStatusColumnVisualGutterPx,
+} = require("./in-flow-agent-session-column-geometry.ts");
 
 test("toggling an expanded column collapses it without mutating the previous set", () => {
 	const collapsed = toggleCollapsedBoardColumn(EMPTY_COLLAPSED_BOARD_COLUMNS, "In progress");
@@ -153,8 +158,12 @@ test("the expanded pinned session column reuses the accessible sidebar resize co
 		IN_FLOW_SOURCE,
 		/import \{ useSidebarResize \} from "@\/components\/projects\/rovo-core\/hooks\/use-sidebar-resize";/u,
 	);
-	assert.match(IN_FLOW_SOURCE, /const IN_FLOW_AGENT_SESSION_COLUMN_GAP_PX = 16;/u);
+	assert.match(
+		IN_FLOW_SOURCE,
+		/from "\.\.\/lib\/in-flow-agent-session-column-geometry"/u,
+	);
 	assert.match(IN_FLOW_SOURCE, /const IN_FLOW_AGENT_SESSION_COLUMN_MAX_WIDTH_PX = 560;/u);
+	assert.match(resizeClassSource, /right-auto -translate-x-1\/2/u);
 	assert.match(
 		resizeClassSource,
 		/bg-transparent! hover:bg-transparent! data-\[active\]:bg-transparent! focus-visible:bg-transparent!/u,
@@ -180,8 +189,17 @@ test("the expanded pinned session column reuses the accessible sidebar resize co
 	);
 	assert.match(
 		IN_FLOW_SOURCE,
-		/const title = agentSessionColumn\.title \?\? IN_FLOW_AGENT_SESSION_COLUMN_TITLE;[\s\S]*\{isPersistentExpanded \? \([\s\S]*<SidebarResizeHandle[\s\S]*aria-label=\{`Resize \$\{title\} column`\}[\s\S]*aria-valuemax=\{resize\.maxWidth\}[\s\S]*aria-valuemin=\{resize\.minWidth\}[\s\S]*aria-valuenow=\{expandedWidthPx\}[\s\S]*className=\{IN_FLOW_AGENT_SESSION_COLUMN_RESIZE_HANDLE_CLASS_NAME\}[\s\S]*onKeyDown=\{resize\.onResizeHandleKeyDown\}[\s\S]*onPointerDown=\{resize\.onResizeHandlePointerDown\}[\s\S]*role="separator"[\s\S]*side="right"[\s\S]*tabIndex=\{0\}/u,
+		/const title = agentSessionColumn\.title \?\? IN_FLOW_AGENT_SESSION_COLUMN_TITLE;[\s\S]*\{isPersistentExpanded \? \([\s\S]*<SidebarResizeHandle[\s\S]*aria-label=\{`Resize \$\{title\} column`\}[\s\S]*aria-valuemax=\{resize\.maxWidth\}[\s\S]*aria-valuemin=\{resize\.minWidth\}[\s\S]*aria-valuenow=\{expandedWidthPx\}[\s\S]*className=\{IN_FLOW_AGENT_SESSION_COLUMN_RESIZE_HANDLE_CLASS_NAME\}[\s\S]*onKeyDown=\{resize\.onResizeHandleKeyDown\}[\s\S]*onPointerDown=\{resize\.onResizeHandlePointerDown\}[\s\S]*role="separator"[\s\S]*side="right"[\s\S]*left: `calc\(100% \+ \$\{resolveInFlowResizeHandleOffsetPx\(columnFrame\)\}px\)`[\s\S]*right: "auto"[\s\S]*tabIndex=\{0\}/u,
 	);
+});
+
+test("Untracked trailing geometry matches painted status-column gutters", () => {
+	assert.equal(resolveStatusColumnVisualGutterPx("caption"), 20);
+	assert.equal(resolveInFlowAgentSessionColumnGapPx("caption"), 22);
+	assert.equal(resolveInFlowResizeHandleOffsetPx("caption"), 10);
+	assert.equal(resolveStatusColumnVisualGutterPx("enclosed"), 12);
+	assert.equal(resolveInFlowAgentSessionColumnGapPx("enclosed"), 12);
+	assert.equal(resolveInFlowResizeHandleOffsetPx("enclosed"), 6);
 });
 
 test("a collapsed status pill hugs its label while the shell keeps the drop lane", () => {

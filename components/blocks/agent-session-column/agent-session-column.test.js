@@ -322,8 +322,8 @@ test("the collapsed count lives in the header above the plane, not on the rail",
 		INDEX_SOURCE,
 		/layout === "enclosed" \? "border border-solid border-transparent" : null/u,
 	);
-	assert.match(INDEX_SOURCE, /relative flex h-6 w-full min-w-0 items-center justify-center/u);
-	assert.match(INDEX_SOURCE, /absolute inset-0 flex items-center justify-center text-xs/u);
+	assert.match(INDEX_SOURCE, /relative flex h-6 w-full min-w-0 items-center justify-center px-1/u);
+	assert.match(INDEX_SOURCE, /absolute inset-x-1 inset-y-0 flex items-center justify-center text-xs/u);
 	assert.match(INDEX_SOURCE, /HEADER_COUNT_AT_REST/u);
 	assert.match(INDEX_SOURCE, /HEADER_CONTROL_ON_REVEAL/u);
 	assert.doesNotMatch(INDEX_SOURCE, /className=\{cn\("absolute shrink-0", HEADER_CONTROL_ON_REVEAL\)\}/u);
@@ -378,8 +378,9 @@ test("notch flyouts use a stable trigger host so the shared popup follows the ra
 	// `div` as the HoverCard trigger. Putting `layout` on the trigger remounts
 	// the host and opens a new flyout per notch.
 	assert.match(RAIL_COLUMN_SOURCE, /layout=\{shouldReduceMotion \? false : "position"\}/u);
-	assert.match(RAIL_COLUMN_SOURCE, /<JiraSessionFlyoutTrigger[\s\S]{0,200}?render=\{\s*<div className="w-full" \/>/u);
+	assert.match(RAIL_COLUMN_SOURCE, /<JiraSessionFlyoutTrigger[\s\S]{0,200}?render=\{\s*<div\s*className="mx-auto flex h-5 items-center/u);
 	assert.match(RAIL_COLUMN_SOURCE, /closeDelay=\{160\}/u);
+	assert.match(RAIL_COLUMN_SOURCE, /delay=\{0\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /content="untracked-work"/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /render=\{\s*<motion\.li/u);
 });
@@ -431,7 +432,7 @@ test("each notch opens the shared session flyout rather than a forked preview", 
 	);
 	assert.match(RAIL_COLUMN_SOURCE, /<JiraSessionFlyoutTrigger/u);
 	// One payload-aware surface for the whole rail, as Agent List does, so
-	// sliding down the notches crossfades instead of remounting a card each time.
+	// sliding down the notches retargets the shared popup instead of remounting.
 	assert.match(RAIL_COLUMN_SOURCE, /const \[flyoutHandle\] = useState\(createJiraSessionFlyoutHandle\);/u);
 	assert.equal(RAIL_COLUMN_SOURCE.match(/<JiraSessionFlyoutSurface\b/gu)?.length, 1);
 	assert.match(RAIL_COLUMN_SOURCE, /content="untracked-work"/u);
@@ -440,7 +441,8 @@ test("each notch opens the shared session flyout rather than a forked preview", 
 	assert.match(RAIL_COLUMN_SOURCE, /flyoutSession=\{toAgentSessionUntrackedWorkFlyoutItem\(/u);
 	assert.match(RAIL_COLUMN_SOURCE, /session=\{flyoutSession\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /closeDelay=\{160\}/u);
-	assert.match(RAIL_COLUMN_SOURCE, /render=\{\s*<div className="w-full" \/>/u);
+	assert.match(RAIL_COLUMN_SOURCE, /render=\{\s*<div\s*className="mx-auto flex h-5 items-center/u);
+	assert.match(RAIL_COLUMN_SOURCE, /delay=\{0\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /<motion\.li/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /createHoverCardHandle|<HoverCard\b/u);
 	assert.match(INDEX_SOURCE, /capturedItemIds=\{sessionProps\.capturedItemIds\}/u);
@@ -451,7 +453,7 @@ test("a notch is reachable and legible without a pointer", () => {
 	// Keyboard focus opens the flyout through the trigger's focus-visible path,
 	// so the notch has to be a real focusable control with a ring and a name.
 	assert.match(RAIL_COLUMN_SOURCE, /<button/u);
-	assert.match(RAIL_COLUMN_SOURCE, /focus-visible:ring-2/u);
+	assert.match(RAIL_COLUMN_SOURCE, /has-\[:focus-visible\]:ring-2/u);
 	assert.match(RAIL_COLUMN_SOURCE, /\$\{item\.title\} — \$\{NOTCH_STATE_LABEL\[item\.state\]\}/u);
 	// Colour alone never carries the state.
 	assert.match(RAIL_COLUMN_SOURCE, /const NOTCH_STATE_LABEL: Record<AgentListState, string>/u);
@@ -487,12 +489,15 @@ test("collapsed motion is tokenised and honours reduced motion", () => {
 	assert.match(NOTCH_MARK_SOURCE, /group-has-\[:focus-visible\]\/notch:scale-x-\[1\.6\]/u);
 	assert.doesNotMatch(NOTCH_MARK_SOURCE, /group-focus-visible\/notch:/u);
 	// Clipping is scoped to the resize, so a focused card's ring is never cut.
-	assert.match(INDEX_SOURCE, /collapsed \|\| isResizing \? "overflow-hidden" : null/u);
+	assert.match(INDEX_SOURCE, /\(collapsed && collapsedRailHitSlopPx === 0\) \|\| isResizing \? "overflow-hidden" : null/u);
 	assert.match(INDEX_SOURCE, /event\.propertyName === "width"/u);
 	// A host-driven pointer resize must bypass this transition so the column edge
 	// tracks the pointer instead of easing toward every intermediate width.
 	assert.match(TYPES_SOURCE, /widthTransitionDisabled\?: boolean;/u);
-	assert.match(INDEX_SOURCE, /expandedWidthPx = AGENT_SESSION_COLUMN_WIDTH_PX,\s*widthTransitionDisabled = false,/u);
+	assert.match(
+		INDEX_SOURCE,
+		/expandedWidthPx = AGENT_SESSION_COLUMN_WIDTH_PX,\s*(?:hasScrollingEffect = false,\s*)?widthTransitionDisabled = false,/u,
+	);
 	assert.match(
 		INDEX_SOURCE,
 		/shouldReduceMotion \|\| widthTransitionDisabled\s*\? "none"\s*: AGENT_SESSION_COLUMN_TRANSITION/u,
@@ -505,6 +510,7 @@ test("the resting notch paints icon.disabled, not an alpha of icon", () => {
 	assert.match(INDEX_SOURCE, /const AGENT_SESSION_PLANE =\s*\n?\s*"[^"]*bg-surface/u);
 	assert.match(NOTCH_MAGNIFY_SOURCE, /rest: "var\(--color-icon-disabled\)"/u);
 	assert.match(NOTCH_MAGNIFY_SOURCE, /selected: "var\(--color-icon\)"/u);
+	assert.match(NOTCH_MAGNIFY_SOURCE, /unread: "var\(--color-icon-subtle\)"/u);
 	assert.match(NOTCH_MAGNIFY_SOURCE, /export function toAgentSessionNotchTone\(/u);
 	assert.doesNotMatch(NOTCH_MAGNIFY_SOURCE, /AGENT_SESSION_NOTCH_OPACITY|rest: 0\.6[68]/u);
 	assert.doesNotMatch(NOTCH_MARK_SOURCE, /toAgentSessionNotchOpacity|transition-opacity/u);
@@ -634,7 +640,7 @@ test("the gutter rail keeps a keyboard expand control and hides the count", () =
 	assert.match(INDEX_SOURCE, /header: collapsed \? collapsedHeader : expandedHeader/u);
 	assert.match(INDEX_SOURCE, /const hideGutterCount = isGutterCollapsed/u);
 	assert.match(INDEX_SOURCE, /aria-label=\{`Expand \$\{title\} column`\}/u);
-	assert.match(INDEX_SOURCE, /relative flex h-6 w-full min-w-0 items-center justify-center/u);
+	assert.match(INDEX_SOURCE, /relative flex h-6 w-full min-w-0 items-center justify-center px-1/u);
 	// The rail itself still has no header of its own to fall back on.
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /onExpand/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /sessionCount/u);
@@ -653,8 +659,9 @@ test("the collapsed rail preserves session twin hover previews", () => {
 	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,800}?highlightedItemId=\{sessionProps\.highlightedItemId\}/u);
 	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,800}?onItemHover=\{sessionProps\.onItemHover\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /isHighlighted=\{item\.id === highlightedItemId\}/u);
-	assert.match(RAIL_COLUMN_SOURCE, /onPointerEnter=\{\(\) => \{[\s\S]{0,150}?onItemHover\?\.\(item\)/u);
-	assert.match(RAIL_COLUMN_SOURCE, /onPointerLeave=\{\(\) => \{[\s\S]{0,150}?onItemHover\?\.\(null\)/u);
+	assert.match(RAIL_COLUMN_SOURCE, /publishItemHover\(hoveredItem\)/u);
+	assert.match(RAIL_COLUMN_SOURCE, /return \(\) => publishItemHover\(null\)/u);
+	assert.match(RAIL_COLUMN_SOURCE, /isHovered=\{item\.id === hoverIntent\.activeItemId\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /data-highlighted=\{isHighlighted \|\| undefined\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /isHighlighted=\{isHighlighted\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /showAvatar \? "opacity-100 scale-100"/u);
@@ -719,9 +726,13 @@ test("the column owns a hidden-id set and filters items before AgentSession", ()
 	assert.doesNotMatch(INDEX_SOURCE, /triage\.archive\(session\)/u);
 	assert.doesNotMatch(INDEX_SOURCE, /forgetHidden\(session\.id\)/u);
 	assert.match(INDEX_SOURCE, /triage: selectionTriage,/u);
+	assert.match(INDEX_SOURCE, /archive: handleArchiveSession,/u);
 	assert.match(INDEX_SOURCE, /toggleHidden\(item\)/u);
 	assert.match(INDEX_SOURCE, /onToggleVisibility\?\.\(item\)/u);
 	assert.match(INDEX_SOURCE, /onToggleVisibility=\{handleToggleVisibility\}/u);
+	assert.match(INDEX_SOURCE, /onArchiveSession=\{handleArchiveSession\}/u);
+	assert.match(INDEX_SOURCE, /onArchiveSession: onArchiveSessionProp,/u);
+	assert.match(INDEX_SOURCE, /onArchiveSessionProp\?\.\(session\)/u);
 	assert.match(INDEX_SOURCE, /visibilityLabel=\{view === "hidden" \? "Unarchive" : "Archive"\}/u);
 });
 
@@ -755,7 +766,7 @@ test("the sticky footer reads Archived N in the active view", () => {
 	// is pinned to the list wrapper so it sits on the last cards, not the footer.
 	assert.match(
 		INDEX_SOURCE,
-		/flex-1 overflow-y-auto has-\[:focus-visible\]:overflow-visible"[\s\S]*?<\/div>\s*\)\}\s*\{showTopScrollMask \|\| showBottomScrollMask \?/u,
+		/flex-1 overflow-y-auto has-\[:focus-visible\]:overflow-visible[^"]*"[\s\S]*?<\/div>\s*\)\}\s*\{showTopScrollMask \|\| showBottomScrollMask \?/u,
 	);
 	assert.match(
 		INDEX_SOURCE,
@@ -785,7 +796,7 @@ test("the collapsed rail keeps a focus-ring gutter on its scrollport", () => {
 	// vertical padding preserves the ring at the capped scroll boundary.
 	assert.match(
 		RAIL_COLUMN_SOURCE,
-		/overflow-y-auto overscroll-contain px-1 py-1/u,
+		/overflow-y-auto overscroll-contain px-1 py-0\.5/u,
 	);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /-mx-1/u);
 });
@@ -802,7 +813,7 @@ test("the collapsed rail fades notches with ScrollMask viewport mask-image", () 
 	);
 	assert.match(
 		RAIL_COLUMN_SOURCE,
-		/style=\{railViewportMaxHeight === undefined\s*\? scrollMaskStyle\s*: \{ \.\.\.scrollMaskStyle, maxHeight: railViewportMaxHeight \}\}/u,
+		/style=\{\{\s*\.\.\.scrollMaskStyle,[\s\S]{0,150}?maxHeight: railViewportMaxHeight/u,
 	);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /<motion\.ul/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /ScrollMaskEdgeOverlay/u);
@@ -813,7 +824,7 @@ test("the gutter-collapsed rail shows at most ten dots before it scrolls under t
 	assert.match(RAIL_COLUMN_SOURCE, /AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS/u);
 	assert.match(
 		INDEX_SOURCE,
-		/maxVisibleItems=\{collapsedPresentation === "gutter"\s*\? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS\s*: undefined\}/u,
+		/maxVisibleItems=\{isGutterCollapsed && collapsedRailHitSlopPx === 0\s*\? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS\s*: undefined\}/u,
 	);
 	assert.match(RAIL_COLUMN_SOURCE, /toAgentSessionRailViewportMaxHeight\(/u);
 	assert.match(RAIL_COLUMN_SOURCE, /maxHeight: railViewportMaxHeight/u);
@@ -825,11 +836,11 @@ test("the gutter-collapsed rail shows at most ten dots before it scrolls under t
 test("the embedded column rail does not cap the viewport to ten notches", () => {
 	assert.match(
 		INDEX_SOURCE,
-		/maxVisibleItems=\{collapsedPresentation === "gutter"\s*\? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS\s*: undefined\}/u,
+		/maxVisibleItems=\{isGutterCollapsed && collapsedRailHitSlopPx === 0\s*\? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS\s*: undefined\}/u,
 	);
 	assert.match(
 		RAIL_COLUMN_SOURCE,
-		/style=\{railViewportMaxHeight === undefined\s*\? scrollMaskStyle\s*: \{ \.\.\.scrollMaskStyle, maxHeight: railViewportMaxHeight \}\}/u,
+		/style=\{\{\s*\.\.\.scrollMaskStyle,[\s\S]{0,150}?maxHeight: railViewportMaxHeight/u,
 	);
 	assert.doesNotMatch(
 		RAIL_COLUMN_SOURCE,
@@ -869,6 +880,7 @@ test("the expanded header sizes its overflow trigger for the host surface", () =
 	);
 	assert.doesNotMatch(HEADER_SOURCE, /group-hover\/session-column:block/u);
 	assert.match(HEADER_SOURCE, /has-\[\[data-popup-open\]\]:opacity-100/u);
+	assert.match(HEADER_SOURCE, /group-has-\[\[data-popup-open\]\]\/header-actions:opacity-100/u);
 	assert.match(INDEX_SOURCE, /items=\{filteredViewItems\}/u);
 	assert.match(INDEX_SOURCE, /onLinkWorkItem=\{sessionProps\.onLinkWorkItem\}/u);
 });
@@ -938,6 +950,10 @@ test("the expanded header filter popover covers owner, agent, date, artifacts, a
 	assert.match(FILTER_MENU_SOURCE, /title="Session owner"/u);
 	assert.match(FILTER_MENU_SOURCE, /title="Agents"/u);
 	assert.match(FILTER_SECTIONS_SOURCE, /title="Date\/time range"/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /"last-7-days": "Last 7d"/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /"last-30-days": "Last 30d"/u);
+	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /Last 7 days/u);
+	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /Last 30 days/u);
 	assert.match(FILTER_MENU_SOURCE, /label="Contains artifacts"/u);
 	assert.match(FILTER_MENU_SOURCE, /label="Link suggestions"/u);
 	assert.match(FILTER_SOURCE, /name: "Claude"/u);
@@ -949,7 +965,7 @@ test("the expanded header filter popover covers owner, agent, date, artifacts, a
 	assert.match(FILTER_SECTIONS_SOURCE, /className="rich-text-command-menu-heading"/u);
 	assert.match(FILTER_SECTIONS_SOURCE, /role="presentation"/u);
 	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /uppercase leading-4/u);
-	assert.match(FILTER_MENU_SOURCE, /gap-0 rounded-xl p-1/u);
+	assert.match(FILTER_MENU_SOURCE, /w-max min-w-\[min\(20rem,calc\(100vw-32px\)\)\] max-w-\[calc\(100vw-32px\)\] gap-0 rounded-xl p-1/u);
 	assert.doesNotMatch(FILTER_MENU_SOURCE, /className="w-80 max-w-\[calc\(100vw-32px\)\] p-3"/u);
 	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /label="Yes"/u);
 	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /label="No"/u);
@@ -973,6 +989,10 @@ test("the expanded header filter popover covers owner, agent, date, artifacts, a
 	assert.match(FILTER_SECTIONS_SOURCE, /mode="range"/u);
 	assert.match(FILTER_SECTIONS_SOURCE, /<PopoverTitle className="sr-only">Custom date range/u);
 	assert.match(FILTER_MENU_SOURCE, /customCalendarOpen/u);
+	assert.match(FILTER_MENU_SOURCE, /shouldKeepAgentSessionFilterMenuOpen/u);
+	assert.match(FILTER_MENU_SOURCE, /focusOutStayedInside: didFilterFocusOutStayInside\(eventDetails\.event\)/u);
+	assert.match(FILTER_MENU_SOURCE, /eventDetails\.cancel\(\)/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /flex flex-wrap gap-1\.5 pb-2 min-\[22rem\]:flex-nowrap/u);
 	assert.match(FILTER_SECTIONS_SOURCE, /onCalendarOpenChange/u);
 	assert.doesNotMatch(FILTER_MENU_SOURCE, /overflow-y-auto/u);
 	assert.doesNotMatch(FILTER_MENU_SOURCE, /max-h-\[min\(36rem/u);

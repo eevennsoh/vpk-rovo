@@ -10,7 +10,7 @@ export const AGENT_SESSION_ARRIVAL_OFFSET_PX = -8;
 /**
  * Circle-rail arrival: the face pops in on the avatar recipe, holds, then
  * morphs — one disc shrinking 12→4 — before the photo is dropped and the
- * unread rest takes `color.icon`. Enter matches the hover CSS
+ * unread rest takes `color.icon.subtle`. Enter matches the hover CSS
  * (`duration-normal` + `ease-out-practical`). The shrink is an in-place
  * scale (`duration-normal` + `ease-in-out`), not a fade over a rest disc
  * that was already sitting underneath. The hold is `2 × duration-slower`

@@ -916,3 +916,27 @@ html[data-embedded] [data-shell-chrome] {
 ::view-transition-new(persistent-sidebar) {
 	animation: none;
 }
+
+/* Text Continuity caret: a hard on/off blink for the scripted number-field
+   example, which draws its own caret because the value is a morph, not an
+   input. `step-start` rather than a fade — a caret that eases reads as a glow. */
+@keyframes text-continuity-caret-blink {
+	0%,
+	100% {
+		opacity: 0;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+@utility text-continuity-caret {
+	animation: text-continuity-caret-blink 1s step-start infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.text-continuity-caret {
+		animation: none;
+		opacity: 1;
+	}
+}

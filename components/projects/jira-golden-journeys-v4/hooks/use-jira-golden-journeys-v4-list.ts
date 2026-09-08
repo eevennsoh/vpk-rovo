@@ -51,6 +51,8 @@ export interface CreateFromAgentSessionInput {
 export interface CreateBoardFromAgentSessionInput {
 	activity: JiraIssueAgentActivity;
 	columnTitle: string;
+	/** Slot within the column. Omitted by the create well, which appends. */
+	insertAtIndex?: number;
 	session: Readonly<Pick<AgentSessionItem, "id" | "invokedBy" | "title">>;
 }
 
@@ -245,6 +247,7 @@ export function useJiraGoldenJourneysV4List({
 			activity: input.activity,
 			columns: columnsBeforeCreate,
 			columnTitle: input.columnTitle,
+			insertAtIndex: input.insertAtIndex,
 			linkSession: linkJiraKanbanAgentSession,
 			session: input.session,
 		});

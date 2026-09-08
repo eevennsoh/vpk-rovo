@@ -35,6 +35,7 @@ import {
 	HoverCardTrigger,
 	HoverCardViewport,
 	type HoverCardHandle,
+	type HoverCardProps,
 	type HoverCardTriggerProps,
 } from "@/components/ui/hover-card";
 import { GithubLogo } from "@/components/ui/logo-third-party";
@@ -76,17 +77,22 @@ export type JiraSessionFlyoutContent = "details" | "composer" | "untracked-work"
 
 export interface JiraSessionFlyoutSurfaceProps {
 	handle: JiraSessionFlyoutHandle;
-	/** Moves directly between detached triggers instead of easing through stale positions. */
+	/** Lets dense trigger groups defer a switch while the pointer travels into the popup. */
+	onOpenChange?: HoverCardProps<JiraSidebarSessionItem>["onOpenChange"];
+	popupRef?: ComponentProps<typeof HoverCardContent>["ref"];
+	/** Snaps between detached triggers: no position, enter/exit, or content-switch motion. */
 	instantPosition?: boolean;
 	/**
 	 * Flyout body. `details` (default) is the compact session hover card, `composer`
 	 * is the Agent States card, and `untracked-work` suggests a related Jira item.
 	 */
 	content?: JiraSessionFlyoutContent;
-	/** Captured sessions hide Link / Create / subtask so capture cannot run twice. */
+	/** Captured sessions hide Link / Create / subtask so capture cannot run twice. Archive stays available. */
 	capturedSessionIds?: ReadonlySet<string>;
 	/** Archives the session from the untracked-work flyout. Omit to expose the action as unavailable. */
 	onArchiveSession?: (session: JiraSidebarSessionItem) => void;
+	/** Flyout Archive control copy. Defaults to Archive; pass Unarchive in the archived view. */
+	archiveActionLabel?: string;
 	/** Adds the session below the suggested work item. Omit to expose the menu option as unavailable. */
 	onAddAsSubtask?: (session: JiraSidebarSessionItem, workItemKey: string) => void;
 	/** Creates a work item from the session. Omit to expose the action as unavailable. */
@@ -567,6 +573,7 @@ export function JiraSessionFlyoutBody({
 type JiraSessionFlyoutPayloadProps = Readonly<
 	Pick<
 		JiraSessionFlyoutSurfaceProps,
+		| "archiveActionLabel"
 		| "capturedSessionIds"
 		| "onArchiveSession"
 		| "onAddAsSubtask"
@@ -580,6 +587,7 @@ type JiraSessionFlyoutPayloadProps = Readonly<
 >;
 
 type JiraSessionUntrackedWorkActions = Readonly<{
+	archiveActionLabel: string;
 	onArchiveSession?: () => void;
 	onAddAsSubtask?: (workItemKey: string) => void;
 	onCreateWorkItem?: () => void;
@@ -587,6 +595,7 @@ type JiraSessionUntrackedWorkActions = Readonly<{
 }>;
 
 function resolveJiraSessionUntrackedWorkActions({
+	archiveActionLabel = "Archive",
 	capturedSessionIds,
 	onArchiveSession,
 	onAddAsSubtask,
@@ -597,7 +606,8 @@ function resolveJiraSessionUntrackedWorkActions({
 	const captureLocked = capturedSessionIds?.has(session.id) ?? false;
 
 	return {
-		onArchiveSession: captureLocked || onArchiveSession === undefined
+		archiveActionLabel,
+		onArchiveSession: onArchiveSession === undefined
 			? undefined
 			: () => onArchiveSession(session),
 		onAddAsSubtask: captureLocked || onAddAsSubtask === undefined
@@ -660,16 +670,19 @@ function JiraSessionFlyoutPayload({ content, ...props }: JiraSessionFlyoutPayloa
  * the compact session hover card; pass `content="composer"` for the Agent States
  * prompt composer or `content="untracked-work"` for a Jira-link suggestion.
  * Base UI's viewport keeps the popup mounted while the anchor
- * changes. The shell follows the new row, immediately adopts its measured size,
- * and crossfades the old and new content without letting rapid hovers restart a
- * stale size transition. High-frequency pointer surfaces can opt out of the
- * position transition so the shell never eases through stale triggers.
+ * changes. The shell follows the new row and immediately adopts its measured
+ * size without letting rapid hovers restart a stale size transition. List
+ * surfaces crossfade payload; high-frequency rails pass `instantPosition` so
+ * the shell snaps with no enter, exit, position, or content-switch motion.
  */
 export function JiraSessionFlyoutSurface({
+	archiveActionLabel,
 	capturedSessionIds,
 	content = "details",
 	handle,
 	instantPosition = false,
+	onOpenChange,
+	popupRef,
 	onArchiveSession,
 	onAddAsSubtask,
 	onCreateWorkItem,
@@ -686,12 +699,18 @@ export function JiraSessionFlyoutSurface({
 	}, [handle, suspended]);
 
 	return (
-		<HoverCard<JiraSidebarSessionItem> handle={handle}>
+		<HoverCard<JiraSidebarSessionItem> handle={handle} onOpenChange={onOpenChange}>
 			{({ payload }) => (
 				<HoverCardContent
+					ref={popupRef}
 					align="start"
 					alignOffset={0}
-					className="h-(--popup-height) w-(--popup-width) border-0 bg-surface-overlay p-0 text-text shadow-overlay transition-[opacity,scale,translate] duration-medium ease-in-out motion-reduce:transition-none data-ending-style:duration-normal data-ending-style:ease-in data-[side=right]:data-starting-style:translate-x-0 data-[side=right]:data-ending-style:translate-x-0"
+					className={cn(
+						"h-(--popup-height) w-(--popup-width) border-0 bg-surface-overlay p-0 text-text shadow-overlay data-[side=right]:data-starting-style:translate-x-0 data-[side=right]:data-ending-style:translate-x-0",
+						instantPosition
+							? "transition-none data-starting-style:opacity-100 data-starting-style:scale-100 data-ending-style:opacity-100 data-ending-style:scale-100"
+							: "transition-[opacity,scale,translate] duration-medium ease-in-out motion-reduce:transition-none data-ending-style:duration-normal data-ending-style:ease-in",
+					)}
 					positionerClassName={cn(
 						"h-(--positioner-height) w-(--positioner-width) max-w-(--available-width)",
 						instantPosition
@@ -701,9 +720,17 @@ export function JiraSessionFlyoutSurface({
 					side="right"
 					sideOffset={8}
 				>
-					<HoverCardViewport className="relative size-full overflow-clip rounded-[inherit] [&_[data-current]]:w-(--popup-width) [&_[data-current]]:opacity-100 [&_[data-current]]:transition-opacity [&_[data-current]]:duration-medium [&_[data-current]]:ease-in-out [&_[data-current]]:[will-change:opacity] [&_[data-current][data-starting-style]]:opacity-0 [&_[data-previous]]:w-(--popup-width) [&_[data-previous]]:opacity-100 [&_[data-previous]]:transition-opacity [&_[data-previous]]:duration-medium [&_[data-previous]]:ease-in-out [&_[data-previous]]:[will-change:opacity] [&_[data-previous][data-ending-style]]:opacity-0 motion-reduce:[&_[data-current]]:transition-none motion-reduce:[&_[data-current]]:[will-change:auto] motion-reduce:[&_[data-previous]]:transition-none motion-reduce:[&_[data-previous]]:[will-change:auto] data-instant:[&_[data-current]]:transition-none data-instant:[&_[data-previous]]:transition-none">
+					<HoverCardViewport
+						className={cn(
+							"relative size-full overflow-clip rounded-[inherit] [&_[data-current]]:w-(--popup-width) [&_[data-current]]:opacity-100 [&_[data-previous]]:w-(--popup-width) [&_[data-previous]]:opacity-100",
+							instantPosition
+								? "[&_[data-current]]:transition-none [&_[data-previous]]:transition-none [&_[data-previous][data-ending-style]]:opacity-0"
+								: "[&_[data-current]]:transition-opacity [&_[data-current]]:duration-medium [&_[data-current]]:ease-in-out [&_[data-current]]:[will-change:opacity] [&_[data-current][data-starting-style]]:opacity-0 [&_[data-previous]]:transition-opacity [&_[data-previous]]:duration-medium [&_[data-previous]]:ease-in-out [&_[data-previous]]:[will-change:opacity] [&_[data-previous][data-ending-style]]:opacity-0 motion-reduce:[&_[data-current]]:transition-none motion-reduce:[&_[data-current]]:[will-change:auto] motion-reduce:[&_[data-previous]]:transition-none motion-reduce:[&_[data-previous]]:[will-change:auto] data-instant:[&_[data-current]]:transition-none data-instant:[&_[data-previous]]:transition-none",
+						)}
+					>
 						{payload ? (
 							<JiraSessionFlyoutPayload
+								archiveActionLabel={archiveActionLabel}
 								capturedSessionIds={capturedSessionIds}
 								content={content}
 								onArchiveSession={onArchiveSession}

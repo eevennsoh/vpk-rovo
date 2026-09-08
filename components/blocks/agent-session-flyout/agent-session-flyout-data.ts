@@ -36,6 +36,9 @@ const CODING_LIFECYCLE_SHARED = {
 	},
 	repository: "acme-corp/rfp-response-platform",
 	branch: "rovo/rfp-102-evidence-sync",
+	targetBranch: "main",
+	pullRequestDescription:
+		"## Summary - Automate Northstar security evidence collection with owner resolution and proof-link validation.",
 	messages: [],
 } as const satisfies Partial<AsxQueueSession>;
 
