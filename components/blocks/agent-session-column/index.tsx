@@ -298,7 +298,7 @@ export function AgentSessionColumn({
 	collapsedRailHitSlopPx = 0,
 	count,
 	defaultCollapsed = false,
-	emptyLabel = "No untracked sessions",
+	emptyLabel = "No unattached sessions",
 	expandedWidthPx = AGENT_SESSION_COLUMN_WIDTH_PX,
 	hasScrollingEffect = false,
 	widthTransitionDisabled = false,
@@ -313,7 +313,7 @@ export function AgentSessionColumn({
 	onToggleVisibility,
 	playGutterIntro = false,
 	selectedItemId: selectedItemIdProp,
-	title = "Untracked work",
+	title = "Unattached sessions",
 	triage,
 	...sessionProps
 }: Readonly<AgentSessionColumnProps>) {

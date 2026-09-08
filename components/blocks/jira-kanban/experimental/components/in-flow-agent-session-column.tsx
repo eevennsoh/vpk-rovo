@@ -27,7 +27,7 @@ import { ExpandMoreHorizontalIcon } from "./expand-more-horizontal-icon";
 // Extend the preview's 24px session targets to 56px, within the empty gutter.
 // The 32px column footprint and marker axis stay fixed; To do remains clickable.
 const IN_FLOW_AGENT_SESSION_COLUMN_RAIL_HIT_SLOP_PX = 16;
-const IN_FLOW_AGENT_SESSION_COLUMN_TITLE = "Untracked work";
+const IN_FLOW_AGENT_SESSION_COLUMN_TITLE = "Unattached sessions";
 // Centers the rail's 16px dot axis in the 26px visible gutter (24px inset + border).
 const IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX = -5;
 const IN_FLOW_AGENT_SESSION_COLUMN_MAX_WIDTH_PX = 560;
