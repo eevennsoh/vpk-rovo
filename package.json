@@ -211,7 +211,7 @@
 		"use-stick-to-bottom": "^1.1.6",
 		"vaul": "^1.1.2",
 		"ws": "^8.21.3",
-		"zod": "^4.5.1"
+		"zod": "^4.5.4"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.62.1",
