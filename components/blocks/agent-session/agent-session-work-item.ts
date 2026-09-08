@@ -73,13 +73,14 @@ export function bindAgentSessionFlyoutActions(
 	items: readonly AgentSessionItem[],
 	actions: Readonly<{
 		capturedItemIds?: ReadonlySet<string>;
+		onArchiveSession?: (item: AgentSessionItem) => void;
 		onCreateWorkItem?: (item: AgentSessionItem) => void;
 		onLinkWorkItem?: (item: AgentSessionItem, workItemKey?: string) => void;
 		onSubtasks?: (item: AgentSessionItem) => void;
 	}>,
 ): Pick<
 	JiraSessionFlyoutSurfaceProps,
-	"onAddAsSubtask" | "onCreateWorkItem" | "onLinkWorkItem"
+	"onAddAsSubtask" | "onArchiveSession" | "onCreateWorkItem" | "onLinkWorkItem"
 > {
 	const byId = new Map(items.map((item: AgentSessionItem) => [item.id, item] as const));
 	const resolve = (session: JiraSidebarSessionItem) => byId.get(session.id);
@@ -96,6 +97,14 @@ export function bindAgentSessionFlyoutActions(
 				const item = resolve(session);
 				if (item !== undefined) {
 					actions.onSubtasks?.(item);
+				}
+			},
+		onArchiveSession: actions.onArchiveSession === undefined
+			? undefined
+			: (session: JiraSidebarSessionItem) => {
+				const item = resolve(session);
+				if (item !== undefined) {
+					actions.onArchiveSession?.(item);
 				}
 			},
 		onCreateWorkItem: actions.onCreateWorkItem === undefined

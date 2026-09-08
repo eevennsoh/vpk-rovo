@@ -4,6 +4,23 @@ const AGENT_LOADING_URL = `${
 	process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000"
 }/components/ui-custom/agent-loading`;
 
+test("the live demo can cycle two, three, and four agents", async ({ page }) => {
+	await page.goto(AGENT_LOADING_URL, { waitUntil: "domcontentloaded" });
+
+	const demo = page.getByRole("status").filter({ hasText: "Needs input" }).first();
+	await expect(demo).toContainText("3 agents working");
+
+	await page.getByRole("button", { name: "2 agents" }).click();
+	await expect(page.getByRole("status").filter({ hasText: "Needs input" }).first()).toContainText(
+		"2 agents working",
+	);
+
+	await page.getByRole("button", { name: "4 agents" }).click();
+	await expect(page.getByRole("status").filter({ hasText: "Needs input" }).first()).toContainText(
+		"4 agents working",
+	);
+});
+
 test("a live reduced-motion preference stops Agent Loading before it resumes", async ({ page }) => {
 	await page.goto(AGENT_LOADING_URL, { waitUntil: "domcontentloaded" });
 
@@ -22,12 +39,14 @@ test("a live reduced-motion preference stops Agent Loading before it resumes", a
 	await page.getByRole("button", { name: "Resume agents" }).press("Enter");
 
 	const resumedStatus = page.getByRole("status").filter({ hasText: "Needs input" }).first();
+	const loading = resumedStatus.locator(".agent-loading");
+	await expect(loading).toHaveAttribute("data-reduced-motion", "true");
 	const frontAvatar = resumedStatus.locator('[data-agent-loading-slot="front"]');
-	const initialFrontFingerprint = await frontAvatar.innerHTML();
+	const initialFrontAgentId = await frontAvatar.getAttribute("data-agent-id");
 	await page.waitForTimeout(2_300);
 
-	expect((await frontAvatar.innerHTML()) === initialFrontFingerprint).toBe(true);
-	expect(await resumedStatus.locator(".agent-loading").getAttribute("data-swapping")).not.toBe("true");
+	expect(await frontAvatar.getAttribute("data-agent-id")).toBe(initialFrontAgentId);
+	expect(await loading.getAttribute("data-swapping")).not.toBe("true");
 });
 
 test("re-enabling motion after an interrupted swap does not resurface a mid-flight layout", async ({ page }) => {

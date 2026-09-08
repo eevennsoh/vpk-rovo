@@ -4,14 +4,12 @@
 
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import PageIcon from "@atlaskit/icon/core/page";
-import type { ReactNode } from "react";
 
-import { DEFAULT_SKILLS, getSkillCollectionId, getSkillIcon, slugifySkillName } from "@/app/data/directory/skills";
-import { getCreatedSkills } from "@/app/data/directory/created-skills-store";
 import { getDirectoryMentionItemOrFallback } from "@/components/blocks/editor-palette/data/mention-sources";
 import { HoverCard, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Tag } from "@/components/ui/tag";
-import { SkillTag, type SkillTagColor } from "@/components/ui-custom/skill-tag";
+import { SkillTag } from "@/components/ui-custom/skill-tag";
+import { getSkillTagCatalogProps } from "@/components/ui-custom/skill-tag-catalog";
 import { getMentionCategory } from "./extensions";
 import {
 	RichTextMentionVisualMark,
@@ -62,27 +60,13 @@ function resolveMentionVisual(
 	return undefined;
 }
 
-function getSkillMentionTagProps(label: string): { color: SkillTagColor; icon: ReactNode } {
-	const normalized = slugifySkillName(label);
-	// Include runtime-created skills so a freshly generated skill's tag resolves
-	// its real collection color/icon (the registry is empty until the
-	// create-skill demo flow generates one, so static skills are unaffected).
-	const skill = [...DEFAULT_SKILLS, ...getCreatedSkills()].find(
-		(entry) => entry.id === normalized || slugifySkillName(entry.name) === normalized,
-	);
-	return {
-		color: skill ? getSkillCollectionId(skill) : "default",
-		icon: getSkillIcon(skill?.icon ?? "page"),
-	};
-}
-
 export function RichTextMentionNodeView({ node, selected }: Readonly<ReactNodeViewProps>) {
 	const attrs = node.attrs;
 	const category = getMentionCategory(attrs.id, attrs.category);
 	const label = String(attrs.label ?? attrs.id ?? "");
 	const visual = resolveMentionVisual(category, label, attrs);
 	const preview = isReferenceCategory(category) ? getRichTextReferencePreview(category, label) : undefined;
-	const skillTagProps = category === "skill" ? getSkillMentionTagProps(label) : undefined;
+	const skillTagProps = category === "skill" ? getSkillTagCatalogProps(label) : undefined;
 	const tag = skillTagProps ? (
 		<SkillTag
 			className="rich-text-mention-chip mx-0.5"

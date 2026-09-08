@@ -336,6 +336,12 @@ export interface RovoMessageMetadata {
 	planApprovalPlanKey?: string;
 	/** Short label shown in the user bubble instead of the full prompt text */
 	displayLabel?: string;
+	/** Structured skill invocation rendered as an on-colored tag plus instruction. */
+	skillInvocation?: {
+		id: string;
+		label: string;
+		instruction: string;
+	};
 	/** Structured clarification rows shown in the specialized user summary bubble */
 	clarificationSummary?: Array<{
 		question: string;

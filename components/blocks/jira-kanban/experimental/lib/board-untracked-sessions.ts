@@ -184,6 +184,27 @@ export function resolveVisibleFocusedIssueKey(
 	return isOnBoard ? focusedIssueKey : null;
 }
 
+/** Jira issue previewed by a hover originating in the Agent Session column. */
+export function resolveHoveredBoardIssueKey(
+	hoveredSessionId: string | null,
+	sessions: readonly AgentSessionItem[] | undefined,
+	boardColumns: readonly { cards: readonly { code: string }[] }[],
+	resolveWorkItemKey?: (item: AgentSessionItem) => string | null | undefined,
+): string | null {
+	if (hoveredSessionId === null || sessions === undefined) {
+		return null;
+	}
+
+	const hoveredSession = sessions.find((session) => session.id === hoveredSessionId);
+	const issueKey = hoveredSession === undefined
+		? null
+		: resolveWorkItemKey?.(hoveredSession) ?? resolveBoardUntrackedIssueKey(hoveredSession);
+	return resolveVisibleFocusedIssueKey(
+		issueKey,
+		boardColumns,
+	);
+}
+
 interface ScrollBounds {
 	containerEnd: number;
 	containerStart: number;

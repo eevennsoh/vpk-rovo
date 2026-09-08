@@ -2,13 +2,19 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const AGENT_SESSION_FLYOUT_DETAIL: ComponentDetail = {
 	description:
-		"The `/jira-golden-journeys-v0` queue session flyout, presented as one compact chat-history list. Every row feeds one shared, anchored flyout viewport, so hovering vertically between sessions moves and resizes the popup while its content crossfades. The default flyout is the session-details card (agent, work item, and development properties). Pass `content=\"composer\"` for the Agent States card or `content=\"untracked-work\"` for a suggested Jira relationship with confidence and rationale. By default the block renders the four `/jira-golden-journeys-v0` sessions — awaiting user response, in progress, PR open, and PR merged.",
+		"The `/jira-golden-journeys-v0` queue session flyout, presented as one compact chat-history list. Every row feeds one shared, anchored flyout viewport, so hovering vertically between sessions moves and resizes the popup while its content crossfades. The default demo is the session-details hover card. Separate catalog examples cover the Agent States composer, an untracked-work suggestion, and a coding-lifecycle walkthrough. By default the block renders the four `/jira-golden-journeys-v0` sessions — awaiting user response, in progress, PR open, and PR merged.",
 	demoLayout: { previewHeight: "fit" },
 	importStatement: `import { AgentSessionFlyout } from "@/components/blocks/agent-session-flyout";`,
 	usage: `import { AgentSessionFlyout } from "@/components/blocks/agent-session-flyout";
 
 <AgentSessionFlyout />`,
 	examples: [
+		{
+			title: "Details",
+			description:
+				"The default compact session hover card: host, agent Tag, PR icon and title, and checks when present.",
+			demoSlug: "agent-session-flyout-demo-details",
+		},
 		{
 			title: "Composer flyout",
 			description:
@@ -18,8 +24,14 @@ export const AGENT_SESSION_FLYOUT_DETAIL: ComponentDetail = {
 		{
 			title: "Untracked work",
 			description:
-				'The `content="untracked-work"` variant keeps the session and SmartLink metadata together, then suggests linking the session to the Jira work item with confidence and rationale.',
+				"AgentSession uncaptured-work cards. Hovering a card opens the untracked-work flyout so the viewer can link, create, or add as a subtask.",
 			demoSlug: "agent-session-flyout-demo-untracked-work",
+		},
+		{
+			title: "Coding lifecycle",
+			description:
+				"Local coding sessions sharing one details flyout: branch only, PR open with CI, CI failed, PR merged, and PR failed. Hovering between rows moves and crossfades the card as the PR icon and checks change.",
+			demoSlug: "agent-session-flyout-demo-coding-lifecycle",
 		},
 	],
 	props: [

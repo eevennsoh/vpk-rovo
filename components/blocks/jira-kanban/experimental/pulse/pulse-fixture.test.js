@@ -380,7 +380,7 @@ test("Pulse work-item assignees resolve to a roster member and keep agent hex ar
 	assert.ok(agentAssignees > 0, "the fixture has no agent-assigned work items");
 });
 
-test("Pulse uncaptured work is only GitHub PRs, branches, commits, or local Claude sessions", async () => {
+test("Pulse uncaptured work is only GitHub PRs, branches, commits, or local coding-agent sessions", async () => {
 	const { PULSE_TIMELINE, PULSE_SPACE_REPOSITORY, pulseLooseWorkCanCreateWorkItem, pulseLooseWorkHostLabel, pulseLooseWorkSource } = await loadTimelineHarness();
 	const kinds = new Set(["pull-request", "branch", "commit", "agent-session"]);
 	const byId = new Map(PULSE_TIMELINE.looseWork.map((item) => [item.id, item]));
@@ -426,7 +426,7 @@ test("Pulse uncaptured work is only GitHub PRs, branches, commits, or local Clau
 	const sessionMachines = new Set(sessions.map((item) => item.machineName));
 	const sessionAgents = new Set(sessions.map((item) => item.agentId));
 	const calendarStamp = /Aug|Mon |Tue |Wed |Thu |Fri /u;
-	const relativeStamp = /^(Just now|\d+ mins? ago|\d+ hrs? ago|Yesterday|\d+ days? ago|Last week)$/u;
+	const relativeStamp = /^(Just now|\d+m ago|\d+hr ago|Yesterday|\d+d ago|Last week)$/u;
 	for (const item of sessions) {
 		assert.doesNotMatch(item.timeLabel, calendarStamp, `${item.id} must not use a calendar stamp`);
 		assert.match(item.timeLabel, relativeStamp, `${item.id} timeLabel "${item.timeLabel}" is not relative`);
@@ -440,7 +440,7 @@ test("Pulse uncaptured work is only GitHub PRs, branches, commits, or local Clau
 		sessions.filter((item) => item.machineName === "Venn’s MacBook").length < sessions.length / 2,
 		"do not stamp every row as Venn’s MacBook",
 	);
-	for (const agentId of ["claude", "codex", "cursor", "rovo"]) {
+	for (const agentId of ["claude", "codex", "copilot", "cursor"]) {
 		assert.ok(sessionAgents.has(agentId), `sessions are missing ${agentId}`);
 	}
 
@@ -509,4 +509,3 @@ test("Pulse fixture credits a few humans and agents per outcome, not the whole r
 		);
 	}
 });
-

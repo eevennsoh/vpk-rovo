@@ -222,6 +222,7 @@ export function BrandLogoMark({
 		: transparent
 			? undefined
 			: getThirdPartyLogoIconFromSrc(src ?? "");
+	const packageGlyphContrastClassName = name === "github" ? "dark:[&_svg]:invert" : undefined;
 	if (ThirdPartyIcon) {
 		if (frame === "chip") {
 			// A 3P mark reads as a bare inline glyph filling the 16px chip box — no
@@ -236,6 +237,7 @@ export function BrandLogoMark({
 					className={cn(
 						"inline-flex size-4 shrink-0 items-center justify-center align-middle",
 						"[&>span]:bg-transparent! [&>span]:border-0!",
+						packageGlyphContrastClassName,
 						className,
 					)}
 				>

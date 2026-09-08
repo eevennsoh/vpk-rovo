@@ -10,16 +10,16 @@ const FOOTER_SOURCE = readFileSync(
 	"utf8",
 );
 const RAIL_COLUMN_SOURCE = readFileSync(join(__dirname, "agent-session-column-rail.tsx"), "utf8");
+const RAIL_VIEWPORT_SOURCE = readFileSync(
+	join(__dirname, "agent-session-column-rail-viewport.ts"),
+	"utf8",
+);
 const NOTCH_MARK_SOURCE = readFileSync(
 	join(__dirname, "../agent-session/agent-session-notch.tsx"),
 	"utf8",
 );
 const NOTCH_MAGNIFY_SOURCE = readFileSync(
 	join(__dirname, "../agent-session/agent-session-notch-magnify.ts"),
-	"utf8",
-);
-const ARRIVAL_MOTION_SOURCE = readFileSync(
-	join(__dirname, "../agent-session/agent-session-arrival-motion.ts"),
 	"utf8",
 );
 const TYPES_SOURCE = readFileSync(join(__dirname, "agent-session-column-types.ts"), "utf8");
@@ -39,6 +39,19 @@ const OVERFLOW_MENU_SOURCE = readFileSync(
 	join(__dirname, "agent-session-column-overflow-menu.tsx"),
 	"utf8",
 );
+const FILTER_MENU_SOURCE = readFileSync(
+	join(__dirname, "agent-session-column-filter-menu.tsx"),
+	"utf8",
+);
+const FILTER_SECTIONS_SOURCE = readFileSync(
+	join(__dirname, "agent-session-column-filter-sections.tsx"),
+	"utf8",
+);
+const FILTER_SOURCE = readFileSync(
+	join(__dirname, "agent-session-column-filter.ts"),
+	"utf8",
+);
+const TIME_PICKER_SOURCE = readFileSync(join(__dirname, "../../ui/time-picker.tsx"), "utf8");
 const OVERFLOW_SOURCE = readFileSync(join(__dirname, "agent-session-column-overflow.ts"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
 const PANEL_DEMO_SOURCE = readFileSync(
@@ -57,12 +70,12 @@ const SESSION_TYPES_SOURCE = readFileSync(
 	join(__dirname, "../agent-session/agent-session-types.ts"),
 	"utf8",
 );
-const BOARD_SOURCE = readFileSync(
-	join(__dirname, "../jira-kanban/experimental-v2/experimental-v2-jira-kanban.tsx"),
-	"utf8",
-);
 const BOARD_PAGE_SOURCE = readFileSync(
 	join(__dirname, "../jira-kanban/experimental-v2/page.tsx"),
+	"utf8",
+);
+const IN_FLOW_COLUMN_SOURCE = readFileSync(
+	join(__dirname, "../jira-kanban/experimental/components/in-flow-agent-session-column.tsx"),
 	"utf8",
 );
 const RAIL_SOURCE = readFileSync(
@@ -170,7 +183,9 @@ test("card rendering is delegated to the Agent Session block, never re-implement
 
 test("the header count defaults to the visible sessions and can be overridden", () => {
 	assert.match(INDEX_SOURCE, /untrackedCount = count \?\? visibleItems\.length/u);
-	assert.match(INDEX_SOURCE, /sessionCount = view === "hidden" \? hiddenItems\.length : untrackedCount/u);
+	assert.match(INDEX_SOURCE, /hasActiveFilters/u);
+	assert.match(INDEX_SOURCE, /filteredViewItems\.length/u);
+	assert.match(INDEX_SOURCE, /view === "hidden" \? hiddenItems\.length : untrackedCount/u);
 	assert.match(TYPES_SOURCE, /count\?: number;/u);
 });
 
@@ -202,22 +217,13 @@ test("edge fades sit on the column plane so they span the full backdrop width", 
 });
 
 test("an empty column says so rather than rendering an empty list", () => {
-	assert.match(INDEX_SOURCE, /viewItems\.length === 0/u);
+	assert.match(INDEX_SOURCE, /filteredViewItems\.length === 0/u);
 	assert.match(INDEX_SOURCE, /emptyLabel = "No untracked sessions"/u);
-});
-
-test("the v2 board pins the column outside its horizontal scrollport", () => {
-	assert.match(BOARD_SOURCE, /agentSessionColumn\?: AgentSessionColumnProps;/u);
-	// Pinned, so it precedes the <section> scrollport rather than joining the
-	// boardColumns map inside it.
-	const columnIndex = BOARD_SOURCE.indexOf("<InFlowAgentSessionColumn");
-	const sectionIndex = BOARD_SOURCE.indexOf("<section");
-	assert.ok(columnIndex > 0, "expected the board to render the pinned column");
-	assert.ok(columnIndex < sectionIndex, "expected the pinned column before the scrollport");
-	// The pinned column supplies the board's left inset, so the scroll row drops
-	// to the inter-column gap and every column keeps one rhythm.
-	assert.match(BOARD_SOURCE, /agentSessionColumn \? "ps-2" : "ps-6"/u);
-	assert.match(BOARD_SOURCE, /columnFrame=\{chrome\.headerFrame\}/u);
+	assert.match(INDEX_SOURCE, /from "@\/components\/ui\/empty"/u);
+	assert.match(INDEX_SOURCE, /<Empty width="narrow">/u);
+	assert.match(INDEX_SOURCE, /<EmptyTitle headingSize="xsmall">No matching sessions<\/EmptyTitle>/u);
+	assert.match(INDEX_SOURCE, /<p className="text-xs text-text-subtlest">\{emptyLabel\}<\/p>/u);
+	assert.doesNotMatch(INDEX_SOURCE, /hasActiveFilters \? "No matching sessions" : emptyLabel/u);
 });
 
 test("the board column and the Insights rail share one loose-work adapter", () => {
@@ -316,8 +322,8 @@ test("the collapsed count lives in the header above the plane, not on the rail",
 		INDEX_SOURCE,
 		/layout === "enclosed" \? "border border-solid border-transparent" : null/u,
 	);
-	assert.match(INDEX_SOURCE, /relative flex h-6 w-full min-w-0 items-center justify-center/u);
-	assert.match(INDEX_SOURCE, /absolute inset-0 flex items-center justify-center text-xs/u);
+	assert.match(INDEX_SOURCE, /relative flex h-6 w-full min-w-0 items-center justify-center px-1/u);
+	assert.match(INDEX_SOURCE, /absolute inset-x-1 inset-y-0 flex items-center justify-center text-xs/u);
 	assert.match(INDEX_SOURCE, /HEADER_COUNT_AT_REST/u);
 	assert.match(INDEX_SOURCE, /HEADER_CONTROL_ON_REVEAL/u);
 	assert.doesNotMatch(INDEX_SOURCE, /className=\{cn\("absolute shrink-0", HEADER_CONTROL_ON_REVEAL\)\}/u);
@@ -360,6 +366,11 @@ test("column resize buttons swap icons without using selected button state", () 
 	assert.doesNotMatch(INDEX_SOURCE, /<TooltipContent>Expand column<\/TooltipContent>/u);
 	assert.doesNotMatch(INDEX_SOURCE, /\baria-(?:expanded|pressed)(?:\s|=)/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /\baria-(?:expanded|pressed)(?:\s|=)/u);
+	assert.match(INDEX_SOURCE, /peer\/expand-control opacity-0/u);
+	assert.match(INDEX_SOURCE, /hover:opacity-100 focus-visible:opacity-100/u);
+	assert.match(INDEX_SOURCE, /peer-hover\/expand-control:opacity-0/u);
+	assert.match(INDEX_SOURCE, /peer-focus-visible\/expand-control:opacity-0/u);
+	assert.doesNotMatch(INDEX_SOURCE, /group-hover\/session-column:opacity-100/u);
 });
 
 test("notch flyouts use a stable trigger host so the shared popup follows the rail", () => {
@@ -367,8 +378,9 @@ test("notch flyouts use a stable trigger host so the shared popup follows the ra
 	// `div` as the HoverCard trigger. Putting `layout` on the trigger remounts
 	// the host and opens a new flyout per notch.
 	assert.match(RAIL_COLUMN_SOURCE, /layout=\{shouldReduceMotion \? false : "position"\}/u);
-	assert.match(RAIL_COLUMN_SOURCE, /<JiraSessionFlyoutTrigger[\s\S]{0,200}?render=\{\s*<div className="w-full" \/>/u);
+	assert.match(RAIL_COLUMN_SOURCE, /<JiraSessionFlyoutTrigger[\s\S]{0,200}?render=\{\s*<div\s*className="mx-auto flex h-5 items-center/u);
 	assert.match(RAIL_COLUMN_SOURCE, /closeDelay=\{160\}/u);
+	assert.match(RAIL_COLUMN_SOURCE, /delay=\{0\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /content="untracked-work"/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /render=\{\s*<motion\.li/u);
 });
@@ -383,7 +395,7 @@ test("a notch is a drag handle, so a session leaves the collapsed rail too", () 
 		TYPES_SOURCE,
 		/extends Omit<\s*AgentSessionProps,\s*"arrivingItemIds" \| "className" \| "onArrivalComplete" \| "rowTriage"\s*>/u,
 	);
-	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,800}?sessionDrag=\{sessionProps\.sessionDrag\}/u);
+	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,1600}?sessionDrag=\{sessionProps\.sessionDrag\}/u);
 	assert.match(
 		RAIL_COLUMN_SOURCE,
 		/import \{ AgentSessionMediumDrag \} from "@\/components\/blocks\/agent-session\/agent-session-medium-drag";/u,
@@ -411,24 +423,26 @@ test("a notch is a drag handle, so a session leaves the collapsed rail too", () 
 test("each notch opens the shared session flyout rather than a forked preview", () => {
 	assert.match(
 		RAIL_COLUMN_SOURCE,
-		/import \{ AgentSessionNotchMark \} from "@\/components\/blocks\/agent-session\/agent-session-notch";/u,
+		/import Image from "next\/image";/u,
 	);
-	assert.match(RAIL_COLUMN_SOURCE, /<AgentSessionNotchMark/u);
+	assert.match(RAIL_COLUMN_SOURCE, /<AgentSessionUserNotch/u);
 	assert.match(
 		RAIL_COLUMN_SOURCE,
 		/from "@\/components\/blocks\/product-sidebar\/variants\/jira-session-flyout"/u,
 	);
 	assert.match(RAIL_COLUMN_SOURCE, /<JiraSessionFlyoutTrigger/u);
 	// One payload-aware surface for the whole rail, as Agent List does, so
-	// sliding down the notches crossfades instead of remounting a card each time.
+	// sliding down the notches retargets the shared popup instead of remounting.
 	assert.match(RAIL_COLUMN_SOURCE, /const \[flyoutHandle\] = useState\(createJiraSessionFlyoutHandle\);/u);
 	assert.equal(RAIL_COLUMN_SOURCE.match(/<JiraSessionFlyoutSurface\b/gu)?.length, 1);
 	assert.match(RAIL_COLUMN_SOURCE, /content="untracked-work"/u);
 	assert.match(RAIL_COLUMN_SOURCE, /<JiraSessionFlyoutSurface[\s\S]*handle=\{flyoutHandle\}/u);
+	assert.match(RAIL_COLUMN_SOURCE, /<JiraSessionFlyoutSurface[\s\S]*instantPosition/u);
 	assert.match(RAIL_COLUMN_SOURCE, /flyoutSession=\{toAgentSessionUntrackedWorkFlyoutItem\(/u);
 	assert.match(RAIL_COLUMN_SOURCE, /session=\{flyoutSession\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /closeDelay=\{160\}/u);
-	assert.match(RAIL_COLUMN_SOURCE, /render=\{\s*<div className="w-full" \/>/u);
+	assert.match(RAIL_COLUMN_SOURCE, /render=\{\s*<div\s*className="mx-auto flex h-5 items-center/u);
+	assert.match(RAIL_COLUMN_SOURCE, /delay=\{0\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /<motion\.li/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /createHoverCardHandle|<HoverCard\b/u);
 	assert.match(INDEX_SOURCE, /capturedItemIds=\{sessionProps\.capturedItemIds\}/u);
@@ -439,23 +453,24 @@ test("a notch is reachable and legible without a pointer", () => {
 	// Keyboard focus opens the flyout through the trigger's focus-visible path,
 	// so the notch has to be a real focusable control with a ring and a name.
 	assert.match(RAIL_COLUMN_SOURCE, /<button/u);
-	assert.match(RAIL_COLUMN_SOURCE, /focus-visible:ring-2/u);
+	assert.match(RAIL_COLUMN_SOURCE, /has-\[:focus-visible\]:ring-2/u);
 	assert.match(RAIL_COLUMN_SOURCE, /\$\{item\.title\} — \$\{NOTCH_STATE_LABEL\[item\.state\]\}/u);
 	// Colour alone never carries the state.
 	assert.match(RAIL_COLUMN_SOURCE, /const NOTCH_STATE_LABEL: Record<AgentListState, string>/u);
-	// The expand control stays in the header tab order while faded, and
-	// unfades on keyboard focus — `hidden` would drop it out of reach entirely.
+	// The expand control stays in the header tab order while faded, and unfades
+	// on its own keyboard focus — `hidden` would drop it out of reach entirely.
 	assert.doesNotMatch(INDEX_SOURCE, /group-hover\/session-column:block/u);
-	assert.match(INDEX_SOURCE, /group-has-\[:focus-visible\]\/session-column:opacity-100/u);
+	assert.match(INDEX_SOURCE, /peer\/expand-control opacity-0/u);
+	assert.match(INDEX_SOURCE, /hover:opacity-100 focus-visible:opacity-100/u);
 });
 
 test("collapsed motion is tokenised and honours reduced motion", () => {
-	// The width change repositions the whole board, so it takes the bold
-	// in-place profile; the notch swell is a list-item interaction.
+	// Standalone/panel resize keeps the tokenized width recipe; hover keeps the
+	// rail compact while its flex footprint rejoins the board rhythm.
 	assert.match(INDEX_SOURCE, /width var\(--duration-medium\) var\(--ease-in-out\)/u);
-	assert.match(INDEX_SOURCE, /transition: shouldReduceMotion \? "none" : AGENT_SESSION_COLUMN_TRANSITION/u);
-	assert.match(NOTCH_MARK_SOURCE, /duration-xxshort ease-out-practical/u);
-	assert.match(NOTCH_MARK_SOURCE, /motion-reduce:transition-none/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /width var\(--duration-normal\) var\(--ease-out-practical\)/u);
+	assert.match(RAIL_COLUMN_SOURCE, /duration-normal ease-out-practical/u);
+	assert.match(RAIL_COLUMN_SOURCE, /motion-reduce:transition-none/u);
 	// The dock's fade in and out are tokenised as resolved cubic-beziers, because
 	// Motion cannot read `var()`: duration-normal + ease-out-practical arriving,
 	// and the shorter duration-fast + ease-in leaving, as every exit is.
@@ -474,8 +489,19 @@ test("collapsed motion is tokenised and honours reduced motion", () => {
 	assert.match(NOTCH_MARK_SOURCE, /group-has-\[:focus-visible\]\/notch:scale-x-\[1\.6\]/u);
 	assert.doesNotMatch(NOTCH_MARK_SOURCE, /group-focus-visible\/notch:/u);
 	// Clipping is scoped to the resize, so a focused card's ring is never cut.
-	assert.match(INDEX_SOURCE, /collapsed \|\| isResizing \? "overflow-hidden" : null/u);
+	assert.match(INDEX_SOURCE, /\(collapsed && collapsedRailHitSlopPx === 0\) \|\| isResizing \? "overflow-hidden" : null/u);
 	assert.match(INDEX_SOURCE, /event\.propertyName === "width"/u);
+	// A host-driven pointer resize must bypass this transition so the column edge
+	// tracks the pointer instead of easing toward every intermediate width.
+	assert.match(TYPES_SOURCE, /widthTransitionDisabled\?: boolean;/u);
+	assert.match(
+		INDEX_SOURCE,
+		/expandedWidthPx = AGENT_SESSION_COLUMN_WIDTH_PX,\s*(?:hasScrollingEffect = false,\s*)?widthTransitionDisabled = false,/u,
+	);
+	assert.match(
+		INDEX_SOURCE,
+		/shouldReduceMotion \|\| widthTransitionDisabled\s*\? "none"\s*: AGENT_SESSION_COLUMN_TRANSITION/u,
+	);
 });
 
 test("the resting notch paints icon.disabled, not an alpha of icon", () => {
@@ -484,6 +510,7 @@ test("the resting notch paints icon.disabled, not an alpha of icon", () => {
 	assert.match(INDEX_SOURCE, /const AGENT_SESSION_PLANE =\s*\n?\s*"[^"]*bg-surface/u);
 	assert.match(NOTCH_MAGNIFY_SOURCE, /rest: "var\(--color-icon-disabled\)"/u);
 	assert.match(NOTCH_MAGNIFY_SOURCE, /selected: "var\(--color-icon\)"/u);
+	assert.match(NOTCH_MAGNIFY_SOURCE, /unread: "var\(--color-icon-subtle\)"/u);
 	assert.match(NOTCH_MAGNIFY_SOURCE, /export function toAgentSessionNotchTone\(/u);
 	assert.doesNotMatch(NOTCH_MAGNIFY_SOURCE, /AGENT_SESSION_NOTCH_OPACITY|rest: 0\.6[68]/u);
 	assert.doesNotMatch(NOTCH_MARK_SOURCE, /toAgentSessionNotchOpacity|transition-opacity/u);
@@ -609,11 +636,11 @@ test("headerSurface panel keeps the column-owned header and drops the nested wel
 	assert.match(INDEX_SOURCE, /columnRef\.current\?\.focus\(\)/u);
 });
 
-test("the collapsed rail keeps its compact header whatever the host asks for", () => {
-	// At 32px that header *is* the chrome, and it carries the only control that
-	// can expand the column again — gating it on `headerSurface` would strand the rail.
+test("the gutter rail keeps a keyboard expand control and hides the count", () => {
 	assert.match(INDEX_SOURCE, /header: collapsed \? collapsedHeader : expandedHeader/u);
+	assert.match(INDEX_SOURCE, /const hideGutterCount = isGutterCollapsed/u);
 	assert.match(INDEX_SOURCE, /aria-label=\{`Expand \$\{title\} column`\}/u);
+	assert.match(INDEX_SOURCE, /relative flex h-6 w-full min-w-0 items-center justify-center px-1/u);
 	// The rail itself still has no header of its own to fall back on.
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /onExpand/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /sessionCount/u);
@@ -628,58 +655,17 @@ test("both column widths are exported so a host surface can size itself to them"
 	assert.doesNotMatch(TYPES_SOURCE, /jira-kanban|components\/ui\/panel/u);
 });
 
-test("newly synced work reaches both the cards and the rail", () => {
-	// One set, threaded to both forms — a collapsed column must not go quiet
-	// about arrivals just because it has no cards to mark.
-	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,400}?newItemIds=\{newItemIds\}/u);
-	assert.match(INDEX_SOURCE, /<AgentSession[^>]*newItemIds=\{newItemIds\}/u);
-	// Destructured rather than left in `...sessionProps`, or the rail could not
-	// see it.
-	assert.match(INDEX_SOURCE, /^\tnewItemIds,$/mu);
-	assert.match(SESSION_TYPES_SOURCE, /newItemIds\?: ReadonlySet<string>;/u);
-});
-
 test("the collapsed rail preserves session twin hover previews", () => {
-	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,500}?highlightedItemId=\{sessionProps\.highlightedItemId\}/u);
-	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,500}?onItemHover=\{sessionProps\.onItemHover\}/u);
+	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,800}?highlightedItemId=\{sessionProps\.highlightedItemId\}/u);
+	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,800}?onItemHover=\{sessionProps\.onItemHover\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /isHighlighted=\{item\.id === highlightedItemId\}/u);
-	assert.match(RAIL_COLUMN_SOURCE, /onPointerEnter=\{\(\) => \{[\s\S]{0,150}?onItemHover\?\.\(item\)/u);
-	assert.match(RAIL_COLUMN_SOURCE, /onPointerLeave=\{\(\) => \{[\s\S]{0,150}?onItemHover\?\.\(null\)/u);
+	assert.match(RAIL_COLUMN_SOURCE, /publishItemHover\(hoveredItem\)/u);
+	assert.match(RAIL_COLUMN_SOURCE, /return \(\) => publishItemHover\(null\)/u);
+	assert.match(RAIL_COLUMN_SOURCE, /isHovered=\{item\.id === hoverIntent\.activeItemId\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /data-highlighted=\{isHighlighted \|\| undefined\}/u);
-	assert.match(NOTCH_MARK_SOURCE, /isHighlighted\s*\? AGENT_SESSION_NOTCH_TONE\.selected/u);
-	assert.match(NOTCH_MARK_SOURCE, /isHighlighted[\s\S]{0,100}?AGENT_SESSION_NOTCH_LENGTH\.peak/u);
-});
-
-test("an arrival is a transient beat plus a mark that outlives it", () => {
-	// The mark is the load-bearing half: it has to survive a backgrounded tab, a
-	// collapsed column, and reduced motion, so it is never the animation alone.
-	assert.match(CARD_SOURCE, /<span className="sr-only">Newly synced, not yet reviewed<\/span>/u);
-	assert.match(CARD_SOURCE, /size-1\.5 rounded-full bg-icon-discovery/u);
-	assert.match(NOTCH_MARK_SOURCE, /isNew \|\| isHighlighted \? NOTCH_EMPHASIS : NOTCH_AT_REST/u);
-	// A reviewed notch rests quiet and lights up on hover or focus; a new one is
-	// already lit, so "new" reuses the hover vocabulary instead of adding one.
-	assert.match(NOTCH_MARK_SOURCE, /const NOTCH_EMPHASIS = "scale-x-\[1\.6\] bg-icon";/u);
-	assert.match(NOTCH_MARK_SOURCE, /"bg-icon-disabled",/u);
-	assert.match(NOTCH_MARK_SOURCE, /group-hover\/notch:bg-icon/u);
-	assert.match(NOTCH_MARK_SOURCE, /group-has-\[:focus-visible\]\/notch:bg-icon/u);
-	// State is spoken, not painted — no per-lifecycle hue at 12x2px.
-	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /bg-icon-warning|bg-icon-information/u);
-	// Arrival recolours the same solid frame rather than replacing the border.
-	assert.doesNotMatch(CARD_SOURCE, /dash-4-2/u);
-	// Reduced motion drops the beat and keeps the mark. The beat is keyed on
-	// `isArriving`, never on `isNew` — see the one-shot test below.
-	assert.match(CARD_SOURCE, /const shouldPlayArrival = isArriving && !shouldReduceMotion;/u);
-	assert.match(NOTCH_MARK_SOURCE, /const shouldPlayArrival = isArriving && !shouldReduceMotion;/u);
-	// A settled card must not replay its entrance on an unrelated re-render.
-	assert.match(CARD_SOURCE, /initial=\{shouldPlayArrival \? \{ opacity: 0, y: AGENT_SESSION_ARRIVAL_OFFSET_PX \} : false\}/u);
-});
-
-test("colour never carries newness on its own", () => {
-	assert.match(CARD_SOURCE, /<span className="sr-only">Newly synced, not yet reviewed<\/span>/u);
-	assert.match(RAIL_COLUMN_SOURCE, /isNew \? ", newly synced" : ""/u);
-	// The collapsed header answers "how many did I miss" for notches below the
-	// fold, and the spoken form keeps the total the visible `+N` gives up.
-	assert.match(INDEX_SOURCE, /\$\{sessionCount\} sessions, \$\{newCount\} newly synced/u);
+	assert.match(RAIL_COLUMN_SOURCE, /isHighlighted=\{isHighlighted\}/u);
+	assert.match(RAIL_COLUMN_SOURCE, /showAvatar \? "opacity-100 scale-100"/u);
+	assert.match(RAIL_COLUMN_SOURCE, /const showAvatar = isHighlighted \|\| arrivalReveal;/u);
 });
 
 test("the collapsed header count rolls through the shared Text Morphing slots effect", () => {
@@ -687,7 +673,7 @@ test("the collapsed header count rolls through the shared Text Morphing slots ef
 	assert.match(INDEX_SOURCE, /import TextMorphing from "@\/components\/visual\/text-morphing"/u);
 	assert.match(INDEX_SOURCE, /<TextMorphing\s+config=\{HEAD_COUNT_MORPH\}/u);
 	assert.match(INDEX_SOURCE, /variant: "slots"/u);
-	// `autoSize` eases the slot's width across the `+N` ↔ total swap.
+	// `autoSize` eases the slot's width as the total crosses a digit.
 	assert.match(INDEX_SOURCE, /autoSize: true/u);
 	// A column that mounts already collapsed must not spin its count in.
 	assert.match(INDEX_SOURCE, /initial: false/u);
@@ -699,77 +685,15 @@ test("the collapsed header count rolls through the shared Text Morphing slots ef
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /TextMorphing/u);
 });
 
-test("arrival motion is tokenised, capped, and spatially anchored", () => {
-	// duration-slow + bold ease-out: the flag recipe, because an arrival is a
-	// notification of work showing up.
-	assert.match(ARRIVAL_MOTION_SOURCE, /duration: 0\.25,\s*ease: \[0, 0\.4, 0, 1\]/u);
-	// Enters from above, where sync lives; two properties, never three.
-	assert.match(ARRIVAL_MOTION_SOURCE, /AGENT_SESSION_ARRIVAL_OFFSET_PX = -8/u);
-	// Past the cap the group lands together instead of stepping in.
-	assert.match(SESSION_INDEX_SOURCE, /ARRIVAL_STAGGER_LIMIT = 4/u);
-	assert.match(SESSION_INDEX_SOURCE, /shouldStagger \? index \* ARRIVAL_STAGGER_SECONDS : 0/u);
-	// The rail's arrival grows from the centre to full size — no overshoot
-	// keyframes, and no second property competing with the scale.
-	assert.match(NOTCH_MARK_SOURCE, /initial=\{shouldPlayArrival \? \{ scaleX: 0 \} : false\}/u);
-	assert.match(NOTCH_MARK_SOURCE, /animate=\{shouldPlayArrival \? \{ scaleX: 1 \} : undefined\}/u);
-	assert.doesNotMatch(NOTCH_MARK_SOURCE, /scaleX: \[/u);
-	assert.doesNotMatch(NOTCH_MARK_SOURCE, /times:/u);
-	// Arriving notches push the ones below them down instead of teleporting.
-	// The scrollport stays a plain `ul` so mask-image can fade the marks;
-	// layout lives on each notch, not on a Motion scroll host.
-	assert.match(RAIL_COLUMN_SOURCE, /layout=\{shouldReduceMotion \? false : "position"\}/u);
-	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /layoutScroll/u);
-});
-
-test("the panel demo drives an arrival through the Panel wrap", () => {
-	assert.match(PANEL_DEMO_SOURCE, /ARRIVAL_BATCHES/u);
-	const newIdUses = PANEL_DEMO_SOURCE.match(/newItemIds=\{newIds\}/gu) ?? [];
-	assert.equal(newIdUses.length, 1, "expected the panel column to receive the arrivals");
-	// Arrivals prepend, matching the entrance that starts above the list.
-	assert.match(PANEL_DEMO_SOURCE, /\[\.\.\.batch, \.\.\.currentItems\]/u);
-	// Reviewing decays the mark, standing in for the watermark advancing.
-	assert.match(PANEL_DEMO_SOURCE, /handleMarkReviewed/u);
-	// Sync / Mark reviewed / Reset stay on the panel variant only.
-	assert.match(PANEL_DEMO_SOURCE, /Sync new work/u);
-	assert.doesNotMatch(PAGE_SOURCE, /Sync new work/u);
-	// Updaters stay pure: no sibling setState from inside one.
-	assert.doesNotMatch(PANEL_DEMO_SOURCE, /setSyncedBatches\(\(/u);
-	assert.match(DETAIL_SOURCE, /name: "newItemIds"/u);
-});
-
-test("the arrival target survives until Motion finishes, then stays one-shot", () => {
-	// Collapsing swaps the cards for the rail and back, remounting them — and a
-	// mount re-arms `initial`. The column survives the toggle, so it owns the
-	// history of which ids have already played; the two branches only render it.
-	assert.match(INDEX_SOURCE, /const \[playedArrivalIds, setPlayedArrivalIds\]/u);
-	assert.match(INDEX_SOURCE, /if \(!playedArrivalIds\.has\(id\)\)/u);
-	// Do not eagerly mirror every new id into played history. That removes the
-	// card's animate target one effect after mount and strands it at opacity 0.
-	assert.doesNotMatch(INDEX_SOURCE, /new Set<string>\(newItemIds\)/u);
-	assert.match(INDEX_SOURCE, /const handleArrivalComplete = useCallback/u);
-	assert.match(CARD_SOURCE, /onAnimationComplete=\{handleArrivalComplete\}/u);
-	assert.match(NOTCH_MARK_SOURCE, /onAnimationComplete=\{handleArrivalComplete\}/u);
-	// Both branches report completion and keep the beat set distinct from the mark.
-	assert.match(
-		INDEX_SOURCE,
-		/<AgentSessionColumnRail[\s\S]{0,400}?onArrivalComplete=\{handleArrivalComplete\}/u,
-	);
-	assert.match(
-		INDEX_SOURCE,
-		/<AgentSession[\s\S]{0,400}?onArrivalComplete=\{handleArrivalComplete\}/u,
-	);
-	assert.match(SESSION_TYPES_SOURCE, /arrivingItemIds\?: ReadonlySet<string>;/u);
-	assert.match(SESSION_TYPES_SOURCE, /onArrivalComplete\?: \(itemId: string\) => void;/u);
-	// Defaulting to the mark keeps a host that never unmounts the list correct.
-	assert.match(SESSION_INDEX_SOURCE, /const beatItemIds = arrivingItemIds \?\? newItemIds;/u);
-});
-
 test("the column keeps the selected session id across collapse remounts", () => {
 	assert.match(INDEX_SOURCE, /selectedItemId: selectedItemIdProp,/u);
 	assert.match(INDEX_SOURCE, /const isSelectionControlled = selectedItemIdProp !== undefined;/u);
 	assert.match(INDEX_SOURCE, /const \[uncontrolledSelectedItemId, setUncontrolledSelectedItemId\]/u);
 	assert.match(INDEX_SOURCE, /selectedItemId=\{selectedItemId\}/u);
 	assert.match(INDEX_SOURCE, /onSelectedItemIdChange=\{handleSelectedItemIdChange\}/u);
+	assert.match(INDEX_SOURCE, /onKeyDown=\{untrackedSelection\.onKeyDown\}/u);
+	assert.match(INDEX_SOURCE, /canActivateItem\(item\)/u);
+	assert.match(INDEX_SOURCE, /handleSelectedItemIdChange\(null\)/u);
 	assert.match(
 		INDEX_SOURCE,
 		/if \(!isSelectionControlled\) \{\s*\n\s*setUncontrolledSelectedItemId\(itemId\);\s*\n\s*\}/u,
@@ -784,18 +708,31 @@ test("the column owns a hidden-id set and filters items before AgentSession", ()
 	assert.match(HOOK_SOURCE, /export type AgentSessionColumnView = "active" \| "hidden"/u);
 	assert.match(HOOK_SOURCE, /export function pruneHiddenSessionIds\(/u);
 	assert.match(HOOK_SOURCE, /export function forgetHiddenSessionIds\(/u);
+	assert.match(HOOK_SOURCE, /export function hideSessionId\(/u);
 	assert.match(HOOK_SOURCE, /type: "forget"/u);
+	assert.match(HOOK_SOURCE, /type: "hide"/u);
 	assert.match(HOOK_SOURCE, /forgetHidden,/u);
+	assert.match(HOOK_SOURCE, /hideHidden,/u);
 	assert.match(HOOK_SOURCE, /export function splitSessionItemsByHidden\(/u);
 	assert.doesNotMatch(HOOK_SOURCE, /type: "prune"/u);
 	assert.doesNotMatch(HOOK_SOURCE, /dispatch\(\{ items, type: "prune" \}\)/u);
 	assert.match(INDEX_SOURCE, /const viewItems = view === "hidden" \? hiddenItems : visibleItems/u);
-	assert.match(INDEX_SOURCE, /items=\{viewItems\}/u);
-	assert.match(INDEX_SOURCE, /forgetHidden\(session\.id\)/u);
+	assert.match(INDEX_SOURCE, /items=\{filteredViewItems\}/u);
+	assert.match(INDEX_SOURCE, /hideHidden\(session\)/u);
+	assert.match(INDEX_SOURCE, /case "hidden":\s*\n\s*toggleHidden\(session\)/u);
+	assert.match(INDEX_SOURCE, /case "active":\s*\n\s*hideHidden\(session\)/u);
+	assert.match(INDEX_SOURCE, /visibilityLabel: view === "hidden" \? "Unarchive" : "Archive"/u);
+	assert.match(INDEX_SOURCE, /onToggleVisibility\?\.\(session\)/u);
+	assert.doesNotMatch(INDEX_SOURCE, /triage\.archive\(session\)/u);
+	assert.doesNotMatch(INDEX_SOURCE, /forgetHidden\(session\.id\)/u);
 	assert.match(INDEX_SOURCE, /triage: selectionTriage,/u);
+	assert.match(INDEX_SOURCE, /archive: handleArchiveSession,/u);
 	assert.match(INDEX_SOURCE, /toggleHidden\(item\)/u);
 	assert.match(INDEX_SOURCE, /onToggleVisibility\?\.\(item\)/u);
 	assert.match(INDEX_SOURCE, /onToggleVisibility=\{handleToggleVisibility\}/u);
+	assert.match(INDEX_SOURCE, /onArchiveSession=\{handleArchiveSession\}/u);
+	assert.match(INDEX_SOURCE, /onArchiveSession: onArchiveSessionProp,/u);
+	assert.match(INDEX_SOURCE, /onArchiveSessionProp\?\.\(session\)/u);
 	assert.match(INDEX_SOURCE, /visibilityLabel=\{view === "hidden" \? "Unarchive" : "Archive"\}/u);
 });
 
@@ -820,7 +757,7 @@ test("the sticky footer reads Archived N in the active view", () => {
 	// the bottom sibling instead of jumping under a short empty message.
 	assert.match(
 		INDEX_SOURCE,
-		/relative flex min-h-0 min-w-0 flex-1 flex-col">\s*\{viewItems\.length === 0 \?/u,
+		/relative flex min-h-0 min-w-0 flex-1 flex-col">\s*\{filteredViewItems\.length === 0 \?/u,
 	);
 	assert.match(INDEX_SOURCE, /<AgentSessionColumnHiddenFooter/u);
 	assert.match(INDEX_SOURCE, /mode=\{view === "hidden" \? "back" : "hidden"\}/u);
@@ -829,7 +766,7 @@ test("the sticky footer reads Archived N in the active view", () => {
 	// is pinned to the list wrapper so it sits on the last cards, not the footer.
 	assert.match(
 		INDEX_SOURCE,
-		/flex-1 overflow-y-auto has-\[:focus-visible\]:overflow-visible"[\s\S]*?<\/div>\s*\)\}\s*\{showTopScrollMask \|\| showBottomScrollMask \?/u,
+		/flex-1 overflow-y-auto has-\[:focus-visible\]:overflow-visible[^"]*"[\s\S]*?<\/div>\s*\)\}\s*\{showTopScrollMask \|\| showBottomScrollMask \?/u,
 	);
 	assert.match(
 		INDEX_SOURCE,
@@ -851,15 +788,15 @@ test("the archived view keeps Archived in the header and a back footer", () => {
 	assert.match(FOOTER_SOURCE, /Back to \$\{title\}/u);
 	assert.match(INDEX_SOURCE, /onClick=\{view === "hidden" \? closeHiddenView : openHiddenView\}/u);
 	assert.match(INDEX_SOURCE, /untrackedCount = count \?\? visibleItems\.length/u);
-	assert.match(INDEX_SOURCE, /items=\{viewItems\}/u);
+	assert.match(INDEX_SOURCE, /items=\{filteredViewItems\}/u);
 });
 
 test("the collapsed rail keeps a focus-ring gutter on its scrollport", () => {
-	// Internal padding only: `-mx-1` on a 32px overflow-hidden column shifts
-	// the notches 4px off center. The clip lifts for `:focus-visible` instead.
+	// Internal padding only: horizontal padding keeps the dots centred, while
+	// vertical padding preserves the ring at the capped scroll boundary.
 	assert.match(
 		RAIL_COLUMN_SOURCE,
-		/overflow-y-auto px-1 has-\[:focus-visible\]:overflow-visible/u,
+		/overflow-y-auto overscroll-contain px-1 py-0\.5/u,
 	);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /-mx-1/u);
 });
@@ -874,13 +811,45 @@ test("the collapsed rail fades notches with ScrollMask viewport mask-image", () 
 		RAIL_COLUMN_SOURCE,
 		/buildScrollMaskStyle\(\{\s*fadeBottom: showBottomScrollMask,\s*fadeSize: AGENT_SESSION_RAIL_FADE_SIZE,\s*fadeTop: showTopScrollMask,\s*scrollbarWidth: 0,\s*\}\)/u,
 	);
-	assert.match(RAIL_COLUMN_SOURCE, /style=\{scrollMaskStyle\}/u);
+	assert.match(
+		RAIL_COLUMN_SOURCE,
+		/style=\{\{\s*\.\.\.scrollMaskStyle,[\s\S]{0,150}?maxHeight: railViewportMaxHeight/u,
+	);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /<motion\.ul/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /ScrollMaskEdgeOverlay/u);
 });
 
+test("the gutter-collapsed rail shows at most ten dots before it scrolls under the mask", () => {
+	assert.match(RAIL_VIEWPORT_SOURCE, /AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS = 10/u);
+	assert.match(RAIL_COLUMN_SOURCE, /AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS/u);
+	assert.match(
+		INDEX_SOURCE,
+		/maxVisibleItems=\{isGutterCollapsed && collapsedRailHitSlopPx === 0\s*\? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS\s*: undefined\}/u,
+	);
+	assert.match(RAIL_COLUMN_SOURCE, /toAgentSessionRailViewportMaxHeight\(/u);
+	assert.match(RAIL_COLUMN_SOURCE, /maxHeight: railViewportMaxHeight/u);
+	assert.match(RAIL_COLUMN_SOURCE, /w-full flex-1 flex-col/u);
+	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /w-full flex-none flex-col/u);
+	assert.match(RAIL_COLUMN_SOURCE, /items\.map\(/u);
+});
+
+test("the embedded column rail does not cap the viewport to ten notches", () => {
+	assert.match(
+		INDEX_SOURCE,
+		/maxVisibleItems=\{isGutterCollapsed && collapsedRailHitSlopPx === 0\s*\? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS\s*: undefined\}/u,
+	);
+	assert.match(
+		RAIL_COLUMN_SOURCE,
+		/style=\{\{\s*\.\.\.scrollMaskStyle,[\s\S]{0,150}?maxHeight: railViewportMaxHeight/u,
+	);
+	assert.doesNotMatch(
+		RAIL_COLUMN_SOURCE,
+		/Math\.min\(items\.length, AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS\)/u,
+	);
+});
+
 test("the collapsed rail receives visible items only and collapse leaves hidden view", () => {
-	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]*items=\{visibleItems\}/u);
+	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]*items=\{filteredViewItems\}/u);
 	assert.match(INDEX_SOURCE, /if \(nextCollapsed\) \{\s*closeHiddenView\(\);/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /Work hidden|Archived|HiddenFooter/u);
 });
@@ -911,7 +880,8 @@ test("the expanded header sizes its overflow trigger for the host surface", () =
 	);
 	assert.doesNotMatch(HEADER_SOURCE, /group-hover\/session-column:block/u);
 	assert.match(HEADER_SOURCE, /has-\[\[data-popup-open\]\]:opacity-100/u);
-	assert.match(INDEX_SOURCE, /items=\{viewItems\}/u);
+	assert.match(HEADER_SOURCE, /group-has-\[\[data-popup-open\]\]\/header-actions:opacity-100/u);
+	assert.match(INDEX_SOURCE, /items=\{filteredViewItems\}/u);
 	assert.match(INDEX_SOURCE, /onLinkWorkItem=\{sessionProps\.onLinkWorkItem\}/u);
 });
 
@@ -921,26 +891,13 @@ test("the selecting header Link action uses a CheckMark icon", () => {
 	assert.doesNotMatch(HEADER_SOURCE, /LinkIcon/u);
 });
 
-test("the selecting header omits collapse so Clear is the only exit", () => {
-	const columnSelecting = HEADER_SOURCE.slice(
-		HEADER_SOURCE.indexOf("function renderColumnChrome"),
-		HEADER_SOURCE.indexOf("function renderPanelChrome"),
-	);
-	const columnSelectingBranch = columnSelecting.slice(columnSelecting.lastIndexOf('case "selecting":'));
-	assert.doesNotMatch(columnSelectingBranch, /<CollapseButton/u);
-	const panelSelecting = HEADER_SOURCE.slice(HEADER_SOURCE.indexOf("function renderPanelChrome"));
-	const panelSelectingBranch = panelSelecting.slice(panelSelecting.lastIndexOf('case "selecting":'));
-	assert.doesNotMatch(panelSelectingBranch, /ShrinkHorizontalIcon/u);
-	assert.match(columnSelectingBranch, /<HeaderIconButton/u);
-	assert.match(panelSelectingBranch, /<PanelAction/u);
-});
-
 test("selecting header hover copy comes from the selectedCount table", () => {
 	assert.match(SELECTION_COPY_SOURCE, /Link agent sessions/u);
 	assert.match(SELECTION_COPY_SOURCE, /Create \$\{selectedCount\} work item/u);
 	assert.match(SELECTION_COPY_SOURCE, /Create \$\{selectedCount\} work items/u);
-	assert.match(SELECTION_COPY_SOURCE, /Archive \$\{selectedCount\} agent session/u);
-	assert.match(SELECTION_COPY_SOURCE, /Archive \$\{selectedCount\} agent sessions/u);
+	assert.match(SELECTION_COPY_SOURCE, /\$\{verb\} \$\{selectedCount\} agent session/u);
+	assert.match(SELECTION_COPY_SOURCE, /\$\{verb\} \$\{selectedCount\} agent sessions/u);
+	assert.match(SELECTION_COPY_SOURCE, /describeVisibilityAction\("Archive", selectedCount\)/u);
 	assert.match(SELECTION_COPY_SOURCE, /clear: \(\) => "Clear"/u);
 	assert.match(SELECTION_COPY_SOURCE, /No selected sessions have a work item to link/u);
 	assert.match(SELECTION_COPY_SOURCE, /No selected sessions can create a work item/u);
@@ -980,4 +937,64 @@ test("the overflow menu is Link all suggestions, then Auto sync and Suggest link
 	assert.match(OVERFLOW_SOURCE, /export function linkAllAgentSessions/u);
 	assert.match(DETAIL_SOURCE, /header overflow's Link all suggestions action/u);
 	assert.doesNotMatch(DETAIL_SOURCE, /header overflow's Link all action/u);
+});
+
+test("the expanded header filter popover covers owner, agent, date, artifacts, and link suggestions", () => {
+	assert.match(HEADER_SOURCE, /filter: ReactElement/u);
+	assert.match(HEADER_SOURCE, /\{filter\}/u);
+	assert.match(INDEX_SOURCE, /<AgentSessionColumnFilterMenu/u);
+	assert.match(INDEX_SOURCE, /filter=\{filterMenu\}/u);
+	assert.match(FILTER_MENU_SOURCE, /import FilterIcon from "@atlaskit\/icon\/core\/filter"/u);
+	assert.match(FILTER_MENU_SOURCE, /data-agent-session-column-filter=""/u);
+	assert.match(FILTER_MENU_SOURCE, /<Popover[\s>]/u);
+	assert.match(FILTER_MENU_SOURCE, /title="Session owner"/u);
+	assert.match(FILTER_MENU_SOURCE, /title="Agents"/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /title="Date\/time range"/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /"last-7-days": "Last 7d"/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /"last-30-days": "Last 30d"/u);
+	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /Last 7 days/u);
+	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /Last 30 days/u);
+	assert.match(FILTER_MENU_SOURCE, /label="Contains artifacts"/u);
+	assert.match(FILTER_MENU_SOURCE, /label="Link suggestions"/u);
+	assert.match(FILTER_SOURCE, /name: "Claude"/u);
+	assert.match(FILTER_SOURCE, /name: "Codex"/u);
+	assert.match(FILTER_SOURCE, /name: "Cursor"/u);
+	assert.match(FILTER_SOURCE, /name: "Copilot"/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /<SwitchIndicator/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /role="switch"/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /className="rich-text-command-menu-heading"/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /role="presentation"/u);
+	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /uppercase leading-4/u);
+	assert.match(FILTER_MENU_SOURCE, /w-max min-w-\[min\(20rem,calc\(100vw-32px\)\)\] max-w-\[calc\(100vw-32px\)\] gap-0 rounded-xl p-1/u);
+	assert.doesNotMatch(FILTER_MENU_SOURCE, /className="w-80 max-w-\[calc\(100vw-32px\)\] p-3"/u);
+	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /label="Yes"/u);
+	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /label="No"/u);
+	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /Clear \$\{title\}/u);
+	assert.doesNotMatch(FILTER_MENU_SOURCE, /Clear all/u);
+	assert.match(FILTER_MENU_SOURCE, /Clear selection/u);
+	assert.match(FILTER_MENU_SOURCE, /dropdownStyles\.separator/u);
+	assert.match(
+		FILTER_MENU_SOURCE,
+		/<div className="flex flex-col">\s*<div aria-hidden="true" className=\{dropdownStyles\.separator\}/u,
+	);
+	assert.match(FILTER_SECTIONS_SOURCE, /flex h-8 w-full cursor-pointer items-center gap-3 rounded-lg px-2/u);
+	assert.match(FILTER_SOURCE, /agentSessionFilterToggleTriState/u);
+	assert.match(HEADER_SOURCE, /hasActiveFilters/u);
+	assert.match(INDEX_SOURCE, /hasActiveFilters=\{hasActiveFilters\}/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /<AvatarGroup/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /<TimePicker/u);
+	assert.match(TIME_PICKER_SOURCE, /value=\{value \?\? ""\}/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /contentPositionerClassName="isolate z-\[220\]"/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /numberOfMonths=\{2\}/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /mode="range"/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /<PopoverTitle className="sr-only">Custom date range/u);
+	assert.match(FILTER_MENU_SOURCE, /customCalendarOpen/u);
+	assert.match(FILTER_MENU_SOURCE, /shouldKeepAgentSessionFilterMenuOpen/u);
+	assert.match(FILTER_MENU_SOURCE, /focusOutStayedInside: didFilterFocusOutStayInside\(eventDetails\.event\)/u);
+	assert.match(FILTER_MENU_SOURCE, /eventDetails\.cancel\(\)/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /flex flex-wrap gap-1\.5 pb-2 min-\[22rem\]:flex-nowrap/u);
+	assert.match(FILTER_SECTIONS_SOURCE, /onCalendarOpenChange/u);
+	assert.doesNotMatch(FILTER_MENU_SOURCE, /overflow-y-auto/u);
+	assert.doesNotMatch(FILTER_MENU_SOURCE, /max-h-\[min\(36rem/u);
+	assert.match(INDEX_SOURCE, /visibleItems: filteredViewItems/u);
 });

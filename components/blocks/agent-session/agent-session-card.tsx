@@ -6,9 +6,11 @@ import { motion, useReducedMotion } from "motion/react";
 import ArchiveBoxIcon from "@atlaskit/icon/core/archive-box";
 import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
 import LibraryIcon from "@atlaskit/icon/core/library";
-
 import {
+	AgentListIdentity,
+	AgentListPrStatusIcon,
 	AgentListRow,
+	AgentListTime,
 	type AgentListRowHoverActions,
 } from "@/components/blocks/agent-list/agent-list-card";
 import { toAgentListResumeCommand } from "@/components/blocks/agent-list/agent-list-session";
@@ -19,6 +21,7 @@ import {
 } from "@/components/blocks/product-sidebar/variants/jira-session-flyout";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
 import { Icon } from "@/components/ui/icon";
+import { MetadataPathLink } from "@/components/ui/metadata-path-link";
 import { cn } from "@/lib/utils";
 
 import {
@@ -29,11 +32,60 @@ import { approveActionLabel } from "./agent-session-approve";
 import { SESSION_DRAG_INTERACTIVE_SELECTOR } from "./agent-session-drag-interactive";
 import { AgentSessionMediumDrag } from "./agent-session-medium-drag";
 import { AgentSessionSelectMark } from "./agent-session-select-mark";
+import { selectionGestureFromModifierKeys } from "./agent-session-selection-gesture";
 import { isTransferSourceFaded } from "./session-cohort";
-import type { AgentSessionItem, AgentSessionTriageRow } from "./agent-session-types";
+import {
+	toAgentSessionVisibleIdentity,
+	type AgentSessionItem,
+	type AgentSessionSelectionGesture,
+	type AgentSessionTriageRow,
+} from "./agent-session-types";
 
 /** How long Resume reads "Copied" after it writes the command to the clipboard. */
 const COPIED_RESET_MS = 2000;
+
+/** PR-first session metadata. Local device names stay in the flyout, not the work row. */
+function AgentSessionPullRequestMetadata({ item }: Readonly<{ item: AgentSessionItem }>) {
+	const pullRequestNumber = item.sessionDetails?.pullRequestNumber;
+	const pullRequestTitle = item.sessionDetails?.pullRequestTitle;
+	const pullRequestUrl = item.sessionDetails?.pullRequestUrl;
+	const pullRequestLabel = pullRequestNumber === undefined
+		? undefined
+		: pullRequestTitle === undefined
+			? `#${pullRequestNumber}`
+			: `#${pullRequestNumber}: ${pullRequestTitle}`;
+
+	return (
+		<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
+			{pullRequestLabel ? (
+				<>
+					<AgentListPrStatusIcon status={item.prStatus ?? "created"} />
+					{pullRequestUrl ? (
+						<MetadataPathLink
+							className="min-w-0 flex-1 truncate text-text-subtle"
+							href={pullRequestUrl}
+							rel="noreferrer"
+							target="_blank"
+							title={pullRequestLabel}
+						>
+							{pullRequestLabel}
+						</MetadataPathLink>
+					) : (
+						<span className="min-w-0 truncate text-text-subtle" title={pullRequestLabel}>
+							{pullRequestLabel}
+						</span>
+					)}
+					<span aria-hidden="true" className="shrink-0 text-text-subtlest">
+						·
+					</span>
+				</>
+			) : null}
+			<span className="shrink-0" title="Last update">
+				<AgentListTime item={item} />
+			</span>
+		</span>
+	);
+}
 
 async function copyResumeCommand(command: string): Promise<void> {
 	if (typeof navigator === "undefined" || navigator.clipboard?.writeText === undefined) {
@@ -124,7 +176,7 @@ export function AgentSessionCard({
 	// the clipboard before `onCopyResume` ever runs.
 	const canResume = (isResumable?.(item) ?? true) && resumeCommand.length > 0;
 	// The beat, not the mark: a card remounted while still unreviewed keeps the
-	// discovery dot but must not replay its entrance.
+	// information dot but must not replay its entrance.
 	const shouldPlayArrival = isArriving && !shouldReduceMotion;
 	const handleArrivalComplete = () => {
 		if (shouldPlayArrival) {
@@ -135,7 +187,10 @@ export function AgentSessionCard({
 	const approve = triageRow?.approve;
 	const mark = triageRow?.mark;
 	const isMarked = mark?.isMarked ?? false;
+	const isLead = mark?.isLead ?? false;
+	const isTransferSource = Boolean(draggingIds?.has(item.id));
 	const showSelectedFill = isMarked || (isSelected && mark == null);
+	const visibleIdentity = toAgentSessionVisibleIdentity(item);
 
 	// The same hover/focus-revealed pair Agent List rows use, with Archive /
 	// Unarchive in the slot Agent List gives to Archive. The control always
@@ -143,16 +198,12 @@ export function AgentSessionCard({
 	// The article is the hit area. RowBody would otherwise wrap only the title
 	// column, leaving avatar and padding inert. A triage mark uses that same
 	// path so selection is not avatar-only. Hover actions stay buttons so they
-	// can stop the article from toggling.
+	// can stop the article from changing the selection.
 	const activateCard = onView === undefined && mark == null
 		? undefined
-		: () => {
+		: (gesture: AgentSessionSelectionGesture) => {
 			if (mark != null) {
-				const selecting = !mark.isMarked;
-				mark.onToggle();
-				if (selecting !== isSelected) {
-					onView?.(item);
-				}
+				mark.onActivate(gesture);
 				return;
 			}
 			onView?.(item);
@@ -166,7 +217,7 @@ export function AgentSessionCard({
 			) {
 				return;
 			}
-			activateCard();
+			activateCard(selectionGestureFromModifierKeys(event));
 		};
 	const handleArticleKeyDown = activateCard === undefined
 		? undefined
@@ -176,9 +227,11 @@ export function AgentSessionCard({
 			}
 			if (event.key === "Enter" || event.key === " ") {
 				event.preventDefault();
-				activateCard();
+				activateCard(selectionGestureFromModifierKeys(event));
 			}
 		};
+	const articleRole = mark == null ? undefined : "gridcell";
+	const articleTabIndex = mark == null ? undefined : isLead ? 0 : -1;
 	const hoverActions: AgentListRowHoverActions = {
 		primary: approve
 			? {
@@ -228,6 +281,8 @@ export function AgentSessionCard({
 	return (
 		<motion.li
 			animate={shouldPlayArrival ? { opacity: 1, y: 0 } : undefined}
+			aria-hidden={isTransferSource || undefined}
+			aria-selected={mark == null ? undefined : isMarked}
 			className={cn(
 				isMarked ? "has-[+[data-marked]]:[&_article]:rounded-b-none" : null,
 				"[[data-marked]+&[data-marked]]:[&_article]:rounded-t-none",
@@ -235,6 +290,8 @@ export function AgentSessionCard({
 			)}
 			data-marked={isMarked || undefined}
 			data-testid={"agent-session-row-" + item.id}
+			inert={isTransferSource || undefined}
+			role={mark == null ? undefined : "row"}
 			onAnimationComplete={handleArrivalComplete}
 			onPointerEnter={() => {
 				isHoveredRef.current = true;
@@ -272,11 +329,9 @@ export function AgentSessionCard({
 						<article
 							{...bind}
 							aria-current={isSelected ? "true" : undefined}
-							aria-pressed={activateCard === undefined ? undefined : showSelectedFill}
 							aria-roledescription={bind ? "Draggable agent session" : undefined}
 							className={cn(
-						"group/agent-row relative flex w-full rounded-lg p-3 text-left text-text",
-						bind ? "cursor-grab" : "cursor-pointer",
+						"group/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text",
 						// Borderless tiles, 8px radius — same chrome as editor-palette
 						// suggestion rows. The list owns the gap between them.
 						"transition-[background-color,border-radius] duration-xxshort ease-out-practical",
@@ -296,18 +351,18 @@ export function AgentSessionCard({
 							data-variant="uncaptured-work"
 							onClick={handleArticleClick}
 							onKeyDown={handleArticleKeyDown}
-							role={activateCard === undefined ? undefined : "button"}
-							tabIndex={activateCard === undefined ? undefined : 0}
+							role={articleRole}
+							tabIndex={articleTabIndex}
 						>
 							{isNew ? (
 						<>
 							{/* Colour never carries it alone. */}
 							<span className="sr-only">Newly synced, not yet reviewed</span>
-							{/* Parked in the body's 12px padding, so it clears the
-							    avatar on the left and the hover actions on the right. */}
+							{/* Parked in the body's 12px padding, vertically centered
+							    with the avatar + two text lines. */}
 							<span
 								aria-hidden="true"
-								className="absolute left-1.5 top-1.5 size-1.5 rounded-full bg-icon-discovery"
+								className="absolute left-1.5 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-icon-information"
 							/>
 						</>
 							) : null}
@@ -316,17 +371,27 @@ export function AgentSessionCard({
 								isCompact={false}
 								isSelected={showSelectedFill}
 								item={item}
-								onView={undefined}
-								renderIdentity={mark === undefined || mark === null
-									? undefined
-									: (identity) => (
-										<AgentSessionSelectMark
-											identity={identity}
-											isMarked={mark.isMarked}
-											label={`Select "${item.title}"`}
-											onToggle={activateCard ?? mark.onToggle}
+								metadata={<AgentSessionPullRequestMetadata item={item} />}
+								onView={mark == null ? onView : undefined}
+								renderIdentity={() => {
+									const sessionIdentity = (
+										<AgentListIdentity
+											agent={visibleIdentity}
+											sizePx={24}
 										/>
-									)}
+									);
+
+									return mark === undefined || mark === null
+										? sessionIdentity
+										: (
+											<AgentSessionSelectMark
+												identity={sessionIdentity}
+												isMarked={mark.isMarked}
+												label={`Select "${item.title}"`}
+												onActivate={activateCard ?? mark.onActivate}
+											/>
+										);
+								}}
 								showHoverActionsWhenSelected
 							/>
 						</article>

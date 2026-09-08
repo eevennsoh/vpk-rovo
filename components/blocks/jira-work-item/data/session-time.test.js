@@ -31,7 +31,7 @@ test("formatSessionTimestamp uses compact relative labels against a story clock"
 	assert.equal(formatSessionTimestamp(referenceTimeMs - 5 * 60_000, referenceTimeMs), "5m ago");
 	assert.equal(formatSessionTimestamp(referenceTimeMs - 60 * 60_000, referenceTimeMs), "1hr ago");
 	assert.equal(formatSessionTimestamp(referenceTimeMs - 2 * 60 * 60_000, referenceTimeMs), "2hr ago");
-	assert.equal(formatSessionTimestamp(referenceTimeMs - 24 * 60 * 60_000, referenceTimeMs), "yesterday");
+	assert.equal(formatSessionTimestamp(referenceTimeMs - 24 * 60 * 60_000, referenceTimeMs), "Yesterday");
 	assert.equal(formatSessionTimestamp(referenceTimeMs - 3 * 24 * 60 * 60_000, referenceTimeMs), "3d ago");
 });
 

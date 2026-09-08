@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import { ArrowRightIcon } from "@/components/ui/vpk-icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -5,6 +9,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Field, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
 
 export default function SpinnerDemo() {
 	return <Spinner size="xl" />;
@@ -134,6 +139,29 @@ export function SpinnerDemoRainbow() {
 			<Spinner variant="rainbow" />
 			<Spinner variant="rainbow" size="lg" />
 			<Spinner variant="rainbow" size="xl" />
+		</div>
+	);
+}
+
+export function SpinnerDemoExperimental() {
+	const [pulse, setPulse] = useState(false);
+
+	return (
+		<div className="flex flex-col items-center gap-4">
+			<Field orientation="horizontal">
+				<Switch
+					checked={pulse}
+					id="spinner-experimental-pulse"
+					onCheckedChange={setPulse}
+				/>
+				<FieldLabel htmlFor="spinner-experimental-pulse">Grow in/out</FieldLabel>
+			</Field>
+			<div className="flex items-center gap-4">
+				<Spinner pulse={pulse} size="sm" variant="experimental" />
+				<Spinner pulse={pulse} variant="experimental" />
+				<Spinner pulse={pulse} size="lg" variant="experimental" />
+				<Spinner pulse={pulse} size="xl" variant="experimental" />
+			</div>
 		</div>
 	);
 }

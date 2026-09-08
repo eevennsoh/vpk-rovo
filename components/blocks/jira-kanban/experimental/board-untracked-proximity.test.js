@@ -16,13 +16,22 @@ const EXPERIMENTAL_DIR = __dirname;
 const PAGE_SOURCE = [
 	readFileSync(join(EXPERIMENTAL_DIR, "page.tsx"), "utf8"),
 	readFileSync(join(EXPERIMENTAL_DIR, "experimental-page-types.ts"), "utf8"),
+	readFileSync(join(EXPERIMENTAL_DIR, "hooks", "use-page-content-model.ts"), "utf8"),
 ].join("\n");
-const BOARD_SOURCE = readFileSync(join(EXPERIMENTAL_DIR, "experimental-jira-kanban.tsx"), "utf8");
+const BOARD_SOURCE = [
+	readFileSync(join(EXPERIMENTAL_DIR, "experimental-jira-kanban.tsx"), "utf8"),
+	readFileSync(join(EXPERIMENTAL_DIR, "components", "created-card-arrival-motion.tsx"), "utf8"),
+	readFileSync(join(EXPERIMENTAL_DIR, "components", "board-column-card-list.tsx"), "utf8"),
+].join("\n");
 const IN_FLOW_SOURCE = readFileSync(
 	join(EXPERIMENTAL_DIR, "components", "in-flow-agent-session-column.tsx"),
 	"utf8",
 );
 const CARD_SOURCE = readFileSync(join(EXPERIMENTAL_DIR, "experimental-jira-kanban-card.tsx"), "utf8");
+const JIRA_ISSUE_SOURCE = readFileSync(
+	join(EXPERIMENTAL_DIR, "..", "..", "jira-issue", "index.tsx"),
+	"utf8",
+);
 const DRAG_HOOK_SOURCE = readFileSync(join(EXPERIMENTAL_DIR, "use-board-agent-session-drag.ts"), "utf8");
 const HELPER_SOURCE = readFileSync(join(EXPERIMENTAL_DIR, "lib", "board-untracked-sessions.ts"), "utf8");
 const SESSION_INDEX_SOURCE = readFileSync(
@@ -53,7 +62,7 @@ test("the experimental page groups Pulse sessions onto the board when Untracked 
 	);
 	assert.match(
 		PAGE_SOURCE,
-		/showUntracked\s*\?\s*groupBoardUntrackedSessions\(\{\s*archivedItemIds: archivedLooseWorkIds,\s*boardIssueKeys,\s*capturedItemIds: capturedLooseWorkIds,\s*detachedByCard: detachedAgentSessionsByCard,\s*sessions: agentSessionItems,\s*\}\)\s*:\s*EMPTY_PROXIMITY_SESSIONS/u,
+		/displayedShowUntracked\s*\?\s*groupBoardUntrackedSessions\(\{\s*archivedItemIds: archivedLooseWorkIds,\s*boardIssueKeys,\s*capturedItemIds: capturedLooseWorkIds,\s*detachedByCard: detachedAgentSessionsByCard,\s*sessions: agentSessionItems,\s*\}\)\s*:\s*EMPTY_PROXIMITY_SESSIONS/u,
 	);
 	assert.match(PAGE_SOURCE, /detachedAgentSessionsByCard=\{proximityAgentSessionsByCard\}/u);
 	assert.match(HELPER_SOURCE, /session\.sessionDetails\?\.issueKey/u);
@@ -76,6 +85,33 @@ test("the Untracked column follows card session link and unlink state", () => {
 	);
 	assert.match(PAGE_SOURCE, /onCardAgentSessionLink\?\.\(session, card, columnTitle\)/u);
 	assert.match(PAGE_SOURCE, /onCardAgentSessionUnlink\?\.\(session, card, columnTitle\)/u);
+});
+
+test("the experimental page can prepend newly synced agent sessions with arrival marks", () => {
+	assert.match(PAGE_SOURCE, /additionalAgentSessions\?: readonly PulseAgentSession\[\];/u);
+	assert.match(PAGE_SOURCE, /newAgentSessionIds\?: ReadonlySet<string>;/u);
+	assert.match(
+		PAGE_SOURCE,
+		/onAgentSessionsReviewed\?: \(sessionIds\?: readonly string\[\]\) => void;/u,
+	);
+	assert.match(PAGE_SOURCE, /function useAgentSessionLooseWork\(/u);
+	assert.match(PAGE_SOURCE, /function useAgentSessionReview\(/u);
+	assert.match(PAGE_SOURCE, /function isExperimentalJiraListContent\(/u);
+	assert.doesNotMatch(PAGE_SOURCE, /additionalAgentSessions = EMPTY_ADDITIONAL_AGENT_SESSIONS/u);
+	assert.match(
+		PAGE_SOURCE,
+		/const agentSessionLooseWork = useAgentSessionLooseWork\(additionalAgentSessions, pulseTimeline\.looseWork\)/u,
+	);
+	assert.match(
+		PAGE_SOURCE,
+		/filterPulseLooseWorkByMember\(agentSessionLooseWork, agentSessionMemberId\)/u,
+	);
+	assert.match(PAGE_SOURCE, /looseWork: agentSessionLooseWork/u);
+	assert.match(PAGE_SOURCE, /newItemIds: newAgentSessionIds/u);
+	assert.match(PAGE_SOURCE, /onItemHover: handleUntrackedItemHover/u);
+	assert.match(PAGE_SOURCE, /collapsed: displayedAgentSessionColumnCollapsed,/u);
+	assert.match(PAGE_SOURCE, /onCollapsedChange: handleAgentSessionColumnCollapsedChange/u);
+	assert.doesNotMatch(PAGE_SOURCE, /defaultCollapsed: agentSessionColumnCollapsed/u);
 });
 
 test("proximity AgentSession forwards the Pulse flyout attach handlers", () => {
@@ -101,7 +137,8 @@ test("one board transaction coordinates every session source and suppresses prev
 	assert.match(BOARD_SOURCE, /JiraSessionFlyoutSuspensionProvider/u);
 	assert.match(BOARD_SOURCE, /const sessionFlyoutsSuspended = boardSessionDrag\.transaction !== null \|\| draggedCardCode !== null;/u);
 	assert.match(BOARD_SOURCE, /sessionFlyoutsSuspended=\{sessionFlyoutsSuspended\}/u);
-	assert.match(IN_FLOW_SOURCE, /suspended=\{sessionFlyoutsSuspended\}/u);
+	assert.match(IN_FLOW_SOURCE, /suspended=\{sessionFlyoutsSuspended \|\| !isEmbedded\}/u);
+	assert.doesNotMatch(IN_FLOW_SOURCE, /isHovered && !isPersistentExpanded/u);
 	assert.match(BOARD_SOURCE, /sessionDrag: boardSessionDrag\.enablement\.transferable[\s\S]*\? boardSessionDrag\.untrackedBinding[\s\S]*: agentSessionColumn\.sessionDrag/u);
 	assert.match(PAGE_SOURCE, /boardAgentSessionDrag=\{boardSessionDrag\}/u);
 	assert.match(PAGE_SOURCE, /sessionDrag: boardSessionDrag\.untrackedBinding/u);
@@ -153,6 +190,31 @@ test("release re-hit-tests the current pointer against current board geometry", 
 	assert.match(DRAG_HOOK_SOURCE, /commitDrop\(finalTransaction\)/u);
 });
 
+test("list-row hit testing reads shared scrollport geometry once per drag evaluation", () => {
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/const listScrollportClipCache = new Map<HTMLElement, ListScrollportClip>\(\);/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/clipBoundsToScrollport\(node, rect, listScrollportClipCache\)/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/let scrollportClip = clipCache\.get\(scrollport\);[\s\S]*if \(scrollportClip === undefined\) \{[\s\S]*clipCache\.set\(scrollport, scrollportClip\);/u,
+	);
+});
+
+test("card-link drops commit the transfer before decorative flights start", () => {
+	const source = withoutComments(DRAG_HOOK_SOURCE);
+	assert.match(
+		source,
+		/commitDrop\(finalTransaction\);\s*if \(release && finalTransaction\.proximity && !shouldReduceMotion\)/u,
+	);
+	assert.doesNotMatch(source, /pendingAttachRef\.current = \{ flash, transaction:/u);
+	assert.doesNotMatch(source, /commitDrop\(pending\.transaction\)/u);
+});
+
 test("unchecking Untracked exits board-adjacent sessions through the issue presence recipe", () => {
 	assert.match(CARD_SOURCE, /import \{ AnimatePresence, motion, useReducedMotion \} from "motion\/react"/u);
 	assert.match(
@@ -160,30 +222,37 @@ test("unchecking Untracked exits board-adjacent sessions through the issue prese
 		/import \{\s*getJiraIssuePresenceMotion,\s*JIRA_ISSUE_MOTION_STYLE,\s*\} from "@\/components\/blocks\/jira-issue\/lib"/u,
 	);
 	assert.match(CARD_SOURCE, /const proximityMotion = getJiraIssuePresenceMotion\(shouldReduceMotion\)/u);
+	assert.match(CARD_SOURCE, /sessionTransferAfter=\{detachedAgentSessions\.length > 0/u);
 	assert.match(
 		withoutComments(CARD_SOURCE),
-		/<AnimatePresence>\s*\{detachedAgentSessions\.length > 0 \? \(\s*<motion\.div[\s\S]*exit=\{proximityMotion\.exit\}/u,
+		/<AnimatePresence>\s*<motion\.div[\s\S]*exit=\{proximityMotion\.exit\}/u,
 	);
 	assert.doesNotMatch(BOARD_SOURCE, /data-agent-session-column[\s\S]*showUntracked/u);
 });
 
-test("column card hover lights related board sessions without scrolling or spotlighting", () => {
+test("column session hover previews its suggested Jira issue at the grey hover rung without scrolling or spotlighting", () => {
 	const boardWithoutComments = withoutComments(BOARD_SOURCE);
-	const hoverHandlerStart = boardWithoutComments.indexOf("const handleSessionHover");
+	const hoverHandlerStart = boardWithoutComments.indexOf("const handleColumnSessionHover");
 	const hoverHandlerBody = boardWithoutComments.slice(
 		hoverHandlerStart,
 		boardWithoutComments.indexOf("};", hoverHandlerStart),
 	);
 
 	assert.notStrictEqual(hoverHandlerStart, -1);
-	assert.match(BOARD_SOURCE, /onItemHover=\{handleSessionHover\}/u);
-	assert.match(hoverHandlerBody, /setHoveredSessionId\(item\?\.id \?\? null\)/u);
+	assert.match(BOARD_SOURCE, /onItemHover: handleColumnSessionHover,/u);
+	assert.match(hoverHandlerBody, /setHoveredColumnSessionId\(item\?\.id \?\? null\)/u);
 	assert.match(hoverHandlerBody, /agentSessionColumn\?\.onItemHover\?\.\(item\)/u);
-	// Hover previews a relationship. Only a click owns focus, scroll, and the
-	// `opacity-40` veil, so the hover handler must stay out of all three.
+	assert.match(BOARD_SOURCE, /const hoveredIssueKey = hoveredColumnSessionId === null/u);
+	assert.match(PAGE_SOURCE, /const untrackedHoveredWorkItemKey = untrackedHoveredSession/u);
+	assert.match(PAGE_SOURCE, /proximityHighlightedWorkItemKey=\{untrackedHoveredWorkItemKey\}/u);
+	assert.match(BOARD_SOURCE, /proximityHighlightedWorkItemKey\?: string \| null;/u);
+	assert.match(BOARD_SOURCE, /const hostHoveredIssueKey = proximityHighlightedWorkItemKey === undefined/u);
+	assert.match(CARD_SOURCE, /agentSessionTargetPreview=\{\{ highlighted: agentSessionTargetHighlighted \}\}/u);
+	assert.match(JIRA_ISSUE_SOURCE, /agentSessionTargetHighlighted \? "bg-bg-neutral-hovered" : "bg-bg-neutral"/u);
+	// Hover previews the relationship with color only. Only a click owns focus,
+	// scroll, and the `opacity-40` veil, so the hover handler stays out of all three.
 	assert.doesNotMatch(hoverHandlerBody, /setFocusedIssueKey/u);
 	assert.doesNotMatch(hoverHandlerBody, /scrollBoardIssueIntoView/u);
-	assert.doesNotMatch(BOARD_SOURCE, /hoveredIssueKey/u);
 	assert.match(BOARD_SOURCE, /highlightedSessionId=\{highlightedSessionId\}/u);
 	assert.match(CARD_SOURCE, /highlightedItemId=\{highlightedSessionId\}/u);
 });
@@ -227,8 +296,15 @@ test("column card click scrolls the related issue and applies the blue-subtlest 
 		withoutComments(BOARD_SOURCE),
 		/const handleSessionSelectionChange = \(itemId: string \| null\) => \{\s*if \(itemId === null\) \{\s*setFocusedIssueKey\(null\);/u,
 	);
-	assert.match(BOARD_SOURCE, /data-issue-key=\{card\.code\}/u);
-	assert.match(BOARD_SOURCE, /spotlightIssueKey === card\.code && "bg-bg-accent-blue-subtlest"/u);
+	assert.match(BOARD_SOURCE, /data-issue-key=\{cardCode\}/u);
+	assert.match(
+		BOARD_SOURCE,
+		/spotlightIssueKey === card\.code && "bg-bg-accent-blue-subtlest \[&_\[data-slot=jira-issue-agent-backdrop\]\]:bg-bg-accent-blue-subtlest"/u,
+	);
+	assert.match(
+		BOARD_SOURCE,
+		/agentSessionTargetHighlighted=\{hoveredIssueKey === card\.code && spotlightIssueKey !== card\.code\}/u,
+	);
 	assert.match(
 		BOARD_SOURCE,
 		/spotlightIssueKey !== null && spotlightIssueKey !== card\.code && "opacity-40"/u,
@@ -278,8 +354,7 @@ test("column presentation pins Untracked beside the list as well as the board", 
 		PAGE_SOURCE,
 		/\{showInFlowAgentSessionColumn && agentSessionColumnConfig \? \(\s*<InFlowAgentSessionColumn/u,
 	);
-	assert.match(PAGE_SOURCE, /inFlowAgentSessionColumn: showInFlowAgentSessionColumn,/u);
-	assert.match(PAGE_SOURCE, /inFlowAgentSessionColumn=\{showInFlowAgentSessionColumn\}/u);
+	assert.doesNotMatch(PAGE_SOURCE, /inFlowAgentSessionColumn/u);
 	assert.match(PAGE_SOURCE, /columnFrame=\{columnChromeStyles\.headerFrame\}/u);
 	assert.match(
 		PAGE_SOURCE,

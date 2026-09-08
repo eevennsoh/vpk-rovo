@@ -24,9 +24,10 @@ const NAV_ADS_SOURCE = fs.readFileSync(path.join(process.cwd(), "app", "data", "
 const BLOCK_DETAILS_SOURCE = readDetailCategorySource("blocks");
 const REGISTRY_SOURCE = readWebsiteRegistrySource();
 
-test("PullRequest exposes the compact card props contract", () => {
+test("PullRequest exposes the dropdown, spacious, and flyout card props contract", () => {
 	assert.match(TYPES_SOURCE, /export type PullRequestStatus = "Open" \| "Merged"/u);
-	assert.match(TYPES_SOURCE, /export type PullRequestVariant = "compact" \| "spacious"/u);
+	assert.match(TYPES_SOURCE, /export type PullRequestVariant = "dropdown" \| "spacious" \| "flyout"/u);
+	assert.doesNotMatch(TYPES_SOURCE, /"compact"/u);
 	assert.match(
 		TYPES_SOURCE,
 		/export interface PullRequestAuthor \{[\s\S]*name: string;[\s\S]*avatarUrl\?: string;/u,
@@ -47,7 +48,8 @@ test("PullRequest card reuses Avatar, Tag, Lozenge, BrandLogoMark, and ArrowRigh
 		COMPONENT_SOURCE,
 		/BrandLogoMark[\s\S]*name="github"/u,
 	);
-	// Compact keeps the 24px avatar by default; spacious opts down to 16px.
+	assert.doesNotMatch(COMPONENT_SOURCE, /dark:\[&_svg\]:invert/u);
+	// Dropdown keeps the 24px avatar by default; flyout/spacious opt down to 16px.
 	assert.match(COMPONENT_SOURCE, /function PullRequestAuthorAvatar\([\s\S]*size = "sm",/u);
 	assert.match(COMPONENT_SOURCE, /text-text-success">\+\{additions\}/u);
 	assert.match(COMPONENT_SOURCE, /text-text-danger">-\{deletions\}/u);
@@ -56,6 +58,10 @@ test("PullRequest card reuses Avatar, Tag, Lozenge, BrandLogoMark, and ArrowRigh
 		/aria-label=\{`\$\{additions\} additions, \$\{deletions\} deletions`\}[\s\S]*role="group"/u,
 	);
 	assert.match(COMPONENT_SOURCE, /function PullRequestBranchPath/u);
+	assert.match(
+		COMPONENT_SOURCE,
+		/aria-label=\{[\s\S]*branch && targetBranch[\s\S]*className="inline-flex min-w-0 shrink items-center gap-1 overflow-hidden text-xs leading-5"\s*role="group"/u,
+	);
 	assert.match(COMPONENT_SOURCE, /ArrowRightIcon/u);
 	assert.match(
 		COMPONENT_SOURCE,
@@ -88,52 +94,31 @@ test("PullRequest selection styling works for read-only and interactive cards", 
 	);
 	assert.match(
 		COMPONENT_SOURCE,
-		/const activeSelected = selected;[\s\S]*activeSelected\s*\?\s*"border-border-selected bg-bg-selected text-text-selected"\s*:\s*null,[\s\S]*onActivate && activeSelected\s*\?\s*"hover:bg-bg-selected-hovered"/u,
+		/const activeSelected = selected;[\s\S]*activeSelected && !isFlyout\s*\?\s*"border-border-selected bg-bg-selected text-text-selected"\s*:\s*null,[\s\S]*onActivate && activeSelected && !isFlyout\s*\?\s*"hover:bg-bg-selected-hovered"/u,
 	);
 	assert.match(
 		COMPONENT_SOURCE,
 		/<div[\s\S]*aria-current=\{selected \? "true" : undefined\}[\s\S]*data-pull-request=\{number\}[\s\S]*data-selected=\{selected \? "true" : undefined\}[\s\S]*role="group"/u,
 	);
 	assert.match(COMPONENT_SOURCE, /border border-border px-3 py-1\.5/u);
-	assert.doesNotMatch(COMPONENT_SOURCE, /bg-surface-raised/u);
 	assert.match(COMPONENT_SOURCE, /items-center gap-2 rounded-lg/u);
 	assert.doesNotMatch(COMPONENT_SOURCE, /bg-\[#|text-\[#|purple-500|Open preview modal/u);
 });
 
-test("PullRequest spacious variant rearranges the same data into three rows", () => {
-	// Density is opt-in: existing compact callsites keep working untouched.
-	assert.match(COMPONENT_SOURCE, /variant = "compact"/u);
+test("PullRequest spacious variant restores the original three-row dropdown card", () => {
+	assert.match(COMPONENT_SOURCE, /variant = "dropdown"/u);
 	assert.match(COMPONENT_SOURCE, /const isSpacious = variant === "spacious"/u);
 	assert.match(
 		COMPONENT_SOURCE,
 		/isSpacious\s*\?\s*"flex-col items-stretch gap-2 rounded-xl border border-border p-3"/u,
 	);
-	assert.match(COMPONENT_SOURCE, /data-variant=\{variant\}/u);
-	// Both densities render through one shared set of leaf parts.
-	assert.match(COMPONENT_SOURCE, /function PullRequestCompactBody/u);
 	assert.match(COMPONENT_SOURCE, /function PullRequestSpaciousBody/u);
-	assert.match(COMPONENT_SOURCE, /function PullRequestStatusLozenge/u);
-	assert.match(COMPONENT_SOURCE, /function PullRequestRepositoryTag/u);
-	assert.match(COMPONENT_SOURCE, /function PullRequestGitHubMark/u);
-	// Spacious leads with a glyph-bearing lozenge and closes with an author footer.
 	assert.match(COMPONENT_SOURCE, /from "@atlaskit\/icon\/core\/pull-request"/u);
 	assert.match(COMPONENT_SOURCE, /<PullRequestStatusLozenge status=\{status\} withIcon \/>/u);
-	// Title + #N share ADS body 14px / 20px (`text-sm leading-5`) on both densities.
 	assert.match(
 		COMPONENT_SOURCE,
-		/function PullRequestCompactBody[\s\S]*text-sm font-medium leading-5[\s\S]*function PullRequestSpaciousBody/u,
+		/function PullRequestSpaciousBody[\s\S]*<PullRequestInlineTitle[\s\S]*className="flex-1 font-medium"/u,
 	);
-	assert.match(
-		COMPONENT_SOURCE,
-		/function PullRequestSpaciousBody[\s\S]*text-sm font-medium leading-5/u,
-	);
-	assert.match(COMPONENT_SOURCE, /PullRequestAuthorAvatar author=\{author\} size="xs"/u);
-	assert.match(
-		COMPONENT_SOURCE,
-		/<span className="min-w-0 truncate">\{author\.name\}<\/span>/u,
-	);
-	assert.doesNotMatch(COMPONENT_SOURCE, /Created by \{author\.name\}/u);
-	// GitHub mark + existing branch path; no repository name chip.
 	assert.match(
 		COMPONENT_SOURCE,
 		/function PullRequestSpaciousBody[\s\S]*<PullRequestGitHubMark \/>[\s\S]*<PullRequestBranchPath branch=\{branch\} targetBranch=\{targetBranch\} \/>/u,
@@ -142,9 +127,104 @@ test("PullRequest spacious variant rearranges the same data into three rows", ()
 		COMPONENT_SOURCE,
 		/function PullRequestSpaciousBody[\s\S]*<PullRequestRepositoryTag /u,
 	);
+	assert.doesNotMatch(COMPONENT_SOURCE, /function PullRequestCompactBody|variant = "compact"/u);
+});
+
+test("PullRequest flyout and spacious titles wrap as one inline text run", () => {
+	assert.match(
+		COMPONENT_SOURCE,
+		/function PullRequestDropdownBody[\s\S]*min-w-0 truncate text-text[\s\S]*function PullRequestSpaciousBody/u,
+	);
+	assert.match(COMPONENT_SOURCE, /function PullRequestInlineTitle/u);
+	assert.match(
+		COMPONENT_SOURCE,
+		/<span className="text-text-subtlest">#\{number\} <\/span>\s*<span className="text-text">\{title\}<\/span>/u,
+	);
+	assert.match(
+		COMPONENT_SOURCE,
+		/function PullRequestSpaciousBody[\s\S]*<PullRequestInlineTitle[\s\S]*function PullRequestFlyoutBody/u,
+	);
+	assert.match(
+		COMPONENT_SOURCE,
+		/function PullRequestFlyoutBody[\s\S]*<PullRequestInlineTitle number=\{number\} title=\{title\} \/>/u,
+	);
+	assert.doesNotMatch(
+		COMPONENT_SOURCE,
+		/function PullRequestFlyoutBody[\s\S]*shrink-0 text-text-subtlest">#\{number\}/u,
+	);
+	assert.doesNotMatch(
+		COMPONENT_SOURCE,
+		/function PullRequestSpaciousBody[\s\S]*min-w-0 truncate text-text/u,
+	);
+	assert.doesNotMatch(
+		COMPONENT_SOURCE,
+		/function PullRequestFlyoutBody[\s\S]*min-w-0 truncate text-text/u,
+	);
+});
+
+test("PullRequest flyout variant matches the overlay summary card", () => {
+	assert.match(COMPONENT_SOURCE, /variant = "dropdown"/u);
+	assert.match(COMPONENT_SOURCE, /const isFlyout = variant === "flyout"/u);
+	assert.match(
+		COMPONENT_SOURCE,
+		/isFlyout\s*\?\s*"flex-col items-stretch gap-3 rounded-lg bg-surface-raised pt-3 shadow-2xl"/u,
+	);
+	assert.match(COMPONENT_SOURCE, /data-variant=\{variant\}/u);
+	assert.match(COMPONENT_SOURCE, /function PullRequestDropdownBody/u);
+	assert.match(COMPONENT_SOURCE, /function PullRequestFlyoutBody/u);
+	assert.match(COMPONENT_SOURCE, /function PullRequestStatusLozenge/u);
+	assert.match(COMPONENT_SOURCE, /function PullRequestRepositoryTag/u);
+	assert.match(COMPONENT_SOURCE, /function PullRequestGitHubMark/u);
+	assert.match(
+		COMPONENT_SOURCE,
+		/function PullRequestDropdownBody[\s\S]*text-sm font-medium leading-5[\s\S]*function PullRequestFlyoutBody/u,
+	);
+	assert.match(
+		COMPONENT_SOURCE,
+		/function PullRequestFlyoutBody[\s\S]*<PullRequestInlineTitle number=\{number\} title=\{title\} \/>/u,
+	);
+	assert.doesNotMatch(
+		COMPONENT_SOURCE,
+		/function PullRequestFlyoutBody[\s\S]*font-medium/u,
+	);
+	assert.match(COMPONENT_SOURCE, /PullRequestAuthorAvatar author=\{author\} size="xs"/u);
+	assert.match(
+		COMPONENT_SOURCE,
+		/<span className="min-w-0 truncate">\{author\.name\}<\/span>/u,
+	);
+	assert.match(COMPONENT_SOURCE, /relativeTime \? \(\s*<>\s*<span className="shrink-0">·<\/span>/u);
+	assert.doesNotMatch(COMPONENT_SOURCE, /Created by \{author\.name\}/u);
+	assert.match(
+		COMPONENT_SOURCE,
+		/function PullRequestFlyoutBody[\s\S]*<PullRequestGitHubMark \/>[\s\S]*<PullRequestBranchPath branch=\{branch\} targetBranch=\{targetBranch\} \/>/u,
+	);
+	assert.doesNotMatch(
+		COMPONENT_SOURCE,
+		/function PullRequestFlyoutBody[\s\S]*<PullRequestMetaLeadingIcon \/>[\s\S]*<PullRequestGitHubMark \/>/u,
+	);
+	assert.doesNotMatch(
+		COMPONENT_SOURCE,
+		/function PullRequestFlyoutBody[\s\S]*<PullRequestRepositoryTag /u,
+	);
 	assert.match(
 		COMPONENT_SOURCE,
 		/\{filesChanged\} \{filesChanged === 1 \? "file" : "files"\}/u,
+	);
+	assert.match(COMPONENT_SOURCE, /border-t border-border-disabled/u);
+	// File icon leads the files/diff row, not the GitHub branch row.
+	assert.match(COMPONENT_SOURCE, /from "@atlaskit\/icon\/core\/file"/u);
+	assert.match(COMPONENT_SOURCE, /function PullRequestMetaLeadingIcon/u);
+	assert.match(
+		COMPONENT_SOURCE,
+		/grid size-4 shrink-0 place-items-center text-icon-subtlest/u,
+	);
+	assert.match(
+		COMPONENT_SOURCE,
+		/function PullRequestFlyoutBody[\s\S]*<PullRequestMetaLeadingIcon \/>[\s\S]*\{filesChanged\} \{filesChanged === 1 \? "file" : "files"\}/u,
+	);
+	assert.doesNotMatch(
+		COMPONENT_SOURCE,
+		/function PullRequestFlyoutBody[\s\S]*flex h-5 min-w-0 flex-nowrap items-center gap-1\.5 overflow-hidden/u,
 	);
 });
 
@@ -152,15 +232,21 @@ test("Pull Request demos include source → target branch paths", () => {
 	assert.match(DATA_SOURCE, /targetBranch: "main"/u);
 	assert.match(DATA_SOURCE, /branch: "rovo\/rfp-103-response-validation"/u);
 	assert.match(DATA_SOURCE, /filesChanged: 6/u);
+	assert.match(DATA_SOURCE, /relativeTime: "1h ago"/u);
+	assert.match(DATA_SOURCE, /relativeTime: "Yesterday"/u);
+	assert.doesNotMatch(DATA_SOURCE, /relativeTime: "yesterday"/u);
 	assert.doesNotMatch(DATA_SOURCE, /number:\s*902/u);
 });
 
-test("Pull Request demo page offers a compact / spacious density toggle", () => {
-	assert.match(PAGE_SOURCE, /useState<PullRequestVariant>\("compact"\)/u);
-	assert.match(PAGE_SOURCE, /<ToggleGroupItem value="compact">Compact<\/ToggleGroupItem>/u);
-	assert.match(PAGE_SOURCE, /<ToggleGroupItem value="spacious">Spacious<\/ToggleGroupItem>/u);
+test("Pull Request demo page offers compact, spacious, and flyout variant toggles", () => {
+	assert.match(PAGE_SOURCE, /useState<PullRequestVariant>\(\s*lockedVariant \?\? "dropdown",\s*\)/u);
+	assert.match(PAGE_SOURCE, /<ToggleGroupItem value="dropdown">Dropdown compact<\/ToggleGroupItem>/u);
+	assert.match(PAGE_SOURCE, /<ToggleGroupItem value="spacious">Dropdown spacious<\/ToggleGroupItem>/u);
+	assert.match(PAGE_SOURCE, /<ToggleGroupItem value="flyout">Flyout<\/ToggleGroupItem>/u);
 	assert.match(PAGE_SOURCE, /variant=\{variant\}/u);
+	assert.match(PAGE_SOURCE, /w-\[344px\]/u);
 	assert.match(INDEX_SOURCE, /PullRequestVariant/u);
+	assert.doesNotMatch(PAGE_SOURCE, /value="compact"/u);
 });
 
 test("Pull Request demo page centers the card list in the preview shell", () => {
@@ -177,9 +263,19 @@ test("Pull Request block is registered in the website catalog", () => {
 	assert.match(PAGE_SOURCE, /DEMO_PULL_REQUESTS\.map/u);
 	assert.match(DATA_SOURCE, /export const DEMO_PULL_REQUESTS/u);
 	assert.match(DEMO_SOURCE, /from "@\/components\/blocks\/pull-request\/page"/u);
+	assert.match(DEMO_SOURCE, /export function PullRequestDemoDropdown/u);
+	assert.match(DEMO_SOURCE, /export function PullRequestDemoSpacious/u);
+	assert.match(DEMO_SOURCE, /export function PullRequestDemoFlyout/u);
 	assert.match(COMPONENTS_SOURCE, /blockComponent\("pull-request", "Pull Request"\)/u);
 	assert.match(COMPONENT_MANIFEST_SOURCE, /blockComponent\("pull-request", "Pull Request"\)/u);
 	assert.match(NAV_ADS_SOURCE, /"pull-request"/u);
 	assert.match(BLOCK_DETAILS_SOURCE, /PULL_REQUEST_DETAIL|"pull-request": PULL_REQUEST_DETAIL/u);
+	assert.match(BLOCK_DETAILS_SOURCE, /"dropdown" \| "spacious" \| "flyout"/u);
+	assert.match(BLOCK_DETAILS_SOURCE, /pull-request-demo-dropdown/u);
+	assert.match(BLOCK_DETAILS_SOURCE, /pull-request-demo-spacious/u);
+	assert.match(BLOCK_DETAILS_SOURCE, /pull-request-demo-flyout/u);
 	assert.match(REGISTRY_SOURCE, /"pull-request": dynamic\(/u);
+	assert.match(REGISTRY_SOURCE, /"pull-request-demo-dropdown"/u);
+	assert.match(REGISTRY_SOURCE, /"pull-request-demo-spacious"/u);
+	assert.match(REGISTRY_SOURCE, /"pull-request-demo-flyout"/u);
 });

@@ -20,9 +20,9 @@ import {
 import { cn } from "@/lib/utils";
 
 const AGENT_LOADING_HOLD_MS = 2_000;
-const AGENT_LOADING_SWAP_MS = 150; // duration-normal
-const AGENT_LOADING_MOTION_SWAP: Transition = { duration: 0.15, ease: [0.4, 1, 0.6, 1] }; // duration-normal + ease-out-practical
-const AGENT_LOADING_MOTION_EXIT: Transition = { duration: 0.1, ease: [0.6, 0, 0.8, 0.6] }; // duration-fast + ease-in
+const AGENT_LOADING_SWAP_MS = 600; // duration-slowest
+const AGENT_LOADING_MOTION_SWAP: Transition = { duration: 0.6, ease: [0.4, 0, 0, 1] }; // duration-slowest + ease-in-out
+const AGENT_LOADING_MOTION_EXIT: Transition = { duration: 0.4, ease: [0.6, 0, 0.8, 0.6] }; // duration-slower + ease-in
 const AGENT_LOADING_MOTION_REDUCED: Transition = { duration: 0 };
 const AGENT_LOADING_SLOT_STYLE: MotionStyle = {
 	originX: 0,
@@ -81,6 +81,7 @@ function renderAgentLoadingAvatar(
 			}}
 			aria-hidden="true"
 			className="pointer-events-none absolute top-0 left-0 size-4 origin-top-left"
+			data-agent-id={agent.id}
 			data-agent-loading-slot={slot}
 			exit={shouldReduceMotion ? undefined : { ...AGENT_LOADING_HIDDEN_EXIT, transition: AGENT_LOADING_MOTION_EXIT }}
 			initial={false}
@@ -120,6 +121,24 @@ function AgentLoadingAnnouncementText({
 	return <span className="sr-only">{announcement}. </span>;
 }
 
+function useAgentLoadingReducedMotion(resyncKey: string): boolean {
+	const motionPreference = useReducedMotion();
+	const [mediaPreference, setMediaPreference] = useState(false);
+
+	useEffect(() => {
+		const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+		const sync = () => {
+			setMediaPreference(media.matches);
+		};
+
+		sync();
+		media.addEventListener("change", sync);
+		return () => media.removeEventListener("change", sync);
+	}, [resyncKey]);
+
+	return motionPreference === true || mediaPreference;
+}
+
 /**
  * A compact agent-presence indicator harvested from the wiv-v2 TeamEU Ferris
  * visual. Multiple agents rotate through front, back, and hidden slots until
@@ -133,7 +152,6 @@ export function AgentLoading({
 	className,
 	size = "default",
 }: Readonly<AgentLoadingProps>) {
-	const shouldReduceMotion = useReducedMotion();
 	const [frontAgentId, setFrontAgentId] = useState<string | null>(
 		() => agents[0]?.id ?? null,
 	);
@@ -143,6 +161,7 @@ export function AgentLoading({
 		() => JSON.stringify(agents.map((agent) => [agent.id, agent.status])),
 		[agents],
 	);
+	const shouldReduceMotion = useAgentLoadingReducedMotion(agentStateKey);
 	const finished = areAllAgentLoadingAgentsFinished(agents);
 	const canCycle = shouldCycleAgentLoading(agents) && !shouldReduceMotion;
 	const resolvedFrontIndex = Math.max(
@@ -214,6 +233,7 @@ export function AgentLoading({
 				aria-hidden="true"
 				className="agent-loading"
 				data-cycling={agents.length > 2 ? "true" : undefined}
+				data-reduced-motion={shouldReduceMotion ? "true" : undefined}
 				data-size={size}
 				data-swapping={canCycle && isSwapping ? "true" : undefined}
 			>

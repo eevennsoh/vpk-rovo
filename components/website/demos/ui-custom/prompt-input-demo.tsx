@@ -294,7 +294,13 @@ export function PromptInputDemoFloatingBarDarkCta() {
 	return <FloatingBarDemo experimentalDarkCta />;
 }
 
-export function PromptInputDemoFloatingBarTextSend() {
+interface FloatingBarTextSendDemoProps {
+	size?: "icon-sm" | "icon-xs";
+}
+
+function FloatingBarTextSendDemo({
+	size = "icon-sm",
+}: Readonly<FloatingBarTextSendDemoProps>) {
 	const [prompt, setPrompt] = useState("");
 	const voice = usePromptInputDemoVoice({ prompt, onPromptChange: setPrompt });
 	const canSubmit = prompt.trim().length > 0;
@@ -314,11 +320,12 @@ export function PromptInputDemoFloatingBarTextSend() {
 						onStop={voice.handleStop}
 						onStopDictation={voice.handleStopDictation}
 						showSubmitWhenEmpty
+						size={size}
 					/>
 				}
 				addButton={
-					<PromptInputButton aria-label="Add" size="icon-sm" variant="ghost">
-						<AddIcon label="" />
+					<PromptInputButton aria-label="Add" size={size} variant="ghost">
+						<AddIcon label="" size={size === "icon-xs" ? "small" : undefined} />
 					</PromptInputButton>
 				}
 				onSubmit={() => setPrompt("")}
@@ -338,4 +345,12 @@ export function PromptInputDemoFloatingBarTextSend() {
 			<DemoVoiceStatus message={voice.statusMessage} />
 		</DemoFrame>
 	);
+}
+
+export function PromptInputDemoFloatingBarTextSend() {
+	return <FloatingBarTextSendDemo size="icon-sm" />;
+}
+
+export function PromptInputDemoFloatingBarTextSendIconXs() {
+	return <FloatingBarTextSendDemo size="icon-xs" />;
 }

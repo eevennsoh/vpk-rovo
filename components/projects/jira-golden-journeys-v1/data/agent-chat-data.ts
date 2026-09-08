@@ -4,7 +4,7 @@ import {
 } from "@/app/data/directory/agents";
 import type { CodeListItem } from "@/components/ui-custom/code-list";
 import { getDeterministicAgentAvatarSrc } from "@/lib/agent-avatars";
-import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import type { RovoMessageMetadata, RovoUIMessage } from "@/lib/rovo-ui-messages";
 import type { ChatContextBarDescriptor } from "@/components/projects/shared/lib/chat-context-bar";
 import type { QuestionCardQuestion } from "@/components/blocks/question-card/types";
 import type { AsxQueueSession } from "@/components/projects/jira-queue/data/queue-sessions";
@@ -18,6 +18,7 @@ export interface JgpAgentChatScenario {
 	question?: QuestionCardQuestion;
 	request?: string;
 	result?: string;
+	skillInvocation?: RovoMessageMetadata["skillInvocation"];
 }
 
 export interface JgpAgentChatPlaybackFrame {
@@ -319,6 +320,10 @@ export function buildJgpAgentChatPlayback(
 		assistantMessageId,
 		userMessage: {
 			id: `jira-golden-journeys-v1-agent-user-${runId}`,
+			metadata: scenario.skillInvocation ? {
+				source: "jira-issue-generative-action",
+				skillInvocation: scenario.skillInvocation,
+			} : undefined,
 			role: "user",
 			parts: [{ type: "text", text: getScenarioRequest(scenario), state: "done" }],
 		},

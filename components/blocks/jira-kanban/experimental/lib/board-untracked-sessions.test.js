@@ -8,6 +8,7 @@ const {
 	getNearestScrollDelta,
 	groupBoardUntrackedSessions,
 	resolveBoardUntrackedIssueKey,
+	resolveHoveredBoardIssueKey,
 	resolveVisibleFocusedIssueKey,
 	selectBoardUntrackedSessions,
 	scrollBoardIssueIntoView,
@@ -197,6 +198,34 @@ test("resolveVisibleFocusedIssueKey drops a stored key once that issue leaves th
 	assert.equal(resolveVisibleFocusedIssueKey("PAY-101", boardColumns), "PAY-101");
 	assert.equal(resolveVisibleFocusedIssueKey("PAY-121", boardColumns), null);
 	assert.equal(resolveVisibleFocusedIssueKey(null, boardColumns), null);
+});
+
+test("resolveHoveredBoardIssueKey maps only the hovered suggested session onto a visible issue", () => {
+	const boardColumns = [
+		{ cards: [{ code: "PAY-101" }, { code: "PAY-121" }] },
+	];
+	const sessions = [
+		session("lw-scope-thread", "PAY-101"),
+		session("lw-kickoff-killswitch-session", "PAY-121"),
+		session("lw-off-board", "PAY-999"),
+	];
+
+	assert.equal(
+		resolveHoveredBoardIssueKey("lw-kickoff-killswitch-session", sessions, boardColumns),
+		"PAY-121",
+	);
+	assert.equal(resolveHoveredBoardIssueKey("lw-off-board", sessions, boardColumns), null);
+	assert.equal(resolveHoveredBoardIssueKey("missing", sessions, boardColumns), null);
+	assert.equal(resolveHoveredBoardIssueKey(null, sessions, boardColumns), null);
+	assert.equal(
+		resolveHoveredBoardIssueKey(
+			"lw-scope-thread",
+			sessions,
+			boardColumns,
+			() => "PAY-121",
+		),
+		"PAY-121",
+	);
 });
 
 test("getCenteredScrollDelta centers a Jira issue inside only the board scrollport", () => {

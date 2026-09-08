@@ -10,15 +10,11 @@ import {
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useDesignVariants } from "@/components/hooks/use-design-variants";
-import { useDesignVariation } from "@/components/hooks/use-design-variation";
 import { DESIGN_VARIANTS } from "@/components/utils/design-variants";
-import { DESIGN_VARIATIONS, isDesignVariationId } from "@/components/utils/design-variation";
 import { ThemeToggle } from "@/components/utils/theme-wrapper";
 import { RovoColorIcon } from "@/components/ui/logo";
 import { token } from "@/lib/tokens";
@@ -53,7 +49,6 @@ export function RightNavigationActions({
 	settingsMenuItems,
 }: Readonly<RightNavigationActionsProps>) {
 	const hasSettingsMenu = Boolean(settingsMenuItems && settingsMenuItems.length > 0);
-	const { designVariation, setDesignVariation } = useDesignVariation();
 	const { designVariants, setDesignVariant } = useDesignVariants();
 
 	return (
@@ -81,9 +76,8 @@ export function RightNavigationActions({
 				<QuestionCircleIcon label="" color={token("color.icon.subtle")} />
 			</Button>
 
-			{/* Settings — always a menu: it owns the global design-variation
-			    picker and the design-variant toggles, plus whatever
-			    surface-specific items the caller passes. */}
+			{/* Settings — always a menu: it owns the global design-variant
+			    toggles, plus whatever surface-specific items the caller passes. */}
 			<DropdownMenu>
 				<DropdownMenuTrigger
 					render={(
@@ -99,29 +93,9 @@ export function RightNavigationActions({
 					<SettingsIcon label="" color="currentColor" />
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="w-64">
-					<DropdownMenuRadioGroup
-						value={designVariation}
-						onValueChange={(value) => {
-							if (isDesignVariationId(value)) {
-								setDesignVariation(value);
-							}
-						}}
-					>
+					<DropdownMenuGroup>
 						{/* Base UI requires group parts (the label) to live inside the
 						    group that owns them, so the label is nested here. */}
-						<DropdownMenuLabel>Design variation</DropdownMenuLabel>
-						{DESIGN_VARIATIONS.map((variation) => (
-							<DropdownMenuRadioItem key={variation.id} value={variation.id}>
-								{variation.label}
-							</DropdownMenuRadioItem>
-						))}
-					</DropdownMenuRadioGroup>
-					<DropdownMenuSeparator />
-					{/* Independent on/off toggles, unrelated to the exclusive
-					    variation above: a variant is additive ("also turn this on"). */}
-					<DropdownMenuGroup>
-						{/* Same Base UI constraint as above — the label is a group part and
-						    must be nested inside the group it names. */}
 						<DropdownMenuLabel>Properties</DropdownMenuLabel>
 						{DESIGN_VARIANTS.map((variant) => (
 							<DropdownMenuCheckboxItem

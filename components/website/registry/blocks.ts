@@ -415,10 +415,19 @@ export const BLOCK_DEMOS: Record<string, ComponentType> = {
 	"jira-issue": dynamic(() => import("../demos/blocks/jira-issue-demo"), {
 		ssr: false,
 	}),
+	"jira-linking": dynamic(() => import("../demos/blocks/jira-linking-demo"), {
+		ssr: false,
+	}),
 	"jira-list": dynamic(() => import("../demos/blocks/jira-list-demo"), {
 		ssr: false,
 	}),
 	"jira-kanban": dynamic(() => import("../demos/blocks/jira-kanban-demo"), {
+		ssr: false,
+	}),
+	"jira-create": dynamic(() => import("../demos/blocks/jira-create-demo"), {
+		ssr: false,
+	}),
+	"jira-dropzone": dynamic(() => import("../demos/blocks/jira-dropzone-demo"), {
 		ssr: false,
 	}),
 	"jira-toolbar": dynamic(() => import("../demos/blocks/jira-toolbar-demo"), {
@@ -441,4 +450,12 @@ export const BLOCK_DEMOS: Record<string, ComponentType> = {
 
 export const BLOCK_VARIANT_DEMOS: Record<string, ComponentType> = {
 	...BLOCK_VARIANT_DEMO_ENTRIES,
+	"jira-linking-drag-to-link": dynamic(
+		() => import("../demos/blocks/jira-linking-demo").then((mod) => ({ default: mod.JiraLinkingDragToLinkExample })),
+		{ ssr: false },
+	),
+	"jira-linking-colour-melt": dynamic(
+		() => import("../demos/blocks/jira-linking-demo").then((mod) => ({ default: mod.JiraLinkingColourMeltExample })),
+		{ ssr: false },
+	),
 };

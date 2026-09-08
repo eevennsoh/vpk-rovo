@@ -16,6 +16,7 @@ const {
 	BOARD_PR_STATE_OPTIONS,
 	isBoardAgentHostId,
 	isBoardAgentSessionStateId,
+	shownSessionStateIdsForAgentFilter,
 } = require("./board-view-options.ts");
 
 test("View menu lists the production done-item windows in order", () => {
@@ -83,6 +84,8 @@ test("Agent lists the session states by session shape, not alphabetically", () =
 	assert.ok(isBoardAgentSessionStateId("needs-input"));
 	assert.ok(isBoardAgentSessionStateId("finished"));
 	assert.equal(isBoardAgentSessionStateId("untracked"), false);
+	assert.deepEqual([...shownSessionStateIdsForAgentFilter("needs-input")], ["needs-input"]);
+	assert.equal(shownSessionStateIdsForAgentFilter("untracked").size, 0);
 });
 
 test("Agent host scope is All / Cloud / Local and labels the nested trigger", () => {

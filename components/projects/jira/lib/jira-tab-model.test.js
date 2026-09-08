@@ -16,20 +16,20 @@ const TEAM_EU_TABS = [
 	{ label: "Calendar", hasContent: false },
 ];
 
-/** Collapsed catalog (Simple views or 2000 years later): one Work items destination, header owns the view. */
+/** Collapsed catalog (Simple views): one Work items destination, header owns the view. */
 const LATER_TABS = [
 	{ label: "Summary", hasContent: false },
 	{ label: "Work items", hasContent: true },
 	{ label: "Calendar", hasContent: false },
 ];
 
-test("a tab shared by both variations resolves to itself", () => {
+test("a tab shared by both catalogs resolves to itself", () => {
 	assert.equal(resolveJiraTab(TEAM_EU_TABS, "Calendar", "board").label, "Calendar");
 	assert.equal(resolveJiraTab(LATER_TABS, "Calendar", "list").label, "Calendar");
 	assert.equal(resolveJiraTab(TEAM_EU_TABS, "List", "list").label, "List");
 });
 
-test("flipping variations carries the board/list choice in both directions", () => {
+test("flipping Simple views carries the board/list choice in both directions", () => {
 	// Team EU's List has no counterpart label, so it lands on the single Work
 	// items destination and the caller keeps rendering the list.
 	assert.equal(resolveJiraTab(LATER_TABS, "List", "list").label, "Work items");
@@ -67,7 +67,7 @@ test("a board-only route never gets a List tab it cannot fill", () => {
 		selectJiraTabs(TEAM_EU_TABS, ["board"]).map((tab) => tab.label),
 		["Summary", "Board", "Calendar"],
 	);
-	// The collapsed variation has nothing to filter — its Work items tab has no
+	// The collapsed catalog has nothing to filter — its Work items tab has no
 	// view, so it survives whichever surfaces the route supports.
 	assert.deepEqual(
 		selectJiraTabs(LATER_TABS, ["board"]).map((tab) => tab.label),

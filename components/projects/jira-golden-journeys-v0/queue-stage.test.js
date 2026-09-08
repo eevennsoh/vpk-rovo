@@ -66,6 +66,10 @@ const JIRA_SESSION_FLYOUT_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../../blocks/product-sidebar/variants/jira-session-flyout.tsx"),
 	"utf8",
 );
+const JIRA_SESSION_FLYOUT_DATA_SOURCE = fs.readFileSync(
+	path.join(__dirname, "../../blocks/product-sidebar/variants/jira-session-flyout-data.ts"),
+	"utf8",
+);
 const CHAT_HISTORY_DRAWER_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../sidebar-chat/components/chat-history-drawer.tsx"),
 	"utf8",
@@ -362,5 +366,5 @@ test("ASX Queue seeds a perpetual running session with an in-progress thinking t
 	assert.match(QUEUE_SESSIONS_SOURCE, /issueKey: "RFP-104",/u);
 	assert.match(QUEUE_SESSIONS_SOURCE, /status: "running",/u);
 	assert.match(QUEUE_SESSIONS_SOURCE, /data-thinking-event/u);
-	assert.match(JIRA_SESSION_FLYOUT_SOURCE, /running: "3m ago"/u);
+	assert.match(JIRA_SESSION_FLYOUT_DATA_SOURCE, /running: "3m ago"/u);
 });

@@ -27,7 +27,7 @@ import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import type { JiraKanbanAssigneeData } from "../index";
 import { BoardViewMenu } from "./components/board-view-menu";
-import type { BoardAgentSessionStateId } from "./data/board-view-options";
+import type { BoardAgentFilterId, BoardAgentSessionStateId } from "./data/board-view-options";
 import {
 	JIRA_KANBAN_HEADER_FACEPILE_CLASS_NAME,
 	JIRA_KANBAN_HEADER_FACEPILE_MAX_ITEMS,
@@ -96,8 +96,7 @@ interface ExperimentalJiraKanbanBoardHeaderProps {
 	endSlot?: ReactNode;
 	/**
 	 * Where the overflow ("…") control sits when it is shown. `"inline"` keeps
-	 * it with Filter / Group (2000 years later). `"end"` parks it after
-	 * Customize, which is Team EU's shipping chrome.
+	 * it with Filter / Group. `"end"` parks it after Customize.
 	 */
 	moreControlsPlacement?: "inline" | "end";
 	/**
@@ -106,8 +105,8 @@ interface ExperimentalJiraKanbanBoardHeaderProps {
 	 */
 	showMoreControls?: boolean;
 	/**
-	 * Outline Customize control before More when both sit at the end. Team EU
-	 * shows it when Simple views is off; missing capability stays display-only.
+	 * Outline Customize control before More when both sit at the end. Shown
+	 * when Simple views is off; missing capability stays display-only.
 	 */
 	showCustomizeControl?: boolean;
 	surfaceLabel?: string;
@@ -115,6 +114,8 @@ interface ExperimentalJiraKanbanBoardHeaderProps {
 	onShownSessionStateIdsChange?: (shownSessionStateIds: Set<BoardAgentSessionStateId>) => void;
 	showUntracked?: boolean;
 	onShowUntrackedChange?: (showUntracked: boolean) => void;
+	agentFilterId?: BoardAgentFilterId | null;
+	onAgentFilterIdChange?: (agentFilterId: BoardAgentFilterId | null) => void;
 	/**
 	 * Reveals Column size, Hide done, and Show fields in View. The route owns
 	 * Simple views so this header does not read the design-variant store.
@@ -204,6 +205,8 @@ export function ExperimentalJiraKanbanBoardHeader({
 	onShownSessionStateIdsChange,
 	showUntracked,
 	onShowUntrackedChange,
+	agentFilterId,
+	onAgentFilterIdChange,
 	simpleViews,
 	viewTabs,
 	title = JIRA_DESIGN_PROJECT.name,
@@ -229,6 +232,8 @@ export function ExperimentalJiraKanbanBoardHeader({
 					showMoreControls={showMoreControls}
 					showUntracked={showUntracked}
 					shownSessionStateIds={shownSessionStateIds}
+					agentFilterId={agentFilterId}
+					onAgentFilterIdChange={onAgentFilterIdChange}
 					simpleViews={simpleViews}
 					surfaceLabel={surfaceLabel}
 					{...{ endSlot, facepile, filterControl, modeToggle }}
@@ -363,6 +368,7 @@ function BoardHeaderAssigneeFacepileItem({
 
 function BoardHeaderControlsRow({
 	activeView,
+	agentFilterId,
 	assignees,
 	compact,
 	controlsInsetEnd,
@@ -371,6 +377,7 @@ function BoardHeaderControlsRow({
 	filterControl,
 	modeToggle,
 	moreControlsPlacement,
+	onAgentFilterIdChange,
 	onSelectedAssigneeIdsChange,
 	onShowUntrackedChange,
 	onShownSessionStateIdsChange,
@@ -385,6 +392,7 @@ function BoardHeaderControlsRow({
 	surfaceLabel,
 }: Readonly<{
 	activeView: ExperimentalJiraKanbanView;
+	agentFilterId?: BoardAgentFilterId | null;
 	assignees: readonly JiraKanbanAssigneeData[];
 	compact: boolean;
 	controlsInsetEnd: number;
@@ -393,6 +401,7 @@ function BoardHeaderControlsRow({
 	filterControl?: ReactNode;
 	modeToggle?: ReactNode;
 	moreControlsPlacement: "inline" | "end";
+	onAgentFilterIdChange?: (agentFilterId: BoardAgentFilterId | null) => void;
 	onSelectedAssigneeIdsChange?: (assigneeIds: Set<string>) => void;
 	onShowUntrackedChange?: (showUntracked: boolean) => void;
 	onShownSessionStateIdsChange?: (shownSessionStateIds: Set<BoardAgentSessionStateId>) => void;
@@ -450,6 +459,8 @@ function BoardHeaderControlsRow({
 
 			<BoardViewMenu
 				compact={compact}
+				agentFilterId={agentFilterId}
+				onAgentFilterIdChange={onAgentFilterIdChange}
 				onShownSessionStateIdsChange={onShownSessionStateIdsChange}
 				onShowUntrackedChange={onShowUntrackedChange}
 				shownSessionStateIds={shownSessionStateIds}

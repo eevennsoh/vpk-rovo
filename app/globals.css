@@ -14,6 +14,7 @@
 @layer theme, base, components, utilities;
 
 @import "./tailwind-theme.css";
+@import "./jira-agent-motion.css";
 @import "./dash-4-2.css";
 @import "./shadcn-theme.css";
 @import "./typeset.css";
@@ -636,6 +637,86 @@
 	}
 }
 
+/* Link acknowledgement: one pass of the linked agent's brand colour across the
+   chin row it landed in. The gradient itself is inline, because the colour is
+   per-agent; only the motion lives here.
+
+   Deliberately a CSS animation rather than Motion's `initial` -> `animate`.
+   The chin rows sit inside an `AnimatePresence` that the board re-keys on the
+   very commit that adds the row, and `initial={false}` makes every child of a
+   freshly-keyed presence skip its enter animation — so a Motion sweep rendered
+   already finished. CSS keyframes run on mount regardless of React context.
+
+   The plateau tops out well below 1: the gradient carries the agent's raw brand
+   hex, and at full alpha that reads as a colour block dropped on the row rather
+   than light passing over it. */
+@keyframes jira-issue-link-flash {
+	0% {
+		opacity: 0;
+		transform: translateX(-100%);
+	}
+	25% {
+		opacity: 0.4;
+	}
+	70% {
+		opacity: 0.4;
+	}
+	100% {
+		opacity: 0;
+		transform: translateX(100%);
+	}
+}
+
+/* Slower than any duration token: `--duration-slowest` (600ms) is scaled for a
+   full-screen transition, and this sweep crosses a 260px row as a deliberate,
+   low-frequency flourish. Derived from the scale rather than hard-coded so it
+   still moves with the token. */
+@utility jira-issue-link-flash {
+	animation: jira-issue-link-flash calc(var(--duration-slowest) * 1.5) var(--ease-in-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.jira-issue-link-flash {
+		animation: none;
+		opacity: 0;
+	}
+}
+
+/* Drop acknowledgement for a list row: the row a dropped agent session created,
+   or joined, glows selected-blue once and releases.
+
+   Deliberately no fill mode. The row has no persistent state to show — it is
+   not selected, and checking it would be a lie about what the drop did — so the
+   animation ends by handing the background back to the cell's own classes. The
+   holding beat at 40% is what makes a 600ms pass read as a flash rather than a
+   fade, and the practical `--ease-in` curve suits motion that is leaving. */
+@keyframes jira-list-row-flash {
+	0% {
+		background-color: var(--ds-background-selected);
+	}
+	40% {
+		background-color: var(--ds-background-selected);
+	}
+	100% {
+		background-color: transparent;
+	}
+}
+
+@utility jira-list-row-flash {
+	animation: jira-list-row-flash var(--duration-slowest) var(--ease-in);
+}
+
+/* Reduced motion still needs the answer to "which row did that land in?", so
+   the flash degrades to a plain held tint rather than disappearing. The class
+   is removed on a timer either way, so the tint clears with it. */
+@media (prefers-reduced-motion: reduce) {
+	.jira-list-row-flash,
+	.before\:jira-list-row-flash::before {
+		animation: none;
+		background-color: var(--ds-background-selected);
+	}
+}
+
 /* -----------------------------------------------------------------
    Unlayered Overrides
 
@@ -834,4 +915,28 @@ html[data-embedded] [data-shell-chrome] {
 ::view-transition-new(persistent-header),
 ::view-transition-new(persistent-sidebar) {
 	animation: none;
+}
+
+/* Text Continuity caret: a hard on/off blink for the scripted number-field
+   example, which draws its own caret because the value is a morph, not an
+   input. `step-start` rather than a fade — a caret that eases reads as a glow. */
+@keyframes text-continuity-caret-blink {
+	0%,
+	100% {
+		opacity: 0;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+@utility text-continuity-caret {
+	animation: text-continuity-caret-blink 1s step-start infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.text-continuity-caret {
+		animation: none;
+		opacity: 1;
+	}
 }

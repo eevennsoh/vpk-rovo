@@ -5403,7 +5403,7 @@
 	},
 	"components": {
 		"summary": {
-			"manifestEntryCount": 433,
+			"manifestEntryCount": 439,
 			"categoryCount": 9
 		},
 		"categories": [
@@ -5445,7 +5445,7 @@
 			},
 			{
 				"category": "blocks",
-				"entryCount": 110,
+				"entryCount": 113,
 				"entries": [
 					{
 						"category": "blocks",
@@ -5713,6 +5713,18 @@
 					},
 					{
 						"category": "blocks",
+						"slug": "jira-create",
+						"name": "Jira Create",
+						"importPath": "@/components/blocks/jira-create"
+					},
+					{
+						"category": "blocks",
+						"slug": "jira-dropzone",
+						"name": "Jira Dropzone",
+						"importPath": "@/components/blocks/jira-dropzone"
+					},
+					{
+						"category": "blocks",
 						"slug": "jira-epic",
 						"name": "Jira Epic",
 						"importPath": "@/components/blocks/jira-epic"
@@ -5734,6 +5746,12 @@
 						"slug": "jira-kanban",
 						"name": "Jira Kanban",
 						"importPath": "@/components/blocks/jira-kanban"
+					},
+					{
+						"category": "blocks",
+						"slug": "jira-linking",
+						"name": "Jira Linking",
+						"importPath": "@/components/blocks/jira-linking"
 					},
 					{
 						"category": "blocks",
@@ -7443,7 +7461,7 @@
 			},
 			{
 				"category": "visual",
-				"entryCount": 102,
+				"entryCount": 105,
 				"entries": [
 					{
 						"category": "visual",
@@ -7543,6 +7561,12 @@
 					},
 					{
 						"category": "visual",
+						"slug": "dropzone-effect",
+						"name": "Dropzone Effect",
+						"importPath": "@/components/visual/dropzone-effect"
+					},
+					{
+						"category": "visual",
 						"slug": "edge-detect",
 						"name": "Edge Detect",
 						"importPath": "@/components/website/demos/visual/shader-lab-effect-demo"
@@ -7594,6 +7618,12 @@
 						"slug": "halftone",
 						"name": "Halftone",
 						"importPath": "@/components/website/demos/visual/shader-lab-effect-demo"
+					},
+					{
+						"category": "visual",
+						"slug": "heatmap",
+						"name": "Heatmap",
+						"importPath": "@/components/visual/heatmap"
 					},
 					{
 						"category": "visual",
@@ -8002,6 +8032,12 @@
 						"slug": "svg-tracing",
 						"name": "SVG Tracing",
 						"importPath": "@/components/visual/svg-tracing"
+					},
+					{
+						"category": "visual",
+						"slug": "text-continuity",
+						"name": "Text Continuity",
+						"importPath": "@/components/visual/text-continuity"
 					},
 					{
 						"category": "visual",

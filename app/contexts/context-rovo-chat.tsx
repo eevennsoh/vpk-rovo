@@ -83,7 +83,7 @@ import {
 import {
 	buildSelectableAgents,
 	buildCompactThreadPersistKey,
-	buildSendMessageBody,
+	buildSendMessageBody, clearSkillInvocationForEdit,
 	createAssistantThinkingStatusMessage,
 	createQueueItemId,
 	deriveCompactThreadTitle,
@@ -1661,7 +1661,7 @@ export function RovoChatProvider({
 			const messagePayload = {
 				files,
 				text: trimmedText,
-				metadata: message.metadata,
+				metadata: clearSkillInvocationForEdit(message.metadata),
 				messageId,
 			};
 			const bodyPayload = {

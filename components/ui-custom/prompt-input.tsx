@@ -115,6 +115,7 @@ import {
 export {
   PromptInputDictationControl,
   type PromptInputDictationControlProps,
+  type PromptInputDictationControlSize,
   type PromptInputDictationState,
 } from "@/components/ui-custom/prompt-input-dictation";
 export {
@@ -1064,6 +1065,8 @@ export type PromptInputTextareaProps = ComponentProps<
   directoryAutocompleteLimit?: number;
   /** Keyed request to replace the composer draft with a rich mention token. */
   prefillMentionRequest?: { mention: RichTextMentionItem; requestKey: number };
+  /** Acknowledges a rich mention request after the editor applies it. */
+  onPrefillMentionConsumed?: (requestKey: number) => void;
   /** Receives composer-owned autocomplete state for external list rendering. */
   onDirectoryAutocompleteChange?: (state: DirectoryAutocompleteState | null) => void;
   /** Receives imperative insertion/selection actions for external rows. */
@@ -1124,6 +1127,7 @@ export const PromptInputTextarea = ({
   directoryAutocompleteListVisible = false,
   directoryAutocompleteLimit,
   prefillMentionRequest,
+  onPrefillMentionConsumed,
   onDirectoryAutocompleteChange,
   onDirectoryAutocompleteControllerChange,
   onChange,
@@ -1669,6 +1673,7 @@ export const PromptInputTextarea = ({
       lastMentionPrefillTextRef.current = prefillText;
       publishText(prefillText, editor.view.dom, true);
       editor.commands.focus("end");
+      onPrefillMentionConsumed?.(requestKey);
     });
 
     return () => {
@@ -1681,6 +1686,7 @@ export const PromptInputTextarea = ({
   }, [
     clearPendingAutoTagging,
     editor,
+    onPrefillMentionConsumed,
     prefillMentionRequest,
     publishText,
     resetVisualTraceEditorState,
@@ -2049,7 +2055,12 @@ export const PromptInputSubmit = ({
     ? "border-border bg-surface-raised text-icon-danger hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed"
     : undefined;
 
-  let Icon = <ArrowUpIcon className="size-4" />;
+  const glyphSize = size === "icon-xs" ? "small" : undefined;
+  let Icon = glyphSize ? (
+    <ArrowUpIcon size={glyphSize} />
+  ) : (
+    <ArrowUpIcon className="size-4" />
+  );
 
   if (status === "submitted" || status === "streaming") {
     Icon = <span aria-hidden className="size-3 rounded-[2px] bg-current" />;

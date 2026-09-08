@@ -6,7 +6,7 @@ export type JiraIssuePriority = "major" | "medium" | "minor";
 export type JiraIssuePullRequestStatus = "open" | "failed" | "merged";
 export type JiraIssueVariant = "default" | "uncaptured-work";
 
-/** Dummy or live overlay fields for the spacious Pull Request hover card. */
+/** Dummy or live overlay fields for the Pull Request hover flyout. */
 export interface JiraIssuePullRequestPreview {
 	title: string;
 	author?: {
@@ -19,6 +19,8 @@ export interface JiraIssuePullRequestPreview {
 	additions: number;
 	deletions: number;
 	filesChanged?: number;
+	/** Static relative label shown on the flyout as `Name · relativeTime`. */
+	relativeTime?: string;
 }
 
 export interface JiraIssueTag {

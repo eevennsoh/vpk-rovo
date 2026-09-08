@@ -1,46 +1,35 @@
 "use client";
 
 // oxlint-disable react-doctor/jsx-no-jsx-as-prop -- DropdownMenuTrigger uses a render-node so the View button owns the visual state.
-import { Fragment, useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { useState, type ComponentType } from "react";
 import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
-import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
-import DevicesIcon from "@atlaskit/icon/core/devices";
 import MergeFailureIcon from "@atlaskit/icon/core/merge-failure";
 import MergeSuccessIcon from "@atlaskit/icon/core/merge-success";
+import PriorityTrivialIcon from "@atlaskit/icon/core/priority-trivial";
 import PullRequestIcon from "@atlaskit/icon/core/pull-request";
+import ScreenIcon from "@atlaskit/icon/core/screen";
 import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
-import TaskInProgressIcon from "@atlaskit/icon/core/task-in-progress";
-import TaskToDoIcon from "@atlaskit/icon/core/task-to-do";
 import CloudIcon from "@atlaskit/icon-lab/core/cloud";
 import GroupIcon from "@atlaskit/icon-lab/core/group";
 import MergeQueueIcon from "@atlaskit/icon-lab/core/merge-queue";
 import QuestionCircleFilledIcon from "@atlaskit/icon-lab/core/question-circle-filled";
 
-import { BOARD_GROUP_DEFAULT_ID, BOARD_GROUP_OPTIONS } from "../data/board-group-options";
+import { BOARD_GROUP_OPTIONS, type BoardGroupOptionId } from "../data/board-group-options";
 import {
-	BOARD_AGENT_HOST_DEFAULT_ID,
 	BOARD_AGENT_HOST_OPTIONS,
-	BOARD_AGENT_SESSION_STATE_IDS,
 	BOARD_AGENT_STATE_OPTIONS,
-	boardAgentHostFilterLabel,
-	type BoardAgentHostId,
+	type BoardAgentFilterId,
 	type BoardAgentSessionStateId,
-	BOARD_COLUMN_SIZE_DEFAULT_ID,
-	BOARD_COLUMN_SIZE_OPTIONS,
-	BOARD_FIELD_OPTIONS,
-	BOARD_HIDE_DONE_DEFAULT_ID,
-	BOARD_HIDE_DONE_OPTIONS,
 	BOARD_PR_STATE_OPTIONS,
-	isBoardAgentHostId,
-	isBoardAgentSessionStateId,
 	type BoardPrStateId,
+	isBoardAgentSessionStateId,
 } from "../data/board-view-options";
-import { useDesignVariants } from "@/components/hooks/use-design-variants";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
-	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
+	DropdownMenuItem,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
@@ -50,240 +39,152 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import { Spinner } from "@/components/ui/spinner";
 import { token } from "@/lib/tokens";
+import { cn } from "@/lib/utils";
 
 interface BoardViewMenuProps {
 	compact?: boolean;
-	/**
-	 * Simple views reveals Column size, Hide done, and Show fields. Omit to
-	 * follow the global `simple-views` design variant so experimental and v2
-	 * headers stay on the same checkbox.
-	 */
+	/** Kept for the experimental header's shared control contract. */
 	simpleViews?: boolean;
 	surfaceLabel?: string;
-	/**
-	 * Whether Untracked sessions surface next to related Jira cards.
-	 * Omit to keep the checkbox local chrome.
-	 */
+	/** Writes Untracked session visibility. */
 	showUntracked?: boolean;
-	/** Writes Untracked. */
 	onShowUntrackedChange?: (showUntracked: boolean) => void;
-	/**
-	 * Which linked session states surface on a card's activity row.
-	 * Omit with the writer to keep Working / Needs input / Finished local.
-	 */
+	/** Writes linked session-state visibility. */
 	shownSessionStateIds?: ReadonlySet<BoardAgentSessionStateId>;
-	/** Writes Working / Needs input / Finished. */
 	onShownSessionStateIdsChange?: (shownSessionStateIds: Set<BoardAgentSessionStateId>) => void;
+	/**
+	 * Agents focus row. The page owns this so a temporary tab switch does not
+	 * drop the overlay or the Clear restore path.
+	 */
+	agentFilterId?: BoardAgentFilterId | null;
+	onAgentFilterIdChange?: (agentFilterId: BoardAgentFilterId | null) => void;
 }
 
-interface VisibilityOption {
-	id: string;
+type BoardSessionTypeOption = Exclude<(typeof BOARD_AGENT_HOST_OPTIONS)[number], { id: "all" }>;
+type BoardSessionTypeId = BoardSessionTypeOption["id"];
+
+const BOARD_SESSION_TYPE_OPTIONS = BOARD_AGENT_HOST_OPTIONS.filter(
+	(option): option is BoardSessionTypeOption => option.id !== "all",
+);
+
+interface QuickViewOption<TId extends string = string> {
+	id: TId;
 	label: string;
-	shown: boolean;
-	locked?: boolean;
-	separatorBefore?: boolean;
 }
 
-/**
- * The leading glyph for a state row. Colour rides along with the glyph because
- * ADS ships its icon CSS unlayered, so a Tailwind text utility loses to it —
- * the `color` prop is the only reliable way to tint one of these.
- */
-interface StateIcon {
+interface GlyphStateIcon {
 	glyph: ComponentType<NewCoreIconProps>;
 	color: NewCoreIconProps["color"];
 }
 
+interface ExperimentalSpinnerStateIcon {
+	spinner: "experimental";
+}
+
+type StateIcon = GlyphStateIcon | ExperimentalSpinnerStateIcon;
+
 type StateIcons = Readonly<Record<string, StateIcon>>;
 
-/**
- * Leading menu glyph at ADS `small` (12px). The shared item rule forces
- * unclassed SVGs to 16px, so the size class has to win on the wrapper.
- */
+const MENU_LEADING_ICON_CLASS_NAME = "size-3 [&_svg]:size-3!";
+/** Scale the 20px orb so its ~13.4px ring fills the 12px leading slot. */
+const MENU_LEADING_SPINNER_CLASS_NAME = "origin-center scale-[1.49]";
+
 function MenuLeadingIcon({ icon }: Readonly<{ icon: StateIcon }>) {
+	if ("spinner" in icon) {
+		switch (icon.spinner) {
+			case "experimental":
+				return (
+					<Icon
+						className={cn(
+							MENU_LEADING_ICON_CLASS_NAME,
+							"overflow-hidden text-icon-subtlest! [&_svg]:text-icon-subtlest!",
+						)}
+						render={(
+							<Spinner
+								className={MENU_LEADING_SPINNER_CLASS_NAME}
+								label=""
+								size="xs"
+								variant="experimental"
+							/>
+						)}
+					/>
+				);
+			default: {
+				const _exhaustive: never = icon.spinner;
+				return _exhaustive;
+			}
+		}
+	}
+
 	return (
 		<Icon
-			className="size-3 [&_svg]:size-3!"
+			className={MENU_LEADING_ICON_CLASS_NAME}
 			render={<icon.glyph color={icon.color} label="" size="small" />}
 		/>
 	);
 }
 
-/**
- * PR lifecycle glyphs, keyed by the same ids the option list uses. `satisfies
- * Record<BoardPrStateId, …>` makes an unmapped state a compile error rather
- * than a row that silently renders without its icon. Colours follow the
- * lifecycle the way Bitbucket and Jira already read: green while open, quiet
- * while a draft, blue in the queue, purple once merged, red when closed unmerged.
- */
 const PR_STATE_ICONS = {
 	open: { glyph: PullRequestIcon, color: token("color.icon.success") },
-	// Same glyph as Open, just quiet: a draft IS a pull request, so colour alone
-	// carries the difference rather than inventing a second shape for it.
 	draft: { glyph: PullRequestIcon, color: token("color.icon.subtlest") },
 	queued: { glyph: MergeQueueIcon, color: token("color.icon.information") },
 	merged: { glyph: MergeSuccessIcon, color: token("color.icon.discovery") },
 	closed: { glyph: MergeFailureIcon, color: token("color.icon.danger") },
 } as const satisfies Record<BoardPrStateId, StateIcon>;
 
-/**
- * Agent submenu glyphs. Linked states reuse the Team EU chin shapes. Untracked
- * is the empty-task glyph because it is the absence of a session rather than a
- * live one.
- */
 const AGENT_STATE_ICONS = {
-	working: { glyph: TaskInProgressIcon, color: token("color.icon.subtlest") },
+	working: { spinner: "experimental" },
 	"needs-input": { glyph: QuestionCircleFilledIcon, color: token("color.icon.information") },
 	finished: { glyph: StatusSuccessIcon, color: token("color.icon.success") },
-	untracked: { glyph: TaskToDoIcon, color: token("color.icon.subtlest") },
-} as const satisfies Record<BoardAgentSessionStateId | "untracked", StateIcon>;
+	untracked: { glyph: PriorityTrivialIcon, color: token("color.icon.subtlest") },
+} as const satisfies Record<BoardAgentFilterId, StateIcon>;
 
-/**
- * Host-scope glyphs for the nested All / Cloud / Local picker. Identity icons,
- * not lifecycle traffic lights, so they share the quiet icon token.
- */
-const AGENT_HOST_ICONS = {
-	all: { glyph: AiAgentIcon, color: token("color.icon.subtle") },
+const SESSION_TYPE_ICONS = {
 	cloud: { glyph: CloudIcon, color: token("color.icon.subtle") },
-	local: { glyph: DevicesIcon, color: token("color.icon.subtle") },
-} as const satisfies Record<BoardAgentHostId, StateIcon>;
+	local: { glyph: ScreenIcon, color: token("color.icon.subtle") },
+} as const satisfies Record<BoardSessionTypeId, StateIcon>;
 
-/** The ids a list starts with checked, so state can be seeded once per list. */
-function toShownIds(options: readonly VisibilityOption[]) {
-	return new Set(options.filter((option) => option.shown).map((option) => option.id));
-}
-
-/** Field visibility when Simple views is off — labels and the rest of the shown defaults. */
-const DEFAULT_SHOWN_FIELD_IDS: ReadonlySet<string> = toShownIds(BOARD_FIELD_OPTIONS);
-
-type SetIds = (update: (previous: Set<string>) => Set<string>) => void;
-
-/**
- * Flip one id in a visibility set. Pure and parameterised by its setter, so it
- * lives at module scope rather than being rebuilt on every render.
- */
-const toggleIn = (setIds: SetIds) => (id: string) => {
-	setIds((previous) => {
-		const next = new Set(previous);
-		if (next.has(id)) {
-			next.delete(id);
-		} else {
-			next.add(id);
-		}
-		return next;
-	});
-};
-
-interface VisibilityToggleSubmenuProps {
+interface QuickViewActionSubmenuProps<TId extends string> {
 	label: string;
-	options: readonly VisibilityOption[];
-	checkedIds: ReadonlySet<string>;
-	onToggle: (id: string) => void;
-	/** Leading glyphs keyed by option id. Lists without one render label-only. */
+	options: readonly QuickViewOption<TId>[];
 	icons?: StateIcons;
-	/**
-	 * Inserted before the first `separatorBefore` row so a different control
-	 * (the host-scope picker) can sit as its own section above Untracked.
-	 */
-	children?: ReactNode;
+	selectedId?: TId | null;
+	onSelect: (id: TId) => void;
 }
 
-/**
- * A submenu of show/hide checkboxes. Pull request, Agent, and Show fields are
- * the same control over different lists, so they share one implementation
- * rather than three copies of the same rows.
- *
- * Controlled on purpose. Base UI unmounts a submenu's contents when it closes,
- * so an uncontrolled `defaultChecked` row would rebuild from the hard-coded
- * default on reopen and silently discard the click.
- */
-function VisibilityToggleSubmenu({
+function QuickViewActionSubmenu<TId extends string>({
 	label,
 	options,
-	checkedIds,
-	onToggle,
 	icons,
-	children,
-}: Readonly<VisibilityToggleSubmenuProps>) {
-	const firstSeparatedIndex = options.findIndex((option) => option.separatorBefore);
-
+	selectedId = null,
+	onSelect,
+}: Readonly<QuickViewActionSubmenuProps<TId>>) {
 	return (
 		<DropdownMenuSub>
 			<DropdownMenuSubTrigger>{label}</DropdownMenuSubTrigger>
 			<DropdownMenuSubContent>
-				{options.map((option, index) => {
-					const stateIcon = icons?.[option.id];
-					return (
-						<Fragment key={option.id}>
-							{index === firstSeparatedIndex ? children : null}
-							{option.separatorBefore ? <DropdownMenuSeparator /> : null}
-							<DropdownMenuCheckboxItem
-								checked={checkedIds.has(option.id)}
-								// `gap-2` only where a glyph is present; the icon-less lists
-								// keep their labels flush against the row's own padding.
-								className={stateIcon ? "gap-2" : undefined}
-								// Some rows are always on — Jira locks Summary, for instance.
-								disabled={option.locked}
-								indicatorPlacement="end"
-								onCheckedChange={() => onToggle(option.id)}
-							>
-								{stateIcon ? (
-									// Decorative: the row's own text already names the state.
-									<MenuLeadingIcon icon={stateIcon} />
-								) : null}
-								{option.label}
-							</DropdownMenuCheckboxItem>
-						</Fragment>
-					);
-				})}
-			</DropdownMenuSubContent>
-		</DropdownMenuSub>
-	);
-}
-
-interface AgentHostFilterSubmenuProps {
-	hostId: BoardAgentHostId;
-	onHostIdChange: (hostId: BoardAgentHostId) => void;
-}
-
-/**
- * Nested All / Cloud / Local picker. The trigger label and leading glyph both
- * follow the selection so "Show all agents" becomes "Show cloud agents" with
- * the cloud icon after Cloud.
- */
-function AgentHostFilterSubmenu({
-	hostId,
-	onHostIdChange,
-}: Readonly<AgentHostFilterSubmenuProps>) {
-	const hostIcon = AGENT_HOST_ICONS[hostId];
-
-	return (
-		<DropdownMenuSub>
-			<DropdownMenuSubTrigger>
-				<MenuLeadingIcon icon={hostIcon} />
-				{boardAgentHostFilterLabel(hostId)}
-			</DropdownMenuSubTrigger>
-			<DropdownMenuSubContent>
 				<DropdownMenuRadioGroup
-					aria-label="Show agents"
+					aria-label={label}
 					onValueChange={(id) => {
-						if (isBoardAgentHostId(id)) {
-							onHostIdChange(id);
+						const option = options.find((entry) => entry.id === id);
+						if (option) {
+							onSelect(option.id);
 						}
 					}}
-					value={hostId}
+					value={selectedId ?? ""}
 				>
-					{BOARD_AGENT_HOST_OPTIONS.map((option) => {
-						const hostIcon = AGENT_HOST_ICONS[option.id];
+					{options.map((option) => {
+						const stateIcon = icons?.[option.id];
 						return (
 							<DropdownMenuRadioItem
-								className="gap-2"
+								className={stateIcon ? "gap-2" : undefined}
 								indicatorPlacement="end"
 								key={option.id}
 								value={option.id}
 							>
-								<MenuLeadingIcon icon={hostIcon} />
+								{stateIcon ? <MenuLeadingIcon icon={stateIcon} /> : null}
 								{option.label}
 							</DropdownMenuRadioItem>
 						);
@@ -294,110 +195,59 @@ function AgentHostFilterSubmenu({
 	);
 }
 
-/**
- * Production View picker chrome, mirroring Jira's board View settings panel.
- * The top level is three sections: PR and agent state, then grouping, then
- * column and card chrome. Each dimension lives behind its own submenu so the
- * list stays scannable.
- *
- * The menu owns its own selections except the Agent rows the board can lift:
- * Working / Needs input / Finished hide matching activity chrome on cards, and
- * Untracked hides proximity sessions next to related issues. All / Cloud /
- * Local retitles the nested trigger and swaps its leading glyph. State lives
- * here rather than on the
- * items because Base UI unmounts both the submenu and the menu on close — this
- * component stays mounted with the trigger, so the choices survive.
- */
 export function BoardViewMenu({
 	compact = false,
-	simpleViews,
 	surfaceLabel = "board",
-	showUntracked,
-	onShowUntrackedChange,
-	shownSessionStateIds,
-	onShownSessionStateIdsChange,
+	agentFilterId: controlledAgentFilterId,
+	onAgentFilterIdChange,
 }: Readonly<BoardViewMenuProps>) {
-	const { designVariants } = useDesignVariants();
-	const showSimpleViewSettings = simpleViews ?? designVariants["simple-views"];
-	const [groupId, setGroupId] = useState<string>(BOARD_GROUP_DEFAULT_ID);
-	const [hideDoneId, setHideDoneId] = useState<string>(BOARD_HIDE_DONE_DEFAULT_ID);
-	const [columnSizeId, setColumnSizeId] = useState<string>(BOARD_COLUMN_SIZE_DEFAULT_ID);
-	// One set per list rather than one shared set, so two lists can reuse an id
-	// without silently toggling each other.
-	const [shownPrStateIds, setShownPrStateIds] = useState(() => toShownIds(BOARD_PR_STATE_OPTIONS));
-	const [shownAgentStateIds, setShownAgentStateIds] = useState(() =>
-		toShownIds(BOARD_AGENT_STATE_OPTIONS),
-	);
-	const [shownFieldIds, setShownFieldIds] = useState(() => toShownIds(BOARD_FIELD_OPTIONS));
-	const [agentHostId, setAgentHostId] = useState<BoardAgentHostId>(BOARD_AGENT_HOST_DEFAULT_ID);
-	useEffect(() => {
-		if (showSimpleViewSettings) {
+	const [pullRequestFilterId, setPullRequestFilterId] = useState<BoardPrStateId | null>(null);
+	const [sessionTypeFilterId, setSessionTypeFilterId] = useState<BoardSessionTypeId | null>(null);
+	const [uncontrolledAgentFilterId, setUncontrolledAgentFilterId] = useState<BoardAgentFilterId | null>(null);
+	const [groupByFilterId, setGroupByFilterId] = useState<BoardGroupOptionId | null>(null);
+	const isAgentFilterControlled = onAgentFilterIdChange !== undefined;
+	const agentFilterId = isAgentFilterControlled
+		? (controlledAgentFilterId ?? null)
+		: uncontrolledAgentFilterId;
+	const setAgentFilterId = (nextFilterId: BoardAgentFilterId | null) => {
+		if (isAgentFilterControlled) {
+			onAgentFilterIdChange(nextFilterId);
 			return;
 		}
-		setColumnSizeId(BOARD_COLUMN_SIZE_DEFAULT_ID);
-		setHideDoneId(BOARD_HIDE_DONE_DEFAULT_ID);
-		setShownFieldIds(toShownIds(BOARD_FIELD_OPTIONS));
-	}, [showSimpleViewSettings]);
-	// Default mode also substitutes defaults on the current paint so a leftover
-	// customization cannot linger for a frame before the reset commits.
-	const resolvedColumnSizeId = showSimpleViewSettings ? columnSizeId : BOARD_COLUMN_SIZE_DEFAULT_ID;
-	const resolvedHideDoneId = showSimpleViewSettings ? hideDoneId : BOARD_HIDE_DONE_DEFAULT_ID;
-	const resolvedShownFieldIds = showSimpleViewSettings ? shownFieldIds : DEFAULT_SHOWN_FIELD_IDS;
-	const isUntrackedControlled = showUntracked !== undefined && onShowUntrackedChange !== undefined;
-	const isSessionStatesControlled = (
-		shownSessionStateIds !== undefined && onShownSessionStateIdsChange !== undefined
-	);
-	const shownAgentIds = useMemo(() => {
-		if (!isSessionStatesControlled && !isUntrackedControlled) {
-			return shownAgentStateIds;
-		}
+		setUncontrolledAgentFilterId(nextFilterId);
+	};
+	const selectedQuickViewCount = [
+		pullRequestFilterId,
+		agentFilterId,
+		sessionTypeFilterId,
+		groupByFilterId,
+	].filter((id) => id !== null).length;
+	const hasQuickViewSelection = selectedQuickViewCount > 0;
 
-		const next = new Set(shownAgentStateIds);
-		if (isSessionStatesControlled) {
-			for (const id of BOARD_AGENT_SESSION_STATE_IDS) {
-				if (shownSessionStateIds.has(id)) {
-					next.add(id);
-				} else {
-					next.delete(id);
-				}
-			}
-		}
-		if (isUntrackedControlled) {
-			if (showUntracked) {
-				next.add("untracked");
-			} else {
-				next.delete("untracked");
-			}
-		}
-		return next;
-	}, [
-		isSessionStatesControlled,
-		isUntrackedControlled,
-		showUntracked,
-		shownAgentStateIds,
-		shownSessionStateIds,
-	]);
-	const handleAgentToggle = (id: string) => {
-		if (id === "untracked" && isUntrackedControlled) {
-			onShowUntrackedChange(!showUntracked);
-			return;
-		}
-		if (
-			isBoardAgentSessionStateId(id)
-			&& shownSessionStateIds !== undefined
-			&& onShownSessionStateIdsChange !== undefined
-		) {
-			const next = new Set(shownSessionStateIds);
-			if (next.has(id)) {
-				next.delete(id);
-			} else {
-				next.add(id);
-			}
-			onShownSessionStateIdsChange(next);
-			return;
-		}
+	const handlePullRequestSelect = (id: BoardPrStateId) => {
+		setPullRequestFilterId(id);
+	};
 
-		toggleIn(setShownAgentStateIds)(id);
+	const handleSessionTypeSelect = (id: BoardSessionTypeId) => {
+		setSessionTypeFilterId(id);
+	};
+
+	const handleAgentSelect = (id: string) => {
+		if (id !== "untracked" && !isBoardAgentSessionStateId(id)) {
+			return;
+		}
+		setAgentFilterId(id);
+	};
+
+	const handleGroupBySelect = (id: BoardGroupOptionId) => {
+		setGroupByFilterId(id);
+	};
+
+	const clearQuickViewSelection = () => {
+		setPullRequestFilterId(null);
+		setAgentFilterId(null);
+		setSessionTypeFilterId(null);
+		setGroupByFilterId(null);
 	};
 
 	return (
@@ -406,6 +256,7 @@ export function BoardViewMenu({
 				render={
 					<Button
 						aria-label={`Configure ${surfaceLabel} view`}
+						aria-pressed={hasQuickViewSelection}
 						size={compact ? "icon" : undefined}
 						variant="outline"
 					/>
@@ -413,93 +264,46 @@ export function BoardViewMenu({
 			>
 				<Icon render={<GroupIcon label="" />} />
 				{compact ? null : "View"}
+				{hasQuickViewSelection && !compact ? (
+					<Badge variant="information">{selectedQuickViewCount}</Badge>
+				) : null}
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="min-w-56">
-				<VisibilityToggleSubmenu
-					checkedIds={shownPrStateIds}
+				<QuickViewActionSubmenu
 					icons={PR_STATE_ICONS}
 					label="Pull request"
-					onToggle={toggleIn(setShownPrStateIds)}
+					onSelect={handlePullRequestSelect}
 					options={BOARD_PR_STATE_OPTIONS}
+					selectedId={pullRequestFilterId}
 				/>
 
-				<VisibilityToggleSubmenu
-					checkedIds={shownAgentIds}
+				<QuickViewActionSubmenu
 					icons={AGENT_STATE_ICONS}
-					label="Agent"
-					onToggle={handleAgentToggle}
+					label="Agents"
+					onSelect={handleAgentSelect}
 					options={BOARD_AGENT_STATE_OPTIONS}
-				>
-					<DropdownMenuSeparator />
-					<AgentHostFilterSubmenu hostId={agentHostId} onHostIdChange={setAgentHostId} />
-				</VisibilityToggleSubmenu>
+					selectedId={agentFilterId}
+				/>
 
-				<DropdownMenuSeparator />
+				<QuickViewActionSubmenu
+					icons={SESSION_TYPE_ICONS}
+					label="Session type"
+					onSelect={handleSessionTypeSelect}
+					options={BOARD_SESSION_TYPE_OPTIONS}
+					selectedId={sessionTypeFilterId}
+				/>
 
-				<DropdownMenuSub>
-					<DropdownMenuSubTrigger>Group by</DropdownMenuSubTrigger>
-					<DropdownMenuSubContent>
-						<DropdownMenuRadioGroup
-							aria-label={`Group ${surfaceLabel} by`}
-							onValueChange={setGroupId}
-							value={groupId}
-						>
-							{BOARD_GROUP_OPTIONS.map((option) => (
-								<DropdownMenuRadioItem indicatorPlacement="end" key={option.id} value={option.id}>
-									{option.label}
-								</DropdownMenuRadioItem>
-							))}
-						</DropdownMenuRadioGroup>
-					</DropdownMenuSubContent>
-				</DropdownMenuSub>
+				<QuickViewActionSubmenu
+					label="Group by"
+					onSelect={handleGroupBySelect}
+					options={BOARD_GROUP_OPTIONS}
+					selectedId={groupByFilterId}
+				/>
 
-				{showSimpleViewSettings ? (
+				{hasQuickViewSelection ? (
 					<>
 						<DropdownMenuSeparator />
-
-						<DropdownMenuSub>
-							<DropdownMenuSubTrigger>Column size</DropdownMenuSubTrigger>
-							<DropdownMenuSubContent>
-								<DropdownMenuRadioGroup
-									aria-label="Column size"
-									onValueChange={setColumnSizeId}
-									value={resolvedColumnSizeId}
-								>
-									{BOARD_COLUMN_SIZE_OPTIONS.map((option) => (
-										<DropdownMenuRadioItem indicatorPlacement="end" key={option.id} value={option.id}>
-											{option.label}
-										</DropdownMenuRadioItem>
-									))}
-								</DropdownMenuRadioGroup>
-							</DropdownMenuSubContent>
-						</DropdownMenuSub>
-
-						<DropdownMenuSub>
-							<DropdownMenuSubTrigger>Hide done work items</DropdownMenuSubTrigger>
-							<DropdownMenuSubContent>
-								{/* Single-section submenu: the sub-trigger already names it, so a
-								    group label would just repeat itself. The name moves to
-								    `aria-label` so the radio group keeps an accessible name. */}
-								<DropdownMenuRadioGroup
-									aria-label="Hide done work items after"
-									onValueChange={setHideDoneId}
-									value={resolvedHideDoneId}
-								>
-									{BOARD_HIDE_DONE_OPTIONS.map((option) => (
-										<DropdownMenuRadioItem indicatorPlacement="end" key={option.id} value={option.id}>
-											{option.label}
-										</DropdownMenuRadioItem>
-									))}
-								</DropdownMenuRadioGroup>
-							</DropdownMenuSubContent>
-						</DropdownMenuSub>
-
-						<VisibilityToggleSubmenu
-							checkedIds={resolvedShownFieldIds}
-							label="Show fields"
-							onToggle={toggleIn(setShownFieldIds)}
-							options={BOARD_FIELD_OPTIONS}
-						/>
+						<DropdownMenuItem onSelect={clearQuickViewSelection}>Clear selection</DropdownMenuItem>
 					</>
 				) : null}
 			</DropdownMenuContent>
