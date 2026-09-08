@@ -230,7 +230,7 @@ export function AgentSessionColumnPanelDemo() {
 					<ToggleGroupItem value="line">Line</ToggleGroupItem>
 				</ToggleGroup>
 				<p className="text-xs text-text-subtlest">
-					Sync prepends untracked work: the cards step in from above and hold a
+					Sync prepends unattached sessions: the cards step in from above and hold a
 					discovery-toned dash, while each new user dot reveals the same
 					human avatar as its card, holds, then shrinks into a 4px rest in
 					icon.subtle and pushes the ones below it down. Hovering or
@@ -245,7 +245,7 @@ export function AgentSessionColumnPanelDemo() {
 				style={{ width: hostWidthPx }}
 			>
 				<PanelContainer
-					aria-label="Untracked work panel"
+					aria-label="Unattached sessions panel"
 					className="h-full"
 				>
 					<PanelContent className={collapsed ? "pt-1" : "pt-0"}>
