@@ -973,7 +973,6 @@ function ExperimentalJiraKanbanView({
 												dropTarget={cardDropTarget}
 												onArrivalComplete={handleCreatedCardArrivalComplete}
 												shouldAnimateCardMoves={shouldAnimateCardMoves}
-												shouldReduceMotion={shouldReduceMotion}
 											>
 												<ExperimentalJiraKanbanCard
 												active={isActive}

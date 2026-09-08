@@ -52,7 +52,7 @@ test("board session creation is route-owned and reveals the created cards once",
 	);
 });
 
-test("the created-card arrival scrolls its column to the last card's bottom and uses reduced-motion-safe Motion", () => {
+test("the created-card arrival scrolls its column to the last card's bottom and leaves the landing to the create entrance", () => {
 	assert.match(
 		EXPERIMENTAL_BOARD_SOURCE,
 		/useCreatedCardArrivalScroll\(\{[\s\S]*arrival: createdCardArrival,[\s\S]*cardCount: count,[\s\S]*onCardListRef: ref,[\s\S]*title: columnTitle,/u,
@@ -65,18 +65,13 @@ test("the created-card arrival scrolls its column to the last card's bottom and 
 		EXPERIMENTAL_BOARD_SOURCE,
 		/<CreatedCardArrivalMotion[\s\S]*arrival=\{createdCardArrival\?\.columnTitle === column\.title[\s\S]*cardCode=\{card\.code\}/u,
 	);
-	assert.match(ARRIVAL_MOTION_SOURCE, /isGapArriving[\s\S]*\{ opacity: 1, y: 0 \}/u);
-	assert.match(
-		ARRIVAL_MOTION_SOURCE,
-		/initial=\{isGapArriving && !shouldReduceMotion \? \{ opacity: 0, y: 8 \} : false\}/u,
-	);
-	assert.match(
-		ARRIVAL_MOTION_SOURCE,
-		/const JIRA_KANBAN_CARD_ARRIVE_REDUCED: Transition = \{ duration: 0 \};[\s\S]*shouldReduceMotion[\s\S]*JIRA_KANBAN_CARD_ARRIVE_REDUCED[\s\S]*JIRA_KANBAN_CARD_ARRIVE/u,
-	);
+	// Arrivals no longer slide: the create entrance owns the whole landing, so
+	// the wrapper must not re-add a y-offset or a competing arrive transition.
+	assert.doesNotMatch(ARRIVAL_MOTION_SOURCE, /\{ opacity: 0, y: 8 \}/u);
+	assert.doesNotMatch(ARRIVAL_MOTION_SOURCE, /JIRA_KANBAN_CARD_ARRIVE/u);
 });
 
-test("create-well drops reuse the jira-create entrance instead of a slide and grey-first backdrop", () => {
+test("every created card — create well or mid-column gap drop — enters through the jira-create entrance", () => {
 	assert.match(
 		ARRIVAL_MOTION_SOURCE,
 		/import \{ JiraCreateEntrance \} from "@\/components\/blocks\/jira-create\/components\/jira-create-entrance"/u,
@@ -85,12 +80,21 @@ test("create-well drops reuse the jira-create entrance instead of a slide and gr
 		ARRIVAL_MOTION_SOURCE,
 		/import \{ getJiraCreateArrivalDelayS \} from "@\/components\/blocks\/jira-create\/lib\/jira-create-motion"/u,
 	);
-	assert.match(ARRIVAL_MOTION_SOURCE, /return arriving && arrival\?\.appended === true/u);
-	assert.match(ARRIVAL_MOTION_SOURCE, /<JiraCreateEntrance[\s\S]*enterDelayS=\{createDelayS\}/u);
-	assert.match(ARRIVAL_MOTION_SOURCE, /data-jira-create-well-arrival=\{isCreateWellArrival \|\| undefined\}/u);
+	assert.match(
+		ARRIVAL_MOTION_SOURCE,
+		/import \{ resolveBoardCardArrival \} from "\.\.\/lib\/board-card-arrival"/u,
+	);
+	// The entrance is gated on `entering`, which resolveBoardCardArrival sets for
+	// any arriving card — `appended` no longer picks an entrance. The
+	// entering/highlighted split itself is covered by board-card-arrival.test.js.
+	assert.match(
+		ARRIVAL_MOTION_SOURCE,
+		/\{cardArrival\.entering \? \(\s*<JiraCreateEntrance[\s\S]*enterDelayS=\{enterDelayS\}[\s\S]*onAnimationComplete=\{handleArrivalComplete\}/u,
+	);
+	assert.match(ARRIVAL_MOTION_SOURCE, /data-jira-create-arrival=\{cardArrival\.entering \|\| undefined\}/u);
 	assert.doesNotMatch(
 		ARRIVAL_MOTION_SOURCE,
-		/isCreateWellArrival && "\[&_\[data-slot=jira-issue-agent-backdrop\]\]:bg-bg-accent-blue-subtlest"/u,
+		/cardArrival\.entering && "\[&_\[data-slot=jira-issue-agent-backdrop\]\]:bg-bg-accent-blue-subtlest"/u,
 	);
 });
 
@@ -105,11 +109,11 @@ test("gap arrivals still hold a blue agent backdrop before returning to grey", (
 	);
 	assert.match(
 		ARRIVAL_MOTION_SOURCE,
-		/isGapArriving && "\[&_\[data-slot=jira-issue-agent-backdrop\]\]:bg-bg-accent-blue-subtlest"/u,
+		/cardArrival\.highlighted && "\[&_\[data-slot=jira-issue-agent-backdrop\]\]:bg-bg-accent-blue-subtlest"/u,
 	);
 	assert.match(
 		ARRIVAL_MOTION_SOURCE,
-		/motion-reduce:\[&_\[data-slot=jira-issue-agent-backdrop\]\]:transition-none[\s\S]*data-created-card-backdrop=\{isGapArriving \|\| undefined\}/u,
+		/motion-reduce:\[&_\[data-slot=jira-issue-agent-backdrop\]\]:transition-none[\s\S]*data-created-card-backdrop=\{cardArrival\.highlighted \|\| undefined\}/u,
 	);
 	assert.match(ARRIVAL_HOOK_SOURCE, /if \(holdMs <= 0\) \{\s*onComplete\?\.\(arrivalId\);\s*return;/u);
 	assert.match(
