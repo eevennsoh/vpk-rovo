@@ -13,6 +13,7 @@ async function openBoard(page: Page): Promise<void> {
 	if (await expandUntracked.isVisible()) {
 		await revealCollapsedAgentSessionColumn(page);
 		await expandUntracked.click();
+		await page.getByRole("button", { name: "Expand more Untracked work column" }).click();
 	}
 	await expect(
 		page.locator("[data-agent-session-column]").getByTestId("agent-session-row-lw-scope-thread"),
@@ -26,6 +27,40 @@ async function openCollapsedBoard(page: Page): Promise<void> {
 	});
 	await expect(page.getByRole("button", { name: "Expand Untracked work column" })).toBeVisible();
 }
+
+test("Untracked cycles from gutter to pinned timeline to full column and back", async ({ page }) => {
+	await openCollapsedBoard(page);
+	const host = page.locator("[data-agent-session-column-expansion]");
+	const column = page.locator("[data-agent-session-column]");
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
+	await revealCollapsedAgentSessionColumn(page);
+	const expand = page.getByRole("button", { name: "Expand Untracked work column" });
+	await expand.hover();
+	await expect(page.locator('[data-slot="tooltip-content"]').filter({ hasText: /^Expand$/u })).toBeVisible();
+	await expand.click();
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "pinned");
+	await expect(column).toHaveCSS("width", "32px");
+	await expect(page.locator("[data-agent-session-column-hit-area]")).toHaveCount(0);
+	const expandMore = page.getByRole("button", { name: "Expand more Untracked work column" });
+	await expandMore.hover();
+	await expect(page.locator('[data-slot="tooltip-content"]').filter({ hasText: /^Expand more$/u })).toBeVisible();
+	expect((await expandMore.boundingBox())?.width).toBe(56);
+	await expandMore.click();
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
+	await expect(column).toHaveCSS("width", "280px");
+	await page.getByRole("button", { name: "Collapse Untracked work column" }).click();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
+	await expect(page.locator("[data-agent-session-column-hit-area]")).toHaveCount(1);
+	// The same staged action is reachable without hovering, using Enter then Space.
+	await expand.focus();
+	await page.keyboard.press("Enter");
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "pinned");
+	await expect(expandMore).toBeFocused();
+	await page.keyboard.press("Space");
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
+});
 
 async function openAgentViewMenu(page: Page): Promise<void> {
 	await page.getByRole("button", { name: "Configure board view" }).click();
@@ -507,7 +542,8 @@ test("the Untracked resize handle reveals on column hover and widens the pinned 
 
 	await untrackedColumn.hover();
 	await expect(resizeNotch).toHaveCSS("opacity", "1");
-	await resizeHandle.hover();
+	// Avoid the session flyout opened by hovering the middle of the column.
+	await resizeHandle.hover({ position: { x: 4, y: 80 } });
 	await expect(resizeNotch).toHaveCSS("scale", "1.05");
 	const handleBox = await resizeHandle.boundingBox();
 	expect(handleBox).not.toBeNull();
