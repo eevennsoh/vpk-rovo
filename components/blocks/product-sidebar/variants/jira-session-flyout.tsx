@@ -671,9 +671,10 @@ function JiraSessionFlyoutPayload({ content, ...props }: JiraSessionFlyoutPayloa
  * prompt composer or `content="untracked-work"` for a Jira-link suggestion.
  * Base UI's viewport keeps the popup mounted while the anchor
  * changes. The shell follows the new row and immediately adopts its measured
- * size without letting rapid hovers restart a stale size transition. List
- * surfaces crossfade payload; high-frequency rails pass `instantPosition` so
- * the shell snaps with no enter, exit, position, or content-switch motion.
+ * size without letting rapid hovers restart a stale size transition. Low-traffic
+ * surfaces crossfade payload; high-frequency session lists and rails pass
+ * `instantPosition` so the shell snaps with no enter, exit, position, or
+ * content-switch motion.
  */
 export function JiraSessionFlyoutSurface({
 	archiveActionLabel,
