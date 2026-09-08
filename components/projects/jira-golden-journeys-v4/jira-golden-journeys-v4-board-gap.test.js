@@ -46,7 +46,7 @@ test("a board without the create capability never draws an insertion line", () =
 });
 
 test("a gap arrival does not scroll the column away from the pointer", () => {
-	// The create well appends, so scrolling to the end reveals what it made. A
+	// The create well appends, so the column follows the last card's bottom. A
 	// gap drop lands mid-column, already under the pointer.
 	assert.match(ARRIVAL_HOOK_SOURCE, /readonly appended: boolean;/u);
 	assert.match(ARRIVAL_HOOK_SOURCE, /const appended = insertAtIndex === undefined;/u);

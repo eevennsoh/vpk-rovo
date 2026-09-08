@@ -296,7 +296,7 @@ test("the first collapsed gutter mount plays a reduced-motion-safe staggered sca
 	);
 	assert.match(
 		EXPERIMENTAL_BOARD_SOURCE,
-		/initial=\{isArriving && !shouldReduceMotion \? \{ opacity: 0, y: 8 \} : false\}/u,
+		/initial=\{isGapArriving && !shouldReduceMotion \? \{ opacity: 0, y: 8 \} : false\}/u,
 	);
 	assert.match(RAIL_SOURCE, /AGENT_SESSION_GUTTER_INTRO_VISUAL_DURATION_SECONDS = 0\.3/u);
 	assert.match(RAIL_SOURCE, /AGENT_SESSION_GUTTER_INTRO_STAGGER_SECONDS = 0\.04/u);
