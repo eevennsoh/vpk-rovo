@@ -137,20 +137,21 @@ export function CreatedCardArrivalMotion({
 			style={getCardMoveStyle(cardMovePhase)}
 			transition={getCardMoveTransition(cardMovePhase)}
 		>
-			{cardArrival.entering ? (
-				<JiraCreateEntrance
-					enterDelayS={enterDelayS}
-					onAnimationComplete={handleArrivalComplete}
-				>
-					{insertionLine}
-					{children}
-				</JiraCreateEntrance>
-			) : (
-				<>
-					{insertionLine}
-					{children}
-				</>
-			)}
+			{/*
+			 * The entrance wrapper stays mounted at rest rather than being swapped
+			 * for a fragment when the arrival clears. Changing the child's element
+			 * type would unmount and remount the card, discarding any menu,
+			 * expansion, drag, or focus state the user opened on the brand-new card
+			 * during the backdrop hold.
+			 */}
+			<JiraCreateEntrance
+				active={cardArrival.entering}
+				enterDelayS={enterDelayS}
+				onAnimationComplete={handleArrivalComplete}
+			>
+				{insertionLine}
+				{children}
+			</JiraCreateEntrance>
 		</motion.div>
 	);
 }

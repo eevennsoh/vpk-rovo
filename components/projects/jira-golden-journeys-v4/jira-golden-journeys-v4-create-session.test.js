@@ -84,13 +84,16 @@ test("every created card — create well or mid-column gap drop — enters throu
 		ARRIVAL_MOTION_SOURCE,
 		/import \{ resolveBoardCardArrival \} from "\.\.\/lib\/board-card-arrival"/u,
 	);
-	// The entrance is gated on `entering`, which resolveBoardCardArrival sets for
+	// The entrance is gated on `active`, which resolveBoardCardArrival sets for
 	// any arriving card — `appended` no longer picks an entrance. The
 	// entering/highlighted split itself is covered by board-card-arrival.test.js.
 	assert.match(
 		ARRIVAL_MOTION_SOURCE,
-		/\{cardArrival\.entering \? \(\s*<JiraCreateEntrance[\s\S]*enterDelayS=\{enterDelayS\}[\s\S]*onAnimationComplete=\{handleArrivalComplete\}/u,
+		/<JiraCreateEntrance\s*active=\{cardArrival\.entering\}\s*enterDelayS=\{enterDelayS\}\s*onAnimationComplete=\{handleArrivalComplete\}/u,
 	);
+	// The wrapper must stay mounted at rest; swapping it for a fragment would
+	// remount the card and wipe state opened during the backdrop hold.
+	assert.doesNotMatch(ARRIVAL_MOTION_SOURCE, /cardArrival\.entering \? \(/u);
 	assert.match(ARRIVAL_MOTION_SOURCE, /data-jira-create-arrival=\{cardArrival\.entering \|\| undefined\}/u);
 	assert.doesNotMatch(
 		ARRIVAL_MOTION_SOURCE,
