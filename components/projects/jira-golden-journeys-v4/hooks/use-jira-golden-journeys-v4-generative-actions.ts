@@ -3,15 +3,17 @@
 import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 import { ROVO_AGENT_ID } from "@/app/data/directory/agents";
-import type { JiraIssueGenerativeActionRequest } from "@/components/blocks/jira-issue";
+import type { JiraIssueAgentActivity, JiraIssueGenerativeActionRequest } from "@/components/blocks/jira-issue";
 import type { JiraKanbanCardData, JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
 import { linkJiraKanbanAgentSession } from "@/components/blocks/jira-kanban/state";
 import type { RichTextMentionItem } from "@/components/ui-custom/rich-text-editor";
 import {
 	createJgpKanbanActivity,
 	getJgpGenerativeAgentSelection,
+	JGP_KANBAN_DEFAULT_AGENT_ID,
 } from "@/components/projects/jira-golden-journeys-v1/data/kanban-activity-data";
 import type { UseJgpAgentChatDemoResult } from "@/components/projects/jira-golden-journeys-v1/hooks/use-jira-golden-journeys-v1-agent-chat-demo";
+import { progressJiraGoldenJourneysV4WorkItemOnStart } from "@/components/projects/jira-golden-journeys-v4/lib/list-rows";
 
 interface UseJiraGoldenJourneysV4GenerativeActionsOptions {
 	openAgentChat: UseJgpAgentChatDemoResult["openAgentChat"];
@@ -30,14 +32,19 @@ function getSkillMentionId(id: string): string {
 function createAssignedActivity(
 	request: JiraIssueGenerativeActionRequest,
 	card: JiraKanbanCardData,
-) {
+): JiraIssueAgentActivity {
 	const selection = getJgpGenerativeAgentSelection(request);
 	const skillName = request.kind === "skill" ? request.selectedItem?.label : undefined;
-	const activity = createJgpKanbanActivity(
-		selection.id,
-		skillName ? { ...selection, name: "Rovo" } : selection,
-		`${card.code}:${selection.id}`,
-	);
+	const activity: JiraIssueAgentActivity = {
+		...createJgpKanbanActivity(
+			selection.id,
+			skillName ? { ...selection, name: "Claude Code" } : selection,
+			`${card.code}:${selection.id}`,
+		),
+		...(skillName ? { agentBrandName: "claude" as const } : {}),
+		startedAtMs: Date.now(),
+		startupSequence: "jira-work-item-start",
+	};
 
 	if (!skillName) return activity;
 
@@ -50,7 +57,7 @@ function createAssignedActivity(
 			`Reading ${card.code} context`,
 			"Preparing the skill result",
 		],
-		message: `Rovo is applying ${skillName} to ${card.code}.`,
+		message: `Claude Code is applying ${skillName} to ${card.code}.`,
 	};
 }
 
@@ -83,13 +90,16 @@ export function useJiraGoldenJourneysV4GenerativeActions({
 
 		if ((request.kind === "agent" || request.kind === "skill") && request.selectedItem) {
 			const activity = createAssignedActivity(request, card);
-			setBoardColumns((columns) => linkJiraKanbanAgentSession(columns, card.code, activity));
+			setBoardColumns((columns) => progressJiraGoldenJourneysV4WorkItemOnStart(
+				linkJiraKanbanAgentSession(columns, card.code, activity),
+				card.code,
+			));
 
 			if (request.kind !== "skill") return;
 
 			openAgentChat({
-				agentId: ROVO_AGENT_ID,
-				agentName: "Rovo",
+				agentId: JGP_KANBAN_DEFAULT_AGENT_ID,
+				agentName: "Claude Code",
 				issueKey: card.code,
 				issueSummary: card.title,
 				request: request.prompt,

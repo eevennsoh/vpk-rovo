@@ -32,6 +32,9 @@ export default function AgentSessionFlyoutPage({
 				onAddAsSubtask={(session, workItemKey) => {
 					setActionStatus(`Added ${session.title} as a subtask of ${workItemKey}.`);
 				}}
+				onArchiveSession={(session) => {
+					setActionStatus(`Archived ${session.title}.`);
+				}}
 				onCreateWorkItem={(session) => {
 					setActionStatus(`Started a new work item from ${session.title}.`);
 				}}

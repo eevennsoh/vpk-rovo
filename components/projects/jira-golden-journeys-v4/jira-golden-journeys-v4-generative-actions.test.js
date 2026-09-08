@@ -22,15 +22,16 @@ const ROVO_FLOATING_CHAT_SOURCE = readProjectFile(
 	"components/projects/rovo-floating-chat/components/rovo-floating-chat.tsx",
 );
 
-test("card agent and skill actions start an issue session and stage the selected skill in floating Rovo", () => {
+test("card agent and skill actions start a coding-agent session and stage the selected skill in floating chat", () => {
 	assert.match(
 		GENERATIVE_ACTIONS_HOOK_SOURCE,
 		/createAssignedActivity\([\s\S]*createJgpKanbanActivity[\s\S]*request\.kind === "agent" \|\| request\.kind === "skill"[\s\S]*linkJiraKanbanAgentSession\(columns, card\.code, activity\)/u,
 	);
 	assert.match(
 		GENERATIVE_ACTIONS_HOOK_SOURCE,
-		/request\.kind !== "skill"[\s\S]*openAgentChat\(\{[\s\S]*agentId: ROVO_AGENT_ID,[\s\S]*issueKey: card\.code,[\s\S]*request: request\.prompt,[\s\S]*skillInvocation: \{[\s\S]*id: getSkillMentionId\(request\.selectedItem\.id\),[\s\S]*label: request\.selectedItem\.label/u,
+		/request\.kind !== "skill"[\s\S]*openAgentChat\(\{[\s\S]*agentId: JGP_KANBAN_DEFAULT_AGENT_ID,[\s\S]*agentName: "Claude Code",[\s\S]*issueKey: card\.code,[\s\S]*request: request\.prompt,[\s\S]*skillInvocation: \{[\s\S]*id: getSkillMentionId\(request\.selectedItem\.id\),[\s\S]*label: request\.selectedItem\.label/u,
 	);
+	assert.match(GENERATIVE_ACTIONS_HOOK_SOURCE, /message: `Claude Code is applying \$\{skillName\} to \$\{card\.code\}\.`/u);
 	assert.match(
 		GENERATIVE_ACTIONS_HOOK_SOURCE,
 		/setComposerPrefillRequest\(\{[\s\S]*category: "skill",[\s\S]*id: getSkillMentionId\(request\.selectedItem\.id\),[\s\S]*label: request\.selectedItem\.label,[\s\S]*requestKey:/u,

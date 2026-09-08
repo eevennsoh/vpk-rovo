@@ -186,11 +186,12 @@ test("right navigation settings button can render optional dropdown actions", ()
 	assert.match(RIGHT_NAVIGATION_ACTIONS_SOURCE, /interface RightNavigationSettingsMenuItem/);
 	assert.match(RIGHT_NAVIGATION_ACTIONS_SOURCE, /settingsMenuItems\?: ReadonlyArray<RightNavigationSettingsMenuItem>/);
 	assert.match(RIGHT_NAVIGATION_ACTIONS_SOURCE, /const hasSettingsMenu = Boolean\(settingsMenuItems && settingsMenuItems\.length > 0\);/);
-	// The settings dropdown itself is now unconditional — it owns the global
-	// design-variation picker and the design-variant toggles. What stays gated
-	// on hasSettingsMenu is the caller-supplied block, so an empty
-	// settingsMenuItems cannot leave a dangling separator and empty group
-	// hanging off the bottom of the menu.
+	// The settings dropdown itself is now unconditional — it owns the
+	// design-variant toggles. What stays gated on hasSettingsMenu is the
+	// caller-supplied block, so an empty settingsMenuItems cannot leave a
+	// dangling separator and empty group hanging off the bottom of the menu.
+	assert.doesNotMatch(RIGHT_NAVIGATION_ACTIONS_SOURCE, /Design variation/);
+	assert.doesNotMatch(RIGHT_NAVIGATION_ACTIONS_SOURCE, /useDesignVariation|design-variation/);
 	assert.match(
 		RIGHT_NAVIGATION_ACTIONS_SOURCE,
 		/hasSettingsMenu \? \([\s\S]*<DropdownMenuSeparator \/>[\s\S]*<DropdownMenuGroup>[\s\S]*onSelect=\{item\.onSelect\}/u,

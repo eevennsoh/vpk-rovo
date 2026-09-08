@@ -1,7 +1,10 @@
 import type { AgentListAgent } from "@/components/blocks/agent-list";
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 
-import { PULSE_VIEWER_MACHINE_NAME } from "../data/pulse-loose-work";
+import {
+	PULSE_SPACE_REPOSITORY,
+	PULSE_VIEWER_MACHINE_NAME,
+} from "../data/pulse-loose-work";
 import {
 	isPulseAgentSession,
 	type PulseCodingAgentId,
@@ -37,11 +40,9 @@ export function isPulseLooseWorkOnViewerMachine(item: PulseLooseWork): boolean {
 }
 
 /**
- * Row identity for a Pulse coding agent. Claude / Codex / Cursor use third-party
- * brand marks already in the logo catalog; Rovo uses the VPK product mark.
- * Directory profiles are not imported here so this mapper stays a test-harness
- * leaf — ids and marks match `getRovoAgentProfile("rovo-dev")` and the existing
- * Claude / Codex / Cursor brand objects elsewhere in the repo.
+ * Row identity for a Pulse coding agent. Claude, Codex, Copilot, and Cursor use
+ * third-party brand marks already in the logo catalog. Directory profiles are
+ * not imported here so this mapper stays a test-harness leaf.
  */
 export function toPulseSessionAgent(agentId: PulseCodingAgentId): AgentListAgent {
 	switch (agentId) {
@@ -59,19 +60,19 @@ export function toPulseSessionAgent(agentId: PulseCodingAgentId): AgentListAgent
 				kind: "agent",
 				name: "Codex",
 			};
+		case "copilot":
+			return {
+				brandName: "github-copilot",
+				id: "github-copilot",
+				kind: "agent",
+				name: "GitHub Copilot",
+			};
 		case "cursor":
 			return {
 				brandName: "cursor",
 				id: "cursor",
 				kind: "agent",
 				name: "Cursor",
-			};
-		case "rovo":
-			return {
-				id: "rovo-dev",
-				kind: "agent",
-				name: "Rovo",
-				vpkLogo: "rovo",
 			};
 		default: {
 			const _exhaustive: never = agentId;
@@ -134,11 +135,19 @@ export function toPulseSessionItems(
 					name: invoker.name,
 				},
 			machineName: item.machineName,
+			prStatus: item.pullRequest?.status,
 			sessionDetails: {
 				host: "local",
 				issueKey: item.sourceTitle,
 				issueSummary: item.title,
 				...(issueStatus === undefined ? {} : { issueStatus }),
+				...(item.pullRequest === undefined
+					? {}
+					: {
+						pullRequestNumber: item.pullRequest.number,
+						pullRequestTitle: item.pullRequest.title,
+						pullRequestUrl: `https://github.com/${PULSE_SPACE_REPOSITORY}/pull/${item.pullRequest.number}`,
+					}),
 				worktreePath: worktree,
 			},
 			shortTitle: item.shortTitle,

@@ -61,15 +61,30 @@ test("the Jira v4 demo chooses a fresh delay inside the four-to-eight-second win
 test("every queued Jira v4 session has a unique stable identity", async () => {
 	const sync = await loadSyncModule();
 	const sessions = sync.JIRA_GOLDEN_JOURNEYS_V4_SYNC_SESSIONS;
+	const codingAgentIds = new Set(["claude", "codex", "copilot", "cursor"]);
 
 	assert.ok(sessions.length >= 8);
 	assert.equal(new Set(sessions.map((session) => session.id)).size, sessions.length);
 	assert.ok(sessions.every((session) => session.kind === "agent-session"));
-	assert.ok(sessions.every((session) => session.timeLabel === "just now"));
+	assert.ok(sessions.every((session) => codingAgentIds.has(session.agentId)));
+	assert.ok(sessions.every((session) => !/Rovo/u.test(session.title)));
+	assert.ok(sessions.every((session) => session.timeLabel === "Just now"));
 	assert.ok(sessions.every((session) => session.issueStatus.length > 0));
 	assert.equal(
 		sessions.find((session) => session.sourceTitle === "PAY-132")?.issueStatus,
 		"In review",
+	);
+});
+
+test("half of the queued Jira v4 sessions arrive with linked PR metadata", async () => {
+	const sync = await loadSyncModule();
+	const sessions = sync.JIRA_GOLDEN_JOURNEYS_V4_SYNC_SESSIONS;
+	const pullRequestSessions = sessions.filter((session) => session.pullRequest !== undefined);
+
+	assert.equal(pullRequestSessions.length, sessions.length / 2);
+	assert.deepEqual(
+		new Set(pullRequestSessions.map((session) => session.pullRequest.status)),
+		new Set(["created", "merged", "failed"]),
 	);
 });
 

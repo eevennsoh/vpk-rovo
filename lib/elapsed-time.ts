@@ -14,6 +14,7 @@ export function formatElapsedTime(totalSeconds: number): string {
 	return parts.join(" ");
 }
 
+/** Compact relative stamp: `"Just now"`, `"32m ago"`, `"1hr ago"`, `"Yesterday"`, `"3d ago"`. */
 export function formatRelativeTime(totalSecondsAgo: number): string {
 	const normalizedSeconds = Number.isFinite(totalSecondsAgo)
 		? Math.max(0, Math.floor(totalSecondsAgo))
@@ -25,7 +26,7 @@ export function formatRelativeTime(totalSecondsAgo: number): string {
 	if (minutes < 1) return "Just now";
 	if (hours < 1) return `${minutes}m ago`;
 	if (days < 1) return `${hours}hr ago`;
-	if (days === 1) return "yesterday";
+	if (days === 1) return "Yesterday";
 	return `${days}d ago`;
 }
 

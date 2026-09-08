@@ -100,8 +100,17 @@ export function toAgentSessionStatus(item: AgentListItem): JiraSidebarSessionSta
 			return "awaiting-input";
 		case "running":
 			return "running";
-		case "complete":
-			return item.prStatus === "created" ? "pr-open" : "merged";
+		case "complete": {
+			switch (item.prStatus) {
+				case "created":
+					return "pr-open";
+				case "failed":
+					return "stopped";
+				case "merged":
+				case undefined:
+					return "merged";
+			}
+		}
 	}
 }
 

@@ -41,7 +41,7 @@ export function AgentSessionCohortChip({
 		);
 	}
 
-	const label = `${cohort.members.length} agent sessions`;
+	const label = `${cohort.members.length} sessions`;
 	const peeked = cohort.members.slice(0, COHORT_AVATAR_PEEK);
 
 	return (

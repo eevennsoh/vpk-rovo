@@ -48,6 +48,7 @@ test("PullRequest card reuses Avatar, Tag, Lozenge, BrandLogoMark, and ArrowRigh
 		COMPONENT_SOURCE,
 		/BrandLogoMark[\s\S]*name="github"/u,
 	);
+	assert.doesNotMatch(COMPONENT_SOURCE, /dark:\[&_svg\]:invert/u);
 	// Dropdown keeps the 24px avatar by default; flyout/spacious opt down to 16px.
 	assert.match(COMPONENT_SOURCE, /function PullRequestAuthorAvatar\([\s\S]*size = "sm",/u);
 	assert.match(COMPONENT_SOURCE, /text-text-success">\+\{additions\}/u);
@@ -232,6 +233,8 @@ test("Pull Request demos include source → target branch paths", () => {
 	assert.match(DATA_SOURCE, /branch: "rovo\/rfp-103-response-validation"/u);
 	assert.match(DATA_SOURCE, /filesChanged: 6/u);
 	assert.match(DATA_SOURCE, /relativeTime: "1h ago"/u);
+	assert.match(DATA_SOURCE, /relativeTime: "Yesterday"/u);
+	assert.doesNotMatch(DATA_SOURCE, /relativeTime: "yesterday"/u);
 	assert.doesNotMatch(DATA_SOURCE, /number:\s*902/u);
 });
 

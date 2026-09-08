@@ -70,21 +70,21 @@ export const JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS = [
 	},
 	{
 		id: "review-agent",
-		name: "Review Agent",
+		name: "Codex",
 		byline: "Reviews every pull request",
-		avatarSrc: PAY_AVATARS.reviewAgent,
+		brandName: "openai-codex",
 	},
 	{
 		id: "test-agent",
-		name: "Test Author Agent",
+		name: "Cursor",
 		byline: "Writes and repairs tests",
-		avatarSrc: PAY_AVATARS.testAgent,
+		brandName: "cursor",
 	},
 	{
 		id: "release-agent",
-		name: "Release Captain Agent",
+		name: "GitHub Copilot",
 		byline: "Owns the flag and rollout",
-		avatarSrc: PAY_AVATARS.releaseAgent,
+		brandName: "github-copilot",
 	},
 ] as const satisfies readonly JiraKanbanAgentData[];
 
@@ -141,21 +141,21 @@ export const JIRA_GOLDEN_JOURNEYS_V4_PAY_COMPOSER_AGENTS = [
 	},
 	{
 		id: "review-agent",
-		name: "Review Agent",
+		name: "Codex",
 		byline: "Reviews every pull request",
-		avatarSrc: PAY_AVATARS.reviewAgent,
+		brandName: "openai-codex",
 	},
 	{
 		id: "test-agent",
-		name: "Test Author Agent",
+		name: "Cursor",
 		byline: "Writes and repairs tests",
-		avatarSrc: PAY_AVATARS.testAgent,
+		brandName: "cursor",
 	},
 	{
 		id: "release-agent",
-		name: "Release Captain Agent",
+		name: "GitHub Copilot",
 		byline: "Owns the flag and rollout",
-		avatarSrc: PAY_AVATARS.releaseAgent,
+		brandName: "github-copilot",
 	},
 ] as const satisfies readonly AgentSelectorAgent[];
 
@@ -167,17 +167,17 @@ export const JIRA_GOLDEN_JOURNEYS_V4_PAY_HEADER_ASSIGNEES = [
 	},
 	{
 		id: "review-agent",
-		name: "Review Agent",
+		name: "Codex",
 		avatarSrc: PAY_AVATARS.reviewAgent,
 	},
 	{
 		id: "test-agent",
-		name: "Test Author Agent",
+		name: "Cursor",
 		avatarSrc: PAY_AVATARS.testAgent,
 	},
 	{
 		id: "release-agent",
-		name: "Release Captain Agent",
+		name: "GitHub Copilot",
 		avatarSrc: PAY_AVATARS.releaseAgent,
 	},
 ] as const satisfies readonly JiraKanbanAssigneeData[];
@@ -372,8 +372,8 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				title: "Port confirmPaymentIntent and the 3-D Secure challenge flow",
 				agentActivities: [createActivity({
 					id: "PAY-105:test-agent",
-					agentName: "Test Author Agent",
-					avatarSrc: PAY_AVATARS.testAgent,
+					agentName: "Cursor",
+					agentBrandName: "cursor",
 					cycleIntervalJitterMs: 1800,
 					cycleIntervalMs: 2600,
 					label: "Replaying 3-D Secure fixtures",
@@ -409,8 +409,8 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				agentActivities: [
 					createActivity({
 						id: "PAY-123:test-agent",
-						agentName: "Test Author Agent",
-						avatarSrc: PAY_AVATARS.testAgent,
+						agentName: "Cursor",
+						agentBrandName: "cursor",
 						cycleIntervalJitterMs: 1700,
 						cycleIntervalMs: 1900,
 						label: "Recording decline-code fixtures",
@@ -452,8 +452,8 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				title: "Confirm the sandbox key retention window before replay",
 				agentActivities: [createActivity({
 					id: "PAY-112:review-agent",
-					agentName: "Review Agent",
-					avatarSrc: PAY_AVATARS.reviewAgent,
+					agentName: "Codex",
+					agentBrandName: "openai-codex",
 					label: "Needs the retention window",
 					state: "awaiting-input",
 				})],
@@ -506,8 +506,8 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				title: "Add per-account targeting and an armed kill switch",
 				agentActivities: [createActivity({
 					id: "PAY-121:release-agent",
-					agentName: "Release Captain Agent",
-					avatarSrc: PAY_AVATARS.releaseAgent,
+					agentName: "GitHub Copilot",
+					agentBrandName: "github-copilot",
 					cycleIntervalJitterMs: 2400,
 					cycleIntervalMs: 3600,
 					label: "Validating one-percent targeting",

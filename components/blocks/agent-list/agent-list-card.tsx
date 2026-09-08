@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 
 import ArchiveBoxIcon from "@atlaskit/icon/core/archive-box";
 import DevicesIcon from "@atlaskit/icon/core/devices";
+import MergeFailureIcon from "@atlaskit/icon/core/merge-failure";
 import MergeSuccessIcon from "@atlaskit/icon/core/merge-success";
 import PullRequestIcon from "@atlaskit/icon/core/pull-request";
 import StatusInformationIcon from "@atlaskit/icon/core/status-information";
@@ -117,7 +118,29 @@ const PR_STATUS_META: Record<
 		label: "PR merged",
 		colorClass: "text-icon-accent-purple",
 	},
+	failed: {
+		Icon: MergeFailureIcon,
+		label: "PR failed",
+		colorClass: "text-icon-danger",
+	},
 };
+
+export function AgentListPrStatusIcon({
+	status,
+}: Readonly<{ status: AgentListPrStatus }>) {
+	const { Icon: PrIcon, colorClass, label } = PR_STATUS_META[status];
+
+	return (
+		<span
+			aria-label={label}
+			className={cn("grid size-4 shrink-0 place-items-center", colorClass)}
+			role="img"
+			title={label}
+		>
+			<PrIcon color="currentColor" label="" size="small" />
+		</span>
+	);
+}
 
 function MetadataDot() {
 	return (
@@ -261,7 +284,7 @@ function LifecycleIndicator({
  * not a ticking runtime. Otherwise only genuinely live cloud states count up;
  * everything settled reads as a relative timestamp.
  */
-function AgentListTime({
+export function AgentListTime({
 	item,
 	fallback = "Just now",
 }: Readonly<{
@@ -622,6 +645,7 @@ export function AgentListRow({
 	isCompact,
 	isSelected,
 	item,
+	metadata,
 	onView,
 	renderIdentity,
 	showHoverActionsWhenSelected = false,
@@ -631,6 +655,8 @@ export function AgentListRow({
 	isCompact: boolean;
 	isSelected: boolean;
 	item: AgentListItem;
+	/** Caller-owned metadata for a specialized row, such as Agent Session's PR summary. */
+	metadata?: ReactNode;
 	onView?: (item: AgentListItem) => void;
 	/**
 	 * Wrap the row's leading identity. Agent List never passes it.
@@ -722,35 +748,37 @@ export function AgentListRow({
 							)}
 							{stateMeta.showDots ? <AnimatedDots /> : null}
 						</span>
-						<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
-							{item.metadataPrefix ? (
-								<>
-									<span className="shrink-0">{item.metadataPrefix}</span>
-									<MetadataDot />
-								</>
-							) : null}
-							<AgentListMetadataIdentity item={item} />
-							{prMeta && PrIcon ? (
-								<>
-									<MetadataDot />
-									<span className="flex min-w-0 shrink items-center gap-1">
-										<span
-											className={cn(
-												"grid size-4 shrink-0 place-items-center",
-												prMeta.colorClass,
-											)}
-										>
-											<PrIcon color="currentColor" label="" size="small" />
+						{metadata ?? (
+							<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
+								{item.metadataPrefix ? (
+									<>
+										<span className="shrink-0">{item.metadataPrefix}</span>
+										<MetadataDot />
+									</>
+								) : null}
+								<AgentListMetadataIdentity item={item} />
+								{prMeta && PrIcon ? (
+									<>
+										<MetadataDot />
+										<span className="flex min-w-0 shrink items-center gap-1">
+											<span
+												className={cn(
+													"grid size-4 shrink-0 place-items-center",
+													prMeta.colorClass,
+												)}
+											>
+												<PrIcon color="currentColor" label="" size="small" />
+											</span>
+											<span className="truncate text-text-subtle">{prMeta.label}</span>
 										</span>
-										<span className="truncate text-text-subtle">{prMeta.label}</span>
-									</span>
-								</>
-							) : null}
-							<MetadataDot />
-							<span className="shrink-0" title={timeSlotTitle(item)}>
-								<AgentListTime item={item} />
+									</>
+								) : null}
+								<MetadataDot />
+								<span className="shrink-0" title={timeSlotTitle(item)}>
+									<AgentListTime item={item} />
+								</span>
 							</span>
-						</span>
+						)}
 					</RowBody>
 					{stateMeta.showLifecycle ? (
 						<span

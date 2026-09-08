@@ -9,7 +9,6 @@ import PriorityTrivialIcon from "@atlaskit/icon/core/priority-trivial";
 import PullRequestIcon from "@atlaskit/icon/core/pull-request";
 import ScreenIcon from "@atlaskit/icon/core/screen";
 import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
-import TaskInProgressIcon from "@atlaskit/icon/core/task-in-progress";
 import CloudIcon from "@atlaskit/icon-lab/core/cloud";
 import GroupIcon from "@atlaskit/icon-lab/core/group";
 import MergeQueueIcon from "@atlaskit/icon-lab/core/merge-queue";
@@ -31,6 +30,8 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubContent,
@@ -38,7 +39,9 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import { Spinner } from "@/components/ui/spinner";
 import { token } from "@/lib/tokens";
+import { cn } from "@/lib/utils";
 
 interface BoardViewMenuProps {
 	compact?: boolean;
@@ -71,17 +74,53 @@ interface QuickViewOption<TId extends string = string> {
 	label: string;
 }
 
-interface StateIcon {
+interface GlyphStateIcon {
 	glyph: ComponentType<NewCoreIconProps>;
 	color: NewCoreIconProps["color"];
 }
 
+interface ExperimentalSpinnerStateIcon {
+	spinner: "experimental";
+}
+
+type StateIcon = GlyphStateIcon | ExperimentalSpinnerStateIcon;
+
 type StateIcons = Readonly<Record<string, StateIcon>>;
 
+const MENU_LEADING_ICON_CLASS_NAME = "size-3 [&_svg]:size-3!";
+/** Scale the 20px orb so its ~13.4px ring fills the 12px leading slot. */
+const MENU_LEADING_SPINNER_CLASS_NAME = "origin-center scale-[1.49]";
+
 function MenuLeadingIcon({ icon }: Readonly<{ icon: StateIcon }>) {
+	if ("spinner" in icon) {
+		switch (icon.spinner) {
+			case "experimental":
+				return (
+					<Icon
+						className={cn(
+							MENU_LEADING_ICON_CLASS_NAME,
+							"overflow-hidden text-icon-subtlest! [&_svg]:text-icon-subtlest!",
+						)}
+						render={(
+							<Spinner
+								className={MENU_LEADING_SPINNER_CLASS_NAME}
+								label=""
+								size="xs"
+								variant="experimental"
+							/>
+						)}
+					/>
+				);
+			default: {
+				const _exhaustive: never = icon.spinner;
+				return _exhaustive;
+			}
+		}
+	}
+
 	return (
 		<Icon
-			className="size-3 [&_svg]:size-3!"
+			className={MENU_LEADING_ICON_CLASS_NAME}
 			render={<icon.glyph color={icon.color} label="" size="small" />}
 		/>
 	);
@@ -96,7 +135,7 @@ const PR_STATE_ICONS = {
 } as const satisfies Record<BoardPrStateId, StateIcon>;
 
 const AGENT_STATE_ICONS = {
-	working: { glyph: TaskInProgressIcon, color: token("color.icon.subtlest") },
+	working: { spinner: "experimental" },
 	"needs-input": { glyph: QuestionCircleFilledIcon, color: token("color.icon.information") },
 	finished: { glyph: StatusSuccessIcon, color: token("color.icon.success") },
 	untracked: { glyph: PriorityTrivialIcon, color: token("color.icon.subtlest") },
@@ -111,6 +150,7 @@ interface QuickViewActionSubmenuProps<TId extends string> {
 	label: string;
 	options: readonly QuickViewOption<TId>[];
 	icons?: StateIcons;
+	selectedId?: TId | null;
 	onSelect: (id: TId) => void;
 }
 
@@ -118,25 +158,38 @@ function QuickViewActionSubmenu<TId extends string>({
 	label,
 	options,
 	icons,
+	selectedId = null,
 	onSelect,
 }: Readonly<QuickViewActionSubmenuProps<TId>>) {
 	return (
 		<DropdownMenuSub>
 			<DropdownMenuSubTrigger>{label}</DropdownMenuSubTrigger>
 			<DropdownMenuSubContent>
-				{options.map((option) => {
-					const stateIcon = icons?.[option.id];
-					return (
-						<DropdownMenuItem
-							className={stateIcon ? "gap-2 [&>span:first-child]:size-3" : undefined}
-							elemBefore={stateIcon ? <MenuLeadingIcon icon={stateIcon} /> : undefined}
-							key={option.id}
-							onSelect={() => onSelect(option.id)}
-						>
-							{option.label}
-						</DropdownMenuItem>
-					);
-				})}
+				<DropdownMenuRadioGroup
+					aria-label={label}
+					onValueChange={(id) => {
+						const option = options.find((entry) => entry.id === id);
+						if (option) {
+							onSelect(option.id);
+						}
+					}}
+					value={selectedId ?? ""}
+				>
+					{options.map((option) => {
+						const stateIcon = icons?.[option.id];
+						return (
+							<DropdownMenuRadioItem
+								className={stateIcon ? "gap-2" : undefined}
+								indicatorPlacement="end"
+								key={option.id}
+								value={option.id}
+							>
+								{stateIcon ? <MenuLeadingIcon icon={stateIcon} /> : null}
+								{option.label}
+							</DropdownMenuRadioItem>
+						);
+					})}
+				</DropdownMenuRadioGroup>
 			</DropdownMenuSubContent>
 		</DropdownMenuSub>
 	);
@@ -221,6 +274,7 @@ export function BoardViewMenu({
 					label="Pull request"
 					onSelect={handlePullRequestSelect}
 					options={BOARD_PR_STATE_OPTIONS}
+					selectedId={pullRequestFilterId}
 				/>
 
 				<QuickViewActionSubmenu
@@ -228,6 +282,7 @@ export function BoardViewMenu({
 					label="Agents"
 					onSelect={handleAgentSelect}
 					options={BOARD_AGENT_STATE_OPTIONS}
+					selectedId={agentFilterId}
 				/>
 
 				<QuickViewActionSubmenu
@@ -235,12 +290,14 @@ export function BoardViewMenu({
 					label="Session type"
 					onSelect={handleSessionTypeSelect}
 					options={BOARD_SESSION_TYPE_OPTIONS}
+					selectedId={sessionTypeFilterId}
 				/>
 
 				<QuickViewActionSubmenu
 					label="Group by"
 					onSelect={handleGroupBySelect}
 					options={BOARD_GROUP_OPTIONS}
+					selectedId={groupByFilterId}
 				/>
 
 				{hasQuickViewSelection ? (

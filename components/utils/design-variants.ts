@@ -1,23 +1,18 @@
 /**
- * Global "design variants" preferences — the independent on/off siblings of the
- * single-choice design *variation* preference (`design-variation.ts`) that sits
- * directly above them in the top navigation's settings menu.
+ * Global "design variants" preferences — independent on/off toggles in the
+ * top navigation's settings menu.
  *
- * A variation is exclusive ("which world am I in"); a variant is additive
- * ("also turn this on"). Each variant is an independent boolean, so the store's
- * snapshot is a frozen map rather than a single id.
+ * Each variant is an independent boolean, so the store's snapshot is a frozen
+ * map rather than a single id.
  *
- * This module is deliberately React-free (like `design-variation.ts` and
- * `theme-storage.ts`) so the selection logic can be unit-tested without a
- * renderer; `useDesignVariants` in `components/hooks/use-design-variants.ts` is
- * the React binding.
+ * This module is deliberately React-free (like `theme-storage.ts`) so the
+ * selection logic can be unit-tested without a renderer; `useDesignVariants`
+ * in `components/hooks/use-design-variants.ts` is the React binding.
  *
- * Deliberate asymmetry with `design-variation.ts`: there is **no DOM
- * mirroring** here. A variation only changes CSS, so it is mirrored onto the
- * document root as `data-design-variation="<id>"`. A variant changes component
- * *structure* (which components mount, and where), so it is only ever read in
- * JS through `useDesignVariants()`. Do not add a `data-design-variants`
- * attribute — nothing would consume it.
+ * There is **no DOM mirroring** here. A variant changes component *structure*
+ * (which components mount, and where), so it is only ever read in JS through
+ * `useDesignVariants()`. Do not add a `data-design-variants` attribute —
+ * nothing would consume it.
  *
  * Snapshot identity matters: `useSyncExternalStore` calls both snapshot getters
  * on every render and compares with `Object.is`. `getDesignVariants()` and
@@ -56,9 +51,9 @@ export type DesignVariantState = Readonly<Record<DesignVariantId, boolean>>;
  * Panel starts off: Golden Journeys v4 ships untracked work in the in-flow
  * board column unless the user turns the floating side surface on.
  *
- * Simple views starts on: Team EU (the default variation) ships one Work items
- * tab and moves Board/List into the board header, unless the user turns it off
- * to restore Board and List as sibling space tabs.
+ * Simple views starts on: Team EU ships one Work items tab and moves
+ * Board/List into the board header, unless the user turns it off to restore
+ * Board and List as sibling space tabs.
  *
  * Simple kanban starts on: expanded columns drop the sunken well unless the
  * user turns it off to restore the default column chrome.

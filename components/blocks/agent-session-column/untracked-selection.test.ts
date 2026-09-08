@@ -8,7 +8,7 @@ import type { UntrackedWorkTriage } from "../agent-session/untracked-work-triage
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
 import { runBulkAction } from "./untracked-selection-actions.ts";
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
-import { buildUntrackedHeaderModel, NO_SELECTION_MARKS, reduceSelectionMarks, selectEffectiveSelection } from "./untracked-selection.ts";
+import { buildUntrackedHeaderModel, NO_SELECTION_MARKS, reduceSelectionMarks, resolveLeadSpotlight, resolveUntrackedSelectionGesture, resolveVisibleLeadId, selectEffectiveSelection } from "./untracked-selection.ts";
 
 function session(id: string, issueKey?: string): AgentSessionItem {
 	return {
@@ -64,16 +64,21 @@ test("select-all is a no-op when every id is already marked", () => {
 	);
 });
 
-test("clear empties marks and does not invent a spotlight field", () => {
+test("clear empties marks, keeps the keyboard lead, and does not invent a spotlight field", () => {
 	const marked = reduceSelectionMarks(NO_SELECTION_MARKS, { type: "toggle", id: "lw-a" });
 	const cleared = reduceSelectionMarks(marked, { type: "clear" });
-	assert.equal(cleared, NO_SELECTION_MARKS);
+	assert.deepEqual([...cleared.markedIds], []);
+	assert.equal(cleared.leadId, "lw-a");
+	assert.equal(cleared.anchorId, "lw-a");
 	assert.equal("selectedItemId" in cleared, false);
+	assert.equal(reduceSelectionMarks(NO_SELECTION_MARKS, { type: "clear" }), NO_SELECTION_MARKS);
 });
 
 test("effective selection intersects marks with visible rows in list order", () => {
 	const visible = [session("lw-a", "PAY-101"), session("lw-b", "PAY-102"), session("lw-c", "PAY-103")];
 	const marks = {
+		anchorId: "lw-a",
+		leadId: "lw-c",
 		markedIds: new Set(["lw-c", "lw-hidden", "lw-a"]),
 	};
 
@@ -106,13 +111,292 @@ test("hidden, captured, or filtered-out marks stay in the set and stay inert", (
 
 test("an empty intersection is empty, not an active selection of zero", () => {
 	assert.deepEqual(
-		selectEffectiveSelection({ markedIds: new Set(["lw-gone"]) }, [session("lw-a")]),
+		selectEffectiveSelection({ markedIds: new Set(["lw-gone"]), anchorId: null, leadId: null }, [session("lw-a")]),
 		{ kind: "empty" },
 	);
 	assert.deepEqual(
 		selectEffectiveSelection(NO_SELECTION_MARKS, [session("lw-a")]),
 		{ kind: "empty" },
 	);
+});
+
+const ORDERED_IDS = ["lw-a", "lw-b", "lw-c", "lw-d"];
+
+test("a plain activate replaces the selection and sets the shift anchor", () => {
+	const first = reduceSelectionMarks(NO_SELECTION_MARKS, {
+		gesture: { additive: false, range: false },
+		id: "lw-b",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual([...first.markedIds], ["lw-b"]);
+	assert.equal(first.anchorId, "lw-b");
+	assert.equal(first.leadId, "lw-b");
+
+	const replaced = reduceSelectionMarks(first, {
+		gesture: { additive: false, range: false },
+		id: "lw-d",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual([...replaced.markedIds], ["lw-d"]);
+	assert.equal(replaced.anchorId, "lw-d");
+});
+
+test("plain clicks add and remove rows after the first selection", () => {
+	const first = reduceSelectionMarks(NO_SELECTION_MARKS, {
+		gesture: { additive: false, range: false },
+		id: "lw-a",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	const firstSelection = selectEffectiveSelection(first, ORDERED_IDS.map((id) => session(id)));
+	const addedGesture = resolveUntrackedSelectionGesture(
+		{ additive: false, range: false },
+		firstSelection,
+	);
+	const added = reduceSelectionMarks(first, {
+		gesture: addedGesture,
+		id: "lw-c",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual([...added.markedIds], ["lw-a", "lw-c"]);
+
+	const addedSelection = selectEffectiveSelection(added, ORDERED_IDS.map((id) => session(id)));
+	const removedGesture = resolveUntrackedSelectionGesture(
+		{ additive: false, range: false },
+		addedSelection,
+	);
+	const removed = reduceSelectionMarks(added, {
+		gesture: removedGesture,
+		id: "lw-c",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual([...removed.markedIds], ["lw-a"]);
+	assert.deepEqual(
+		resolveLeadSpotlight(added, removed, removedGesture, "lw-c"),
+		{ kind: "clear" },
+	);
+});
+
+test("range clicks keep replacing the active range", () => {
+	const anchor = reduceSelectionMarks(NO_SELECTION_MARKS, {
+		gesture: { additive: false, range: false },
+		id: "lw-a",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	const selectedThroughD = reduceSelectionMarks(anchor, {
+		gesture: { additive: false, range: true },
+		id: "lw-d",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	const selection = selectEffectiveSelection(
+		selectedThroughD,
+		ORDERED_IDS.map((id) => session(id)),
+	);
+	const rangeGesture = resolveUntrackedSelectionGesture(
+		{ additive: false, range: true },
+		selection,
+	);
+	assert.deepEqual(rangeGesture, { additive: false, range: true });
+
+	const shrunk = reduceSelectionMarks(selectedThroughD, {
+		gesture: rangeGesture,
+		id: "lw-b",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual([...shrunk.markedIds], ["lw-a", "lw-b"]);
+});
+
+test("an additive activate toggles without moving the shift anchor", () => {
+	const anchor = reduceSelectionMarks(NO_SELECTION_MARKS, {
+		gesture: { additive: false, range: false },
+		id: "lw-a",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	const added = reduceSelectionMarks(anchor, {
+		gesture: { additive: true, range: false },
+		id: "lw-c",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual([...added.markedIds], ["lw-a", "lw-c"]);
+	assert.equal(added.anchorId, "lw-a");
+	assert.equal(added.leadId, "lw-c");
+
+	const removed = reduceSelectionMarks(added, {
+		gesture: { additive: true, range: false },
+		id: "lw-a",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual([...removed.markedIds], ["lw-c"]);
+	assert.equal(removed.anchorId, "lw-a");
+});
+
+test("visible lead stays on a present row and otherwise falls back to the first", () => {
+	assert.equal(resolveVisibleLeadId(ORDERED_IDS, "lw-c"), "lw-c");
+	assert.equal(resolveVisibleLeadId(ORDERED_IDS, "lw-hidden"), "lw-a");
+	assert.equal(resolveVisibleLeadId(ORDERED_IDS, null), "lw-a");
+	assert.equal(resolveVisibleLeadId([], "lw-a"), null);
+});
+
+test("additive unmark of the lead clears the spotlight; other toggles keep it", () => {
+	const exclusive = reduceSelectionMarks(NO_SELECTION_MARKS, {
+		gesture: { additive: false, range: false },
+		id: "lw-a",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual(
+		resolveLeadSpotlight(NO_SELECTION_MARKS, exclusive, { additive: false, range: false }, "lw-a"),
+		{ kind: "item", id: "lw-a" },
+	);
+
+	const added = reduceSelectionMarks(exclusive, {
+		gesture: { additive: true, range: false },
+		id: "lw-c",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual(
+		resolveLeadSpotlight(exclusive, added, { additive: true, range: false }, "lw-c"),
+		{ kind: "item", id: "lw-c" },
+	);
+
+	const unmarkedLead = reduceSelectionMarks(added, {
+		gesture: { additive: true, range: false },
+		id: "lw-c",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual(
+		resolveLeadSpotlight(added, unmarkedLead, { additive: true, range: false }, "lw-c"),
+		{ kind: "clear" },
+	);
+
+	const unmarkedOther = reduceSelectionMarks(added, {
+		gesture: { additive: true, range: false },
+		id: "lw-a",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual(
+		resolveLeadSpotlight(added, unmarkedOther, { additive: true, range: false }, "lw-a"),
+		{ kind: "none" },
+	);
+});
+
+test("a range activate selects every visible id between the anchor and the lead", () => {
+	const anchor = reduceSelectionMarks(NO_SELECTION_MARKS, {
+		gesture: { additive: false, range: false },
+		id: "lw-a",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	const ranged = reduceSelectionMarks(anchor, {
+		gesture: { additive: false, range: true },
+		id: "lw-c",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual([...ranged.markedIds], ["lw-a", "lw-b", "lw-c"]);
+	assert.equal(ranged.anchorId, "lw-a");
+	assert.equal(ranged.leadId, "lw-c");
+
+	const shrunk = reduceSelectionMarks(ranged, {
+		gesture: { additive: false, range: true },
+		id: "lw-b",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual([...shrunk.markedIds], ["lw-a", "lw-b"]);
+	assert.equal(shrunk.anchorId, "lw-a");
+});
+
+test("an additive range unions the span without dropping earlier cherry-picks", () => {
+	const cherry = reduceSelectionMarks(
+		reduceSelectionMarks(NO_SELECTION_MARKS, {
+			gesture: { additive: false, range: false },
+			id: "lw-a",
+			orderedIds: ORDERED_IDS,
+			type: "activate",
+		}),
+		{
+			gesture: { additive: true, range: false },
+			id: "lw-d",
+			orderedIds: ORDERED_IDS,
+			type: "activate",
+		},
+	);
+	const united = reduceSelectionMarks(cherry, {
+		gesture: { additive: true, range: true },
+		id: "lw-c",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	assert.deepEqual([...united.markedIds], ["lw-a", "lw-d", "lw-b", "lw-c"]);
+	assert.equal(united.anchorId, "lw-a");
+});
+
+test("arrow move replaces, and shift-arrow extends from the anchor", () => {
+	const origin = reduceSelectionMarks(NO_SELECTION_MARKS, {
+		gesture: { additive: false, range: false },
+		id: "lw-b",
+		orderedIds: ORDERED_IDS,
+		type: "activate",
+	});
+	const moved = reduceSelectionMarks(origin, {
+		direction: "next",
+		extend: false,
+		orderedIds: ORDERED_IDS,
+		type: "move",
+	});
+	assert.deepEqual([...moved.markedIds], ["lw-c"]);
+	assert.equal(moved.anchorId, "lw-c");
+
+	const extended = reduceSelectionMarks(origin, {
+		direction: "next",
+		extend: true,
+		orderedIds: ORDERED_IDS,
+		type: "move",
+	});
+	assert.deepEqual([...extended.markedIds], ["lw-b", "lw-c"]);
+	assert.equal(extended.anchorId, "lw-b");
+	assert.equal(extended.leadId, "lw-c");
+});
+
+test("move clamps at the ends and starts from the first row when nothing is focused", () => {
+	const atEnd = reduceSelectionMarks(NO_SELECTION_MARKS, {
+		direction: "last",
+		extend: false,
+		orderedIds: ORDERED_IDS,
+		type: "move",
+	});
+	assert.deepEqual([...atEnd.markedIds], ["lw-d"]);
+	assert.equal(
+		reduceSelectionMarks(atEnd, {
+			direction: "next",
+			extend: false,
+			orderedIds: ORDERED_IDS,
+			type: "move",
+		}),
+		atEnd,
+	);
+
+	const fromEmpty = reduceSelectionMarks(NO_SELECTION_MARKS, {
+		direction: "next",
+		extend: false,
+		orderedIds: ORDERED_IDS,
+		type: "move",
+	});
+	assert.deepEqual([...fromEmpty.markedIds], ["lw-a"]);
 });
 
 test("the browsing header keeps the host title and count", () => {

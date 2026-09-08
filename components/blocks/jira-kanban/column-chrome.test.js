@@ -24,9 +24,18 @@ async function loadColumnChromeHarness() {
 			contents: `
 				export {
 					DEFAULT_KANBAN_COLUMN_CHROME,
-					KANBAN_COLUMN_DROP_TARGET_GROUP_CLASS,
-					SIMPLE_KANBAN_DROP_ARMED_HEADER_CLASS_NAME,
+					DEFAULT_KANBAN_DROP_ARMED_CLASS_NAME,
+					DEFAULT_KANBAN_DROP_IDLE_CLASS_NAME,
+					DEFAULT_KANBAN_DROP_SHELL_CLASS_NAME,
+					SIMPLE_KANBAN_DROP_ARMED_CLASS_NAME,
+					SIMPLE_KANBAN_DROP_IDLE_CLASS_NAME,
+					SIMPLE_KANBAN_DROP_CONTENT_INSET,
+					SIMPLE_KANBAN_DROP_RING_CLIP_GUTTER,
+					SIMPLE_KANBAN_DROP_SHELL_CLASS_NAME,
 					resolveKanbanColumnChrome,
+					setKanbanColumnDropArmed,
+					withKanbanDropContentGutter,
+					withKanbanDropRingClipGutter,
 				} from "./components/blocks/jira-kanban/column-chrome";
 				export { token } from "./lib/tokens";
 			`,
@@ -62,7 +71,11 @@ test("default names bg-surface-sunken and the well tokens", async () => {
 	assert.equal(chrome.cardList.paddingInline, harness.token("space.050"));
 	assert.equal(chrome.cardList.gap, harness.token("space.050"));
 	assert.equal(chrome.footer.paddingInline, harness.token("space.050"));
-	assert.equal(chrome.headerDropArmedClassName, "");
+	assert.equal(chrome.dropShellClassName, harness.DEFAULT_KANBAN_DROP_SHELL_CLASS_NAME);
+	assert.equal(chrome.dropArmedClassName, harness.DEFAULT_KANBAN_DROP_ARMED_CLASS_NAME);
+	assert.equal(chrome.dropIdleClassName, harness.DEFAULT_KANBAN_DROP_IDLE_CLASS_NAME);
+	assert.equal(chrome.dropRingClipGutter, "");
+	assert.equal(chrome.dropContentPadding, undefined);
 	assert.equal(chrome.resizeButtonClassName, "pt-2 pb-1");
 	assert.equal(chrome.headerFrame, "enclosed");
 	assert.equal(
@@ -110,7 +123,14 @@ test("simple has an empty class and undefined insets", async () => {
 	assert.equal(chrome.cardList.paddingInline, undefined);
 	assert.equal("gap" in chrome.cardList, false);
 	assert.equal(chrome.footer.paddingInline, undefined);
-	assert.equal(chrome.headerDropArmedClassName, harness.SIMPLE_KANBAN_DROP_ARMED_HEADER_CLASS_NAME);
+	assert.equal(chrome.dropShellClassName, harness.SIMPLE_KANBAN_DROP_SHELL_CLASS_NAME);
+	assert.equal(chrome.dropArmedClassName, harness.SIMPLE_KANBAN_DROP_ARMED_CLASS_NAME);
+	assert.equal(chrome.dropIdleClassName, harness.SIMPLE_KANBAN_DROP_IDLE_CLASS_NAME);
+	assert.equal(chrome.dropContentPadding?.paddingTop, harness.SIMPLE_KANBAN_DROP_CONTENT_INSET);
+	assert.equal(chrome.dropContentPadding?.paddingInline, harness.SIMPLE_KANBAN_DROP_CONTENT_INSET);
+	assert.equal(chrome.dropContentPadding?.paddingBottom, harness.SIMPLE_KANBAN_DROP_CONTENT_INSET);
+	assert.equal(chrome.dropContentPadding?.paddingTop, harness.token("space.050"));
+	assert.equal(chrome.dropContentPadding?.paddingInline, harness.token("space.050"));
 	assert.equal(chrome.resizeButtonClassName, "");
 	assert.equal(Object.hasOwn(chrome.header, "paddingTop"), true);
 	assert.notEqual(chrome.header.paddingTop, 0);
@@ -153,36 +173,99 @@ test("repeated resolve returns the same frozen object", async () => {
 	assert.equal(Object.isFrozen(firstSimple), true);
 });
 
-test("simple drop-armed header inset matches stroke-card summary text and the drop ring motion", async () => {
+test("simple paints an offset gutter outline and keeps the 2px layout border idle", async () => {
 	const harness = await loadColumnChromeHarness();
-	const issueSource = readFileSync(
-		path.join(__dirname, "../jira-issue/index.tsx"),
-		"utf8",
-	);
+	const simple = harness.resolveKanbanColumnChrome("simple");
+	const namedDefault = harness.resolveKanbanColumnChrome("default");
 
-	assert.match(
-		issueSource,
-		/"group\/jira-issue relative w-full min-w-0 border outline-none focus-visible:border-ring"/u,
-	);
-	assert.match(issueSource, /usesCompactVisual \? "px-3 pt-3 pb-2" : "p-3"/u);
 	assert.equal(
-		harness.SIMPLE_KANBAN_DROP_ARMED_HEADER_CLASS_NAME,
+		harness.SIMPLE_KANBAN_DROP_SHELL_CLASS_NAME,
 		[
-			"transition-[padding-inline] duration-normal ease-out-practical",
+			"border-2 border-transparent",
+			"outline-2 outline-offset-2 outline-transparent",
+			"transition-[outline-color] duration-normal ease-out-practical",
 			"motion-reduce:transition-none",
-			"group-[&.border-ring]/kanban-column-drop:[padding-inline:calc(1px+var(--ds-space-150))]",
 		].join(" "),
 	);
-	assert.equal(
-		harness.resolveKanbanColumnChrome("simple").headerDropArmedClassName,
-		harness.SIMPLE_KANBAN_DROP_ARMED_HEADER_CLASS_NAME,
+	assert.equal(simple.dropArmedClassName, "outline-ring");
+	assert.equal(simple.dropIdleClassName, "outline-transparent");
+	assert.match(simple.dropShellClassName, /outline-offset-2/u);
+	assert.match(simple.dropShellClassName, /border-2 border-transparent/u);
+	assert.doesNotMatch(simple.dropShellClassName, /border-ring/u);
+	assert.equal(namedDefault.dropArmedClassName, "border-ring");
+	assert.equal(namedDefault.dropIdleClassName, "border-transparent");
+	assert.doesNotMatch(namedDefault.dropShellClassName, /outline-offset-2/u);
+	assert.equal(simple.dropRingClipGutter, harness.SIMPLE_KANBAN_DROP_RING_CLIP_GUTTER);
+	assert.equal(simple.dropRingClipGutter, harness.token("space.100"));
+	assert.equal(simple.dropContentPadding?.paddingTop, harness.SIMPLE_KANBAN_DROP_CONTENT_INSET);
+	assert.equal(simple.dropContentPadding?.paddingInline, harness.SIMPLE_KANBAN_DROP_CONTENT_INSET);
+	assert.equal(namedDefault.dropRingClipGutter, "");
+	assert.equal(namedDefault.dropContentPadding, undefined);
+	assert.doesNotMatch(COLUMN_CHROME_SOURCE, /headerDropArmedClassName/u);
+	assert.doesNotMatch(COLUMN_CHROME_SOURCE, /padding-inline:calc/u);
+});
+
+test("simple drop-ring clip gutter adds 8px of unclipped top padding", async () => {
+	const harness = await loadColumnChromeHarness();
+	const simple = harness.resolveKanbanColumnChrome("simple");
+	const namedDefault = harness.resolveKanbanColumnChrome("default");
+	const gutter = harness.token("space.100");
+
+	assert.deepEqual(harness.withKanbanDropRingClipGutter(0, simple), {
+		paddingTop: `calc(0px + ${gutter})`,
+	});
+	assert.deepEqual(
+		harness.withKanbanDropRingClipGutter(harness.token("space.150"), simple),
+		{
+			paddingTop: `calc(${harness.token("space.150")} + ${gutter})`,
+		},
 	);
-	assert.equal(harness.resolveKanbanColumnChrome("default").headerDropArmedClassName, "");
-	assert.equal(harness.KANBAN_COLUMN_DROP_TARGET_GROUP_CLASS, "group/kanban-column-drop");
-	assert.match(
-		COLUMN_CHROME_SOURCE,
-		/Same duration\/easing as the drag-target border/u,
+	assert.deepEqual(harness.withKanbanDropRingClipGutter(0, namedDefault), { paddingTop: 0 });
+	assert.doesNotMatch(COLUMN_CHROME_SOURCE, /marginTop/u);
+});
+
+test("simple drop content inset plus clip gutter keeps Untracked captions aligned", async () => {
+	const harness = await loadColumnChromeHarness();
+	const simple = harness.resolveKanbanColumnChrome("simple");
+	const namedDefault = harness.resolveKanbanColumnChrome("default");
+	const gutter = harness.token("space.100");
+	const inset = harness.token("space.050");
+
+	assert.deepEqual(harness.withKanbanDropContentGutter(0, simple), {
+		paddingTop: `calc(0px + ${gutter} + ${inset})`,
+	});
+	assert.deepEqual(
+		harness.withKanbanDropContentGutter(harness.token("space.150"), simple),
+		{
+			paddingTop: `calc(${harness.token("space.150")} + ${gutter} + ${inset})`,
+		},
 	);
+	assert.deepEqual(harness.withKanbanDropContentGutter(0, namedDefault), { paddingTop: 0 });
+});
+
+test("setKanbanColumnDropArmed swaps the idle and armed color classes", async () => {
+	const harness = await loadColumnChromeHarness();
+	const tokens = new Set(["border-2", "border-transparent", "outline-2", "outline-offset-2", "outline-transparent"]);
+	const element = {
+		classList: {
+			toggle(name, force) {
+				if (force) {
+					tokens.add(name);
+					return;
+				}
+				tokens.delete(name);
+			},
+		},
+	};
+	const chrome = harness.resolveKanbanColumnChrome("simple");
+
+	harness.setKanbanColumnDropArmed(element, chrome, true);
+	assert.equal(tokens.has(chrome.dropArmedClassName), true);
+	assert.equal(tokens.has(chrome.dropIdleClassName), false);
+
+	harness.setKanbanColumnDropArmed(element, chrome, false);
+	assert.equal(tokens.has(chrome.dropArmedClassName), false);
+	assert.equal(tokens.has(chrome.dropIdleClassName), true);
 });
 
 test("the recipe module does not import design-variants", () => {

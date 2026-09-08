@@ -17,8 +17,38 @@ import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue/agen
 export type JiraIssueAgentSessionDragSource = "chin" | "detached" | "untracked";
 
 export interface JiraIssueAgentSessionTransferMember {
+	/** Absolute `public/` path to the agent avatar, when the source has one. */
+	readonly avatarSrc?: string;
 	readonly id: string;
 	readonly name: string;
+	/**
+	 * Stable identity seed for a deterministic fallback colour. Most agents
+	 * identify by a brand logo component rather than an image URL, so
+	 * `avatarSrc` is absent far more often than not.
+	 */
+	readonly tintSeed?: string;
+}
+
+/**
+ * First non-empty candidate, lowercased, as the member's tint seed.
+ *
+ * Brand ids come first because they are the identity that survives the
+ * attach/detach round trip. Lowercasing is what makes the two drag sources
+ * agree: a detached Rovo session carries `vpkLogo: "rovo"`, while the same
+ * session dragged back off a chin row has lost every brand field to
+ * `toJiraIssueAgentActivityFromSession` and only still knows `name: "Rovo"`.
+ */
+export function sessionTransferTintSeed(
+	...candidates: readonly (string | undefined)[]
+): string | undefined {
+	for (const candidate of candidates) {
+		const trimmed = candidate?.trim();
+		if (trimmed) {
+			return trimmed.toLowerCase();
+		}
+	}
+
+	return undefined;
 }
 
 export interface JiraIssueAgentSessionTransfer {

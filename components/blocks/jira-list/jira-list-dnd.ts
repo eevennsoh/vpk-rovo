@@ -59,8 +59,52 @@ export function isAgentSessionAttachTarget(
 	return intent?.kind === "attach" && intent.issueKey === issueKey;
 }
 
-export function getAgentSessionAttachCellClassName(isTarget: boolean): string | undefined {
-	return isTarget ? "bg-bg-selected ring-1 ring-inset ring-border-selected" : undefined;
+/**
+ * Which part of the row a cell is. Row-wide treatments are assembled from
+ * separate boxes, and the sticky checkbox cell paints its background through a
+ * `::before` overlay, so its treatment has to target the pseudo-element.
+ */
+export type JiraListRowCellSlot = "sticky" | "body";
+
+/**
+ * Row-wide attach affordance for an incoming agent session.
+ *
+ * Deliberately the whole row rather than the Agent sessions cell alone: that
+ * column is often scrolled out of view, and a single lit cell reads as "this
+ * field" when the drop actually lands on the work item.
+ *
+ * The deeper `selected-hovered` tone, not plain `selected`: an armed drop
+ * target has to stay legible on a row that is already checkbox-selected, and
+ * cells are independent boxes, so a shared tint is the only treatment that
+ * spans them without assembling an outline per cell.
+ */
+export function getAgentSessionAttachCellClassName(
+	isTarget: boolean,
+	slot: JiraListRowCellSlot = "body",
+): string | undefined {
+	if (!isTarget) {
+		return undefined;
+	}
+
+	return slot === "sticky"
+		? "before:bg-bg-selected-hovered!"
+		: "bg-bg-selected-hovered!";
+}
+
+/**
+ * One-shot acknowledgement after a session drop. Created rows are deliberately
+ * left unchecked, so this flash is what says "here it is" — and it is the same
+ * signal whether the row was created or attached to.
+ */
+export function getRowFlashCellClassName(
+	isFlashing: boolean,
+	slot: JiraListRowCellSlot = "body",
+): string | undefined {
+	if (!isFlashing) {
+		return undefined;
+	}
+
+	return slot === "sticky" ? "before:jira-list-row-flash" : "jira-list-row-flash";
 }
 
 export function getDragInsertionPosition(

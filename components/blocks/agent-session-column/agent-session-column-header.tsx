@@ -5,11 +5,10 @@ import type { ComponentType, CSSProperties, ReactElement } from "react";
 import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import AddIcon from "@atlaskit/icon/core/add";
 import ArchiveBoxIcon from "@atlaskit/icon/core/archive-box";
-import CheckCircleIcon from "@atlaskit/icon/core/check-circle";
-import CheckCircleUncheckedIcon from "@atlaskit/icon/core/check-circle-unchecked";
 import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import ShrinkHorizontalIcon from "@atlaskit/icon/core/shrink-horizontal";
+import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -44,12 +43,15 @@ const AGENT_SESSION_COLUMN_HEADER_STYLE: Record<AgentSessionColumnFrame, CSSProp
 	},
 };
 
+const HEADER_ACTIONS_VISIBLE = "flex shrink-0 items-center";
+
 const HEADER_ACTIONS_REVEAL = cn(
-	"ms-auto flex shrink-0 items-center",
+	HEADER_ACTIONS_VISIBLE,
 	"opacity-0 transition-opacity duration-normal ease-out-practical",
 	"group-hover/session-column:opacity-100 group-has-[:focus-visible]/session-column:opacity-100",
 	"motion-reduce:transition-none",
 	"has-[[data-popup-open]]:opacity-100",
+	"group-has-[[data-popup-open]]/header-actions:opacity-100",
 );
 
 const HEADER_ACTION_ICON: Record<SelectionActionId, ComponentType<NewCoreIconProps>> = {
@@ -129,7 +131,6 @@ function SelectAllButton({
 	allSelected: boolean;
 	onAction: (id: HeaderActionId) => void;
 }>): ReactElement {
-	const IconComponent = allSelected ? CheckCircleIcon : CheckCircleUncheckedIcon;
 	const label = allSelected ? SELECT_ALL_ACTION_COPY.deselect : SELECT_ALL_ACTION_COPY.select;
 
 	return (
@@ -146,8 +147,8 @@ function SelectAllButton({
 						variant="ghost"
 					>
 						<Icon
-							className={allSelected ? "text-icon-selected" : "text-icon-subtle"}
-							render={<IconComponent label="" />}
+							className="text-icon-selected"
+							render={<StatusSuccessIcon label="" />}
 						/>
 					</Button>
 				</TooltipTrigger>
@@ -241,7 +242,9 @@ function CollapseButton({
 
 export function AgentSessionColumnHeader({
 	collapseLabel,
+	filter,
 	frame = DEFAULT_AGENT_SESSION_COLUMN_FRAME,
+	hasActiveFilters = false,
 	model,
 	onAction,
 	onCollapse,
@@ -249,7 +252,9 @@ export function AgentSessionColumnHeader({
 	surface,
 }: Readonly<{
 	collapseLabel: string;
+	filter: ReactElement;
 	frame?: AgentSessionColumnFrame;
+	hasActiveFilters?: boolean;
 	model: UntrackedHeaderModel;
 	onAction: (id: HeaderActionId) => void;
 	onCollapse: () => void;
@@ -260,12 +265,14 @@ export function AgentSessionColumnHeader({
 		case "column":
 			return (
 				<div
-					className="flex min-w-0 items-center"
+					className="flex min-w-0 flex-nowrap items-center"
 					style={AGENT_SESSION_COLUMN_HEADER_STYLE[frame]}
 				>
 					{renderColumnChrome({
 						collapseLabel,
+						filter,
 						frame,
+						hasActiveFilters,
 						model,
 						onAction,
 						onCollapse,
@@ -276,6 +283,7 @@ export function AgentSessionColumnHeader({
 		case "panel":
 			return renderPanelChrome({
 				collapseLabel,
+				filter,
 				model,
 				onAction,
 				onCollapse,
@@ -290,20 +298,28 @@ export function AgentSessionColumnHeader({
 
 function renderColumnChrome({
 	collapseLabel,
+	filter,
 	frame,
+	hasActiveFilters,
 	model,
 	onAction,
 	onCollapse,
 	overflow,
 }: Readonly<{
 	collapseLabel: string;
+	filter: ReactElement;
 	frame: AgentSessionColumnFrame;
+	hasActiveFilters: boolean;
 	model: UntrackedHeaderModel;
 	onAction: (id: HeaderActionId) => void;
 	onCollapse: () => void;
 	overflow: ReactElement;
 }>): ReactElement {
 	const isSelecting = model.kind === "selecting";
+	const revealHeaderActions = hasActiveFilters && !isSelecting;
+	const headerActionsClass = revealHeaderActions
+		? HEADER_ACTIONS_VISIBLE
+		: HEADER_ACTIONS_REVEAL;
 
 	return (
 		<>
@@ -316,7 +332,10 @@ function renderColumnChrome({
 			<span className="min-w-0 truncate text-xs font-medium leading-4 text-text-subtle">
 				{model.kind === "selecting" ? "Selected" : model.title}
 			</span>
-			<span className="ms-1.5 shrink-0 text-xs font-normal text-text-subtlest">
+			<span
+				aria-live={isSelecting ? "polite" : undefined}
+				className="ms-1.5 shrink-0 text-xs font-normal text-text-subtlest"
+			>
 				{model.count}
 			</span>
 			{isSelecting ? (
@@ -330,9 +349,17 @@ function renderColumnChrome({
 					))}
 				</div>
 			) : (
-				<div className={HEADER_ACTIONS_REVEAL}>
-					{overflow}
-					<CollapseButton label={collapseLabel} onCollapse={onCollapse} />
+				<div className="group/header-actions ms-auto flex shrink-0 items-center">
+					<div className={headerActionsClass}>
+						{filter}
+					</div>
+					<div
+						className={headerActionsClass}
+						data-session-header-reveal=""
+					>
+						{overflow}
+						<CollapseButton label={collapseLabel} onCollapse={onCollapse} />
+					</div>
 				</div>
 			)}
 		</>
@@ -341,12 +368,14 @@ function renderColumnChrome({
 
 function renderPanelChrome({
 	collapseLabel,
+	filter,
 	model,
 	onAction,
 	onCollapse,
 	overflow,
 }: Readonly<{
 	collapseLabel: string;
+	filter: ReactElement;
 	model: UntrackedHeaderModel;
 	onAction: (id: HeaderActionId) => void;
 	onCollapse: () => void;
@@ -364,6 +393,7 @@ function renderPanelChrome({
 						</span>
 					</PanelTitle>
 					<PanelActionGroup>
+						{filter}
 						{overflow}
 						<PanelAction
 							icon={ShrinkHorizontalIcon}

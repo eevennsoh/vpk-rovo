@@ -70,18 +70,26 @@ test("the PAY board fills every existing status with coding work and the full st
 	const agentCards = cards.filter((card) => (
 		Boolean(card.agentActivities?.length) || Boolean(card.agentDoneRuns?.length)
 	));
-	const agentAvatarFamilies = new Set(
+	const agentBrandNames = new Set(
 		agentCards.flatMap((card) => [
-			...(card.agentActivities?.map((activity) => activity.avatarSrc) ?? []),
-			...(card.agentDoneRuns?.map((run) => run.agentAvatarSrc) ?? []),
-		]).filter(Boolean).map((src) => src.match(/\/avatar-agent\/([^/]+)\//u)?.[1]),
+			...(card.agentActivities?.map((activity) => activity.agentBrandName) ?? []),
+			...(card.agentDoneRuns?.map((run) => run.agentBrandName) ?? []),
+		]).filter(Boolean),
 	);
 	assert.ok(cards.some((card) => !card.agentActivities?.length && !card.agentDoneRuns?.length));
 	assert.ok(agentStates.has("working"));
 	assert.ok(agentStates.has("awaiting-input"));
 	assert.ok(cards.some((card) => card.agentActivityMode === "completed" && card.agentDoneRuns?.length));
 	assert.ok(agentCards.length <= 6, `expected a handful of agent cards, got ${agentCards.length}`);
-	assert.ok(agentAvatarFamilies.size >= 3, "running agents should not share one avatar family");
+	assert.ok(agentBrandNames.size >= 3, "running sessions should preserve distinct coding-agent brands");
+	const allowedCodingAgentNames = new Set(["Claude Code", "Codex", "Cursor", "GitHub Copilot"]);
+	assert.ok(story.JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS.every((agent) => (
+		allowedCodingAgentNames.has(agent.name)
+	)));
+	assert.ok(agentCards.every((card) => (
+		(card.agentActivities ?? []).every((activity) => allowedCodingAgentNames.has(activity.name))
+		&& (card.agentDoneRuns ?? []).every((run) => allowedCodingAgentNames.has(run.agentName))
+	)));
 	assert.ok(
 		cards.some((card) => (
 			(card.agentActivities?.filter((activity) => activity.state === "working").length ?? 0) >= 2
@@ -108,6 +116,10 @@ test("the PAY board fills every existing status with coding work and the full st
 	assert.deepEqual(
 		story.JIRA_GOLDEN_JOURNEYS_V4_PAY_HEADER_ASSIGNEES.map((assignee) => assignee.id),
 		["venn", "review-agent", "test-agent", "release-agent"],
+	);
+	assert.deepEqual(
+		story.JIRA_GOLDEN_JOURNEYS_V4_PAY_HEADER_ASSIGNEES.map((assignee) => assignee.name),
+		["Venn", "Codex", "Cursor", "GitHub Copilot"],
 	);
 	assert.ok(story.JIRA_GOLDEN_JOURNEYS_V4_PAY_HEADER_ASSIGNEES.every((assignee) => (
 		assignee.id === "venn" || assignee.avatarSrc.startsWith("/avatar-agent/")

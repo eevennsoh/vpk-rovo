@@ -2,7 +2,7 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const AGENT_SESSION_DETAIL: ComponentDetail = {
 	description:
-		'Agent sessions in four footprints and relationship states. Large is the default detached, solid uncaptured-work card: it reuses the shared Agent List row with a devices icon, viewer machine, then a static timestamp, and Resume plus Archive or Unarchive actions. Medium detached condenses that local session into the Jira Agents row — a 276px surface card with a solid disabled stroke — while Medium attached reuses the exact Jira Issue activity row for a session already connected to work. Small becomes the collapsed Agent Session Column notch. Detached footprints open the untracked-work Agent Session Flyout with Link, Create, and add-as-subtask actions; Medium attached opens session details because its Jira relationship already exists. Captured ids use a solid border, and rows the host cannot resume omit Resume.',
+		'Agent sessions in four footprints and relationship states. Large is the default detached, solid uncaptured-work card: a linked pull request takes the metadata line as a lifecycle glyph plus a clickable, truncating `#number: title`, followed by `· timestamp`; sessions without a pull request show the timestamp alone. Resume plus Archive or Unarchive actions appear on hover or focus. Medium detached condenses that local session into the Jira Agents row — a 276px surface card with a solid disabled stroke — while Medium attached reuses the exact Jira Issue activity row for a session already connected to work. Small becomes the collapsed Agent Session Column notch. Detached footprints open the untracked-work Agent Session Flyout with Link, Create, and add-as-subtask actions; Medium attached opens session details because its Jira relationship already exists. Captured ids use a solid border, and rows the host cannot resume omit Resume.',
 	demoLayout: { previewHeight: "fit" },
 	examples: [
 		{
@@ -44,7 +44,7 @@ export const AGENT_SESSION_DETAIL: ComponentDetail = {
 			type: "readonly AgentSessionItem[]",
 			default: "built-in sample data",
 			description:
-				"Sessions to render. `AgentSessionItem` is the Agent List row model, so a surface that already builds those rows needs no conversion. `sessionDetails.issueKey` seeds the untracked-work flyout suggestion and `sessionDetails.worktreePath` the copied resume command; local rows (`host: \"local\"`) take `machineName` and `timeLabel` for the static stamp.",
+				"Sessions to render. `AgentSessionItem` is the Agent List row model, so a surface that already builds those rows needs no conversion. `sessionDetails.pullRequestNumber`, `pullRequestTitle`, and `pullRequestUrl` add a truncating PR link before the timestamp in large-row metadata, with `prStatus` selecting the created, merged, or failed glyph; rows without a PR show the timestamp alone. `sessionDetails.issueKey` seeds the untracked-work flyout suggestion and `sessionDetails.worktreePath` the copied resume command. Local host and machine metadata remain available in the flyout.",
 		},
 		{
 			name: "capturedItemIds",

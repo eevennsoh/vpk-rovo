@@ -7,6 +7,10 @@ const HEADER_SOURCE = readFileSync(
 	join(__dirname, "agent-session-column-header.tsx"),
 	"utf8",
 );
+const SELECT_MARK_SOURCE = readFileSync(
+	join(__dirname, "../agent-session/agent-session-select-mark.tsx"),
+	"utf8",
+);
 const SELECTION_COPY_SOURCE = readFileSync(
 	join(__dirname, "untracked-selection.ts"),
 	"utf8",
@@ -16,13 +20,14 @@ const SELECTION_HOOK_SOURCE = readFileSync(
 	"utf8",
 );
 
-test("selecting a session slides in a check-circle select-all control", () => {
-	assert.match(
-		HEADER_SOURCE,
-		/import CheckCircleUncheckedIcon from "@atlaskit\/icon\/core\/check-circle-unchecked";/u,
-	);
-	assert.match(HEADER_SOURCE, /import CheckCircleIcon from "@atlaskit\/icon\/core\/check-circle";/u);
-	assert.match(HEADER_SOURCE, /allSelected \? CheckCircleIcon : CheckCircleUncheckedIcon/u);
+test("selecting a session slides in the shared filled success select-all control", () => {
+	assert.match(HEADER_SOURCE, /import StatusSuccessIcon from "@atlaskit\/icon\/core\/status-success";/u);
+	assert.match(HEADER_SOURCE, /render=\{<StatusSuccessIcon label="" \/>\}/u);
+	assert.match(HEADER_SOURCE, /className="text-icon-selected"/u);
+	assert.match(SELECT_MARK_SOURCE, /import StatusSuccessIcon from "@atlaskit\/icon\/core\/status-success";/u);
+	assert.match(SELECT_MARK_SOURCE, /<Icon render=\{<StatusSuccessIcon label="" \/>\} \/>/u);
+	assert.doesNotMatch(HEADER_SOURCE, /import CheckCircleIcon from "@atlaskit\/icon\/core\/check-circle";/u);
+	assert.doesNotMatch(HEADER_SOURCE, /CheckCircleUncheckedIcon/u);
 	assert.match(HEADER_SOURCE, /transition-\[width,margin\] duration-normal ease-in-out/u);
 	assert.match(HEADER_SOURCE, /motion-reduce:transition-none/u);
 	assert.match(HEADER_SOURCE, /inert=\{!expanded\}/u);
@@ -46,6 +51,13 @@ test("the selecting header omits collapse so Clear and Deselect all can exit", (
 		HEADER_SOURCE.indexOf("function renderColumnChrome"),
 		HEADER_SOURCE.indexOf("function renderPanelChrome"),
 	);
+	assert.equal([...columnChrome.matchAll(/\{filter\}/g)].length, 1);
+	assert.match(columnChrome, /hasActiveFilters/u);
+	assert.match(columnChrome, /revealHeaderActions/u);
+	assert.match(columnChrome, /headerActionsClass/u);
+	assert.match(HEADER_SOURCE, /group\/header-actions/u);
+	assert.match(HEADER_SOURCE, /w-0/u);
+	assert.match(HEADER_SOURCE, /group-has-\[\[data-popup-open\]\]\/header-actions:opacity-100/u);
 	assert.match(columnChrome, /<SelectAllSlot/u);
 	assert.match(
 		columnChrome,
@@ -56,4 +68,31 @@ test("the selecting header omits collapse so Clear and Deselect all can exit", (
 	assert.doesNotMatch(panelSelectingBranch, /ShrinkHorizontalIcon/u);
 	assert.match(panelSelectingBranch, /<SelectAllButton/u);
 	assert.match(panelSelectingBranch, /<PanelAction/u);
+});
+
+test("an open or selected filter reveals the whole header action cluster", () => {
+	assert.match(HEADER_SOURCE, /hasActiveFilters\?: boolean/u);
+	assert.match(HEADER_SOURCE, /const revealHeaderActions = hasActiveFilters && !isSelecting/u);
+	assert.match(HEADER_SOURCE, /const HEADER_ACTIONS_VISIBLE/u);
+	assert.match(HEADER_SOURCE, /const HEADER_ACTIONS_REVEAL/u);
+	assert.doesNotMatch(HEADER_SOURCE, /HEADER_ACTIONS_PINNED/u);
+	assert.match(HEADER_SOURCE, /group\/header-actions/u);
+	assert.match(
+		HEADER_SOURCE,
+		/const headerActionsClass = revealHeaderActions\s*\n?\s*\? HEADER_ACTIONS_VISIBLE\s*\n?\s*: HEADER_ACTIONS_REVEAL/u,
+	);
+	assert.match(
+		HEADER_SOURCE,
+		/className=\{headerActionsClass\}>\s*\{filter\}/u,
+	);
+	assert.match(
+		HEADER_SOURCE,
+		/className=\{headerActionsClass\}\s*\n?\s*data-session-header-reveal=""/u,
+	);
+	assert.match(HEADER_SOURCE, /has-\[\[data-popup-open\]\]:opacity-100/u);
+	assert.match(HEADER_SOURCE, /group-has-\[\[data-popup-open\]\]\/header-actions:opacity-100/u);
+	assert.match(HEADER_SOURCE, /group-hover\/session-column:opacity-100/u);
+	assert.doesNotMatch(HEADER_SOURCE, /group-hover\/session-column:w-12/u);
+	assert.match(HEADER_SOURCE, /flex-nowrap/u);
+	assert.match(HEADER_SOURCE, /motion-reduce:transition-none/u);
 });

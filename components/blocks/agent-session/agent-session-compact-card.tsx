@@ -45,7 +45,7 @@ function AttachedAgentSession({
 			{isNew ? (
 				<>
 					<span className="sr-only">Newly synced, not yet reviewed</span>
-					<span aria-hidden="true" className="absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-icon-discovery" />
+					<span aria-hidden="true" className="absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-icon-information" />
 				</>
 			) : null}
 			<JiraIssueAgentActivityRows

@@ -14,9 +14,13 @@ import type { JiraKanbanCardData, JiraKanbanColumnData } from "@/components/bloc
 import ExperimentalJiraKanbanPage from "@/components/blocks/jira-kanban/experimental/page";
 import { isPulseAgentSession, type PulseLooseWork } from "@/components/blocks/jira-kanban/experimental/pulse/types";
 import { linkJiraKanbanAgentSession, moveJiraKanbanAgentSession, unlinkJiraKanbanAgentSession } from "@/components/blocks/jira-kanban/state";
-import { JiraList, type JiraListAssignedAgent, type JiraListInsertion } from "@/components/blocks/jira-list";
+import {
+	JiraList,
+	useJiraListRowFlashSource,
+	type JiraListAssignedAgent,
+	type JiraListInsertion,
+} from "@/components/blocks/jira-list";
 import { useDesignVariants } from "@/components/hooks/use-design-variants";
-import { useDesignVariation } from "@/components/hooks/use-design-variation";
 import { JgpRovoOverlay } from "@/components/projects/jira-golden-journeys-v1/components/jira-golden-journeys-v1-rovo-overlay";
 import { JGP_CHAT_AGENT_PROFILES } from "@/components/projects/jira-golden-journeys-v1/data/agent-chat-data";
 import { useJgpAgentChatDemo } from "@/components/projects/jira-golden-journeys-v1/hooks/use-jira-golden-journeys-v1-agent-chat-demo";
@@ -31,7 +35,7 @@ import { resolveJiraTab } from "@/components/projects/jira/lib/jira-tab-model";
 import AppLayout from "@/components/projects/page";
 import { cn } from "@/lib/utils";
 
-import { getJiraGoldenJourneysV4AgentActivityIndicator } from "./data/agent-activity-indicators";
+import { renderJiraGoldenJourneysV4AgentActivityIndicator } from "./data/agent-activity-indicators";
 import {
 	createJiraGoldenJourneysV4PayBoardColumns,
 	toJiraGoldenJourneysV4DetachedAgentSession,
@@ -71,28 +75,15 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 	const detachedActivitiesByIdRef = useRef<Record<string, JiraIssueAgentActivity>>({});
 	// Team EU without Simple views splits work items into Board and List tabs,
 	// so the tab bar owns the view and the board header's own switcher stands
-	// down. Simple views (and 2000 years later) collapse them into one Work
-	// items tab and the switcher owns it instead. Both write the same state, so
-	// the choice survives flipping the property or the variation.
+	// down. Simple views collapse them into one Work items tab and the switcher
+	// owns it instead. Both write the same state, so the choice survives
+	// flipping the property.
 	const tabs = useJiraTabs();
 	// The one place the global variant store meets the board. Panel is off by
 	// default, so untracked work starts as the in-flow column on both Board
 	// and List; on, it lifts into the floating side surface both views share.
 	const { designVariants } = useDesignVariants();
-	// Chin-row status glyphs are a variation choice too: Team EU keeps the stock
-	// spinner (question circle while an agent waits on an answer), 2000 years
-	// later runs the pixel loader.
-	const { designVariation } = useDesignVariation();
-	const renderAgentActivityIndicator = getJiraGoldenJourneysV4AgentActivityIndicator(designVariation);
-	// Team EU is "what ships today": status columns only show sessions attached
-	// to a work item. Untracked Pulse rows stay in the dedicated Untracked
-	// surface. 2000 years later keeps proximity rows beside the related cards.
-	const showUntrackedProximity = designVariation !== "team-eu";
 	const createWorkItemDropZoneLabel = "Create new work item";
-	// Chin rows follow the same variation split. Team EU groups every active
-	// agent into one merged row (hover opens assignment). 2000 years later
-	// keeps a row per agent so the split exploration stays intact.
-	const agentActivityLayout = designVariation === "team-eu" ? "merged" : "split";
 	const [workItemView, setWorkItemView] = useState<JiraWorkItemView>(DEFAULT_JIRA_WORK_ITEM_VIEW);
 	const [selectedTabLabel, setSelectedTabLabel] = useState(DEFAULT_JIRA_WORK_ITEMS_TAB_LABEL);
 	const activeTab = resolveJiraTab(tabs, selectedTabLabel, workItemView);
@@ -184,14 +175,26 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 			issueSummary: card.title,
 		});
 	}, [boardColumns, handleViewChat, handleViewCompletedRun, openAgentChat]);
-	const { createFromAgentSession, getProps: getListProps } = useJiraGoldenJourneysV4List({
+	const {
+		createBoardFromAgentSession,
+		createFromAgentSession,
+		getProps: getListProps,
+	} = useJiraGoldenJourneysV4List({
 		boardColumns,
 		onAssignedAgentSelect: handleListAssignedAgentSelect,
 		setBoardColumns,
 	});
+	// Sessions dropped into the list neither select the rows they land in nor
+	// leave a badge behind, so the flash carries the acknowledgement. One drop of
+	// three marked sessions publishes one flash covering all three rows.
+	//
+	// It only reaches rows the list is rendering. Board-created cards inherit
+	// the dropped session's invoker, so the matching assignee filter keeps the
+	// new row visible long enough for this acknowledgement.
+	const { flash: listRowFlash, flashRow: flashListRow } = useJiraListRowFlashSource();
 	// Unlink always lands in `detachedAgentSessionsByCard`. The Untracked list
-	// reads that map, so the session reappears there immediately. Team EU keeps
-	// `showUntrackedProximity` off, so it never parks beside the card.
+	// reads that map, so the session reappears there immediately. Proximity
+	// stays off, so it never parks beside the card.
 	const handleAgentSessionUnlink = useCallback((session: { id: string }, card: JiraKanbanCardData) => {
 		const activity = card.agentActivities?.find((candidate) => candidate.id === session.id);
 		if (!activity) return;
@@ -235,18 +238,32 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 	const handleAgentSessionLink = useCallback((session: AgentSessionItem, card: JiraKanbanCardData) => {
 		const activity = consumeDetachedAgentSession(session);
 		setBoardColumns((columns) => linkJiraKanbanAgentSession(columns, card.code, activity));
-	}, [consumeDetachedAgentSession]);
+		flashListRow(card.code);
+	}, [consumeDetachedAgentSession, flashListRow]);
+	const handleBoardAgentSessionCreate = useCallback((
+		session: AgentSessionItem,
+		columnTitle: string,
+		insertAtIndex?: number,
+	) => {
+		const activity = consumeDetachedAgentSession(session);
+		return createBoardFromAgentSession({
+			activity,
+			columnTitle,
+			insertAtIndex,
+			session,
+		});
+	}, [consumeDetachedAgentSession, createBoardFromAgentSession]);
 	const handleListAgentSessionCreate = useCallback((
 		session: AgentSessionItem,
 		insertion: JiraListInsertion,
 	) => {
 		const activity = consumeDetachedAgentSession(session);
-		createFromAgentSession({
+		flashListRow(createFromAgentSession({
 			activity,
 			insertion,
 			session,
-		});
-	}, [consumeDetachedAgentSession, createFromAgentSession]);
+		}));
+	}, [consumeDetachedAgentSession, createFromAgentSession, flashListRow]);
 	const handleAgentSessionMove = useCallback((
 		session: JiraIssueAgentSessionRef,
 		sourceCard: JiraKanbanCardData,
@@ -265,7 +282,7 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 			<AppLayout
 				chatContextBar={chatContextBar}
 				chatPanelFlush
-				defaultSidebarOpen={false}
+				defaultSidebarOpen={true}
 				hideFloatingRovo
 				product="jira"
 			>
@@ -273,7 +290,7 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 					<ExperimentalJiraKanbanPage
 						activeView={activeView}
 						additionalAgentSessions={syncedAgentSessions}
-						agentActivityLayout={agentActivityLayout}
+						agentActivityLayout="merged"
 						cardGenerativeActionPresentation="more-actions"
 						createWorkItemDropZoneLabel={createWorkItemDropZoneLabel}
 						agentSessionAssigneeIdAliases={JIRA_GOLDEN_JOURNEYS_V4_PAY_SESSION_MEMBER_ID_BY_ASSIGNEE_ID}
@@ -283,12 +300,13 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 						ariaLabel="Track the Payments SDK v2 migration. Scroll horizontally to review all delivery statuses."
 						boardColumns={boardColumns}
 						defaultAgentSessionColumnCollapsed
-						defaultShowUntracked={showUntrackedProximity}
+						defaultShowUntracked={false}
 						detachedAgentSessionsByCard={detachedAgentSessionsByCard}
 						headerAssignees={JIRA_GOLDEN_JOURNEYS_V4_PAY_HEADER_ASSIGNEES}
 						insightsEnabled={false}
 						newAgentSessionIds={newAgentSessionIds}
 						onAgentSessionsReviewed={reviewAgentSessions}
+						onBoardAgentSessionCreate={handleBoardAgentSessionCreate}
 						onBoardColumnsChange={(columns: readonly JiraKanbanColumnData[]) => {
 							setBoardColumns([...columns]);
 						}}
@@ -299,14 +317,13 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 						onCardAgentSessionMove={handleAgentSessionMove}
 						onCardAgentSessionUnlink={handleAgentSessionUnlink}
 						onListAgentSessionCreate={handleListAgentSessionCreate}
-						showAgentSessionUnlinkWell={designVariation !== "team-eu"}
+						showAgentSessionUnlinkWell={false}
 						onResumeLooseWork={handleResumeLooseWork}
 						onViewChange={tabOwnsView ? undefined : setWorkItemView}
 						renderListContent={(
 							columns,
 							{
 								agentSessionDropIntent,
-								inFlowAgentSessionColumn,
 								onTrailingContentUnderlapChange,
 								scrollEndInset,
 								trailingOverlayRef,
@@ -319,8 +336,7 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 							return (
 								<div
 									className={cn(
-										"min-h-0 flex-1 overflow-hidden pb-4 md:pb-5",
-										inFlowAgentSessionColumn ? "ps-2" : "ps-4 md:ps-5",
+										"min-h-0 flex-1 overflow-hidden pb-4 ps-6 md:pb-5",
 										scrollEndInset > 0 ? "pe-0" : "pe-4 md:pe-5",
 									)}
 								>
@@ -328,18 +344,19 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 										{...listProps}
 										agentSessionDropIntent={agentSessionDropIntent}
 										onTrailingContentUnderlapChange={onTrailingContentUnderlapChange}
+										rowFlash={listRowFlash}
 										scrollEndInset={listScrollEndInset}
 										trailingOverlayRef={trailingOverlayRef}
 									/>
 								</div>
 							);
 						}}
-						renderAgentActivityIndicator={renderAgentActivityIndicator}
+						renderAgentActivityIndicator={renderJiraGoldenJourneysV4AgentActivityIndicator}
 						showAgentSessionColumn
 						showBoardContent={showBoardContent}
-						moreControlsPlacement={designVariation === "team-eu" ? "end" : "inline"}
+						moreControlsPlacement="end"
 						showMoreControls={!designVariants["simple-views"]}
-						showCustomizeControl={designVariation === "team-eu" && !designVariants["simple-views"]}
+						showCustomizeControl={!designVariants["simple-views"]}
 						simpleViews={designVariants["simple-views"]}
 						viewTabs={(
 							<JiraViewTabs

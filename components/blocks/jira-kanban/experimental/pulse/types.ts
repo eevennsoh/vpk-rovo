@@ -18,7 +18,7 @@ export type PulseMemberKind = "human" | "agent";
 
 export interface PulseMember {
 	id: string;
-	/** Display name, e.g. "Maya Ferreira" or "Review Agent". */
+	/** Display name, e.g. "Maya Ferreira" or "Codex". */
 	name: string;
 	/** Short role line, e.g. "Staff engineer" / "Reviews every PR". */
 	role: string;
@@ -55,7 +55,7 @@ export type PulseLooseWorkKind = "pull-request" | "branch" | "commit" | "agent-s
 export type PulseLooseWorkSource = "GitHub" | "Claude";
 
 /** Coding agent on a local Pulse session. Mapped onto the shared row identity. */
-export type PulseCodingAgentId = "claude" | "codex" | "cursor" | "rovo";
+export type PulseCodingAgentId = "claude" | "codex" | "copilot" | "cursor";
 
 /** Flyout fields for a `pull-request` card — feeds `toPullRequestSmartLink`. */
 export interface PulseLooseWorkPullRequest {
@@ -65,6 +65,13 @@ export interface PulseLooseWorkPullRequest {
 	additions: number;
 	deletions: number;
 	branch?: string;
+}
+
+/** Pull request linked to a local coding session. */
+export interface PulseAgentSessionPullRequest {
+	number: number;
+	status: "created" | "merged" | "failed";
+	title: string;
 }
 
 interface PulseLooseWorkBase {
@@ -107,6 +114,8 @@ export type PulseLooseWork =
 			machineName: string;
 			/** Static stamp. Local rows must not tick. */
 			timeLabel: string;
+			/** Linked PR replaces the row timestamp when present. */
+			pullRequest?: PulseAgentSessionPullRequest;
 			/** Authoritative Jira status when this session comes from a live board owner. */
 			issueStatus?: string;
 	  });

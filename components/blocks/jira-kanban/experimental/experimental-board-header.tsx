@@ -96,8 +96,7 @@ interface ExperimentalJiraKanbanBoardHeaderProps {
 	endSlot?: ReactNode;
 	/**
 	 * Where the overflow ("…") control sits when it is shown. `"inline"` keeps
-	 * it with Filter / Group (2000 years later). `"end"` parks it after
-	 * Customize, which is Team EU's shipping chrome.
+	 * it with Filter / Group. `"end"` parks it after Customize.
 	 */
 	moreControlsPlacement?: "inline" | "end";
 	/**
@@ -106,8 +105,8 @@ interface ExperimentalJiraKanbanBoardHeaderProps {
 	 */
 	showMoreControls?: boolean;
 	/**
-	 * Outline Customize control before More when both sit at the end. Team EU
-	 * shows it when Simple views is off; missing capability stays display-only.
+	 * Outline Customize control before More when both sit at the end. Shown
+	 * when Simple views is off; missing capability stays display-only.
 	 */
 	showCustomizeControl?: boolean;
 	surfaceLabel?: string;

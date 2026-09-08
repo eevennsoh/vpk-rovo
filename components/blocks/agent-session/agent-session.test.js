@@ -25,6 +25,10 @@ const MEDIUM_DRAG_SOURCE = readFileSync(
 	join(__dirname, "agent-session-medium-drag.tsx"),
 	"utf8",
 );
+const COHORT_CHIP_SOURCE = readFileSync(
+	join(__dirname, "agent-session-cohort-chip.tsx"),
+	"utf8",
+);
 const MORE_MENU_SOURCE = readFileSync(
 	join(__dirname, "agent-session-medium-more-menu.tsx"),
 	"utf8",
@@ -70,6 +74,14 @@ const RAIL_SOURCE = readFileSync(
 	),
 	"utf8",
 );
+const COLUMN_SOURCE = readFileSync(
+	join(__dirname, "../agent-session-column/index.tsx"),
+	"utf8",
+);
+const COLUMN_RAIL_SOURCE = readFileSync(
+	join(__dirname, "../agent-session-column/agent-session-column-rail.tsx"),
+	"utf8",
+);
 const VARIANT_REGISTRY_SOURCE = readFileSync(
 	join(__dirname, "../../website/registry/blocks-variants.ts"),
 	"utf8",
@@ -89,14 +101,14 @@ test("renders each session as a solid uncaptured-work card around the shared row
 	// The row presenter stays owned by Agent List; this block only frames it.
 	assert.match(
 		CARD_SOURCE,
-		/import \{\s*AgentListIdentity,\s*AgentListRow,\s*type AgentListRowHoverActions,\s*\} from "@\/components\/blocks\/agent-list\/agent-list-card";/u,
+		/import \{[\s\S]*AgentListIdentity,[\s\S]*AgentListRow,[\s\S]*type AgentListRowHoverActions,[\s\S]*\} from "@\/components\/blocks\/agent-list\/agent-list-card";/u,
 	);
 	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*hoverActions=\{hoverActions\}/u);
 	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*isCompact=\{false\}/u);
 	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*isSelected=\{showSelectedFill\}/u);
 	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*showHoverActionsWhenSelected/u);
 	assert.doesNotMatch(CARD_SOURCE, /isSelected=\{false\}/u);
-	assert.match(CARD_SOURCE, /absolute left-1\.5 top-1\/2 size-1\.5 -translate-y-1\/2 rounded-full bg-icon-discovery/u);
+	assert.match(CARD_SOURCE, /absolute left-1\.5 top-1\/2 size-1\.5 -translate-y-1\/2 rounded-full bg-icon-information/u);
 	assert.doesNotMatch(CARD_SOURCE, /top-1\.5/u);
 });
 
@@ -111,6 +123,35 @@ test("large uncaptured-work rows lead with the human invoker while retaining age
 	assert.match(TYPES_SOURCE, /avatarSrc: item\.invokedBy\.avatarSrc/u);
 	assert.match(TYPES_SOURCE, /return item\.agent;/u);
 	assert.doesNotMatch(DATA_SOURCE, /name: "person A"/u);
+});
+
+test("large uncaptured-work rows keep timestamps after a truncating linked PR when present", () => {
+	assert.match(CARD_SOURCE, /AgentListTime,/u);
+	assert.match(CARD_SOURCE, /function AgentSessionPullRequestMetadata/u);
+	assert.match(CARD_SOURCE, /pullRequestNumber/u);
+	assert.match(CARD_SOURCE, /pullRequestTitle/u);
+	assert.match(CARD_SOURCE, /pullRequestUrl/u);
+	assert.match(CARD_SOURCE, /AgentListPrStatusIcon/u);
+	assert.match(CARD_SOURCE, /<MetadataPathLink[\s\S]*className="min-w-0 flex-1 truncate text-text-subtle"[\s\S]*href=\{pullRequestUrl\}[\s\S]*\{pullRequestLabel\}[\s\S]*<\/MetadataPathLink>/u);
+	assert.match(CARD_SOURCE, /pullRequestLabel \? \([\s\S]*<\/MetadataPathLink>[\s\S]*<span aria-hidden="true" className="shrink-0 text-text-subtlest">\s*·\s*<\/span>[\s\S]*\) : null\}[\s\S]*<AgentListTime item=\{item\} \/>/u);
+	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*metadata=\{<AgentSessionPullRequestMetadata item=\{item\} \/>\}/u);
+	assert.doesNotMatch(CARD_SOURCE, /machineName/u);
+	assert.match(DATA_SOURCE, /pullRequestNumber: 1306,/u);
+	assert.match(DATA_SOURCE, /pullRequestTitle: "Add guest checkout to the storefront",/u);
+	assert.match(DATA_SOURCE, /pullRequestUrl: "https:\/\/github\.com\/eevensoh\/vpk-rovo\/pull\/1306",/u);
+	assert.match(DATA_SOURCE, /repository: GITHUB_REPOSITORY/u);
+	assert.match(DATA_SOURCE, /targetBranch: GITHUB_TARGET_BRANCH/u);
+	assert.match(DATA_SOURCE, /branch: "feature\/shop-4821-guest-checkout"/u);
+	assert.match(DATA_SOURCE, /files: 6,/u);
+	assert.match(DATA_SOURCE, /additions: 86,/u);
+	assert.match(DATA_SOURCE, /deletions: 21,/u);
+	assert.match(DATA_SOURCE, /pullRequestAuthor: GITHUB_PR_AUTHOR/u);
+	assert.match(DATA_SOURCE, /pullRequestDescription:/u);
+	assert.match(DATA_SOURCE, /prStatus: "created"/u);
+	assert.match(DATA_SOURCE, /prStatus: "merged"/u);
+	assert.match(DATA_SOURCE, /prStatus: "failed"/u);
+	assert.match(DATA_SOURCE, /id: "lw-no-pr-session"[\s\S]*timeLabel: "7m ago"[\s\S]*sessionDetails:/u);
+	assert.doesNotMatch(/id: "lw-no-pr-session"[\s\S]*?\n\t\},/u.exec(DATA_SOURCE)?.[0] ?? "", /pullRequestNumber/u);
 });
 
 test("large remains the default while every card receives the selected size variant", () => {
@@ -214,11 +255,37 @@ test("medium drag keeps pointer capture on the motion host instead of swapping a
 	// so the card stuck on an empty grey attach chin.
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /isDragging \? chip : children\(sessionDragBind\)/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /pointer-events-none absolute inset-x-0 top-0 opacity-0/u);
+	assert.match(
+		MEDIUM_DRAG_SOURCE,
+		/isDragging && preserveSourceFootprint && "pointer-events-none absolute inset-x-0 top-0 opacity-\(--opacity-disabled\)"/u,
+	);
+	assert.match(
+		MEDIUM_DRAG_SOURCE,
+		/isFollower && preserveSourceFootprint && "pointer-events-none opacity-\(--opacity-disabled\)"/u,
+	);
+	assert.match(
+		MEDIUM_DRAG_SOURCE,
+		/isFollower && !preserveSourceFootprint && "h-0 overflow-hidden"/u,
+	);
+	assert.match(
+		MEDIUM_DRAG_SOURCE,
+		/\(isFollower && !preserveSourceFootprint \|\| \(isDragging && !preserveSourceFootprint\)\) && "pointer-events-none absolute inset-x-0 top-0 opacity-0"/u,
+	);
 	assert.match(MEDIUM_DRAG_SOURCE, /aria-hidden=\{isDragging \|\| isFollower \|\| undefined\}/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /inert=\{isDragging \|\| isFollower \|\| undefined\}/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /window\.addEventListener\("pointerup", onPointerUp\)/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /window\.addEventListener\("pointercancel", onPointerCancel\)/u);
+});
+
+test("multi-session drag chips use the concise sessions count", () => {
+	assert.match(COHORT_CHIP_SOURCE, /const label = `\$\{cohort\.members\.length\} sessions`;/u);
+	assert.doesNotMatch(COHORT_CHIP_SOURCE, /agent sessions/u);
+});
+
+test("drag-source ghosts leave the grid accessibility tree while inert", () => {
+	assert.match(CARD_SOURCE, /const isTransferSource = Boolean\(draggingIds\?\.has\(item\.id\)\);/u);
+	assert.match(CARD_SOURCE, /aria-hidden=\{isTransferSource \|\| undefined\}/u);
+	assert.match(CARD_SOURCE, /inert=\{isTransferSource \|\| undefined\}/u);
 });
 
 test("medium drag publishes the attach transfer only after the pointer moves", () => {
@@ -299,7 +366,7 @@ test("medium attached reuses the Jira issue agent activity row", () => {
 	);
 	assert.doesNotMatch(COMPACT_CARD_SOURCE, /bg-bg-accent-gray-subtlest/u);
 	assert.match(COMPACT_CARD_SOURCE, /Newly synced, not yet reviewed/u);
-	assert.match(COMPACT_CARD_SOURCE, /absolute left-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-icon-discovery/u);
+	assert.match(COMPACT_CARD_SOURCE, /absolute left-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-icon-information/u);
 	assert.doesNotMatch(COMPACT_CARD_SOURCE, /absolute left-1 top-1 /u);
 	assert.match(COMPACT_CARD_SOURCE, /initial=\{shouldPlayArrival \? \{ opacity: 0, y: AGENT_SESSION_ARRIVAL_OFFSET_PX \} : false\}/u);
 	assert.match(INDEX_SOURCE, /const isAttached = variant === "medium-attached";/u);
@@ -311,7 +378,7 @@ test("medium preserves newly synced state and its one-shot arrival beat", () => 
 	assert.match(MEDIUM_CARD_SOURCE, /data-new=\{isNew \|\| undefined\}/u);
 	assert.match(MEDIUM_CARD_SOURCE, /!captured && isNew \? "border-border-discovery" : "border-border-disabled"/u);
 	assert.match(MEDIUM_CARD_SOURCE, /Newly synced, not yet reviewed/u);
-	assert.match(MEDIUM_CARD_SOURCE, /absolute left-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-icon-discovery/u);
+	assert.match(MEDIUM_CARD_SOURCE, /absolute left-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-icon-information/u);
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /absolute left-1 top-1 /u);
 	assert.match(MEDIUM_CARD_SOURCE, /initial=\{shouldPlayArrival \? \{ opacity: 0, y: AGENT_SESSION_ARRIVAL_OFFSET_PX \} : false\}/u);
 	assert.match(MEDIUM_CARD_SOURCE, /animate=\{shouldPlayArrival \? \{ opacity: 1, y: 0 \} : undefined\}/u);
@@ -347,7 +414,7 @@ test("the row reveals Resume plus Archive / Unarchive where Agent List puts Arch
 	// markup — the card only supplies the two action descriptors.
 	assert.match(
 		CARD_SOURCE,
-		/import \{\s*AgentListIdentity,\s*AgentListRow,\s*type AgentListRowHoverActions,\s*\} from "@\/components\/blocks\/agent-list\/agent-list-card";/u,
+		/import \{[\s\S]*AgentListIdentity,[\s\S]*AgentListRow,[\s\S]*type AgentListRowHoverActions,[\s\S]*\} from "@\/components\/blocks\/agent-list\/agent-list-card";/u,
 	);
 	assert.match(CARD_SOURCE, /const hoverActions: AgentListRowHoverActions = \{/u);
 	assert.match(CARD_SOURCE, /label: copiedResume \? "Copied" : "Resume",/u);
@@ -362,11 +429,8 @@ test("the row reveals Resume plus Archive / Unarchive where Agent List puts Arch
 	assert.match(CARD_SOURCE, /import ArchiveBoxIcon from "@atlaskit\/icon\/core\/archive-box";/u);
 	assert.match(CARD_SOURCE, /import LibraryIcon from "@atlaskit\/icon\/core\/library";/u);
 	assert.doesNotMatch(CARD_SOURCE, /EyeOpenIcon|EyeOpenStrikethroughIcon|visibilityLabel = "Hide"|visibilityLabel === "Show"/u);
-	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full rounded-lg p-3 text-left text-text/u);
-	assert.match(CARD_SOURCE, /bind \? "cursor-grab" : "cursor-pointer"/u);
+	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text/u);
 	assert.match(CARD_SOURCE, /aria-roledescription=\{bind \? "Draggable agent session" : undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /sessionDragBind && "cursor-grab touch-none select-none"/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /z-\[400\]/u);
 	assert.doesNotMatch(CARD_SOURCE, /hover:border-border(?!-disabled)/u);
 	assert.doesNotMatch(CARD_SOURCE, /focus-within:border-border(?!-disabled)/u);
@@ -411,10 +475,20 @@ test("the row reveals Resume plus Archive / Unarchive where Agent List puts Arch
 	assert.match(CARD_SOURCE, /data-variant="uncaptured-work"/u);
 });
 
+test("agent session hover keeps the default cursor instead of a drag-handle cursor", () => {
+	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text/u);
+	assert.doesNotMatch(CARD_SOURCE, /cursor-grab(?!bing)/u);
+	assert.doesNotMatch(CARD_SOURCE, /cursor-pointer/u);
+	assert.match(MEDIUM_DRAG_SOURCE, /sessionDragBind && "touch-none select-none"/u);
+	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /cursor-grab(?!bing)/u);
+	assert.match(MEDIUM_DRAG_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
+});
+
 test("the hover checkbox replaces the avatar instantly, with no opacity transition", () => {
 	assert.match(CARD_SOURCE, /<AgentSessionSelectMark/u);
 	assert.match(CARD_SOURCE, /selection is not avatar-only/u);
-	assert.match(SELECT_MARK_SOURCE, /role="checkbox"/u);
+	assert.match(SELECT_MARK_SOURCE, /aria-hidden="true"/u);
+	assert.match(SELECT_MARK_SOURCE, /onActivate\(selectionGestureFromModifierKeys\(event\)\)/u);
 	assert.match(SELECT_MARK_SOURCE, /group-hover\/agent-row:opacity-100/u);
 	assert.match(SELECT_MARK_SOURCE, /group-hover\/agent-row:opacity-0/u);
 	assert.match(SELECT_MARK_SOURCE, /col-start-1 row-start-1 transition-none/u);
@@ -454,7 +528,7 @@ test("drag suspension keeps the shared flyout consistently uncontrolled", () => 
 	// changed Base UI from uncontrolled to controlled and back after every drag.
 	assert.match(
 		FLYOUT_SOURCE,
-		/<HoverCard<JiraSidebarSessionItem> handle=\{handle\}>/u,
+		/<HoverCard<JiraSidebarSessionItem> handle=\{handle\} onOpenChange=\{onOpenChange\}>/u,
 	);
 	assert.doesNotMatch(
 		FLYOUT_SOURCE,
@@ -556,6 +630,9 @@ test("a coding session body is read-only when the host omits onView", () => {
 test("a card body click toggles a single selected session on the selected token", () => {
 	assert.match(TYPES_SOURCE, /selectedItemId\?: string \| null;/u);
 	assert.match(TYPES_SOURCE, /onSelectedItemIdChange\?: \(itemId: string \| null\) => void;/u);
+	assert.match(TYPES_SOURCE, /export interface AgentSessionSelectionGesture/u);
+	assert.match(TYPES_SOURCE, /readonly isLead: boolean;/u);
+	assert.match(TYPES_SOURCE, /onActivate: \(gesture: AgentSessionSelectionGesture\) => void;/u);
 	assert.match(INDEX_SOURCE, /selectedItemId: selectedItemIdProp,/u);
 	assert.match(INDEX_SOURCE, /const isSelectionControlled = selectedItemIdProp !== undefined;/u);
 	assert.match(
@@ -582,20 +659,24 @@ test("a card body click toggles a single selected session on the selected token"
 		LIST_CARD_SOURCE,
 		/const showHoverActions = \(!isSelected \|\| showHoverActionsWhenSelected\) &&/u,
 	);
-	// The article owns activation so padding, title, and avatar toggle. A
-	// triage mark uses that same path — the hover checkbox is not the only
-	// select hit target. RowBody must not also fire handleView, or one click
-	// would select then immediately clear.
+	// The article keeps pointer activation so padding and avatar toggle. Ordinary
+	// keyboard activation belongs to RowBody's real button, leaving the PR anchor
+	// outside any button role. Multi-select rows retain gridcell keyboard handling.
 	assert.match(CARD_SOURCE, /onClick=\{handleArticleClick\}/u);
 	assert.match(CARD_SOURCE, /onKeyDown=\{handleArticleKeyDown\}/u);
 	assert.match(CARD_SOURCE, /onView === undefined && mark == null/u);
-	assert.match(CARD_SOURCE, /mark\.onToggle\(\)/u);
-	assert.match(CARD_SOURCE, /if \(selecting !== isSelected\)/u);
-	assert.match(CARD_SOURCE, /role=\{activateCard === undefined \? undefined : "button"\}/u);
-	assert.match(CARD_SOURCE, /aria-pressed=\{activateCard === undefined \? undefined : showSelectedFill\}/u);
+	assert.match(CARD_SOURCE, /mark\.onActivate\(gesture\)/u);
+	assert.match(CARD_SOURCE, /selectionGestureFromModifierKeys\(event\)/u);
+	assert.match(CARD_SOURCE, /const articleRole = mark == null \? undefined : "gridcell";/u);
+	assert.match(CARD_SOURCE, /role=\{articleRole\}/u);
+	assert.doesNotMatch(CARD_SOURCE, /articleRole === "button"|\? "button"/u);
+	assert.match(CARD_SOURCE, /aria-selected=\{mark == null \? undefined : isMarked\}/u);
+	assert.match(CARD_SOURCE, /role=\{mark == null \? undefined : "row"\}/u);
+	assert.match(INDEX_SOURCE, /role=\{isMultiSelectList \? "grid" : undefined\}/u);
+	assert.match(INDEX_SOURCE, /aria-multiselectable=\{isMultiSelectList \? true : undefined\}/u);
 	assert.match(CARD_SOURCE, /event\.target\.closest\(SESSION_DRAG_INTERACTIVE_SELECTOR\) !== null/u);
-	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*onView=\{undefined\}/u);
-	assert.match(CARD_SOURCE, /onToggle=\{activateCard \?\? mark\.onToggle\}/u);
+	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*onView=\{mark == null \? onView : undefined\}/u);
+	assert.match(CARD_SOURCE, /onActivate=\{activateCard \?\? mark\.onActivate\}/u);
 	assert.match(LIST_ROW_ACTION_SOURCE, /event\.stopPropagation\(\);\s*\n\s*action\.onClick\(\)/u);
 	assert.doesNotMatch(CARD_SOURCE, /isSelected=\{false\}/u);
 	assert.doesNotMatch(CARD_SOURCE, /bg-bg-accent-blue-subtlest/u);
@@ -609,7 +690,7 @@ test("ships demo data and catalog entries for every attachment and size variant"
 	assert.match(DATA_SOURCE, /brandName: "cursor"/u);
 	assert.match(DATA_SOURCE, /vpkLogo: "rovo"/u);
 	assert.doesNotMatch(DATA_SOURCE, /Venn’s MacBook/u);
-	assert.doesNotMatch(DATA_SOURCE, /timeLabel: "3 mins ago"/u);
+	assert.match(DATA_SOURCE, /timeLabel: "18m ago"/u);
 	assert.match(DATA_SOURCE, /issueKey: "PAY-101"/u);
 	assert.match(PAGE_SOURCE, /<AgentSession/u);
 	assert.doesNotMatch(PAGE_SOURCE, /data-slot="agent-session-attached-backdrop"/u);
@@ -668,6 +749,7 @@ test("the untracked-work flyout offers the first candidate key", () => {
 	assert.match(DATA_SOURCE, /issueStatus: "In review"/u);
 	assert.match(TYPES_SOURCE, /getSuggestedWorkItemKeys\?: \(item: AgentSessionItem\) => readonly string\[\] \| undefined;/u);
 	assert.match(TYPES_SOURCE, /onLinkWorkItem\?: \(item: AgentSessionItem, workItemKey\?: string\) => void;/u);
+	assert.match(TYPES_SOURCE, /onArchiveSession\?: \(item: AgentSessionItem\) => void;/u);
 	assert.match(WORK_ITEM_SOURCE, /export function resolveAgentSessionWorkItemKey/u);
 	assert.match(WORK_ITEM_SOURCE, /const firstKey = getSuggestedWorkItemKeys\?\.\(item\)\?\.\[0\];/u);
 	assert.match(INDEX_SOURCE, /onLinkWorkItem=\{flyoutActions\.onLinkWorkItem\}/u);
@@ -678,6 +760,7 @@ test("the untracked-work flyout offers the first candidate key", () => {
 		WORK_ITEM_SOURCE,
 		/actions\.onLinkWorkItem\?\.\(item, workItemKey\.length > 0 \? workItemKey : undefined\)/u,
 	);
+	assert.match(WORK_ITEM_SOURCE, /actions\.onArchiveSession\?\.\(item\)/u);
 	assert.match(WORK_ITEM_SOURCE, /actions\.onCreateWorkItem\?\.\(item\)/u);
 	assert.match(WORK_ITEM_SOURCE, /actions\.onSubtasks\?\.\(item\)/u);
 	assert.match(WORK_ITEM_SOURCE, /if \(isCaptured\(session\)\) \{\s*return;/u);
@@ -689,6 +772,15 @@ test("the untracked-work flyout offers the first candidate key", () => {
 	assert.match(FLYOUT_SOURCE, /capturedSessionIds\?: ReadonlySet<string>;/u);
 	assert.match(UNTRACKED_CARD_SOURCE, /const linkLabel = hasIssueKey \? `Link to \$\{issueKey\}` : "Link work item";/u);
 	assert.match(FLYOUT_SOURCE, /captureLocked \|\| onLinkWorkItem === undefined/u);
+	assert.match(INDEX_SOURCE, /onArchiveSession=\{flyoutActions\.onArchiveSession\}/u);
+	assert.match(INDEX_SOURCE, /archiveActionLabel=\{visibilityLabel\}/u);
+});
+
+test("collapsed session rail forwards archive capability to its shared flyout", () => {
+	assert.match(COLUMN_SOURCE, /onArchiveSession=\{handleArchiveSession\}/u);
+	assert.match(COLUMN_RAIL_SOURCE, /onArchiveSession\?: \(item: AgentSessionItem\) => void;/u);
+	assert.match(COLUMN_RAIL_SOURCE, /onArchiveSession,\s*onCreateWorkItem,/u);
+	assert.match(COLUMN_RAIL_SOURCE, /onArchiveSession=\{flyoutActions\.onArchiveSession\}/u);
 });
 
 test("Pulse's uncaptured column renders sessions through this block", () => {

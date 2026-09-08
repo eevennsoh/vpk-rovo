@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-export interface MetadataPathLinkProps {
+export interface MetadataPathLinkProps extends Pick<ComponentProps<"a">, "href" | "rel" | "target"> {
 	children: ReactNode;
 	className?: string;
 	segmented?: boolean;
@@ -13,7 +13,10 @@ export interface MetadataPathLinkProps {
 export function MetadataPathLink({
 	children,
 	className,
+	href = "#",
+	rel,
 	segmented = false,
+	target,
 	title,
 }: Readonly<MetadataPathLinkProps>): React.ReactElement {
 	return (
@@ -23,7 +26,9 @@ export function MetadataPathLink({
 				segmented ? null : "hover:underline focus-visible:underline",
 				className,
 			)}
-			href="#"
+			href={href}
+			rel={rel}
+			target={target}
 			title={title}
 		>
 			{children}

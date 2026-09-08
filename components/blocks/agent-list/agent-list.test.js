@@ -327,9 +327,11 @@ test("the session adapter derives flyout payloads the row model does not carry",
 	// session borrows it from prStatus.
 	assert.match(SESSION_SOURCE, /case "needs-input":\s*case "attention":\s*return "awaiting-input";/u);
 	assert.match(SESSION_SOURCE, /case "running":\s*return "running";/u);
+	assert.match(TYPES_SOURCE, /export type AgentListPrStatus = "created" \| "merged" \| "failed";/u);
+	assert.match(CARD_SOURCE, /failed:[\s\S]*MergeFailureIcon[\s\S]*PR failed[\s\S]*text-icon-danger/u);
 	assert.match(
 		SESSION_SOURCE,
-		/case "complete":\s*return item\.prStatus === "created" \? "pr-open" : "merged";/u,
+		/case "complete":[\s\S]*case "created":[\s\S]*return "pr-open";[\s\S]*case "failed":[\s\S]*return "stopped";[\s\S]*return "merged";/u,
 	);
 	// Explicit sessionDetails win for flyout-only fields; host prefers the row.
 	assert.match(SESSION_SOURCE, /branch: details\?\.branch \?\? item\.branch,/u);
@@ -795,7 +797,7 @@ test("local sessions show a static timestamp, devices icon, and machine name", (
 	assert.doesNotMatch(invokerAvatarSource, /Tooltip/u);
 	assert.match(DATA_SOURCE, /host: "local"/u);
 	assert.match(DATA_SOURCE, /machineName: "Geoff’s MacBook"/u);
-	assert.match(DATA_SOURCE, /timeLabel: "3 mins ago"/u);
+	assert.match(DATA_SOURCE, /timeLabel: "3m ago"/u);
 	assert.match(DETAIL_SOURCE, /Local sessions swap the live runtime and agent name/u);
 	assert.match(DETAIL_SOURCE, /a devices icon, and the machine name/u);
 	assert.doesNotMatch(DETAIL_SOURCE, /16px invoker avatar, and the machine name/u);

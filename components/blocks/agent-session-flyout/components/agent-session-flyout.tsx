@@ -124,7 +124,7 @@ export const AGENT_SESSION_FLYOUT_LIST_CLASSNAME =
 
 export interface AgentSessionFlyoutProps extends Pick<
 	JiraSessionFlyoutSurfaceProps,
-	"onAddAsSubtask" | "onCreateWorkItem" | "onLinkWorkItem"
+	"onAddAsSubtask" | "onArchiveSession" | "onCreateWorkItem" | "onLinkWorkItem"
 > {
 	/** Sessions to render in the compact list. Defaults to the `/jira-golden-journeys-v0` queue seeds. */
 	sessions?: readonly JiraSidebarSessionItem[];
@@ -181,6 +181,7 @@ export function AgentSessionFlyout({
 	className,
 	content = "details",
 	onAddAsSubtask,
+	onArchiveSession,
 	onCreateWorkItem,
 	onLinkWorkItem,
 	sessions = AGENT_SESSION_FLYOUT_SESSIONS,
@@ -204,6 +205,7 @@ export function AgentSessionFlyout({
 				content={content}
 				handle={flyoutHandle}
 				onAddAsSubtask={onAddAsSubtask}
+				onArchiveSession={onArchiveSession}
 				onCreateWorkItem={onCreateWorkItem}
 				onLinkWorkItem={onLinkWorkItem}
 			/>

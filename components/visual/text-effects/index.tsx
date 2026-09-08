@@ -1,16 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion, type Transition, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, type Transition, useReducedMotion } from "motion/react";
 import RefreshIcon from "@atlaskit/icon/core/refresh";
 
 import { Button } from "@/components/ui/button";
 import { resolveWaveHighlightColor } from "@/components/ui-custom/lib/shimmer-colors";
+import { cn } from "@/lib/utils";
 
 import { SAMPLE_TEXT, TEXT_EFFECTS, type ColorStops, type TextEffectConfig } from "./data";
 import { buildPlan, frameToProps, gradientTextStyle, willChangeFor } from "./lib";
 
 type TextEffectsProps = Readonly<{
+	className?: string;
 	config: TextEffectConfig;
 	/**
 	 * Optional colour palette painted *over* the neutral text. Omit to render
@@ -21,10 +23,17 @@ type TextEffectsProps = Readonly<{
 	 * tint of the neutral text.
 	 */
 	colorStops?: ColorStops;
+	presentation?: "showcase" | "inline";
 	text?: string;
 }>;
 
-export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: TextEffectsProps) {
+export default function TextEffects({
+	className,
+	config,
+	colorStops,
+	presentation = "showcase",
+	text = SAMPLE_TEXT,
+}: TextEffectsProps) {
 	const spec = TEXT_EFFECTS[config.effect];
 	const reduced = useReducedMotion();
 
@@ -144,42 +153,61 @@ export default function TextEffects({ config, colorStops, text = SAMPLE_TEXT }: 
 		? ({ position: "relative", display: "inline-block" } as const)
 		: undefined;
 
+	const renderedText = (
+		<>
+			{/* Screen readers get the whole passage; the split/animated glyphs are decorative. */}
+			<span className="sr-only">{text}</span>
+			{reduced ? (
+				colorStops ? (
+					<span aria-hidden style={layerWrapperStyle}>
+						<span style={{ whiteSpace: "pre-line" }}>{text}</span>
+						<span
+							aria-hidden
+							className="absolute inset-0"
+							style={{ whiteSpace: "pre-line", ...wholeGradientStyle }}
+						>
+							{text}
+						</span>
+					</span>
+				) : (
+					<span aria-hidden style={{ whiteSpace: "pre-line" }}>
+						{text}
+					</span>
+				)
+			) : (
+				<span key={animationKey} aria-hidden style={layerWrapperStyle}>
+					{renderUnits("base")}
+					{colorStops ? (
+						<span aria-hidden className="absolute inset-0">
+							{renderUnits("overlay")}
+						</span>
+					) : null}
+				</span>
+			)}
+		</>
+	);
+
+	if (presentation === "inline") {
+		// Inline consumers can live inside an `AnimatePresence initial={false}`
+		// boundary. Start a fresh presence context so this component's own entrance
+		// is not inherited as blocked by the surrounding layout transition.
+		return (
+			<AnimatePresence initial>
+				<span className={cn("inline-block", className)} lang="en">
+					{renderedText}
+				</span>
+			</AnimatePresence>
+		);
+	}
+
 	return (
 		<div className="flex w-full flex-col items-center gap-8">
 			<div
-				className="text-center text-3xl font-semibold leading-tight tracking-tight text-text sm:text-5xl"
+				className={cn("text-center text-3xl font-semibold leading-tight tracking-tight text-text sm:text-5xl", className)}
 				style={{ maxWidth: "18ch" }}
 				lang="en"
 			>
-				{/* Screen readers get the whole passage; the split/animated glyphs are decorative. */}
-				<span className="sr-only">{text}</span>
-				{reduced ? (
-					colorStops ? (
-						<span aria-hidden style={layerWrapperStyle}>
-							<span style={{ whiteSpace: "pre-line" }}>{text}</span>
-							<span
-								aria-hidden
-								className="absolute inset-0"
-								style={{ whiteSpace: "pre-line", ...wholeGradientStyle }}
-							>
-								{text}
-							</span>
-						</span>
-					) : (
-						<span aria-hidden style={{ whiteSpace: "pre-line" }}>
-							{text}
-						</span>
-					)
-				) : (
-					<span key={animationKey} aria-hidden style={layerWrapperStyle}>
-						{renderUnits("base")}
-						{colorStops ? (
-							<span aria-hidden className="absolute inset-0">
-								{renderUnits("overlay")}
-							</span>
-						) : null}
-					</span>
-				)}
+				{renderedText}
 			</div>
 			<Button variant="secondary" onClick={replay} disabled={Boolean(reduced)}>
 				<RefreshIcon label="" size="small" />

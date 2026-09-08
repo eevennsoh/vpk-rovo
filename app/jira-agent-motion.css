@@ -1,0 +1,80 @@
+@keyframes jira-agent-wave {
+	0%, 100% { transform: rotate(0deg); }
+	20% { transform: rotate(12deg); }
+	45% { transform: rotate(-8deg); }
+	70% { transform: rotate(8deg); }
+}
+
+@utility jira-agent-wave-motion {
+	display: inline-block;
+	transform-origin: 70% 70%;
+	animation: jira-agent-wave calc(var(--duration-slower) * 2) var(--ease-in-out) 1;
+}
+
+/* Iconic orb: rest at full ring size and rotate. Pulse/grow is opt-in. */
+@keyframes spinner-experimental-orb-rotate {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+/* Iconic orb: 9.78s prototype loop maps to 16 × duration-slowest (9.6s). */
+@keyframes spinner-experimental-orb-morph {
+	0%, 5% { transform: translate(0, 0); }
+	25%, 40% { transform: translate(var(--orb-outer-x), var(--orb-outer-y)); }
+	50%, 55% { transform: translate(0, 0); }
+	75%, 90% { transform: translate(var(--orb-outer-x), var(--orb-outer-y)); }
+	100% { transform: translate(0, 0); }
+}
+
+@utility spinner-experimental-orb-rotator {
+	transform-origin: 10px 10px;
+}
+
+@utility spinner-experimental-orb-rotator-motion {
+	animation: spinner-experimental-orb-rotate calc(var(--duration-slowest) * 16) var(--ease-linear) infinite;
+}
+
+@utility spinner-experimental-orb-rotator-pulse-delay {
+	animation-delay: calc(var(--duration-slowest) * -6.4);
+}
+
+@utility spinner-experimental-orb-dot {
+	transform-box: fill-box;
+	transform-origin: center;
+	transform: translate(var(--orb-outer-x), var(--orb-outer-y));
+}
+
+@utility spinner-experimental-orb-dot-motion {
+	animation: spinner-experimental-orb-morph calc(var(--duration-slowest) * 16) var(--ease-in-out) infinite both;
+	animation-delay: calc(var(--duration-slowest) * -6.4);
+}
+
+@utility spinner-experimental-orb-dot-top {
+	--orb-outer-x: 0px;
+	--orb-outer-y: -5.5px;
+}
+
+@utility spinner-experimental-orb-dot-top-right {
+	--orb-outer-x: 4.763px;
+	--orb-outer-y: -2.75px;
+}
+
+@utility spinner-experimental-orb-dot-bottom-right {
+	--orb-outer-x: 4.763px;
+	--orb-outer-y: 2.75px;
+}
+
+@utility spinner-experimental-orb-dot-bottom {
+	--orb-outer-x: 0px;
+	--orb-outer-y: 5.5px;
+}
+
+@utility spinner-experimental-orb-dot-bottom-left {
+	--orb-outer-x: -4.763px;
+	--orb-outer-y: 2.75px;
+}
+
+@utility spinner-experimental-orb-dot-top-left {
+	--orb-outer-x: -4.763px;
+	--orb-outer-y: -2.75px;
+}

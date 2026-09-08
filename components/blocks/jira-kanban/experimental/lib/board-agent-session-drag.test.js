@@ -6,9 +6,16 @@ const { moveJiraKanbanAgentSession } = require("../../state.ts");
 const {
 	cancelBoardAgentSessionDragTransaction,
 	createBoardAgentSessionDragTransaction,
+	isCreateZoneEligible,
+	parseBoardCardGapZones,
+	parseBoardEmptyColumnGapZone,
 	parseListRowDropZone,
+	resolveBoardAgentSessionAttachProximity,
 	resolveBoardAgentSessionDropAction,
 	resolveBoardAgentSessionDropTarget,
+	resolveBoardCreateDropzoneDrag,
+	SESSION_ATTACH_PROXIMITY_RANGE_PX,
+	toChinFreeBoardCardBounds,
 	toListSessionDropIntent,
 	updateBoardAgentSessionDragTransaction,
 } = require("./board-agent-session-drag.ts");
@@ -183,6 +190,54 @@ test("only untracked sessions resolve a create-work-item column target", () => {
 		),
 		null,
 	);
+});
+
+test("create wells stay idle unless the drag origin can land in them", () => {
+	const pointer = { x: 0, y: 0 };
+	const cohort = cohortOf();
+	assert.equal(isCreateZoneEligible({ kind: "untracked" }), true);
+	assert.equal(isCreateZoneEligible({ kind: "attached", sourceCardCode: "PAY-121" }), false);
+	assert.equal(isCreateZoneEligible({ kind: "detached", sourceCardCode: "PAY-121" }), false);
+	assert.equal(resolveBoardCreateDropzoneDrag(null, "To do"), "idle");
+	assert.equal(
+		resolveBoardCreateDropzoneDrag(
+			createBoardAgentSessionDragTransaction(
+				cohort,
+				{ kind: "attached", sourceCardCode: "PAY-121" },
+				pointer,
+				[],
+			),
+			"To do",
+		),
+		"idle",
+	);
+	assert.equal(
+		resolveBoardCreateDropzoneDrag(
+			createBoardAgentSessionDragTransaction(
+				cohort,
+				{ kind: "detached", sourceCardCode: "PAY-121" },
+				pointer,
+				[],
+			),
+			"To do",
+		),
+		"idle",
+	);
+	assert.equal(
+		resolveBoardCreateDropzoneDrag(
+			createBoardAgentSessionDragTransaction(cohort, { kind: "untracked" }, pointer, []),
+			"To do",
+		),
+		"active",
+	);
+	const armed = createBoardAgentSessionDragTransaction(
+		cohort,
+		{ kind: "untracked" },
+		{ x: 300, y: 250 },
+		[CREATE_WORK_ITEM],
+	);
+	assert.equal(resolveBoardCreateDropzoneDrag(armed, "In review"), "armed");
+	assert.equal(resolveBoardCreateDropzoneDrag(armed, "To do"), "active");
 });
 
 test("an explicit create target wins over an overlapping issue card", () => {
@@ -450,6 +505,7 @@ test("malformed list-row attributes yield no zone", () => {
 	);
 });
 
+
 test("cancelling a transaction clears its armed target and resolves to no action", () => {
 	const transaction = createBoardAgentSessionDragTransaction(
 		cohortOf(session()),
@@ -461,4 +517,223 @@ test("cancelling a transaction clears its armed target and resolves to no action
 
 	assert.equal(cancelled.target, null);
 	assert.deepEqual(resolveBoardAgentSessionDropAction(cancelled), { kind: "none" });
+});
+
+const UNTRACKED_ORIGIN = { kind: "untracked" };
+
+test("attach proximity ramps by smoothstep from 1 inside the rect to 0 at the range", () => {
+	assert.equal(SESSION_ATTACH_PROXIMITY_RANGE_PX, 120);
+
+	// Inside PAY-128; PAY-121 is 100px away so nearest-wins picks the card under
+	// the pointer rather than the merely-eligible neighbour.
+	const inside = resolveBoardAgentSessionAttachProximity(
+		UNTRACKED_ORIGIN,
+		{ x: 300, y: 80 },
+		ZONES,
+	);
+	assert.equal(inside.cardCode, "PAY-128");
+	assert.equal(inside.distance, 0);
+	assert.equal(inside.nearness, 1);
+
+	// 60px past PAY-128's right edge is the exact midpoint of the ramp, where
+	// smoothstep reads 0.5 and a linear ramp would too — the curves only differ
+	// either side of it.
+	const midRange = resolveBoardAgentSessionAttachProximity(
+		UNTRACKED_ORIGIN,
+		{ x: 480, y: 100 },
+		ZONES,
+	);
+	assert.equal(midRange.cardCode, "PAY-128");
+	assert.equal(midRange.distance, 60);
+	assert.equal(midRange.nearness, 0.5);
+
+	// A quarter of the way in, smoothstep is still well under the linear 0.25.
+	const earlyApproach = resolveBoardAgentSessionAttachProximity(
+		UNTRACKED_ORIGIN,
+		{ x: 510, y: 100 },
+		ZONES,
+	);
+	assert.equal(earlyApproach.distance, 90);
+	assert.ok(earlyApproach.nearness < 0.25);
+});
+
+test("attach proximity is exclusive of the range and reports nothing beyond it", () => {
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(UNTRACKED_ORIGIN, { x: 540, y: 100 }, ZONES),
+		null,
+	);
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(UNTRACKED_ORIGIN, { x: 560, y: 100 }, ZONES),
+		null,
+	);
+});
+
+test("attach proximity ties prefer the leftmost card, then the first registered zone", () => {
+	// 10px right of PAY-121 and 10px left of PAY-128.
+	const tiedPointer = { x: 210, y: 100 };
+
+	for (const zones of [[SOURCE_ISSUE, TARGET_ISSUE], [TARGET_ISSUE, SOURCE_ISSUE]]) {
+		const winner = resolveBoardAgentSessionAttachProximity(UNTRACKED_ORIGIN, tiedPointer, zones);
+		assert.equal(winner.cardCode, "PAY-121");
+		assert.equal(winner.distance, 10);
+	}
+
+	const stacked = resolveBoardAgentSessionAttachProximity(
+		UNTRACKED_ORIGIN,
+		{ x: 300, y: 80 },
+		[TARGET_ISSUE, { ...TARGET_ISSUE, cardCode: "PAY-130" }],
+	);
+	assert.equal(stacked.cardCode, "PAY-128");
+});
+
+test("attach proximity ignores unlink zones and the card the session is dragged off", () => {
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(
+			{ kind: "detached", sourceCardCode: "PAY-121" },
+			{ x: 100, y: 175 },
+			[SOURCE_UNLINK],
+		),
+		null,
+	);
+
+	// Attached to PAY-121 and hovering it: the source can never arm, so the
+	// backdrop must bleed onto the eligible neighbour instead.
+	const winner = resolveBoardAgentSessionAttachProximity(
+		{ kind: "attached", sourceCardCode: "PAY-121" },
+		{ x: 150, y: 80 },
+		ZONES,
+	);
+	assert.equal(winner.cardCode, "PAY-128");
+	assert.equal(winner.distance, 70);
+
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(
+			{ kind: "attached", sourceCardCode: "PAY-121" },
+			{ x: 100, y: 80 },
+			[SOURCE_ISSUE, SOURCE_UNLINK],
+		),
+		null,
+	);
+});
+
+test("attach proximity passes a measured shell and land rect through and falls back to null", () => {
+	const dockRect = { bottom: 220, left: 200, right: 440, top: 160 };
+	const landRect = { bottom: 220, left: 208, right: 432, top: 196 };
+	const docked = resolveBoardAgentSessionAttachProximity(
+		UNTRACKED_ORIGIN,
+		{ x: 300, y: 80 },
+		[{ ...TARGET_ISSUE, dockRect, landRect }],
+	);
+	assert.deepEqual(docked.dockRect, dockRect);
+	assert.deepEqual(docked.landRect, landRect);
+	assert.deepEqual(docked.bounds, TARGET_ISSUE.bounds);
+
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(UNTRACKED_ORIGIN, { x: 300, y: 80 }, ZONES).dockRect,
+		null,
+	);
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(UNTRACKED_ORIGIN, { x: 300, y: 80 }, ZONES).landRect,
+		null,
+	);
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(
+			UNTRACKED_ORIGIN,
+			{ x: 300, y: 80 },
+			[{ ...TARGET_ISSUE, dockRect: null, landRect: null }],
+		).dockRect,
+		null,
+	);
+});
+
+test("attach proximity reports nothing for a card an outranking drop zone already owns", () => {
+	const railIssue = { bounds: UNTRACKED.bounds, cardCode: "PAY-128", kind: "issue" };
+	const attachedOrigin = { kind: "attached", sourceCardCode: "PAY-121" };
+	const railPointer = { x: 500, y: 80 };
+
+	// The rail wins the drop, so the card underneath must not arm an attach it
+	// will never receive.
+	assert.deepEqual(
+		resolveBoardAgentSessionDropTarget(attachedOrigin, railPointer, [railIssue, UNTRACKED]),
+		{ kind: "untracked" },
+	);
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(attachedOrigin, railPointer, [railIssue, UNTRACKED]),
+		null,
+	);
+	// Untracked origins ignore the rail entirely, so the card underneath is still
+	// the real drop target and still arms.
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(UNTRACKED_ORIGIN, railPointer, [railIssue, UNTRACKED])
+			.cardCode,
+		"PAY-128",
+	);
+
+	const wellIssue = { bounds: CREATE_WORK_ITEM.bounds, cardCode: "PAY-131", kind: "issue" };
+	const wellPointer = { x: 300, y: 250 };
+
+	assert.deepEqual(
+		resolveBoardAgentSessionDropTarget(UNTRACKED_ORIGIN, wellPointer, [wellIssue, CREATE_WORK_ITEM]),
+		{ columnTitle: "In review", kind: "create" },
+	);
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(
+			UNTRACKED_ORIGIN,
+			wellPointer,
+			[wellIssue, CREATE_WORK_ITEM],
+		),
+		null,
+	);
+	// The create well is only eligible for untracked origins, so an attached drag
+	// over the same overlap keeps attaching to the card underneath.
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(
+			attachedOrigin,
+			wellPointer,
+			[wellIssue, CREATE_WORK_ITEM],
+		).cardCode,
+		"PAY-131",
+	);
+
+	// Precedence is a containment rule, not a proximity one: merely approaching
+	// an outranking zone still lets the nearest card arm.
+	assert.equal(
+		resolveBoardAgentSessionAttachProximity(
+			attachedOrigin,
+			{ x: 500, y: 260 },
+			[railIssue, UNTRACKED],
+		).cardCode,
+		"PAY-128",
+	);
+});
+
+test("transactions carry proximity alongside the discrete target and clear both on cancel", () => {
+	const approach = createBoardAgentSessionDragTransaction(
+		cohortOf(session()),
+		UNTRACKED_ORIGIN,
+		{ x: 480, y: 100 },
+		ZONES,
+	);
+	assert.equal(approach.target, null);
+	assert.equal(approach.proximity.cardCode, "PAY-128");
+	assert.equal(approach.proximity.nearness, 0.5);
+
+	const armed = updateBoardAgentSessionDragTransaction(approach, { x: 300, y: 80 }, ZONES);
+	assert.deepEqual(armed.target, { cardCode: "PAY-128", kind: "attach" });
+	assert.equal(armed.proximity.nearness, 1);
+
+	// Cancelling mid-approach has no target to clear, but the backdrop must still
+	// go out, so proximity is cleared and a fresh transaction is returned.
+	const cancelledApproach = cancelBoardAgentSessionDragTransaction(approach);
+	assert.notEqual(cancelledApproach, approach);
+	assert.equal(cancelledApproach.proximity, null);
+	assert.equal(cancelledApproach.target, null);
+
+	const cancelledArmed = cancelBoardAgentSessionDragTransaction(armed);
+	assert.equal(cancelledArmed.proximity, null);
+	assert.equal(cancelledArmed.target, null);
+
+	const idle = updateBoardAgentSessionDragTransaction(approach, { x: 900, y: 900 }, ZONES);
+	assert.equal(idle.proximity, null);
+	assert.equal(cancelBoardAgentSessionDragTransaction(idle), idle);
 });
