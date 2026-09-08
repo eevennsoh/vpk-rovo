@@ -43,6 +43,28 @@ test("component test report separates classified and legacy-drift node:test file
 	});
 });
 
+test("component test report output chunks only payloads that exceed the line limit", async () => {
+	const { formatComponentTestReport } = await import("./run-js-unit-tests.mjs");
+	const smallReport = { includedFiles: ["components/a.test.js"] };
+	assert.equal(
+		formatComponentTestReport(smallReport),
+		`JS_UNIT_COMPONENT_TEST_REPORT ${JSON.stringify(smallReport)}`,
+	);
+
+	const largeReport = { excludedFiles: Array.from({ length: 20 }, (_, index) => ({
+		filePath: `components/long-component-name-${index}.test.js`,
+	})) };
+	const output = formatComponentTestReport(largeReport, { maxLineBytes: 128 });
+	const lines = output.split("\n");
+	assert.equal(lines[0].startsWith("JS_UNIT_COMPONENT_TEST_REPORT_BEGIN "), true);
+	assert.equal(lines.at(-1), "JS_UNIT_COMPONENT_TEST_REPORT_END");
+	assert.equal(lines.every((line) => Buffer.byteLength(line) <= 128), true);
+	const reconstructed = lines.slice(1, -1)
+		.map((line) => line.replace(/^JS_UNIT_COMPONENT_TEST_REPORT_CHUNK \d+\/\d+ /u, ""))
+		.join("");
+	assert.deepEqual(JSON.parse(reconstructed), largeReport);
+});
+
 test("runnable test selection includes manifest classifications in the CI gate", async () => {
 	const { selectRunnableTestFiles } = await import("./run-js-unit-tests.mjs");
 	const runnableFiles = selectRunnableTestFiles([

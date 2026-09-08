@@ -10,6 +10,8 @@ import {
 
 const COMPONENT_TEST_PREFIX = "components/";
 const COMPONENT_TEST_REPORT_PREFIX = "JS_UNIT_COMPONENT_TEST_REPORT";
+const COMPONENT_TEST_REPORT_MAX_LINE_BYTES = 60 * 1024;
+const COMPONENT_TEST_REPORT_CHUNK_PREFIX_RESERVE_BYTES = 32;
 const VM_MODULE_TEST_MARKERS = [
 	"vm.SyntheticModule",
 	"vm.SourceTextModule",
@@ -281,7 +283,47 @@ function reportComponentTestCoverage(report) {
 	console.log(
 		`js-unit-tests: component node:test coverage ${report.includedCount} included, ${report.excludedCount} legacy-drift. Graduate stable tests through scripts/js-unit-test-manifest.mjs.`
 	);
-	console.log(`${COMPONENT_TEST_REPORT_PREFIX} ${JSON.stringify(report)}`);
+	console.log(formatComponentTestReport(report));
+}
+
+function splitByUtf8Bytes(value, maxBytes) {
+	const chunks = [];
+	let chunk = "";
+	let chunkBytes = 0;
+
+	for (const character of value) {
+		const characterBytes = Buffer.byteLength(character);
+		if (chunkBytes + characterBytes > maxBytes && chunk) {
+			chunks.push(chunk);
+			chunk = "";
+			chunkBytes = 0;
+		}
+		chunk += character;
+		chunkBytes += characterBytes;
+	}
+	if (chunk) chunks.push(chunk);
+	return chunks;
+}
+
+export function formatComponentTestReport(report, {
+	maxLineBytes = COMPONENT_TEST_REPORT_MAX_LINE_BYTES,
+} = {}) {
+	const serialized = JSON.stringify(report);
+	const singleLine = `${COMPONENT_TEST_REPORT_PREFIX} ${serialized}`;
+	if (Buffer.byteLength(singleLine) <= maxLineBytes) return singleLine;
+
+	const chunkBytes = maxLineBytes
+		- Buffer.byteLength(COMPONENT_TEST_REPORT_PREFIX)
+		- COMPONENT_TEST_REPORT_CHUNK_PREFIX_RESERVE_BYTES;
+	if (chunkBytes < 1) throw new Error("component test report line limit is too small");
+	const chunks = splitByUtf8Bytes(serialized, chunkBytes);
+	return [
+		`${COMPONENT_TEST_REPORT_PREFIX}_BEGIN ${chunks.length} ${Buffer.byteLength(serialized)}`,
+		...chunks.map((chunk, index) => (
+			`${COMPONENT_TEST_REPORT_PREFIX}_CHUNK ${index + 1}/${chunks.length} ${chunk}`
+		)),
+		`${COMPONENT_TEST_REPORT_PREFIX}_END`,
+	].join("\n");
 }
 
 function requiresVmModuleFlag(source) {
