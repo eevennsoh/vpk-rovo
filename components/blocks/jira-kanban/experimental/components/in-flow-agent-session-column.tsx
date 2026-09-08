@@ -22,6 +22,7 @@ import {
 	resolveInFlowResizeHandleOffsetPx,
 } from "../lib/in-flow-agent-session-column-geometry";
 import { useInFlowGutterScrollMask } from "./use-in-flow-gutter-scroll-mask";
+import { ExpandMoreHorizontalIcon } from "./expand-more-horizontal-icon";
 
 // Extend the preview's 24px session targets to 56px, within the empty gutter.
 // The 32px column footprint and marker axis stay fixed; To do remains clickable.
@@ -73,11 +74,12 @@ function useInFlowAgentSessionColumnInteraction(
 	onCollapsedChange: AgentSessionColumnProps["onCollapsedChange"],
 ) {
 	const [isHovered, setIsHovered] = useState(false);
-	const [uncontrolledPersistentExpanded, setUncontrolledPersistentExpanded] = useState(false);
+	const [expansion, setExpansion] = useState<"gutter" | "pinned" | "expanded">("gutter");
 	const isCollapsedControlled = collapsed !== undefined;
 	const isPersistentExpanded = isCollapsedControlled
 		? !collapsed
-		: uncontrolledPersistentExpanded;
+		: expansion === "expanded";
+	const isPinnedPreview = !isPersistentExpanded && expansion === "pinned";
 
 	const handlePointerEnter = (event: PointerEvent<HTMLDivElement>) => {
 		if (event.pointerType !== "touch") {
@@ -92,9 +94,12 @@ function useInFlowAgentSessionColumnInteraction(
 	};
 
 	const handleCollapsedChange = (collapsed: boolean) => {
-		if (!isCollapsedControlled) {
-			setUncontrolledPersistentExpanded(!collapsed);
+		if (!collapsed && !isPinnedPreview) {
+			setExpansion("pinned");
+			return;
 		}
+		setExpansion(collapsed ? "gutter" : "expanded");
+		if (collapsed) setIsHovered(false);
 		onCollapsedChange?.(collapsed);
 	};
 
@@ -103,6 +108,7 @@ function useInFlowAgentSessionColumnInteraction(
 			return;
 		}
 		event.preventDefault();
+		event.stopPropagation();
 		handleCollapsedChange(false);
 	};
 
@@ -111,7 +117,8 @@ function useInFlowAgentSessionColumnInteraction(
 		handleGutterPointerDown,
 		handlePointerEnter,
 		handlePointerLeave,
-		isEmbedded: isHovered || isPersistentExpanded,
+		isEmbedded: isHovered || isPinnedPreview || isPersistentExpanded,
+		isPinnedPreview,
 		isPersistentExpanded,
 	};
 }
@@ -166,6 +173,7 @@ function InFlowAgentSessionColumnSurface({
 	expandedWidthPx,
 	isEmbedded,
 	isPersistentExpanded,
+	isPinnedPreview,
 	resize,
 	onCollapsedChange,
 	onGutterIntroComplete,
@@ -178,6 +186,7 @@ function InFlowAgentSessionColumnSurface({
 	expandedWidthPx: number;
 	isEmbedded: boolean;
 	isPersistentExpanded: boolean;
+	isPinnedPreview: boolean;
 	resize: ReturnType<typeof useSidebarResize>;
 	onCollapsedChange: (collapsed: boolean) => void;
 	onGutterIntroComplete: () => void;
@@ -212,6 +221,9 @@ function InFlowAgentSessionColumnSurface({
 			<AgentSessionColumn
 				{...agentSessionColumn}
 				collapsed={!isPersistentExpanded}
+				collapsedExpandAction={isPinnedPreview
+					? { label: "Expand more", icon: <ExpandMoreHorizontalIcon /> }
+					: undefined}
 				collapsedPresentation={isEmbedded ? "column" : "gutter"}
 				collapsedRailHitSlopPx={isEmbedded && !isPersistentExpanded
 					? IN_FLOW_AGENT_SESSION_COLUMN_RAIL_HIT_SLOP_PX
@@ -253,9 +265,9 @@ function InFlowAgentSessionColumnSurface({
  * The Untracked rail rests in the page's leading gutter. Hover temporarily
  * returns that same compact timeline to the board's original 24px column inset
  * and reveals the collapsed header chrome — the session total and the expand
- * control — without swapping dots for cards. Gutter rest is the only state
- * that hides that chrome. Only the column's expand control promotes the full
- * column, and that deliberate state persists after the pointer leaves. The
+ * control — without swapping dots for cards. The first expansion pins that
+ * preview; the next opens the full column. Both deliberate states persist
+ * after the pointer leaves. Collapsing the full column restores the gutter. The
  * full-height gutter target sits behind each session row so a row can own its
  * whole 24px band while empty gutter space still opens the column preview.
  */
@@ -284,6 +296,7 @@ export function InFlowAgentSessionColumn({
 		handlePointerLeave,
 		isEmbedded,
 		isPersistentExpanded,
+		isPinnedPreview,
 	} = useInFlowAgentSessionColumnInteraction(
 		agentSessionColumn.collapsed,
 		agentSessionColumn.onCollapsedChange,
@@ -305,6 +318,7 @@ export function InFlowAgentSessionColumn({
 		>
 			<div
 				ref={hostRef}
+				data-agent-session-column-expansion={isPersistentExpanded ? "expanded" : isPinnedPreview ? "pinned" : "gutter"}
 				className="relative z-30 flex min-h-0 shrink-0 self-stretch"
 				onPointerDown={isEmbedded ? undefined : handleGutterPointerDown}
 				onPointerEnter={handlePointerEnter}
@@ -346,6 +360,7 @@ export function InFlowAgentSessionColumn({
 					expandedWidthPx={expandedWidthPx}
 					isEmbedded={isEmbedded}
 					isPersistentExpanded={isPersistentExpanded}
+					isPinnedPreview={isPinnedPreview}
 					resize={resize}
 					onCollapsedChange={handleCollapsedChange}
 					onGutterIntroComplete={() => setPlayGutterIntro(false)}
