@@ -74,6 +74,8 @@ export function NumberRenderer({
 							<motion.span
 								key={outerKey}
 								layout="position"
+								// Morph changed values, not container reflow during resizing.
+								layoutDependency={text}
 								initial={isPrefix ? false : { opacity: 0 }}
 								animate={isPrefix ? undefined : { opacity: 1 }}
 								exit={isPrefix ? undefined : { opacity: 0 }}

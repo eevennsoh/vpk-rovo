@@ -62,7 +62,7 @@ function AgentSessionPullRequestMetadata({ item }: Readonly<{ item: AgentSession
 					<AgentListPrStatusIcon status={item.prStatus ?? "created"} />
 					{pullRequestUrl ? (
 						<MetadataPathLink
-							className="min-w-0 flex-1 truncate text-text-subtle"
+							className="min-w-0 truncate text-text-subtle"
 							href={pullRequestUrl}
 							rel="noreferrer"
 							target="_blank"
@@ -80,7 +80,7 @@ function AgentSessionPullRequestMetadata({ item }: Readonly<{ item: AgentSession
 					</span>
 				</>
 			) : null}
-			<span className="shrink-0" title="Last update">
+			<span className="shrink-0 text-nowrap" title="Last update">
 				<AgentListTime item={item} />
 			</span>
 		</span>
