@@ -9,14 +9,14 @@ const RIGHT_POPUP = { bottom: 160, left: 200, right: 320, top: 40 };
 
 test("rail hover intent preserves a flyout while the pointer travels diagonally toward its right-side popup", () => {
 	assert.equal(
-		isHeadingIntoPopup({ x: 100, y: 100 }, { x: 150, y: 100 }, RIGHT_POPUP),
+		isHeadingIntoPopup({ x: 100, y: 100 }, { x: 150, y: 120 }, RIGHT_POPUP),
 		true,
 	);
 });
 
 test("rail hover intent rejects travel outside the popup cone so crossed rows can take over", () => {
 	assert.equal(
-		isHeadingIntoPopup({ x: 100, y: 100 }, { x: 150, y: 175 }, RIGHT_POPUP),
+		isHeadingIntoPopup({ x: 100, y: 100 }, { x: 150, y: 150 }, RIGHT_POPUP),
 		false,
 	);
 });
