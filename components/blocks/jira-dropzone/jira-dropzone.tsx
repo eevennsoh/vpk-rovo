@@ -16,6 +16,7 @@ import {
 	JIRA_DROPZONE_WELL_ENTER,
 	JIRA_DROPZONE_WELL_ENTER_REDUCED,
 	JIRA_DROPZONE_WELL_ENTER_SCALE,
+	resolveJiraDropzoneArcOptions,
 	resolveJiraDropzoneLandingPoint,
 } from "./lib/jira-dropzone-motion";
 import {
@@ -70,8 +71,8 @@ export function JiraDropzone({
 	const surface = resolveJiraDropzoneSurface(phase, holdingOpen);
 	const copy = resolveJiraDropzoneCopy(phase);
 	const flyPath = useMemo(
-		() => arc({ peak: profile.arcPeak, strength: profile.arcStrength }),
-		[profile.arcPeak, profile.arcStrength],
+		() => arc(resolveJiraDropzoneArcOptions(profile)),
+		[profile.arcDirection, profile.arcPeak, profile.arcRotate, profile.arcStrength],
 	);
 	const resolveLandingPoint = useCallback((): ViewportPoint | null => {
 		const rect = targetRef.current?.getBoundingClientRect();

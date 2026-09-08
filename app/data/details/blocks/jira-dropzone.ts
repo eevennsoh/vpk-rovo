@@ -2,7 +2,7 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const JIRA_DROPZONE_DETAIL: ComponentDetail = {
 	description:
-		"Create well that receives dragged agent sessions and flies one elevated chip — a mention for one session, a cohort pill for many — along a Motion arc into the well, bouncing once per drop.",
+		"Create well that receives dragged agent sessions and flies one elevated chip — a mention for one session, a cohort pill for many — along a Motion arc into the well, bouncing once per drop. The catalog demo exposes live Motion arc() strength, peak, rotate, and direction controls.",
 	demoLayout: { previewHeight: "fit" },
 	importStatement: `import { JiraDropzone, JiraDropzoneField, useJiraDropzoneReceive } from "@/components/blocks/jira-dropzone";`,
 	props: [

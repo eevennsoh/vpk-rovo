@@ -1,4 +1,8 @@
-import type { FlightProfile, ViewportPoint } from "./jira-dropzone-types";
+import type {
+	FlightProfile,
+	JiraDropzoneArcOptions,
+	ViewportPoint,
+} from "./jira-dropzone-types";
 
 export const JIRA_DROPZONE_HOVER_AREA_PX = 120;
 
@@ -20,7 +24,9 @@ export const JIRA_DROPZONE_WELL_ENTER_SCALE = 0.95;
  * instead of overlapping at 14px.
  */
 export const JIRA_DROPZONE_FULL_MOTION_PROFILE: FlightProfile = {
+	arcDirection: "automatic",
 	arcPeak: 0.5,
+	arcRotate: 0,
 	arcStrength: 0.42,
 	durationMs: 400,
 	ease: [0.4, 1, 0.6, 1],
@@ -37,7 +43,9 @@ export const JIRA_DROPZONE_FULL_MOTION_PROFILE: FlightProfile = {
 };
 
 export const JIRA_DROPZONE_REDUCED_MOTION_PROFILE: FlightProfile = {
+	arcDirection: "automatic",
 	arcPeak: 0.5,
+	arcRotate: 0,
 	arcStrength: 0,
 	durationMs: 0,
 	ease: [0, 0, 1, 1],
@@ -48,8 +56,44 @@ export const JIRA_DROPZONE_REDUCED_MOTION_PROFILE: FlightProfile = {
 	travel: "none",
 };
 
-export function resolveFlightProfile(shouldReduceMotion: boolean | null): FlightProfile {
-	return shouldReduceMotion ? JIRA_DROPZONE_REDUCED_MOTION_PROFILE : JIRA_DROPZONE_FULL_MOTION_PROFILE;
+export function resolveFlightProfile(
+	shouldReduceMotion: boolean | null,
+	override?: Partial<FlightProfile>,
+): FlightProfile {
+	const base = shouldReduceMotion
+		? JIRA_DROPZONE_REDUCED_MOTION_PROFILE
+		: JIRA_DROPZONE_FULL_MOTION_PROFILE;
+	if (shouldReduceMotion || !override) {
+		return base;
+	}
+	return { ...base, ...override };
+}
+
+/**
+ * Motion `arc()` options for a flight profile. `"automatic"` and a zero
+ * rotate are omitted so the default path matches `arc({ peak, strength })`.
+ */
+export function resolveJiraDropzoneArcOptions(
+	profile: Readonly<FlightProfile>,
+): JiraDropzoneArcOptions {
+	const options: JiraDropzoneArcOptions = profile.arcRotate === 0
+		? { peak: profile.arcPeak, strength: profile.arcStrength }
+		: {
+			peak: profile.arcPeak,
+			rotate: profile.arcRotate,
+			strength: profile.arcStrength,
+		};
+	switch (profile.arcDirection) {
+		case "automatic":
+			return options;
+		case "ccw":
+		case "cw":
+			return { ...options, direction: profile.arcDirection };
+		default: {
+			const exhaustive: never = profile.arcDirection;
+			return exhaustive;
+		}
+	}
 }
 
 export function resolveJiraDropzoneLandingPoint(

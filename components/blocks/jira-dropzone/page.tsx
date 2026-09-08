@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { BoardColumnAddButton } from "@/components/blocks/jira-kanban/experimental/components/create-work-item-drop-zone";
 import {
@@ -11,6 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
+import {
+	JiraDropzoneDemoArcPanel,
+	JIRA_DROPZONE_DEMO_ARC_DEFAULTS,
+	toFlightProfileOverride,
+	type JiraDropzoneDemoArc,
+} from "./jira-dropzone-demo-arc-panel";
 import { JiraDropzoneDemoChip } from "./jira-dropzone-demo-chip";
 import {
 	JiraDropzone,
@@ -33,14 +39,23 @@ const DEMO_MEMBERS: readonly [JiraDropzoneMember, ...JiraDropzoneMember[]] = [
 const DEMO_COLUMNS = ["To Do", "In Progress"] as const;
 
 export default function JiraDropzonePage() {
+	const [arc, setArc] = useState<JiraDropzoneDemoArc>(JIRA_DROPZONE_DEMO_ARC_DEFAULTS);
+	const profile = useMemo(() => toFlightProfileOverride(arc), [arc]);
+
 	return (
-		<JiraDropzoneField>
-			<JiraDropzoneDemoStage />
+		<JiraDropzoneField profile={profile}>
+			<JiraDropzoneDemoStage arc={arc} onArcChange={setArc} />
 		</JiraDropzoneField>
 	);
 }
 
-function JiraDropzoneDemoStage() {
+function JiraDropzoneDemoStage({
+	arc,
+	onArcChange,
+}: Readonly<{
+	arc: JiraDropzoneDemoArc;
+	onArcChange: (next: JiraDropzoneDemoArc) => void;
+}>) {
 	const receive = useJiraDropzoneReceive();
 	const launchRef = useRef<HTMLDivElement>(null);
 	const stageRef = useRef<HTMLDivElement>(null);
@@ -89,6 +104,10 @@ function JiraDropzoneDemoStage() {
 	return (
 		<div
 			className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 rounded-lg bg-surface p-6"
+			data-jira-dropzone-arc-direction={arc.direction}
+			data-jira-dropzone-arc-peak={String(arc.peak)}
+			data-jira-dropzone-arc-rotate={String(arc.rotate)}
+			data-jira-dropzone-arc-strength={String(arc.strength)}
 			data-jira-dropzone-bounce={staggeredBounce ? "each" : "once"}
 			data-jira-dropzone-demo-dragging={demoDrag.dragging || undefined}
 			data-jira-dropzone-drop={staggeredDrop ? "stagger" : "cohort"}
@@ -119,6 +138,11 @@ function JiraDropzoneDemoStage() {
 					onCheckedChange={setStaggeredBounce}
 				/>
 			</div>
+			<JiraDropzoneDemoArcPanel
+				arc={arc}
+				onArcChange={onArcChange}
+				onPlay={() => fire(1, "To Do")}
+			/>
 			<div className="flex flex-wrap items-center justify-center gap-2">
 				{DEMO_MEMBERS.map((member) => (
 					<JiraDropzoneDemoChip
