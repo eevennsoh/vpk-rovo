@@ -4,6 +4,18 @@ import type {
 	ViewportPoint,
 } from "./jira-dropzone-types";
 
+/** Resolved `--duration-*` values the catalog duration control may emit. */
+export const JIRA_DROPZONE_DURATION_TOKEN_MS = {
+	"duration-fast": 100,
+	"duration-normal": 150,
+	"duration-medium": 200,
+	"duration-slow": 250,
+	"duration-slower": 400,
+	"duration-slowest": 600,
+} as const;
+
+export type JiraDropzoneDurationToken = keyof typeof JIRA_DROPZONE_DURATION_TOKEN_MS;
+
 export const JIRA_DROPZONE_HOVER_AREA_PX = 120;
 
 /** Compact well pop-in while a session drag is active. */
@@ -28,7 +40,7 @@ export const JIRA_DROPZONE_FULL_MOTION_PROFILE: FlightProfile = {
 	arcPeak: 0.5,
 	arcRotate: 0,
 	arcStrength: 0.42,
-	durationMs: 400,
+	durationMs: JIRA_DROPZONE_DURATION_TOKEN_MS["duration-slower"],
 	ease: [0.4, 1, 0.6, 1],
 	impact: {
 		damping: 12,

@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 
 const {
+	JIRA_DROPZONE_DURATION_TOKEN_MS,
 	JIRA_DROPZONE_FULL_MOTION_PROFILE,
 	JIRA_DROPZONE_REDUCED_MOTION_PROFILE,
 	resolveFlightProfile,
@@ -76,5 +77,20 @@ test("resolveFlightProfile merges live arc overrides unless motion is reduced", 
 	assert.equal(
 		resolveFlightProfile(true, { arcRotate: 0.9, durationMs: 450 }),
 		JIRA_DROPZONE_REDUCED_MOTION_PROFILE,
+	);
+});
+
+test("catalog duration choices stay on the VPK motion-duration scale", () => {
+	assert.deepEqual(JIRA_DROPZONE_DURATION_TOKEN_MS, {
+		"duration-fast": 100,
+		"duration-normal": 150,
+		"duration-medium": 200,
+		"duration-slow": 250,
+		"duration-slower": 400,
+		"duration-slowest": 600,
+	});
+	assert.equal(
+		JIRA_DROPZONE_FULL_MOTION_PROFILE.durationMs,
+		JIRA_DROPZONE_DURATION_TOKEN_MS["duration-slower"],
 	);
 });

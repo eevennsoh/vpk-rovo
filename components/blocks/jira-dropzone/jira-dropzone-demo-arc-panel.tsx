@@ -6,6 +6,7 @@ import { GUI } from "@/components/utils/gui";
 
 import {
 	JIRA_DROPZONE_DEMO_ARC_DEFAULTS,
+	JIRA_DROPZONE_DEMO_DURATION_OPTIONS,
 	type JiraDropzoneDemoArc,
 } from "./lib/jira-dropzone-demo-arc";
 import type { JiraDropzoneArcDirection } from "./lib/jira-dropzone-types";
@@ -46,7 +47,7 @@ export function JiraDropzoneDemoArcPanel({
 				title="Motion arc"
 				values={{
 					direction: arc.direction,
-					duration: arc.durationMs / 1000,
+					duration: arc.duration,
 					peak: arc.peak,
 					rotate: arc.rotate,
 					strength: arc.strength,
@@ -97,17 +98,13 @@ export function JiraDropzoneDemoArcPanel({
 					value={arc.direction}
 					valueKeys="direction"
 				/>
-				<GUI.Control
-					defaultValue={JIRA_DROPZONE_DEMO_ARC_DEFAULTS.durationMs / 1000}
-					description="How long the chip takes to travel the arc."
+				<GUI.SegmentedControl
+					description="Travel time from the VPK duration scale. slower is the production well recipe."
 					id="jira-dropzone-arc-duration"
 					label="Duration"
-					max={1.2}
-					min={0.1}
-					onChange={(seconds) => patch("durationMs", Math.round(seconds * 1000))}
-					step={0.01}
-					unit="s"
-					value={arc.durationMs / 1000}
+					onChange={(duration) => patch("duration", duration)}
+					options={JIRA_DROPZONE_DEMO_DURATION_OPTIONS}
+					value={arc.duration}
 					valueKeys="duration"
 				/>
 			</GUI.Panel>

@@ -1,12 +1,28 @@
-import { JIRA_DROPZONE_FULL_MOTION_PROFILE } from "./jira-dropzone-motion";
+import {
+	JIRA_DROPZONE_DURATION_TOKEN_MS,
+	JIRA_DROPZONE_FULL_MOTION_PROFILE,
+	type JiraDropzoneDurationToken,
+} from "./jira-dropzone-motion";
 import type {
 	FlightProfile,
 	JiraDropzoneArcDirection,
 } from "./jira-dropzone-types";
 
+export const JIRA_DROPZONE_DEMO_DURATION_OPTIONS = [
+	{ value: "duration-fast", label: "fast" },
+	{ value: "duration-normal", label: "normal" },
+	{ value: "duration-medium", label: "medium" },
+	{ value: "duration-slow", label: "slow" },
+	{ value: "duration-slower", label: "slower" },
+	{ value: "duration-slowest", label: "slowest" },
+] as const satisfies readonly {
+	value: JiraDropzoneDurationToken;
+	label: string;
+}[];
+
 export interface JiraDropzoneDemoArc {
 	readonly direction: JiraDropzoneArcDirection;
-	readonly durationMs: number;
+	readonly duration: JiraDropzoneDurationToken;
 	readonly peak: number;
 	readonly rotate: number;
 	readonly strength: number;
@@ -14,7 +30,7 @@ export interface JiraDropzoneDemoArc {
 
 export const JIRA_DROPZONE_DEMO_ARC_DEFAULTS: JiraDropzoneDemoArc = {
 	direction: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcDirection,
-	durationMs: JIRA_DROPZONE_FULL_MOTION_PROFILE.durationMs,
+	duration: "duration-slower",
 	peak: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcPeak,
 	rotate: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcRotate,
 	strength: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcStrength,
@@ -31,6 +47,6 @@ export function toFlightProfileOverride(
 		arcPeak: arc.peak,
 		arcRotate: arc.rotate,
 		arcStrength: arc.strength,
-		durationMs: arc.durationMs,
+		durationMs: JIRA_DROPZONE_DURATION_TOKEN_MS[arc.duration],
 	};
 }

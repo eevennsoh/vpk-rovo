@@ -105,6 +105,7 @@ function JiraDropzoneDemoStage({
 		<div
 			className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 rounded-lg bg-surface p-6"
 			data-jira-dropzone-arc-direction={arc.direction}
+			data-jira-dropzone-arc-duration={arc.duration}
 			data-jira-dropzone-arc-peak={String(arc.peak)}
 			data-jira-dropzone-arc-rotate={String(arc.rotate)}
 			data-jira-dropzone-arc-strength={String(arc.strength)}
