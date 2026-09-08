@@ -212,7 +212,7 @@ function InFlowAgentSessionColumnSurface({
 			<AgentSessionColumn
 				{...agentSessionColumn}
 				collapsed={!isPersistentExpanded}
-				collapsedPresentation="gutter"
+				collapsedPresentation={isEmbedded ? "column" : "gutter"}
 				collapsedRailHitSlopPx={isEmbedded && !isPersistentExpanded
 					? IN_FLOW_AGENT_SESSION_COLUMN_RAIL_HIT_SLOP_PX
 					: 0}
@@ -251,13 +251,13 @@ function InFlowAgentSessionColumnSurface({
 
 /**
  * The Untracked rail rests in the page's leading gutter. Hover temporarily
- * returns that same compact timeline to the board's original 24px column inset;
- * it never swaps dots for cards, and the session total stays hidden. The
- * hover-scaled hit area shows extra space without revealing the header count.
- * Only the column's expand control promotes the full column, and that
- * deliberate state persists after the pointer leaves. The full-height gutter
- * target sits behind each session row so a row can own its whole 24px band
- * while empty gutter space still opens the column preview.
+ * returns that same compact timeline to the board's original 24px column inset
+ * and reveals the collapsed header chrome — the session total and the expand
+ * control — without swapping dots for cards. Gutter rest is the only state
+ * that hides that chrome. Only the column's expand control promotes the full
+ * column, and that deliberate state persists after the pointer leaves. The
+ * full-height gutter target sits behind each session row so a row can own its
+ * whole 24px band while empty gutter space still opens the column preview.
  */
 export function InFlowAgentSessionColumn({
 	agentSessionColumn,

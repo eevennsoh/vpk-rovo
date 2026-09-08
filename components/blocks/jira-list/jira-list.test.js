@@ -332,6 +332,8 @@ test("JiraList column controls use outside-top overlay geometry without reservin
 		/left: anchorSide === "left" \? "anchor\(left\)" : "anchor\(right\)"/u,
 	);
 	assert.match(COLUMN_CONTROLS_SOURCE, /top: 0/u);
+	assert.match(COLUMN_CONTROLS_SOURCE, /top: "anchor\(top, -100vh\)"/u);
+	assert.doesNotMatch(COLUMN_CONTROLS_SOURCE, /anchor\(center\)/u);
 });
 
 test("JiraList column add overlay paints above the sticky checkbox column", () => {
@@ -345,7 +347,8 @@ test("JiraList column add overlay paints above the sticky checkbox column", () =
 		/pointer-events-none contents[\s\S]*?data-testid="jira-list-column-boundary-overlay"/u,
 	);
 	assert.match(COLUMN_CONTROLS_SOURCE, /fixed z-50 size-6 -translate-x-1\/2 -translate-y-1\/2/u);
-	assert.match(COLUMN_CONTROLS_SOURCE, /top: "anchor\(center\)"/u);
+	assert.match(COLUMN_CONTROLS_SOURCE, /top: "anchor\(top, -100vh\)"/u);
+	assert.match(COLUMN_CONTROLS_SOURCE, /positionVisibility: "anchors-visible"/u);
 	assert.match(COLUMN_CONTROLS_SOURCE, /absolute top-0 bottom-10 z-40 w-0 overflow-visible/u);
 	assert.match(
 		SOURCE,

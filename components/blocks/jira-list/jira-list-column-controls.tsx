@@ -95,9 +95,16 @@ export function JiraListColumnBoundary({
 										onPointerLeave={() => setIsHovered(false)}
 										size="icon"
 										style={{
-											left: anchorSide === "left" ? "anchor(left)" : "anchor(right)",
+											// Hang on the header's top edge so the control sits outside
+											// the header row. Unresolved anchors would otherwise paint
+											// `fixed` at the static position inside the table; keep
+											// that frame offscreen.
+											left: anchorSide === "left"
+												? "anchor(left, -100vw)"
+												: "anchor(right, -100vw)",
 											positionAnchor,
-											top: "anchor(center)",
+											positionVisibility: "anchors-visible",
+											top: "anchor(top, -100vh)",
 										}}
 										variant="outline"
 									/>

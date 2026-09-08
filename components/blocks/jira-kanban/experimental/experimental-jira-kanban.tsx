@@ -632,6 +632,7 @@ function ExperimentalJiraKanbanView({
 	const dragImageRef = useRef<HTMLDivElement | null>(null);
 	const handleCreatedCardArrivalComplete = useCreatedCardArrivalCompletion(
 		onCreatedCardArrivalComplete,
+		createdCardArrival?.appended ? 0 : undefined,
 	);
 	const [uncontrolledCollapsedColumns, setUncontrolledCollapsedColumns] = useState(
 		EMPTY_COLLAPSED_BOARD_COLUMNS,

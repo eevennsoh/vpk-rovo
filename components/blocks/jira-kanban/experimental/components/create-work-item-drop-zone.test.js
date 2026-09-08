@@ -94,6 +94,8 @@ test("board insertion marker avoids clipped paint before its anchor resolves", (
 	assert.match(lineSource, /positionAnchor: anchorName/u);
 	assert.match(lineSource, /positionVisibility: "anchors-visible"/u);
 	assert.match(lineSource, /top: "anchor\(center, -100vh\)"/u);
+	assert.match(lineSource, /border border-border bg-surface-overlay/u);
+	assert.doesNotMatch(lineSource, /boxShadow|elevation\.shadow\.overlay/u);
 	assert.doesNotMatch(lineSource, /absolute left-0 top-1\/2 flex size-6 -translate-y-1\/2/u);
 	assert.doesNotMatch(lineSource, /export const BoardCardHoverInsertionContext/u);
 	assert.match(contextSource, /export const BoardCardHoverInsertionContext/u);
