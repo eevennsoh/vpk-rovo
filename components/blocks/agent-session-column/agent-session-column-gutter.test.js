@@ -47,14 +47,14 @@ test("the v2 board pins the column outside its horizontal scrollport", () => {
 	assert.match(BOARD_SOURCE, /columnFrame=\{chrome\.headerFrame\}/u);
 });
 
-test("the in-flow host previews the compact rail before a click pins the full column", () => {
+test("the in-flow host pins the compact preview before expanding the full column", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /const \[isHovered, setIsHovered\] = useState\(false\)/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /const isCollapsedControlled = collapsed !== undefined/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /const isPersistentExpanded = isCollapsedControlled/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /\? !collapsed/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /: uncontrolledPersistentExpanded/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /: expansion === "expanded"/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsed=\{!isPersistentExpanded\}/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /isEmbedded: isHovered \|\| isPersistentExpanded/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /isEmbedded: isHovered \|\| isPinnedPreview \|\| isPersistentExpanded/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation=\{isEmbedded \? "column" : "gutter"\}/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
