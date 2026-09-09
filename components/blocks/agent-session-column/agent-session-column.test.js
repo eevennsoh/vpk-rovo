@@ -463,11 +463,11 @@ test("a notch is reachable and legible without a pointer", () => {
 	assert.match(INDEX_SOURCE, /hover:opacity-100 focus-visible:opacity-100/u);
 });
 
-test("the in-flow column move handle is a 12px icon, not a 24px button", () => {
+test("the in-flow column move handle is a 12px disabled icon, not a 24px button", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /data-session-column-move-handle=""/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/<button[\s\S]*?className="me-1 inline-flex size-3 shrink-0 cursor-grab[\s\S]*?text-icon-subtle[\s\S]*?\[&_svg\]:text-icon-subtle[\s\S]*?<\/button>/u,
+		/<button[\s\S]*?className="me-1 inline-flex size-3 shrink-0 cursor-grab[\s\S]*?text-icon-disabled[\s\S]*?\[&_svg\]:text-icon-disabled[\s\S]*?<\/button>/u,
 	);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
@@ -475,11 +475,11 @@ test("the in-flow column move handle is a 12px icon, not a 24px button", () => {
 	);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/<Icon className="size-3 text-icon-subtle"/u,
+		/<Icon className="size-3 text-icon-disabled"/u,
 	);
 	assert.doesNotMatch(
 		IN_FLOW_COLUMN_SOURCE,
-		/data-session-column-move-handle=""[\s\S]*?text-icon-disabled/u,
+		/data-session-column-move-handle=""[\s\S]*?text-icon-subtle/u,
 	);
 	assert.doesNotMatch(
 		IN_FLOW_COLUMN_SOURCE,
