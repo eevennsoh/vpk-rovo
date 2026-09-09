@@ -85,6 +85,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/jira-kanban/experimental/data/board-view-options.test.js",
 		"components/blocks/jira-kanban/experimental/lib/board-agent-session-visibility.test.js",
 		"components/blocks/jira-kanban/experimental/lib/board-agent-filter-collapse.test.js",
+		"components/blocks/jira-kanban/experimental/lib/board-agent-filter-scope.test.js",
 		"components/blocks/jira-kanban/experimental/lib/board-filter.test.js",
 		"components/blocks/jira-kanban/experimental/lib/pulse-roster-filter.test.js",
 		"components/blocks/jira-kanban/experimental/lib/timeline-activity.test.js",
