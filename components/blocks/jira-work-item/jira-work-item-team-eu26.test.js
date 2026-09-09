@@ -93,6 +93,7 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	const bodyOwner = readBlockFile("team-eu26/components/work-item-body.tsx");
 	const bodySource = readBlockFile("team-eu26/components/high-confidence-work-item-body.tsx");
 	const agentSessionsSource = readBlockFile("team-eu26/components/high-confidence-agent-sessions.tsx");
+	const highConfidenceDataSource = readBlockFile("team-eu26/data/high-confidence-work-item.ts");
 	const activitySource = readBlockFile("team-eu26/components/activity-panel.tsx");
 	const layoutSource = readBlockFile("team-eu26/components/experimental-work-item-layout.tsx");
 	const railOwner = readBlockFile("team-eu26/components/metadata-rail.tsx");
@@ -108,9 +109,14 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	assert.match(bodySource, /const \[statuses, setStatuses\] = useState<Record<string/u);
 	assert.doesNotMatch(bodySource, /useState\(initialStatus\)/u);
 	assert.match(bodyOwner, /<HighConfidenceAgentSessions \/>[\s\S]*\{activity\}/u);
-	for (const copy of ["Agent sessions", "Uses AI. Verify results.", "Generate onboarding software assets", "Scope VITA-1 and draft the next steps"]) {
+	for (const copy of ["Agent sessions", "Uses AI. Verify results."]) {
 		assert.match(agentSessionsSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 	}
+	for (const copy of ["Generate onboarding software assets", "Scope VITA-1 and draft the next steps"]) {
+		assert.match(highConfidenceDataSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+	}
+	assert.match(agentSessionsSource, /import \{ TEAM_EU26_AGENT_SESSIONS \} from "@\/components\/blocks\/jira-work-item\/team-eu26\/data\/high-confidence-work-item"/u);
+	assert.match(agentSessionsSource, /<span aria-hidden[\s\S]*<StatusIcon label="" size="small" \/>/u);
 	assert.match(activitySource, /meta\.initialPreset === "filled" \? "Activity" : "4 days ago"/u);
 	assert.match(layoutSource, /showInFlowComposer = initialPreset === "filled" && composerVisible/u);
 	assert.match(layoutSource, /data-team-eu26-comment-composer[\s\S]*\{composer\}/u);

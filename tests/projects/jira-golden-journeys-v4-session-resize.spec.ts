@@ -22,11 +22,13 @@ async function openBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({
 		timeout: 15_000,
 	});
-	const expandSessions = page.getByRole("button", { name: "Expand Unattached sessions column" });
-	if (await expandSessions.isVisible()) {
+	const options = page.getByRole("button", { name: "Unattached sessions column options" });
+	if (await options.isVisible()) {
 		await revealCollapsedAgentSessionColumn(page);
-		await expandSessions.click();
-		await page.getByRole("button", { name: "Expand more Unattached sessions column" }).click();
+		await options.click();
+		await page.getByRole("menuitem", { name: "Pin" }).click();
+		await page.getByRole("button", { name: "Unattached sessions column options" }).click();
+		await page.getByRole("menuitem", { name: "Expand" }).click();
 	}
 	await expect(
 		page.locator("[data-agent-session-column]").getByTestId("agent-session-row-lw-scope-thread"),

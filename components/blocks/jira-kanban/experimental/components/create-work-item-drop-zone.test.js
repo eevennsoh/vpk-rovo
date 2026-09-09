@@ -106,6 +106,12 @@ test("board insertion marker avoids clipped paint before its anchor resolves", (
 	assert.match(motionSource, /cardInsertion \?\? hoverInsertion/u);
 });
 
+test("board insertion rule and marker reveal without animation", () => {
+	const lineSource = readFileSync(join(__dirname, "board-card-insertion-line.tsx"), "utf8");
+
+	assert.doesNotMatch(lineSource, /animate-in|transition-opacity|duration-fast/u);
+});
+
 test("create button rests icon-subtlest and solidifies on hover", () => {
 	assert.match(
 		FOOTER,
