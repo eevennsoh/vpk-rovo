@@ -140,6 +140,7 @@ function JiraSessionUntrackedWorkActions({
  * The footer contains the link rationale and actions.
  */
 export function JiraSessionUntrackedWorkCard({
+	animateAvatars = true,
 	archiveActionLabel,
 	onAddAsSubtask,
 	onArchiveSession,
@@ -147,6 +148,7 @@ export function JiraSessionUntrackedWorkCard({
 	onLinkWorkItem,
 	session,
 }: Readonly<{
+	animateAvatars?: boolean;
 	archiveActionLabel?: string;
 	onAddAsSubtask?: (workItemKey: string) => void;
 	onArchiveSession?: () => void;
@@ -197,6 +199,7 @@ export function JiraSessionUntrackedWorkCard({
 				<div className="flex h-4 min-w-0 items-center gap-1">
 					<span aria-hidden="true" className="flex size-4 shrink-0 items-center justify-center">
 						<AgentAvatarVisual
+							animate={animateAvatars}
 							avatarClassName="after:border-0"
 							avatarSrc={session.agentAvatarSrc}
 							brandName={session.brandName}

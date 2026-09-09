@@ -25,6 +25,8 @@ const FLYOUT_DEMO_DATA_PATH = "components/blocks/agent-session-flyout/agent-sess
 const QUEUE_SESSION_DATA_PATH = "components/projects/jira-queue/data/queue-sessions.ts";
 const HOVER_CARD_PATH = "components/ui/hover-card.tsx";
 const HOVER_CARD_HANDLE_PATH = "components/ui/hover-card-handle.ts";
+const AVATAR_PATH = "components/ui/avatar.tsx";
+const AGENT_AVATAR_VISUAL_PATH = "components/ui-custom/agent-avatar-visual.tsx";
 const QUEUE_DETAIL_ARTIFACTS_PATH = "components/projects/jira-queue/components/queue-detail-artifacts.tsx";
 const QUEUE_DETAIL_PANEL_PATH = "components/projects/jira-queue/components/queue-detail-panel.tsx";
 
@@ -36,7 +38,7 @@ test("shared hover flyout defaults to session details and exposes composer and u
 	assert.match(source, /content = "details"/u);
 	assert.match(source, /case "details":/u);
 	assert.match(source, /import \{ JiraSessionDetailsCard \} from "\.\/jira-session-details-card";/u);
-	assert.match(source, /<JiraSessionDetailsCard session=\{props\.session\} \/>/u);
+	assert.match(source, /<JiraSessionDetailsCard[\s\S]*animateAvatars=\{props\.animateAvatars\}[\s\S]*session=\{props\.session\}/u);
 	assert.doesNotMatch(source, /<JiraSessionFlyoutBody session=\{session\} \/>/u);
 	assert.match(source, /case "composer":/u);
 	assert.match(source, /case "untracked-work":/u);
@@ -160,7 +162,7 @@ test("details hover card uses Figma chrome without panel property rows", () => {
 	const cardShellSource = readRepoFile(FLYOUT_CARD_PATH);
 	const detailsSource = readRepoFile(DETAILS_CARD_PATH);
 
-	assert.match(source, /<JiraSessionDetailsCard session=\{props\.session\} \/>/u);
+	assert.match(source, /<JiraSessionDetailsCard[\s\S]*animateAvatars=\{props\.animateAvatars\}[\s\S]*session=\{props\.session\}/u);
 	assert.match(cardShellSource, /flex w-\[320px\] max-w-\[calc\(100vw-48px\)\] flex-col gap-3 pt-3 text-text/u);
 	assert.match(cardShellSource, /border-t border-border-disabled p-3/u);
 	assert.match(detailsSource, /bodyClassName="gap-1"/u);
@@ -412,6 +414,27 @@ test("demo sessions share one moving shell with a fade-only content viewport", (
 	assert.match(hoverCardHandleSource, /const createHoverCardHandle = PreviewCardPrimitive\.createHandle/u);
 	assert.match(hoverCardSource, /function HoverCardViewport\b/u);
 	assert.match(hoverCardSource, /positionerClassName\?: string/u);
+});
+
+test("instant session flyouts disable nested avatar enter motion", () => {
+	const flyoutSource = readRepoFile(FLYOUT_BODY_PATH);
+	const detailsSource = readRepoFile(DETAILS_CARD_PATH);
+	const untrackedSource = readRepoFile(UNTRACKED_CARD_PATH);
+	const avatarSource = readRepoFile(AVATAR_PATH);
+	const agentAvatarSource = readRepoFile(AGENT_AVATAR_VISUAL_PATH);
+
+	assert.match(flyoutSource, /animateAvatars=\{!instantPosition\}/u);
+	assert.match(flyoutSource, /<JiraSessionDetailsCard\s+animateAvatars=\{props\.animateAvatars\}/u);
+	assert.match(flyoutSource, /<JiraSessionUntrackedWorkCard[\s\S]*animateAvatars=\{props\.animateAvatars\}/u);
+	assert.match(detailsSource, /animateAvatars = true/u);
+	assert.match(detailsSource, /<Avatar[\s\S]*animate=\{animateAvatars\}/u);
+	assert.match(detailsSource, /<AgentAvatarVisual[\s\S]*animate=\{animateAvatars\}/u);
+	assert.match(untrackedSource, /animateAvatars = true/u);
+	assert.match(untrackedSource, /<AgentAvatarVisual[\s\S]*animate=\{animateAvatars\}/u);
+	assert.match(agentAvatarSource, /animate\?: boolean;/u);
+	assert.match(agentAvatarSource, /<Avatar[\s\S]*animate=\{animate\}/u);
+	assert.match(avatarSource, /animate\?: boolean/u);
+	assert.match(avatarSource, /!animate \|\| reduce \|\| disabled/u);
 });
 
 test("board-scoped suspension closes Jira session flyouts and blocks trigger opens", () => {
