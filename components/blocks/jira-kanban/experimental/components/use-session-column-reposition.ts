@@ -21,7 +21,19 @@ interface ColumnDrag {
 	captureElement: HTMLElement;
 	centers: number[];
 	scrollLeft: number;
+	sourceScrollsWithBoard: boolean;
 	scrollport: HTMLElement;
+}
+
+function copyDescendantScrollOffsets(source: HTMLElement, clone: HTMLElement) {
+	const sourceDescendants = [...source.querySelectorAll<HTMLElement>("*")];
+	const cloneDescendants = [...clone.querySelectorAll<HTMLElement>("*")];
+	for (const [index, sourceDescendant] of sourceDescendants.entries()) {
+		const cloneDescendant = cloneDescendants[index];
+		if (!cloneDescendant) break;
+		if (sourceDescendant.scrollTop !== 0) cloneDescendant.scrollTop = sourceDescendant.scrollTop;
+		if (sourceDescendant.scrollLeft !== 0) cloneDescendant.scrollLeft = sourceDescendant.scrollLeft;
+	}
 }
 
 function cloneSessionColumnDragSource(
@@ -188,6 +200,7 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 				return box.left + box.width / 2;
 			}),
 			scrollLeft: scrollport.scrollLeft,
+			sourceScrollsWithBoard: placement.index > 0,
 			scrollport,
 		};
 	};
@@ -206,6 +219,7 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 			current.startWidth,
 		);
 		placement.rootRef.current?.append(current.source);
+		copyDescendantScrollOffsets(current.element, current.source);
 		const firstColumn = current.scrollport.querySelector<HTMLElement>("[data-jira-kanban-column]");
 		const firstCard = firstColumn?.querySelector<HTMLElement>("article");
 		if (firstColumn && firstCard) {
@@ -225,6 +239,9 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 			const scroll = current.x > box.right - 40 ? 12 : current.x < box.left + 40 ? -12 : 0;
 			if (scroll) current.scrollport.scrollLeft += scroll;
 			const offset = current.scrollport.scrollLeft - current.scrollLeft;
+			if (current.sourceScrollsWithBoard && current.source) {
+				current.source.style.transform = `translateX(${current.startLeft - offset}px)`;
+			}
 			const next = current.centers.filter((center) => current.x > center - offset).length;
 			if (next !== current.preview) {
 				current.preview = next;
