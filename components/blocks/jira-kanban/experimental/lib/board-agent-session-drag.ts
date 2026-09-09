@@ -90,6 +90,8 @@ export function resolveBoardCreateDropzoneDrag(
 export type BoardAgentSessionDropZone =
 	| {
 		bounds: BoardAgentSessionDropBounds;
+		/** Retention must never reach beyond the visible card-list scrollport. */
+		clip?: BoardAgentSessionDropBounds;
 		insertion: BoardCardInsertion;
 		kind: "card-gap";
 	}
@@ -288,8 +290,9 @@ function isInteriorCardGap(insertAtIndex: number, cardCount: number): boolean {
 }
 
 /**
- * A card's rect with its attach chin subtracted, which is the only rect a gap
- * band may be measured against.
+ * A card's rect with only newly added attach-preview growth subtracted.
+ * Occupied slots replace existing rows and must pass zero; an empty activity
+ * area contributes its entire new height, including vertical padding.
  *
  * The chin is the one part of a card whose presence depends on the drag itself:
  * it opens when attach proximity arms and closes when proximity reports
@@ -647,6 +650,8 @@ export function createBoardAgentSessionDragTransaction<
 	};
 }
 
+const BOARD_GAP_EXIT_TOLERANCE_PX = 6;
+
 export function updateBoardAgentSessionDragTransaction<
 	TSession extends Readonly<{ id: string }>,
 >(
@@ -654,11 +659,31 @@ export function updateBoardAgentSessionDragTransaction<
 	pointer: BoardAgentSessionDragPointer,
 	zones: readonly BoardAgentSessionDropZone[],
 ): BoardAgentSessionDragTransaction<TSession> {
+	let target = resolveBoardAgentSessionDropTarget(transaction.origin, pointer, zones);
+	const previous = transaction.target;
+	// Enter at the exact seam; leave only after moving clearly beyond it.
+	// Reuse live geometry so scrolling/removing a target cannot retain stale slots.
+	// Explicit create wells and other gaps still take precedence immediately.
+	if (
+		previous?.kind === "create-board-gap"
+		&& previous.insertion.relativeToCardCode !== null
+		&& (!target || target.kind === "attach")
+		&& !hasOutrankingDropZone(transaction.origin, pointer, zones)
+	) {
+		const retained = zones.some((zone) => zone.kind === "card-gap"
+			&& zone.insertion.columnTitle === previous.insertion.columnTitle
+			&& zone.insertion.insertAtIndex === previous.insertion.insertAtIndex
+			&& (!zone.clip || containsPointer(zone.clip, pointer))
+			&& distanceFromPointToRect(pointer, zone.bounds) <= BOARD_GAP_EXIT_TOLERANCE_PX);
+		if (retained) target = previous;
+	}
 	return {
 		...transaction,
 		pointer,
-		proximity: resolveBoardAgentSessionAttachProximity(transaction.origin, pointer, zones),
-		target: resolveBoardAgentSessionDropTarget(transaction.origin, pointer, zones),
+		proximity: target?.kind === "create-board-gap"
+			? null
+			: resolveBoardAgentSessionAttachProximity(transaction.origin, pointer, zones),
+		target,
 	};
 }
 

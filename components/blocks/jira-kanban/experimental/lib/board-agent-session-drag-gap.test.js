@@ -11,6 +11,7 @@ const {
 	resolveBoardAgentSessionDropTarget,
 	toChinFreeBoardCardBounds,
 	toListSessionDropIntent,
+	updateBoardAgentSessionDragTransaction,
 } = require("./board-agent-session-drag.ts");
 const {
 	BOARD_CARD_INSERTION_BAND_PX,
@@ -47,6 +48,35 @@ const GAP_CREATE_WELL = {
 const CARD_A_GAPS = parseBoardCardGapZones(GAP_COLUMN, "PAY-118", "0", "2", CARD_A.bounds, GAP_BAND_PX);
 const CARD_B_GAPS = parseBoardCardGapZones(GAP_COLUMN, "PAY-107", "1", "2", CARD_B.bounds, GAP_BAND_PX);
 const GAP_ZONES = [CARD_A, CARD_B, ...CARD_A_GAPS, ...CARD_B_GAPS];
+
+test("an armed gap survives small pointer jitter but releases to deliberate card movement", () => {
+	let drag = createBoardAgentSessionDragTransaction(cohortOf(), { kind: "untracked" }, { x: 100, y: 104 }, GAP_ZONES);
+	for (const y of [119, 121, 120, 123, 119, 121]) {
+		drag = updateBoardAgentSessionDragTransaction(drag, { x: 100, y }, GAP_ZONES);
+		assert.equal(drag.target?.kind, "create-board-gap");
+		assert.equal(drag.proximity, null);
+	}
+	assert.equal(resolveBoardAgentSessionDropAction(drag).kind, "create-board-gap");
+	drag = updateBoardAgentSessionDragTransaction(drag, { x: 100, y: 140 }, GAP_ZONES);
+	assert.deepEqual(drag.target, { kind: "attach", cardCode: "PAY-107" });
+	assert.equal(drag.proximity?.cardCode, "PAY-107");
+	// Re-entry still needs the original band; the release margin does not grow it.
+	drag = updateBoardAgentSessionDragTransaction(drag, { x: 100, y: 123 }, GAP_ZONES);
+	assert.equal(drag.target?.kind, "attach");
+});
+
+test("gap retention uses live zones and never overrides a create well or scrollport clip", () => {
+	const drag = createBoardAgentSessionDragTransaction(cohortOf(), { kind: "untracked" }, { x: 100, y: 104 }, GAP_ZONES);
+	assert.equal(updateBoardAgentSessionDragTransaction(drag, { x: 100, y: 104 }, []).target, null);
+	const well = { ...GAP_CREATE_WELL, bounds: { left: 0, right: 200, top: 121, bottom: 260 } };
+	assert.equal(updateBoardAgentSessionDragTransaction(drag, { x: 100, y: 123 }, [...GAP_ZONES, well]).target?.kind, "create");
+	const clippedZones = GAP_ZONES.map((zone) => zone.kind === "card-gap"
+		? { ...zone, clip: { left: 0, right: 200, top: 0, bottom: 120 } }
+		: zone);
+	assert.equal(updateBoardAgentSessionDragTransaction(drag, { x: 100, y: 123 }, clippedZones).target?.kind, "attach");
+	const competingGap = { ...CARD_B_GAPS[0], insertion: { ...CARD_B_GAPS[0].insertion, insertAtIndex: 2 } };
+	assert.equal(updateBoardAgentSessionDragTransaction(drag, { x: 100, y: 104 }, [...GAP_ZONES, competingGap]).target, null);
+});
 
 test("only interior seams are published, and a card's two bands clamp apart at its midpoint", () => {
 	// The first card of the column owns its trailing seam only: gap 0 is the
