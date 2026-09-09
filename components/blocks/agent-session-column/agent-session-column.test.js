@@ -160,28 +160,6 @@ test("the column does not fuse large session cards into one stroke", () => {
 	assert.doesNotMatch(CARD_SOURCE, /dash-4-2/u);
 });
 
-test("the enclosed body clip carries the well radius, so the fade cannot wash the bottom corners", () => {
-	// Enclosed keeps overflow-hidden off the well (header focus rings), so the
-	// clip is a rectangle inset 1px inside the stroke. radius.xlarge curves
-	// inward from that rectangle's bottom corners, putting the arc and the tail
-	// of each side stroke inside the opaque end of the bottom scroll fade.
-	// Matching the well's bottom radius on the clip keeps the fade off the arc.
-	assert.match(INDEX_SOURCE, /const AGENT_SESSION_ENCLOSED_BODY =/u);
-	assert.match(
-		INDEX_SOURCE,
-		/const AGENT_SESSION_ENCLOSED_BODY =\s*\n?\s*"[^"]*overflow-hidden[^"]*rounded-b-xl/u,
-	);
-	assert.match(
-		INDEX_SOURCE,
-		/<div className=\{AGENT_SESSION_ENCLOSED_BODY\}>\s*\n\s*\{body\}/u,
-	);
-	// The old rectangular clip must not come back alongside the rounded one.
-	assert.doesNotMatch(
-		INDEX_SOURCE,
-		/className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"/u,
-	);
-});
-
 test("the fill starts below the header, so the title shares the status columns' baseline", () => {
 	// The header has to sit on the board surface at the same inset and baseline
 	// as `To do`. Filling the <section> itself would push the title 8px in and

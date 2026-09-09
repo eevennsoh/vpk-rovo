@@ -276,6 +276,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/agent-session-column/agent-session-column-markers.test.js",
 		"components/blocks/agent-session-column/agent-session-column-arrival.test.js",
 		"components/blocks/agent-session-column/agent-session-column.test.js",
+		"components/blocks/agent-session-column/agent-session-column-frame.test.js",
 		"components/blocks/artifact-pane/artifact-pane.test.js",
 		"components/blocks/chatgpt/create-project-form.test.js",
 		"components/blocks/jira-issue/agent-activity.test.js",
