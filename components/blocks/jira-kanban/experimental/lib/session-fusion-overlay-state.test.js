@@ -4,6 +4,7 @@ const test = require("node:test");
 const {
 	SESSION_FUSION_ROW_RADIUS_PX,
 	SESSION_FUSION_SHELL_RADIUS_PX,
+	resolveSessionLinkFlashOnDragStart,
 	toBoardAgentSessionLinkFlash,
 	toSessionFusionDrop,
 	toSessionFusionLandTarget,
@@ -179,4 +180,27 @@ test("an empty cohort has no row to acknowledge", () => {
 		}),
 		null,
 	);
+});
+
+test("a gesture that starts mid-flight inherits the pending sweep instead of erasing it", () => {
+	const pending = toBoardAgentSessionLinkFlash({
+		members: [CLAUDE],
+		proximity: proximityOf(),
+		targetCardCode: "PAY-121",
+		token: 3,
+	});
+
+	// The drop is committed and its flights are still in the air. Starting the
+	// next drag flushes the pending record and writes `linkFlash` in the same
+	// commit, so this has to return the flash: a `null` here batches last and
+	// the row never sees token 3.
+	assert.deepEqual(resolveSessionLinkFlashOnDragStart({ flash: pending }), pending);
+
+	// Nothing pending means the previous drop already had its commit. Clearing
+	// keeps a finished sweep from replaying when rows remount mid-drag.
+	assert.equal(resolveSessionLinkFlashOnDragStart(null), null);
+
+	// A committed move that earned no sweep still parks a pending record, and
+	// that must not resurrect an older flash.
+	assert.equal(resolveSessionLinkFlashOnDragStart({ flash: null }), null);
 });

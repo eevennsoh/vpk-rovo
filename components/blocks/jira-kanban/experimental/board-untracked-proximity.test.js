@@ -190,6 +190,37 @@ test("release re-hit-tests the current pointer against current board geometry", 
 	assert.match(DRAG_HOOK_SOURCE, /commitDrop\(finalTransaction\)/u);
 });
 
+test("the link sweep survives an overlay that never reports its flights landed", () => {
+	// The chip flights are decoration: a portal behind a lazy chunk, gated on
+	// reduced motion. Holding the acknowledgement for a committed link on their
+	// callback is what makes the sweep look intermittent, so the drop arms its
+	// own deadline off the flights' published budget and flushes either way.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/settleDeadlineRef\.current = setTimeout\(\s*flushPendingAttach,\s*resolveJiraLinkingReleaseSettleMs\(release, JIRA_LINKING_FULL_DROP_PROFILE\)\s*\+ SESSION_FUSION_SETTLE_GRACE_MS,/u,
+	);
+	// Whoever gets there first wins; the deadline must not leave a timer armed
+	// after the overlay settles, or outlive the board.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/const flushPendingAttach = useCallback\(\(\) => \{\s*if \(settleDeadlineRef\.current !== null\) \{\s*clearTimeout\(settleDeadlineRef\.current\);/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/useEffect\(\(\) => \(\) => \{\s*if \(settleDeadlineRef\.current !== null\) \{\s*clearTimeout\(settleDeadlineRef\.current\);/u,
+	);
+	// A fresh gesture flushes the pending sweep and then writes it back, rather
+	// than batching a `null` over the flash it just handed to the rows.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/const pendingBeforeFlush = pendingAttachRef\.current;\s*if \(pendingBeforeFlush\) \{\s*flushPendingAttach\(\);\s*\}/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/setLinkFlash\(resolveSessionLinkFlashOnDragStart\(pendingBeforeFlush\)\);/u,
+	);
+});
+
 test("list-row hit testing reads shared scrollport geometry once per drag evaluation", () => {
 	assert.match(
 		DRAG_HOOK_SOURCE,
