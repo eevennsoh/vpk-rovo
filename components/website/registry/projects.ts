@@ -34,6 +34,10 @@ export const PROJECT_DEMOS: Record<string, ComponentType> = {
 	"jira-queue": dynamic(() => import("../demos/projects/jira-queue-demo"), {
 		ssr: false,
 	}),
+	"jira-team-eu26": dynamic(
+		() => import("../demos/projects/jira-team-eu26-demo"),
+		{ ssr: false },
+	),
 	rovo: dynamic(() => import("../demos/projects/rovo-demo"), {
 		ssr: false,
 	}),

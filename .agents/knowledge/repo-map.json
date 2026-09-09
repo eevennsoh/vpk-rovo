@@ -3644,8 +3644,8 @@
 	},
 	"appPages": {
 		"summary": {
-			"ownerImportCount": 92,
-			"pageCount": 68
+			"ownerImportCount": 93,
+			"pageCount": 69
 		},
 		"pages": [
 			{
@@ -4090,6 +4090,22 @@
 				"shellOwnerCount": 0,
 				"shellOwners": [],
 				"source": "app/jira-queue/page.tsx"
+			},
+			{
+				"ownerCount": 1,
+				"owners": [
+					{
+						"importPath": "@/components/website/demo-registry-loader",
+						"source": "components/website/demo-registry-loader",
+						"symbols": [
+							"loadDemoComponent"
+						]
+					}
+				],
+				"routePath": "/jira-team-eu26",
+				"shellOwnerCount": 0,
+				"shellOwners": [],
+				"source": "app/jira-team-eu26/page.tsx"
 			},
 			{
 				"ownerCount": 0,
@@ -5403,7 +5419,7 @@
 	},
 	"components": {
 		"summary": {
-			"manifestEntryCount": 439,
+			"manifestEntryCount": 440,
 			"categoryCount": 9
 		},
 		"categories": [
@@ -6129,7 +6145,7 @@
 			},
 			{
 				"category": "projects",
-				"entryCount": 17,
+				"entryCount": 18,
 				"entries": [
 					{
 						"category": "projects",
@@ -6196,6 +6212,12 @@
 						"slug": "jira-queue",
 						"name": "Jira Queue",
 						"importPath": "@/components/projects/jira-queue"
+					},
+					{
+						"category": "projects",
+						"slug": "jira-team-eu26",
+						"name": "Jira Team EU26",
+						"importPath": "@/components/projects/jira-team-eu26"
 					},
 					{
 						"category": "projects",
