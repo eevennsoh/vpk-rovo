@@ -3,7 +3,8 @@
 // oxlint-disable react-doctor/no-noninteractive-tabindex -- These surfaces intentionally receive keyboard focus for application-style keyboard handling or card-level shortcuts.
 // oxlint-disable react-doctor/prefer-module-scope-pure-function -- These helpers are intentionally local to the component/demo because they depend on the surrounding interaction contract.
 
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { SessionColumnSlot, SessionColumnDropMarker } from "./components/session-column-placement";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import AiAgentAddIcon from "@atlaskit/icon-lab/core/ai-agent-add";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
@@ -876,7 +877,9 @@ function ExperimentalJiraKanbanView({
 						>
 						<ExclusiveCreateWellProximityProvider>
 						<div className="flex min-h-full flex-1 items-stretch gap-2">
-						{boardColumns.map((column) => (
+						<SessionColumnDropMarker index={0} />
+						{boardColumns.map((column, columnIndex) => (
+						<Fragment key={column.title}>
 						<BoardColumnShell
 							chrome={chrome}
 							collapsed={isBoardColumnCollapsed(collapsedColumns, column.title)}
@@ -1018,6 +1021,9 @@ function ExperimentalJiraKanbanView({
 							</BoardColumn>
 							)}
 						</BoardColumnShell>
+						<SessionColumnDropMarker index={columnIndex + 1} />
+						<SessionColumnSlot index={columnIndex + 1} />
+						</Fragment>
 						))}
 						</div>
 						</ExclusiveCreateWellProximityProvider>

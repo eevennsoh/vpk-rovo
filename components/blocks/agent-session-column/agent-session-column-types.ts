@@ -50,6 +50,14 @@ export interface AgentSessionColumnProps extends Omit<
 	collapsedPresentation?: "column" | "gutter";
 	/** Host-provided next expansion step for a staged column reveal. */
 	collapsedExpandAction?: { label: string; icon: ReactNode };
+	/** Whether the current expand/collapse action changes the column width. */
+	toggleChangesWidth?: boolean;
+	/** Keep the expand tooltip mounted when its staged action is pressed. */
+	preserveExpandTooltipOnPress?: boolean;
+	/** Optional host-owned handle for repositioning the entire column. */
+	headerDragHandle?: ReactNode;
+	/** Temporary presentation while the host repositions this column. */
+	isRepositioning?: boolean;
 	/**
 	 * Extra horizontal pointer space on each side of the collapsed rail,
 	 * without moving its markers.

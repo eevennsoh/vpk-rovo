@@ -70,6 +70,14 @@ test("the in-flow host pins the compact preview before expanding the full column
 	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation=\{isEmbedded \? "column" : "gutter"\}/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
+		/toggleChangesWidth=\{isPersistentExpanded \|\| isPinnedPreview\}/u,
+	);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /preserveExpandTooltipOnPress/u);
+	assert.match(INDEX_SOURCE, /if \(!shouldReduceMotion && toggleChangesWidth\)/u);
+	assert.match(INDEX_SOURCE, /eventDetails\.reason === "trigger-press"/u);
+	assert.match(INDEX_SOURCE, /eventDetails\.cancel\(\)/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
 		/from "\.\.\/lib\/in-flow-agent-session-column-geometry"/u,
 	);
 	assert.match(
@@ -126,7 +134,7 @@ test("underlap paints a solid 24px surface gutter fill with no fade", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /ref=\{hostRef\}/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/className="relative z-30 flex min-h-0 shrink-0 self-stretch"/u,
+		/"z-30 flex min-h-0 shrink-0 self-stretch"/u,
 	);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
@@ -179,7 +187,7 @@ test("the gutter hides the count", () => {
 	assert.match(INDEX_SOURCE, /const isGutterCollapsed = collapsed && collapsedPresentation === "gutter"/u);
 	assert.doesNotMatch(INDEX_SOURCE, /isGutterCollapsed \? "justify-center" : null/u);
 	assert.match(INDEX_SOURCE, /const hideGutterCount = isGutterCollapsed/u);
-	assert.match(INDEX_SOURCE, /hideGutterCount \? "opacity-0" : "opacity-100"/u);
+	assert.match(INDEX_SOURCE, /hideGutterCount \|\| isRepositioning \? "opacity-0" : "opacity-100"/u);
 	assert.match(INDEX_SOURCE, /style=\{resolveCollapsedHeaderStyle\(layout\)\}/u);
 	assert.match(INDEX_SOURCE, /header: collapsed \? collapsedHeader : expandedHeader/u);
 	assert.doesNotMatch(INDEX_SOURCE, /const gutterHeader = \(/u);
@@ -190,7 +198,7 @@ test("flyouts stay suspended in the gutter and open once the compact rail is emb
 	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /isEmbeddingTransition/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/JiraSessionFlyoutSuspensionProvider[\s\S]{0,120}?suspended=\{sessionFlyoutsSuspended \|\| !isEmbedded\}/u,
+		/JiraSessionFlyoutSuspensionProvider[\s\S]{0,120}?suspended=\{sessionFlyoutsSuspended \|\| reposition\.dragging \|\| !isEmbedded\}/u,
 	);
 	assert.doesNotMatch(
 		IN_FLOW_COLUMN_SOURCE,
@@ -213,7 +221,7 @@ test("the tucked gutter hides the session total; hover preview shows collapsed h
 	);
 	assert.match(
 		INDEX_SOURCE,
-		/className=\{isGutterCollapsed \? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL\}/u,
+		/: isGutterCollapsed \? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL\}/u,
 	);
 	assert.match(INDEX_SOURCE, /const HEADER_CONTROL_IN_GUTTER = cn\(\s*HEADER_CONTROL_ON_REVEAL,\s*"hover:opacity-0",\s*\)/u);
 	assert.match(INDEX_SOURCE, /<TextMorphing\s+config=\{HEAD_COUNT_MORPH\}/u);
@@ -235,13 +243,13 @@ test("the tucked gutter hides the session total; hover preview shows collapsed h
 	);
 });
 
-test("the gutter preview moves into the old in-flow inset with Motion", () => {
-	assert.match(IN_FLOW_COLUMN_SOURCE, /import \{ motion, useReducedMotion, type Variants \} from "motion\/react";/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /<motion\.div/u);
+test("the gutter preview and footprint share CSS hover timing in both directions", () => {
 	assert.match(IN_FLOW_GEOMETRY_SOURCE, /IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX = 24/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX = -5/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /animate=\{isEmbedded \? "embedded" : "gutter"\}/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /transform: `translateX\(\$\{IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX\}px\)`/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /transform: `translateX\(\$\{isEmbedded \? IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX : IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX\}px\)`/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /"transform var\(--duration-normal\) var\(--ease-out-practical\)"/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /transition: columnWidthPx === AGENT_SESSION_COLUMN_COLLAPSED_WIDTH_PX \? transition : expansionTransition/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /transition: shouldReduceMotion \? "none" : IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_TRANSITION/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /willChange: shouldReduceMotion \? undefined : "transform"/u);
 	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /animate=\{\{ width:/u);
 });

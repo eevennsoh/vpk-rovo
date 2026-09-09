@@ -22,6 +22,7 @@ import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Icon } from "@/components/ui/icon";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollMaskEdgeOverlay } from "@/components/visual/scroll-mask";
+import TextContinuity from "@/components/visual/text-continuity";
 import TextMorphing from "@/components/visual/text-morphing";
 import type { TextMorphConfig } from "@/components/visual/text-morphing/data";
 import { token } from "@/lib/tokens";
@@ -133,12 +134,14 @@ function resolveAgentSessionPlaneClassName(
 
 function renderAgentSessionColumnFrame({
 	body,
+	bodyHidden,
 	collapsed,
 	header,
 	layout,
 	planeClassName,
 }: Readonly<{
 	body: ReactNode;
+	bodyHidden: boolean;
 	collapsed: boolean;
 	header: ReactNode;
 	layout: AgentSessionColumnLayout;
@@ -150,14 +153,14 @@ function renderAgentSessionColumnFrame({
 			return (
 				<>
 					{header}
-					<div className={planeClassName}>{body}</div>
+					<div aria-hidden={bodyHidden || undefined} inert={bodyHidden} className={planeClassName}>{body}</div>
 				</>
 			);
 		case "enclosed":
 			return collapsed ? (
 				<>
 					{header}
-					<div className={planeClassName}>{body}</div>
+					<div aria-hidden={bodyHidden || undefined} inert={bodyHidden} className={planeClassName}>{body}</div>
 				</>
 			) : (
 				<div className={planeClassName}>
@@ -292,6 +295,8 @@ export function AgentSessionColumn({
 	headerSurface = "column",
 	columnFrame = DEFAULT_AGENT_SESSION_COLUMN_FRAME,
 	className,
+	headerDragHandle,
+	isRepositioning = false,
 	collapsed: collapsedProp,
 	collapsedPresentation = "column",
 	collapsedExpandAction,
@@ -312,9 +317,11 @@ export function AgentSessionColumn({
 	onSelectedItemIdChange,
 	onToggleVisibility,
 	playGutterIntro = false,
+	preserveExpandTooltipOnPress = false,
 	selectedItemId: selectedItemIdProp,
 	title = "Unattached sessions",
 	triage,
+	toggleChangesWidth = true,
 	...sessionProps
 }: Readonly<AgentSessionColumnProps>) {
 	const shouldReduceMotion = useReducedMotion();
@@ -384,6 +391,7 @@ export function AgentSessionColumn({
 		};
 	}, [handleArchiveSession, triage]);
 	const displayTitle = view === "hidden" ? "Archived" : title;
+	const [isExpandTooltipOpen, setIsExpandTooltipOpen] = useState(false);
 	// The rail and the card list have very different intrinsic widths, so the
 	// overflow has to be clipped for the duration of the width transition. Any
 	// longer and it would clip the 4px focus rings on the cards inside.
@@ -555,7 +563,7 @@ export function AgentSessionColumn({
 		if (nextCollapsed) {
 			columnRef.current?.focus();
 		}
-		if (!shouldReduceMotion) {
+		if (!shouldReduceMotion && toggleChangesWidth) {
 			setIsResizing(true);
 		}
 		if (nextCollapsed) {
@@ -585,6 +593,7 @@ export function AgentSessionColumn({
 	const planeClassName = cn(
 		resolveAgentSessionPlaneClassName(layout, collapsed),
 		isGutterCollapsed ? "bg-transparent" : null,
+		collapsed && isRepositioning ? "invisible" : null,
 	);
 	// Gutter rest hides the digits and the expand icon so the rail can sit
 	// in the page inset. Hover preview switches to column presentation, so
@@ -596,28 +605,51 @@ export function AgentSessionColumn({
 		: `${sessionCount} sessions`;
 	const collapsedExpandControl = (
 		<TooltipProvider>
-			<Tooltip>
+			<Tooltip
+				animate={!isRepositioning}
+				disabled={isRepositioning}
+				onOpenChange={preserveExpandTooltipOnPress
+					? (nextOpen, eventDetails) => {
+						if (!nextOpen && eventDetails.reason === "trigger-press") {
+							eventDetails.cancel();
+							return;
+						}
+						setIsExpandTooltipOpen(nextOpen);
+					}
+					: undefined}
+				open={preserveExpandTooltipOnPress ? isExpandTooltipOpen && !isRepositioning : undefined}
+			>
 				<TooltipTrigger
 					render={
 						<Button
 							aria-label={`${collapsedExpandAction?.label ?? "Expand"} ${title} column`}
-							className={isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL}
+							aria-description={headerDragHandle ? "Drag horizontally to move the column, or use Alt with the arrow keys." : undefined}
+							className={isRepositioning
+								? "relative z-50 cursor-grabbing border border-border bg-surface-overlay! text-icon-subtle opacity-100 transition-none hover:bg-surface-overlay! active:bg-surface-overlay!"
+								: isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL}
 							onClick={handleToggleCollapsed}
 							size="icon-compact"
 							style={{ width: "100%" }}
 							type="button"
-							variant="ghost"
+							variant={isRepositioning ? "outline" : "ghost"}
 						/>
 					}
 				>
 					{collapsedExpandAction?.icon ?? <Icon className="text-icon-subtle" render={<GrowHorizontalIcon label="" />} />}
 				</TooltipTrigger>
-				<TooltipContent>{collapsedExpandAction?.label ?? "Expand"}</TooltipContent>
+				<TooltipContent>
+					{preserveExpandTooltipOnPress ? (
+						<TextContinuity className="inline-flex whitespace-nowrap">
+							{collapsedExpandAction?.label ?? "Expand"}
+						</TextContinuity>
+					) : (collapsedExpandAction?.label ?? "Expand")}
+				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
 	);
 	const collapsedHeader = (
 		<div
+			data-agent-session-column-header=""
 			className={cn(
 				"flex min-w-0 items-center gap-1.5",
 				layout === "enclosed" ? "border border-solid border-transparent" : null,
@@ -637,7 +669,7 @@ export function AgentSessionColumn({
 						"absolute inset-x-1 inset-y-0 flex items-center justify-center text-xs font-normal",
 						"text-text-subtlest",
 						HEADER_COUNT_AT_REST,
-						hideGutterCount ? "opacity-0" : "opacity-100",
+						hideGutterCount || isRepositioning ? "opacity-0" : "opacity-100",
 					)}
 					data-agent-session-column-count=""
 				>
@@ -652,6 +684,7 @@ export function AgentSessionColumn({
 	);
 	const expandedHeader = (
 		<AgentSessionColumnHeader
+			dragHandle={headerDragHandle}
 			collapseLabel={headerSurface === "panel"
 				? "Collapse panel"
 				: `Collapse ${title} column`}
@@ -795,6 +828,7 @@ export function AgentSessionColumn({
 		>
 			{renderAgentSessionColumnFrame({
 				body,
+				bodyHidden: collapsed && isRepositioning,
 				collapsed,
 				header: collapsed ? collapsedHeader : expandedHeader,
 				layout,

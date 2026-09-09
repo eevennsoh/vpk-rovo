@@ -361,7 +361,7 @@ test("column resize buttons swap icons without using selected button state", () 
 	assert.match(HEADER_SOURCE, /<TooltipContent>Collapse<\/TooltipContent>/u);
 	assert.match(INDEX_SOURCE, /aria-label=\{`\$\{collapsedExpandAction\?\.label \?\? "Expand"\} \$\{title\} column`\}/u);
 	assert.match(INDEX_SOURCE, /<GrowHorizontalIcon/u);
-	assert.match(INDEX_SOURCE, /<TooltipContent>\{collapsedExpandAction\?\.label \?\? "Expand"\}<\/TooltipContent>/u);
+	assert.match(INDEX_SOURCE, /<TextContinuity[\s\S]*\{collapsedExpandAction\?\.label \?\? "Expand"\}[\s\S]*<\/TextContinuity>/u);
 	assert.doesNotMatch(INDEX_SOURCE, /<TooltipContent>Collapse column<\/TooltipContent>/u);
 	assert.doesNotMatch(INDEX_SOURCE, /<TooltipContent>Expand column<\/TooltipContent>/u);
 	assert.doesNotMatch(INDEX_SOURCE, /\baria-(?:expanded|pressed)(?:\s|=)/u);

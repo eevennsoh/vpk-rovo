@@ -139,7 +139,7 @@ test("the pinned session column shares the status columns' box model", () => {
 	// the column itself remains the Untracked drop zone and lights when armed.
 	assert.match(
 		IN_FLOW_SOURCE,
-		/className=\{cn\(\s*"group\/in-flow-agent-session-column absolute inset-y-0 start-0 z-40 flex min-h-0 border-2 border-r-0",[\s\S]*?untrackedDropArmed \? "border-ring" : "border-transparent",\s*className,\s*\)\}/u,
+		/className=\{cn\(\s*"group\/in-flow-agent-session-column absolute inset-y-0 start-0 z-40 flex min-h-0 border-2 border-r-0",[\s\S]*?untrackedDropArmed \? "border-ring" : "border-transparent",[\s\S]*?className,\s*\)\}/u,
 	);
 	assert.match(IN_FLOW_SOURCE, /data-board-agent-session-drop-zone="untracked"/u);
 });
@@ -149,7 +149,7 @@ test("the expanded pinned session column reuses the accessible sidebar resize co
 		"const IN_FLOW_AGENT_SESSION_COLUMN_RESIZE_HANDLE_CLASS_NAME",
 	);
 	const resizeClassEnd = IN_FLOW_SOURCE.indexOf(
-		"const IN_FLOW_AGENT_SESSION_COLUMN_VARIANTS",
+		"export interface InFlowAgentSessionColumnProps",
 		resizeClassStart,
 	);
 	const resizeClassSource = IN_FLOW_SOURCE.slice(resizeClassStart, resizeClassEnd);
