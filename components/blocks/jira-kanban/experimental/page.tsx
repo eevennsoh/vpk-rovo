@@ -219,6 +219,8 @@ function ExperimentalJiraKanbanPageContent({
 	onTimelineLastViewedAtChange,
 	ref,
 	showAgentSessionColumn = false,
+	showAgentSessionFilter = true,
+	showAgentSessionOverflow = true,
 	showBoardContent = true,
 	timelineLastViewedAt: controlledTimelineLastViewedAt,
 	viewTabs,
@@ -541,6 +543,8 @@ function ExperimentalJiraKanbanPageContent({
 		onLinkWorkItem: onCardAgentSessionLink === undefined
 			? undefined
 			: handleUntrackedLinkWorkItem,
+		showFilter: showAgentSessionFilter,
+		showOverflow: showAgentSessionOverflow,
 		triage: untrackedTriage,
 	} : undefined;
 	const untrackedHoveredWorkItemKey = untrackedHoveredSession === null
