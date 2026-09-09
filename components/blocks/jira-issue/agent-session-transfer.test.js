@@ -101,8 +101,9 @@ test("Jira issue unlink detaches under the work item; Link remounts the chin", (
 	assert.match(PAGE_SOURCE, /const isUnlinkPhase = isTransferPhase && agentActivityState === "agent-session-unlink";/u);
 	assert.match(PAGE_SOURCE, /const isRunningUnlinkPhase = isTransferPhase && agentActivityState === "agent-session-running-unlink";/u);
 	// Backdrop stays via `working` mode; the chin stays empty because Unlink
-	// no longer returns an activity row. The h-1 gutter is what lets the grey
-	// shell peek under the closed stroke card.
+	// no longer returns an activity row. With no chin the surface insets its own
+	// bottom edge, so the grey shell peeks under the closed stroke card without
+	// the card growing.
 	assert.match(
 		PAGE_SOURCE,
 		/if \(state === "agent-session-unlink"\) \{\s*\n\s*return "working";/u,
@@ -115,7 +116,10 @@ test("Jira issue unlink detaches under the work item; Link remounts the chin", (
 		SOURCE,
 		/const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"[\s\S]*\|\| resolvedAgentActivityMode === "awaiting-input"[\s\S]*\|\| hasAgentDoneNotification;/u,
 	);
-	assert.match(SOURCE, /data-slot="jira-issue-agent-shell-gutter"/u);
+	assert.match(
+		SOURCE,
+		/const insetsAgentActivitySurfaceBottom = hasActiveAgentActivityShell && !hasAgentActivityChin;/u,
+	);
 	assert.doesNotMatch(PAGE_SOURCE, /case "agent-session-unlink":\s*\n\s*return JIRA_ISSUE_AGENT_ACTIVITIES/u);
 	assert.match(PAGE_SOURCE, /sessionTransferAfter=\{showDetachedSessions/u);
 	assert.match(PAGE_SOURCE, /sessionDrag=\{sessionDrag\}/u);

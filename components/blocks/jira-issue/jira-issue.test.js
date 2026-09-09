@@ -451,7 +451,7 @@ test("Jira issue shows PR metadata with the specified summary-row spacing", () =
 test("Jira issue stroke chrome matches the work-item key type on the issue-key cluster", () => {
 	assert.match(SUMMARY_SOURCE, /import \{ IconTile \} from "@\/components\/ui\/icon-tile";/);
 	assert.match(SUMMARY_BLOCK, /usesStrokeChrome\s*\n\s*\? "flex shrink-0 items-center gap-1\.5"\s*\n\s*: "flex shrink-0 items-center gap-1"/);
-	assert.match(SUMMARY_BLOCK, /usesStrokeChrome\s*\n\s*\? "font-mono text-xs font-normal leading-4 text-text-subtlest"\s*\n\s*: "text-xs font-semibold text-text-subtlest"/);
+	assert.match(SUMMARY_BLOCK, /usesStrokeChrome\s*\n\s*\? "text-xs font-normal leading-4 text-text-subtlest"\s*\n\s*: "text-xs font-semibold text-text-subtlest"/);
 	assert.match(SUMMARY_BLOCK, /usesStrokeChrome \? \(\s*<IconTile[\s\S]*icon=\{<TaskIcon label="" color=\{token\("color\.icon\.brand"\)\} size="small" \/>\}[\s\S]*iconSize="small"[\s\S]*label=\{issueTypeLabel\}[\s\S]*size="xxsmall"[\s\S]*variant="transparent"/);
 	assert.match(SUMMARY_BLOCK, /<TaskIcon[\s\S]*label=\{issueTypeLabel\}[\s\S]*color=\{token\("color\.icon\.brand"\)\}/);
 	assert.match(SUBTASKS_BLOCK, /usesStrokeChrome\s*\n\s*\? "flex items-center gap-1\.5 text-xs font-medium leading-4 text-text-subtle"/);
@@ -695,8 +695,12 @@ test("Jira issue renders one aggregate agent row with prioritized status and no 
 	);
 	assert.match(
 		SOURCE,
-		/\{hasActiveAgentActivityShell && !hasAgentActivityChin \? \(\s*\n\s*<div\s*\n\s*aria-hidden\s*\n\s*className="h-1"\s*\n\s*data-slot="jira-issue-agent-shell-gutter"\s*\n\s*\/>\s*\n\s*\) : null\}/u,
+		/const insetsAgentActivitySurfaceBottom = hasActiveAgentActivityShell && !hasAgentActivityChin;/u,
 	);
+	// The well is carved out of the card on every edge. A spacer row under the card
+	// would grow the shell on hover and push the rest of the column down.
+	assert.doesNotMatch(SOURCE, /data-slot="jira-issue-agent-shell-gutter"/u);
+	assert.doesNotMatch(SOURCE, /className="h-1"/u);
 	assert.match(SOURCE, /data-slot="jira-issue-agent-backdrop"/u);
 	assert.match(
 		SOURCE,
@@ -779,7 +783,10 @@ test("Jira issue animates agent state transitions with Motion", () => {
 	assert.match(SOURCE, /const agentActivityBackdropAnimation = \{[\s\S]*left: 0,[\s\S]*opacity: hasActiveAgentActivityShell \? 1 : attachNearness,[\s\S]*right: 0,[\s\S]*top: 0/);
 	assert.match(SOURCE, /an inset of 4\s*\n\t\/\/ puts them 4px from the article edge, flush with the `px-1` gutter the chin/);
 	assert.match(SOURCE, /const agentActivitySurfacePosition = agentActivitySurfaceInset - 1;/);
-	assert.match(SOURCE, /const agentActivitySurfaceAnimation = \{[\s\S]*bottom: -1,[\s\S]*left: agentActivitySurfacePosition,[\s\S]*right: agentActivitySurfacePosition,[\s\S]*top: agentActivitySurfacePosition/);
+	assert.match(
+		SOURCE,
+		/const agentActivitySurfaceAnimation = getJiraIssueAgentSurfaceOffsets\(\s*\n\s*agentActivitySurfacePosition,\s*\n\s*insetsAgentActivitySurfaceBottom,\s*\n\s*\);/u,
+	);
 	assert.match(SOURCE, /<article[\s\S]*className=\{agentActivityArticleClassName\}[\s\S]*data-agent-activity-mode=\{resolvedAgentActivityMode\}/);
 	assert.match(SOURCE, /<motion\.div[\s\S]*className=\{agentActivityShellClassName\}[\s\S]*initial=\{false\}[\s\S]*layout=\{shouldReduceMotion \? false : "size"\}/);
 	assert.match(
@@ -799,7 +806,13 @@ test("Jira issue animates agent state transitions with Motion", () => {
 test("Jira issue compensates expanded subtask spacing for the active surface inset", () => {
 	assert.match(SUBTASKS_SOURCE, /hasInsetSurface: boolean;/);
 	assert.match(SUBTASKS_SOURCE, /className=\{cn\("flex flex-col gap-2 px-3 pt-1", hasInsetSurface \? "pb-2" : "pb-3"\)\}/);
-	assert.match(SOURCE, /<JiraIssueSubtasks[\s\S]*hasInsetSurface=\{hasActiveAgentActivityShell\}/);
+	// Content-side compensation only applies when the surface bottom is flush with
+	// the card. Once the well insets that edge itself, trimming the padding too
+	// would double-count and leave the last subtask 4px from the white edge.
+	assert.match(
+		SOURCE,
+		/<JiraIssueSubtasks[\s\S]*hasInsetSurface=\{hasActiveAgentActivityShell && !insetsAgentActivitySurfaceBottom\}/,
+	);
 });
 
 test("Jira issue parent epic demo includes issue context and a collapsed subtasks row", () => {

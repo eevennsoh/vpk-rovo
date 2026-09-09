@@ -271,7 +271,7 @@ export function JiraIssueSummary({
 							<span
 								className={
 									usesStrokeChrome
-										? "font-mono text-xs font-normal leading-4 text-text-subtlest"
+										? "text-xs font-normal leading-4 text-text-subtlest"
 										: "text-xs font-semibold text-text-subtlest"
 								}
 							>
@@ -294,4 +294,3 @@ export function JiraIssueSummary({
 		</div>
 	);
 }
-

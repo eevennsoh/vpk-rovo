@@ -68,6 +68,31 @@ export function getJiraIssueLayoutTransition(shouldReduceMotion: boolean | null)
 	return shouldReduceMotion ? JIRA_ISSUE_MOTION_REDUCED : JIRA_ISSUE_MOTION_LAYOUT;
 }
 
+// Absolute offsets for the white card surface inside the agent shell, measured
+// from the card's padding box — which is why a resting card sits at -1 and covers
+// its own 1px border.
+//
+// Every edge the grey well shows through is inset by the same amount, so the well
+// is always *carved out of the card*, never appended to it: the shell's layout box
+// is byte-identical at rest and while a hovered agent session highlights the card,
+// and the cards below it never move. (The bottom band used to be a 4px spacer row
+// under the card, which grew the shell by 4px on hover.)
+//
+// The bottom edge is the one exception: a docked chin row already paints that band
+// below the card, so the surface stays flush against it instead of opening a second
+// gap.
+export function getJiraIssueAgentSurfaceOffsets(
+	surfacePosition: number,
+	insetsSurfaceBottom: boolean,
+): Readonly<{ bottom: number; left: number; right: number; top: number }> {
+	return {
+		bottom: insetsSurfaceBottom ? surfacePosition : -1,
+		left: surfacePosition,
+		right: surfacePosition,
+		top: surfacePosition,
+	};
+}
+
 export function getJiraIssuePresenceMotion(shouldReduceMotion: boolean | null) {
 	if (shouldReduceMotion) {
 		return {
