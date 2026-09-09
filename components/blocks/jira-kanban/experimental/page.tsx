@@ -227,6 +227,7 @@ function ExperimentalJiraKanbanPageContent({
 	moreControlsPlacement,
 	showMoreControls,
 	showCustomizeControl,
+	needsInputCount,
 	simpleViews,
 }: Readonly<ExperimentalJiraKanbanPageProps>) {
 	const [localBoardColumns, setLocalBoardColumns] = useState<JiraKanbanColumnData[]>(
@@ -839,6 +840,7 @@ function ExperimentalJiraKanbanPageContent({
 				onShowUntrackedChange={setShowUntracked}
 				agentFilterId={agentFilterId}
 				onAgentFilterIdChange={setAgentFilterId}
+				needsInputCount={needsInputCount}
 				onViewChange={renderListContent ? onViewChange : undefined}
 				searchPlaceholder={`Search ${activeView}`}
 				selectedAssigneeIds={selectedAssigneeIds}

@@ -17,6 +17,9 @@ const USE_JIRA_TABS_SOURCE = readProjectFile("components/projects/jira/hooks/use
 const EXPERIMENTAL_HEADER_SOURCE = readProjectFile(
 	"components/blocks/jira-kanban/experimental/experimental-board-header.tsx",
 );
+const BOARD_VIEW_MENU_SOURCE = readProjectFile(
+	"components/blocks/jira-kanban/experimental/components/board-view-menu.tsx",
+);
 const EXPERIMENTAL_PAGE_SOURCE = [
 	readProjectFile("components/blocks/jira-kanban/experimental/page.tsx"),
 	readProjectFile("components/blocks/jira-kanban/experimental/experimental-page-types.ts"),
@@ -664,7 +667,7 @@ test("the Work items header switches between Board and List views with their ico
 	assert.ok(modeToggleIndex > 0 && modeToggleIndex < inlineMoreIndex);
 	assert.match(
 		EXPERIMENTAL_HEADER_SOURCE,
-		/\{filterControl\}\s*<BoardViewMenu[\s\S]*?\{modeToggle\}[\s\S]*?moreControlsPlacement === "inline"/u,
+		/\{filterControl\}[\s\S]*?<BoardViewMenu[\s\S]*?\{modeToggle\}[\s\S]*?moreControlsPlacement === "inline"/u,
 	);
 	assert.doesNotMatch(
 		EXPERIMENTAL_HEADER_SOURCE,
@@ -687,6 +690,34 @@ test("the board keeps matching 24px gaps above and below the filter controls", (
 	assert.match(
 		EXPERIMENTAL_HEADER_SOURCE,
 		/paddingInlineEnd: `calc\(\$\{controlsInsetEnd\}px \+ \$\{token\("space\.300"\)\}\)`/u,
+	);
+});
+
+test("Team EU26 replaces View with Needs input and a dedicated Group by control", () => {
+	assert.match(
+		PAGE_SOURCE,
+		/needsInputCount=\{needsInputCount\}/u,
+		"the Team EU26 route owns the live Needs input count",
+	);
+	assert.match(
+		PAGE_SOURCE,
+		/agentActivities\?\.filter\(\s*\(activity\) =>\s*activity\.state === "awaiting-input",?\s*\)\.length/u,
+		"the route counts every awaiting-input agent activity",
+	);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /needsInputCount\?: number;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /needsInputCount=\{needsInputCount\}/u);
+	assert.match(EXPERIMENTAL_HEADER_SOURCE, /needsInputCount\?: number;/u);
+	assert.match(
+		EXPERIMENTAL_HEADER_SOURCE,
+		/<BoardGroupByMenu[\s\S]*<BoardNeedsInputButton/u,
+	);
+	assert.match(BOARD_VIEW_MENU_SOURCE, /export function BoardNeedsInputButton/u);
+	assert.match(BOARD_VIEW_MENU_SOURCE, /Needs input/u);
+	assert.match(BOARD_VIEW_MENU_SOURCE, /StatusInformationIcon/u);
+	assert.match(BOARD_VIEW_MENU_SOURCE, /export function BoardGroupByMenu/u);
+	assert.match(
+		BOARD_VIEW_MENU_SOURCE,
+		/<DropdownMenuRadioGroup[\s\S]*aria-label="Group by"[\s\S]*BOARD_GROUP_OPTIONS/u,
 	);
 });
 

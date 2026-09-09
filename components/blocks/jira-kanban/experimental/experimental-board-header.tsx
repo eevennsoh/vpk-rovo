@@ -26,7 +26,11 @@ import { JIRA_DESIGN_PROJECT } from "@/components/blocks/product-sidebar/data/ji
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import type { JiraKanbanAssigneeData } from "../index";
-import { BoardViewMenu } from "./components/board-view-menu";
+import {
+	BoardGroupByMenu,
+	BoardNeedsInputButton,
+	BoardViewMenu,
+} from "./components/board-view-menu";
 import type { BoardAgentFilterId, BoardAgentSessionStateId } from "./data/board-view-options";
 import {
 	JIRA_KANBAN_HEADER_FACEPILE_CLASS_NAME,
@@ -116,6 +120,8 @@ interface ExperimentalJiraKanbanBoardHeaderProps {
 	onShowUntrackedChange?: (showUntracked: boolean) => void;
 	agentFilterId?: BoardAgentFilterId | null;
 	onAgentFilterIdChange?: (agentFilterId: BoardAgentFilterId | null) => void;
+	/** Renders Team EU26's focused Needs input and Group by controls. */
+	needsInputCount?: number;
 	/**
 	 * Reveals Column size, Hide done, and Show fields in View. The route owns
 	 * Simple views so this header does not read the design-variant store.
@@ -210,6 +216,7 @@ export function ExperimentalJiraKanbanBoardHeader({
 	onShowUntrackedChange,
 	agentFilterId,
 	onAgentFilterIdChange,
+	needsInputCount,
 	simpleViews,
 	viewTabs,
 	title = JIRA_DESIGN_PROJECT.name,
@@ -237,6 +244,7 @@ export function ExperimentalJiraKanbanBoardHeader({
 					shownSessionStateIds={shownSessionStateIds}
 					agentFilterId={agentFilterId}
 					onAgentFilterIdChange={onAgentFilterIdChange}
+					needsInputCount={needsInputCount}
 					simpleViews={simpleViews}
 					surfaceLabel={surfaceLabel}
 					{...{ endSlot, facepile, filterControl, modeToggle }}
@@ -381,6 +389,7 @@ function BoardHeaderControlsRow({
 	modeToggle,
 	moreControlsPlacement,
 	onAgentFilterIdChange,
+	needsInputCount,
 	onSelectedAssigneeIdsChange,
 	onShowUntrackedChange,
 	onShownSessionStateIdsChange,
@@ -405,6 +414,7 @@ function BoardHeaderControlsRow({
 	modeToggle?: ReactNode;
 	moreControlsPlacement: "inline" | "end";
 	onAgentFilterIdChange?: (agentFilterId: BoardAgentFilterId | null) => void;
+	needsInputCount?: number;
 	onSelectedAssigneeIdsChange?: (assigneeIds: Set<string>) => void;
 	onShowUntrackedChange?: (showUntracked: boolean) => void;
 	onShownSessionStateIdsChange?: (shownSessionStateIds: Set<BoardAgentSessionStateId>) => void;
@@ -460,17 +470,28 @@ function BoardHeaderControlsRow({
 
 			{filterControl}
 
-			<BoardViewMenu
-				compact={compact}
-				agentFilterId={agentFilterId}
-				onAgentFilterIdChange={onAgentFilterIdChange}
-				onShownSessionStateIdsChange={onShownSessionStateIdsChange}
-				onShowUntrackedChange={onShowUntrackedChange}
-				shownSessionStateIds={shownSessionStateIds}
-				showUntracked={showUntracked}
-				simpleViews={simpleViews}
-				surfaceLabel={surfaceLabel}
-			/>
+			{needsInputCount !== undefined ? (
+				<>
+					<BoardGroupByMenu />
+					<BoardNeedsInputButton
+						agentFilterId={agentFilterId}
+						count={needsInputCount}
+						onAgentFilterIdChange={onAgentFilterIdChange}
+					/>
+				</>
+			) : (
+				<BoardViewMenu
+					compact={compact}
+					agentFilterId={agentFilterId}
+					onAgentFilterIdChange={onAgentFilterIdChange}
+					onShownSessionStateIdsChange={onShownSessionStateIdsChange}
+					onShowUntrackedChange={onShowUntrackedChange}
+					shownSessionStateIds={shownSessionStateIds}
+					showUntracked={showUntracked}
+					simpleViews={simpleViews}
+					surfaceLabel={surfaceLabel}
+				/>
+			)}
 
 			{modeToggle}
 			{moreControlsPlacement === "inline" ? moreControls : null}

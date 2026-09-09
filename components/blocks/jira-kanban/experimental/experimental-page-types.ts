@@ -171,4 +171,6 @@ export interface ExperimentalJiraKanbanPageProps {
 	 * Display-only unless a later owner supplies a real configure capability.
 	 */
 	showCustomizeControl?: boolean;
+	/** Focused Team EU26 header control count. Omit to keep the full View menu. */
+	needsInputCount?: number;
 }
