@@ -10,7 +10,6 @@ import PullRequestIcon from "@atlaskit/icon/core/pull-request";
 import StatusInformationIcon from "@atlaskit/icon/core/status-information";
 import StatusWarningIcon from "@atlaskit/icon/core/status-warning";
 
-import { AgentAvatarVisual } from "@/components/ui-custom/agent-avatar-visual";
 import { AnimatedDots } from "@/components/ui-custom/animated-dots";
 import { PixelLoader } from "@/components/ui-custom/pixel-loader";
 import {
@@ -22,7 +21,6 @@ import {
 	type JiraSessionFlyoutHandle,
 } from "@/components/blocks/product-sidebar/variants/jira-session-flyout";
 import { Shimmer } from "@/components/ui-custom/shimmer";
-import { Avatar, AvatarFallback, AvatarImage, type AvatarProps } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ElapsedTime, RelativeTime } from "@/components/ui/elapsed-time";
 import {
@@ -34,7 +32,7 @@ import {
 import { IconTile } from "@/components/ui/icon-tile";
 import { cn } from "@/lib/utils";
 
-import { actorInitials } from "./agent-list-actor";
+import { AgentListIdentity } from "./agent-list-identity";
 import { InvokerBy } from "./agent-list-invoker";
 import {
 	AgentListRowActionButton,
@@ -42,7 +40,6 @@ import {
 } from "./agent-list-row-action";
 import { isLocalAgentListItem, toAgentSessionFlyoutItem } from "./agent-list-session";
 import type {
-	AgentListAgent,
 	AgentListCustomFlyoutActions,
 	AgentListFlyout,
 	AgentListItem,
@@ -50,6 +47,8 @@ import type {
 	AgentListState,
 	AgentListVariant,
 } from "./agent-list-types";
+
+export { AgentListIdentity } from "./agent-list-identity";
 
 /**
  * State → title-line + lifecycle treatment. `running` shows a solid title with a
@@ -147,48 +146,6 @@ function MetadataDot() {
 		<span aria-hidden="true" className="text-text-subtlest">
 			·
 		</span>
-	);
-}
-
-/** The two leading-avatar footprints the row uses, as Avatar size tokens. */
-const PX_TO_PERSON_AVATAR_SIZE: Record<number, NonNullable<AvatarProps["size"]>> = {
-	24: "sm",
-	32: "default",
-};
-
-/**
- * The row's leading identity. Agents keep the shared hexagon agent visual;
- * people get the circular photo avatar the rest of Jira uses, so a mixed list —
- * agents waiting on an answer beside teammates who @mentioned you — is
- * separable at a glance without reading a word.
- */
-export function AgentListIdentity({
-	agent,
-	className,
-	sizePx,
-}: Readonly<{ agent: AgentListAgent; className?: string; sizePx: number }>) {
-	if (agent.kind === "person") {
-		return (
-			<Avatar
-				className={className}
-				label={agent.name}
-				size={PX_TO_PERSON_AVATAR_SIZE[sizePx] ?? "default"}
-			>
-				{agent.avatarSrc ? <AvatarImage alt="" src={agent.avatarSrc} /> : null}
-				<AvatarFallback>{actorInitials(agent.name)}</AvatarFallback>
-			</Avatar>
-		);
-	}
-
-	return (
-		<AgentAvatarVisual
-			avatarClassName={className}
-			avatarSrc={agent.avatarSrc}
-			brandName={agent.brandName}
-			label={agent.name}
-			sizePx={sizePx}
-			vpkLogo={agent.vpkLogo}
-		/>
 	);
 }
 
