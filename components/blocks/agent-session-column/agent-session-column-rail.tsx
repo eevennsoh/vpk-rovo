@@ -411,9 +411,6 @@ function AgentSessionUserNotch({
 							arrivalExiting && !isHighlighted
 								? "opacity-100 scale-[var(--agent-session-user-notch-morph)] transition-transform duration-normal ease-in-out"
 								: showAvatar ? "opacity-100 scale-100" : "scale-[var(--agent-session-user-notch-morph)] opacity-0",
-							arrivalExiting && !isHighlighted
-								? null
-								: "transition-[opacity,scale] duration-normal ease-out-practical",
 						)}
 						height={12}
 						src={avatarSrc}
