@@ -114,8 +114,11 @@ test("collapse survives a switch to the list or Pulse view", () => {
 	);
 	assert.match(
 		PAGE_SOURCE,
-		/<ExperimentalJiraKanbanBoardHeader[\s\S]*agentFilterId=\{agentFilterId\}[\s\S]*onAgentFilterIdChange=\{setAgentFilterId\}/u,
+		/<ExperimentalJiraKanbanBoardHeader[\s\S]*agentFilterId=\{agentFilterId\}[\s\S]*onAgentFilterIdChange=\{handleAgentFilterChange\}/u,
 	);
+	// The header writes through a handler, but the state it writes is still the
+	// page-owned one that outlives the view branch.
+	assert.match(PAGE_SOURCE, /const handleAgentFilterChange = \([\s\S]*?setAgentFilterId\(nextAgentFilterId\)/u);
 });
 
 test("the resize button swaps its icon without using selected button state", () => {

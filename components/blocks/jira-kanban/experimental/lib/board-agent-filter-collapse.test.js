@@ -6,7 +6,7 @@ const {
 	collapsedColumnsForAgentFilter,
 	displayedAgentSessionColumnCollapsedForAgentFilter,
 	displayedCollapsedColumnsForAgentFilter,
-} = require("./board-agent-filter-collapse.ts");
+} = require("./board-agent-filter.ts");
 const { shownSessionStateIdsForAgentFilter } = require("../data/board-view-options.ts");
 const { filterJiraKanbanColumnsByAssignee } = require("../../state.ts");
 
