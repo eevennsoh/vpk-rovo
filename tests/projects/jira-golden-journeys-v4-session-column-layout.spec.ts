@@ -78,7 +78,7 @@ test("compact timeline stays aligned during inner and board scrolling", async ({
 	await expect.poll(() => page.locator("[data-jira-kanban-scrollport]").evaluate((element) => element.scrollLeft)).toBe(100);
 	expect(Math.max(...samples.map((sample) => Math.abs(sample.x)))).toBeLessThan(1);
 	expect(Math.max(...samples.map((sample) => Math.abs(sample.y)))).toBeLessThan(1);
-	await page.screenshot({ path: test.info().outputPath("scrolled-timeline.png") });
+	await page.screenshot({ path: "output/agent-browser/jira-golden-journeys-v4/scrolled-timeline.png" });
 });
 
 test("hovering the leading gutter stays open without bouncing under a stationary pointer", async ({ page }) => {
