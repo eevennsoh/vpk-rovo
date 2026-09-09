@@ -3644,8 +3644,8 @@
 	},
 	"appPages": {
 		"summary": {
-			"ownerImportCount": 92,
-			"pageCount": 68
+			"ownerImportCount": 93,
+			"pageCount": 69
 		},
 		"pages": [
 			{
@@ -4074,6 +4074,22 @@
 				"shellOwnerCount": 0,
 				"shellOwners": [],
 				"source": "app/jira-golden-journeys-v4/page.tsx"
+			},
+			{
+				"ownerCount": 1,
+				"owners": [
+					{
+						"importPath": "@/components/website/demo-registry-loader",
+						"source": "components/website/demo-registry-loader",
+						"symbols": [
+							"loadDemoComponent"
+						]
+					}
+				],
+				"routePath": "/jira-golden-journeys-v5",
+				"shellOwnerCount": 0,
+				"shellOwners": [],
+				"source": "app/jira-golden-journeys-v5/page.tsx"
 			},
 			{
 				"ownerCount": 1,
@@ -5403,7 +5419,7 @@
 	},
 	"components": {
 		"summary": {
-			"manifestEntryCount": 439,
+			"manifestEntryCount": 440,
 			"categoryCount": 9
 		},
 		"categories": [
@@ -6129,7 +6145,7 @@
 			},
 			{
 				"category": "projects",
-				"entryCount": 17,
+				"entryCount": 18,
 				"entries": [
 					{
 						"category": "projects",
@@ -6190,6 +6206,12 @@
 						"slug": "jira-golden-journeys-v4",
 						"name": "Jira Golden Journeys v4",
 						"importPath": "@/components/projects/jira-golden-journeys-v4"
+					},
+					{
+						"category": "projects",
+						"slug": "jira-golden-journeys-v5",
+						"name": "Jira Golden Journeys v5",
+						"importPath": "@/components/projects/jira-golden-journeys-v5"
 					},
 					{
 						"category": "projects",

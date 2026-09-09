@@ -46,6 +46,16 @@ const DEFAULT_DEFERRED_MODULE_RULES = [
 		reason: "the contextual pull request rail must stay out of the initial project bundle",
 		targetFile: "components/blocks/jira-work-item/experimental-v4/components/pull-request-detail/pull-request-context-rail.tsx",
 	},
+{
+		entryFile: "components/projects/jira-golden-journeys-v5/page.tsx",
+		reason: "the Jira pull request review subtree must stay out of the initial project bundle",
+		targetFile: "components/blocks/jira-work-item/experimental-v5/components/pull-request-detail/pull-request-detail-view.tsx",
+	},
+{
+		entryFile: "components/projects/jira-golden-journeys-v5/page.tsx",
+		reason: "the contextual pull request rail must stay out of the initial project bundle",
+		targetFile: "components/blocks/jira-work-item/experimental-v5/components/pull-request-detail/pull-request-context-rail.tsx",
+	},
 ];
 
 const DEFAULT_HEAVY_IMPORT_RULES = [
