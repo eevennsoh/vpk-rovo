@@ -213,18 +213,3 @@ export function toBoardAgentSessionLinkFlash(
 export interface PendingSessionLinkFlash {
 	flash: BoardAgentSessionLinkFlash | null;
 }
-
-/**
- * What `linkFlash` becomes when a fresh gesture starts.
- *
- * A drop still waiting on its flights owns a sweep that has not played yet.
- * Clearing in the same commit that flushes it is a silent loss — both writes
- * batch, `null` lands last, and the row never sees the token — so a pending
- * acknowledgement is handed over instead of dropped. Only a settled one, whose
- * sweep has already had its commit, is cleared so it cannot replay.
- */
-export function resolveSessionLinkFlashOnDragStart(
-	pending: Readonly<PendingSessionLinkFlash> | null,
-): BoardAgentSessionLinkFlash | null {
-	return pending?.flash ?? null;
-}

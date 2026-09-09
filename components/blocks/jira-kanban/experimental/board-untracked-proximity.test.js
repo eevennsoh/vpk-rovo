@@ -209,16 +209,23 @@ test("the link sweep survives an overlay that never reports its flights landed",
 		DRAG_HOOK_SOURCE,
 		/useEffect\(\(\) => \(\) => \{\s*if \(settleDeadlineRef\.current !== null\) \{\s*clearTimeout\(settleDeadlineRef\.current\);/u,
 	);
-	// A fresh gesture flushes the pending sweep and then writes it back, rather
-	// than batching a `null` over the flash it just handed to the rows.
+	// A sweep retires on its own duration, so reaching for the next session does
+	// not cut it short. Clearing on gesture start is the regression this guards:
+	// both drag sources publish on every qualifying pointer move, so any drag
+	// begun inside the sweep's ~900ms life used to truncate it within a frame.
 	assert.match(
 		DRAG_HOOK_SOURCE,
-		/const pendingBeforeFlush = pendingAttachRef\.current;\s*if \(pendingBeforeFlush\) \{\s*flushPendingAttach\(\);\s*\}/u,
+		/flashRetireRef\.current = setTimeout\(\s*\(\) => \{[\s\S]*setLinkFlash\(\(current\) => \(current === flash \? null : current\)\);\s*\},\s*JIRA_ISSUE_LINK_FLASH_DURATION_MS \+ SESSION_LINK_FLASH_RETIRE_GRACE_MS,/u,
 	);
 	assert.match(
 		DRAG_HOOK_SOURCE,
-		/setLinkFlash\(resolveSessionLinkFlashOnDragStart\(pendingBeforeFlush\)\);/u,
+		/import \{\s*JIRA_ISSUE_LINK_FLASH_DURATION_MS,\s*\} from "@\/components\/blocks\/jira-issue\/agent-link-flash";/u,
 	);
+	// Every flash goes through the arming helper, so none can be shown without a
+	// retirement clock, and the dragging branch never writes the flash at all.
+	assert.doesNotMatch(DRAG_HOOK_SOURCE, /setDragState\(state\);\s*(\/\/[^\n]*\n\s*)*setLinkFlash\(/u);
+	assert.match(DRAG_HOOK_SOURCE, /\} else \{\s*armLinkFlash\(flash\);\s*\}/u);
+	assert.match(DRAG_HOOK_SOURCE, /armLinkFlash\(pending\.flash\);/u);
 });
 
 test("list-row hit testing reads shared scrollport geometry once per drag evaluation", () => {

@@ -10,6 +10,9 @@ import type {
 	JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue";
 import {
+	JIRA_ISSUE_LINK_FLASH_DURATION_MS,
+} from "@/components/blocks/jira-issue/agent-link-flash";
+import {
 	JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE,
 	type JiraIssueAgentSessionDragBinding,
 	type JiraIssueAgentSessionTransferMember,
@@ -49,7 +52,6 @@ import {
 	type SessionTransferPorts,
 } from "./lib/session-transfer-plan";
 import {
-	resolveSessionLinkFlashOnDragStart,
 	toBoardAgentSessionLinkFlash,
 	toSessionFusionDrop,
 	type BoardAgentSessionLinkFlash,
@@ -68,6 +70,16 @@ const SESSION_UNLINK_DROP_HALO_PX = 24;
  * decoration that never reported back, not a second schedule competing with it.
  */
 const SESSION_FUSION_SETTLE_GRACE_MS = 250;
+
+/**
+ * Grace on top of the sweep's own duration before the flash is retired.
+ *
+ * The flash is armed a commit before the row paints it, so retiring it on the
+ * bare duration can clip the tail. This only has to cover that offset — the
+ * flash is retired so a finished sweep cannot replay when a row remounts, not
+ * to end a sweep the user is still watching.
+ */
+const SESSION_LINK_FLASH_RETIRE_GRACE_MS = 150;
 
 interface ListScrollportClip {
 	clip: DOMRect;
@@ -381,6 +393,7 @@ export function useBoardAgentSessionDrag({
 	const linkFlashTokenRef = useRef(0);
 	const pendingAttachRef = useRef<PendingSessionLinkFlash | null>(null);
 	const settleDeadlineRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const flashRetireRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const ports: SessionTransferPorts = useMemo(() => ({
 		onBoardGapCreate,
 		onCreate,
@@ -434,6 +447,35 @@ export function useBoardAgentSessionDrag({
 	]);
 
 	/**
+	 * Show a sweep and give it a life of its own.
+	 *
+	 * The flash is retired on the sweep's own duration rather than on the next
+	 * gesture. Clearing it when a drag starts is what made the acknowledgement
+	 * look unreliable: the sweep runs for the better part of a second, and
+	 * reaching for the next session inside that window truncated it — usually
+	 * within a frame or two of it appearing. Retiring on its own clock keeps a
+	 * finished sweep from replaying when a row remounts, which is the only thing
+	 * the gesture-start clear was ever protecting against.
+	 */
+	const armLinkFlash = useCallback((flash: BoardAgentSessionLinkFlash | null) => {
+		if (flashRetireRef.current !== null) {
+			clearTimeout(flashRetireRef.current);
+			flashRetireRef.current = null;
+		}
+		setLinkFlash(flash);
+		if (!flash) {
+			return;
+		}
+		flashRetireRef.current = setTimeout(
+			() => {
+				flashRetireRef.current = null;
+				setLinkFlash((current) => (current === flash ? null : current));
+			},
+			JIRA_ISSUE_LINK_FLASH_DURATION_MS + SESSION_LINK_FLASH_RETIRE_GRACE_MS,
+		);
+	}, []);
+
+	/**
 	 * Hand the drop its acknowledgement and take the flights down.
 	 *
 	 * Called by the overlay when its chips land, by the settle deadline when
@@ -452,12 +494,15 @@ export function useBoardAgentSessionDrag({
 		if (!pending) {
 			return;
 		}
-		setLinkFlash(pending.flash);
-	}, []);
+		armLinkFlash(pending.flash);
+	}, [armLinkFlash]);
 
 	useEffect(() => () => {
 		if (settleDeadlineRef.current !== null) {
 			clearTimeout(settleDeadlineRef.current);
+		}
+		if (flashRetireRef.current !== null) {
+			clearTimeout(flashRetireRef.current);
 		}
 	}, []);
 
@@ -470,8 +515,11 @@ export function useBoardAgentSessionDrag({
 			if (cohort === null) {
 				return;
 			}
-			const pendingBeforeFlush = pendingAttachRef.current;
-			if (pendingBeforeFlush) {
+			// A drag no longer clears the acknowledgement the previous drop left
+			// behind. The sweep owns its own retirement clock, so reaching for the
+			// next session does not cut it short.
+			const pending = pendingAttachRef.current;
+			if (pending) {
 				flushPendingAttach();
 			}
 			const zones = gateCardGapZones(collectDropZones(boardRootRef.current), cardGapsEnabled);
@@ -482,11 +530,6 @@ export function useBoardAgentSessionDrag({
 			transactionRef.current = next;
 			setTransaction(next);
 			setDragState(state);
-			// A fresh gesture clears the acknowledgement the previous drop left
-			// behind — unless that drop was still waiting on its flights, in which
-			// case the flush above just handed it over and clearing here would
-			// batch into the same commit and swallow it.
-			setLinkFlash(resolveSessionLinkFlashOnDragStart(pendingBeforeFlush));
 			return;
 		}
 
@@ -536,7 +579,7 @@ export function useBoardAgentSessionDrag({
 					release,
 				});
 			} else {
-				setLinkFlash(flash);
+				armLinkFlash(flash);
 			}
 		}
 		transactionRef.current = null;
@@ -546,7 +589,7 @@ export function useBoardAgentSessionDrag({
 				? { ...JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE, cancelled: true }
 				: JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE,
 		);
-	}, [cardGapsEnabled, commitDrop, flushPendingAttach, shouldReduceMotion]);
+	}, [armLinkFlash, cardGapsEnabled, commitDrop, flushPendingAttach, shouldReduceMotion]);
 
 	function createBinding(
 		origin: BoardAgentSessionDragOrigin,
