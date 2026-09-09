@@ -139,7 +139,9 @@ export function ExperimentalWorkItemLayout({
 	const { metadataCollapsed } = usePanelLayout();
 	const { insightsSelected, setNarrowScrollContainer, setWideScrollContainer } = useSectionNavigation();
 	const shouldReduceMotion = useReducedMotion() ?? false;
-	const showStickyComposer = initialPreset !== "filled" && (planner.status === "inactive" || planner.status === "applied");
+	const composerVisible = planner.status === "inactive" || planner.status === "applied";
+	const showInFlowComposer = initialPreset === "filled" && composerVisible;
+	const showStickyComposer = initialPreset !== "filled" && composerVisible;
 	const {
 		ref: narrowOverflowRef,
 		showBottomScrollMask: showNarrowBottomScrollMask,
@@ -214,6 +216,11 @@ export function ExperimentalWorkItemLayout({
 								bodyStyle={innerColumnStyle}
 							>
 								{context(leftScrollContainerRef)}
+								{showInFlowComposer ? (
+									<div className="sticky bottom-0 z-20 min-w-0 bg-surface py-2" data-team-eu26-comment-composer>
+										{composer}
+									</div>
+								) : null}
 							</DescriptionColumnShell>
 							{showStickyComposer ? (
 								<div
