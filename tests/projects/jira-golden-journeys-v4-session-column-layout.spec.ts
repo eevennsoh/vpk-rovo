@@ -155,14 +155,29 @@ test("session column slots between statuses and supports cancellation and keyboa
 	const progress = page.locator('[data-jira-kanban-column="In progress"]');
 	const start = await handle.boundingBox();
 	const target = await todo.boundingBox();
+	const sourceColumnBox = await column.boundingBox();
 	expect(start).not.toBeNull();
 	expect(target).not.toBeNull();
-	if (!start || !target) return;
+	expect(sourceColumnBox).not.toBeNull();
+	if (!start || !target || !sourceColumnBox) return;
+	await expect(handle).toHaveAttribute("data-variant", "ghost");
+	await expect(handle.locator('[data-slot="icon"]')).toHaveCSS("width", "12px");
+	await expect(handle.locator('[data-slot="icon"]')).toHaveCSS("height", "12px");
 	await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
 	await page.mouse.down();
 	await page.mouse.move(target.x + target.width - 8, start.y + start.height / 2, { steps: 12 });
 	await expect(page.locator('[data-session-column-drop-marker="1"] > span')).toBeVisible();
+	const dragSource = page.locator("[data-session-column-drag-source]");
+	await expect(dragSource).toHaveCount(1);
+	await expect(dragSource).toHaveAttribute("aria-hidden", "true");
+	await expect(dragSource).toHaveAttribute("inert", "");
+	await expect(dragSource).toHaveCSS("opacity", "0.4");
+	await expect.poll(async () => (
+		await dragSource.locator("[data-session-column-drag-source-surface]").boundingBox()
+	)?.x ?? 0).toBeCloseTo(sourceColumnBox.x, 0);
+	await expect(page.locator("[data-agent-session-column]")).toHaveCount(1);
 	await page.mouse.up();
+	await expect(dragSource).toHaveCount(0);
 	await expect(placement).toHaveAttribute("data-session-column-placement", "1");
 	expect(await originalColumn?.evaluate((element) => element.isConnected)).toBe(true);
 	await expect.poll(async () => {
@@ -193,6 +208,51 @@ test("session column slots between statuses and supports cancellation and keyboa
 	await expect(page.locator("[data-session-column-drop-marker]")).toHaveCount(0);
 });
 
+test("drag source preserves its scroll position and follows board auto-scroll", async ({ page }) => {
+	await page.setViewportSize({ width: 900, height: 760 });
+	await openBoard(page);
+	const placement = page.locator("[data-session-column-placement]");
+	const column = page.locator("[data-agent-session-column]");
+	const handle = page.getByRole("button", { name: "Move Unattached sessions column" });
+	await handle.focus();
+	await page.keyboard.press("ArrowRight");
+	await expect(placement).toHaveAttribute("data-session-column-placement", "1");
+
+	const sessionScrollport = column.locator(".overflow-y-auto").first();
+	await sessionScrollport.evaluate((element) => { element.scrollTop = 240; });
+	const sessionScrollTop = await sessionScrollport.evaluate((element) => element.scrollTop);
+	expect(sessionScrollTop).toBeGreaterThan(0);
+	const sourceColumnBox = await column.boundingBox();
+	const handleBox = await handle.boundingBox();
+	const boardScrollport = page.locator("[data-jira-kanban-scrollport]");
+	const boardBox = await boardScrollport.boundingBox();
+	const initialBoardScrollLeft = await boardScrollport.evaluate((element) => element.scrollLeft);
+	if (!sourceColumnBox || !handleBox || !boardBox) throw new Error("Expected scrollable board geometry");
+
+	await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(boardBox.x + boardBox.width - 2, handleBox.y + handleBox.height / 2, { steps: 6 });
+	await expect.poll(
+		() => boardScrollport.evaluate((element) => element.scrollLeft),
+	).toBeGreaterThan(initialBoardScrollLeft + 12);
+	await page.mouse.move(boardBox.x + boardBox.width / 2, handleBox.y + handleBox.height / 2);
+	await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+
+	const dragSource = page.locator("[data-session-column-drag-source]");
+	await expect(dragSource).toHaveCount(1);
+	await expect.poll(() => (
+		dragSource.locator(".overflow-y-auto").first().evaluate((element) => element.scrollTop)
+	)).toBe(sessionScrollTop);
+	const boardScrollDelta = await boardScrollport.evaluate(
+		(element, initial) => element.scrollLeft - initial,
+		initialBoardScrollLeft,
+	);
+	await expect.poll(async () => (
+		await dragSource.locator("[data-session-column-drag-source-surface]").boundingBox()
+	)?.x ?? 0).toBeCloseTo(sourceColumnBox.x - boardScrollDelta, 0);
+	await page.mouse.up();
+});
+
 test("compact session header drags without expanding and keeps its wider target", async ({ page }) => {
 	await openCollapsedBoard(page);
 	await revealCollapsedAgentSessionColumn(page);
@@ -219,11 +279,11 @@ test("compact session header drags without expanding and keeps its wider target"
 	await expect(page.locator('[data-slot="tooltip-content"]')).toHaveCount(0);
 	await expect(page.locator("[data-agent-session-notch]").first()).not.toBeVisible();
 	const draggingButton = page.getByRole("button", { name: "Expand more Unattached sessions column" });
-	await expect(draggingButton).toHaveAttribute("data-variant", "outline");
+	await expect(draggingButton).toHaveAttribute("data-variant", "ghost");
 	await expect(draggingButton).toHaveCSS("opacity", "1");
-	await expect(draggingButton).toHaveCSS("border-top-style", "solid");
-	await expect(draggingButton.locator("svg")).toBeVisible();
-	expect(await draggingButton.evaluate((button) => getComputedStyle(button).backgroundColor)).toMatch(/^rgb\(/u);
+	await expect(draggingButton).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+	await expect(draggingButton.locator('[data-slot="icon"]')).toHaveCSS("width", "12px");
+	await expect(draggingButton.locator('[data-slot="icon"]')).toHaveCSS("height", "12px");
 	await page.mouse.up();
 	await expect(page.locator("[data-session-column-placement]")).toHaveAttribute("data-session-column-placement", "1");
 	const more = page.getByRole("button", { name: "Expand more Unattached sessions column" });

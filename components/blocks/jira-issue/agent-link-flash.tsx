@@ -30,6 +30,17 @@ export interface JiraIssueAgentLinkFlashOverlayProps {
 }
 
 /**
+ * How long one sweep runs, in ms.
+ *
+ * Mirrors the `jira-issue-link-flash` utility in `app/globals.css`, which
+ * derives it from `--duration-slowest`. A host that has to know when the sweep
+ * has finished — to retire the flash it armed, rather than truncating it on the
+ * next gesture — reads it here instead of guessing. The two sides are pinned by
+ * a test, so neither can drift away from the other.
+ */
+export const JIRA_ISSUE_LINK_FLASH_DURATION_MS = 900;
+
+/**
  * Absolutely positioned inside the chin row, so the row must be `relative`.
  *
  * The sweep starts and ends fully outside the row (`translateX` -100% -> 100%),

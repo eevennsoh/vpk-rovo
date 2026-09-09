@@ -190,6 +190,44 @@ test("release re-hit-tests the current pointer against current board geometry", 
 	assert.match(DRAG_HOOK_SOURCE, /commitDrop\(finalTransaction\)/u);
 });
 
+test("the link sweep survives an overlay that never reports its flights landed", () => {
+	// The chip flights are decoration: a portal behind a lazy chunk, gated on
+	// reduced motion. Holding the acknowledgement for a committed link on their
+	// callback is what makes the sweep look intermittent, so the drop arms its
+	// own deadline off the flights' published budget and flushes either way.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/settleDeadlineRef\.current = setTimeout\(\s*flushPendingAttach,\s*resolveJiraLinkingReleaseSettleMs\(release, JIRA_LINKING_FULL_DROP_PROFILE\)\s*\+ SESSION_FUSION_SETTLE_GRACE_MS,/u,
+	);
+	// Whoever gets there first wins; the deadline must not leave a timer armed
+	// after the overlay settles, or outlive the board.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/const flushPendingAttach = useCallback\(\(\) => \{\s*if \(settleDeadlineRef\.current !== null\) \{\s*clearTimeout\(settleDeadlineRef\.current\);/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/useEffect\(\(\) => \(\) => \{\s*if \(settleDeadlineRef\.current !== null\) \{\s*clearTimeout\(settleDeadlineRef\.current\);/u,
+	);
+	// A sweep retires on its own duration, so reaching for the next session does
+	// not cut it short. Clearing on gesture start is the regression this guards:
+	// both drag sources publish on every qualifying pointer move, so any drag
+	// begun inside the sweep's ~900ms life used to truncate it within a frame.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/flashRetireRef\.current = setTimeout\(\s*\(\) => \{[\s\S]*setLinkFlash\(\(current\) => \(current === flash \? null : current\)\);\s*\},\s*JIRA_ISSUE_LINK_FLASH_DURATION_MS \+ SESSION_LINK_FLASH_RETIRE_GRACE_MS,/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/import \{\s*JIRA_ISSUE_LINK_FLASH_DURATION_MS,\s*\} from "@\/components\/blocks\/jira-issue\/agent-link-flash";/u,
+	);
+	// Every flash goes through the arming helper, so none can be shown without a
+	// retirement clock, and the dragging branch never writes the flash at all.
+	assert.doesNotMatch(DRAG_HOOK_SOURCE, /setDragState\(state\);\s*(\/\/[^\n]*\n\s*)*setLinkFlash\(/u);
+	assert.match(DRAG_HOOK_SOURCE, /\} else \{\s*armLinkFlash\(flash\);\s*\}/u);
+	assert.match(DRAG_HOOK_SOURCE, /armLinkFlash\(pending\.flash\);/u);
+});
+
 test("list-row hit testing reads shared scrollport geometry once per drag evaluation", () => {
 	assert.match(
 		DRAG_HOOK_SOURCE,

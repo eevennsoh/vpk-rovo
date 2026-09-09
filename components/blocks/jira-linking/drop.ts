@@ -152,6 +152,24 @@ export function flightsFromLinkingDrop(
 	}
 }
 
+/**
+ * How long every flight in a drop needs to finish, in ms.
+ *
+ * The last chip off the line is the one the host is waiting for, so this is the
+ * largest stagger delay plus one flight's duration. A host that hangs work off
+ * `onSettled` uses this as the deadline it falls back to: the flights are
+ * decoration, and a decoration that never reports back must not be able to
+ * strand the real acknowledgement behind it.
+ */
+export function resolveJiraLinkingDropSettleMs(
+	drop: Readonly<JiraLinkingDrop>,
+	profile: JiraLinkingDropProfile,
+): number {
+	const flights = flightsFromLinkingDrop(drop, profile);
+	const lastDelayMs = flights.reduce((latest, flight) => Math.max(latest, flight.delayMs), 0);
+	return lastDelayMs + profile.durationMs;
+}
+
 function linkingFlightKey(
 	drop: Readonly<JiraLinkingDrop>,
 	suffix: string,

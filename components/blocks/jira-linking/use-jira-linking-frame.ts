@@ -9,12 +9,17 @@ import {
 	type JiraLinkingFrame,
 	type JiraLinkingMember,
 } from "./field";
-import type { JiraLinkingDrop } from "./drop";
+import {
+	resolveJiraLinkingDropSettleMs,
+	type JiraLinkingDrop,
+	type JiraLinkingDropProfile,
+} from "./drop";
 import {
 	advanceJiraLinkingVelocity,
 	lerpJiraLinkingTarget,
 	resolveJiraLinkingFuseNearness,
 	resolveJiraLinkingFuseProgress,
+	JIRA_LINKING_FUSE_DURATION_MS,
 	type JiraLinkingTarget,
 	type JiraLinkingVector,
 } from "./lifecycle";
@@ -89,6 +94,22 @@ export interface JiraLinkingRelease {
 	 * attach, pass the agent session row as `target`, not the whole card.
 	 */
 	drop?: JiraLinkingDrop;
+}
+
+/**
+ * How long a release needs before it reports settled, in ms.
+ *
+ * A host that hangs real work off `onFuseSettled` uses this as the deadline it
+ * falls back to. Chip flights and the goo fuse are two different clocks, and
+ * only this module knows which one a given release is on.
+ */
+export function resolveJiraLinkingReleaseSettleMs(
+	release: Readonly<JiraLinkingRelease>,
+	profile: JiraLinkingDropProfile,
+): number {
+	return release.drop
+		? resolveJiraLinkingDropSettleMs(release.drop, profile)
+		: JIRA_LINKING_FUSE_DURATION_MS;
 }
 
 export interface JiraLinkingFrameSource {
