@@ -15,6 +15,10 @@ const COLLAPSED_COLUMN_SOURCE = readFileSync(
 	join(__dirname, "../components/collapsed-board-column.tsx"),
 	"utf8",
 );
+const SESSION_COLUMN_PLACEMENT_SOURCE = readFileSync(
+	join(__dirname, "../components/session-column-placement.tsx"),
+	"utf8",
+);
 const V2_BOARD_SOURCE = readFileSync(
 	join(__dirname, "../../experimental-v2/experimental-v2-jira-kanban.tsx"),
 	"utf8",
@@ -33,6 +37,7 @@ const {
 } = require("./board-column-collapse.ts");
 const {
 	resolveInFlowAgentSessionColumnGapPx,
+	resolveInFlowAgentSessionColumnSlotWidthPx,
 	resolveInFlowResizeHandleOffsetPx,
 	resolveStatusColumnVisualGutterPx,
 } = require("./in-flow-agent-session-column-geometry.ts");
@@ -200,6 +205,15 @@ test("Untracked trailing geometry matches painted status-column gutters", () => 
 	assert.equal(resolveStatusColumnVisualGutterPx("enclosed"), 12);
 	assert.equal(resolveInFlowAgentSessionColumnGapPx("enclosed"), 12);
 	assert.equal(resolveInFlowResizeHandleOffsetPx("enclosed"), 6);
+});
+
+test("a repositioned session column balances the visual gutter on both sides", () => {
+	assert.equal(resolveInFlowAgentSessionColumnSlotWidthPx(32), 42);
+	assert.equal(resolveInFlowAgentSessionColumnSlotWidthPx(280), 290);
+	assert.match(
+		SESSION_COLUMN_PLACEMENT_SOURCE,
+		/width: resolveInFlowAgentSessionColumnSlotWidthPx\(placement\.width\)/u,
+	);
 });
 
 test("a collapsed status pill hugs its label while the shell keeps the drop lane", () => {
