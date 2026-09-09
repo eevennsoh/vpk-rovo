@@ -286,6 +286,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/jira-issue/agent-activity.test.js",
 		"components/blocks/jira-issue/agent-link-flash.test.js",
 		"components/blocks/jira-issue/agent-session-transfer.test.js",
+		"components/blocks/jira-issue/agent-shell-stability.test.js",
 		"components/blocks/jira-issue/compact-chrome.test.js",
 		"components/blocks/jira-issue/jira-issue.test.js",
 		"components/blocks/jira-issue/uncaptured-work-chin.test.js",
