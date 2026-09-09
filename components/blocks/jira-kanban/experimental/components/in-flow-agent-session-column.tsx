@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
-import { motion, useReducedMotion, type Variants } from "motion/react";
+import { useReducedMotion } from "motion/react";
+import DragHandleVerticalIcon from "@atlaskit/icon/core/drag-handle-vertical";
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 
 import {
 	AgentSessionColumn,
@@ -23,6 +26,7 @@ import {
 } from "../lib/in-flow-agent-session-column-geometry";
 import { useInFlowGutterScrollMask } from "./use-in-flow-gutter-scroll-mask";
 import { ExpandMoreHorizontalIcon } from "./expand-more-horizontal-icon";
+import { useSessionColumnReposition } from "./use-session-column-reposition";
 
 // Extend the preview's 24px session targets to 56px, within the empty gutter.
 // The 32px column footprint and marker axis stay fixed; To do remains clickable.
@@ -33,6 +37,8 @@ const IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX = -5;
 const IN_FLOW_AGENT_SESSION_COLUMN_MAX_WIDTH_PX = 560;
 const IN_FLOW_AGENT_SESSION_COLUMN_WIDTH_TRANSITION =
 	"width var(--duration-normal) var(--ease-out-practical)";
+const IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_TRANSITION =
+	"transform var(--duration-normal) var(--ease-out-practical)";
 const IN_FLOW_AGENT_SESSION_COLUMN_EXPANSION_TRANSITION =
 	"width var(--duration-medium) var(--ease-in-out)";
 const IN_FLOW_AGENT_SESSION_COLUMN_RESIZE_HANDLE_CLASS_NAME = [
@@ -44,20 +50,6 @@ const IN_FLOW_AGENT_SESSION_COLUMN_RESIZE_HANDLE_CLASS_NAME = [
 	"data-[active]:[&>div]:scale-105 focus-visible:[&>div]:scale-105 focus-visible:[&>div]:bg-bg-selected-bold focus-visible:[&>div]:opacity-100",
 	"[&>div]:duration-medium [&>div]:ease-out-practical motion-reduce:transition-none motion-reduce:[&>div]:scale-100 motion-reduce:[&>div]:transition-none",
 ].join(" ");
-const IN_FLOW_AGENT_SESSION_COLUMN_VARIANTS: Variants = {
-	embedded: {
-		transform: `translateX(${IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX}px)`,
-		transition: { duration: 0.15, ease: [0.4, 1, 0.6, 1] },
-	},
-	gutter: {
-		transform: `translateX(${IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX}px)`,
-		transition: { duration: 0.1, ease: [0.6, 0, 0.8, 0.6] },
-	},
-};
-const IN_FLOW_AGENT_SESSION_COLUMN_REDUCED_MOTION_VARIANTS: Variants = {
-	embedded: { transform: `translateX(${IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX}px)` },
-	gutter: { transform: `translateX(${IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX}px)` },
-};
 
 export interface InFlowAgentSessionColumnProps {
 	agentSessionColumn: AgentSessionColumnProps;
@@ -158,7 +150,7 @@ function InFlowAgentSessionColumnFootprint({
 				aria-hidden="true"
 				className="shrink-0"
 				style={{
-					transition: expansionTransition,
+					transition: columnWidthPx === AGENT_SESSION_COLUMN_COLLAPSED_WIDTH_PX ? transition : expansionTransition,
 					width: isEmbedded ? columnWidthPx : 0,
 				}}
 			/>
@@ -196,34 +188,35 @@ function InFlowAgentSessionColumnSurface({
 	const title = agentSessionColumn.title ?? IN_FLOW_AGENT_SESSION_COLUMN_TITLE;
 
 	return (
-		<motion.div
-			animate={isEmbedded ? "embedded" : "gutter"}
+		<div
 			className={cn(
 				"group/in-flow-agent-session-column absolute inset-y-0 start-0 z-40 flex min-h-0 border-2 border-r-0",
 				isEmbedded
 					? "pointer-events-auto bg-surface"
 					: "pointer-events-none bg-transparent [&_[data-agent-session-notch]]:pointer-events-auto",
 				untrackedDropArmed ? "border-ring" : "border-transparent",
+				agentSessionColumn.isRepositioning && !isPersistentExpanded ? "bg-transparent" : null,
 				className,
 			)}
 			data-board-agent-session-drop-zone="untracked"
 			data-board-agent-session-target={untrackedDropArmed ? "untracked" : undefined}
-			initial={false}
 			style={{
 				paddingTop,
 				paddingBottom,
 				willChange: shouldReduceMotion ? undefined : "transform",
+				transform: `translateX(${isEmbedded ? IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX : IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX}px)`,
+				transition: shouldReduceMotion ? "none" : IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_TRANSITION,
 			}}
-			variants={shouldReduceMotion
-				? IN_FLOW_AGENT_SESSION_COLUMN_REDUCED_MOTION_VARIANTS
-				: IN_FLOW_AGENT_SESSION_COLUMN_VARIANTS}
 		>
 			<AgentSessionColumn
 				{...agentSessionColumn}
 				collapsed={!isPersistentExpanded}
-				collapsedExpandAction={isPinnedPreview
-					? { label: "Expand more", icon: <ExpandMoreHorizontalIcon /> }
-					: undefined}
+				collapsedExpandAction={{
+					label: isPinnedPreview ? "Expand more" : "Expand",
+					icon: agentSessionColumn.isRepositioning
+						? <Icon render={<DragHandleVerticalIcon label="" />} />
+						: <ExpandMoreHorizontalIcon more={isPinnedPreview} />,
+				}}
 				collapsedPresentation={isEmbedded ? "column" : "gutter"}
 				collapsedRailHitSlopPx={isEmbedded && !isPersistentExpanded
 					? IN_FLOW_AGENT_SESSION_COLUMN_RAIL_HIT_SLOP_PX
@@ -234,6 +227,8 @@ function InFlowAgentSessionColumnSurface({
 				onCollapsedChange={onCollapsedChange}
 				onGutterIntroComplete={onGutterIntroComplete}
 				playGutterIntro={playGutterIntro}
+				preserveExpandTooltipOnPress
+				toggleChangesWidth={isPersistentExpanded || isPinnedPreview}
 			/>
 			{isPersistentExpanded ? (
 				<SidebarResizeHandle
@@ -257,7 +252,7 @@ function InFlowAgentSessionColumnSurface({
 					tabIndex={0}
 				/>
 			) : null}
-		</motion.div>
+		</div>
 	);
 }
 
@@ -294,7 +289,7 @@ export function InFlowAgentSessionColumn({
 		handleGutterPointerDown,
 		handlePointerEnter,
 		handlePointerLeave,
-		isEmbedded,
+		isEmbedded: isInteractionEmbedded,
 		isPersistentExpanded,
 		isPinnedPreview,
 	} = useInFlowAgentSessionColumnInteraction(
@@ -311,15 +306,45 @@ export function InFlowAgentSessionColumn({
 	const columnWidthPx = isPersistentExpanded
 		? expandedWidthPx
 		: AGENT_SESSION_COLUMN_COLLAPSED_WIDTH_PX;
+	const reposition = useSessionColumnReposition({
+		hostRef,
+		width: columnWidthPx,
+		disabled: sessionFlyoutsSuspended || resize.isResizing,
+		onStart: () => {
+			if (!isPersistentExpanded && !isPinnedPreview) handleCollapsedChange(false);
+		},
+	});
+	const isEmbedded = isInteractionEmbedded || reposition.shifted || reposition.dragging;
+	const dragHandle = reposition.enabled ? (
+		<Button
+			aria-label={`Move ${agentSessionColumn.title ?? IN_FLOW_AGENT_SESSION_COLUMN_TITLE} column`}
+			aria-description="Drag horizontally, or use the arrow keys, Home and End to choose a position. Escape cancels a drag."
+			data-session-column-move-handle=""
+			className={cn("shrink-0 cursor-grab touch-none active:cursor-grabbing", reposition.dragging ? "border border-border bg-surface-overlay! hover:bg-surface-overlay! active:bg-surface-overlay!" : null)}
+			size="icon-compact"
+			variant={reposition.dragging ? "outline" : "ghost"}
+			title={reposition.dragging ? undefined : "Drag to move column. Use arrow keys, Home or End to reposition."}
+		>
+			<Icon render={<DragHandleVerticalIcon label="" />} />
+		</Button>
+	) : undefined;
 
 	return (
 		<JiraSessionFlyoutSuspensionProvider
-			suspended={sessionFlyoutsSuspended || !isEmbedded}
+			suspended={sessionFlyoutsSuspended || reposition.dragging || !isEmbedded}
 		>
 			<div
 				ref={hostRef}
+				{...reposition.bindings}
 				data-agent-session-column-expansion={isPersistentExpanded ? "expanded" : isPinnedPreview ? "pinned" : "gutter"}
-				className="relative z-30 flex min-h-0 shrink-0 self-stretch"
+				data-session-column-dragging={reposition.dragging || undefined}
+				className={cn(
+					"z-30 flex min-h-0 shrink-0 self-stretch",
+					reposition.shifted ? "pointer-events-none absolute inset-y-0 left-0" : "relative",
+					reposition.enabled ? "[&_[data-agent-session-column-header]]:cursor-grab [&_[data-agent-session-column-header]]:touch-pan-y" : null,
+					reposition.dragging ? "z-50" : null,
+				)}
+				style={reposition.shifted ? { width: columnWidthPx + 42 } : undefined}
 				onPointerDown={isEmbedded ? undefined : handleGutterPointerDown}
 				onPointerEnter={handlePointerEnter}
 				onPointerLeave={handlePointerLeave}
@@ -346,15 +371,15 @@ export function InFlowAgentSessionColumn({
 						) : null}
 					</div>
 				)}
-				<InFlowAgentSessionColumnFootprint
+				{reposition.shifted ? null : <InFlowAgentSessionColumnFootprint
 					columnFrame={columnFrame}
 					columnWidthPx={columnWidthPx}
 					isEmbedded={isEmbedded}
 					isResizing={resize.isResizing}
 					shouldReduceMotion={shouldReduceMotion}
-				/>
+				/>}
 				<InFlowAgentSessionColumnSurface
-					agentSessionColumn={agentSessionColumn}
+					agentSessionColumn={{ ...agentSessionColumn, headerDragHandle: dragHandle, isRepositioning: reposition.dragging }}
 					className={className}
 					columnFrame={columnFrame}
 					expandedWidthPx={expandedWidthPx}

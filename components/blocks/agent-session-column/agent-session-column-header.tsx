@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType, CSSProperties, ReactElement } from "react";
+import type { ComponentType, CSSProperties, ReactElement, ReactNode } from "react";
 
 import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import AddIcon from "@atlaskit/icon/core/add";
@@ -242,6 +242,7 @@ function CollapseButton({
 
 export function AgentSessionColumnHeader({
 	collapseLabel,
+	dragHandle,
 	filter,
 	frame = DEFAULT_AGENT_SESSION_COLUMN_FRAME,
 	hasActiveFilters = false,
@@ -252,6 +253,7 @@ export function AgentSessionColumnHeader({
 	surface,
 }: Readonly<{
 	collapseLabel: string;
+	dragHandle?: ReactNode;
 	filter: ReactElement;
 	frame?: AgentSessionColumnFrame;
 	hasActiveFilters?: boolean;
@@ -265,9 +267,11 @@ export function AgentSessionColumnHeader({
 		case "column":
 			return (
 				<div
+					data-agent-session-column-header=""
 					className="flex min-w-0 flex-nowrap items-center"
 					style={AGENT_SESSION_COLUMN_HEADER_STYLE[frame]}
 				>
+					{dragHandle}
 					{renderColumnChrome({
 						collapseLabel,
 						filter,

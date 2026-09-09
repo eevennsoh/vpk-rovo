@@ -46,6 +46,7 @@ import {
 } from "./experimental-jira-kanban";
 import { EMPTY_COLLAPSED_BOARD_COLUMNS } from "./lib/board-column-collapse";
 import { useBoardAgentSessionDrag } from "./use-board-agent-session-drag";
+import { SessionColumnPlacementProvider } from "./components/session-column-placement";
 import {
 	collectBoardIssueKeys,
 	groupBoardUntrackedSessions,
@@ -897,7 +898,10 @@ function ExperimentalJiraKanbanPageContent({
 				/>
 			) : (
 				<div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-					<div className="flex min-h-0 min-w-0 flex-1 items-stretch">
+					<SessionColumnPlacementProvider
+						enabled={!isListContent && showInFlowAgentSessionColumn && Boolean(agentSessionColumnConfig)}
+						titles={filteredBoardColumns.map((column) => column.title)}
+					>
 						{showInFlowAgentSessionColumn && agentSessionColumnConfig ? (
 							<InFlowAgentSessionColumn
 								key={agentSessionColumnConfig.collapsed ? "collapsed" : "expanded"}
@@ -983,7 +987,7 @@ function ExperimentalJiraKanbanPageContent({
 								}}
 							/>
 						)}
-					</div>
+					</SessionColumnPlacementProvider>
 				</div>
 			)) : null}
 			{/* Docked rail: last child so it stacks above list column controls at the same z. */}
