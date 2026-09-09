@@ -92,7 +92,6 @@ export function CreatedCardArrivalMotion({
 }: Readonly<CreatedCardArrivalMotionProps>) {
 	const hoverInsertion = use(BoardCardHoverInsertionContext);
 	const insertionPosition = resolveBoardCardInsertionPosition(cardInsertion ?? hoverInsertion, {
-		cardCount,
 		cardIndex,
 		columnTitle,
 	});
@@ -107,8 +106,10 @@ export function CreatedCardArrivalMotion({
 		? getJiraCreateArrivalDelayS(arrival.cardCodes, cardCode)
 		: 0;
 
+	// Only interior gaps arm a seam, so the rule always has a real gutter to
+	// centre itself in — no card owns a flush column-edge line.
 	const insertionLine = insertionPosition ? (
-		<BoardCardInsertionLine position={insertionPosition} seam={insertionPosition === "before" && cardIndex > 0 ? "gap" : "edge"} />
+		<BoardCardInsertionLine position={insertionPosition} seam="gap" />
 	) : null;
 
 	return (
