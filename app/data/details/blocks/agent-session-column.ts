@@ -12,6 +12,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
   title="Unattached sessions"
   headerSurface="panel"
   hasScrollingEffect
+  multiSelect={false}
   onCreateWorkItem={(item) => console.log("create", item.id)}
   onLinkWorkItem={(item) => console.log("link", item.id)}
 />
@@ -145,10 +146,17 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 				'In-flow well framing. "enclosed" puts the header inside the well. "caption" leaves it on the host surface. Ignored when headerSurface is "panel". Kanban hosts derive this from columnChrome and overwrite whatever is passed on agentSessionColumn.',
 		},
 		{
+			name: "multiSelect",
+			type: "boolean",
+			default: "true",
+			description:
+				"Enables additive/range selection, selection keyboard shortcuts, bulk header actions, and multi-session drag cohorts. Set false to remove selection UI and make every drag carry only its originating session.",
+		},
+		{
 			name: "triage",
 			type: "UntrackedWorkTriage",
 			description:
-				"Enables hover select, the Selected N header, and bulk Link / Create / Archive / Clear. Omit it and the column stays a read-only list with Resume and Archive. `locateTarget` is the only lookup — `attach` consumes that value.",
+				"Enables row Approve and, while multiSelect is true, the Selected N header and bulk Link / Create / Archive / Clear. Omit it and the column stays a read-only list with Resume and Archive. `locateTarget` is the only lookup — `attach` consumes that value.",
 		},
 		{
 			name: "capturedItemIds",

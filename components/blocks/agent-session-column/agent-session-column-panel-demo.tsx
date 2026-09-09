@@ -12,6 +12,7 @@ import {
 	PanelContainer,
 	PanelContent,
 } from "@/components/ui/panel";
+import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import {
@@ -138,6 +139,7 @@ export function AgentSessionColumnPanelDemo({
 	const [capturedIds, setCapturedIds] = useState<ReadonlySet<string>>(() => new Set());
 	const [collapsed, setCollapsed] = useState(false);
 	const [items, setItems] = useState<readonly AgentSessionItem[]>(AGENT_SESSION_ITEMS);
+	const [multiSelect, setMultiSelect] = useState(true);
 	const [newIds, setNewIds] = useState<ReadonlySet<string>>(() => new Set());
 	const [notchShape, setNotchShape] = useState<AgentSessionColumnNotchShape>("circle");
 	const [syncedBatches, setSyncedBatches] = useState(0);
@@ -189,6 +191,7 @@ export function AgentSessionColumnPanelDemo({
 
 	const handleReset = useCallback(() => {
 		setItems(AGENT_SESSION_ITEMS);
+		setMultiSelect(true);
 		setNewIds(new Set());
 		setNotchShape("circle");
 		setCapturedIds(new Set());
@@ -219,6 +222,14 @@ export function AgentSessionColumnPanelDemo({
 				<Button onClick={handleReset} size="compact" variant="ghost">
 					Reset
 				</Button>
+				<Toggle
+					onPressedChange={setMultiSelect}
+					pressed={multiSelect}
+					size="sm"
+					variant="outline"
+				>
+					Multi-select
+				</Toggle>
 				<ToggleGroup
 					aria-label="Collapsed marker shape"
 					className="ml-auto"
@@ -241,8 +252,9 @@ export function AgentSessionColumnPanelDemo({
 					human avatar as its card, holds, then shrinks into a 4px rest in
 					icon.subtle and pushes the ones below it down. Hovering or
 					focusing a dot reveals that face again. Mark reviewed decays the mark, which
-					is what the watermark does when the column is expanded. Hover a card
-					to select it; the header then offers Link, Create, Archive, and Clear.
+					is what the watermark does when the column is expanded. {multiSelect
+						? "Select cards to reveal Link, Create, Archive, and Clear in the header."
+						: "Multi-select is off. Each drag carries only the session it starts from."}
 				</p>
 			</div>
 
@@ -264,6 +276,7 @@ export function AgentSessionColumnPanelDemo({
 							headerSurface="panel"
 							items={items}
 							listClassName="gap-1 p-1"
+							multiSelect={multiSelect}
 							newItemIds={newIds}
 							notchShape={notchShape}
 							onCollapsedChange={setCollapsed}
