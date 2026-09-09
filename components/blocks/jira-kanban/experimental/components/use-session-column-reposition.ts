@@ -11,15 +11,54 @@ interface ColumnDrag {
 	startX: number;
 	x: number;
 	startLeft: number;
+	startWidth: number;
 	active: boolean;
 	preview: number;
 	highlightedIndex: number | null;
 	frame: number;
 	element: HTMLDivElement;
+	source: HTMLDivElement | null;
 	captureElement: HTMLElement;
 	centers: number[];
 	scrollLeft: number;
 	scrollport: HTMLElement;
+}
+
+function cloneSessionColumnDragSource(
+	element: HTMLDivElement,
+	startLeft: number,
+	startWidth: number,
+): HTMLDivElement {
+	const source = element.cloneNode(true) as HTMLDivElement;
+	source.removeAttribute("data-agent-session-column-expansion");
+	source.removeAttribute("data-session-column-dragging");
+	source.setAttribute("aria-hidden", "true");
+	source.setAttribute("data-session-column-drag-source", "");
+	source.setAttribute("inert", "");
+	source.style.cssText += [
+		"position: absolute",
+		"inset: 0 auto 0 0",
+		`width: ${startWidth}px`,
+		`transform: translateX(${startLeft}px)`,
+		"pointer-events: none",
+		"opacity: var(--opacity-disabled)",
+		"z-index: 30",
+	].join(";");
+
+	for (const node of source.querySelectorAll<HTMLElement>(
+		"[id], [data-testid], [data-agent-session-column], [data-board-agent-session-drop-zone], [data-board-agent-session-target]",
+	)) {
+		if (node.hasAttribute("data-agent-session-column")) {
+			node.setAttribute("data-session-column-drag-source-surface", "");
+		}
+		node.removeAttribute("id");
+		node.removeAttribute("data-testid");
+		node.removeAttribute("data-agent-session-column");
+		node.removeAttribute("data-board-agent-session-drop-zone");
+		node.removeAttribute("data-board-agent-session-target");
+	}
+
+	return source;
 }
 
 function revealSlot(rootRef: RefObject<HTMLDivElement | null>) {
@@ -28,7 +67,7 @@ function revealSlot(rootRef: RefObject<HTMLDivElement | null>) {
 	});
 }
 
-/** Moves the existing surface; the session list is never cloned or remounted. */
+/** Moves the live surface; the inert source snapshot owns no React or event behavior. */
 export function useSessionColumnReposition({ hostRef, width, onStart, disabled }: Readonly<{
 	hostRef: RefObject<HTMLDivElement | null>;
 	width: number;
@@ -92,6 +131,7 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 	useEffect(() => () => {
 		if (drag.current) {
 			cancelAnimationFrame(drag.current.frame);
+			drag.current.source?.remove();
 			drag.current = null;
 			setPreview?.(null);
 			setHighlightedIndex?.(null);
@@ -103,6 +143,7 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 		if (!current || !placement) return;
 		cancelAnimationFrame(current.frame);
 		drag.current = null;
+		current.source?.remove();
 		if (current.captureElement.hasPointerCapture(current.pointerId)) current.captureElement.releasePointerCapture(current.pointerId);
 		if (current.active) {
 			suppressClick.current = true;
@@ -124,6 +165,8 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 		const scrollport = root?.querySelector<HTMLElement>("[data-jira-kanban-scrollport]");
 		if (!root || !scrollport) return;
 		const element = event.currentTarget;
+		const elementBox = element.getBoundingClientRect();
+		const rootBox = root.getBoundingClientRect();
 		const captureElement = (control ?? target.closest("[data-agent-session-column-header]")) as HTMLElement;
 		captureElement.setPointerCapture(event.pointerId);
 		suppressClick.current = false;
@@ -131,12 +174,14 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 			pointerId: event.pointerId,
 			startX: event.clientX,
 			x: event.clientX,
-			startLeft: element.getBoundingClientRect().left - root.getBoundingClientRect().left,
+			startLeft: elementBox.left - rootBox.left,
+			startWidth: elementBox.width,
 			active: false,
 			preview: placement.index,
 			highlightedIndex: null,
 			frame: 0,
 			element,
+			source: null,
 			captureElement,
 			centers: [...scrollport.querySelectorAll<HTMLElement>("[data-jira-kanban-column]")].map((column) => {
 				const box = column.getBoundingClientRect();
@@ -155,6 +200,12 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 		event.preventDefault();
 		if (current.active) return;
 		current.active = true;
+		current.source = cloneSessionColumnDragSource(
+			current.element,
+			current.startLeft,
+			current.startWidth,
+		);
+		placement.rootRef.current?.append(current.source);
 		const firstColumn = current.scrollport.querySelector<HTMLElement>("[data-jira-kanban-column]");
 		const firstCard = firstColumn?.querySelector<HTMLElement>("article");
 		if (firstColumn && firstCard) {

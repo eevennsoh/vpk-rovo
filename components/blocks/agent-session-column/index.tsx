@@ -625,13 +625,13 @@ export function AgentSessionColumn({
 							aria-label={`${collapsedExpandAction?.label ?? "Expand"} ${title} column`}
 							aria-description={headerDragHandle ? "Drag horizontally to move the column, or use Alt with the arrow keys." : undefined}
 							className={isRepositioning
-								? "relative z-50 cursor-grabbing border border-border bg-surface-overlay! text-icon-subtle opacity-100 transition-none hover:bg-surface-overlay! active:bg-surface-overlay!"
+								? "relative z-50 cursor-grabbing border-transparent! bg-transparent! text-icon-subtle opacity-100 transition-none hover:bg-transparent! active:bg-transparent!"
 								: isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL}
 							onClick={handleToggleCollapsed}
 							size="icon-compact"
 							style={{ width: "100%" }}
 							type="button"
-							variant={isRepositioning ? "outline" : "ghost"}
+							variant="ghost"
 						/>
 					}
 				>

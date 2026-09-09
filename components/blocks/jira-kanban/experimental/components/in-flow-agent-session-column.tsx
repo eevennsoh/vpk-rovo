@@ -214,7 +214,7 @@ function InFlowAgentSessionColumnSurface({
 				collapsedExpandAction={{
 					label: isPinnedPreview ? "Expand more" : "Expand",
 					icon: agentSessionColumn.isRepositioning
-						? <Icon render={<DragHandleVerticalIcon label="" />} />
+						? <Icon className="size-3" render={<DragHandleVerticalIcon label="" />} />
 						: <ExpandMoreHorizontalIcon more={isPinnedPreview} />,
 				}}
 				collapsedPresentation={isEmbedded ? "column" : "gutter"}
@@ -320,12 +320,12 @@ export function InFlowAgentSessionColumn({
 			aria-label={`Move ${agentSessionColumn.title ?? IN_FLOW_AGENT_SESSION_COLUMN_TITLE} column`}
 			aria-description="Drag horizontally, or use the arrow keys, Home and End to choose a position. Escape cancels a drag."
 			data-session-column-move-handle=""
-			className={cn("shrink-0 cursor-grab touch-none active:cursor-grabbing", reposition.dragging ? "border border-border bg-surface-overlay! hover:bg-surface-overlay! active:bg-surface-overlay!" : null)}
+			className="shrink-0 cursor-grab touch-none border-transparent! bg-transparent! hover:bg-transparent! active:cursor-grabbing active:bg-transparent!"
 			size="icon-compact"
-			variant={reposition.dragging ? "outline" : "ghost"}
+			variant="ghost"
 			title={reposition.dragging ? undefined : "Drag to move column. Use arrow keys, Home or End to reposition."}
 		>
-			<Icon render={<DragHandleVerticalIcon label="" />} />
+			<Icon className="size-3" render={<DragHandleVerticalIcon label="" />} />
 		</Button>
 	) : undefined;
 
