@@ -78,6 +78,8 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/jira-kanban/experimental/components/in-flow-gutter-scroll-mask.test.js",
 		"components/blocks/jira-kanban/experimental/data/board-group-options.test.js",
 		"components/blocks/jira-kanban/experimental/lib/board-column-collapse.test.js",
+		"components/blocks/jira-kanban/experimental/lib/in-flow-agent-session-column-interaction.test.js",
+		"components/blocks/jira-kanban/experimental/lib/session-column-reposition-pointer.test.js",
 		"components/blocks/jira-kanban/experimental/lib/create-work-item-exclusive-proximity.test.js",
 		"components/blocks/jira-kanban/experimental/data/board-sort-options.test.js",
 		"components/blocks/jira-kanban/experimental/data/board-view-options.test.js",

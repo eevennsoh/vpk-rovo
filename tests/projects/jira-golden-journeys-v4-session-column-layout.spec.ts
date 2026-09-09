@@ -12,11 +12,13 @@ async function openBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({
 		timeout: 15_000,
 	});
-	const expandUntracked = page.getByRole("button", { name: "Expand Unattached sessions column" });
+	const expandUntracked = page.getByRole("button", { name: "Unattached sessions column options" });
 	if (await expandUntracked.isVisible()) {
 		await revealCollapsedAgentSessionColumn(page);
 		await expandUntracked.click();
-		await page.getByRole("button", { name: "Expand more Unattached sessions column" }).click();
+		await page.getByRole("menuitem", { name: "Pin" }).click();
+		await page.getByRole("button", { name: "Unattached sessions column options" }).click();
+		await page.getByRole("menuitem", { name: "Expand" }).click();
 	}
 	await expect(
 		page.locator("[data-agent-session-column]").getByTestId("agent-session-row-lw-scope-thread"),
@@ -28,7 +30,7 @@ async function openCollapsedBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({
 		timeout: 15_000,
 	});
-	await expect(page.getByRole("button", { name: "Expand Unattached sessions column" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Unattached sessions column options" })).toBeVisible();
 }
 
 async function revealCollapsedAgentSessionColumn(page: Page): Promise<void> {
@@ -48,7 +50,7 @@ test("compact timeline stays aligned during inner and board scrolling", async ({
 	await page.setViewportSize({ width: 1100, height: 500 });
 	await openCollapsedBoard(page);
 	await revealCollapsedAgentSessionColumn(page);
-	const expand = page.getByRole("button", { name: "Expand Unattached sessions column" });
+	const expand = page.getByRole("button", { name: "Unattached sessions column options" });
 	await expand.click();
 	await page.keyboard.press("Alt+ArrowRight");
 	await expect(page.locator("[data-session-column-placement]")).toHaveAttribute("data-session-column-placement", "1");
@@ -256,7 +258,7 @@ test("drag source preserves its scroll position and follows board auto-scroll", 
 test("compact session header drags without expanding and keeps its wider target", async ({ page }) => {
 	await openCollapsedBoard(page);
 	await revealCollapsedAgentSessionColumn(page);
-	const expand = page.getByRole("button", { name: "Expand Unattached sessions column" });
+	const expand = page.getByRole("button", { name: "Unattached sessions column options" });
 	const start = await expand.boundingBox();
 	const todo = await page.locator('[data-jira-kanban-column="To do"]').boundingBox();
 	if (!start || !todo) throw new Error("Expected visible column headers");
@@ -278,7 +280,7 @@ test("compact session header drags without expanding and keeps its wider target"
 	await page.mouse.move(todo.x + todo.width - 8, start.y + start.height / 2, { steps: 12 });
 	await expect(page.locator('[data-slot="tooltip-content"]')).toHaveCount(0);
 	await expect(page.locator("[data-agent-session-notch]").first()).not.toBeVisible();
-	const draggingButton = page.getByRole("button", { name: "Expand more Unattached sessions column" });
+	const draggingButton = page.getByRole("button", { name: "Unattached sessions column options" });
 	await expect(draggingButton).toHaveAttribute("data-variant", "ghost");
 	await expect(draggingButton).toHaveCSS("opacity", "1");
 	await expect(draggingButton).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
@@ -286,7 +288,7 @@ test("compact session header drags without expanding and keeps its wider target"
 	await expect(draggingButton.locator('[data-slot="icon"]')).toHaveCSS("height", "12px");
 	await page.mouse.up();
 	await expect(page.locator("[data-session-column-placement]")).toHaveAttribute("data-session-column-placement", "1");
-	const more = page.getByRole("button", { name: "Expand more Unattached sessions column" });
+	const more = page.getByRole("button", { name: "Unattached sessions column options" });
 	await expect(more).toBeVisible();
 	await expect(more).toHaveAttribute("data-variant", "ghost");
 	await expect(page.locator("[data-agent-session-notch]").first()).toBeVisible();
@@ -327,7 +329,7 @@ test("keyboard movement reveals the last slot on a narrow board with reduced mot
 test("nearby column gaps grow blue and return to subtle lines as the drag moves away", async ({ page }) => {
 	await openCollapsedBoard(page);
 	await revealCollapsedAgentSessionColumn(page);
-	const expand = page.getByRole("button", { name: "Expand Unattached sessions column" });
+	const expand = page.getByRole("button", { name: "Unattached sessions column options" });
 	await expand.hover();
 	const start = await expand.boundingBox();
 	if (!start) throw new Error("Expected the compact header");
@@ -358,21 +360,15 @@ test("nearby column gaps grow blue and return to subtle lines as the drag moves 
 	await page.mouse.up();
 });
 
-test("the embedded staged expand keeps one growing tooltip mounted", async ({ page }) => {
+test("the collapsed options menu offers Pin and Expand", async ({ page }) => {
 	await page.goto(JIRA_GOLDEN_JOURNEYS_V4_EMBEDDED_URL, { waitUntil: "domcontentloaded" });
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({ timeout: 15_000 });
 	await revealCollapsedAgentSessionColumn(page);
-	const expand = page.getByRole("button", { name: "Expand Unattached sessions column" });
-	await expand.hover();
-	const tooltip = page.locator('[data-slot="tooltip-content"]');
-	await expect(tooltip.locator("[torph-sr]")).toHaveText("Expand");
-	const tooltipElement = await tooltip.elementHandle();
-	const initialWidth = (await tooltip.boundingBox())?.width ?? 0;
-	await expand.click();
-	await expect(tooltip.locator("[torph-sr]")).toHaveText("Expand more");
-	expect(await tooltipElement?.evaluate((element) => element.isConnected)).toBe(true);
-	await expect.poll(async () => (await tooltip.boundingBox())?.width ?? 0)
-		.toBeGreaterThan(initialWidth);
+	const options = page.getByRole("button", { name: "Unattached sessions column options" });
+	await options.click();
+	await expect(page.getByRole("menuitem", { name: "Pin" })).toBeVisible();
+	await expect(page.getByRole("menuitem", { name: "Expand" })).toBeVisible();
+	await page.keyboard.press("Escape");
 	await page.getByRole("heading", { name: "Jira Design" }).hover();
-	await expect(tooltip).toHaveCount(0);
+	await expect(page.getByRole("menuitem", { name: "Expand" })).toHaveCount(0);
 });
