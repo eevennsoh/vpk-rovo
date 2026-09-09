@@ -98,9 +98,13 @@ test("an arrival is a transient beat plus a mark that outlives it", () => {
 });
 
 test("settled rail avatars reveal immediately while arrival morphing stays animated", () => {
+	const avatarStart = USER_NOTCH_SOURCE.indexOf("{avatarSrc ? (");
+	const avatarEnd = USER_NOTCH_SOURCE.indexOf("width={12}", avatarStart);
+	assert.notEqual(avatarStart, -1);
+	assert.notEqual(avatarEnd, -1);
 	const hoverRevealSource = USER_NOTCH_SOURCE.slice(
-		USER_NOTCH_SOURCE.indexOf("{avatarSrc ? ("),
-		USER_NOTCH_SOURCE.indexOf("</Image>"),
+		avatarStart,
+		avatarEnd,
 	);
 
 	assert.match(hoverRevealSource, /group-data-\[hovered\]\/notch:scale-100 group-data-\[hovered\]\/notch:opacity-100/u);
