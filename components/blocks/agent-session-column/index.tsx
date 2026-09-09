@@ -332,6 +332,7 @@ export function AgentSessionColumn({
 	widthTransitionDisabled = false,
 	items = AGENT_SESSION_ITEMS,
 	listClassName,
+	multiSelect = true,
 	newItemIds,
 	notchShape = "circle",
 	onCollapsedChange,
@@ -473,6 +474,7 @@ export function AgentSessionColumn({
 		focusRow: handleFocusRow,
 		getSuggestedWorkItemKey: sessionProps.getSuggestedWorkItemKey,
 		getSuggestedWorkItemKeys: sessionProps.getSuggestedWorkItemKeys,
+		multiSelect,
 		onLeadItem: handleLeadItem,
 		title: displayTitle,
 		triage: selectionTriage,
@@ -835,7 +837,7 @@ export function AgentSessionColumn({
 			data-agent-session-column={title}
 			data-collapsed={collapsed || undefined}
 			data-column-frame={layout === "panel" ? undefined : layout}
-			onKeyDown={untrackedSelection.onKeyDown}
+			onKeyDown={multiSelect ? untrackedSelection.onKeyDown : undefined}
 			onTransitionEnd={handleTransitionEnd}
 			tabIndex={-1}
 			style={{

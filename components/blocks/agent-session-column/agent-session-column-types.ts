@@ -93,8 +93,15 @@ export interface AgentSessionColumnProps extends Omit<
 	/** Called after the column collapses or expands, controlled or not. */
 	onCollapsedChange?: (collapsed: boolean) => void;
 	/**
-	 * Enables hover select, the Selected N header, and row Approve.
-	 * Omit it and the column stays a read-only list with Resume and Archive.
+	 * Enables additive/range selection, selection keyboard shortcuts, bulk header
+	 * actions, and multi-session drag cohorts. Defaults to `true`. Set to `false`
+	 * when every drag must carry only the session it started from.
+	 */
+	multiSelect?: boolean;
+	/**
+	 * Enables row Approve and, while `multiSelect` is true, selection and bulk
+	 * header actions. Omit it and the column stays a read-only list with Resume
+	 * and Archive.
 	 */
 	triage?: UntrackedWorkTriage;
 	/**
