@@ -38,6 +38,7 @@ import {
 } from "@/components/blocks/jira-issue/completed-agent-runs";
 import {
 	getCompletedCount,
+	getJiraIssueAgentSurfaceOffsets,
 	getJiraIssueLayoutTransition,
 	getJiraIssuePresenceMotion,
 	JIRA_ISSUE_MOTION_STYLE,
@@ -560,12 +561,15 @@ function JiraIssueDefault({
 		? layoutTransition
 		: { ...layoutTransition, opacity: JIRA_ISSUE_MOTION_BACKDROP_NEARNESS };
 	const agentActivitySurfacePosition = agentActivitySurfaceInset - 1;
-	const agentActivitySurfaceAnimation = {
-		bottom: -1,
-		left: agentActivitySurfacePosition,
-		right: agentActivitySurfacePosition,
-		top: agentActivitySurfacePosition,
-	};
+	// No chin row under the card means the well's bottom band has to come out of
+	// the card, exactly like its left, right, and top bands. Adding a spacer row
+	// instead would grow the shell by 4px the moment a hovered agent session
+	// highlighted the card and shove every card below it down.
+	const insetsAgentActivitySurfaceBottom = hasActiveAgentActivityShell && !hasAgentActivityChin;
+	const agentActivitySurfaceAnimation = getJiraIssueAgentSurfaceOffsets(
+		agentActivitySurfacePosition,
+		insetsAgentActivitySurfaceBottom,
+	);
 	const agentActivitySurfaceStyle: CSSProperties = {
 		...AGENT_ACTIVITY_SURFACE_STYLE,
 		boxShadow: chromeStyles.boxShadow,
@@ -727,7 +731,7 @@ function JiraIssueDefault({
 								completedCount={completedSubtaskCount}
 								controlId={subtasksPanelId}
 								expanded={resolvedSubtasksExpanded}
-								hasInsetSurface={hasActiveAgentActivityShell}
+								hasInsetSurface={hasActiveAgentActivityShell && !insetsAgentActivitySurfaceBottom}
 								label={subtasksLabel}
 								onToggle={handleSubtasksToggle}
 								shouldReduceMotion={shouldReduceMotion}
@@ -838,13 +842,6 @@ function JiraIssueDefault({
 						</motion.div>
 					) : null}
 				</AnimatePresence>
-				{hasActiveAgentActivityShell && !hasAgentActivityChin ? (
-					<div
-						aria-hidden
-						className="h-1"
-						data-slot="jira-issue-agent-shell-gutter"
-					/>
-				) : null}
 			</LayoutGroup>
 		</motion.div>
 	);

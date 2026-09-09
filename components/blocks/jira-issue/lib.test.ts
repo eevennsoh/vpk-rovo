@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
-import { resolveIssueAssigneeUnassignedKind } from "./lib.ts";
+import { getJiraIssueAgentSurfaceOffsets, resolveIssueAssigneeUnassignedKind } from "./lib.ts";
 
 test("missing assignee photos resolve to the unassigned person placeholder", () => {
 	assert.equal(resolveIssueAssigneeUnassignedKind(undefined), "person");
@@ -10,4 +10,33 @@ test("missing assignee photos resolve to the unassigned person placeholder", () 
 	assert.equal(resolveIssueAssigneeUnassignedKind("/maya.png"), undefined);
 	assert.equal(resolveIssueAssigneeUnassignedKind(undefined, "agent"), "agent");
 	assert.equal(resolveIssueAssigneeUnassignedKind("/maya.png", "person"), "person");
+});
+
+test("a resting card surface covers the whole agent shell", () => {
+	assert.deepEqual(getJiraIssueAgentSurfaceOffsets(-1, false), {
+		bottom: -1,
+		left: -1,
+		right: -1,
+		top: -1,
+	});
+});
+
+test("a chinless agent well insets every surface edge so the shell keeps its height", () => {
+	// Regression: hovering an agent session highlights its board cards, and the
+	// bottom band of the grey well used to be a 4px spacer row appended under the
+	// card. That grew the shell from 124px to 128px on hover and nudged every card
+	// below it down. All four edges must come out of the card instead.
+	const offsets = getJiraIssueAgentSurfaceOffsets(3, true);
+
+	assert.deepEqual(offsets, { bottom: 3, left: 3, right: 3, top: 3 });
+	assert.equal(offsets.bottom, offsets.top);
+});
+
+test("a docked chin row keeps the surface bottom flush against it", () => {
+	assert.deepEqual(getJiraIssueAgentSurfaceOffsets(3, false), {
+		bottom: -1,
+		left: 3,
+		right: 3,
+		top: 3,
+	});
 });

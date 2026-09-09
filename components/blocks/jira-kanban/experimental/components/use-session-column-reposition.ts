@@ -2,13 +2,23 @@
 
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type PointerEvent, type RefObject } from "react";
 
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+	isSessionColumnRepositionPointerTarget,
+	resolveSessionColumnPreviewIndex,
+} from "../lib/session-column-reposition-pointer";
 import { useSessionColumnPlacement } from "./session-column-placement";
 
 const SESSION_COLUMN_GAP_PROXIMITY_RANGE_PX = 120;
+/** Collapsed options trigger fills its header slot (wider than icon-compact 24). */
+const SESSION_COLUMN_DRAG_CHIP_FALLBACK_WIDTH_PX = 56;
+const SESSION_COLUMN_DRAG_CHIP_FALLBACK_HEIGHT_PX = 24;
 
 interface ColumnDrag {
 	pointerId: number;
 	startX: number;
+	startY: number;
 	x: number;
 	startLeft: number;
 	startWidth: number;
@@ -18,11 +28,61 @@ interface ColumnDrag {
 	frame: number;
 	element: HTMLDivElement;
 	source: HTMLDivElement | null;
+	chip: HTMLButtonElement | null;
 	captureElement: HTMLElement;
 	centers: number[];
 	scrollLeft: number;
 	sourceScrollsWithBoard: boolean;
 	scrollport: HTMLElement;
+}
+
+const SESSION_COLUMN_DRAG_CHIP_CLASS_NAME = cn(
+	buttonVariants({ variant: "outline", size: "icon-compact" }),
+	"pointer-events-none fixed z-50 cursor-grabbing border-border bg-surface text-icon-subtle",
+	"[&_svg]:size-3 [&_svg]:text-icon-subtle",
+);
+
+const SESSION_COLUMN_DRAG_CHIP_GLYPH = `<svg aria-hidden="true" viewBox="0 0 16 16" class="size-3 text-icon-subtle" fill="currentColor"><circle cx="5" cy="3.25" r="1.25"/><circle cx="11" cy="3.25" r="1.25"/><circle cx="5" cy="8" r="1.25"/><circle cx="11" cy="8" r="1.25"/><circle cx="5" cy="12.75" r="1.25"/><circle cx="11" cy="12.75" r="1.25"/></svg>`;
+
+function resolveSessionColumnDragChipSize(host: HTMLElement): { width: number; height: number } {
+	const source = host.querySelector<HTMLElement>("[data-agent-session-column-options]");
+	const box = source?.getBoundingClientRect();
+	if (box && box.width > 0 && box.height > 0) {
+		return { width: box.width, height: box.height };
+	}
+	return {
+		width: SESSION_COLUMN_DRAG_CHIP_FALLBACK_WIDTH_PX,
+		height: SESSION_COLUMN_DRAG_CHIP_FALLBACK_HEIGHT_PX,
+	};
+}
+
+function createSessionColumnDragChip(
+	host: HTMLElement,
+	clientX: number,
+	clientY: number,
+): HTMLButtonElement {
+	const chip = document.createElement("button");
+	const size = resolveSessionColumnDragChipSize(host);
+	chip.type = "button";
+	chip.setAttribute("aria-hidden", "true");
+	chip.setAttribute("data-session-column-drag-chip", "");
+	chip.setAttribute("data-slot", "button");
+	chip.setAttribute("inert", "");
+	chip.className = SESSION_COLUMN_DRAG_CHIP_CLASS_NAME;
+	chip.innerHTML = SESSION_COLUMN_DRAG_CHIP_GLYPH;
+	chip.style.boxSizing = "border-box";
+	chip.style.width = `${size.width}px`;
+	chip.style.height = `${size.height}px`;
+	chip.style.minWidth = `${size.width}px`;
+	chip.style.minHeight = `${size.height}px`;
+	positionSessionColumnDragChip(chip, clientX, clientY);
+	return chip;
+}
+
+function positionSessionColumnDragChip(chip: HTMLButtonElement, clientX: number, clientY: number) {
+	chip.style.left = `${clientX}px`;
+	chip.style.top = `${clientY}px`;
+	chip.style.transform = "translate(-50%, -50%)";
 }
 
 function copyDescendantScrollOffsets(source: HTMLElement, clone: HTMLElement) {
@@ -36,6 +96,36 @@ function copyDescendantScrollOffsets(source: HTMLElement, clone: HTMLElement) {
 	}
 }
 
+function restyleSessionColumnDragSourceClone(source: HTMLDivElement) {
+	for (const node of source.querySelectorAll("[aria-expanded], [aria-pressed], [aria-selected], [data-popup-open], [data-state]")) {
+		node.removeAttribute("aria-expanded");
+		node.removeAttribute("aria-pressed");
+		node.removeAttribute("aria-selected");
+		node.removeAttribute("data-popup-open");
+		node.removeAttribute("data-state");
+	}
+
+	const isCollapsedRail = Boolean(source.querySelector("[data-agent-session-column-rail]"));
+	if (!isCollapsedRail) {
+		return false;
+	}
+
+	for (const node of source.querySelectorAll("[data-agent-session-column-options]")) {
+		node.remove();
+	}
+	for (const node of source.querySelectorAll<HTMLElement>("[data-agent-session-column-count]")) {
+		node.classList.remove("opacity-0");
+		node.classList.add("opacity-100");
+		node.style.opacity = "1";
+	}
+	for (const node of source.querySelectorAll<HTMLElement>(".group\\/in-flow-agent-session-column")) {
+		node.classList.remove("bg-surface");
+		node.classList.add("bg-transparent");
+	}
+	source.setAttribute("data-session-column-drag-source-rest", "");
+	return true;
+}
+
 function cloneSessionColumnDragSource(
 	element: HTMLDivElement,
 	startLeft: number,
@@ -47,6 +137,7 @@ function cloneSessionColumnDragSource(
 	source.setAttribute("aria-hidden", "true");
 	source.setAttribute("data-session-column-drag-source", "");
 	source.setAttribute("inert", "");
+	restyleSessionColumnDragSourceClone(source);
 	source.style.cssText += [
 		"position: absolute",
 		"inset: 0 auto 0 0",
@@ -79,7 +170,7 @@ function revealSlot(rootRef: RefObject<HTMLDivElement | null>) {
 	});
 }
 
-/** Moves the live surface; the inert source snapshot owns no React or event behavior. */
+/** Parks an inert source snapshot and moves only the outlined drag chip. */
 export function useSessionColumnReposition({ hostRef, width, onStart, disabled }: Readonly<{
 	hostRef: RefObject<HTMLDivElement | null>;
 	width: number;
@@ -144,6 +235,8 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 		if (drag.current) {
 			cancelAnimationFrame(drag.current.frame);
 			drag.current.source?.remove();
+			drag.current.chip?.remove();
+			drag.current.element.style.visibility = "";
 			drag.current = null;
 			setPreview?.(null);
 			setHighlightedIndex?.(null);
@@ -156,6 +249,8 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 		cancelAnimationFrame(current.frame);
 		drag.current = null;
 		current.source?.remove();
+		current.chip?.remove();
+		current.element.style.visibility = "";
 		if (current.captureElement.hasPointerCapture(current.pointerId)) current.captureElement.releasePointerCapture(current.pointerId);
 		if (current.active) {
 			suppressClick.current = true;
@@ -168,23 +263,21 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 	const onPointerDownCapture = (event: PointerEvent<HTMLDivElement>) => {
 		if (!placement || disabled || event.button !== 0 || !event.isPrimary) return;
 		const target = event.target as HTMLElement;
-		if (!target.closest("[data-agent-session-column-header]")) return;
-		// The expand button doubles as a compact drag handle; other header actions
-		// (filters, selection, menus) retain their existing interactions.
-		const control = target.closest("button, a, input, [role=separator]");
-		if (control && !control.hasAttribute("data-session-column-move-handle") && !control.getAttribute("aria-label")?.startsWith("Expand")) return;
+		if (!isSessionColumnRepositionPointerTarget(target)) return;
 		const root = placement.rootRef.current;
 		const scrollport = root?.querySelector<HTMLElement>("[data-jira-kanban-scrollport]");
 		if (!root || !scrollport) return;
 		const element = event.currentTarget;
 		const elementBox = element.getBoundingClientRect();
 		const rootBox = root.getBoundingClientRect();
-		const captureElement = (control ?? target.closest("[data-agent-session-column-header]")) as HTMLElement;
-		captureElement.setPointerCapture(event.pointerId);
+		// Capture on the host so restyling the collapsed chip (ghost "…" →
+		// outlined drag button) cannot drop the gesture via lostpointercapture.
+		element.setPointerCapture(event.pointerId);
 		suppressClick.current = false;
 		drag.current = {
 			pointerId: event.pointerId,
 			startX: event.clientX,
+			startY: event.clientY,
 			x: event.clientX,
 			startLeft: elementBox.left - rootBox.left,
 			startWidth: elementBox.width,
@@ -194,7 +287,8 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 			frame: 0,
 			element,
 			source: null,
-			captureElement,
+			chip: null,
+			captureElement: element,
 			centers: [...scrollport.querySelectorAll<HTMLElement>("[data-jira-kanban-column]")].map((column) => {
 				const box = column.getBoundingClientRect();
 				return box.left + box.width / 2;
@@ -220,6 +314,9 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 		);
 		placement.rootRef.current?.append(current.source);
 		copyDescendantScrollOffsets(current.element, current.source);
+		current.chip = createSessionColumnDragChip(current.element, current.x, current.startY);
+		document.body.append(current.chip);
+		current.element.style.visibility = "hidden";
 		const firstColumn = current.scrollport.querySelector<HTMLElement>("[data-jira-kanban-column]");
 		const firstCard = firstColumn?.querySelector<HTMLElement>("article");
 		if (firstColumn && firstCard) {
@@ -233,8 +330,7 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 		onStart();
 		const track = () => {
 			if (drag.current !== current) return;
-			current.element.style.transform = `translateX(${current.startLeft + current.x - current.startX}px)`;
-			current.element.style.clipPath = "";
+			if (current.chip) positionSessionColumnDragChip(current.chip, current.x, current.startY);
 			const box = current.scrollport.getBoundingClientRect();
 			const scroll = current.x > box.right - 40 ? 12 : current.x < box.left + 40 ? -12 : 0;
 			if (scroll) current.scrollport.scrollLeft += scroll;
@@ -242,7 +338,11 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 			if (current.sourceScrollsWithBoard && current.source) {
 				current.source.style.transform = `translateX(${current.startLeft - offset}px)`;
 			}
-			const next = current.centers.filter((center) => current.x > center - offset).length;
+			const next = resolveSessionColumnPreviewIndex({
+				centers: current.centers,
+				pointerX: current.x,
+				scrollOffset: offset,
+			});
 			if (next !== current.preview) {
 				current.preview = next;
 				placement.setPreview(next);

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { AiPlannerPanel, AiPlannerScope } from "@/components/blocks/jira-work-item/team-eu26/components/ai-planner-panel";
 import { ContextEditableDescription } from "@/components/blocks/jira-work-item/team-eu26/components/context-editable-header";
+import { HighConfidenceAgentSessions } from "@/components/blocks/jira-work-item/team-eu26/components/high-confidence-agent-sessions";
 import { HighConfidenceWorkItemBody } from "@/components/blocks/jira-work-item/team-eu26/components/high-confidence-work-item-body";
 import { WorkItemSection } from "@/components/blocks/jira-work-item/team-eu26/components/work-item-section";
 import { useJiraWorkItemMeta } from "@/components/blocks/jira-work-item/team-eu26/context-jira-work-item";
@@ -28,7 +29,13 @@ export function WorkItemBody({
 	const { initialPreset } = useJiraWorkItemMeta();
 	usePublishSections(WORK_ITEM_SECTION_TABS);
 	if (initialPreset === "filled") {
-		return <HighConfidenceWorkItemBody />;
+		return (
+			<div className="flex min-w-0 flex-col gap-7">
+				<HighConfidenceWorkItemBody />
+				<HighConfidenceAgentSessions />
+				{activity}
+			</div>
+		);
 	}
 
 	return (
