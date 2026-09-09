@@ -112,12 +112,10 @@ test("renders each session as a solid uncaptured-work card around the shared row
 	assert.doesNotMatch(CARD_SOURCE, /top-1\.5/u);
 });
 
-test("large uncaptured-work rows lead with the human invoker while retaining agent semantics", () => {
+test("large uncaptured-work rows show the agent with its human invoker in a 32px identity", () => {
 	assert.match(LIST_CARD_SOURCE, /export function AgentListIdentity/u);
-	assert.match(CARD_SOURCE, /const visibleIdentity = toAgentSessionVisibleIdentity\(item\);/u);
-	assert.match(CARD_SOURCE, /<AgentListIdentity[\s\S]*agent=\{visibleIdentity\}[\s\S]*sizePx=\{24\}/u);
+	assert.match(CARD_SOURCE, /<AgentListIdentity[\s\S]*agent=\{item\.agent\}[\s\S]*attributedBy=\{item\.invokedBy\}[\s\S]*sizePx=\{32\}/u);
 	assert.match(CARD_SOURCE, /renderIdentity=\{\(\) =>/u);
-	assert.doesNotMatch(CARD_SOURCE, /sizePx=\{32\}/u);
 	assert.match(TYPES_SOURCE, /export function toAgentSessionVisibleIdentity/u);
 	assert.match(TYPES_SOURCE, /kind: "person"/u);
 	assert.match(TYPES_SOURCE, /avatarSrc: item\.invokedBy\.avatarSrc/u);

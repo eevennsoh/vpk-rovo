@@ -160,16 +160,19 @@ function AssigneeAvatar({
 	assignee,
 	muted,
 	selected,
+	showGroupStroke,
 }: Readonly<{
 	assignee: JiraKanbanAssigneeData;
 	muted?: boolean;
 	selected?: boolean;
+	showGroupStroke?: boolean;
 }>) {
 	const isAgent = assignee.avatarSrc.startsWith("/avatar-agent/");
 
 	return (
 		<Avatar
 			className={cn(
+				showGroupStroke && !isAgent && "ring-2 ring-background",
 				selected && !isAgent && "ring-2! ring-border-selected!",
 				muted && "opacity-(--opacity-disabled)",
 			)}
@@ -336,7 +339,7 @@ function BoardHeaderAssigneeFacepileItem({
 	surfaceLabel: string;
 }>) {
 	const avatar = (
-		<AssigneeAvatar assignee={assignee} muted={muted} selected={selected} />
+		<AssigneeAvatar assignee={assignee} muted={muted} selected={selected} showGroupStroke />
 	);
 
 	if (!onSelectedAssigneeIdsChange) {

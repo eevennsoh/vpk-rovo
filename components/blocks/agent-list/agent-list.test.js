@@ -160,6 +160,14 @@ test("people render a circular photo beside the hexagon agents in the same list"
 	assert.match(CARD_SOURCE, /PX_TO_PERSON_AVATAR_SIZE: Record<number, NonNullable<AvatarProps\["size"\]>> = \{\s*24: "sm",\s*32: "default",/u);
 });
 
+test("agent identities can show a human invoker in the 32px attribution frame", () => {
+	assert.match(CARD_SOURCE, /attributedBy\?: AgentListInvoker;/u);
+	assert.match(CARD_SOURCE, /aria-label=\{`\$\{agent\.name\}, used by \$\{attributedBy\.name\}`\}/u);
+	assert.match(CARD_SOURCE, /PX_TO_ATTRIBUTED_AGENT_SIZE: Record<number, number> = \{[\s\S]*32: 24,/u);
+	assert.match(CARD_SOURCE, /PX_TO_ATTRIBUTED_PERSON_AVATAR_SIZE:[\s\S]*32: "xs",/u);
+	assert.match(CARD_SOURCE, /className="absolute bottom-0 right-0 ring-2 ring-background"/u);
+});
+
 test("the attention state keeps the row's own title and warns instead of shimmering", () => {
 	// `needs-input` swaps a task title for the blocked state; an attention row's
 	// title already is the news, so swapping it would erase the row's content.
