@@ -581,6 +581,7 @@ type JiraSessionFlyoutPayloadProps = Readonly<
 		| "onLinkWorkItem"
 		| "onSubmitPrompt"
 	> & {
+		animateAvatars: boolean;
 		content: JiraSessionFlyoutContent;
 		session: JiraSidebarSessionItem;
 	}
@@ -647,7 +648,13 @@ function JiraSessionComposerFlyout({
 }
 
 function JiraSessionUntrackedWorkFlyout(props: Omit<JiraSessionFlyoutPayloadProps, "content">) {
-	return <JiraSessionUntrackedWorkCard {...resolveJiraSessionUntrackedWorkActions(props)} session={props.session} />;
+	return (
+		<JiraSessionUntrackedWorkCard
+			{...resolveJiraSessionUntrackedWorkActions(props)}
+			animateAvatars={props.animateAvatars}
+			session={props.session}
+		/>
+	);
 }
 
 function JiraSessionFlyoutPayload({ content, ...props }: JiraSessionFlyoutPayloadProps) {
@@ -657,7 +664,12 @@ function JiraSessionFlyoutPayload({ content, ...props }: JiraSessionFlyoutPayloa
 		case "untracked-work":
 			return <JiraSessionUntrackedWorkFlyout {...props} />;
 		case "details":
-			return <JiraSessionDetailsCard session={props.session} />;
+			return (
+				<JiraSessionDetailsCard
+					animateAvatars={props.animateAvatars}
+					session={props.session}
+				/>
+			);
 		default: {
 			const _exhaustive: never = content;
 			return _exhaustive;
@@ -731,6 +743,7 @@ export function JiraSessionFlyoutSurface({
 					>
 						{payload ? (
 							<JiraSessionFlyoutPayload
+								animateAvatars={!instantPosition}
 								archiveActionLabel={archiveActionLabel}
 								capturedSessionIds={capturedSessionIds}
 								content={content}

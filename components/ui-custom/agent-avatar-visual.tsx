@@ -61,6 +61,8 @@ const avatarSizeFromPx = (px: number): NonNullable<AvatarProps["size"]> => PX_TO
 
 export interface AgentAvatarVisualProps {
 	avatarSrc?: string;
+	/** Disable the shared avatar enter and hover motion for instant surfaces. */
+	animate?: boolean;
 	/** Render a full-color VPK product mark instead of image-backed agent art. */
 	vpkLogo?: "rovo";
 	/** When set, renders the ADS brand logo instead of an `avatarSrc` image. */
@@ -96,6 +98,7 @@ export interface AgentAvatarVisualProps {
  */
 export function AgentAvatarVisual({
 	avatarSrc,
+	animate,
 	vpkLogo,
 	logoName,
 	brandName,
@@ -143,6 +146,7 @@ export function AgentAvatarVisual({
 
 	return (
 		<Avatar
+			animate={animate}
 			className={avatarClassName}
 			label={label}
 			shape="hexagon"
