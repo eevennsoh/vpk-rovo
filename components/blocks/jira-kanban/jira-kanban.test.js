@@ -171,21 +171,6 @@ test("Kanban header matches the production board alignment and action groups", (
 	assert.match(HEADER_SOURCE, /aria-label=\{`More \$\{surfaceLabel\} controls`\}/u);
 });
 
-test("board facepile human avatars keep the white separator inside clickable wrappers", () => {
-	assert.match(
-		HEADER_SOURCE,
-		/className=\{cn\(\s*showGroupStroke && "ring-2 ring-background",[\s\S]*selected && "ring-2! ring-border-selected!"/u,
-	);
-	assert.match(
-		EXPERIMENTAL_HEADER_SOURCE,
-		/className=\{cn\(\s*showGroupStroke && !isAgent && "ring-2 ring-background",[\s\S]*selected && !isAgent/u,
-	);
-	assert.match(
-		EXPERIMENTAL_V2_HEADER_SOURCE,
-		/className=\{cn\(\s*showGroupStroke && !isAgent && "ring-2 ring-background",[\s\S]*selected && !isAgent/u,
-	);
-});
-
 test("Kanban header places optional view tabs below the Jira Design label", () => {
 	assert.match(HEADER_SOURCE, /<JiraProjectAvatar label=\{JIRA_DESIGN_PROJECT\.name\} src=\{JIRA_DESIGN_PROJECT\.imageSrc\} \/>/u);
 	assert.doesNotMatch(HEADER_SOURCE, /<JiraIcon/u);

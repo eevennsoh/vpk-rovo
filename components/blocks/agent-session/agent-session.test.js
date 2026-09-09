@@ -9,6 +9,10 @@ const LIST_CARD_SOURCE = readFileSync(
 	join(__dirname, "../agent-list/agent-list-card.tsx"),
 	"utf8",
 );
+const IDENTITY_SOURCE = readFileSync(
+	join(__dirname, "../agent-list/agent-list-identity.tsx"),
+	"utf8",
+);
 const LIST_ROW_ACTION_SOURCE = readFileSync(
 	join(__dirname, "../agent-list/agent-list-row-action.tsx"),
 	"utf8",
@@ -113,7 +117,7 @@ test("renders each session as a solid uncaptured-work card around the shared row
 });
 
 test("large uncaptured-work rows show the agent with its human invoker in a 32px identity", () => {
-	assert.match(LIST_CARD_SOURCE, /export function AgentListIdentity/u);
+	assert.match(IDENTITY_SOURCE, /export function AgentListIdentity/u);
 	assert.match(CARD_SOURCE, /<AgentListIdentity[\s\S]*agent=\{item\.agent\}[\s\S]*attributedBy=\{item\.invokedBy\}[\s\S]*sizePx=\{32\}/u);
 	assert.match(CARD_SOURCE, /renderIdentity=\{\(\) =>/u);
 	assert.match(TYPES_SOURCE, /export function toAgentSessionVisibleIdentity/u);
