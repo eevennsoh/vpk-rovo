@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ComponentProps, type CSSProperties, type FocusEvent, type PointerEvent, type ReactNode } from "react";
+import { useId, useRef, useState, type ComponentProps, type CSSProperties, type FocusEvent, type PointerEvent, type ReactNode } from "react";
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
 
 export type { JiraIssueAgentLinkFlash } from "@/components/blocks/jira-issue/agent-link-flash";
@@ -430,22 +430,24 @@ function JiraIssueDefault({
 	const hasAgentActivityPresentation = agentActivityMode !== undefined || Boolean(agentActivities?.length) || hasAgentDoneNotification;
 	// Agent chrome also leaves for reasons that have nothing to do with this card:
 	// a board filter such as View → Agents strips every row off the cards it is
-	// not focusing. Dropping back to the plain tree there is the same
-	// element-type swap described below, so the card would remount while it is
-	// still on screen — losing keyboard focus and replaying every descendant's
-	// mount animation, the assignee avatar's scale-and-fade most visibly. Latch
-	// the shell on instead: once mounted it stays, and a shell with no active
-	// agent activity is already the resting state of a target preview, so the
-	// card paints identically. Rows still enter and leave through their own
-	// `AnimatePresence`, which is the motion a filter toggle should show.
-	const [agentActivityShellLatched, setAgentActivityShellLatched] = useState(false);
-	useEffect(() => {
-		if (!hasAgentActivityPresentation) {
-			return;
-		}
-		setAgentActivityShellLatched(true);
-	}, [hasAgentActivityPresentation]);
-	const usesAgentActivityPresentation = hasAgentActivityPresentation || agentActivityShellLatched;
+	// not focusing, and the shell it hosts is the element-type switch described
+	// below. Falling back to the plain tree there remounts a card that never left
+	// the screen — keyboard focus is lost and every mount-animated descendant
+	// replays its entrance, the assignee avatar's scale-and-fade most visibly.
+	//
+	// This is history, not derived state: nothing in the current props can say
+	// whether this card has already mounted a shell, so the latch is set during
+	// render rather than from an effect. There is no stale frame to adjust away —
+	// the render that first sees agent chrome already resolves the shell through
+	// the `hasAgentActivityPresentation` term below — and a shell with no active
+	// agent activity is the resting state of a session-target preview, so the
+	// card paints identically once the rows are gone.
+	const [agentActivityShellMounted, setAgentActivityShellMounted] = useState(
+		hasAgentActivityPresentation,
+	);
+	if (hasAgentActivityPresentation && !agentActivityShellMounted) {
+		setAgentActivityShellMounted(true);
+	}
 	// The approach also mounts the shell. With `initial={false}` on the backdrop,
 	// a shell that only appears once the pointer is already inside the rect has
 	// nothing to fade from and snaps to full grey. Mounting early is visually
@@ -456,14 +458,15 @@ function JiraIssueDefault({
 	// element-type change on the article's first child: a per-frame gate would
 	// remount the whole card — dropping keyboard focus — every time a pointer
 	// passed within the proximity range.
-	const usesAgentActivityShell = usesAgentActivityPresentation
+	const usesAgentActivityShell = hasAgentActivityPresentation
+		|| agentActivityShellMounted
 		|| Boolean(agentSessionTransfer)
 		|| agentSessionDragControl !== undefined
 		|| Boolean(agentSessionTargetPreview);
 	const chromeStyles = resolveJiraIssueChrome(chrome);
 	const usesStrokeChrome = chrome === "stroke";
 	const usesCompactVisual = compact || usesStrokeChrome;
-	const hasInteractiveContent = showMoreAction || hasSubtasks || Boolean(parentEpicControl) || usesAgentActivityPresentation || Boolean(generativeAction) || Boolean(agentSessionTransfer) || usesCompactVisual || Boolean(agentSessionTargetPreview);
+	const hasInteractiveContent = showMoreAction || hasSubtasks || Boolean(parentEpicControl) || hasAgentActivityPresentation || agentActivityShellMounted || Boolean(generativeAction) || Boolean(agentSessionTransfer) || usesCompactVisual || Boolean(agentSessionTargetPreview);
 	const shouldRenderIssueClickButton = Boolean(props.onClick && !parentEpicControl);
 	const issueRowsClassName = cn("pt-1", !(hasSubtasks && resolvedSubtasksExpanded) && "pb-1");
 	const layoutTransition = getJiraIssueLayoutTransition(shouldReduceMotion);
