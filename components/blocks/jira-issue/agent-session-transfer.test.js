@@ -331,10 +331,21 @@ test("Jira issue agentSessionTransfer is opt-in so existing consumers are unaffe
 		SOURCE,
 		/const localAgentSessionDragBinding: JiraIssueAgentSessionDragBinding \| undefined = agentSessionTransfer[\s\S]*onDragStateChange: \(state\) => \{[\s\S]*setInternalAgentSessionDragState\([\s\S]*JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE[\s\S]*onFocusedActivitiesChange:[\s\S]*: undefined;/u,
 	);
-	// No config -> no transfer group and no transfer region in the tree.
+	// No config -> no transfer group and no transfer region in the tree. The
+	// host div itself stays: `agentSessionTransfer` is a board capability that
+	// comes and goes, and gating the wrapper would change the article's first
+	// child element type and remount the whole card.
 	assert.match(
 		SOURCE,
-		/const agentActivityShellWithTransfer = agentSessionTransfer \? \([\s\S]*<JiraIssueAgentSessionTransfer[\s\S]*\) : agentActivityShell;/u,
+		/const agentActivityShellWithTransfer = \(\s*\n\t\t<div\s*\n\t\t\tclassName=\{cn\(\s*\n\t\t\t\t"relative w-full min-w-0 overflow-visible",\s*\n\t\t\t\tagentSessionTransfer \? JIRA_ISSUE_SESSION_TRANSFER_GROUP_CLASS : null,\s*\n\t\t\t\)\}\s*\n\t\t>/u,
+	);
+	assert.match(
+		SOURCE,
+		/\{agentSessionTransfer \? \(\s*\n\t\t\t\t<JiraIssueAgentSessionTransfer/u,
+	);
+	assert.match(
+		SOURCE,
+		/\{agentSessionTransfer && agentSessionDragBinding && sessionTransferAfter/u,
 	);
 	assert.doesNotMatch(SOURCE, /from "@\/components\/visual\/gooey"/u);
 	assert.doesNotMatch(SOURCE, /<Gooey/u);

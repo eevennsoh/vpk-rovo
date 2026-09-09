@@ -89,7 +89,9 @@ const AGENT_SESSION_COLUMN_TRANSITION = "width var(--duration-medium) var(--ease
  * bordered well (`radius.xlarge`) that clips fades and the hidden-work
  * footer so they cannot paint over the 1px stroke. Enclosed moves
  * `overflow-hidden` onto the list/footer region so header focus rings are
- * not sliced. Collapsed, the rail sits in the unframed fill. Cards are
+ * not sliced, and that clip carries the well's bottom radius so the fade
+ * cannot wash out the bottom corners. Collapsed, the rail sits in the
+ * unframed fill. Cards are
  * borderless. Expanded in-flow uses the same 4px list inset and row gap as
  * the panel; adjacent marked cards fuse across that gap.
  */
@@ -112,6 +114,20 @@ const AGENT_SESSION_WELL = cn(
  * Panel hosts pass the same class via `listClassName`.
  */
 const AGENT_SESSION_LIST_SPACING = "gap-1 p-1";
+
+/**
+ * Enclosed clips the list/footer region instead of the well, so the clip is a
+ * plain rectangle inset 1px inside the stroke. The straight runs of the border
+ * survive that, but `radius.xlarge` curves *inward* from the bottom corners:
+ * the arc and the last ~12px of each side stroke fall inside the rectangle,
+ * where the opaque end of the bottom scroll fade paints over them and the
+ * corner reads as clipped. Matching the well's radius on the clip keeps the
+ * fade off the arc. The clip is 1px inside the stroke, so its true inner curve
+ * is 11px; rounding to the full 12px only ever clips further from the border,
+ * and the well paints its own `bg-surface` behind that hairline.
+ */
+const AGENT_SESSION_ENCLOSED_BODY =
+	"flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-b-xl";
 
 function resolveAgentSessionPlaneClassName(
 	layout: AgentSessionColumnLayout,
@@ -164,7 +180,7 @@ function renderAgentSessionColumnFrame({
 			) : (
 				<div className={planeClassName}>
 					{header}
-					<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+					<div className={AGENT_SESSION_ENCLOSED_BODY}>
 						{body}
 					</div>
 				</div>
@@ -316,6 +332,7 @@ export function AgentSessionColumn({
 	widthTransitionDisabled = false,
 	items = AGENT_SESSION_ITEMS,
 	listClassName,
+	multiSelect = true,
 	newItemIds,
 	notchShape = "circle",
 	onCollapsedChange,
@@ -457,6 +474,7 @@ export function AgentSessionColumn({
 		focusRow: handleFocusRow,
 		getSuggestedWorkItemKey: sessionProps.getSuggestedWorkItemKey,
 		getSuggestedWorkItemKeys: sessionProps.getSuggestedWorkItemKeys,
+		multiSelect,
 		onLeadItem: handleLeadItem,
 		title: displayTitle,
 		triage: selectionTriage,
@@ -819,7 +837,7 @@ export function AgentSessionColumn({
 			data-agent-session-column={title}
 			data-collapsed={collapsed || undefined}
 			data-column-frame={layout === "panel" ? undefined : layout}
-			onKeyDown={untrackedSelection.onKeyDown}
+			onKeyDown={multiSelect ? untrackedSelection.onKeyDown : undefined}
 			onTransitionEnd={handleTransitionEnd}
 			tabIndex={-1}
 			style={{
