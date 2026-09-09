@@ -44,6 +44,43 @@ async function revealCollapsedAgentSessionColumn(page: Page): Promise<void> {
 	await expect(hitArea).toHaveCount(0);
 }
 
+test("compact timeline stays aligned during inner and board scrolling", async ({ page }) => {
+	await page.setViewportSize({ width: 1100, height: 500 });
+	await openCollapsedBoard(page);
+	await revealCollapsedAgentSessionColumn(page);
+	const expand = page.getByRole("button", { name: "Expand Unattached sessions column" });
+	await expand.click();
+	await page.keyboard.press("Alt+ArrowRight");
+	await expect(page.locator("[data-session-column-placement]")).toHaveAttribute("data-session-column-placement", "1");
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	const rail = page.locator("[data-agent-session-column] ul");
+	await expect.poll(() => rail.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0);
+	const samples = await rail.evaluate(async (element) => {
+		const board = document.querySelector<HTMLElement>("[data-jira-kanban-scrollport]")!;
+		const values: { x: number; y: number }[] = [];
+		for (const offset of [100, 200, 40, 160, 0]) {
+			board.scrollLeft = offset;
+			element.scrollTop = offset;
+			const start = performance.now();
+			while (performance.now() - start < 400) {
+				await new Promise(requestAnimationFrame);
+				for (const row of element.children) {
+					const transform = new DOMMatrixReadOnly(getComputedStyle(row).transform);
+					values.push({ x: transform.m41, y: transform.m42 });
+				}
+			}
+		}
+		return values;
+	});
+	await rail.evaluate((element) => { element.scrollTop = 100; });
+	await expect.poll(() => rail.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+	await page.locator("[data-jira-kanban-scrollport]").evaluate((element) => { element.scrollLeft = 100; });
+	await expect.poll(() => page.locator("[data-jira-kanban-scrollport]").evaluate((element) => element.scrollLeft)).toBe(100);
+	expect(Math.max(...samples.map((sample) => Math.abs(sample.x)))).toBeLessThan(1);
+	expect(Math.max(...samples.map((sample) => Math.abs(sample.y)))).toBeLessThan(1);
+	await page.screenshot({ path: "output/agent-browser/jira-golden-journeys-v4/scrolled-timeline.png" });
+});
+
 test("hovering the leading gutter stays open without bouncing under a stationary pointer", async ({ page }) => {
 	await page.goto(JIRA_GOLDEN_JOURNEYS_V4_EMBEDDED_URL, { waitUntil: "domcontentloaded" });
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible();

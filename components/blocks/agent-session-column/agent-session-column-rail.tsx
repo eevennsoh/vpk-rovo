@@ -492,6 +492,8 @@ function AgentSessionNotch({
 			className="group/notch flex h-6 w-full shrink-0 items-center"
 			data-hovered={isHovered || undefined}
 			layout={shouldReduceMotion ? false : "position"}
+			// Animate session-order changes, not the rail's scrolling or board placement.
+			layoutDependency={introIndex}
 			transition={AGENT_SESSION_ARRIVAL_TRANSITION}
 		>
 			{/* The drag host is a block child rather than the flex item itself, so
