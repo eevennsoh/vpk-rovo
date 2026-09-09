@@ -279,6 +279,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/artifact-pane/artifact-pane.test.js",
 		"components/blocks/chatgpt/create-project-form.test.js",
 		"components/blocks/jira-issue/agent-activity.test.js",
+		"components/blocks/jira-issue/agent-link-flash.test.js",
 		"components/blocks/jira-issue/agent-session-transfer.test.js",
 		"components/blocks/jira-issue/compact-chrome.test.js",
 		"components/blocks/jira-issue/jira-issue.test.js",

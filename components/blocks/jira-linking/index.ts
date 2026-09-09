@@ -34,6 +34,7 @@ export {
 	resolveJiraLinkingArcOptions,
 	resolveJiraLinkingDropPlayback,
 	resolveJiraLinkingDropProfile,
+	resolveJiraLinkingDropSettleMs,
 	type JiraLinkingArcDirection,
 	type JiraLinkingArcOptions,
 	type JiraLinkingDrop,
@@ -50,6 +51,7 @@ export {
 } from "./use-jira-linking-atlas";
 export {
 	JIRA_LINKING_DEFAULT_SURFACE_VARIABLE,
+	resolveJiraLinkingReleaseSettleMs,
 	useJiraLinkingFrame,
 	type JiraLinkingFrameSource,
 	type JiraLinkingRelease,

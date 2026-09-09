@@ -202,3 +202,14 @@ export function toBoardAgentSessionLinkFlash(
 		},
 	};
 }
+
+/**
+ * A drop's acknowledgement that has not been handed to the rows yet.
+ *
+ * `flash` is nullable because a drop can arm the flights without earning a
+ * sweep — the flights cover attach *and* move, the sweep only covers a drop
+ * whose proximity winner is the card it landed on.
+ */
+export interface PendingSessionLinkFlash {
+	flash: BoardAgentSessionLinkFlash | null;
+}
