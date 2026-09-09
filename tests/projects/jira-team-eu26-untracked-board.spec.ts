@@ -9,11 +9,13 @@ async function openBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({
 		timeout: 15_000,
 	});
-	const expandUntracked = page.getByRole("button", { name: "Expand Unattached sessions column" });
-	if (await expandUntracked.isVisible()) {
+	const options = page.getByRole("button", { name: "Unattached sessions column options" });
+	if (await options.isVisible()) {
 		await revealCollapsedAgentSessionColumn(page);
-		await expandUntracked.click();
-		await page.getByRole("button", { name: "Expand more Unattached sessions column" }).click();
+		await options.click();
+		await page.getByRole("menuitem", { name: "Pin" }).click();
+		await page.getByRole("button", { name: "Unattached sessions column options" }).click();
+		await page.getByRole("menuitem", { name: "Expand" }).click();
 	}
 	await expect(
 		page.locator("[data-agent-session-column]").getByTestId("agent-session-row-lw-scope-thread"),
@@ -25,76 +27,51 @@ async function openCollapsedBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({
 		timeout: 15_000,
 	});
-	await expect(page.getByRole("button", { name: "Expand Unattached sessions column" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Unattached sessions column options" })).toBeVisible();
 }
 
 
-test("Untracked cycles from gutter to pinned timeline to full column and back", async ({ page }) => {
+test("Untracked pins and expands as separate axes", async ({ page }) => {
 	await openCollapsedBoard(page);
 	const host = page.locator("[data-agent-session-column-expansion]");
 	const column = page.locator("[data-agent-session-column]");
 	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
 	await revealCollapsedAgentSessionColumn(page);
-	const expand = page.getByRole("button", { name: "Expand Unattached sessions column" });
-	await expand.hover();
-	const expandTooltip = page.locator('[data-slot="tooltip-content"]');
-	await expect(expandTooltip.locator("[torph-sr]")).toHaveText("Expand");
-	const expandTooltipHandle = await expandTooltip.elementHandle();
-	const expandTooltipBox = await expandTooltip.boundingBox();
-	expect(expandTooltipHandle).not.toBeNull();
-	expect(expandTooltipBox).not.toBeNull();
-	const expandBox = await expand.boundingBox();
-	expect(expandBox).not.toBeNull();
-	const expandIcon = expand.locator('[data-slot="icon"]');
-	await expect(expandIcon).toHaveCSS("width", "16px");
-	await expect(expandIcon.locator("span").nth(1)).toHaveCSS("opacity", "1");
-	expect(await expandIcon.locator("span").nth(1).evaluate((element) => (
-		getComputedStyle(element).maskImage
-	))).toContain("expand.svg");
-	await expand.click();
-	await expect(expandTooltip.locator("[torph-sr]")).toHaveText("Expand more");
-	expect(await expandTooltipHandle?.evaluate((element) => element.isConnected)).toBe(true);
-	await expect.poll(async () => (await expandTooltip.boundingBox())?.width ?? 0)
-		.toBeGreaterThan(expandTooltipBox?.width ?? 0);
-	await page.getByRole("heading", { name: "Jira Design" }).hover();
-	await expect(expandTooltip).toHaveCount(0);
-	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "pinned");
+	const options = page.getByRole("button", { name: "Unattached sessions column options" });
+	await options.hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "preview");
 	await expect(column).toHaveCSS("width", "32px");
-	await expect(column).toHaveCSS("overflow-x", "visible");
-	await expect(page.locator("[data-agent-session-column-hit-area]")).toHaveCount(0);
-	const expandMore = page.getByRole("button", { name: "Expand more Unattached sessions column" });
-	await expandMore.hover();
-	await expect(expandTooltip.locator("[torph-sr]")).toHaveText("Expand more");
-	const expandMoreBox = await expandMore.boundingBox();
-	expect(expandMoreBox).not.toBeNull();
-	expect(expandMoreBox?.width).toBe(56);
-	expect(expandMoreBox?.width).toBe(expandBox?.width);
-	expect(expandMoreBox?.height).toBe(expandBox?.height);
-	const expandMoreIcon = expandMore.locator('[data-slot="icon"]');
-	await expect(expandMoreIcon).toHaveCSS("width", "16px");
-	await expect(expandMoreIcon).toHaveCSS("height", "16px");
-	await expect(expandMoreIcon.locator("span").nth(2)).toHaveCSS("opacity", "1");
-	await expect(expandMoreIcon.locator("span").nth(2)).toHaveCSS(
-		"transition-property",
-		"opacity, scale",
-	);
-	expect(await expandMoreIcon.locator("span").nth(2).evaluate((element) => (
-		getComputedStyle(element).maskImage
-	))).toContain("expand-more.svg");
-	await expandMore.click();
+	await options.click();
+	await expect(page.getByRole("menuitem", { name: "Pin" })).toBeVisible();
+	await expect(page.getByRole("menuitem", { name: "Expand" })).toBeVisible();
+	await page.getByRole("menuitem", { name: "Expand" }).click();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
+	await expect(host).not.toHaveAttribute("data-agent-session-column-pinned", "");
+	await expect(column).toHaveCSS("width", "280px");
 	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
+	await revealCollapsedAgentSessionColumn(page);
 	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
 	await expect(column).toHaveCSS("width", "280px");
+	await page.getByRole("button", { name: "Pin Unattached sessions column" }).click();
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
+	await expect(host).toHaveAttribute("data-agent-session-column-pinned", "");
+	await page.getByRole("button", { name: "Unpin Unattached sessions column" }).click();
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
+	await revealCollapsedAgentSessionColumn(page);
+	await page.getByRole("button", { name: "Unattached sessions column options" }).click();
+	await page.getByRole("menuitem", { name: "Pin" }).click();
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "pinned");
+	await expect(column).toHaveCSS("width", "32px");
+	await page.getByRole("button", { name: "Unattached sessions column options" }).click();
+	await page.getByRole("menuitem", { name: "Expand" }).click();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
 	await page.getByRole("button", { name: "Collapse Unattached sessions column" }).click();
 	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
 	await expect(page.locator("[data-agent-session-column-hit-area]")).toHaveCount(1);
-	// The same staged action is reachable without hovering, using Enter then Space.
-	await expand.focus();
-	await page.keyboard.press("Enter");
-	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "pinned");
-	await expect(expandMore).toBeFocused();
-	await page.keyboard.press("Space");
-	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
 });
 
 async function openAgentViewMenu(page: Page): Promise<void> {
@@ -117,7 +94,8 @@ async function selectAgentViewOption(page: Page, name: "Unattached" | "Working")
 test("agent filter collapse clears a previously pinned timeline", async ({ page }) => {
 	await openCollapsedBoard(page);
 	await revealCollapsedAgentSessionColumn(page);
-	await page.getByRole("button", { name: "Expand Unattached sessions column" }).click();
+	await page.getByRole("button", { name: "Unattached sessions column options" }).click();
+	await page.getByRole("menuitem", { name: "Pin" }).click();
 	const host = page.locator("[data-agent-session-column-expansion]");
 	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "pinned");
 	await selectAgentViewOption(page, "Unattached");
@@ -235,7 +213,7 @@ test("attaching onto a running session replaces that chin row instead of stackin
 	);
 	await expect(dropZone).toHaveAttribute("data-board-agent-session-target", "attach");
 	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin"]')).toBeVisible();
-	await expect(targetCard.getByText("Link 1 agent session")).toBeVisible();
+	await expect(targetCard.getByText("Attach 1 agent session")).toBeVisible();
 	await expect(runningSession).toHaveCount(0);
 	await expect(targetCard.locator('[data-slot="jira-issue-agent-row"]')).toHaveCount(0);
 
@@ -273,7 +251,7 @@ test("attaching onto PAY-118 replaces any session chin instead of stacking the d
 	);
 	await expect(dropZone).toHaveAttribute("data-board-agent-session-target", "attach");
 	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin"]')).toHaveCount(1);
-	await expect(targetCard.getByText("Link 1 agent session")).toBeVisible();
+	await expect(targetCard.getByText("Attach 1 agent session")).toBeVisible();
 	await expect(targetCard.locator('[data-testid^="agent-session-row-"]:visible')).toHaveCount(0);
 	await expect(targetCard.getByText("Why the wallet was cut")).not.toBeVisible();
 	await expect(targetCard.getByText("The adapter keep-or-delete")).not.toBeVisible();
@@ -330,7 +308,7 @@ test("the gutter preview supports timeline traversal across wider session target
 	await expect(notches).toHaveCount(sessionCount);
 	await notches.last().scrollIntoViewIfNeeded();
 	await expect(notches.last()).toBeVisible();
-	const expandControl = page.getByRole("button", { name: "Expand Unattached sessions column" });
+	const expandControl = page.getByRole("button", { name: "Unattached sessions column options" });
 	const countBox = await count.boundingBox();
 	const expandBox = await expandControl.boundingBox();
 	expect(countBox).not.toBeNull();

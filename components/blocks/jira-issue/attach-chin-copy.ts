@@ -4,15 +4,15 @@
  */
 
 /**
- * `Link 1 agent session` / `Link N agent sessions` for the open attach chin.
+ * `Attach 1 agent session` / `Attach N agent sessions` for the open attach chin.
  * Non-finite or non-positive counts fall back to a singleton — the chin only
  * mounts while a live transfer is approaching or receiving.
  */
 export function linkAgentSessionChinCopy(count: number): string {
 	const sessions = Number.isFinite(count) && count > 0 ? Math.floor(count) : 1;
 	return sessions === 1
-		? "Link 1 agent session"
-		: `Link ${sessions} agent sessions`;
+		? "Attach 1 agent session"
+		: `Attach ${sessions} agent sessions`;
 }
 
 /**

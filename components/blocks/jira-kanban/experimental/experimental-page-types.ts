@@ -17,7 +17,6 @@ import type {
 	JiraKanbanProps,
 } from "../index";
 import type { ExperimentalJiraKanbanProps } from "./experimental-jira-kanban";
-import type { BoardCardInsertion } from "./lib/board-agent-session-drag";
 import type { ExperimentalJiraKanbanView } from "./experimental-board-header";
 import type { ExperimentalJiraKanbanMode } from "./pulse/components/pulse-mode-controls";
 import type { PulseAgentSession, PulseLooseWork, PulseWorkItem } from "./pulse/types";
@@ -131,6 +130,17 @@ export interface ExperimentalJiraKanbanPageProps {
 	renderAgentActivityIndicator?: ExperimentalJiraKanbanProps["renderAgentActivityIndicator"];
 	showBoardContent?: boolean;
 	showAgentSessionColumn?: boolean;
+	/**
+	 * Whether the unattached sessions column shows Filter sessions.
+	 * Defaults to true so other boards keep the current header. jira-team-eu26
+	 * passes false.
+	 */
+	showAgentSessionFilter?: boolean;
+	/**
+	 * Whether the unattached sessions column shows the overflow (ellipsis)
+	 * menu. Collapse remains when this is off. Defaults to true.
+	 */
+	showAgentSessionOverflow?: boolean;
 	/**
 	 * Controlled unread watermark, so an owner rendering its own insights
 	 * affordance counts the same unread snapshots the toggle's badge does.
