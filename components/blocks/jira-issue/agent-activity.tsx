@@ -866,6 +866,7 @@ export function JiraIssueAgentActivityRows({
 				(hasActivities || hasAttachPreview) && "px-1 py-1 has-[[data-session-chip-out]]:py-0",
 			)}
 			layout={rowLayout}
+			data-session-attach-growth={!hasActivities && hasAttachPreview ? "" : undefined}
 			transition={layoutTransition}
 		>
 			<AnimatePresence key={rowPresenceKey} initial={false} mode="popLayout">

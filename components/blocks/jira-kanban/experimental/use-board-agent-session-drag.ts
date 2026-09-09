@@ -178,19 +178,22 @@ function collectCardGapZones(
 	const cardList = node.closest<HTMLElement>("[data-jira-kanban-card-list]");
 	if (!cardList) return [];
 
-	const chin = node.querySelector('[data-slot="jira-issue-attach-chin"]');
+	// Only a newly added preview grows the card. Occupied activity/detached
+	// slots replace existing rows, so subtracting those would move a stable seam.
+	// Measure the whole growth container, including its vertical padding.
+	const growth = node.querySelector("[data-session-attach-growth]");
 	const clip = cardList.getBoundingClientRect();
 	return parseBoardCardGapZones(
 		node.dataset.boardColumnTitle,
 		cardCode,
 		node.dataset.boardCardIndex,
 		node.dataset.boardCardCount,
-		toChinFreeBoardCardBounds(bounds, chin?.getBoundingClientRect().height ?? 0),
+		toChinFreeBoardCardBounds(bounds, growth?.getBoundingClientRect().height ?? 0),
 		BOARD_CARD_INSERTION_BAND_PX,
 	).flatMap((zone) => {
 		const top = Math.max(zone.bounds.top, clip.top);
 		const bottom = Math.min(zone.bounds.bottom, clip.bottom);
-		return bottom > top ? [{ ...zone, bounds: { ...zone.bounds, bottom, top } }] : [];
+		return bottom > top ? [{ ...zone, bounds: { ...zone.bounds, bottom, top }, clip }] : [];
 	});
 }
 
