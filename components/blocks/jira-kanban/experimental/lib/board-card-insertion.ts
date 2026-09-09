@@ -41,22 +41,20 @@ export function pickBoardCardInsertionAtPoint(
  * `relativeToCardCode` / `position`. A card's after-gap and the next card's
  * before-gap describe the same insertion and therefore share a drop-target key,
  * so which of the two survives the resolver's dedupe depends on DOM iteration
- * order. The index is the stable fact: gap `i` is the leading edge of card `i`,
- * and the tail gap at `cardCount` is the trailing edge of the last card.
+ * order. The index is the stable fact: gap `i` is the leading edge of card `i`.
+ *
+ * Only interior gaps exist (`parseBoardCardGapZones` drops gap `0` and gap
+ * `cardCount`), so every seam a card can own is a `before` seam on a card that
+ * has a predecessor. There is no trailing-edge case to resolve.
  */
 export function resolveBoardCardInsertionPosition(
 	insertion: BoardCardInsertion | null | undefined,
-	card: Readonly<{ cardCount: number; cardIndex: number; columnTitle: string }>,
+	card: Readonly<{ cardIndex: number; columnTitle: string }>,
 ): BoardCardInsertion["position"] | undefined {
 	if (!insertion || insertion.columnTitle !== card.columnTitle) {
 		return undefined;
 	}
-	if (insertion.insertAtIndex === card.cardIndex) {
-		return "before";
-	}
-	return insertion.insertAtIndex === card.cardCount && card.cardIndex === card.cardCount - 1
-		? "after"
-		: undefined;
+	return insertion.insertAtIndex === card.cardIndex && card.cardIndex > 0 ? "before" : undefined;
 }
 
 /**
@@ -92,14 +90,14 @@ export function getBoardCardInsertionAnchorClassName(
  *
  * - `gap` — an interior seam, with a real `gap` track between two cards. The
  *   rule centres itself in that track so it reads as belonging to the space
- *   between the cards rather than to either one of them.
- * - `edge` — the leading seam of the first card or the trailing seam of the
- *   last. There is no gap track there, only the card list's own boundary, and
- *   the list stays a real scrollport for the whole gesture (dropping
- *   `overflow-y-auto` would make the browser discard its scroll offset and
- *   jump every scrolled column to its first card). The rule still sits flush
- *   inside the card; the "+" marker is `position: fixed` and CSS-anchored so
- *   it can straddle the card's left edge without being clipped by the
- *   scrollport.
+ *   between the cards rather than to either one of them. Every seam a card can
+ *   own is this one; a column's outer edges get no seam.
+ * - `edge` — the stand-in seam of a column that holds no cards, drawn flush at
+ *   the top of the empty card list. There is no gap track to centre in, only
+ *   the card list's own boundary, and the list stays a real scrollport for the
+ *   whole gesture (dropping `overflow-y-auto` would make the browser discard
+ *   its scroll offset and jump every scrolled column to its first card). The
+ *   "+" marker is `position: fixed` and CSS-anchored so it can straddle the
+ *   card list's left edge without being clipped by the scrollport.
  */
 export type BoardCardInsertionSeam = "edge" | "gap";
