@@ -35,7 +35,6 @@ import { AgentSessionSelectMark } from "./agent-session-select-mark";
 import { selectionGestureFromModifierKeys } from "./agent-session-selection-gesture";
 import { isTransferSourceFaded } from "./session-cohort";
 import {
-	toAgentSessionVisibleIdentity,
 	type AgentSessionItem,
 	type AgentSessionSelectionGesture,
 	type AgentSessionTriageRow,
@@ -190,7 +189,6 @@ export function AgentSessionCard({
 	const isLead = mark?.isLead ?? false;
 	const isTransferSource = Boolean(draggingIds?.has(item.id));
 	const showSelectedFill = isMarked || (isSelected && mark == null);
-	const visibleIdentity = toAgentSessionVisibleIdentity(item);
 
 	// The same hover/focus-revealed pair Agent List rows use, with Archive /
 	// Unarchive in the slot Agent List gives to Archive. The control always
@@ -376,8 +374,9 @@ export function AgentSessionCard({
 								renderIdentity={() => {
 									const sessionIdentity = (
 										<AgentListIdentity
-											agent={visibleIdentity}
-											sizePx={24}
+											agent={item.agent}
+											attributedBy={item.invokedBy}
+											sizePx={32}
 										/>
 									);
 

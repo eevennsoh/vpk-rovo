@@ -60,6 +60,15 @@ export default function JiraTeamEu26Page(): React.ReactElement {
 function JiraTeamEu26App(): React.ReactElement {
 	const { chatContextBar, externalThinkingMessageId, openAgentChat } = useJgpAgentChatDemo();
 	const [boardColumns, setBoardColumns] = useState(createJiraTeamEu26PayBoardColumns);
+	const needsInputCount = boardColumns.reduce(
+		(total, column) => total + column.cards.reduce(
+			(cardTotal, card) => cardTotal + (card.agentActivities?.filter(
+				(activity) => activity.state === "awaiting-input",
+			).length ?? 0),
+			0,
+		),
+		0,
+	);
 	const {
 		composerPrefillRequest,
 		handleCardGenerativeActionSubmit,
@@ -360,6 +369,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						showMoreControls={!designVariants["simple-views"]}
 						showCustomizeControl={!designVariants["simple-views"]}
 						simpleViews={designVariants["simple-views"]}
+						needsInputCount={needsInputCount}
 						viewTabs={(
 							<JiraViewTabs
 								selectedTabLabel={selectedTabLabel}
