@@ -363,6 +363,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/website/demos/visual/gooey-demo.test.js",
 		"components/website/demos/visual/shaders-paper-demo.test.js",
 		"components/website/demos/visual/shaders/liquid-glass-utils.test.js",
+		"components/website/demos/visual/text-continuity-demo.test.js",
 		"components/blocks/skill-config/skill-config.test.js",
 		"components/blocks/smart-link/smart-link.test.js",
 		"components/blocks/trigger-config/trigger-config.test.js",
