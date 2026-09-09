@@ -277,6 +277,17 @@ function isCardOrdinal(raw: string | undefined): boolean {
 }
 
 /**
+ * Whether a gap index names a gutter *between* two cards.
+ *
+ * A column of `n` cards has `n + 1` slots, but only `1 … n - 1` sit between two
+ * cards. Slot `0` is the column's leading edge and slot `n` its trailing edge;
+ * neither is a gutter, so neither gets a seam.
+ */
+function isInteriorCardGap(insertAtIndex: number, cardCount: number): boolean {
+	return insertAtIndex > 0 && insertAtIndex < cardCount;
+}
+
+/**
  * A card's rect with its attach chin subtracted, which is the only rect a gap
  * band may be measured against.
  *
@@ -347,6 +358,13 @@ export function parseBoardEmptyColumnGapZone(
  * outward to cover the gutter the pointer actually aims at, and `bandPx` inward
  * so there is no dead pixel against the card itself.
  *
+ * Only *interior* seams are emitted. A column's leading and trailing edges are
+ * not gaps between two cards — they abut the column header and the create well,
+ * which already own "add at the top" and "add at the bottom" — so a band there
+ * would paint a rule against the column boundary rather than in a gutter. Gap
+ * `0` and gap `cardCount` are therefore dropped, which leaves a single-card
+ * column with no card seam at all.
+ *
  * The two bands are clamped apart at the card's midpoint. A card shorter than
  * `2 * bandPx` would otherwise overlap its own before- and after-bands, and the
  * two distinct insertions under one pointer would resolve as ambiguous.
@@ -384,7 +402,10 @@ export function parseBoardCardGapZones(
 
 	const midpoint = (bounds.top + bounds.bottom) / 2;
 
-	return [
+	// Annotated rather than returned inline: an array literal that is the receiver
+	// of `.filter` loses the contextual type the return annotation would give it,
+	// widening `position` and `kind` to `string`.
+	const seams: readonly Extract<BoardAgentSessionDropZone, { kind: "card-gap" }>[] = [
 		{
 			bounds: {
 				...bounds,
@@ -414,6 +435,8 @@ export function parseBoardCardGapZones(
 			kind: "card-gap",
 		},
 	];
+
+	return seams.filter((zone) => isInteriorCardGap(zone.insertion.insertAtIndex, cardCount));
 }
 
 export function toListSessionDropIntent(
