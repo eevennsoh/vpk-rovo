@@ -10,6 +10,10 @@ const IN_FLOW_COLUMN_SOURCE = readFileSync(
 	join(__dirname, "../jira-kanban/experimental/components/in-flow-agent-session-column.tsx"),
 	"utf8",
 );
+const IN_FLOW_MENU_SOURCE = readFileSync(
+	join(__dirname, "../jira-kanban/experimental/components/in-flow-agent-session-column-collapsed-menu.tsx"),
+	"utf8",
+);
 const IN_FLOW_GEOMETRY_SOURCE = readFileSync(
 	join(__dirname, "../jira-kanban/experimental/lib/in-flow-agent-session-column-geometry.ts"),
 	"utf8",
@@ -47,14 +51,19 @@ test("the v2 board pins the column outside its horizontal scrollport", () => {
 	assert.match(BOARD_SOURCE, /columnFrame=\{chrome\.headerFrame\}/u);
 });
 
-test("the in-flow host pins the compact preview before expanding the full column", () => {
+test("the in-flow host pins and expands on separate axes", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /const \[isHovered, setIsHovered\] = useState\(false\)/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /const isCollapsedControlled = collapsed !== undefined/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /const isPersistentExpanded = isCollapsedControlled/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /\? !collapsed/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /: expansion === "expanded"/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsed=\{!isPersistentExpanded\}/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /isEmbedded: isHovered \|\| isPinnedPreview \|\| isPersistentExpanded/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /resolveInFlowSessionColumnRest\(collapsed\)/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /const \[pinned, setPinned\] = useState\(rest\.pinned\)/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /const \[expanded, setExpanded\] = useState\(rest\.expanded\)/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /const isEmbedded = isHovered \|\| pinned \|\| isMenuOpen/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /const isFullWidth = expanded && isEmbedded/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsed=\{!isFullWidth\}/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /expansion: "gutter" \| "pinned" \| "expanded"/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /isPinnedPreview/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /Expand more/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /ExpandMoreHorizontalIcon/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /preserveExpandTooltipOnPress/u);
 	assert.match(
 		EXPERIMENTAL_BOARD_SOURCE,
 		/key=\{agentSessionColumn\.collapsed \? "collapsed" : "expanded"\}/u,
@@ -68,14 +77,8 @@ test("the in-flow host pins the compact preview before expanding the full column
 		/key=\{agentSessionColumnConfig\.collapsed \? "collapsed" : "expanded"\}/u,
 	);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation=\{isEmbedded \? "column" : "gutter"\}/u);
-	assert.match(
-		IN_FLOW_COLUMN_SOURCE,
-		/toggleChangesWidth=\{isPersistentExpanded \|\| isPinnedPreview\}/u,
-	);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /preserveExpandTooltipOnPress/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /toggleChangesWidth=\{expanded\}/u);
 	assert.match(INDEX_SOURCE, /if \(!shouldReduceMotion && toggleChangesWidth\)/u);
-	assert.match(INDEX_SOURCE, /eventDetails\.reason === "trigger-press"/u);
-	assert.match(INDEX_SOURCE, /eventDetails\.cancel\(\)/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
 		/from "\.\.\/lib\/in-flow-agent-session-column-geometry"/u,
@@ -96,11 +99,93 @@ test("the in-flow host pins the compact preview before expanding the full column
 	assert.doesNotMatch(pointerEnterSource, /onCollapsedChange/u);
 });
 
+test("gutter Expand expands and pins; the menu then says Unpin", () => {
+	assert.match(IN_FLOW_COLUMN_SOURCE, /reduceInFlowSessionColumnAxes\(\{ expanded, pinned \}, \{ type: "expand" \}\)/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /onCollapsedChange\?\.\(false\)/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /inFlowCollapsedMenuPinLabel\(pinned\)/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /isFullWidth = expanded && isEmbedded/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/data-agent-session-column-expansion=\{\s*!isEmbedded \? "gutter" : isFullWidth \? "expanded" : pinned \? "pinned" : "preview"\s*\}/u,
+	);
+});
+
+test("pin persists the column after the pointer leaves", () => {
+	assert.match(IN_FLOW_COLUMN_SOURCE, /reduceInFlowSessionColumnAxes\(\{ expanded, pinned \}, \{ type: "pin", pinned: nextPinned \}\)/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /isEmbedded = isHovered \|\| pinned \|\| isMenuOpen/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /data-agent-session-column-pinned=\{pinned \? "" : undefined\}/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /onPinnedChange=\{onPinnedChange\}/u);
+});
+
+test("the collapsed options menu uses Atlaskit show-more-horizontal, not a custom SVG", () => {
+	assert.match(IN_FLOW_MENU_SOURCE, /import ShowMoreHorizontalIcon from "@atlaskit\/icon\/core\/show-more-horizontal"/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /import PinIcon from "@atlaskit\/icon\/core\/pin"/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /import PinFilledIcon from "@atlaskit\/icon\/core\/pin-filled"/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /import GrowHorizontalIcon from "@atlaskit\/icon\/core\/grow-horizontal"/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /const TriggerGlyph = dragging \? DragHandleVerticalIcon : ShowMoreHorizontalIcon/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /<TriggerGlyph color="currentColor" label="" size="small" \/>/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /<PinGlyph label="" size="small" \/>/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /<GrowHorizontalIcon label="" size="small" \/>/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /className="min-w-0 w-max"/u);
+	assert.match(
+		IN_FLOW_MENU_SOURCE,
+		/const itemClassName = "gap-2 \[&>span:first-child\]:size-3 \[&_svg\]:size-3"/u,
+	);
+	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /min-w-36/u);
+	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /min-w-56/u);
+	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /min-w-48/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /aria-label=\{`\$\{title\} column options`\}/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /data-agent-session-column-options=""/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /inFlowCollapsedMenuPinLabel\(pinned\)/u);
+	assert.match(IN_FLOW_MENU_SOURCE, />\s*Expand\s*</u);
+	assert.match(IN_FLOW_MENU_SOURCE, /onSelect=\{onExpand\}/u);
+	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /column actions/u);
+	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /expand-more\.svg/u);
+	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /\/icons\/expand/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /\/icons\/expand/u);
+	assert.doesNotMatch(INDEX_SOURCE, /\/icons\/expand/u);
+});
+
+test("collapsed drag paints the outlined overlay chip and keeps the same button mounted", () => {
+	assert.match(
+		INDEX_SOURCE,
+		/const COLLAPSED_REPOSITION_CHIP_CLASS_NAME =\s*"peer\/expand-control relative z-50 cursor-grabbing border border-border bg-surface-overlay! text-icon-subtle opacity-100 transition-none hover:bg-surface-overlay! active:bg-surface-overlay!"/u,
+	);
+	assert.match(
+		INDEX_SOURCE,
+		/const collapsedControlClassName = isRepositioning\s*\? COLLAPSED_REPOSITION_CHIP_CLASS_NAME\s*: isGutterCollapsed \? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL/u,
+	);
+	assert.match(INDEX_SOURCE, /variant=\{isRepositioning \? "outline" : "ghost"\}/u);
+	assert.doesNotMatch(INDEX_SOURCE, /border-transparent! bg-transparent!/u);
+	assert.doesNotMatch(
+		INDEX_SOURCE,
+		/HEADER_CONTROL_ON_REVEAL[\s\S]{0,80}?border border-border bg-surface-overlay!/u,
+	);
+	assert.match(IN_FLOW_MENU_SOURCE, /variant=\{dragging \? "outline" : "ghost"\}/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /size="icon-compact"/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /style=\{\{ width: "100%" \}\}/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/collapsedMenu=\{\(\{ className: collapsedControlClassName, dragging \}\) => \(/u,
+	);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /dragging=\{dragging\}/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /open=\{menuOpen\}/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /menuOpen=\{isMenuOpen\}/u);
+	assert.doesNotMatch(
+		IN_FLOW_COLUMN_SOURCE,
+		/agentSessionColumn.isRepositioning \? \([\s\S]*?<button/u,
+	);
+	assert.match(IN_FLOW_MENU_SOURCE, /InFlowAgentSessionColumnCollapsedMenu/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /variant=\{dragging \? "outline" : "ghost"\}/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /open=\{dragging \? false : open\}/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /text-icon-subtle \[&_svg\]:size-3 \[&_svg\]:text-icon-subtle/u);
+});
+
 test("touch can intentionally expand the otherwise pointer-inert gutter", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /const handleGutterPointerDown = \(event: PointerEvent<HTMLDivElement>\)/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /if \(event\.pointerType !== "touch"\)/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /event\.preventDefault\(\)/u);
-	assert.match(IN_FLOW_COLUMN_SOURCE, /handleCollapsedChange\(false\)/u);
+	assert.match(IN_FLOW_COLUMN_SOURCE, /handlePinnedChange\(true\)/u);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /onPointerDown=\{handleGutterPointerDown\}/u);
 });
 
@@ -202,7 +287,7 @@ test("flyouts stay suspended in the gutter and open once the compact rail is emb
 	);
 	assert.doesNotMatch(
 		IN_FLOW_COLUMN_SOURCE,
-		/isHovered && !isPersistentExpanded/u,
+		/isHovered && !isFullWidth/u,
 	);
 	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation=\{isEmbedded \? "column" : "gutter"\}/u);
 });
@@ -221,7 +306,7 @@ test("the tucked gutter hides the session total; hover preview shows collapsed h
 	);
 	assert.match(
 		INDEX_SOURCE,
-		/: isGutterCollapsed \? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL\}/u,
+		/: isGutterCollapsed \? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL;/u,
 	);
 	assert.match(INDEX_SOURCE, /const HEADER_CONTROL_IN_GUTTER = cn\(\s*HEADER_CONTROL_ON_REVEAL,\s*"hover:opacity-0",\s*\)/u);
 	assert.match(INDEX_SOURCE, /<TextMorphing\s+config=\{HEAD_COUNT_MORPH\}/u);
@@ -230,7 +315,7 @@ test("the tucked gutter hides the session total; hover preview shows collapsed h
 	assert.match(IN_FLOW_COLUMN_SOURCE, /collapsedPresentation=\{isEmbedded \? "column" : "gutter"\}/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/collapsedRailHitSlopPx=\{isEmbedded && !isPersistentExpanded\s*\? IN_FLOW_AGENT_SESSION_COLUMN_RAIL_HIT_SLOP_PX\s*: 0\}/u,
+		/collapsedRailHitSlopPx=\{isEmbedded && !isFullWidth\s*\? IN_FLOW_AGENT_SESSION_COLUMN_RAIL_HIT_SLOP_PX\s*: 0\}/u,
 	);
 	assert.match(INDEX_SOURCE, /data-agent-session-column-count=""/u);
 	assert.match(

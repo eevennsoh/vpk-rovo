@@ -22,7 +22,6 @@ import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Icon } from "@/components/ui/icon";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollMaskEdgeOverlay } from "@/components/visual/scroll-mask";
-import TextContinuity from "@/components/visual/text-continuity";
 import TextMorphing from "@/components/visual/text-morphing";
 import type { TextMorphConfig } from "@/components/visual/text-morphing/data";
 import { token } from "@/lib/tokens";
@@ -222,12 +221,13 @@ function resolveCollapsedHeaderStyle(
 const HEADER_COUNT_AT_REST = cn(
 	"pointer-events-none transition-opacity duration-normal ease-out-practical",
 	"peer-hover/expand-control:opacity-0 peer-focus-visible/expand-control:opacity-0",
+	"peer-data-popup-open/expand-control:opacity-0",
 	"motion-reduce:transition-none",
 );
 
 const HEADER_CONTROL_ON_REVEAL = cn(
 	"peer/expand-control opacity-0 transition-opacity duration-normal ease-out-practical",
-	"hover:opacity-100 focus-visible:opacity-100",
+	"hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100",
 	"motion-reduce:transition-none",
 );
 
@@ -235,6 +235,10 @@ const HEADER_CONTROL_IN_GUTTER = cn(
 	HEADER_CONTROL_ON_REVEAL,
 	"hover:opacity-0",
 );
+
+/** Outlined overlay chip while the collapsed header is the live drag preview. */
+const COLLAPSED_REPOSITION_CHIP_CLASS_NAME =
+	"peer/expand-control relative z-50 cursor-grabbing border border-border bg-surface-overlay! text-icon-subtle opacity-100 transition-none hover:bg-surface-overlay! active:bg-surface-overlay!";
 
 /**
  * Expanded header actions: overflow + collapse, revealed together. Stay
@@ -300,6 +304,9 @@ const AGENT_SESSION_PLANE_BOTTOM_FADE_SIZE = `${AGENT_SESSION_DECK_END_SPACE_PX}
  * full-height bordered rail. `collapsedPresentation="gutter"` hides that
  * count and the expand icon at rest, while keeping the expand control in
  * the same slot for keyboard. Hover preview uses `"column"` so both return.
+ * Hosts that supply `collapsedMenu` replace that Expand button with their
+ * own control (in-flow: a "…" options menu). `onPinnedChange` adds a pin
+ * affordance to the expanded header; omit it and the pin control stays off.
  *
  * Two capabilities exist for hosts that dock the column into their own surface
  * rather than stand it on the board: `collapsed` makes the rail state
@@ -315,7 +322,7 @@ export function AgentSessionColumn({
 	isRepositioning = false,
 	collapsed: collapsedProp,
 	collapsedPresentation = "column",
-	collapsedExpandAction,
+	collapsedMenu,
 	collapsedRailHitSlopPx = 0,
 	count,
 	defaultCollapsed = false,
@@ -330,11 +337,14 @@ export function AgentSessionColumn({
 	onCollapsedChange,
 	onGutterIntroComplete,
 	onArchiveSession: onArchiveSessionProp,
+	onPinnedChange,
 	onSelectedItemIdChange,
 	onToggleVisibility,
+	pinned = false,
 	playGutterIntro = false,
-	preserveExpandTooltipOnPress = false,
 	selectedItemId: selectedItemIdProp,
+	showFilter = true,
+	showOverflow = true,
 	title = "Unattached sessions",
 	triage,
 	toggleChangesWidth = true,
@@ -407,7 +417,6 @@ export function AgentSessionColumn({
 		};
 	}, [handleArchiveSession, triage]);
 	const displayTitle = view === "hidden" ? "Archived" : title;
-	const [isExpandTooltipOpen, setIsExpandTooltipOpen] = useState(false);
 	// The rail and the card list have very different intrinsic widths, so the
 	// overflow has to be clipped for the duration of the width transition. Any
 	// longer and it would clip the 4px focus rings on the cards inside.
@@ -429,9 +438,10 @@ export function AgentSessionColumn({
 	const columnRef = useRef<HTMLElement>(null);
 	const untrackedCount = count ?? visibleItems.length;
 	const showWellFooter = view === "hidden" || hiddenCount > 0;
-	const hasActiveFilters = selectedFilterCount > 0;
+	const hasActiveFilters = showFilter && selectedFilterCount > 0;
+	const displayedItems = showFilter ? filteredViewItems : viewItems;
 	const sessionCount = hasActiveFilters
-		? filteredViewItems.length
+		? displayedItems.length
 		: (view === "hidden" ? hiddenItems.length : untrackedCount);
 	// Coding sessions are always activatable; person rows only when `canViewItem`
 	// allows it. Selection, notches, and board spotlight share this gate.
@@ -467,27 +477,27 @@ export function AgentSessionColumn({
 		title: displayTitle,
 		triage: selectionTriage,
 		visibilityLabel: view === "hidden" ? "Unarchive" : "Archive",
-		visibleItems: filteredViewItems,
+		visibleItems: displayedItems,
 	});
-	const overflowMenu = (
+	const overflowMenu = showOverflow ? (
 		<AgentSessionColumnOverflowMenu
 			capturedItemIds={sessionProps.capturedItemIds}
 			getSuggestedWorkItemKey={sessionProps.getSuggestedWorkItemKey}
 			getSuggestedWorkItemKeys={sessionProps.getSuggestedWorkItemKeys}
-			items={filteredViewItems}
+			items={displayedItems}
 			onLinkWorkItem={sessionProps.onLinkWorkItem}
 			size={headerSurface === "column" ? "icon-compact" : "icon"}
 			title={title}
 		/>
-	);
-	const filterMenu = (
+	) : undefined;
+	const filterMenu = showFilter ? (
 		<AgentSessionColumnFilterMenu
 			filter={filter}
 			items={viewItems}
 			onFilterChange={setFilter}
 			size={headerSurface === "column" ? "icon-compact" : "icon"}
 		/>
-	);
+	) : undefined;
 	const newCount = newItemIds === undefined
 		? 0
 		: visibleItems.reduce((total: number, item: AgentSessionItem) => (
@@ -619,50 +629,37 @@ export function AgentSessionColumn({
 	const collapsedCountLabel = newCount > 0
 		? `${sessionCount} sessions, ${newCount} newly synced`
 		: `${sessionCount} sessions`;
-	const collapsedExpandControl = (
-		<TooltipProvider>
-			<Tooltip
-				animate={!isRepositioning}
-				disabled={isRepositioning}
-				onOpenChange={preserveExpandTooltipOnPress
-					? (nextOpen, eventDetails) => {
-						if (!nextOpen && eventDetails.reason === "trigger-press") {
-							eventDetails.cancel();
-							return;
-						}
-						setIsExpandTooltipOpen(nextOpen);
-					}
-					: undefined}
-				open={preserveExpandTooltipOnPress ? isExpandTooltipOpen && !isRepositioning : undefined}
-			>
-				<TooltipTrigger
-					render={
-						<Button
-							aria-label={`${collapsedExpandAction?.label ?? "Expand"} ${title} column`}
-							aria-description={headerDragHandle ? "Drag horizontally to move the column, or use Alt with the arrow keys." : undefined}
-							className={isRepositioning
-								? "relative z-50 cursor-grabbing border-transparent! bg-transparent! text-icon-subtle opacity-100 transition-none hover:bg-transparent! active:bg-transparent!"
-								: isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL}
-							onClick={handleToggleCollapsed}
-							size="icon-compact"
-							style={{ width: "100%" }}
-							type="button"
-							variant="ghost"
-						/>
-					}
+	const collapsedControlClassName = isRepositioning
+		? COLLAPSED_REPOSITION_CHIP_CLASS_NAME
+		: isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL;
+	const collapsedExpandControl = collapsedMenu === undefined
+		? (
+			<TooltipProvider>
+				<Tooltip
+					animate={!isRepositioning}
+					disabled={isRepositioning}
 				>
-					{collapsedExpandAction?.icon ?? <Icon className="text-icon-subtle" render={<GrowHorizontalIcon label="" />} />}
-				</TooltipTrigger>
-				<TooltipContent>
-					{preserveExpandTooltipOnPress ? (
-						<TextContinuity className="inline-flex whitespace-nowrap">
-							{collapsedExpandAction?.label ?? "Expand"}
-						</TextContinuity>
-					) : (collapsedExpandAction?.label ?? "Expand")}
-				</TooltipContent>
-			</Tooltip>
-		</TooltipProvider>
-	);
+					<TooltipTrigger
+						render={
+							<Button
+								aria-label={`Expand ${title} column`}
+								aria-description={headerDragHandle ? "Drag horizontally to move the column, or use Alt with the arrow keys." : undefined}
+								className={collapsedControlClassName}
+								onClick={handleToggleCollapsed}
+								size="icon-compact"
+								style={{ width: "100%" }}
+								type="button"
+								variant={isRepositioning ? "outline" : "ghost"}
+							/>
+						}
+					>
+						<Icon className="text-icon-subtle" render={<GrowHorizontalIcon label="" />} />
+					</TooltipTrigger>
+					<TooltipContent>Expand</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+		)
+		: collapsedMenu({ className: collapsedControlClassName, dragging: isRepositioning });
 	const collapsedHeader = (
 		<div
 			data-agent-session-column-header=""
@@ -710,7 +707,16 @@ export function AgentSessionColumn({
 			model={untrackedSelection.header}
 			onAction={untrackedSelection.onHeaderAction}
 			onCollapse={handleToggleCollapsed}
+			onPinToggle={onPinnedChange === undefined
+				? undefined
+				: () => {
+					onPinnedChange(!pinned);
+				}}
 			overflow={overflowMenu}
+			pinLabel={onPinnedChange === undefined
+				? undefined
+				: `${pinned ? "Unpin" : "Pin"} ${title} column`}
+			pinned={pinned}
 			surface={headerSurface}
 		/>
 	);
@@ -722,7 +728,7 @@ export function AgentSessionColumn({
 			getSuggestedWorkItemKeys={sessionProps.getSuggestedWorkItemKeys}
 			highlightedItemId={sessionProps.highlightedItemId}
 			hitSlopPx={collapsedRailHitSlopPx}
-			items={filteredViewItems}
+			items={displayedItems}
 			maxVisibleItems={isGutterCollapsed && collapsedRailHitSlopPx === 0
 				? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS
 				: undefined}
@@ -742,7 +748,7 @@ export function AgentSessionColumn({
 	) : (
 		<>
 			<div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-				{filteredViewItems.length === 0 ? (
+				{displayedItems.length === 0 ? (
 					hasActiveFilters ? (
 						<Empty width="narrow">
 							<EmptyHeader>
@@ -763,7 +769,7 @@ export function AgentSessionColumn({
 								headerSurface === "column" ? AGENT_SESSION_LIST_SPACING : null,
 								listClassName,
 							)}
-							items={filteredViewItems}
+							items={displayedItems}
 							newItemIds={newItemIds}
 							onArrivalComplete={handleArrivalComplete}
 							{...sessionProps}

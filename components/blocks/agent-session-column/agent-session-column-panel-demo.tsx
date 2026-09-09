@@ -128,7 +128,13 @@ interface PanelDemoAttachTarget {
 	readonly key: string;
 }
 
-export function AgentSessionColumnPanelDemo() {
+export function AgentSessionColumnPanelDemo({
+	showFilter = true,
+	showOverflow = true,
+}: Readonly<{
+	showFilter?: boolean;
+	showOverflow?: boolean;
+}> = {}) {
 	const [capturedIds, setCapturedIds] = useState<ReadonlySet<string>>(() => new Set());
 	const [collapsed, setCollapsed] = useState(false);
 	const [items, setItems] = useState<readonly AgentSessionItem[]>(AGENT_SESSION_ITEMS);
@@ -264,6 +270,8 @@ export function AgentSessionColumnPanelDemo() {
 							onCreateWorkItem={handleCapture}
 							onLinkWorkItem={handleCapture}
 							onSubtasks={handleCapture}
+							showFilter={showFilter}
+							showOverflow={showOverflow}
 							triage={triage}
 						/>
 					</PanelContent>

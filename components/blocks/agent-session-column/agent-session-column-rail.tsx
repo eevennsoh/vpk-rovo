@@ -492,6 +492,8 @@ function AgentSessionNotch({
 			className="group/notch flex h-6 w-full shrink-0 items-center"
 			data-hovered={isHovered || undefined}
 			layout={shouldReduceMotion ? false : "position"}
+			// Animate session-order changes, not the rail's scrolling or board placement.
+			layoutDependency={introIndex}
 			transition={AGENT_SESSION_ARRIVAL_TRANSITION}
 		>
 			{/* The drag host is a block child rather than the flex item itself, so
@@ -697,6 +699,7 @@ export function AgentSessionColumnRail({
 			    column height. Arrival layout stays on each `motion.li`. */}
 			<ul
 				className="scrollbar-none flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto overscroll-contain px-1 py-0.5"
+				data-agent-session-column-rail=""
 				onPointerDown={isDocked ? dock.resetPointer : undefined}
 				onPointerEnter={isDocked ? dock.handlePointerEnter : undefined}
 				onPointerLeave={isDocked ? dock.handlePointerLeave : undefined}

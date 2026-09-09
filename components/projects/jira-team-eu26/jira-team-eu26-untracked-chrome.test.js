@@ -41,9 +41,17 @@ const FAB_GEOMETRY_SOURCE = readProjectFile(
 
 test("the route pins the shared Agent Session column beside Jira statuses", () => {
 	assert.match(PAGE_SOURCE, /showAgentSessionColumn/u);
+	assert.match(PAGE_SOURCE, /showAgentSessionFilter=\{false\}/u);
+	assert.match(PAGE_SOURCE, /showAgentSessionOverflow=\{false\}/u);
 	assert.match(PAGE_SOURCE, /defaultAgentSessionColumnCollapsed/u);
 	assert.match(PAGE_SOURCE, /agentSessionAssigneeIdAliases=\{JIRA_TEAM_EU26_PAY_SESSION_MEMBER_ID_BY_ASSIGNEE_ID\}/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showAgentSessionColumn\?: boolean;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showAgentSessionFilter\?: boolean;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showAgentSessionOverflow\?: boolean;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showAgentSessionFilter = true,/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showAgentSessionOverflow = true,/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showFilter: showAgentSessionFilter,/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showOverflow: showAgentSessionOverflow,/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /defaultAgentSessionColumnCollapsed\?: boolean;/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /function useAgentSessionReview[\s\S]*useState\(defaultCollapsed\)/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /collapsed: displayedAgentSessionColumnCollapsed,/u);

@@ -48,12 +48,24 @@ export interface AgentSessionColumnProps extends Omit<
 	 * to `"column"`.
 	 */
 	collapsedPresentation?: "column" | "gutter";
-	/** Host-provided next expansion step for a staged column reveal. */
-	collapsedExpandAction?: { label: string; icon: ReactNode };
+	/**
+	 * Host-owned collapsed header control. Receives the slot chrome classes
+	 * so the trigger can share the count/control hover swap. Omit it to keep
+	 * the default Expand button. In-flow passes a "…" menu; panel omits this.
+	 */
+	collapsedMenu?: (slot: { className: string; dragging: boolean }) => ReactNode;
+	/**
+	 * Whether the column is pinned. Only used when {@link onPinnedChange}
+	 * is supplied — the pin affordance is omitted otherwise.
+	 */
+	pinned?: boolean;
+	/**
+	 * Pin capability. Omit it to hide the header pin control. The host must
+	 * own the persistence flag; this is never a no-op.
+	 */
+	onPinnedChange?: (pinned: boolean) => void;
 	/** Whether the current expand/collapse action changes the column width. */
 	toggleChangesWidth?: boolean;
-	/** Keep the expand tooltip mounted when its staged action is pressed. */
-	preserveExpandTooltipOnPress?: boolean;
 	/** Optional host-owned handle for repositioning the entire column. */
 	headerDragHandle?: ReactNode;
 	/** Temporary presentation while the host repositions this column. */
@@ -98,6 +110,17 @@ export interface AgentSessionColumnProps extends Omit<
 	 * Omit for `"caption"`. Kanban hosts overwrite this from `columnChrome`.
 	 */
 	columnFrame?: AgentSessionColumnFrame;
+	/**
+	 * Shows the header Filter sessions control. Defaults to `true`.
+	 * Off omits the button and its hover-reveal slot; filter state is not
+	 * applied.
+	 */
+	showFilter?: boolean;
+	/**
+	 * Shows the header overflow (ellipsis) menu. Defaults to `true`.
+	 * Off omits that control; collapse and any remaining real actions stay.
+	 */
+	showOverflow?: boolean;
 	/**
 	 * Enables the bottom depth tail, scroll fade, and end summary on the
 	 * expanded list. Defaults to `false`.

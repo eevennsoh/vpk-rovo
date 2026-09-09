@@ -353,6 +353,8 @@ function JiraTeamEu26App(): React.ReactElement {
 						}}
 						renderAgentActivityIndicator={renderJiraTeamEu26AgentActivityIndicator}
 						showAgentSessionColumn
+						showAgentSessionFilter={false}
+						showAgentSessionOverflow={false}
 						showBoardContent={showBoardContent}
 						moreControlsPlacement="end"
 						showMoreControls={!designVariants["simple-views"]}
