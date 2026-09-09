@@ -31,13 +31,13 @@ export const PROJECT_DEMOS: Record<string, ComponentType> = {
 		() => import("../demos/projects/jira-golden-journeys-v4-demo"),
 		{ ssr: false },
 	),
-	"jira-golden-journeys-v5": dynamic(
-		() => import("../demos/projects/jira-golden-journeys-v5-demo"),
-		{ ssr: false },
-	),
 	"jira-queue": dynamic(() => import("../demos/projects/jira-queue-demo"), {
 		ssr: false,
 	}),
+	"jira-team-eu26": dynamic(
+		() => import("../demos/projects/jira-team-eu26-demo"),
+		{ ssr: false },
+	),
 	rovo: dynamic(() => import("../demos/projects/rovo-demo"), {
 		ssr: false,
 	}),

@@ -4086,10 +4086,10 @@
 						]
 					}
 				],
-				"routePath": "/jira-golden-journeys-v5",
+				"routePath": "/jira-queue",
 				"shellOwnerCount": 0,
 				"shellOwners": [],
-				"source": "app/jira-golden-journeys-v5/page.tsx"
+				"source": "app/jira-queue/page.tsx"
 			},
 			{
 				"ownerCount": 1,
@@ -4102,10 +4102,10 @@
 						]
 					}
 				],
-				"routePath": "/jira-queue",
+				"routePath": "/jira-team-eu26",
 				"shellOwnerCount": 0,
 				"shellOwners": [],
-				"source": "app/jira-queue/page.tsx"
+				"source": "app/jira-team-eu26/page.tsx"
 			},
 			{
 				"ownerCount": 0,
@@ -6209,15 +6209,15 @@
 					},
 					{
 						"category": "projects",
-						"slug": "jira-golden-journeys-v5",
-						"name": "Jira Golden Journeys v5",
-						"importPath": "@/components/projects/jira-golden-journeys-v5"
-					},
-					{
-						"category": "projects",
 						"slug": "jira-queue",
 						"name": "Jira Queue",
 						"importPath": "@/components/projects/jira-queue"
+					},
+					{
+						"category": "projects",
+						"slug": "jira-team-eu26",
+						"name": "Jira Team EU26",
+						"importPath": "@/components/projects/jira-team-eu26"
 					},
 					{
 						"category": "projects",
