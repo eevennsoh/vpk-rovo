@@ -2,6 +2,7 @@
 
 import { createContext, use, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { cn } from "@/lib/utils";
+import { resolveInFlowAgentSessionColumnSlotWidthPx } from "../lib/in-flow-agent-session-column-geometry";
 
 interface SessionColumnPlacement {
 	rootRef: RefObject<HTMLDivElement | null>;
@@ -73,7 +74,7 @@ export function SessionColumnSlot({ index }: Readonly<{ index: number }>) {
 			aria-hidden="true"
 			className="min-h-full shrink-0"
 			data-session-column-slot={index}
-			style={{ width: Math.max(64, placement.width + 12) }}
+			style={{ width: resolveInFlowAgentSessionColumnSlotWidthPx(placement.width) }}
 		/>
 	);
 }
