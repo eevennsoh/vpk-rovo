@@ -12,6 +12,19 @@ export const IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX = 24;
 export const IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_LEADING_BORDER_PX = 2;
 
 /**
+ * Width reserved when Untracked moves between status columns. The surface
+ * content gains its 2px leading border plus the same 4px visual inset on both
+ * sides, so the row's outer `gap-2` remains balanced around it.
+ */
+export function resolveInFlowAgentSessionColumnSlotWidthPx(
+	columnWidthPx: number,
+): number {
+	return columnWidthPx
+		+ IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_LEADING_BORDER_PX
+		+ SIMPLE_STATUS_COLUMN_CONTENT_INSET_PX * 2;
+}
+
+/**
  * Transparent chrome to the left of a status column's painted content
  * (caption/cards or sunken well). That strip reads as gutter.
  */
