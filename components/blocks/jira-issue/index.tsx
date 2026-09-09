@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type ComponentProps, type CSSProperties, type FocusEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ComponentProps, type CSSProperties, type FocusEvent, type PointerEvent, type ReactNode } from "react";
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
 
 export type { JiraIssueAgentLinkFlash } from "@/components/blocks/jira-issue/agent-link-flash";
@@ -428,6 +428,24 @@ function JiraIssueDefault({
 		|| isAttachingSession;
 	const hasIssueRows = hasSubtasks;
 	const hasAgentActivityPresentation = agentActivityMode !== undefined || Boolean(agentActivities?.length) || hasAgentDoneNotification;
+	// Agent chrome also leaves for reasons that have nothing to do with this card:
+	// a board filter such as View → Agents strips every row off the cards it is
+	// not focusing. Dropping back to the plain tree there is the same
+	// element-type swap described below, so the card would remount while it is
+	// still on screen — losing keyboard focus and replaying every descendant's
+	// mount animation, the assignee avatar's scale-and-fade most visibly. Latch
+	// the shell on instead: once mounted it stays, and a shell with no active
+	// agent activity is already the resting state of a target preview, so the
+	// card paints identically. Rows still enter and leave through their own
+	// `AnimatePresence`, which is the motion a filter toggle should show.
+	const [agentActivityShellLatched, setAgentActivityShellLatched] = useState(false);
+	useEffect(() => {
+		if (!hasAgentActivityPresentation) {
+			return;
+		}
+		setAgentActivityShellLatched(true);
+	}, [hasAgentActivityPresentation]);
+	const usesAgentActivityPresentation = hasAgentActivityPresentation || agentActivityShellLatched;
 	// The approach also mounts the shell. With `initial={false}` on the backdrop,
 	// a shell that only appears once the pointer is already inside the rect has
 	// nothing to fade from and snaps to full grey. Mounting early is visually
@@ -438,14 +456,14 @@ function JiraIssueDefault({
 	// element-type change on the article's first child: a per-frame gate would
 	// remount the whole card — dropping keyboard focus — every time a pointer
 	// passed within the proximity range.
-	const usesAgentActivityShell = hasAgentActivityPresentation
+	const usesAgentActivityShell = usesAgentActivityPresentation
 		|| Boolean(agentSessionTransfer)
 		|| agentSessionDragControl !== undefined
 		|| Boolean(agentSessionTargetPreview);
 	const chromeStyles = resolveJiraIssueChrome(chrome);
 	const usesStrokeChrome = chrome === "stroke";
 	const usesCompactVisual = compact || usesStrokeChrome;
-	const hasInteractiveContent = showMoreAction || hasSubtasks || Boolean(parentEpicControl) || hasAgentActivityPresentation || Boolean(generativeAction) || Boolean(agentSessionTransfer) || usesCompactVisual || Boolean(agentSessionTargetPreview);
+	const hasInteractiveContent = showMoreAction || hasSubtasks || Boolean(parentEpicControl) || usesAgentActivityPresentation || Boolean(generativeAction) || Boolean(agentSessionTransfer) || usesCompactVisual || Boolean(agentSessionTargetPreview);
 	const shouldRenderIssueClickButton = Boolean(props.onClick && !parentEpicControl);
 	const issueRowsClassName = cn("pt-1", !(hasSubtasks && resolvedSubtasksExpanded) && "pb-1");
 	const layoutTransition = getJiraIssueLayoutTransition(shouldReduceMotion);
@@ -845,9 +863,22 @@ function JiraIssueDefault({
 			</LayoutGroup>
 		</motion.div>
 	);
-	const agentActivityShellWithTransfer = agentSessionTransfer ? (
-		<div className={cn("relative w-full min-w-0 overflow-visible", JIRA_ISSUE_SESSION_TRANSFER_GROUP_CLASS)}>
+	// The transfer host is unconditional. `agentSessionTransfer` is a capability
+	// that comes and goes with the board's own state — a filter that hides the
+	// last unlinkable row takes it away — and making it choose between a wrapped
+	// and an unwrapped shell is another element-type change on the article's
+	// first child, with the same remount cost as the shell gate above. The
+	// wrapper is a plain full-width block with no chrome, so keeping it costs
+	// nothing when there is no transfer to host.
+	const agentActivityShellWithTransfer = (
+		<div
+			className={cn(
+				"relative w-full min-w-0 overflow-visible",
+				agentSessionTransfer ? JIRA_ISSUE_SESSION_TRANSFER_GROUP_CLASS : null,
+			)}
+		>
 			{agentActivityShell}
+			{agentSessionTransfer ? (
 				<JiraIssueAgentSessionTransfer
 					cancelled={resolvedAgentSessionDragState.cancelled}
 					cardMeasureRef={cardMeasureRef}
@@ -859,11 +890,12 @@ function JiraIssueDefault({
 					session={resolvedAgentSessionDragState.activities[0]}
 					sessionLabel={resolvedAgentSessionDragState.activities[0]?.name}
 					source={resolvedAgentSessionDragState.source}
-			/>
+				/>
+			) : null}
 			{/* Detached/proximity pills sit under the shell. Attach copy covers
 			    that occupied slot so the chin does not grow a second row, but
 			    the drag source stays mounted through pointer release. */}
-			{agentSessionDragBinding && sessionTransferAfter
+			{agentSessionTransfer && agentSessionDragBinding && sessionTransferAfter
 				? (
 					<JiraIssueDetachedSessionTransferSlot
 						attachCopy={replaceDetachedTransfer ? attachChinCopy : undefined}
@@ -873,7 +905,7 @@ function JiraIssueDefault({
 				)
 				: null}
 		</div>
-	) : agentActivityShell;
+	);
 
 	if (hasInteractiveContent) {
 		if (usesAgentActivityShell) {
