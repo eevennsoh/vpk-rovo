@@ -83,7 +83,7 @@ const TEAM_EU26_ACTIVITY_EVENTS: readonly StaticTimelineEvent[] = [
 		id: "team-eu26-due-date-changed",
 		kind: "event",
 		segments: [
-			{ type: "text", text: "Due date changed to 4 Aug by " },
+			{ type: "text", text: "Due date changed to May 25, 2026 by " },
 			{
 				avatarSrc: TEAM_EU26_PEOPLE.sarah.avatarUrl,
 				text: TEAM_EU26_PEOPLE.sarah.name,

@@ -106,8 +106,15 @@ function Assignee({ name }: Readonly<{ name: string }>) {
 	);
 }
 
-function StatusSelect({ itemKey, initialStatus }: Readonly<{ itemKey: string; initialStatus: TeamEu26TableWorkItem["status"] }>) {
-	const [status, setStatus] = useState(initialStatus);
+function StatusSelect({
+	itemKey,
+	onChange,
+	status,
+}: Readonly<{
+	itemKey: string;
+	onChange: (status: TeamEu26TableWorkItem["status"]) => void;
+	status: TeamEu26TableWorkItem["status"];
+}>) {
 	const StatusIcon = status === "In progress" ? TaskInProgressIcon : TaskToDoIcon;
 	return (
 		<label className={cn(
@@ -119,7 +126,7 @@ function StatusSelect({ itemKey, initialStatus }: Readonly<{ itemKey: string; in
 			<select
 				aria-label={`Change status for ${itemKey}`}
 				className="appearance-none bg-transparent pr-3 outline-none"
-				onChange={(event) => setStatus(event.target.value as TeamEu26TableWorkItem["status"])}
+				onChange={(event) => onChange(event.target.value as TeamEu26TableWorkItem["status"])}
 				value={status}
 			>
 				<option>In progress</option>
@@ -151,6 +158,11 @@ export function HighConfidenceWorkItemBody() {
 	const [showAllAttachments, setShowAllAttachments] = useState(false);
 	const [showAllLinkedItems, setShowAllLinkedItems] = useState(false);
 	const [announcement, setAnnouncement] = useState("");
+	const [statuses, setStatuses] = useState<Record<string, TeamEu26TableWorkItem["status"]>>(() =>
+		Object.fromEntries(
+			[...TEAM_EU26_SUBITEMS, ...TEAM_EU26_LINKED_ITEMS].map((item) => [item.key, item.status]),
+		),
+	);
 	const filteredAttachments = useMemo(
 		() => TEAM_EU26_ATTACHMENTS.filter((attachment) => attachmentMatchesFilter(attachment, attachmentFilter)),
 		[attachmentFilter],
@@ -232,7 +244,7 @@ export function HighConfidenceWorkItemBody() {
 						<span aria-hidden className="w-1/3 bg-bg-selected-bold" />
 					</div>
 				</div>
-				<WorkItemsTable items={TEAM_EU26_SUBITEMS} />
+				<WorkItemsTable items={TEAM_EU26_SUBITEMS} onStatusChange={(key, status) => setStatuses((current) => ({ ...current, [key]: status }))} statuses={statuses} />
 			</section>
 
 			<section aria-labelledby="team-eu26-linked-heading" className="space-y-2">
@@ -244,13 +256,23 @@ export function HighConfidenceWorkItemBody() {
 				>
 					Linked work items
 				</SectionHeading>
-				<WorkItemsTable items={visibleLinkedItems} relationship />
+				<WorkItemsTable items={visibleLinkedItems} onStatusChange={(key, status) => setStatuses((current) => ({ ...current, [key]: status }))} relationship statuses={statuses} />
 			</section>
 		</article>
 	);
 }
 
-function WorkItemsTable({ items, relationship = false }: Readonly<{ items: readonly (TeamEu26TableWorkItem & { relationship?: string })[]; relationship?: boolean }>) {
+function WorkItemsTable({
+	items,
+	onStatusChange,
+	relationship = false,
+	statuses,
+}: Readonly<{
+	items: readonly (TeamEu26TableWorkItem & { relationship?: string })[];
+	onStatusChange: (key: string, status: TeamEu26TableWorkItem["status"]) => void;
+	relationship?: boolean;
+	statuses: Readonly<Record<string, TeamEu26TableWorkItem["status"]>>;
+}>) {
 	return (
 		<div className="overflow-hidden rounded-lg border border-border">
 			<Table className="min-w-[46rem] table-fixed">
@@ -277,7 +299,7 @@ function WorkItemsTable({ items, relationship = false }: Readonly<{ items: reado
 							</TableCell>
 							<TableCell><Priority priority={item.priority} /></TableCell>
 							<TableCell><Assignee name={item.assignee} /></TableCell>
-							<TableCell><StatusSelect initialStatus={item.status} itemKey={item.key} /></TableCell>
+							<TableCell><StatusSelect itemKey={item.key} onChange={(status) => onStatusChange(item.key, status)} status={statuses[item.key] ?? item.status} /></TableCell>
 							<TableCell />
 						</TableRow>
 					))}

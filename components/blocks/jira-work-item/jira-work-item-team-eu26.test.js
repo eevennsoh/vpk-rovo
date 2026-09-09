@@ -102,11 +102,15 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	}
 	assert.match(bodySource, /<Table[\s\S]*<TableHeader[\s\S]*<TableBody/u);
 	assert.match(bodySource, /0% complete; 1 of 3 subitems in progress/u);
+	assert.match(bodySource, /const \[statuses, setStatuses\] = useState<Record<string/u);
+	assert.doesNotMatch(bodySource, /useState\(initialStatus\)/u);
 	assert.match(railOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceMetadataRail \/>/u);
 	for (const copy of ["Automatic", "Needs input..", "May 25, 2026", "Development", "Automation", "Apps"]) {
 		assert.match(railSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 	}
 	assert.match(dialogSource, /aria-label="Breadcrumb"[\s\S]*Vitafleet[\s\S]*VITA-22[\s\S]*<WorkItemKeyCopy \/>/u);
+	assert.match(dialogSource, /aria-label="Open Rovo"[\s\S]*openChat\("floating"\)/u);
+	assert.match(readBlockFile("team-eu26/data/team-eu26-vita-one.ts"), /Due date changed to May 25, 2026 by/u);
 });
 
 test("Team EU26 is isolated from v1 and v2", () => {

@@ -9,6 +9,7 @@ import CloseIcon from "@atlaskit/icon/core/close";
 import EpicIcon from "@atlaskit/icon/core/epic";
 import ProjectIcon from "@atlaskit/icon/core/project";
 
+import { useRovoChat } from "@/app/contexts";
 import {
 	ContextTitleBar,
 	WorkItemKeyCopy,
@@ -58,6 +59,7 @@ export function ExperimentalWorkItemDialog({
 }: Readonly<ExperimentalWorkItemDialogProps>) {
 	const dialogBodyRef = useRef<HTMLDivElement | null>(null);
 	const [actionAnnouncement, setActionAnnouncement] = useState("");
+	const { openChat } = useRovoChat();
 	const description = `Details, agent sessions, and activity for work item ${workItemCode}.`;
 	const fillsInlineContainer = presentation === "inline" && inlineSurface !== "card";
 	const isFlushInlineSurface = presentation === "inline" && inlineSurface === "fill";
@@ -139,7 +141,18 @@ export function ExperimentalWorkItemDialog({
 							{controlRow ? controlRow(true) : null}
 							<Button aria-label="Manage work item apps" onClick={() => setActionAnnouncement("Work item apps opened")} size="icon" type="button" variant="outline"><AppsIcon label="" size="small" /></Button>
 							<Button aria-label="Add to work item" onClick={() => setActionAnnouncement("Add menu opened")} size="icon" type="button" variant="outline"><AddIcon label="" size="small" /></Button>
-							<Button aria-label="Open Rovo" onClick={() => setActionAnnouncement("Rovo opened")} size="icon" type="button" variant="outline"><RovoColorIcon aria-hidden size="xxsmall" /></Button>
+							<Button
+								aria-label="Open Rovo"
+								onClick={() => {
+									openChat("floating");
+									setActionAnnouncement("Rovo opened");
+								}}
+								size="icon"
+								type="button"
+								variant="outline"
+							>
+								<RovoColorIcon aria-hidden size="xxsmall" />
+							</Button>
 							<Button aria-label="Open in code" onClick={() => setActionAnnouncement("Code options opened")} size="icon" type="button" variant="outline"><AngleBracketsIcon label="" size="small" /></Button>
 							{presentation === "modal" ? (
 								<Button aria-label="Close work item" onClick={onClose} size="icon" type="button" variant="ghost">
