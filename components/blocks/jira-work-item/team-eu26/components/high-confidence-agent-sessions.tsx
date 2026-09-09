@@ -4,24 +4,8 @@ import InformationCircleIcon from "@atlaskit/icon/core/information-circle";
 import StatusInformationIcon from "@atlaskit/icon/core/status-information";
 import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
 
+import { TEAM_EU26_AGENT_SESSIONS } from "@/components/blocks/jira-work-item/team-eu26/data/high-confidence-work-item";
 import { Icon } from "@/components/ui/icon";
-
-const TEAM_EU26_AGENT_SESSIONS = [
-	{
-		agent: "Jira Coding agent",
-		branch: "feature/VITA-1-onboarding-redesign",
-		status: "Completed",
-		title: "Generate onboarding software assets",
-		tone: "success",
-	},
-	{
-		agent: "Jira Scoping agent",
-		branch: "feature/VITA-1-onboarding-redesign",
-		status: "Waiting for input",
-		title: "Scope VITA-1 and draft the next steps",
-		tone: "information",
-	},
-] as const;
 
 export function HighConfidenceAgentSessions() {
 	return (
@@ -55,8 +39,8 @@ export function HighConfidenceAgentSessions() {
 										<span className="shrink-0">May 19</span>
 									</p>
 								</div>
-								<span className={session.tone === "success" ? "shrink-0 text-icon-success" : "shrink-0 text-icon-information"}>
-									<StatusIcon label={session.status} size="small" />
+								<span aria-hidden className={session.tone === "success" ? "shrink-0 text-icon-success" : "shrink-0 text-icon-information"}>
+									<StatusIcon label="" size="small" />
 								</span>
 							</article>
 						</li>

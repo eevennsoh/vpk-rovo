@@ -20,8 +20,33 @@ export interface TeamEu26LinkedWorkItem extends TeamEu26TableWorkItem {
 	relationship: "Blocked by" | "Blocks" | "Clones" | "Relates to";
 }
 
+export interface TeamEu26AgentSession {
+	agent: string;
+	branch: string;
+	status: "Completed" | "Waiting for input";
+	title: string;
+	tone: "information" | "success";
+}
+
 export const TEAM_EU26_DESCRIPTION =
 	"The current onboarding experience has a high drop-off rate at the account setup step. This story covers a full redesign of the onboarding flow to improve activation rates for new users. The new flow should be step-based, guide users to their first meaningful action within the product, and support both self-serve and sales-assisted journeys. Key deliverables include updated copy, a progress indicator component, step validation logic, and integration with the existing auth system.";
+
+export const TEAM_EU26_AGENT_SESSIONS: readonly TeamEu26AgentSession[] = [
+	{
+		agent: "Jira Coding agent",
+		branch: "feature/VITA-1-onboarding-redesign",
+		status: "Completed",
+		title: "Generate onboarding software assets",
+		tone: "success",
+	},
+	{
+		agent: "Jira Scoping agent",
+		branch: "feature/VITA-1-onboarding-redesign",
+		status: "Waiting for input",
+		title: "Scope VITA-1 and draft the next steps",
+		tone: "information",
+	},
+];
 
 export const TEAM_EU26_ATTACHMENTS: readonly TeamEu26Attachment[] = [
 	{ addedBy: "John Vaughan", dateAdded: "1 Mar 2026", id: "marketing-strategy", kind: "confluence", name: "Q1 Marketing Strategy & Goals" },
