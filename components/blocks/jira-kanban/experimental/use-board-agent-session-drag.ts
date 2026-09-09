@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
@@ -10,13 +10,20 @@ import type {
 	JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue";
 import {
+	JIRA_ISSUE_LINK_FLASH_DURATION_MS,
+} from "@/components/blocks/jira-issue/agent-link-flash";
+import {
 	JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE,
 	type JiraIssueAgentSessionDragBinding,
 	type JiraIssueAgentSessionTransferMember,
 } from "@/components/blocks/jira-issue/agent-session-drag";
 import type { JiraIssueAgentSessionRef } from "@/components/blocks/jira-issue/agent-session-transfer";
-import type { JiraLinkingRelease } from "@/components/blocks/jira-linking";
 import type { SessionDropReceipt } from "@/components/blocks/jira-dropzone";
+import {
+	JIRA_LINKING_FULL_DROP_PROFILE,
+	resolveJiraLinkingReleaseSettleMs,
+	type JiraLinkingRelease,
+} from "@/components/blocks/jira-linking";
 
 import type { JiraListInsertion } from "@/components/blocks/jira-list/jira-list-types";
 import type { JiraKanbanCardData, JiraKanbanColumnData } from "../index";
@@ -48,9 +55,31 @@ import {
 	toBoardAgentSessionLinkFlash,
 	toSessionFusionDrop,
 	type BoardAgentSessionLinkFlash,
+	type PendingSessionLinkFlash,
 } from "./lib/session-fusion-overlay-state";
 
 const SESSION_UNLINK_DROP_HALO_PX = 24;
+
+/**
+ * Grace on top of the flights' own budget before the board acknowledges a link
+ * without waiting for them.
+ *
+ * The flights mount through a portal and measure their landing on the next
+ * frame, so their wall-clock is always a little longer than their animation.
+ * This has to cover that gap and nothing more: it is a backstop for a
+ * decoration that never reported back, not a second schedule competing with it.
+ */
+const SESSION_FUSION_SETTLE_GRACE_MS = 250;
+
+/**
+ * Grace on top of the sweep's own duration before the flash is retired.
+ *
+ * The flash is armed a commit before the row paints it, so retiring it on the
+ * bare duration can clip the tail. This only has to cover that offset — the
+ * flash is retired so a finished sweep cannot replay when a row remounts, not
+ * to end a sweep the user is still watching.
+ */
+const SESSION_LINK_FLASH_RETIRE_GRACE_MS = 150;
 
 interface ListScrollportClip {
 	clip: DOMRect;
@@ -362,9 +391,9 @@ export function useBoardAgentSessionDrag({
 		release: JiraLinkingRelease;
 	} | null>(null);
 	const linkFlashTokenRef = useRef(0);
-	const pendingAttachRef = useRef<{
-		flash: BoardAgentSessionLinkFlash | null;
-	} | null>(null);
+	const pendingAttachRef = useRef<PendingSessionLinkFlash | null>(null);
+	const settleDeadlineRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const flashRetireRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const ports: SessionTransferPorts = useMemo(() => ({
 		onBoardGapCreate,
 		onCreate,
@@ -417,14 +446,64 @@ export function useBoardAgentSessionDrag({
 		untrackedSessions,
 	]);
 
+	/**
+	 * Show a sweep and give it a life of its own.
+	 *
+	 * The flash is retired on the sweep's own duration rather than on the next
+	 * gesture. Clearing it when a drag starts is what made the acknowledgement
+	 * look unreliable: the sweep runs for the better part of a second, and
+	 * reaching for the next session inside that window truncated it — usually
+	 * within a frame or two of it appearing. Retiring on its own clock keeps a
+	 * finished sweep from replaying when a row remounts, which is the only thing
+	 * the gesture-start clear was ever protecting against.
+	 */
+	const armLinkFlash = useCallback((flash: BoardAgentSessionLinkFlash | null) => {
+		if (flashRetireRef.current !== null) {
+			clearTimeout(flashRetireRef.current);
+			flashRetireRef.current = null;
+		}
+		setLinkFlash(flash);
+		if (!flash) {
+			return;
+		}
+		flashRetireRef.current = setTimeout(
+			() => {
+				flashRetireRef.current = null;
+				setLinkFlash((current) => (current === flash ? null : current));
+			},
+			JIRA_ISSUE_LINK_FLASH_DURATION_MS + SESSION_LINK_FLASH_RETIRE_GRACE_MS,
+		);
+	}, []);
+
+	/**
+	 * Hand the drop its acknowledgement and take the flights down.
+	 *
+	 * Called by the overlay when its chips land, by the settle deadline when
+	 * they do not, and by the next gesture if it starts first. All three arrive
+	 * at the same state, and consuming the pending record makes it idempotent,
+	 * so whichever gets there first wins and the rest are no-ops.
+	 */
 	const flushPendingAttach = useCallback(() => {
+		if (settleDeadlineRef.current !== null) {
+			clearTimeout(settleDeadlineRef.current);
+			settleDeadlineRef.current = null;
+		}
 		const pending = pendingAttachRef.current;
 		pendingAttachRef.current = null;
 		setFusionDrop(null);
 		if (!pending) {
 			return;
 		}
-		setLinkFlash(pending.flash);
+		armLinkFlash(pending.flash);
+	}, [armLinkFlash]);
+
+	useEffect(() => () => {
+		if (settleDeadlineRef.current !== null) {
+			clearTimeout(settleDeadlineRef.current);
+		}
+		if (flashRetireRef.current !== null) {
+			clearTimeout(flashRetireRef.current);
+		}
 	}, []);
 
 	const onDragStateChange = useCallback((
@@ -436,7 +515,11 @@ export function useBoardAgentSessionDrag({
 			if (cohort === null) {
 				return;
 			}
-			if (pendingAttachRef.current) {
+			// A drag no longer clears the acknowledgement the previous drop left
+			// behind. The sweep owns its own retirement clock, so reaching for the
+			// next session does not cut it short.
+			const pending = pendingAttachRef.current;
+			if (pending) {
 				flushPendingAttach();
 			}
 			const zones = gateCardGapZones(collectDropZones(boardRootRef.current), cardGapsEnabled);
@@ -447,8 +530,6 @@ export function useBoardAgentSessionDrag({
 			transactionRef.current = next;
 			setTransaction(next);
 			setDragState(state);
-			// A fresh gesture clears the acknowledgement the previous drop left behind.
-			setLinkFlash(null);
 			return;
 		}
 
@@ -483,13 +564,22 @@ export function useBoardAgentSessionDrag({
 			commitDrop(finalTransaction);
 			if (release && finalTransaction.proximity && !shouldReduceMotion) {
 				pendingAttachRef.current = { flash };
+				// The sweep waits for the chips to land, but it does not depend on
+				// them: the overlay is decoration, mounted through a portal behind a
+				// lazy chunk, and a decoration that never calls back must not be able
+				// to swallow the acknowledgement for a link that already committed.
+				settleDeadlineRef.current = setTimeout(
+					flushPendingAttach,
+					resolveJiraLinkingReleaseSettleMs(release, JIRA_LINKING_FULL_DROP_PROFILE)
+						+ SESSION_FUSION_SETTLE_GRACE_MS,
+				);
 				setFusionDrop({
 					members: finalTransaction.cohort.members,
 					proximity: finalTransaction.proximity,
 					release,
 				});
 			} else {
-				setLinkFlash(flash);
+				armLinkFlash(flash);
 			}
 		}
 		transactionRef.current = null;
@@ -499,7 +589,7 @@ export function useBoardAgentSessionDrag({
 				? { ...JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE, cancelled: true }
 				: JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE,
 		);
-	}, [cardGapsEnabled, commitDrop, flushPendingAttach, shouldReduceMotion]);
+	}, [armLinkFlash, cardGapsEnabled, commitDrop, flushPendingAttach, shouldReduceMotion]);
 
 	function createBinding(
 		origin: BoardAgentSessionDragOrigin,

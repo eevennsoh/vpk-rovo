@@ -451,7 +451,7 @@ test("Jira issue shows PR metadata with the specified summary-row spacing", () =
 test("Jira issue stroke chrome matches the work-item key type on the issue-key cluster", () => {
 	assert.match(SUMMARY_SOURCE, /import \{ IconTile \} from "@\/components\/ui\/icon-tile";/);
 	assert.match(SUMMARY_BLOCK, /usesStrokeChrome\s*\n\s*\? "flex shrink-0 items-center gap-1\.5"\s*\n\s*: "flex shrink-0 items-center gap-1"/);
-	assert.match(SUMMARY_BLOCK, /usesStrokeChrome\s*\n\s*\? "font-mono text-xs font-normal leading-4 text-text-subtlest"\s*\n\s*: "text-xs font-semibold text-text-subtlest"/);
+	assert.match(SUMMARY_BLOCK, /usesStrokeChrome\s*\n\s*\? "text-xs font-normal leading-4 text-text-subtlest"\s*\n\s*: "text-xs font-semibold text-text-subtlest"/);
 	assert.match(SUMMARY_BLOCK, /usesStrokeChrome \? \(\s*<IconTile[\s\S]*icon=\{<TaskIcon label="" color=\{token\("color\.icon\.brand"\)\} size="small" \/>\}[\s\S]*iconSize="small"[\s\S]*label=\{issueTypeLabel\}[\s\S]*size="xxsmall"[\s\S]*variant="transparent"/);
 	assert.match(SUMMARY_BLOCK, /<TaskIcon[\s\S]*label=\{issueTypeLabel\}[\s\S]*color=\{token\("color\.icon\.brand"\)\}/);
 	assert.match(SUBTASKS_BLOCK, /usesStrokeChrome\s*\n\s*\? "flex items-center gap-1\.5 text-xs font-medium leading-4 text-text-subtle"/);

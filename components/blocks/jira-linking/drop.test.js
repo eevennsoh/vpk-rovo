@@ -8,6 +8,7 @@ const {
 	resolveJiraLinkingArcOptions,
 	resolveJiraLinkingDropPlayback,
 	resolveJiraLinkingDropProfile,
+	resolveJiraLinkingDropSettleMs,
 } = require("./drop.ts");
 
 function member(id, name = id) {
@@ -160,4 +161,35 @@ test("flight keys are stable for identical input and unique per member", () => {
 		second.map((flight) => flight.key),
 	);
 	assert.notEqual(first[0].key, first[1].key);
+});
+
+test("the settle budget covers the last chip off the line, not the first", () => {
+	const { durationMs, staggerMs } = JIRA_LINKING_FULL_DROP_PROFILE;
+
+	// One member has nothing to wait behind, so the budget is one flight.
+	assert.equal(
+		resolveJiraLinkingDropSettleMs(drop(), JIRA_LINKING_FULL_DROP_PROFILE),
+		durationMs,
+	);
+
+	// A staggered cohort finishes when the last-launched chip lands. Taking the
+	// first flight's budget would fire a host's fallback while chips are still
+	// in the air.
+	assert.equal(
+		resolveJiraLinkingDropSettleMs(
+			drop({ members: [member("a"), member("b"), member("c")] }),
+			JIRA_LINKING_FULL_DROP_PROFILE,
+		),
+		2 * staggerMs + durationMs,
+	);
+
+	// A cohort playback launches together, so its budget stays one flight long
+	// however many members it carries.
+	assert.equal(
+		resolveJiraLinkingDropSettleMs(
+			drop({ members: [member("a"), member("b"), member("c")], playback: "cohort" }),
+			JIRA_LINKING_FULL_DROP_PROFILE,
+		),
+		durationMs,
+	);
 });
