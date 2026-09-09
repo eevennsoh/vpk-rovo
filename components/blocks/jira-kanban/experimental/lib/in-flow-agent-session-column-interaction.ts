@@ -10,8 +10,8 @@ export type InFlowSessionColumnAction =
 
 /**
  * Host `collapsed === false` is a full persistent column. Any other host
- * collapsed value is the compact rail sitting in the board — that rest
- * state is pinned until the user unpins it into the gutter.
+ * collapsed value starts in the gutter (unpinned compact rail) until the
+ * user pins it into the board or expands it.
  */
 export function resolveInFlowSessionColumnRest(
 	hostCollapsed: boolean | undefined,
@@ -20,7 +20,7 @@ export function resolveInFlowSessionColumnRest(
 		return { expanded: true, pinned: true };
 	}
 
-	return { expanded: false, pinned: true };
+	return { expanded: false, pinned: false };
 }
 
 export function inFlowCollapsedMenuPinLabel(pinned: boolean): "Pin" | "Unpin" {
