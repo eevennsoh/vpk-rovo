@@ -134,7 +134,11 @@ export function useScrollSpySections({
 		}
 	}, [sectionIds]);
 
-	useEffect(() => clearPendingUnlock, [clearPendingUnlock]);
+	useEffect(() => {
+		return () => {
+			clearPendingUnlock();
+		};
+	}, [clearPendingUnlock]);
 
 	const registerSection = useCallback((sectionId: string, node: HTMLElement | null) => {
 		sectionRefs.current[sectionId] = node;
@@ -187,6 +191,7 @@ export function useScrollSpySections({
 			clearPendingUnlock();
 			unlockSpy();
 		};
+		// react-doctor-disable-next-line react-doctor/effect-needs-cleanup -- clearPendingUnlock removes this exact listener on scroll end, timeout, replacement, and unmount.
 		scrollContainer.addEventListener("scrollend", onScrollEnd);
 		pendingScrollEndRef.current = { container: scrollContainer, handler: onScrollEnd };
 		unlockTimeoutRef.current = setTimeout(() => {

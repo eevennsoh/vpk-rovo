@@ -735,6 +735,17 @@ test("the Team EU26 working-session byline is one shared module, not a per-surfa
 	);
 });
 
+test("Team EU26 scroll navigation releases pending listeners and timers on unmount", () => {
+	const source = readBlockFile("team-eu26/hooks/use-scroll-spy-sections.ts");
+
+	assert.match(source, /clearTimeout\(unlockTimeoutRef\.current\)/u);
+	assert.match(source, /removeEventListener\("scrollend", pendingScrollEnd\.handler\)/u);
+	assert.match(
+		source,
+		/useEffect\(\(\) => \{\s*return \(\) => \{\s*clearPendingUnlock\(\);\s*\};\s*\}, \[clearPendingUnlock\]\);/u,
+	);
+});
+
 test("the Team EU26 lib test suite is registered so it actually runs in CI", () => {
 	// Tests under `components/**` are inert unless they are explicitly listed in
 	// the unit-test manifest, so a forked test file is worthless until it is
