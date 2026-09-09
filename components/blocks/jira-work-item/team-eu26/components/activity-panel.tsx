@@ -413,13 +413,13 @@ export function ActivityPanel({
 			)}
 			headingVisible
 			id={surface === "insights" ? "insights" : "activity"}
-			label={surface === "insights" ? "Insights" : "4 days ago"}
+			label={surface === "insights" ? "Insights" : meta.initialPreset === "filled" ? "Activity" : "4 days ago"}
 		>
 			<div ref={activityRootRef} className="min-w-0 max-w-full" data-jira-work-item-activity>
 				<JiraActivity
 					activeEntryId={activeCheckpointId ?? undefined}
 					actors={reactionActors}
-					className="min-w-0 gap-4 [&_[data-jira-activity-entry-id=team-eu26-annie-visuals]>div:last-child]:rounded-lg [&_[data-jira-activity-entry-id=team-eu26-annie-visuals]>div:last-child]:border [&_[data-jira-activity-entry-id=team-eu26-annie-visuals]>div:last-child]:border-border [&_[data-jira-activity-entry-id=team-eu26-annie-visuals]>div:last-child]:bg-surface [&_[data-jira-activity-entry-id=team-eu26-annie-visuals]>div:last-child]:p-3 [&_[data-jira-activity-entry-id=team-eu26-marcus-budget]>div:last-child]:rounded-lg [&_[data-jira-activity-entry-id=team-eu26-marcus-budget]>div:last-child]:border [&_[data-jira-activity-entry-id=team-eu26-marcus-budget]>div:last-child]:border-border [&_[data-jira-activity-entry-id=team-eu26-marcus-budget]>div:last-child]:bg-surface [&_[data-jira-activity-entry-id=team-eu26-marcus-budget]>div:last-child]:p-3"
+					className="min-w-0 gap-4"
 					composer={null}
 					currentUser={JIRA_WORK_ITEM_CURRENT_USER}
 					entries={entries}

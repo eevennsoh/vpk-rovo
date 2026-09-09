@@ -171,7 +171,7 @@ export function HighConfidenceWorkItemBody() {
 	const visibleLinkedItems = showAllLinkedItems ? TEAM_EU26_LINKED_ITEMS : TEAM_EU26_LINKED_ITEMS.slice(0, 1);
 
 	return (
-		<article aria-label="Team EU26 work item content" className="flex min-w-0 flex-col gap-7 pb-8" data-team-eu26-high-confidence-body>
+		<article aria-label="Team EU26 work item content" className="flex min-w-0 flex-col gap-7" data-team-eu26-high-confidence-body>
 			<p aria-live="polite" className="sr-only">{announcement}</p>
 			<section aria-labelledby="team-eu26-description-heading" className="space-y-2">
 				<h2 className="text-sm font-semibold text-text" id="team-eu26-description-heading">Description</h2>
