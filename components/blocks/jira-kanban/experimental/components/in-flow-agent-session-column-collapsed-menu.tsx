@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, type PointerEvent } from "react";
 import DragHandleVerticalIcon from "@atlaskit/icon/core/drag-handle-vertical";
 import GrowHorizontalIcon from "@atlaskit/icon/core/grow-horizontal";
 import PinIcon from "@atlaskit/icon/core/pin";
@@ -35,8 +36,23 @@ export function InFlowAgentSessionColumnCollapsedMenu({
 	pinned: boolean;
 	title: string;
 }>) {
+	const [hovered, setHovered] = useState(false);
 	const PinGlyph = pinned ? PinFilledIcon : PinIcon;
-	const TriggerGlyph = dragging ? DragHandleVerticalIcon : ShowMoreHorizontalIcon;
+	const showDragHandle = dragging || open || hovered;
+	const TriggerGlyph = showDragHandle ? DragHandleVerticalIcon : ShowMoreHorizontalIcon;
+
+	const handleTriggerPointerEnter = (event: PointerEvent<HTMLElement>) => {
+		if (event.pointerType !== "touch") {
+			setHovered(true);
+		}
+	};
+
+	const handleTriggerPointerLeave = (event: PointerEvent<HTMLElement>) => {
+		if (event.pointerType !== "touch") {
+			setHovered(false);
+		}
+	};
+
 	// DropdownMenuItem defaults to gap-3 plus a size-6 elemBefore slot. Match
 	// QuickViewActionSubmenu: 12px glyph and gap-2, no empty indicator column.
 	const itemClassName = "gap-2 [&>span:first-child]:size-3 [&_svg]:size-3";
@@ -49,6 +65,10 @@ export function InFlowAgentSessionColumnCollapsedMenu({
 			open={dragging ? false : open}
 		>
 			<DropdownMenuTrigger
+				delay={0}
+				openOnHover
+				onPointerEnter={handleTriggerPointerEnter}
+				onPointerLeave={handleTriggerPointerLeave}
 				render={
 					<Button
 						aria-label={`${title} column options`}
@@ -63,6 +83,7 @@ export function InFlowAgentSessionColumnCollapsedMenu({
 			>
 				<Icon
 					className="text-icon-subtle [&_svg]:size-3 [&_svg]:text-icon-subtle"
+					data-agent-session-column-options-glyph={showDragHandle ? "drag-handle" : "more"}
 					render={<TriggerGlyph color="currentColor" label="" size="small" />}
 				/>
 			</DropdownMenuTrigger>
