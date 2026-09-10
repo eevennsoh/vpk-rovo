@@ -14,11 +14,9 @@ const REPOSITION_SURFACE_SELECTOR = [
 const INTERACTIVE_SELECTOR = "button, a, input, [role=separator]";
 
 /**
- * Collapsed chrome used to start a move from the Expand button. That control
- * is now a "…" menu (`data-agent-session-column-options`) that fills the
- * compact header. The 12px expanded grip is not required. Header, rail, and
- * notches start a move; a short click on "…" still opens the menu because
- * reposition only claims the gesture after a 6px drag.
+ * Only explicit column controls start a move: the collapsed options button
+ * and the expanded move handle. Session notches own their own drag gesture;
+ * the enclosing rail and header must not capture it for column repositioning.
  */
 export function canStartSessionColumnReposition({
 	inHeader,
@@ -36,11 +34,11 @@ export function canStartSessionColumnReposition({
 	}
 
 	switch (interactiveKind) {
-		case "none":
 		case "move-handle":
-		case "notch":
 		case "options":
 			return true;
+		case "none":
+		case "notch":
 		case "other":
 			return false;
 		default: {

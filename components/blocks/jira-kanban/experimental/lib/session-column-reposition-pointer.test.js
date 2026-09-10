@@ -21,7 +21,7 @@ const RAIL_SOURCE = readFileSync(
 	"utf8",
 );
 
-test("collapsed header, rail, and options start a move without an Expand aria-label", () => {
+test("only the collapsed options button and expanded move handle start a column move", () => {
 	assert.equal(
 		canStartSessionColumnReposition({
 			inHeader: true,
@@ -38,7 +38,7 @@ test("collapsed header, rail, and options start a move without an Expand aria-la
 			inRail: true,
 			interactiveKind: "notch",
 		}),
-		true,
+		false,
 	);
 	assert.equal(
 		canStartSessionColumnReposition({
@@ -47,7 +47,7 @@ test("collapsed header, rail, and options start a move without an Expand aria-la
 			inRail: true,
 			interactiveKind: "none",
 		}),
-		true,
+		false,
 	);
 	assert.equal(
 		canStartSessionColumnReposition({
@@ -57,6 +57,18 @@ test("collapsed header, rail, and options start a move without an Expand aria-la
 			interactiveKind: "move-handle",
 		}),
 		true,
+	);
+});
+
+test("empty column header space does not start a move", () => {
+	assert.equal(
+		canStartSessionColumnReposition({
+			inHeader: true,
+			inNotch: false,
+			inRail: false,
+			interactiveKind: "none",
+		}),
+		false,
 	);
 });
 

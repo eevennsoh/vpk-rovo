@@ -36,7 +36,7 @@ interface RightNavigationActionsProps {
 	showRovoAction: boolean;
 	isChatOpen: boolean;
 	onToggleChat: () => void;
-	hideSettings?: boolean;
+	settingsIconOnly?: boolean;
 	settingsMenuItems?: ReadonlyArray<RightNavigationSettingsMenuItem>;
 }
 
@@ -47,7 +47,7 @@ export function RightNavigationActions({
 	showRovoAction,
 	isChatOpen,
 	onToggleChat,
-	hideSettings = false,
+	settingsIconOnly = false,
 	settingsMenuItems,
 }: Readonly<RightNavigationActionsProps>) {
 	const hasSettingsMenu = Boolean(settingsMenuItems && settingsMenuItems.length > 0);
@@ -78,10 +78,17 @@ export function RightNavigationActions({
 				<QuestionCircleIcon label="" color={token("color.icon.subtle")} />
 			</Button>
 
-			{/* Settings owns the global design-variant toggles, plus whatever
-			    surface-specific items the caller passes. Routes with a fixed
-			    presentation can omit the capability entirely. */}
-			{hideSettings ? null : (
+			{/* Fixed-presentation routes retain the visual chrome without exposing
+			    a control that cannot do anything. */}
+			{settingsIconOnly ? (
+				<span
+					aria-hidden="true"
+					className="inline-flex size-8 shrink-0 items-center justify-center text-icon-subtle [&_svg]:size-4 [&_svg]:shrink-0"
+					data-static-settings-icon=""
+				>
+					<SettingsIcon label="" color="currentColor" />
+				</span>
+			) : (
 				<DropdownMenu>
 					<DropdownMenuTrigger
 						render={(
