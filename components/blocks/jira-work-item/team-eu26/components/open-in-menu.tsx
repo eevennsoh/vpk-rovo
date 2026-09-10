@@ -87,7 +87,7 @@ export function OpenInMenu({
 				positionerClassName={OPEN_IN_MENU_CONTENT.positionerClassName}
 			>
 				<DropdownMenuGroup>
-					<DropdownMenuLabel>Open in...</DropdownMenuLabel>
+					<DropdownMenuLabel>Copy prompt for</DropdownMenuLabel>
 					{OPEN_IN_MENU_AGENTS.map((agent) => (
 						<DropdownMenuItem
 							elemBefore={(

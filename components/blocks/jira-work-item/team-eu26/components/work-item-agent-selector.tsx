@@ -17,8 +17,8 @@ interface WorkItemAgentSelectorProps {
 	agents?: readonly AgentSelectorAgent[];
 	heading?: string;
 	onAgentToggle: (agentId: string) => void;
-	onBrowseAgents: () => void;
-	onCreateAgent: () => void;
+	onBrowseAgents?: () => void;
+	onCreateAgent?: () => void;
 	onPinnedAgentIdsChange?: (agentIds: readonly string[]) => void;
 	onQueryChange: (query: string) => void;
 	pinnedAgentIds: readonly string[];
@@ -96,11 +96,6 @@ export function WorkItemAgentSelectorMenu({
 		setQuery("");
 	};
 
-	const handleFooterAction = () => {
-		setIsOpen(false);
-		setQuery("");
-	};
-
 	return (
 		<DropdownMenu onOpenChange={handleOpenChange} open={isOpen}>
 			<DropdownMenuTrigger render={trigger} />
@@ -108,8 +103,6 @@ export function WorkItemAgentSelectorMenu({
 				<WorkItemAgentSelector
 					heading="Select agent"
 					onAgentToggle={handleAgentToggle}
-					onBrowseAgents={handleFooterAction}
-					onCreateAgent={handleFooterAction}
 					onQueryChange={setQuery}
 					pinnedAgentIds={[]}
 					pinningEnabled={false}

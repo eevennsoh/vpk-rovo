@@ -201,6 +201,7 @@ test("Team EU26 empty preset uses sparse wiv-v2 body and rail", () => {
 
 	assert.match(emptyRailSource, /export function EmptyMetadataRail/u);
 	assert.match(emptyRailSource, /flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto @\[860px\]\/agentlayout:pt-6/u);
+	assert.match(emptyRailSource, /overflow-hidden rounded-lg border border-border-disabled bg-surface has-\[:focus-visible\]:overflow-visible/u);
 	assert.match(emptyRailSource, /headingId="team-eu26-details-heading"[\s\S]*label="Details"[\s\S]*variant="rail"/u);
 	assert.match(emptyRailSource, /Add agents/u);
 	assert.match(emptyRailSource, /<TeamEuDevelopmentPanel empty \/>/u);
@@ -210,7 +211,7 @@ test("Team EU26 empty preset uses sparse wiv-v2 body and rail", () => {
 
 	assert.match(developmentSource, /Start with agent/u);
 	assert.match(developmentSource, /Start local session/u);
-	assert.match(automationSource, /Add manually triggered automation/u);
+	assert.match(automationSource, /<Button className="h-auto px-0" disabled type="button" variant="link">[\s\S]*Add manually triggered automation/u);
 	assert.match(automationSource, /See templates/u);
 	assert.match(automationSource, /Create an automation to perform tasks with the click of a button/u);
 	assert.match(automationSource, /Recent run rules/u);
@@ -244,7 +245,7 @@ test("Team EU26 header and empty Development share Open in and agent selector me
 	assert.match(developmentSource, /<WorkItemAgentSelectorMenu[\s\S]*Start with agent/u);
 	assert.match(developmentSource, /<OpenInMenu[\s\S]*Start local session/u);
 
-	assert.match(openInSource, /Open in\.\.\./u);
+	assert.match(openInSource, /Copy prompt for/u);
 	assert.match(openInSource, /Claude Code/u);
 	assert.match(openInSource, /Codex/u);
 	assert.match(openInSource, /Cursor/u);
@@ -254,7 +255,7 @@ test("Team EU26 header and empty Development share Open in and agent selector me
 	assert.match(openInSource, /Copy prompt/u);
 	assert.match(
 		openInSource,
-		/<DropdownMenuGroup>[\s\S]*<DropdownMenuLabel>Open in\.\.\.<\/DropdownMenuLabel>[\s\S]*<\/DropdownMenuGroup>/u,
+		/<DropdownMenuGroup>[\s\S]*<DropdownMenuLabel>Copy prompt for<\/DropdownMenuLabel>[\s\S]*<\/DropdownMenuGroup>/u,
 	);
 	assert.match(openInSource, /<DropdownMenuItem[\s\S]*onSelect=/u);
 	assert.doesNotMatch(openInSource, /<DropdownMenuItem[^>]*onClick=/u);
@@ -262,7 +263,8 @@ test("Team EU26 header and empty Development share Open in and agent selector me
 	assert.match(agentSelectorSource, /export function WorkItemAgentSelectorMenu/u);
 	assert.match(agentSelectorSource, /heading="Select agent"/u);
 	assert.match(agentSelectorSource, /searchVariant="boxed"/u);
-	assert.match(agentSelectorSource, /onBrowseAgents=\{handleFooterAction\}/u);
-	assert.match(agentSelectorSource, /onCreateAgent=\{handleFooterAction\}/u);
+	assert.doesNotMatch(agentSelectorSource, /onBrowseAgents=\{handleFooterAction\}/u);
+	assert.doesNotMatch(agentSelectorSource, /onCreateAgent=\{handleFooterAction\}/u);
+	assert.doesNotMatch(agentSelectorSource, /heading="Select agent"[\s\S]*onBrowseAgents=/u);
 	assert.match(agentSelectorSource, /actions\.invokeAgent/u);
 });

@@ -190,7 +190,7 @@ export function ExperimentalWorkItemDialog({
 							</div>
 							{statusControl ? (
 								<div
-									className="flex min-w-0 shrink-0 items-center self-center w-[var(--metadata-panel-width)] pl-4 pr-6"
+									className="flex min-w-0 items-center self-center pl-4 pr-6 @[860px]/workitemdialog:w-[var(--metadata-panel-width)] @[860px]/workitemdialog:shrink-0"
 									data-jira-work-item-header-status
 								>
 									{statusControl}

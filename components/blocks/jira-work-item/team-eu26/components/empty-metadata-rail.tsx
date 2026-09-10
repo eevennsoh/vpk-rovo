@@ -71,7 +71,7 @@ export function EmptyMetadataRail() {
 				className={showRecentAutomationRuns ? "hidden" : "flex flex-col gap-4"}
 				inert={showRecentAutomationRuns ? true : undefined}
 			>
-				<div className="overflow-hidden rounded-lg border border-border-disabled bg-surface">
+				<div className="overflow-hidden rounded-lg border border-border-disabled bg-surface has-[:focus-visible]:overflow-visible">
 					<CollapsibleWorkItemSection headingId="team-eu26-details-heading" label="Details" variant="rail">
 						<div className="space-y-4">
 							<DetailFieldRow

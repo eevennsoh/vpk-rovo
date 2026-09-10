@@ -360,7 +360,11 @@ test("the Team EU26 header stays stable while the body scrolls", () => {
 	assert.match(dialogSource, /className="flex min-w-0 flex-1 items-center gap-4 px-6" data-jira-work-item-header-title-actions/u);
 	assert.match(
 		dialogSource,
-		/w-\[var\(--metadata-panel-width\)\] pl-4 pr-6[\s\S]*data-jira-work-item-header-status/u,
+		/@\[860px\]\/workitemdialog:w-\[var\(--metadata-panel-width\)\] @\[860px\]\/workitemdialog:shrink-0[\s\S]*data-jira-work-item-header-status/u,
+	);
+	assert.doesNotMatch(
+		dialogSource,
+		/shrink-0 items-center self-center w-\[var\(--metadata-panel-width\)\]/u,
 	);
 	assert.match(
 		readBlockFile("team-eu26/components/experimental-work-item-layout.tsx"),

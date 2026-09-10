@@ -72,7 +72,7 @@ function AutomationEmptyIllustration() {
 				Create an automation to perform tasks with the click of a button. Once created, manually triggered
 				automations will appear here.
 			</p>
-			<Button className="h-auto px-0" type="button" variant="link">
+			<Button className="h-auto px-0" disabled type="button" variant="link">
 				Add manually triggered automation
 			</Button>
 			<a
