@@ -2,8 +2,8 @@
 
 import { JiraIssue } from "@/components/blocks/jira-issue";
 
-import type { JiraCreateBoardCard } from "../data/jira-create-board";
-import { JiraCreateEntrance } from "./jira-create-entrance";
+import type { JiraCreateBoardCard } from "../data/jira-creating-board";
+import { JiraCreateEntrance } from "./jira-creating-entrance";
 
 export interface JiraCreateCardProps {
 	card: JiraCreateBoardCard;
