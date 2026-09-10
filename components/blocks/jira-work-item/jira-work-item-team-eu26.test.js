@@ -97,6 +97,29 @@ test("Team EU26 status control uses the project workflow phases", () => {
 		editorDataSource,
 		/export const STATUS_PHASES = \["To do", "In progress", "In review", "Done"\] as const;/u,
 	);
+	// The restored `In review` phase has to read the same on the details rail as
+	// it does on the board and list, which name it `warning`.
+	assert.match(editorDataSource, /"In review": "warning"/u);
+});
+
+test("Team EU26 does not expand the comment composer into an Improve-description prompt", () => {
+	const composerSource = readBlockFile("team-eu26/components/activity-composer.tsx");
+	const bodyOwner = readBlockFile("team-eu26/components/work-item-body.tsx");
+	const bodySource = readBlockFile("team-eu26/components/high-confidence-work-item-body.tsx");
+
+	assert.match(
+		composerSource,
+		/<JiraActivityComposer[\s\S]*placeholder="Add a comment, @mention or \/ for actions"/u,
+	);
+	assert.doesNotMatch(composerSource, /<JiraActivityComposer[\s\S]*\bexpandOnFocus\b/u);
+	assert.doesNotMatch(composerSource, /Type \/ai to ask Rovo|Improve description/u);
+
+	assert.match(bodyOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceWorkItemBody \/>/u);
+	assert.match(
+		bodySource,
+		/<h2 className="text-sm font-semibold text-text" id="team-eu26-description-heading">Description<\/h2>\s*<p className="max-w-none text-sm leading-5 text-text">\{TEAM_EU26_DESCRIPTION\}<\/p>/u,
+	);
+	assert.doesNotMatch(bodySource, /ContextEditableDescription|Type \/ai to ask Rovo|Improve description/u);
 });
 
 test("Team EU26 filled preset renders the high-confidence sections and details rail", () => {
@@ -116,6 +139,18 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 		assert.match(bodySource, new RegExp(copy, "u"));
 	}
 	assert.match(bodySource, /<Table[\s\S]*<TableHeader[\s\S]*<TableBody/u);
+	assert.match(bodySource, /<WorkItemsTable aria-label="Subitems"/u);
+	assert.match(bodySource, /<WorkItemsTable aria-label="Linked work items"/u);
+	assert.match(bodySource, /import \{ WorkItemsTable \} from "@\/components\/blocks\/jira-work-item\/team-eu26\/components\/work-items-table"/u);
+	const workItemsTableSource = readBlockFile("team-eu26/components/work-items-table.tsx");
+	assert.match(workItemsTableSource, /bg-surface-sunken \[&_tr\]:border-0/u);
+	assert.match(workItemsTableSource, /not-first:border-l not-first:border-border/u);
+	assert.match(workItemsTableSource, /overflow-hidden rounded-md border border-border/u);
+	assert.match(workItemsTableSource, /LozengeDropdownTrigger/u);
+	assert.match(workItemsTableSource, /font-medium text-link underline underline-offset-2/u);
+	assert.match(workItemsTableSource, /SubtasksIcon/u);
+	assert.match(workItemsTableSource, /<Icon color="currentColor" label=\{`\$\{priority\} priority`\} size="small" \/>/u);
+	assert.doesNotMatch(workItemsTableSource, /<Icon color="currentColor" label=""/u);
 	assert.match(bodySource, /import \{ Tabs, TabsContent, TabsList, TabsTrigger \} from "@\/components\/ui\/tabs"/u);
 	assert.doesNotMatch(bodySource, /ButtonGroup/u);
 	assert.match(bodySource, /const \[attachmentsExpanded, setAttachmentsExpanded\] = useState\(true\)/u);
@@ -164,9 +199,32 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	assert.match(activitySource, /meta\.initialPreset === "filled" \? "Activity" : "4 days ago"/u);
 	assert.match(layoutSource, /showInFlowComposer = initialPreset === "filled" && composerVisible/u);
 	assert.match(layoutSource, /data-team-eu26-comment-composer[\s\S]*\{composer\}/u);
-	assert.match(railOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceMetadataRail \/>/u);
+	assert.match(railOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceMetadataRail/u);
 	for (const copy of ["Needs input..", "Development", "Automation", "Apps"]) {
 		assert.match(railSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+	}
+	assert.match(railSource, /<TeamEuDevelopmentPanel \/>/u);
+	assert.match(railSource, /<TeamEuAutomationPanel[\s\S]*rules=\{automationRules\}/u);
+	assert.match(railSource, /<TeamEuAutomationPanel[\s\S]*onShowRecentRuns/u);
+	assert.match(railSource, /<TeamEuAppsPanel \/>/u);
+	assert.match(railSource, /aria-hidden=\{showRecentAutomationRuns \|\| undefined\}[\s\S]*inert=\{showRecentAutomationRuns \? true : undefined\}/u);
+	assert.match(readBlockFile("team-eu26/components/metadata-rail.tsx"), /<HighConfidenceMetadataRail automationRules=\{automationRules\} \/>/u);
+	const developmentPanelSource = readBlockFile("team-eu26/components/team-eu-development-panel.tsx");
+	for (const copy of ["1,000", "9,999+", "586", "23", "Needs attention", "Ongoing work", "Merge blocked by failing CI", "Unresolved comments need replies", "feat/dev-panel-empty-state-entry-points", "Annie"]) {
+		assert.match(developmentPanelSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+	}
+	const automationPanelSource = readBlockFile("team-eu26/components/team-eu-automation-panel.tsx");
+	const automationDataSource = readBlockFile("team-eu26/data/team-eu-automation-rules.ts");
+	for (const copy of ["Send reminder 24 hours before due date", "Notify team when status changes to Done", "Mark as complete when all subtasks done", "Recent run rules", "Create automation", "167 days ago"]) {
+		assert.match(`${automationPanelSource}\n${automationDataSource}`, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+	}
+	assert.match(automationPanelSource, /rules\.map[\s\S]*<SetToRecurRow \/>/u);
+	assert.match(automationPanelSource, /const runs = recentRules\(rules\)/u);
+	assert.match(readBlockFile("team-eu26/components/set-to-recur-popover.tsx"), /Set to recur/u);
+	assert.match(readBlockFile("team-eu26/team-eu26-jira-work-item.tsx"), /automationRules=\{props\.automationRules \?\? TEAM_EU_REFERENCE_AUTOMATION_RULES\}/u);
+	const appsPanelSource = readBlockFile("team-eu26/components/team-eu-apps-panel.tsx");
+	for (const copy of ["My Reminders", "Tempo", "PagerDuty", "Sentry", "Checklist", "Invision for Jira", "Trello Assistant"]) {
+		assert.match(appsPanelSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 	}
 	for (const editor of ["PersonRowField", "AgentsRowField", "PriorityRowField", "DateRowField"]) {
 		assert.match(railSource, new RegExp(`<${editor}`, "u"), `${editor} is not wired into the filled Details rail`);

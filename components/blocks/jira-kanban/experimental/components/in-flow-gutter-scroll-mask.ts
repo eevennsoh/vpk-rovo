@@ -70,18 +70,6 @@ export function readInFlowGutterMaskRect(host: HTMLElement | null): InFlowGutter
 	};
 }
 
-export function collectInFlowGutterUnderlapRects(
-	scrollport: HTMLElement | null,
-): InFlowGutterRect[] {
-	if (!scrollport) {
-		return [];
-	}
-	return Array.from(
-		scrollport.querySelectorAll<HTMLElement>(IN_FLOW_GUTTER_UNDERLAP_SELECTOR),
-		(element) => toInFlowGutterRect(element.getBoundingClientRect()),
-	);
-}
-
 export function rectsOverlapInFlowGutter(
 	gutter: InFlowGutterRect,
 	content: InFlowGutterRect,
@@ -92,16 +80,21 @@ export function rectsOverlapInFlowGutter(
 	return overlapX >= minOverlapPx && overlapY >= minOverlapPx;
 }
 
-/**
- * Paint only when real Board/List UI sits under the 24px gutter.
- * Empty padding, rest, and scrollLeft-without-underlap stay clear.
- */
-export function isInFlowGutterScrollMaskActive(
+/** Stop measuring as soon as one painted row proves the gutter needs a fill. */
+export function hasInFlowGutterUnderlap(
 	gutter: InFlowGutterRect | null,
-	contentRects: readonly InFlowGutterRect[],
+	scrollport: HTMLElement | null,
 ): boolean {
-	if (!gutter) {
+	if (!gutter || !scrollport) {
 		return false;
 	}
-	return contentRects.some((rect) => rectsOverlapInFlowGutter(gutter, rect));
+	const elements = scrollport.querySelectorAll<HTMLElement>(
+		IN_FLOW_GUTTER_UNDERLAP_SELECTOR,
+	);
+	for (const element of elements) {
+		if (rectsOverlapInFlowGutter(gutter, element.getBoundingClientRect())) {
+			return true;
+		}
+	}
+	return false;
 }

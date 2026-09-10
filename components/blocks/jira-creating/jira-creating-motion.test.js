@@ -5,6 +5,12 @@ const test = require("node:test");
 const esbuild = require("esbuild");
 const { loadCjsModuleFromText } = require(path.join(process.cwd(), "scripts/lib/esbuild-cjs-loader.js"));
 
+const DEMO_HOOK_SOURCE = readFileSync(
+	path.join(__dirname, "hooks/use-jira-creating-demo.ts"),
+	"utf8",
+);
+const PAGE_SOURCE = readFileSync(path.join(__dirname, "page.tsx"), "utf8");
+
 async function loadMotionHarness() {
 	const result = await esbuild.build({
 		stdin: {
@@ -15,11 +21,11 @@ async function loadMotionHarness() {
 					getJiraCreateSlotTransition,
 					JIRA_CREATE_CARD_STAGGER_S,
 					JIRA_CREATE_HIDDEN_SCALE,
-				} from "./components/blocks/jira-create/lib/jira-create-motion";
+				} from "./components/blocks/jira-creating/lib/jira-creating-motion";
 			`,
 			loader: "ts",
 			resolveDir: process.cwd(),
-			sourcefile: "jira-create-motion-harness.ts",
+			sourcefile: "jira-creating-motion-harness.ts",
 		},
 		bundle: true,
 		format: "cjs",
@@ -28,7 +34,7 @@ async function loadMotionHarness() {
 		write: false,
 	});
 
-	return loadCjsModuleFromText(result.outputFiles[0].text, "jira-create-motion-harness.cjs");
+	return loadCjsModuleFromText(result.outputFiles[0].text, "jira-creating-motion-harness.cjs");
 }
 
 test("create motion treats the whole card as one fade-and-scale entrance", async () => {
@@ -99,7 +105,7 @@ test("create arrival delay staggers between cards and ignores unknown codes", as
 
 test("create motion source names the VPK duration and easing tokens", () => {
 	const source = readFileSync(
-		path.join(__dirname, "lib/jira-create-motion.ts"),
+		path.join(__dirname, "lib/jira-creating-motion.ts"),
 		"utf8",
 	);
 
@@ -108,4 +114,16 @@ test("create motion source names the VPK duration and easing tokens", () => {
 	assert.match(source, /duration-fast \+ ease-in/);
 	assert.match(source, /duration-normal/);
 	assert.doesNotMatch(source, /staggerChildren/);
+});
+
+test("Restart clears created cards and remounts a resting board", () => {
+	assert.match(DEMO_HOOK_SOURCE, /restartJiraCreateDemoColumn\(\)/u);
+	assert.match(
+		DEMO_HOOK_SOURCE,
+		/const restart = useCallback\(\(\) => \{\s*resetColumn\(example\);\s*\}, \[example, resetColumn\]\);/u,
+	);
+	assert.match(DEMO_HOOK_SOURCE, /setBoardGeneration\(\(current\) => current \+ 1\)/u);
+	assert.doesNotMatch(DEMO_HOOK_SOURCE, /generation: item\.generation \+ 1|const replay/u);
+	assert.match(PAGE_SOURCE, /onRestart=\{demo\.restart\}/u);
+	assert.match(PAGE_SOURCE, /<JiraCreateBoard[\s\S]*key=\{demo\.boardGeneration\}/u);
 });

@@ -11,10 +11,10 @@ import {
 	JIRA_CREATE_BOARD_COLUMNS,
 	JIRA_CREATE_COLUMN_TITLE,
 	type JiraCreateColumnItem,
-} from "../data/jira-create-board";
-import { subscribeCreatedCardBottomReveal } from "../lib/jira-create-column-scroll";
-import { getJiraCreateLayoutTransition } from "../lib/jira-create-motion";
-import { JiraCreateCard } from "./jira-create-card";
+} from "../data/jira-creating-board";
+import { subscribeCreatedCardBottomReveal } from "../lib/jira-creating-column-scroll";
+import { getJiraCreateLayoutTransition } from "../lib/jira-creating-motion";
+import { JiraCreateCard } from "./jira-creating-card";
 
 const COLUMN_WIDTH_PX = 276;
 
@@ -45,7 +45,7 @@ function TodoColumnItem({
 	return (
 		<motion.div
 			className={cn("w-full min-w-0 shrink-0", spacerClassName)}
-			data-jira-create-item-id={item.id}
+			data-jira-creating-item-id={item.id}
 			layout={!shouldReduceMotion}
 			transition={getJiraCreateLayoutTransition(shouldReduceMotion)}
 		>
@@ -80,7 +80,7 @@ export function JiraCreateBoard({
 
 		const targets = revealItemIds.flatMap((itemId) => {
 			const node = cardList.querySelector<HTMLElement>(
-				`[data-jira-create-item-id="${itemId}"]`,
+				`[data-jira-creating-item-id="${itemId}"]`,
 			);
 			return node ? [node] : [];
 		});
@@ -102,7 +102,6 @@ export function JiraCreateBoard({
 					const items = isCreateColumn ? todoItems : column.cards.map((card) => ({
 						card,
 						enterDelayS: 0,
-						generation: 0,
 						id: card.code,
 						kind: "resting" as const,
 					}));
@@ -130,7 +129,7 @@ export function JiraCreateBoard({
 							</div>
 							<div
 								className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-								data-jira-create-column-list=""
+								data-jira-creating-column-list=""
 								ref={isCreateColumn ? createColumnListRef : undefined}
 							>
 								<AnimatePresence initial={false}>
@@ -138,7 +137,7 @@ export function JiraCreateBoard({
 										<TodoColumnItem
 											isFirst={index === 0}
 											item={item}
-											key={item.kind === "created" ? `${item.id}-${item.generation}` : item.id}
+											key={item.id}
 										/>
 									))}
 								</AnimatePresence>

@@ -64,6 +64,8 @@ import {
 	type JiraIssueAgentAssignment,
 } from "./agent-activity-row-presentation";
 
+export type { JiraIssueAgentAssignment } from "./agent-activity-row-presentation";
+
 export type JiraIssueAgentActivityMode = "none" | "working" | "awaiting-input" | "completed";
 export type JiraIssueAgentActivityState = "working" | "awaiting-input" | "completed";
 /**
@@ -451,7 +453,6 @@ function JiraIssueAgentActivityRow({
 	inheritChinSurface = false,
 	showAssignmentFlyout = true,
 	shouldReduceMotion,
-	usesStrokeChrome,
 }: Readonly<{
 	activities: readonly JiraIssueAgentActivity[];
 	assignment?: JiraIssueAgentAssignment;
@@ -472,7 +473,6 @@ function JiraIssueAgentActivityRow({
 	/** Hover assignment menu. Completed rows stay assignment-flyout-free. */
 	showAssignmentFlyout?: boolean;
 	shouldReduceMotion: boolean | null;
-	usesStrokeChrome: boolean;
 }>) {
 	// Any row that gained one of the linked sessions sweeps, including a merged
 	// "N Working" row. Dropping onto a card that is already busy changes that
@@ -494,7 +494,10 @@ function JiraIssueAgentActivityRow({
 		shouldReduceMotion,
 		featuredActivity?.startedAtMs,
 	);
-	const catalogAgents = useMemo(() => getJiraIssueAgentCatalog(activities), [activities]);
+	const catalogAgents = useMemo(
+		() => assignment?.agents ?? getJiraIssueAgentCatalog(activities),
+		[activities, assignment?.agents],
+	);
 	const assignedAgents = assignment?.assignedAgents ?? activities.map(toAgentAssignmentAgent);
 
 	const handleOpenChat = createOpenChatHandler(activities, onViewChat, canOpenChat);
@@ -598,7 +601,6 @@ function JiraIssueAgentActivityRow({
 				showUnlinkControl={showUnlinkControl}
 				startupPhase={startupPhase}
 				statusIcon={statusIcon}
-				usesStrokeChrome={usesStrokeChrome}
 			/>
 		</button>
 	);
@@ -659,7 +661,6 @@ export function JiraIssueAgentActivityRows({
 	inheritChinSurface = false,
 	showAssignmentFlyout = true,
 	shouldReduceMotion,
-	usesStrokeChrome,
 }: Readonly<{
 	activities: readonly JiraIssueAgentActivity[];
 	/** Full assignment menu (Assign agent footer) when the host supplies edit capability. */
@@ -780,7 +781,6 @@ export function JiraIssueAgentActivityRows({
 							sessionDrag={rowSessionDrag}
 							showAssignmentFlyout={showAssignmentFlyout}
 							shouldReduceMotion={shouldReduceMotion}
-							usesStrokeChrome={usesStrokeChrome}
 						/>
 					);
 

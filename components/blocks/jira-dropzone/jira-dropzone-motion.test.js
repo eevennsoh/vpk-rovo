@@ -9,7 +9,8 @@ const {
 	resolveJiraDropzoneArcOptions,
 } = require("./lib/jira-dropzone-motion.ts");
 
-test("the default well arc matches Motion arc({ peak, strength })", () => {
+test("the production well drop is a straight tween; arc options stay on the profile for overrides", () => {
+	assert.equal(JIRA_DROPZONE_FULL_MOTION_PROFILE.travel, "linear");
 	assert.deepEqual(resolveJiraDropzoneArcOptions(JIRA_DROPZONE_FULL_MOTION_PROFILE), {
 		peak: 0.5,
 		strength: 0.42,
@@ -64,6 +65,7 @@ test("resolveFlightProfile merges live arc overrides unless motion is reduced", 
 			arcRotate: 0.9,
 			arcStrength: 0.5,
 			durationMs: 450,
+			travel: "arc",
 		}),
 		{
 			...JIRA_DROPZONE_FULL_MOTION_PROFILE,
@@ -72,10 +74,11 @@ test("resolveFlightProfile merges live arc overrides unless motion is reduced", 
 			arcRotate: 0.9,
 			arcStrength: 0.5,
 			durationMs: 450,
+			travel: "arc",
 		},
 	);
 	assert.equal(
-		resolveFlightProfile(true, { arcRotate: 0.9, durationMs: 450 }),
+		resolveFlightProfile(true, { arcRotate: 0.9, durationMs: 450, travel: "arc" }),
 		JIRA_DROPZONE_REDUCED_MOTION_PROFILE,
 	);
 });

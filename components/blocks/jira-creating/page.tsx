@@ -1,9 +1,9 @@
 "use client";
 
-import { JiraCreateBoard } from "./components/jira-create-board";
-import { JiraCreateToolbar } from "./components/jira-create-toolbar";
-import type { JiraCreateExample } from "./data/jira-create-board";
-import { useJiraCreateDemo } from "./hooks/use-jira-create-demo";
+import { JiraCreateBoard } from "./components/jira-creating-board";
+import { JiraCreateToolbar } from "./components/jira-creating-toolbar";
+import type { JiraCreateExample } from "./data/jira-creating-board";
+import { useJiraCreateDemo } from "./hooks/use-jira-creating-demo";
 
 export interface JiraCreatePageProps {
 	example?: JiraCreateExample;
@@ -21,11 +21,12 @@ export default function JiraCreatePage({
 				onAdd={demo.addCards}
 				onExampleChange={demo.setCreateExample}
 				onPositionChange={demo.setInsertPosition}
-				onReplay={demo.replay}
+				onRestart={demo.restart}
 				position={demo.position}
 			/>
 			<JiraCreateBoard
 				className="min-h-0 flex-1"
+				key={demo.boardGeneration}
 				revealItemIds={demo.revealItemIds}
 				todoItems={demo.todoItems}
 			/>

@@ -14,7 +14,7 @@ const NAMED_STATUS_VARIANTS: Readonly<Record<string, LozengeVariant>> = {
 	"RFP Intake": "neutral",
 	"In progress": "information",
 	Drafting: "information",
-	"In review": "information",
+	"In review": "warning",
 	Review: "information",
 	Done: "success",
 	Submitted: "success",

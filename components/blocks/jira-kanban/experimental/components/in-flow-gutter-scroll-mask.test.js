@@ -8,7 +8,7 @@ const {
 	IN_FLOW_GUTTER_SCROLLPORT_SELECTOR,
 	IN_FLOW_GUTTER_UNDERLAP_MIN_PX,
 	IN_FLOW_GUTTER_UNDERLAP_SELECTOR,
-	isInFlowGutterScrollMaskActive,
+	hasInFlowGutterUnderlap,
 	rectsOverlapInFlowGutter,
 	findInFlowGutterScrollport,
 } = require("./in-flow-gutter-scroll-mask.ts");
@@ -28,6 +28,18 @@ const COLUMN_SOURCE = readFileSync(
 
 const GUTTER = { left: 320, right: 344, top: 200, bottom: 760 };
 
+function scrollportFor(rects) {
+	return {
+		querySelectorAll() {
+			return rects.map((rect) => ({
+				getBoundingClientRect() {
+					return rect;
+				},
+			}));
+		},
+	};
+}
+
 test("the gutter fill is 24px and ignores hairline chrome kisses", () => {
 	assert.equal(IN_FLOW_GUTTER_MASK_WIDTH_PX, 24);
 	assert.equal(IN_FLOW_GUTTER_UNDERLAP_MIN_PX, 8);
@@ -35,18 +47,19 @@ test("the gutter fill is 24px and ignores hairline chrome kisses", () => {
 });
 
 test("the gutter fill stays off at rest and when nothing sits under the rail", () => {
-	assert.equal(isInFlowGutterScrollMaskActive(null, []), false);
-	assert.equal(isInFlowGutterScrollMaskActive(GUTTER, []), false);
+	assert.equal(hasInFlowGutterUnderlap(null, scrollportFor([])), false);
+	assert.equal(hasInFlowGutterUnderlap(GUTTER, null), false);
+	assert.equal(hasInFlowGutterUnderlap(GUTTER, scrollportFor([])), false);
 	assert.equal(
-		isInFlowGutterScrollMaskActive(GUTTER, [
+		hasInFlowGutterUnderlap(GUTTER, scrollportFor([
 			{ left: 344, right: 612, top: 280, bottom: 400 },
-		]),
+		])),
 		false,
 	);
 	assert.equal(
-		isInFlowGutterScrollMaskActive(GUTTER, [
+		hasInFlowGutterUnderlap(GUTTER, scrollportFor([
 			{ left: 342, right: 610, top: 280, bottom: 400 },
-		]),
+		])),
 		false,
 	);
 	assert.equal(
@@ -57,23 +70,43 @@ test("the gutter fill stays off at rest and when nothing sits under the rail", (
 
 test("the gutter fill turns on when cards or columns actually sit under the 24px strip", () => {
 	assert.equal(
-		isInFlowGutterScrollMaskActive(GUTTER, [
+		hasInFlowGutterUnderlap(GUTTER, scrollportFor([
 			{ left: 326, right: 594, top: 280, bottom: 436 },
-		]),
+		])),
 		true,
 	);
 	assert.equal(
-		isInFlowGutterScrollMaskActive(GUTTER, [
+		hasInFlowGutterUnderlap(GUTTER, scrollportFor([
 			{ left: 200, right: 400, top: 220, bottom: 500 },
-		]),
+		])),
 		true,
 	);
 	assert.equal(
-		isInFlowGutterScrollMaskActive(GUTTER, [
+		hasInFlowGutterUnderlap(GUTTER, scrollportFor([
 			{ left: 360, right: 628, top: 280, bottom: 400 },
-		]),
+		])),
 		false,
 	);
+});
+
+test("the gutter scan stops after the first overlapping painted row", () => {
+	let geometryReads = 0;
+	const firstOverlap = { left: 326, right: 594, top: 280, bottom: 436 };
+	const outside = { left: 360, right: 628, top: 280, bottom: 436 };
+	const elements = [firstOverlap, ...Array.from({ length: 19 }, () => outside)].map((rect) => ({
+		getBoundingClientRect() {
+			geometryReads += 1;
+			return rect;
+		},
+	}));
+	const scrollport = {
+		querySelectorAll() {
+			return elements;
+		},
+	};
+
+	assert.equal(hasInFlowGutterUnderlap(GUTTER, scrollport), true);
+	assert.equal(geometryReads, 1);
 });
 
 test("the gutter fill watches painted Board/List UI inside the existing scrollports", () => {
@@ -85,7 +118,7 @@ test("the gutter fill watches painted Board/List UI inside the existing scrollpo
 	assert.doesNotMatch(IN_FLOW_GUTTER_UNDERLAP_SELECTOR, /data-jira-kanban-column/u);
 	assert.match(HOOK_SOURCE, /findInFlowGutterScrollport\(host\)/u);
 	assert.match(HOOK_SOURCE, /readInFlowGutterMaskRect\(host\)/u);
-	assert.match(HOOK_SOURCE, /collectInFlowGutterUnderlapRects\(scrollport\)/u);
+	assert.match(HOOK_SOURCE, /hasInFlowGutterUnderlap\([\s\S]*readInFlowGutterMaskRect\(host\),[\s\S]*scrollport,[\s\S]*\)/u);
 	assert.match(HOOK_SOURCE, /scrollport\.addEventListener\("transitionend", syncMask\)/u);
 	assert.match(HOOK_SOURCE, /scrollport\.removeEventListener\("transitionend", syncMask\)/u);
 	assert.match(HOOK_SOURCE, /subtree: true/u);

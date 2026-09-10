@@ -300,7 +300,7 @@ export function MetadataRail({
 		[showBottomScrollMask],
 	);
 	if (initialPreset === "filled" && !pullRequestSelected && !insightsSelected) {
-		return <HighConfidenceMetadataRail />;
+		return <HighConfidenceMetadataRail automationRules={automationRules} />;
 	}
 
 	return (

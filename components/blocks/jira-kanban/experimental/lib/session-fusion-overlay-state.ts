@@ -10,7 +10,6 @@
 
 import type {
 	JiraLinkingDropMember,
-	JiraLinkingPoint,
 	JiraLinkingRelease,
 	JiraLinkingTarget,
 	JiraLinkingVariant,
@@ -206,35 +205,29 @@ export function toSessionFusionDrop(input: Readonly<{
 }
 
 /**
- * How far above its landing shape an assignment's chip starts.
+ * A click-to-assign acknowledgement: the card's glow, with no travelling chip.
  *
- * A drag hands the effect the pointer it was released at. A menu assignment has
- * no travelling pointer, and Glow holds x fixed at the origin, so starting from
- * the menu would drop the chip in a column beside the card. Rising just off the
- * landing axis keeps the same collapse reading as a drop onto the card.
- */
-export const SESSION_FUSION_ASSIGNMENT_RISE_PX = 28;
-
-/**
- * Where an assignment's chip starts: directly over its landing shape.
+ * A drop hands the effect a pointer and a cohort chip that collapses into the
+ * card. A menu assignment has neither — the agent is already on the work item
+ * — so this snapshots the same landing shape a glow drop uses and leaves
+ * `drop` unset. Glow then skips the flight and plays the halo and pulse.
  *
  * `null` when the card cannot be measured, which is the same gate
  * {@link toSessionFusionDrop} applies — no shape, no acknowledgement.
  */
-export function toSessionFusionAssignmentOrigin(
-	proximity: BoardAgentSessionAttachProximity | null,
-	variant?: JiraLinkingVariant,
-): JiraLinkingPoint | null {
-	const target = variant === "glow"
-		? toSessionFusionGlowLandTarget(proximity)
-		: toSessionFusionLandTarget(proximity);
+export function toSessionFusionAssignmentRelease(input: Readonly<{
+	id: number;
+	proximity: BoardAgentSessionAttachProximity | null;
+}>): JiraLinkingRelease | null {
+	const target = toSessionFusionGlowLandTarget(input.proximity);
 	if (!target) {
 		return null;
 	}
 
 	return {
-		x: target.anchor.x,
-		y: target.anchor.y - SESSION_FUSION_ASSIGNMENT_RISE_PX,
+		fromTarget: toSessionFusionTarget(input.proximity),
+		id: input.id,
+		target,
 	};
 }
 

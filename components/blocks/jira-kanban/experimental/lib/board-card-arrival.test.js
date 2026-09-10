@@ -41,13 +41,11 @@ test("a card outside the live arrival stays at rest", async () => {
 		arrivalId: undefined,
 		entering: false,
 		final: false,
-		highlighted: false,
 	});
 	assert.deepEqual(resolveBoardCardArrival(arrival(), "PAY-9"), {
 		arrivalId: undefined,
 		entering: false,
 		final: false,
-		highlighted: false,
 	});
 });
 
@@ -62,11 +60,14 @@ test("a gap drop plays the same create entrance as a create-well drop", async ()
 	assert.equal(gapDrop.arrivalId, 7);
 });
 
-test("only a mid-column gap drop holds the accent backdrop", async () => {
+test("gap and create-well drops resolve to the same backdrop-free arrival", async () => {
 	const { resolveBoardCardArrival } = await loadArrivalHarness();
 
-	assert.equal(resolveBoardCardArrival(arrival({ appended: true }), "PAY-1").highlighted, false);
-	assert.equal(resolveBoardCardArrival(arrival({ appended: false }), "PAY-1").highlighted, true);
+	assert.deepEqual(
+		resolveBoardCardArrival(arrival({ appended: false }), "PAY-1"),
+		resolveBoardCardArrival(arrival({ appended: true }), "PAY-1"),
+	);
+	assert.equal("highlighted" in resolveBoardCardArrival(arrival({ appended: false }), "PAY-1"), false);
 });
 
 test("the last card of an arrival owns the completion handshake", async () => {

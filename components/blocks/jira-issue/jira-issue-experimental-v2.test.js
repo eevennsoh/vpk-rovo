@@ -30,7 +30,10 @@ test("Jira issue agent activity experimental v2 duplicates the playground with l
 	assert.match(LIB_SOURCE, /export function resolveJiraIssueIconMetrics/u);
 	assert.match(LIB_SOURCE, /export function resolveJiraIssueSubtaskChrome/u);
 	assert.match(LIB_SOURCE, /export const JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS = "text-xs font-medium leading-4 text-text-subtle";/u);
+	assert.match(LIB_SOURCE, /export const JIRA_ISSUE_COMFORTABLE_COMPACT_ICON_CLASS =/u);
 	assert.match(SUMMARY_SOURCE, /iconScale = "compact",/u);
+	assert.match(SUMMARY_SOURCE, /iconScale=\{iconScale\}/u);
+	assert.match(SUMMARY_SOURCE, /iconMetrics\.compactIconClassName/u);
 	assert.match(SUMMARY_SOURCE, /iconSize=\{iconMetrics\.iconTileIconSize\}/u);
 	assert.match(SUMMARY_SOURCE, /size=\{iconMetrics\.assigneeSize\}/u);
 	assert.match(SUMMARY_SOURCE, /iconMetrics\.issueKeyClassName/u);

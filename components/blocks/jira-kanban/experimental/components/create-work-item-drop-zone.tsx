@@ -20,11 +20,13 @@ import { useExclusiveCreateWellProximity } from "./create-work-item-exclusive-pr
 const CREATE_WORK_ITEM_WELL_CHROME_CLASS = "rounded-lg border border-dashed";
 
 export function BoardColumnCreateAction({
+	ants = true,
 	dropZoneLabel,
 	reveal,
 	sessionDragTransaction,
 	title,
 }: Readonly<{
+	ants?: boolean;
 	dropZoneLabel?: string;
 	reveal?: "always" | "column-hover";
 	sessionDragTransaction: BoardAgentSessionDrag["transaction"];
@@ -41,6 +43,7 @@ export function BoardColumnCreateAction({
 		<div className="w-full" style={{ paddingBlock: token("space.050") }}>
 			{dropZoneLabel ? (
 				<JiraDropzone
+					ants={ants}
 					drag={drag}
 					exclusiveWinner={isExclusiveWinner}
 					label={dropZoneLabel}

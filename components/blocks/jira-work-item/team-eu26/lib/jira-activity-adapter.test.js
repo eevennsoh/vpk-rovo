@@ -540,7 +540,7 @@ test("status transition lozenges reuse the status dropdown tone map", async () =
 	assert.deepEqual(
 		movedDone.segments.filter((segment) => segment.type === "lozenge"),
 		[
-			{ type: "lozenge", text: "In review", variant: "information" },
+			{ type: "lozenge", text: "In review", variant: "warning" },
 			{ type: "lozenge", text: "Done", variant: "success" },
 		],
 	);

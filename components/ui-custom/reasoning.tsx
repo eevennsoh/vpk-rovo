@@ -38,6 +38,7 @@ import { AnimatedRovo } from "./animated-rovo";
 
 import { CodeBlock } from "./code-block";
 import { Shimmer } from "./shimmer";
+import { ShimmerWave } from "./shimmer-wave";
 import { shouldAutoExpandReasoning } from "./reasoning-open-state";
 import {
 	shouldScheduleCompletionAutoCollapse,
@@ -497,22 +498,32 @@ function StreamingReasoningLabel({
 				transition={REASONING_ANIMATED_ROVO_TRANSITION}
 			/>
 				<span className="flex min-w-0 items-baseline">
-				<Shimmer
-					baseGradientColor={streamingWaveGradientColor}
-					as="span"
-					className="min-w-0 truncate"
-					duration={streamingWaveDuration ?? ROVO_COOKING_SHIMMER_PROPS.duration}
-					spread={streamingWaveSpread ?? ROVO_COOKING_SHIMMER_PROPS.spread}
-					wave={streamingWave}
-					xDistance={ROVO_COOKING_SHIMMER_PROPS.xDistance}
-					yDistance={ROVO_COOKING_SHIMMER_PROPS.yDistance}
-					zDistance={ROVO_COOKING_SHIMMER_PROPS.zDistance}
-					scaleDistance={ROVO_COOKING_SHIMMER_PROPS.scaleDistance}
-					rotateYDistance={ROVO_COOKING_SHIMMER_PROPS.rotateYDistance}
-					transition={ROVO_COOKING_SHIMMER_PROPS.transition}
-				>
-					{renderedLabel}
-				</Shimmer>
+				{streamingWave ? (
+					<ShimmerWave
+						baseGradientColor={streamingWaveGradientColor}
+						as="span"
+						className="min-w-0 truncate"
+						duration={streamingWaveDuration ?? ROVO_COOKING_SHIMMER_PROPS.duration}
+						spread={streamingWaveSpread ?? ROVO_COOKING_SHIMMER_PROPS.spread}
+						xDistance={ROVO_COOKING_SHIMMER_PROPS.xDistance}
+						yDistance={ROVO_COOKING_SHIMMER_PROPS.yDistance}
+						zDistance={ROVO_COOKING_SHIMMER_PROPS.zDistance}
+						scaleDistance={ROVO_COOKING_SHIMMER_PROPS.scaleDistance}
+						rotateYDistance={ROVO_COOKING_SHIMMER_PROPS.rotateYDistance}
+						transition={ROVO_COOKING_SHIMMER_PROPS.transition}
+					>
+						{renderedLabel}
+					</ShimmerWave>
+				) : (
+					<Shimmer
+						as="span"
+						className="min-w-0 truncate"
+						duration={streamingWaveDuration ?? ROVO_COOKING_SHIMMER_PROPS.duration}
+						spread={streamingWaveSpread ?? ROVO_COOKING_SHIMMER_PROPS.spread}
+					>
+						{renderedLabel}
+					</Shimmer>
+				)}
 				{animatedDots ? <AnimatedDots /> : null}
 			</span>
 		</>

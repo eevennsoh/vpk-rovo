@@ -3,9 +3,8 @@
 import { useEffect, useState, type RefObject } from "react";
 
 import {
-	collectInFlowGutterUnderlapRects,
 	findInFlowGutterScrollport,
-	isInFlowGutterScrollMaskActive,
+	hasInFlowGutterUnderlap,
 	readInFlowGutterMaskRect,
 } from "./in-flow-gutter-scroll-mask";
 
@@ -27,9 +26,9 @@ export function useInFlowGutterScrollMask(
 		let scrollport: HTMLElement | null = null;
 
 		const syncMask = () => {
-			setMaskActive(isInFlowGutterScrollMaskActive(
+			setMaskActive(hasInFlowGutterUnderlap(
 				readInFlowGutterMaskRect(host),
-				collectInFlowGutterUnderlapRects(scrollport),
+				scrollport,
 			));
 		};
 

@@ -91,7 +91,7 @@ export function InFlowAgentSessionColumnCollapsedMenu({
 					render={<TriggerGlyph color="currentColor" label="" size="small" />}
 				/>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="center" className="min-w-0 w-max">
+			<DropdownMenuContent align="start" className="min-w-0 w-max" side="right">
 				<DropdownMenuItem
 					className={itemClassName}
 					elemBefore={<Icon className="text-icon-subtle" render={<PinGlyph label="" size="small" />} />}

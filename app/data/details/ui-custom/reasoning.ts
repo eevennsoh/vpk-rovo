@@ -31,7 +31,7 @@ export const REASONING_DETAIL: ComponentDetail = {
 			name: "streamingWave",
 			type: "boolean",
 			default: "false",
-			description: "Enable wave motion layered on top of shimmer while streaming. When false, uses shimmer-only text.",
+			description: "Render the label with ShimmerWave (per-character wave) instead of Shimmer (gradient sweep) while streaming. When false, uses the sweep.",
 		},
 		{
 			name: "streamingWaveGradientColor",

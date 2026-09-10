@@ -71,57 +71,42 @@ test("the created-card arrival scrolls its column to the last card's bottom and 
 	assert.doesNotMatch(ARRIVAL_MOTION_SOURCE, /JIRA_KANBAN_CARD_ARRIVE/u);
 });
 
-test("every created card — create well or mid-column gap drop — enters through the jira-create entrance", () => {
+test("every created card — create well or mid-column gap drop — enters through the jira-creating entrance", () => {
 	assert.match(
 		ARRIVAL_MOTION_SOURCE,
-		/import \{ JiraCreateEntrance \} from "@\/components\/blocks\/jira-create\/components\/jira-create-entrance"/u,
+		/import \{ JiraCreateEntrance \} from "@\/components\/blocks\/jira-creating\/components\/jira-creating-entrance"/u,
 	);
 	assert.match(
 		ARRIVAL_MOTION_SOURCE,
-		/import \{ getJiraCreateArrivalDelayS \} from "@\/components\/blocks\/jira-create\/lib\/jira-create-motion"/u,
+		/import \{ getJiraCreateArrivalDelayS \} from "@\/components\/blocks\/jira-creating\/lib\/jira-creating-motion"/u,
 	);
 	assert.match(
 		ARRIVAL_MOTION_SOURCE,
 		/import \{ resolveBoardCardArrival \} from "\.\.\/lib\/board-card-arrival"/u,
 	);
 	// The entrance is gated on `active`, which resolveBoardCardArrival sets for
-	// any arriving card — `appended` no longer picks an entrance. The
-	// entering/highlighted split itself is covered by board-card-arrival.test.js.
+	// any arriving card — `appended` no longer picks an entrance.
 	assert.match(
 		ARRIVAL_MOTION_SOURCE,
 		/<JiraCreateEntrance\s*active=\{cardArrival\.entering\}\s*enterDelayS=\{enterDelayS\}\s*onAnimationComplete=\{handleArrivalComplete\}/u,
 	);
 	// The wrapper must stay mounted at rest; swapping it for a fragment would
-	// remount the card and wipe state opened during the backdrop hold.
+	// remount the card and wipe state opened during its entrance.
 	assert.doesNotMatch(ARRIVAL_MOTION_SOURCE, /cardArrival\.entering \? \(/u);
-	assert.match(ARRIVAL_MOTION_SOURCE, /data-jira-create-arrival=\{cardArrival\.entering \|\| undefined\}/u);
-	assert.doesNotMatch(
-		ARRIVAL_MOTION_SOURCE,
-		/cardArrival\.entering && "\[&_\[data-slot=jira-issue-agent-backdrop\]\]:bg-bg-accent-blue-subtlest"/u,
-	);
+	assert.match(ARRIVAL_MOTION_SOURCE, /data-jira-creating-arrival=\{cardArrival\.entering \|\| undefined\}/u);
 });
 
-test("gap arrivals still hold a blue agent backdrop before returning to grey", () => {
+test("created card arrivals never add a blue agent backdrop or completion hold", () => {
+	assert.doesNotMatch(ARRIVAL_MOTION_SOURCE, /data-created-card-backdrop/u);
+	assert.doesNotMatch(ARRIVAL_MOTION_SOURCE, /jira-issue-agent-backdrop/u);
+	assert.doesNotMatch(ARRIVAL_MOTION_SOURCE, /bg-bg-accent-blue-subtlest/u);
+	assert.doesNotMatch(ARRIVAL_HOOK_SOURCE, /BACKDROP_HOLD|holdMs|setTimeout/u);
 	assert.match(
 		ARRIVAL_HOOK_SOURCE,
-		/const JIRA_KANBAN_CREATED_CARD_BACKDROP_HOLD_MS = 600; \/\/ duration-slowest/u,
+		/completedIdsRef\.current\.add\(arrivalId\);\s*onComplete\?\.\(arrivalId\);/u,
 	);
-	assert.match(
-		ARRIVAL_MOTION_SOURCE,
-		/\[&_\[data-slot=jira-issue-agent-backdrop\]\]:transition-colors[\s\S]*\[&_\[data-slot=jira-issue-agent-backdrop\]\]:duration-normal[\s\S]*\[&_\[data-slot=jira-issue-agent-backdrop\]\]:ease-out-practical/u,
-	);
-	assert.match(
-		ARRIVAL_MOTION_SOURCE,
-		/cardArrival\.highlighted && "\[&_\[data-slot=jira-issue-agent-backdrop\]\]:bg-bg-accent-blue-subtlest"/u,
-	);
-	assert.match(
-		ARRIVAL_MOTION_SOURCE,
-		/motion-reduce:\[&_\[data-slot=jira-issue-agent-backdrop\]\]:transition-none[\s\S]*data-created-card-backdrop=\{cardArrival\.highlighted \|\| undefined\}/u,
-	);
-	assert.match(ARRIVAL_HOOK_SOURCE, /if \(holdMs <= 0\) \{\s*onComplete\?\.\(arrivalId\);\s*return;/u);
 	assert.match(
 		EXPERIMENTAL_BOARD_SOURCE,
-		/useCreatedCardArrivalCompletion\(\s*onCreatedCardArrivalComplete,\s*createdCardArrival\?\.appended \? 0 : undefined,/u,
+		/useCreatedCardArrivalCompletion\(\s*onCreatedCardArrivalComplete,\s*\)/u,
 	);
-	assert.match(ARRIVAL_HOOK_SOURCE, /window\.clearTimeout\(holdTimeoutRef\.current\)/u);
 });

@@ -33,6 +33,10 @@ const JIRA_ISSUE_SOURCE = readFileSync(
 	"utf8",
 );
 const DRAG_HOOK_SOURCE = readFileSync(join(EXPERIMENTAL_DIR, "use-board-agent-session-drag.ts"), "utf8");
+const GLOW_SOURCE = readFileSync(
+	join(EXPERIMENTAL_DIR, "..", "..", "jira-linking", "jira-linking-glow.tsx"),
+	"utf8",
+);
 const HELPER_SOURCE = readFileSync(join(EXPERIMENTAL_DIR, "lib", "board-untracked-sessions.ts"), "utf8");
 const SESSION_INDEX_SOURCE = readFileSync(
 	join(EXPERIMENTAL_DIR, "..", "..", "agent-session", "index.tsx"),
@@ -198,7 +202,7 @@ test("the link sweep survives an overlay that never reports its flights landed",
 	// Both linking variants publish one, so neither can hardcode a duration.
 	assert.match(
 		DRAG_HOOK_SOURCE,
-		/settleDeadlineRef\.current = setTimeout\(\s*flushPendingAttach,\s*\(linkingVariant === "glow"\s*\? resolveJiraLinkingGlowSettleMs\(shouldReduceMotion\)\s*: resolveJiraLinkingReleaseSettleMs\(input\.release, JIRA_LINKING_FULL_DROP_PROFILE\)\)\s*\+ SESSION_FUSION_SETTLE_GRACE_MS,/u,
+		/settleDeadlineRef\.current = setTimeout\(\s*flushPendingAttach,\s*\(linkingVariant === "glow"\s*\? resolveJiraLinkingGlowSettleMs\(shouldReduceMotion, input\.release\)\s*: resolveJiraLinkingReleaseSettleMs\(input\.release, JIRA_LINKING_FULL_DROP_PROFILE\)\)\s*\+ SESSION_FUSION_SETTLE_GRACE_MS,/u,
 	);
 	// One arming path, so a drop and a menu assignment cannot drift into two
 	// different clocks for the same acknowledgement.
@@ -285,13 +289,18 @@ test("column session hover previews its suggested Jira issue at the grey hover r
 
 	assert.notStrictEqual(hoverHandlerStart, -1);
 	assert.match(BOARD_SOURCE, /onItemHover: handleColumnSessionHover,/u);
-	assert.match(hoverHandlerBody, /setHoveredColumnSessionId\(item\?\.id \?\? null\)/u);
+	assert.match(hoverHandlerBody, /if \(suggestSessionBoardLinkOnHover\) \{\s*setHoveredColumnSessionId\(item\?\.id \?\? null\);\s*\}/u);
 	assert.match(hoverHandlerBody, /agentSessionColumn\?\.onItemHover\?\.\(item\)/u);
-	assert.match(BOARD_SOURCE, /const hoveredIssueKey = hoveredColumnSessionId === null/u);
+	assert.match(BOARD_SOURCE, /const \{ highlightedSessionId, hoveredIssueKey \} = resolveSessionBoardLinkHoverPreview\(/u);
+	assert.match(BOARD_SOURCE, /enabled: suggestSessionBoardLinkOnHover,/u);
 	assert.match(PAGE_SOURCE, /const untrackedHoveredWorkItemKey = untrackedHoveredSession/u);
-	assert.match(PAGE_SOURCE, /proximityHighlightedWorkItemKey=\{untrackedHoveredWorkItemKey\}/u);
+	assert.match(
+		PAGE_SOURCE,
+		/proximityHighlightedWorkItemKey=\{suggestSessionBoardLinkOnHover\s*\? untrackedHoveredWorkItemKey\s*: null\}/u,
+	);
 	assert.match(BOARD_SOURCE, /proximityHighlightedWorkItemKey\?: string \| null;/u);
-	assert.match(BOARD_SOURCE, /const hostHoveredIssueKey = proximityHighlightedWorkItemKey === undefined/u);
+	assert.match(BOARD_SOURCE, /suggestSessionBoardLinkOnHover\?: boolean;/u);
+	assert.match(HELPER_SOURCE, /if \(!input\.enabled\) \{\s*return \{\s*highlightedSessionId: null,\s*hoveredIssueKey: null,/u);
 	assert.match(CARD_SOURCE, /agentSessionTargetPreview=\{\{ highlighted: agentSessionTargetHighlighted \}\}/u);
 	assert.match(JIRA_ISSUE_SOURCE, /agentSessionTargetHighlighted \? "bg-bg-neutral-hovered" : "bg-bg-neutral"/u);
 	// Hover previews the relationship with color only. Only a click owns focus,
@@ -332,6 +341,23 @@ test("a hovered detached board session lights its column twin", () => {
 	assert.match(MEDIUM_CARD_SOURCE, /onPointerLeave=\{\(\) => \{\s*[\s\S]*?onItemHover\?\.\(null\);\s*\}\}/u);
 	assert.match(SESSION_INDEX_SOURCE, /isHighlighted=\{item\.id === highlightedItemId\}/u);
 	assert.match(LARGE_CARD_SOURCE, /!showSelectedFill && isHighlighted && "bg-surface-hovered"/u);
+});
+
+test("suggested-link hover preview is a host capability that defaults on", () => {
+	assert.match(PAGE_SOURCE, /suggestSessionBoardLinkOnHover\?: boolean;/u);
+	assert.match(PAGE_SOURCE, /suggestSessionBoardLinkOnHover = true,/u);
+	assert.match(BOARD_SOURCE, /suggestSessionBoardLinkOnHover\?: boolean;/u);
+	assert.match(BOARD_SOURCE, /suggestSessionBoardLinkOnHover = true,/u);
+	assert.match(
+		PAGE_SOURCE,
+		/proximityHighlightedSessionId=\{suggestSessionBoardLinkOnHover\s*\? untrackedHoveredSessionId\s*: null\}/u,
+	);
+	assert.match(
+		PAGE_SOURCE,
+		/highlightedItemId: suggestSessionBoardLinkOnHover\s*\? untrackedHoveredSessionId\s*: undefined,/u,
+	);
+	assert.match(BOARD_SOURCE, /enabled: suggestSessionBoardLinkOnHover,/u);
+	assert.match(HELPER_SOURCE, /if \(!input\.enabled\) \{\s*return \{\s*highlightedSessionId: null,\s*hoveredIssueKey: null,/u);
 });
 
 test("column card click scrolls the related issue and applies the blue-subtlest spotlight", () => {
@@ -416,9 +442,9 @@ test("column presentation pins Untracked beside the list as well as the board", 
 test("a menu assignment measures the card after the link its own commit caused", () => {
 	// A drop hit-tests a board the pointer was already over. An assignment can
 	// move the card it targets — a host that advances the work item on start
-	// re-columns it in the same commit — so measuring before that commit lands
-	// the flight on the vacated slot and hands Glow a stale anchor whose hit
-	// test finds whichever card slid in behind. The wrong card then glows.
+	// re-columns it in the same commit — so measuring before that commit hands
+	// Glow a stale anchor whose hit test finds whichever card slid in behind.
+	// The wrong card then glows.
 	assert.match(
 		DRAG_HOOK_SOURCE,
 		/assignmentFrameRef\.current = requestAnimationFrame\(\(\) => \{\s*assignmentFrameRef\.current = null;\s*const proximity = toBoardAgentSessionCardProximity\(/u,
@@ -429,11 +455,13 @@ test("a menu assignment measures the card after the link its own commit caused",
 		DRAG_HOOK_SOURCE,
 		/clearTimeout\(flashRetireRef\.current\);\s*\}\s*if \(assignmentFrameRef\.current !== null\) \{\s*cancelAnimationFrame\(assignmentFrameRef\.current\);\s*\}\s*\}, \[\]\);/u,
 	);
-	// Both link paths hand the same builder the same variant, so a menu
-	// assignment cannot draw a different effect than the drop it mirrors.
+	// Click-assign skips the travelling chip a drop builds: Glow's halo is the
+	// whole acknowledgement, and faking a drop origin would replay the collapse.
+	assert.match(DRAG_HOOK_SOURCE, /toSessionFusionAssignmentRelease\(/u);
 	assert.equal(
-		DRAG_HOOK_SOURCE.match(/variant: linkingVariant,/gu)?.length,
-		3,
+		DRAG_HOOK_SOURCE.match(/toSessionFusionDrop\(/gu)?.length,
+		1,
+		"only the pointer-up path may arm a travelling-chip drop",
 	);
 });
 
@@ -457,4 +485,16 @@ test("the assign menu only acknowledges on glow, and never asks for a sweep", ()
 		/targetCardCode: cardCode,/u,
 		"a menu assignment must not build a chin-row flash it cannot key correctly",
 	);
+	// Without a travelling chip, the card must not open its attach chin or
+	// count as a drop target the way a session flight does.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/const isFusionDropFlight = Boolean\(\s*fusionDrop\?\.release\.drop && fusionDrop\.proximity\.cardCode === card\.code,\s*\);/u,
+	);
+	assert.doesNotMatch(
+		GLOW_SOURCE,
+		/if \(shouldReduceMotion \|\| !drop \|\| !landing \|\| !backdrop\)/,
+		"a click-to-assign release omits drop and must still play the halo",
+	);
+	assert.match(GLOW_SOURCE, /if \(!drop \|\| !flight\) \{\s*playGlow\(\);/u);
 });

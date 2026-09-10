@@ -1,6 +1,7 @@
 import type { ReactNode, Ref, RefObject } from "react";
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
+import type { JiraDropzoneBouncePlayback } from "@/components/blocks/jira-dropzone";
 import type {
 	JiraListAgentSessionDropIntent,
 	JiraListInsertion,
@@ -52,6 +53,11 @@ export interface ExperimentalJiraKanbanPageProps {
 	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
 	iconScale?: JiraIssueIconScale;
 	createWorkItemDropZoneLabel?: ExperimentalJiraKanbanProps["createWorkItemDropZoneLabel"];
+	/**
+	 * Bounce when a session lands in the create well. Defaults to `"once"` so
+	 * other boards keep the gobble; jira-team-eu26 passes `"off"`.
+	 */
+	createWellBounce?: JiraDropzoneBouncePlayback;
 	detachedAgentSessionsByCard?: ExperimentalJiraKanbanProps["detachedAgentSessionsByCard"];
 	agentSessionAssigneeIdAliases?: Readonly<Record<string, string>>;
 	/**
@@ -62,6 +68,13 @@ export interface ExperimentalJiraKanbanPageProps {
 	 * halo and backdrop pulse instead of the chin-row sweep.
 	 */
 	agentSessionLinkingVariant?: ExperimentalJiraKanbanProps["agentSessionLinkingVariant"];
+	/**
+	 * Whether hovering an unattached session previews a suggested Jira card
+	 * (and the reverse twin highlight). Defaults on so other boards keep the
+	 * relationship preview. jira-team-eu26 passes false: sessions stay
+	 * independently inspectable without lighting a board card.
+	 */
+	suggestSessionBoardLinkOnHover?: boolean;
 	/**
 	 * Where untracked work lives on this board.
 	 *
@@ -117,6 +130,7 @@ export interface ExperimentalJiraKanbanPageProps {
 	) => string | undefined;
 	onCardClick?: (card: JiraKanbanCardData, columnTitle: string) => void;
 	onCardAgentActivityViewChat?: JiraKanbanProps["onCardAgentActivityViewChat"];
+	onCardAssignedAgentIdsChange?: (issueKey: string, agentIds: readonly string[]) => void;
 	onCardAgentDoneRunView?: JiraKanbanProps["onCardAgentDoneRunView"];
 	onCardGenerativeActionSubmit?: JiraKanbanProps["onCardGenerativeActionSubmit"];
 	onCardAgentSessionLink?: ExperimentalJiraKanbanProps["onCardAgentSessionLink"];
