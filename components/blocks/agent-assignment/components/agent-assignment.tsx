@@ -339,9 +339,7 @@ export function AgentAssignment({
 			onContinueInAgent={onContinueExistingSession
 				? (item) => runAssignedSessionAction(assignedAgents, item.id, onContinueExistingSession)
 				: undefined}
-			onDeleteSession={onAssignedAgentIdsChange
-				? (item) => runAssignedSessionAction(assignedAgents, item.id, handleArchiveAgent)
-				: undefined}
+			onDeleteSession={undefined}
 			onRenameSession={onRenameAssignedAgent
 				? (item) => runAssignedSessionAction(assignedAgents, item.id, onRenameAssignedAgent)
 				: undefined}

@@ -3,14 +3,8 @@ import {
 	resolveAssignedAgentStatusKind,
 	type AgentAssignmentStatusKind,
 } from "@/components/blocks/agent-assignment/components/assigned-agent-status";
-import type { AgentListInvoker } from "@/components/blocks/agent-list/agent-list-types";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue/agent-activity";
 import type { AgentSessionItem } from "@/components/blocks/agent-session/agent-session-types";
-
-const DEFAULT_ASSIGNMENT_INVOKER = {
-	avatarSrc: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
-	name: "Priya Raman",
-} as const satisfies AgentListInvoker;
 
 export type AgentAssignmentVariant = "default" | "simple";
 
@@ -80,7 +74,7 @@ export function toAssignmentSessionItem(agent: AgentAssignmentAgent): AgentSessi
 			...(agent.brandName ? { brandName: agent.brandName } : {}),
 		},
 		id: agent.id,
-		invokedBy: agent.invokedBy ?? DEFAULT_ASSIGNMENT_INVOKER,
+		...(agent.invokedBy ? { invokedBy: agent.invokedBy } : {}),
 		state: assignmentSessionState(statusKind),
 		title: agent.name,
 		...(agent.host !== undefined ? { host: agent.host } : {}),

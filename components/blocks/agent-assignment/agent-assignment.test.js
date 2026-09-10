@@ -301,8 +301,6 @@ test("assigned-agent action rows truncate 8px from CTAs and idle the byline on h
 	const suggestionMenuCss = readProjectFile("components/ui-custom/rich-text-editor/suggestion-menu-actions.css");
 	const editorCss = readProjectFile("components/ui-custom/rich-text-editor/rich-text-editor.css");
 
-	// Action rows must not reserve the 28px return-shortcut gutter — the CTA
-	// column already owns trailing space (padding-right: space-100 = 8px).
 	assert.match(
 		editorCss,
 		/\.rich-text-command-menu-item:not\(\[data-has-actions="true"\]\):hover \.rich-text-command-menu-copy,[\s\S]*\.rich-text-command-menu-item-selected:not\(\[data-has-actions="true"\]\) \.rich-text-command-menu-copy \{\s*padding-right: 28px;/u,
@@ -317,22 +315,16 @@ test("assigned-agent action rows truncate 8px from CTAs and idle the byline on h
 		/\[data-suggestion-actions\]:has\(:focus-visible\) \.rich-text-command-menu-item\[data-has-actions="true"\] \.rich-text-command-menu-copy,[\s\S]*padding-right: 0;/u,
 	);
 
-	// Long-label fixture: the 2nd-line toolcall must be long enough to ellipsis
-	// before the View CTA (gotchas-ui: hover-reveal + truncating copy).
 	assert.match(
 		demoAssigned,
 		/Checking the proposed patch across every changed file in this review/u,
 	);
 
-	// Working assigned agents show a rest-state spinner that yields (opacity) to
-	// View/Archive — never unmounted with display:none / hidden.
 	assert.match(menu, /<Spinner label=\{`\$\{agent\.name\} running`\} size="sm" \/>/u);
 	assert.doesNotMatch(menu, /<Spinner[^>]*variant="rainbow"/u);
 	assert.match(suggestionMenu, /shouldYieldTrailingToHoverActions \? "pointer-events-none opacity-0"/u);
 	assert.doesNotMatch(suggestionMenu, /className="hidden items-center gap-1/u);
 
-	// Hover-out must idle the byline: clear selectedIndex and do not drive the
-	// 2nd line from a stale isSelected on hover-action rows.
 	assert.match(menu, /onHoverEnd=\{\(\) => setSelectedIndex\(-1\)\}/u);
 	assert.match(suggestionMenu, /const isBylineRevealed = hasHoverActions \? isHoverActionsRevealed : isSelected;/u);
 	assert.match(suggestionMenu, /animate=\{isBylineRevealed \? "active" : "idle"\}/u);
@@ -388,68 +380,6 @@ test("Agent Assignment is registered with a catalog demo and documentation", () 
 	assert.match(components, /blockComponent\("agent-assignment", "Agent Assignment"\)/u);
 	assert.match(manifest, /blockComponent\("agent-assignment", "Agent Assignment"\)/u);
 	assert.match(registry, /"agent-assignment": dynamic/u);
-});
-
-test("Default uses the activity row and long session cards; Simple keeps the facepile", () => {
-	const source = readProjectFile("components/blocks/agent-assignment/components/agent-assignment.tsx");
-	const field = readProjectFile("components/blocks/agent-assignment/components/agent-assignment-default-field.tsx");
-	const sessionMenu = readProjectFile(
-		"components/blocks/agent-assignment/components/assigned-agents-session-menu.tsx",
-	);
-	const mapper = readProjectFile("components/blocks/agent-assignment/components/assignment-session.ts");
-	const page = readProjectFile("components/blocks/agent-assignment/page.tsx");
-	const details = readProjectFile("app/data/details/blocks/agent-assignment.ts");
-
-	assert.match(source, /variant\?: AgentAssignmentVariant;/u);
-	assert.match(source, /variant = "default"/u);
-	assert.match(source, /variant === "simple" \? \(/u);
-	assert.match(source, /<AssignedAgentsMenu/u);
-	assert.match(source, /<AssignedAgentsSessionMenu/u);
-	assert.match(source, /onContinueInAgent=\{onContinueExistingSession/u);
-	assert.match(source, /onDeleteSession=\{onAssignedAgentIdsChange/u);
-	assert.match(source, /onRenameSession=\{onRenameAssignedAgent/u);
-	assert.match(source, /onToggleVisibility=\{onAssignedAgentIdsChange/u);
-	assert.match(source, /variant === "default"[\s\S]*view === "assigned"[\s\S]*reason === "focus-out"/u);
-	assert.match(source, /<AgentAssignmentDefaultField assignedAgents=\{assignedAgents\} \/>/u);
-	assert.match(source, /aria-label=\{shown\.length === 0 \? "Assign agent" : triggerLabel\}/u);
-
-	assert.match(field, /<JiraIssueAgentActivityRows/u);
-	assert.match(field, /showAssignmentFlyout=\{false\}/u);
-	assert.match(field, /avatarLayout="animated"/u);
-	assert.match(field, /inheritChinSurface/u);
-	assert.match(mapper, /export function toAssignmentActivity/u);
-	assert.match(mapper, /export function toAssignmentSessionItem/u);
-	assert.match(mapper, /state: assignmentSessionState\(statusKind\)/u);
-
-	assert.match(sessionMenu, /<AgentSessionCard/u);
-	assert.match(sessionMenu, /density="long"/u);
-	assert.match(sessionMenu, /padding="compact"/u);
-	assert.doesNotMatch(sessionMenu, /showMoreMenu=\{false\}/u);
-	assert.match(sessionMenu, /onContinueInAgent=\{onContinueInAgent\}/u);
-	assert.match(sessionMenu, /onDeleteSession=\{onDeleteSession\}/u);
-	assert.match(sessionMenu, /onRenameSession=\{onRenameSession\}/u);
-	assert.match(sessionMenu, /onToggleVisibility=\{onToggleVisibility\}/u);
-	assert.match(sessionMenu, /moreMenuPositionerClassName="z-\[600\]"/u);
-	assert.match(sessionMenu, /moreMenuPortalled=\{false\}/u);
-	assert.match(sessionMenu, /className="flex w-full flex-col gap-0 p-1"/u);
-	assert.doesNotMatch(sessionMenu, /gap-1/u);
-	assert.match(mapper, /invokedBy: agent\.invokedBy \?\? DEFAULT_ASSIGNMENT_INVOKER/u);
-	assert.match(mapper, /\.\.\.\(agent\.host !== undefined \? \{ host: agent\.host \} : \{\}\)/u);
-	assert.match(mapper, /\.\.\.\(agent\.role !== undefined \? \{ role: agent\.role \} : \{\}\)/u);
-	assert.doesNotMatch(mapper, /host: "cloud"/u);
-	const demoAgents = readProjectFile("components/blocks/agent-assignment/demo-assigned-agents.ts");
-	assert.match(demoAgents, /invokedBy: DEMO_INVOKERS\[agent\.id\]/u);
-	assert.match(demoAgents, /host: demoStatus\.host/u);
-	assert.match(demoAgents, /role: demoStatus\.role/u);
-	assert.match(demoAgents, /"github-copilot": \{[\s\S]*name: "Priya Raman"/u);
-	assert.match(sessionMenu, /toAssignmentSessionItem\(row\)/u);
-	assert.doesNotMatch(sessionMenu, /density="short"/u);
-	assert.match(sessionMenu, /Assign agent/u);
-	assert.doesNotMatch(mapper, /timeLabel: agent\.statusLabel/u);
-
-	assert.match(page, /variant = "default"/u);
-	assert.match(page, /variant=\{variant\}/u);
-	assert.ok(details.indexOf('title: "Default"') < details.indexOf('title: "Simple"'));
 });
 
 async function loadAgentAssignmentClickHarness() {

@@ -9,10 +9,6 @@ const AGENT_ACTIVITY_SOURCE = [
 	readFileSync(join(__dirname, "agent-activity-row-presentation.tsx"), "utf8"),
 ].join("\n");
 const STARTUP_SOURCE = readFileSync(join(__dirname, "agent-activity-startup.tsx"), "utf8");
-// The row's "no agent-list / agent-states components" import contract lives in
-// agent-activity-imports.test.js, which keeps this file inside its line budget.
-// The summary cluster and the standalone card types were split out of index.tsx
-// to keep it under the 1000-line budget; these assertions follow them.
 const SUMMARY_SOURCE = readFileSync(join(__dirname, "summary.tsx"), "utf8");
 const PULL_REQUEST_CLUSTER_SOURCE = readFileSync(join(__dirname, "pull-request-cluster.tsx"), "utf8");
 const TYPES_SOURCE = readFileSync(join(__dirname, "types.ts"), "utf8");
@@ -125,11 +121,6 @@ test("Jira issue stroke chrome keeps its rest border everywhere except the agent
 		ROOT_CLASS_BLOCK,
 		/const agentActivitySurfaceClassName = cn\([\s\S]*"pointer-events-none absolute border"[\s\S]*selected[\s\S]*\? "border-border-selected bg-bg-selected"[\s\S]*: active[\s\S]*\? cn\([\s\S]*chromeStyles\.restClassName[\s\S]*chromeStyles\.agentSurfaceHoverClassName[\s\S]*"bg-bg-selected"[\s\S]*: cn\(agentActivityRestBorderClassName, "bg-surface"\)/u,
 	);
-	// Only the resting white surface ON THE GREY AGENT BACKDROP swaps to a
-	// surface-coloured hairline: a disabled-grey border over white composites to
-	// the gutter colour, which read as the card being 1px narrower than the chin
-	// rows. With no active shell the card is on the page background and keeps its
-	// stroke outline. Hover still darkens; selected/active are not on white.
 	assert.match(SOURCE, /const agentActivityRestBorderClassName = !hasActiveAgentActivityShell\s*\n\t\t\? agentSurfaceChromeClassName\s*\n\t\t: usesStrokeChrome\s*\n\t\t\t\? cn\("border-surface", chromeStyles\.agentSurfaceHoverClassName\)\s*\n\t\t\t: agentSurfaceChromeClassName;/u);
 });
 
@@ -197,32 +188,21 @@ test("Jira issue owns an uncaptured-work variant with a suggested-link chin", ()
 	assert.match(LIB_SOURCE, /Link to \$\{suggestedWorkItemKey\}/u);
 	assert.match(UNCAPTURED_WORK_CHIN_SOURCE, /aria-disabled=\{linkUnavailable\}/u);
 	assert.match(UNCAPTURED_WORK_CHIN_SOURCE, /disabled=\{createUnavailable\}/u);
-	// The Link split button collapsed to a plain button when Create work item
-	// left the dropdown for a trailing icon, so no menu surface remains.
 	assert.doesNotMatch(UNCAPTURED_WORK_CHIN_SOURCE, /ButtonGroup|DropdownMenu/u);
 	assert.match(UNCAPTURED_WORK_CHIN_SOURCE, /import WorkItemAddIcon from "@atlaskit\/icon-lab\/core\/work-item-add";/u);
 	assert.match(UNCAPTURED_WORK_CHIN_SOURCE, /import SubtasksIcon from "@atlaskit\/icon\/core\/subtasks";/u);
 	assert.match(UNCAPTURED_WORK_CHIN_SOURCE, /label="Create work item"/u);
 	assert.match(UNCAPTURED_WORK_CHIN_SOURCE, /label="Subtasks"/u);
-	// A chin row's controls are one group sharing one hover surface. The hover
-	// lives on the row, not the footer, so a multi-suggestion chin lights only
-	// the row under the pointer.
 	assert.match(
 		UNCAPTURED_WORK_CHIN_SOURCE,
 		/hover:bg-bg-neutral-subtle-hovered has-\[:focus-visible\]:bg-bg-neutral-subtle-hovered motion-reduce:transition-none/u,
 	);
 	assert.doesNotMatch(UNCAPTURED_WORK_CHIN_SOURCE, /group-hover\/uncaptured-chin/u);
-	// Several candidate keys render one linkable row each, and every row carries
-	// its own Create work item + Subtasks pair.
 	assert.match(LIB_SOURCE, /export function uncapturedWorkSuggestionKeys\(/u);
-	// Fast Refresh only preserves state when a component file exports nothing
-	// but components, so the chin's pure helpers live in lib.ts.
 	assert.doesNotMatch(UNCAPTURED_WORK_CHIN_SOURCE, /export (?!function UncapturedWorkChin)/u);
 	assert.match(UNCAPTURED_WORK_CHIN_SOURCE, /suggestionKeys\.map\(\(key\) => \(/u);
 	assert.match(UNCAPTURED_WORK_CHIN_SOURCE, /<ChinRow actions=\{trailingActions\} key=/u);
 	assert.match(UNCAPTURED_WORK_CHIN_SOURCE, /onLinkWorkItem\?\.\(key\)/u);
-	// Resume moved onto the Agent List row's hover/focus action pair, and Dismiss
-	// was retired with the trash icon, so the chin owns work item capture only.
 	assert.doesNotMatch(UNCAPTURED_WORK_CHIN_SOURCE, /onCopyResume|onDismiss/u);
 	assert.doesNotMatch(UNCAPTURED_WORK_CHIN_SOURCE, /CopyIcon|DeleteIcon|Resume|Dismiss/u);
 	assert.doesNotMatch(UNCAPTURED_WORK_SOURCE, /onCopyResume|onDismiss/u);

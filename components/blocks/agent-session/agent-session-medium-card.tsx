@@ -72,12 +72,12 @@ export function AgentSessionMediumCard({
 				shouldReduceMotion={shouldReduceMotion}
 			>
 				{(bind) => (
-					<div
+					<button
 						{...bind}
 						className={cn(
-							"relative flex h-10 w-[276px] max-w-full items-center gap-2 rounded-[10px] border border-solid bg-surface px-2",
+							"relative flex h-10 w-[276px] max-w-full items-center gap-2 rounded-[10px] border border-solid bg-surface px-2 text-left",
 							"transition-[background-color,border-color] duration-xxshort ease-out-practical motion-reduce:transition-none",
-							"hover:border-border focus-within:border-border",
+							"hover:border-border focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
 							isHighlighted ? "bg-surface-hovered" : "hover:bg-surface-hovered",
 							!captured && isNew ? "border-border-discovery" : "border-border-disabled",
 							isNew ? "ring-1 ring-border-discovery" : null,
@@ -94,6 +94,7 @@ export function AgentSessionMediumCard({
 							isHoveredRef.current = false;
 							onItemHover?.(null);
 						}}
+						type="button"
 					>
 						{isNew ? (
 							<>
@@ -117,7 +118,7 @@ export function AgentSessionMediumCard({
 							size="small"
 							variant="transparent"
 						/>
-					</div>
+					</button>
 				)}
 			</AgentSessionMediumDrag>
 		</motion.div>

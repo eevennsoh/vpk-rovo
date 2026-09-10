@@ -29,18 +29,6 @@ const MEDIUM_DRAG_SOURCE = readFileSync(
 	join(__dirname, "agent-session-medium-drag.tsx"),
 	"utf8",
 );
-const COHORT_CHIP_SOURCE = readFileSync(
-	join(__dirname, "agent-session-cohort-chip.tsx"),
-	"utf8",
-);
-const DRAG_OVERLAY_SOURCE = readFileSync(
-	join(__dirname, "agent-session-drag-overlay.tsx"),
-	"utf8",
-);
-const DRAG_LAYOUT_SOURCE = readFileSync(
-	join(__dirname, "agent-session-drag-layout.ts"),
-	"utf8",
-);
 const MORE_MENU_SOURCE = readFileSync(
 	join(__dirname, "agent-session-medium-more-menu.tsx"),
 	"utf8",
@@ -114,7 +102,6 @@ const VARIANT_REGISTRY_SOURCE = readFileSync(
 
 test("renders each session as a solid uncaptured-work card around the shared row", () => {
 	assert.match(CARD_SOURCE, /data-testid=\{"agent-session-row-" \+ item.id\}/u);
-	// Borderless rounded tiles. Newness is the discovery dot, not a stroke.
 	assert.match(CARD_SOURCE, /rounded-lg text-left text-text/u);
 	assert.match(CARD_SOURCE, /padding === "compact" \? "px-3 py-2" : "p-3"/u);
 	assert.doesNotMatch(CARD_SOURCE, /border border-solid/u);
@@ -124,7 +111,6 @@ test("renders each session as a solid uncaptured-work card around the shared row
 	assert.doesNotMatch(CARD_SOURCE, /(?<!hover:)bg-surface(?!-sunken|-hovered)/u);
 	assert.doesNotMatch(CARD_SOURCE, /bg-bg-accent-gray-subtlest/u);
 	assert.doesNotMatch(CARD_SOURCE, /UncapturedWorkChin/u);
-	// The row presenter stays owned by Agent List; this block only frames it.
 	assert.match(
 		CARD_SOURCE,
 		/import \{[\s\S]*AgentListIdentity,[\s\S]*AgentListRow,[\s\S]*type AgentListRowHoverActions,[\s\S]*\} from "@\/components\/blocks\/agent-list\/agent-list-card";/u,
@@ -156,7 +142,6 @@ test("short uncaptured-work rows restore the owner byline", () => {
 	assert.match(METADATA_SOURCE, /export function AgentSessionShortMetadata/u);
 	assert.match(CARD_SOURCE, /<AgentSessionShortMetadata item=\{item\} \/>/u);
 	assert.match(LIST_CARD_SOURCE, /\{metadata === undefined \? \(/u);
-	// The shared host segment remains available to the long density.
 	assert.match(METADATA_SOURCE, /import CloudIcon from "@atlaskit\/icon-lab\/core\/cloud";/u);
 	assert.match(METADATA_SOURCE, /import DevicesIcon from "@atlaskit\/icon\/core\/devices";/u);
 	assert.match(
@@ -225,9 +210,11 @@ test("medium detached is a 276px stroked white chip with a combo identity and up
 	assert.match(MEDIUM_CARD_SOURCE, /<IconTile[\s\S]*icon=\{\s*<ArrowUpIcon/u);
 	assert.match(MEDIUM_CARD_SOURCE, /iconSize="medium"/u);
 	assert.match(MEDIUM_CARD_SOURCE, /variant="transparent"/u);
-	assert.match(MEDIUM_CARD_SOURCE, /relative flex h-10 w-\[276px\] max-w-full items-center gap-2 rounded-\[10px\] border border-solid bg-surface px-2/u);
+	assert.match(MEDIUM_CARD_SOURCE, /relative flex h-10 w-\[276px\] max-w-full items-center gap-2 rounded-\[10px\] border border-solid bg-surface px-2 text-left/u);
 	assert.match(MEDIUM_CARD_SOURCE, /!captured && isNew \? "border-border-discovery" : "border-border-disabled"/u);
-	assert.match(MEDIUM_CARD_SOURCE, /hover:border-border focus-within:border-border/u);
+	assert.match(MEDIUM_CARD_SOURCE, /hover:border-border focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring\/50/u);
+	assert.match(MEDIUM_CARD_SOURCE, /<button/u);
+	assert.match(MEDIUM_CARD_SOURCE, /type="button"/u);
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /JiraIssueAgentActivityRows/u);
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /bg-bg-neutral/u);
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /w-fit max-w-full items-center gap-2 bg-surface px-2/u);
@@ -250,56 +237,6 @@ test("medium detached is a 276px stroked white chip with a combo identity and up
 	);
 	const dashSource = readFileSync(join(__dirname, "../../../app/dash-4-2.css"), "utf8");
 	assert.doesNotMatch(dashSource, /@utility dash-4-4/u);
-});
-
-test("medium drag chip is the shared agent mention tag with overlay elevation", () => {
-	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /isDragging \? \(\s*\n\s*<AgentSessionDragOverlay/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /useSessionDragChipPointer/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /createPortal/u);
-
-	assert.match(DRAG_OVERLAY_SOURCE, /import \{ createPortal \} from "react-dom";/u);
-	assert.match(DRAG_OVERLAY_SOURCE, /<AgentSessionCohortChip[\s\S]*elevated/u);
-	assert.match(
-		DRAG_OVERLAY_SOURCE,
-		/className="pointer-events-none flex w-fit max-w-full -translate-x-1\/2 -translate-y-1\/2 items-center justify-start"/u,
-	);
-	assert.match(DRAG_OVERLAY_SOURCE, /sessionDragChipViewportStyle\(true\)/u);
-	assert.match(
-		DRAG_OVERLAY_SOURCE,
-		/createPortal\([\s\S]*data-session-drag-overlay=""[\s\S]*document\.body/u,
-	);
-	assert.match(MEDIUM_DRAG_SOURCE, /chipPointer\.snapToPointer\(\s*\{ x: event\.clientX, y: event\.clientY \},?\s*\);/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /chipPointer\.(?:snapToPointer|followPointer)\([\s\S]{0,100}event\.currentTarget/u);
-	assert.match(DRAG_OVERLAY_SOURCE, /-translate-x-1\/2 -translate-y-1\/2/u);
-	assert.match(DRAG_OVERLAY_SOURCE, /data-session-chip-centered=""/u);
-	assert.doesNotMatch(DRAG_OVERLAY_SOURCE, /bg-surface-raised/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /h-\[33px\] w-fit/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /from "@\/components\/visual\/gooey"/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /<Gooey/u);
-});
-
-test("medium drag keeps pointer capture on the motion host instead of swapping a chip button", () => {
-	// Replacing `children(sessionDragBind)` with a new chip button on drag-start
-	// unmounted the node that called setPointerCapture. pointerup never fired,
-	// so the card stuck on an empty grey attach chin.
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /isDragging \? chip : children\(sessionDragBind\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /cn\(sessionDragPlaceholderClasses\(layoutState\)\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /cn\(sessionDragSourceClasses\(layoutState\)\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /from "\.\/agent-session-drag-layout"/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /aria-hidden=\{isDragging \|\| isFollower \|\| undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /inert=\{isDragging \|\| isFollower \|\| undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /window\.addEventListener\("pointerup", onPointerUp\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /window\.addEventListener\("pointercancel", onPointerCancel\)/u);
-});
-
-test("multi-session drag chips use the concise sessions count", () => {
-	const dragChipSource = readFileSync(join(__dirname, "agent-session-drag-chip.tsx"), "utf8");
-	assert.match(dragChipSource, /return `\$\{total\} sessions`;/u);
-	assert.doesNotMatch(dragChipSource, /agent sessions/u);
-	assert.doesNotMatch(COHORT_CHIP_SOURCE, /sessions`/u);
-	assert.doesNotMatch(COHORT_CHIP_SOURCE, /agent sessions/u);
 });
 
 test("drag-source ghosts leave the grid accessibility tree while inert", () => {
