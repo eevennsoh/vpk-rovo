@@ -7,9 +7,13 @@ import type { AvatarUnassignedKind } from "@/components/ui/avatar";
 export const JIRA_ISSUE_COMPACT_ISSUE_KEY_CLASS = "text-xs font-normal leading-4 text-text-subtlest";
 /** Matches the compact Subtasks row label: medium weight + subtle color. */
 export const JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS = "text-xs font-medium leading-4 text-text-subtle";
+/** Overrides `icon-compact` 12px glyphs so comfortable cards keep 16px icons. */
+export const JIRA_ISSUE_COMFORTABLE_COMPACT_ICON_CLASS =
+	"[&_[data-slot=icon]:not([class*='size-'])]:size-4! [&_[data-slot=icon]:not([class*='size-'])>span]:size-4! [&_svg:not([class*='size-'])]:size-4!";
 
 export interface JiraIssueIconMetrics {
 	readonly assigneeSize: "xs" | "sm";
+	readonly compactIconClassName: typeof JIRA_ISSUE_COMFORTABLE_COMPACT_ICON_CLASS | undefined;
 	readonly iconTileIconSize: "small" | "medium";
 	readonly iconTileSize: "xxsmall";
 	readonly issueKeyClassName: typeof JIRA_ISSUE_COMPACT_ISSUE_KEY_CLASS | typeof JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS;
@@ -21,6 +25,7 @@ export function resolveJiraIssueIconMetrics(
 	if (iconScale === "comfortable") {
 		return {
 			assigneeSize: "sm",
+			compactIconClassName: JIRA_ISSUE_COMFORTABLE_COMPACT_ICON_CLASS,
 			iconTileIconSize: "medium",
 			iconTileSize: "xxsmall",
 			issueKeyClassName: JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS,
@@ -29,6 +34,7 @@ export function resolveJiraIssueIconMetrics(
 
 	return {
 		assigneeSize: "xs",
+		compactIconClassName: undefined,
 		iconTileIconSize: "small",
 		iconTileSize: "xxsmall",
 		issueKeyClassName: JIRA_ISSUE_COMPACT_ISSUE_KEY_CLASS,

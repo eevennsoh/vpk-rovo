@@ -174,6 +174,29 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<JiraIssueAgentAssignmentHandle/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout|JiraSessionFlyoutTrigger/u);
+	assert.match(
+		PAGE_SOURCE,
+		/onCardAssignedAgentIdsChange=\{onAssignedAgentIdsChange\}/u,
+	);
+	assert.match(
+		LIST_HOOK_SOURCE,
+		/return \{ createBoardFromAgentSession, createFromAgentSession, getProps, onAssignedAgentIdsChange: handleAssignedAgentIdsChange \};/u,
+	);
+	assert.match(
+		EXPERIMENTAL_CARD_SOURCE,
+		/assignment=\{resolveKanbanCardAssignment\(card, agents, onAssignedAgentIdsChange\)\}/u,
+	);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /function resolveKanbanCardAssignment\(/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /assignedAgentsFromKanbanCard\(card\)/u);
+	assert.match(EXPERIMENTAL_BOARD_SOURCE, /<ExperimentalJiraKanbanCard[\s\S]*agents=\{agents\}/u);
+	assert.match(
+		EXPERIMENTAL_BOARD_SOURCE,
+		/onAssignedAgentIdsChange=\{onCardAssignedAgentIdsChange\}/u,
+	);
+	assert.match(
+		EXPERIMENTAL_PAGE_SOURCE,
+		/onCardAssignedAgentIdsChange\?: \(issueKey: string, agentIds: readonly string\[\]\) => void;/u,
+	);
 });
 
 test("chin-row agent activity indicators use the Team EU renderer", () => {
@@ -247,6 +270,25 @@ test("Team EU keeps only attached agent sessions on status columns", () => {
 		EXPERIMENTAL_PAGE_SOURCE,
 		/if \(defaultShowUntracked !== appliedShowUntrackedDefault\) \{\s*setAppliedShowUntrackedDefault\(defaultShowUntracked\);\s*setShowUntracked\(defaultShowUntracked\);\s*\}/u,
 	);
+});
+
+test("Team EU does not preview a suggested board card when hovering an unattached session", () => {
+	assert.match(
+		PAGE_SOURCE,
+		/<ExperimentalJiraKanbanPage[\s\S]*suggestSessionBoardLinkOnHover=\{false\}/u,
+	);
+	assert.doesNotMatch(
+		PAGE_SOURCE,
+		/suggestSessionBoardLinkOnHover=\{true\}/u,
+		"Team EU must opt out of suggested-link hover, not re-enable it",
+	);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /suggestSessionBoardLinkOnHover\?: boolean;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /suggestSessionBoardLinkOnHover = true,/u);
+	assert.match(
+		EXPERIMENTAL_PAGE_SOURCE,
+		/proximityHighlightedWorkItemKey=\{suggestSessionBoardLinkOnHover\s*\? untrackedHoveredWorkItemKey\s*: null\}/u,
+	);
+	assert.match(EXPERIMENTAL_BOARD_SOURCE, /enabled: suggestSessionBoardLinkOnHover,/u);
 });
 
 test("the board reveals compact magnetic create targets that expand and arm during an agent-session drag", () => {

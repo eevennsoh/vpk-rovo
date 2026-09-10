@@ -71,14 +71,15 @@ function buildArrivalDelays(
  * that uncaptured relationship in the Jira Agents compact row: a 276×33
  * surface card with a solid disabled stroke, and Create / Add as a subtask
  * from a hover more menu. Medium attached reuses the Jira Issue activity row
- * without a session-details flyout (assignment hover stays) — the work
- * relationship already exists on the card.
- * Small is the collapsed-column identity notch.
+ * and its assignment hover — the Assign agent footer appears when the host
+ * supplies `assignment.onAssignedAgentIdsChange`. Work-item capture is already
+ * the card. Small is the collapsed-column identity notch.
  */
 export function AgentSession({
 	className,
 	items: itemsProp,
 	arrivingItemIds,
+	assignment,
 	canViewItem,
 	capturedItemIds,
 	density = "short",
@@ -247,6 +248,7 @@ export function AgentSession({
 
 					const compactCard = (
 						<AgentSessionCompactCard
+							assignment={isAttached ? assignment : undefined}
 							captured={capturedItemIds?.has(item.id) ?? false}
 							flyout={!isAttached}
 							isArriving={beatItemIds?.has(item.id) ?? false}
