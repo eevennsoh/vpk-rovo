@@ -272,7 +272,12 @@ test("the board reveals compact magnetic create targets that expand and arm duri
 	);
 	assert.match(
 		JIRA_DROPZONE_SOURCE,
-		/transition-\[height,background-color\] duration-normal ease-out-practical motion-reduce:transition-none/u,
+		/transition-\[background-color,border-color\] duration-normal ease-out-practical motion-reduce:transition-none/u,
+	);
+	assert.doesNotMatch(
+		JIRA_DROPZONE_SOURCE,
+		/transition-property:[^"]*height|transition-\[[^\]]*height/u,
+		"create wells must not transition the layout height; only colour is transitional",
 	);
 	assert.match(
 		EXPERIMENTAL_BOARD_SOURCE,

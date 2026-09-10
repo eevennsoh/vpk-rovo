@@ -3,7 +3,28 @@ import {
 	type AgentAssignmentAgent,
 	type AgentAssignmentStatusKind,
 } from "@/components/blocks/agent-assignment";
+import type { AgentListHost, AgentListInvoker } from "@/components/blocks/agent-list/agent-list-types";
+import type { AgentSessionRole } from "@/components/blocks/agent-session/agent-session-types";
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
+
+const DEMO_INVOKERS: Readonly<Record<string, AgentListInvoker>> = {
+	"github-copilot": {
+		avatarSrc: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
+		name: "Priya Raman",
+	},
+	"release-notes-drafter": {
+		avatarSrc: "/avatar-user/issac-varghese/color/asow-dev-lime.png",
+		name: "Jordan Okafor",
+	},
+	"code-reviewer": {
+		avatarSrc: "/avatar-user/issac-varghese/color/asow-dev-lime.png",
+		name: "Austin Lee",
+	},
+	"readiness-checker": {
+		avatarSrc: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
+		name: "Priya Raman",
+	},
+};
 
 export const INITIAL_ASSIGNED_AGENT_IDS = [
 	"github-copilot",
@@ -20,6 +41,8 @@ export const DEMO_USED_AGENT_IDS = [
 interface DemoAgentState {
 	statusKind: AgentAssignmentStatusKind;
 	statusLabel: string;
+	host: AgentListHost;
+	role: Exclude<AgentSessionRole, "expired">;
 	status?: string;
 	intervalMs?: number;
 	jitterMs?: number;
@@ -28,6 +51,8 @@ interface DemoAgentState {
 
 const DEMO_AGENT_STATES: Readonly<Record<string, DemoAgentState>> = {
 	"github-copilot": {
+		host: "cloud",
+		role: "owner",
 		statusKind: "working",
 		statusLabel: "Running",
 		intervalMs: 1700,
@@ -39,15 +64,21 @@ const DEMO_AGENT_STATES: Readonly<Record<string, DemoAgentState>> = {
 		],
 	},
 	"release-notes-drafter": {
+		host: "cloud",
+		role: "viewer",
 		statusKind: "needs-input",
 		statusLabel: "Needs input",
 		status: "Needs input",
 	},
 	"code-reviewer": {
+		host: "local",
+		role: "owner",
 		statusKind: "idle",
 		statusLabel: "Idle",
 	},
 	"readiness-checker": {
+		host: "local",
+		role: "viewer",
 		statusKind: "idle",
 		statusLabel: "Idle",
 	},
@@ -55,12 +86,17 @@ const DEMO_AGENT_STATES: Readonly<Record<string, DemoAgentState>> = {
 
 function getDemoAssignedAgent(agent: AgentSelectorAgent): AgentAssignmentAgent {
 	const demoStatus = DEMO_AGENT_STATES[agent.id] ?? {
+		host: "cloud" as const,
+		role: "owner" as const,
 		statusKind: "idle" as const,
 		statusLabel: "Idle",
 	};
 
 	return {
 		...agent,
+		host: demoStatus.host,
+		invokedBy: DEMO_INVOKERS[agent.id],
+		role: demoStatus.role,
 		statusKind: demoStatus.statusKind,
 		statusLabel: demoStatus.statusLabel,
 		...(demoStatus.status ? { status: demoStatus.status } : {}),

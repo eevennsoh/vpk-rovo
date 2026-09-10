@@ -178,14 +178,18 @@ export const AGENT_SESSION_ITEMS: readonly AgentSessionItem[] = [
  * Deliberately a separate list from {@link AGENT_SESSION_ITEMS}, which the Agent
  * Session Column and the Pulse rail also render: those surfaces are about local
  * work the viewer can resume, and flipping their fixtures to cloud would change
- * what those demos are demonstrating. These exercise the other menu — Unlink,
- * Rename, Delete — plus the lifecycle states the long density can show.
+ * what those demos are demonstrating. These exercise the other menu — Rename,
+ * Delete — plus the lifecycle states the long density can show.
  */
 export const AGENT_SESSION_CLOUD_ITEMS: readonly AgentSessionItem[] = [
 	{
 		agent: CLAUDE_AGENT,
 		host: "cloud",
 		id: "cloud-suspension-refactor",
+		invokedBy: {
+			avatarSrc: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
+			name: "Priya Raman",
+		},
 		prStatus: "created",
 		sessionDetails: {
 			additions: 132,
@@ -217,6 +221,10 @@ export const AGENT_SESSION_CLOUD_ITEMS: readonly AgentSessionItem[] = [
 		},
 		host: "cloud",
 		id: "cloud-suspension-roadmap",
+		invokedBy: {
+			avatarSrc: "/avatar-user/issac-varghese/color/asow-dev-lime.png",
+			name: "Jordan Okafor",
+		},
 		sessionDetails: {
 			host: "cloud",
 			issueKey: "PAY-206",
@@ -254,8 +262,8 @@ export const AGENT_SESSION_CLOUD_ITEMS: readonly AgentSessionItem[] = [
 	},
 ];
 
-/** Attached session used to demonstrate the Jira issue activity-row footprint. */
-export const AGENT_SESSION_ATTACHED_ITEMS: readonly AgentSessionItem[] = [
+/** One active session in the Jira issue activity-row footprint. */
+export const AGENT_SESSION_ATTACHED_WORKING_ITEMS: readonly AgentSessionItem[] = [
 	{
 		agent: {
 			avatarSrc: "/avatar-agent/teamwork-agents/decision-director.svg",
@@ -270,10 +278,89 @@ export const AGENT_SESSION_ATTACHED_ITEMS: readonly AgentSessionItem[] = [
 			issueKey: "PAY-112",
 			issueSummary: "Confirm the sandbox key retention window before replay",
 		},
-		state: "needs-input",
-		title: "Needs the retention window",
+		state: "running",
+		title: "Working",
 	},
 ];
+
+/** Several active sessions merged into one attached activity row. */
+export const AGENT_SESSION_ATTACHED_MULTI_WORKING_ITEMS: readonly AgentSessionItem[] = [
+	{
+		agent: CLAUDE_AGENT,
+		host: "cloud",
+		id: "PAY-112:claude",
+		sessionDetails: {
+			host: "cloud",
+			issueKey: "PAY-112",
+			issueSummary: "Confirm the sandbox key retention window before replay",
+		},
+		state: "running",
+		title: "Working",
+	},
+	{
+		agent: CURSOR_AGENT,
+		host: "cloud",
+		id: "PAY-112:cursor",
+		sessionDetails: {
+			host: "cloud",
+			issueKey: "PAY-112",
+			issueSummary: "Confirm the sandbox key retention window before replay",
+		},
+		state: "running",
+		title: "Working",
+	},
+	{
+		agent: createRovoAgent(),
+		host: "cloud",
+		id: "PAY-112:rovo",
+		sessionDetails: {
+			host: "cloud",
+			issueKey: "PAY-112",
+			issueSummary: "Confirm the sandbox key retention window before replay",
+		},
+		state: "running",
+		title: "Working",
+	},
+];
+
+/** One attached session blocked on a reply. */
+export const AGENT_SESSION_ATTACHED_NEEDS_INPUT_ITEMS: readonly AgentSessionItem[] = [
+	{
+		agent: CLAUDE_AGENT,
+		host: "cloud",
+		id: "PAY-112:needs-input",
+		sessionDetails: {
+			host: "cloud",
+			issueKey: "PAY-112",
+			issueSummary: "Confirm the sandbox key retention window before replay",
+		},
+		state: "needs-input",
+		title: "Needs input",
+	},
+];
+
+/** A completed attached session with the shared success treatment. */
+export const AGENT_SESSION_ATTACHED_FINISHED_ITEMS: readonly AgentSessionItem[] = [
+	{
+		agent: {
+			brandName: "figma",
+			id: "figma",
+			kind: "agent",
+			name: "Figma",
+		},
+		host: "cloud",
+		id: "PAY-112:figma",
+		sessionDetails: {
+			host: "cloud",
+			issueKey: "PAY-112",
+			issueSummary: "Confirm the sandbox key retention window before replay",
+		},
+		state: "complete",
+		title: "Finished",
+	},
+];
+
+export const AGENT_SESSION_ATTACHED_ITEMS = AGENT_SESSION_ATTACHED_WORKING_ITEMS;
 
 /**
  * Candidate work items per session, keyed by session id.

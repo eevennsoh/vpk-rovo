@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
-import StatusInformationIcon from "@atlaskit/icon/core/status-information";
+import QuestionCircleFilledIcon from "@atlaskit/icon-lab/core/question-circle-filled";
 import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
 import StatusWarningIcon from "@atlaskit/icon/core/status-warning";
 
@@ -34,27 +34,22 @@ function IndicatorSlot({ children }: Readonly<{ children: React.ReactNode }>) {
 function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }>) {
 	switch (state) {
 		case "running":
-			// The experimental orb rather than the pixel loader: `pulse` converges
-			// the six dots to the center and grows them back out, so the working
-			// state reads as one continuous breath instead of a marching pattern.
+			// Same 24×24 slot + Spinner `xl` as `JiraIssueActiveAgentStatusIcon`.
+			// IconTile `[&_svg]:size-4!` would shrink the orb to a speck.
 			return (
-				<Spinner
-					className="text-icon-subtle"
-					label="Working"
-					pulse
-					size="default"
-					variant="experimental"
-				/>
+				<span
+					aria-hidden="true"
+					className="grid size-6 shrink-0 place-items-center text-icon"
+				>
+					<Spinner label="Working" pulse size="xl" variant="experimental" />
+				</span>
 			);
 		case "needs-input":
 			return (
 				<IconTile
-					icon={
-						<span className="grid place-items-center leading-none text-icon-information">
-							<StatusInformationIcon color="currentColor" label="" size="small" />
-						</span>
-					}
-					iconSize="small"
+					className="text-icon-information"
+					icon={<QuestionCircleFilledIcon color="currentColor" label="" size="small" />}
+					iconSize="medium"
 					label="Needs input"
 					size="small"
 					title="Needs input"
@@ -64,12 +59,9 @@ function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }
 		case "attention":
 			return (
 				<IconTile
-					icon={
-						<span className="grid place-items-center leading-none text-icon-warning">
-							<StatusWarningIcon color="currentColor" label="" size="small" />
-						</span>
-					}
-					iconSize="small"
+					className="text-icon-warning"
+					icon={<StatusWarningIcon color="currentColor" label="" size="small" />}
+					iconSize="medium"
 					label="Needs attention"
 					size="small"
 					title="Needs attention"
@@ -79,12 +71,9 @@ function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }
 		case "complete":
 			return (
 				<IconTile
-					icon={
-						<span className="grid place-items-center leading-none text-icon-success">
-							<StatusSuccessIcon color="currentColor" label="" size="small" />
-						</span>
-					}
-					iconSize="small"
+					className="text-icon-success"
+					icon={<StatusSuccessIcon color="currentColor" label="" size="small" />}
+					iconSize="medium"
 					label="Complete"
 					size="small"
 					title="Complete"

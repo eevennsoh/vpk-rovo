@@ -2,43 +2,43 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const AGENT_SESSION_DETAIL: ComponentDetail = {
 	description:
-		'Agent sessions in four footprints and relationship states. Large is the default detached, solid uncaptured-work card, and it comes in two densities: `short` leads with a 32px identity and reads `agent · host · timestamp`, while `long` drops the leading avatar, gives the title its own line, and spends the room on `agent · host · status · artifact · timestamp` plus a trailing lifecycle indicator. Every row reveals one `…` menu on hover or focus, and its actions follow the host: a local session offers Continue in — the agent itself or Terminal, which copies the prompt and confirms with a check — while a cloud session offers Unlink, Rename, and Delete. Both end in a dismiss row. Medium detached condenses that local session into the Jira Agents row — a 276px surface card with a solid disabled stroke — while Medium attached reuses the exact Jira Issue activity row for a session already connected to work. Small becomes the collapsed Agent Session Column notch. Detached footprints open the untracked-work Agent Session Flyout with Link, Create, and add-as-subtask actions; Medium attached opens session details because its Jira relationship already exists. Captured ids use a solid border, and rows the host cannot resume disable the Terminal row.',
+		'Agent sessions in four footprints and relationship states. Large is the default detached, solid uncaptured-work card, and it comes in two densities: `short` leads with a 32px identity and a `agent · host · time` byline, while `long` drops the leading avatar, gives the title its own line, and spends the room on `agent · host · artifact · timestamp` plus a trailing lifecycle indicator. Progression is the far-right icon, not a byline clause. Owner rows reveal a `…` menu; viewer rows show an outline information-circle tooltip instead; expired cloud-long rows show an X because history is only kept for 28 days. A local owner menu offers Continue in — the agent itself or Terminal — while a cloud owner menu offers Rename and Delete. Both end in a dismiss row. Medium detached is a 276px stroked white chip (Jira issue width, 10px corners): 24px agent+human identity, the session title, and a trailing up-arrow key, still with the untracked-work flyout. Medium attached is the Jira Issue activity row (24px identity, h-10 chin, trailing 24×24 status) already connected to work. Small becomes the collapsed Agent Session Column notch. Short, medium, and small detached footprints open the untracked-work Agent Session Flyout with Link, Create, and add-as-subtask actions; long density does not. Medium attached opens session details because its Jira relationship already exists. Captured ids use a solid border, and rows the host cannot resume disable the Terminal row.',
 	demoLayout: { previewHeight: "fit" },
 	examples: [
 		{
 			title: "Local — short",
 			description:
-				"The default avatar-led row for a session on the viewer's own machine. Its menu offers Continue in → the agent or Terminal, which copies the resume prompt and confirms with a green check.",
+				"The default avatar-led row for a session on the viewer's own machine, shown as owner and viewer. An owner byline reads agent · host · time and the more menu offers Continue in → the agent or Terminal. A viewer sees an information icon instead of that menu.",
 			demoSlug: "agent-session-demo-local-short",
 		},
 		{
 			title: "Local — long",
 			description:
-				"Title-led rows with the full metadata line and a trailing lifecycle indicator, for a surface wide enough to state status and artifact alongside the host.",
+				"Title-led owner and viewer rows with the provenance metadata line (agent, host, artifact, time) and a trailing lifecycle indicator. No hover flyout — progression is the far-right icon, not a byline clause.",
 			demoSlug: "agent-session-demo-local-long",
 		},
 		{
 			title: "Cloud — short",
 			description:
-				"The same compact row for a hosted session. A cloud session cannot be resumed in a terminal, so its menu swaps the Continue in group for Unlink, Rename, and Delete.",
+				"The same compact owner and viewer rows for a hosted session. A cloud owner cannot resume in a terminal, so its menu swaps the Continue in group for Rename and Delete. A viewer keeps the information-icon tooltip.",
 			demoSlug: "agent-session-demo-cloud-short",
 		},
 		{
 			title: "Cloud — long",
 			description:
-				"Hosted sessions in the title-led density across working, needs-input, and complete — the experimental spinner grows in while an agent works and gives way to a success check when it lands.",
+				"Hosted owner, viewer, and expired sessions in the title-led density across working, needs-input, and complete — no hover flyout. The experimental spinner grows in while an agent works and gives way to a filled question circle or a success check. Expired rows replace that trailing control with an X: history is only kept for 28 days.",
 			demoSlug: "agent-session-demo-cloud-long",
 		},
 		{
 			title: "Medium detached",
 			description:
-				"A compact 276px local-session row that is still detached from Jira work: a solid disabled border that darkens to default on hover, and it opens the untracked-work flyout.",
+				"A 276px stroked white chip — the Jira issue card width — with 10px corners, a 24px agent+human identity, the session title, and a trailing up-arrow key. Still detached from Jira work, with the untracked-work flyout.",
 			demoSlug: "agent-session-demo-medium-detached",
 		},
 		{
 			title: "Medium attached",
 			description:
-				"The Jira Issue agent activity row for a session already attached to work, with its session-details flyout available on hover or focus.",
+				"The Jira Issue agent activity row across one agent working, several agents working as Agent Loading, a session that needs input, and a finished session.",
 			demoSlug: "agent-session-demo-medium-attached",
 		},
 		{
@@ -74,7 +74,7 @@ export const AGENT_SESSION_DETAIL: ComponentDetail = {
 			type: '"short" | "long"',
 			default: '"short"',
 			description:
-				"Row shape for the large footprint. `short` leads with a 32px identity and states agent, host, and time. `long` drops the leading avatar, gives the title its own line, and adds lifecycle status, an artifact chip, and a trailing indicator. Ignored by the medium and small footprints, which have fixed geometry.",
+				"Row shape for the large footprint. `short` leads with a 32px identity and an agent · host · time byline. `long` drops the leading avatar, gives the title the full width, and adds agent, host, an artifact chip, time, and a trailing indicator. Ignored by the medium and small footprints, which have fixed geometry.",
 		},
 		{
 			name: "items",
@@ -143,7 +143,7 @@ export const AGENT_SESSION_DETAIL: ComponentDetail = {
 			name: "onCopyResume",
 			type: "(item: AgentSessionItem) => void",
 			description:
-				"Called after the menu's Terminal row copies the resume command, so a host can announce or restore a terminal session. The trailing slot shows a green check with a Copied prompt tooltip either way.",
+				"Called after the menu's Terminal row copies the resume command, so a host can announce or restore a terminal session. The Terminal row keeps a trailing check while the copy confirmation is showing.",
 		},
 		{
 			name: "onContinueInAgent",
@@ -155,7 +155,7 @@ export const AGENT_SESSION_DETAIL: ComponentDetail = {
 			name: "onUnlinkSession",
 			type: "(item: AgentSessionItem) => void",
 			description:
-				"Breaks a cloud session's link to its work item. Omit to render the menu's Unlink row disabled. Local sessions never show it.",
+				"Reserved. The more menu does not offer Unlink.",
 		},
 		{
 			name: "onRenameSession",

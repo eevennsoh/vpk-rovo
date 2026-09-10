@@ -22,6 +22,9 @@ test("Agent Assignment exposes a reusable controlled block contract", () => {
 	assert.match(source, /status\?: ReactNode;/u);
 	assert.match(source, /statusSequence\?: readonly string\[\];/u);
 	assert.match(source, /statusKind\?: AgentAssignmentStatusKind;/u);
+	assert.match(source, /invokedBy\?: AgentListInvoker;/u);
+	assert.match(source, /host\?: AgentListHost;/u);
+	assert.match(source, /role\?: AgentSessionRole;/u);
 	assert.match(source, /export type \{ AgentAssignmentStatusKind \} from "@\/components\/blocks\/agent-assignment\/components\/assigned-agent-status";/u);
 	const statusHelper = readProjectFile("components/blocks/agent-assignment/components/assigned-agent-status.ts");
 	assert.match(statusHelper, /export type AgentAssignmentStatusKind = "working" \| "needs-input" \| "finished" \| "idle";/u);
@@ -36,15 +39,17 @@ test("Agent Assignment exposes a reusable controlled block contract", () => {
 	assert.match(source, /onAgentAssign\?: \(agent: AgentSelectorAgent\) => void;/u);
 	assert.match(source, /onAssignedAgentSelect: \(agent: AgentAssignmentAgent\) => void;/u);
 	assert.match(source, /onContinueExistingSession\?: \(agent: AgentSelectorAgent\) => void;/u);
+	assert.match(source, /onRenameAssignedAgent\?: \(agent: AgentAssignmentAgent\) => void;/u);
 	assert.match(source, /onStartNewSession\?: \(agent: AgentSelectorAgent\) => void;/u);
 	assert.match(source, /usedAgentIds\?: readonly string\[\];/u);
 	assert.match(index, /export \{ AgentAssignment \} from "\.\/components\/agent-assignment";/u);
 	assert.match(index, /export \{ resolveAssignedAgentStatusKind \} from "\.\/components\/assigned-agent-status";/u);
+	assert.match(index, /export type \{ AgentAssignmentVariant \} from "\.\/components\/assignment-session";/u);
 	assert.match(index, /AgentAssignmentAgent,[\s\S]*AgentAssignmentProps,[\s\S]*AgentAssignmentStatusKind/u);
-	assert.match(demoAssigned, /"github-copilot": \{[\s\S]*statusKind: "working"[\s\S]*"Checking the proposed patch across every changed file in this review"/u);
-	assert.match(demoAssigned, /"release-notes-drafter": \{[\s\S]*statusKind: "needs-input"/u);
-	assert.match(demoAssigned, /"code-reviewer": \{[\s\S]*statusKind: "idle"/u);
-	assert.match(demoAssigned, /"readiness-checker": \{[\s\S]*statusKind: "idle"/u);
+	assert.match(demoAssigned, /"github-copilot": \{[\s\S]*host: "cloud"[\s\S]*role: "owner"[\s\S]*statusKind: "working"[\s\S]*"Checking the proposed patch across every changed file in this review"/u);
+	assert.match(demoAssigned, /"release-notes-drafter": \{[\s\S]*host: "cloud"[\s\S]*role: "viewer"[\s\S]*statusKind: "needs-input"/u);
+	assert.match(demoAssigned, /"code-reviewer": \{[\s\S]*host: "local"[\s\S]*role: "owner"[\s\S]*statusKind: "idle"/u);
+	assert.match(demoAssigned, /"readiness-checker": \{[\s\S]*host: "local"[\s\S]*role: "viewer"[\s\S]*statusKind: "idle"/u);
 	assert.match(demoAssigned, /statusKind: demoStatus\.statusKind,[\s\S]*statusSequence: demoStatus\.labels/u);
 	assert.match(demoAssigned, /statusKind: "finished"/u);
 	assert.match(page, /getAgentAssignmentDemoAssignedAgents\(assignedAgentIds, \{\s*codeReviewerFinished,/u);
@@ -296,8 +301,6 @@ test("assigned-agent action rows truncate 8px from CTAs and idle the byline on h
 	const suggestionMenuCss = readProjectFile("components/ui-custom/rich-text-editor/suggestion-menu-actions.css");
 	const editorCss = readProjectFile("components/ui-custom/rich-text-editor/rich-text-editor.css");
 
-	// Action rows must not reserve the 28px return-shortcut gutter — the CTA
-	// column already owns trailing space (padding-right: space-100 = 8px).
 	assert.match(
 		editorCss,
 		/\.rich-text-command-menu-item:not\(\[data-has-actions="true"\]\):hover \.rich-text-command-menu-copy,[\s\S]*\.rich-text-command-menu-item-selected:not\(\[data-has-actions="true"\]\) \.rich-text-command-menu-copy \{\s*padding-right: 28px;/u,
@@ -312,22 +315,16 @@ test("assigned-agent action rows truncate 8px from CTAs and idle the byline on h
 		/\[data-suggestion-actions\]:has\(:focus-visible\) \.rich-text-command-menu-item\[data-has-actions="true"\] \.rich-text-command-menu-copy,[\s\S]*padding-right: 0;/u,
 	);
 
-	// Long-label fixture: the 2nd-line toolcall must be long enough to ellipsis
-	// before the View CTA (gotchas-ui: hover-reveal + truncating copy).
 	assert.match(
 		demoAssigned,
 		/Checking the proposed patch across every changed file in this review/u,
 	);
 
-	// Working assigned agents show a rest-state spinner that yields (opacity) to
-	// View/Archive — never unmounted with display:none / hidden.
 	assert.match(menu, /<Spinner label=\{`\$\{agent\.name\} running`\} size="sm" \/>/u);
 	assert.doesNotMatch(menu, /<Spinner[^>]*variant="rainbow"/u);
 	assert.match(suggestionMenu, /shouldYieldTrailingToHoverActions \? "pointer-events-none opacity-0"/u);
 	assert.doesNotMatch(suggestionMenu, /className="hidden items-center gap-1/u);
 
-	// Hover-out must idle the byline: clear selectedIndex and do not drive the
-	// 2nd line from a stale isSelected on hover-action rows.
 	assert.match(menu, /onHoverEnd=\{\(\) => setSelectedIndex\(-1\)\}/u);
 	assert.match(suggestionMenu, /const isBylineRevealed = hasHoverActions \? isHoverActionsRevealed : isSelected;/u);
 	assert.match(suggestionMenu, /animate=\{isBylineRevealed \? "active" : "idle"\}/u);
@@ -355,6 +352,7 @@ test("Agent Assignment is registered with a catalog demo and documentation", () 
 	const components = readProjectFile("app/data/components.ts");
 	const manifest = readProjectFile("app/data/component-manifest.ts");
 	const registry = readProjectFile("components/website/registry/blocks.ts");
+	const variantRegistry = readProjectFile("components/website/registry/blocks-variants.ts");
 
 	assert.match(page, /<AgentAssignment/u);
 	assert.match(page, /onBrowseAgents=\{\(\) => undefined\}/u);
@@ -364,9 +362,21 @@ test("Agent Assignment is registered with a catalog demo and documentation", () 
 	assert.match(page, /usedAgentIds=\{DEMO_USED_AGENT_IDS\}/u);
 	assert.match(page, /from "@\/components\/blocks\/agent-assignment\/demo-assigned-agents"/u);
 	assert.match(page, /onContinueExistingSession=\{\(\) => undefined\}/u);
+	assert.match(page, /onRenameAssignedAgent=\{\(\) => undefined\}/u);
 	assert.match(page, /onStartNewSession=\{\(\) => undefined\}/u);
 	assert.match(demo, /AgentAssignmentPage/u);
+	assert.match(demo, /export function AgentAssignmentDemoDefault/u);
+	assert.match(demo, /export function AgentAssignmentDemoSimple/u);
+	assert.match(demo, /variant="default"/u);
+	assert.match(demo, /variant="simple"/u);
 	assert.match(details, /importStatement: `import \{ AgentAssignment \} from "@\/components\/blocks\/agent-assignment";`/u);
+	assert.match(details, /title: "Default"/u);
+	assert.match(details, /title: "Simple"/u);
+	assert.match(details, /demoSlug: "agent-assignment-demo-default"/u);
+	assert.match(details, /demoSlug: "agent-assignment-demo-simple"/u);
+	assert.match(details, /type: '"default" \| "simple"'/u);
+	assert.match(variantRegistry, /"agent-assignment-demo-default": dynamic/u);
+	assert.match(variantRegistry, /"agent-assignment-demo-simple": dynamic/u);
 	assert.match(components, /blockComponent\("agent-assignment", "Agent Assignment"\)/u);
 	assert.match(manifest, /blockComponent\("agent-assignment", "Agent Assignment"\)/u);
 	assert.match(registry, /"agent-assignment": dynamic/u);
@@ -501,6 +511,7 @@ async function loadAgentAssignmentClickHarness() {
 						onStartNewSession() {},
 						openMode: "hover",
 						usedAgentIds: ["github-copilot"],
+						variant: "simple",
 					});
 				}
 
@@ -511,6 +522,7 @@ async function loadAgentAssignmentClickHarness() {
 						onAssignedAgentIdsChange() {},
 						onAssignedAgentSelect() {},
 						openMode: "hover",
+						variant: "simple",
 					});
 				}
 
@@ -520,6 +532,7 @@ async function loadAgentAssignmentClickHarness() {
 						assignedAgents: [{ ...AGENTS[0], statusLabel: "Working" }],
 						onAssignedAgentSelect() {},
 						openMode: "hover",
+						variant: "simple",
 					});
 				}
 			`,
@@ -540,6 +553,15 @@ async function loadAgentAssignmentClickHarness() {
 					build.onResolve({ filter: /.*/ }, (args) => {
 						if (args.path.includes("assigned-agents-menu")) {
 							return { path: "assigned-agents-menu", namespace: "agent-assignment-click-mock" };
+						}
+						if (args.path.includes("assigned-agents-session-menu")) {
+							return { path: "assigned-agents-session-menu", namespace: "agent-assignment-click-mock" };
+						}
+						if (args.path.includes("agent-assignment-default-field")) {
+							return { path: "agent-assignment-default-field", namespace: "agent-assignment-click-mock" };
+						}
+						if (args.path.includes("assignment-session")) {
+							return { path: "assignment-session", namespace: "agent-assignment-click-mock" };
 						}
 						if (args.path.includes("assignment-avatar")) {
 							return { path: "assignment-avatar", namespace: "agent-assignment-click-mock" };
@@ -566,6 +588,33 @@ async function loadAgentAssignmentClickHarness() {
 										) : React.createElement("div", null, "Read only");
 									}
 								`,
+								loader: "tsx",
+								resolveDir,
+							};
+						}
+						if (args.path === "assigned-agents-session-menu") {
+							return {
+								contents: `
+									import React from "react";
+									export function AssignedAgentsSessionMenu() { return null; }
+								`,
+								loader: "tsx",
+								resolveDir,
+							};
+						}
+						if (args.path === "agent-assignment-default-field") {
+							return {
+								contents: `
+									import React from "react";
+									export function AgentAssignmentDefaultField() { return null; }
+								`,
+								loader: "tsx",
+								resolveDir,
+							};
+						}
+						if (args.path === "assignment-session") {
+							return {
+								contents: "export function toAssignmentSessionItem() { return {}; }",
 								loader: "tsx",
 								resolveDir,
 							};
@@ -787,6 +836,7 @@ async function loadAssignedAgentPipHarness() {
 						assignedAgents,
 						onAssignedAgentIdsChange() {},
 						onAssignedAgentSelect() {},
+						variant: "simple",
 					});
 				}
 			`,
@@ -807,6 +857,15 @@ async function loadAssignedAgentPipHarness() {
 					build.onResolve({ filter: /.*/ }, (args) => {
 						if (args.path.includes("assigned-agents-menu")) {
 							return { path: "assigned-agents-menu", namespace: "agent-assignment-pip-mock" };
+						}
+						if (args.path.includes("assigned-agents-session-menu")) {
+							return { path: "assigned-agents-session-menu", namespace: "agent-assignment-pip-mock" };
+						}
+						if (args.path.includes("agent-assignment-default-field")) {
+							return { path: "agent-assignment-default-field", namespace: "agent-assignment-pip-mock" };
+						}
+						if (args.path.includes("assignment-session")) {
+							return { path: "assignment-session", namespace: "agent-assignment-pip-mock" };
 						}
 						if (args.path.includes("agent-session-target-menu")) {
 							return { path: "agent-session-target-menu", namespace: "agent-assignment-pip-mock" };
@@ -839,6 +898,27 @@ async function loadAssignedAgentPipHarness() {
 										);
 									}
 								`,
+								loader: "tsx",
+								resolveDir,
+							};
+						}
+						if (args.path === "assigned-agents-session-menu") {
+							return {
+								contents: "export function AssignedAgentsSessionMenu() { return null; }",
+								loader: "tsx",
+								resolveDir,
+							};
+						}
+						if (args.path === "agent-assignment-default-field") {
+							return {
+								contents: "export function AgentAssignmentDefaultField() { return null; }",
+								loader: "tsx",
+								resolveDir,
+							};
+						}
+						if (args.path === "assignment-session") {
+							return {
+								contents: "export function toAssignmentSessionItem() { return {}; }",
 								loader: "tsx",
 								resolveDir,
 							};
