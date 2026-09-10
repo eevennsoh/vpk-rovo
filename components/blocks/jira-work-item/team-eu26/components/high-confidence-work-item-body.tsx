@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
-import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import FilesIcon from "@atlaskit/icon/core/files";
 import ImageIcon from "@atlaskit/icon/core/image";
 import LinkIcon from "@atlaskit/icon/core/link";
@@ -11,9 +9,19 @@ import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import VideoIcon from "@atlaskit/icon/core/video";
 
 import { WorkItemsTable } from "@/components/blocks/jira-work-item/team-eu26/components/work-items-table";
+import { CollapsibleWorkItemSection } from "@/components/blocks/jira-work-item/team-eu26/components/collapsible-work-item-section";
+import {
+	WORK_ITEM_TABLE_BODY_ROW_CLASS,
+	WORK_ITEM_TABLE_CELL_CLASS,
+	WORK_ITEM_TABLE_CLASS,
+	WORK_ITEM_TABLE_CONTAINER_CLASS,
+	WORK_ITEM_TABLE_HEADER_CLASS,
+	WORK_ITEM_TABLE_HEADER_ROW_CLASS,
+	WORK_ITEM_TABLE_HEAD_CLASS,
+} from "@/components/blocks/jira-work-item/team-eu26/components/work-item-table-styles";
+import { ContextEditableDescription } from "@/components/blocks/jira-work-item/team-eu26/components/context-editable-header";
 import {
 	TEAM_EU26_ATTACHMENTS,
-	TEAM_EU26_DESCRIPTION,
 	TEAM_EU26_LINKED_ITEMS,
 	TEAM_EU26_SUBITEMS,
 	type TeamEu26Attachment,
@@ -93,26 +101,26 @@ function AttachmentPanel({
 
 	return (
 		<>
-			<div className="overflow-hidden rounded-lg border border-border">
-				<Table containerClassName="max-w-full" className="min-w-[42rem] table-fixed">
-					<TableHeader className="bg-bg-neutral-subtle [&_tr]:border-b [&_tr]:border-border">
-						<TableRow className="h-10 hover:bg-bg-neutral-subtle">
-							<TableHead className="w-auto">Name</TableHead>
-							<TableHead className="w-36">Date added</TableHead>
-							<TableHead className="w-32">Added by</TableHead>
+			<div className={WORK_ITEM_TABLE_CONTAINER_CLASS}>
+				<Table className={WORK_ITEM_TABLE_CLASS}>
+					<TableHeader className={WORK_ITEM_TABLE_HEADER_CLASS}>
+						<TableRow className={WORK_ITEM_TABLE_HEADER_ROW_CLASS}>
+							<TableHead className={cn(WORK_ITEM_TABLE_HEAD_CLASS, "w-auto")}>Name</TableHead>
+							<TableHead className={cn(WORK_ITEM_TABLE_HEAD_CLASS, "w-36")}>Date added</TableHead>
+							<TableHead className={cn(WORK_ITEM_TABLE_HEAD_CLASS, "w-32")}>Added by</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
 						{visibleAttachments.map((attachment) => (
-							<TableRow className="h-11" key={attachment.id}>
-								<TableCell className="overflow-hidden">
-									<a className="flex min-w-0 items-center gap-3 text-text hover:underline" href={`#attachment-${attachment.id}`}>
+							<TableRow className={WORK_ITEM_TABLE_BODY_ROW_CLASS} key={attachment.id}>
+								<TableCell className={cn(WORK_ITEM_TABLE_CELL_CLASS, "overflow-hidden")}>
+									<a className="flex min-w-0 items-center gap-2 text-text hover:underline" href={`#attachment-${attachment.id}`}>
 										<span aria-hidden className="flex size-6 shrink-0 items-center justify-center text-icon-information"><AttachmentIcon attachment={attachment} /></span>
-										<span className="truncate">{attachment.name}</span>
+										<span className="min-w-0 truncate text-sm text-text">{attachment.name}</span>
 									</a>
 								</TableCell>
-								<TableCell>{attachment.dateAdded}</TableCell>
-								<TableCell>
+								<TableCell className={WORK_ITEM_TABLE_CELL_CLASS}>{attachment.dateAdded}</TableCell>
+								<TableCell className={WORK_ITEM_TABLE_CELL_CLASS}>
 									<Avatar animate={false} label={attachment.addedBy} size="sm"><AvatarFallback>{initials(attachment.addedBy)}</AvatarFallback></Avatar>
 								</TableCell>
 							</TableRow>
@@ -129,26 +137,8 @@ function AttachmentPanel({
 	);
 }
 
-function SectionHeading({ actionLabel, children, expanded, id, onMore }: Readonly<{
-	actionLabel: string;
-	children: ReactNode;
-	expanded?: boolean;
-	id: string;
-	onMore: () => void;
-}>) {
-	return (
-		<div className="flex min-w-0 items-center justify-between gap-3">
-			<h2 className="text-sm font-semibold text-text" id={id}>{children}</h2>
-			<Button aria-expanded={expanded} aria-label={actionLabel} onClick={onMore} size="icon-compact" type="button" variant="ghost">
-				<ShowMoreHorizontalIcon label="" size="small" />
-			</Button>
-		</div>
-	);
-}
-
 export function HighConfidenceWorkItemBody() {
 	const [attachmentFilter, setAttachmentFilter] = useState<AttachmentFilter>("all");
-	const [attachmentsExpanded, setAttachmentsExpanded] = useState(true);
 	const [showAllAttachments, setShowAllAttachments] = useState(false);
 	const [showAllLinkedItems, setShowAllLinkedItems] = useState(false);
 	const [announcement, setAnnouncement] = useState("");
@@ -161,43 +151,20 @@ export function HighConfidenceWorkItemBody() {
 	const visibleLinkedItems = showAllLinkedItems ? TEAM_EU26_LINKED_ITEMS : TEAM_EU26_LINKED_ITEMS.slice(0, 1);
 
 	return (
-		<article aria-label="Team EU26 work item content" className="flex min-w-0 flex-col gap-7" data-team-eu26-high-confidence-body>
+		<article aria-label="Team EU26 work item content" className="flex min-w-0 flex-col gap-4" data-team-eu26-high-confidence-body>
 			<p aria-live="polite" className="sr-only">{announcement}</p>
-			<section aria-labelledby="team-eu26-description-heading" className="space-y-2">
-				<h2 className="text-sm font-semibold text-text" id="team-eu26-description-heading">Description</h2>
-				<p className="max-w-none text-sm leading-5 text-text">{TEAM_EU26_DESCRIPTION}</p>
-			</section>
+			<CollapsibleWorkItemSection headingId="team-eu26-description-heading" label="Description">
+				<ContextEditableDescription />
+			</CollapsibleWorkItemSection>
 
-			<section aria-labelledby="team-eu26-attachments-heading">
-					<Tabs
-						className="gap-2"
-						onValueChange={(value) => value ? setAttachmentFilter(value as AttachmentFilter) : undefined}
-						value={attachmentFilter}
-					>
-						<div className="group/attachments relative flex min-h-9 min-w-0 items-center justify-between gap-3 py-0.5 transition-none">
-							<h2 className="pointer-events-none absolute inset-0 z-10 flex min-w-0 items-center gap-1 text-sm font-semibold text-text" id="team-eu26-attachments-heading">
-								<span>Attachments</span>
-								<span
-									aria-hidden
-									className="inline-flex items-center justify-center opacity-0 transition-opacity duration-xxshort ease-out-practical group-hover/attachments:opacity-100 group-focus-within/attachments:opacity-100 motion-reduce:transition-none"
-								>
-									{attachmentsExpanded ? <ChevronDownIcon label="" size="small" /> : <ChevronRightIcon label="" size="small" />}
-								</span>
-							</h2>
-							<button
-								aria-label="Attachments"
-								aria-controls="team-eu26-attachments-content"
-								aria-expanded={attachmentsExpanded}
-								className="absolute inset-0 z-0 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-								onClick={() => setAttachmentsExpanded((current) => !current)}
-								type="button"
-							>
-							</button>
-						<div
-							aria-hidden={!attachmentsExpanded}
-							className={cn("relative z-10 ml-auto flex shrink-0 items-center gap-2", !attachmentsExpanded && "pointer-events-none opacity-0")}
-							inert={!attachmentsExpanded ? true : undefined}
-						>
+			<Tabs
+				className="gap-2"
+				onValueChange={(value) => value ? setAttachmentFilter(value as AttachmentFilter) : undefined}
+				value={attachmentFilter}
+			>
+				<CollapsibleWorkItemSection
+					actions={() => (
+						<>
 							<TabsList aria-label="Filter attachments" size="default" variant="default">
 								{ATTACHMENT_FILTERS.map((filter) => (
 									<TabsTrigger
@@ -212,39 +179,43 @@ export function HighConfidenceWorkItemBody() {
 							<Button aria-label="More attachment actions" onClick={() => setAnnouncement("Attachment actions opened")} size="icon" type="button" variant="ghost">
 								<ShowMoreHorizontalIcon label="" size="small" />
 							</Button>
-						</div>
-					</div>
-					<div id="team-eu26-attachments-content" hidden={!attachmentsExpanded}>
-						{ATTACHMENT_FILTERS.map((filter) => (
-							<TabsContent className="space-y-2" key={filter.value} value={filter.value}>
-								<AttachmentPanel
-									filter={filter.value}
-									onShowAllChange={() => setShowAllAttachments((current) => !current)}
-									showAll={showAllAttachments}
-								/>
-							</TabsContent>
-						))}
-					</div>
-				</Tabs>
-			</section>
+						</>
+					)}
+					headingId="team-eu26-attachments-heading"
+					label="Attachments"
+				>
+					{ATTACHMENT_FILTERS.map((filter) => (
+						<TabsContent className="space-y-2" key={filter.value} value={filter.value}>
+							<AttachmentPanel
+								filter={filter.value}
+								onShowAllChange={() => setShowAllAttachments((current) => !current)}
+								showAll={showAllAttachments}
+							/>
+						</TabsContent>
+					))}
+				</CollapsibleWorkItemSection>
+			</Tabs>
 
-			<section aria-labelledby="team-eu26-subitems-heading" className="space-y-2">
-				<SectionHeading actionLabel="Show subitem actions" id="team-eu26-subitems-heading" onMore={() => setAnnouncement("Subitem actions opened")}>Subitems</SectionHeading>
+			<CollapsibleWorkItemSection
+				headingId="team-eu26-subtasks-heading"
+				label="Subtasks"
+				trailingAction={<Button aria-label="Show subtask actions" onClick={() => setAnnouncement("Subtask actions opened")} size="icon-compact" type="button" variant="ghost"><ShowMoreHorizontalIcon label="" size="small" /></Button>}
+			>
 				<ChildItemsProgressBar items={childItems} />
 				<WorkItemsTable aria-label="Subitems" items={TEAM_EU26_SUBITEMS} onStatusChange={(key, status) => setStatuses((current) => ({ ...current, [key]: status }))} statuses={statuses} />
-			</section>
+			</CollapsibleWorkItemSection>
 
-			<section aria-labelledby="team-eu26-linked-heading" className="space-y-2">
-				<SectionHeading
-					actionLabel={showAllLinkedItems ? "Show fewer linked work items" : "Show more linked work items"}
-					expanded={showAllLinkedItems}
-					id="team-eu26-linked-heading"
-					onMore={() => setShowAllLinkedItems((current) => !current)}
-				>
-					Linked work items
-				</SectionHeading>
+			<CollapsibleWorkItemSection
+				headingId="team-eu26-linked-heading"
+				label="Linked work items"
+				trailingAction={(
+					<Button aria-label={showAllLinkedItems ? "Show fewer linked work items" : "Show more linked work items"} onClick={() => setShowAllLinkedItems((current) => !current)} size="icon-compact" type="button" variant="ghost">
+						<ShowMoreHorizontalIcon label="" size="small" />
+					</Button>
+				)}
+			>
 				<WorkItemsTable aria-label="Linked work items" items={visibleLinkedItems} onStatusChange={(key, status) => setStatuses((current) => ({ ...current, [key]: status }))} relationship statuses={statuses} />
-			</section>
+			</CollapsibleWorkItemSection>
 		</article>
 	);
 }

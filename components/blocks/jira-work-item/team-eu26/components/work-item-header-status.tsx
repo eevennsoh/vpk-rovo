@@ -1,30 +1,38 @@
 "use client";
 
+import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
+import { useState } from "react";
 import { StatusPill } from "@/components/blocks/jira-work-item/team-eu26/components/detail-field-editors";
 import {
 	useJiraWorkItemActions,
 	useJiraWorkItemState,
 } from "@/components/blocks/jira-work-item/team-eu26/context-jira-work-item";
+import { Button } from "@/components/ui/button";
 
 /**
- * Work-item status control for the dialog header band. Previously a standalone
- * banner at the top of the high-confidence metadata rail; it now shares the
- * sticky header row with the breadcrumb, title, and action buttons so status
- * stays visible while the body scrolls. The selected fill is kept so the
- * control still reads as the work item's current state, sized to the 32px
- * action buttons beside it.
+ * Work-item status control for the dialog header band. The compact lozenge
+ * sits in a column that matches the Details rail: `--metadata-panel-width`
+ * with the same `pl-4 pr-6` inset, so this `w-full` panel shares that width.
  */
-export function WorkItemHeaderStatus() {
+export function WorkItemHeaderStatus({
+	showMore = false,
+}: Readonly<{ showMore?: boolean }>) {
 	const { metadata } = useJiraWorkItemState();
 	const actions = useJiraWorkItemActions();
+	const [moreAnnouncement, setMoreAnnouncement] = useState("");
 
 	return (
 		<div
-			className="flex h-8 shrink-0 items-center rounded-lg bg-bg-selected px-2"
+			className="flex h-10 min-w-0 w-full shrink-0 items-center justify-between rounded-lg bg-bg-selected p-2"
 			data-team-eu26-header-status
 		>
-			<StatusPill onChange={(status) => actions.updateMetadata({ status })} value={metadata.status} />
-			<p aria-live="polite" className="sr-only">Current status: {metadata.status}</p>
+			<StatusPill compact onChange={(status) => actions.updateMetadata({ status })} value={metadata.status} />
+			{showMore ? (
+				<Button aria-label="More work item actions" onClick={() => setMoreAnnouncement("More work item actions opened")} size="icon-compact" type="button" variant="ghost">
+					<ShowMoreHorizontalIcon label="" size="small" />
+				</Button>
+			) : null}
+			<p aria-live="polite" className="sr-only">Current status: {metadata.status}. {moreAnnouncement}</p>
 		</div>
 	);
 }

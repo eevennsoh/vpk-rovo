@@ -8,7 +8,6 @@ import {
 	useId,
 	useMemo,
 	useState,
-	useSyncExternalStore,
 	type ReactNode,
 } from "react";
 
@@ -54,8 +53,6 @@ interface SectionNavigationValue {
 const SectionNavigationContext = createContext<SectionNavigationValue | null>(null);
 
 const NO_SECTIONS: readonly WorkItemSectionTab[] = [];
-const DEFAULT_HEADER_COLLAPSE_OFFSET = 16;
-
 export type WorkItemHeaderVariant = "expanded" | "compact";
 
 /**
@@ -184,26 +181,12 @@ export function useSectionNavigation(): SectionNavigationValue {
 }
 
 /**
- * Resolves the work-item header's discrete scroll state from the active wide or
- * narrow body scroller. `useSyncExternalStore` lets React skip re-renders while
- * scrolling within a state; only crossing the collapse threshold updates it.
+ * Team EU keeps one stable header chrome layout while its body scrolls.
+ * The title owns its typography, so scrolling never resizes or reflows the
+ * breadcrumb, action, status, or close controls.
  */
-export function useWorkItemHeaderVariant(
-	collapseOffset = DEFAULT_HEADER_COLLAPSE_OFFSET,
-): WorkItemHeaderVariant {
-	const { scrollContainer } = useSectionNavigation();
-	const subscribe = useCallback((onStoreChange: () => void) => {
-		if (!scrollContainer) return () => undefined;
-
-		scrollContainer.addEventListener("scroll", onStoreChange, { passive: true });
-		return () => scrollContainer.removeEventListener("scroll", onStoreChange);
-	}, [scrollContainer]);
-	const getSnapshot = useCallback(
-		() => (scrollContainer?.scrollTop ?? 0) >= collapseOffset ? "compact" : "expanded",
-		[collapseOffset, scrollContainer],
-	);
-
-	return useSyncExternalStore(subscribe, getSnapshot, () => "expanded");
+export function useWorkItemHeaderVariant(): WorkItemHeaderVariant {
+	return "expanded";
 }
 
 /**
