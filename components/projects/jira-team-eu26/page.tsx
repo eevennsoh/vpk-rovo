@@ -290,8 +290,8 @@ function JiraTeamEu26App(): React.ReactElement {
 				chatPanelFlush
 				defaultSidebarOpen={true}
 				hideFloatingRovo
-				hideSettings
 				product="jira"
+				settingsIconOnly
 			>
 				<div className="h-full min-h-0 min-w-0 overflow-hidden bg-surface [&>div]:min-h-0">
 					<ExperimentalJiraKanbanPage

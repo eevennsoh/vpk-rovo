@@ -202,12 +202,15 @@ test("right navigation settings button can render optional dropdown actions", ()
 	assert.match(RIGHT_NAVIGATION_SOURCE, /settingsMenuItems=\{settingsMenuItems\}/);
 });
 
-test("top navigation can omit settings for fixed-presentation routes", () => {
-	assert.match(TOP_NAVIGATION_SOURCE, /hideSettings\?: boolean;/u);
-	assert.match(TOP_NAVIGATION_SOURCE, /hideSettings=\{hideSettings\}/u);
-	assert.match(RIGHT_NAVIGATION_SOURCE, /hideSettings\?: boolean;/u);
-	assert.match(RIGHT_NAVIGATION_SOURCE, /hideSettings=\{hideSettings\}/u);
-	assert.match(RIGHT_NAVIGATION_ACTIONS_SOURCE, /hideSettings \? null : \(\s*<DropdownMenu>/u);
+test("top navigation can retain a static settings icon for fixed-presentation routes", () => {
+	assert.match(TOP_NAVIGATION_SOURCE, /settingsIconOnly\?: boolean;/u);
+	assert.match(TOP_NAVIGATION_SOURCE, /settingsIconOnly=\{settingsIconOnly\}/u);
+	assert.match(RIGHT_NAVIGATION_SOURCE, /settingsIconOnly\?: boolean;/u);
+	assert.match(RIGHT_NAVIGATION_SOURCE, /settingsIconOnly=\{settingsIconOnly\}/u);
+	assert.match(
+		RIGHT_NAVIGATION_ACTIONS_SOURCE,
+		/settingsIconOnly \? \([\s\S]*aria-hidden="true"[\s\S]*data-static-settings-icon=""[\s\S]*<SettingsIcon label="" color="currentColor" \/>[\s\S]*\) : \(\s*<DropdownMenu>/u,
+	);
 });
 
 test("top navigation auto-releases the pinned sidebar at small viewports", () => {
