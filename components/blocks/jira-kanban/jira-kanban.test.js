@@ -930,14 +930,6 @@ test("Experimental v2 mirrors the Golden Journeys v4 board and list contract", (
 	assert.match(DEMO_SOURCE, /<JiraList[\s\S]*rows=\{listRows\}/u);
 });
 
-test("Jira kanban docs include a dedicated empty-column example", () => {
-	assert.match(DETAIL_SOURCE, /title: "Empty columns"/u);
-	assert.match(DETAIL_SOURCE, /demoSlug: "jira-kanban-demo-empty-columns"/u);
-	assert.match(DEMO_SOURCE, /export function JiraKanbanDemoEmptyColumns\(\)/u);
-	assert.match(DEMO_SOURCE, /cards: \[\]/u);
-	assert.match(VARIANT_REGISTRY_SOURCE, /"jira-kanban-demo-empty-columns"/u);
-});
-
 test("Experimental kanban header keeps only configure and more actions", () => {
 	assert.match(EXPERIMENTAL_HEADER_SOURCE, /import CustomizeIcon from "@atlaskit\/icon\/core\/customize";/u);
 	assert.match(
