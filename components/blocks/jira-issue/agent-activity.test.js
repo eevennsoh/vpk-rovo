@@ -55,7 +55,7 @@ test("new Jira agent and skill sessions use the staged startup presentation", ()
 	assert.match(AGENT_ACTIVITY_PRESENTATION_SOURCE, /Gathering context/u);
 	assert.match(AGENT_ACTIVITY_PRESENTATION_SOURCE, /<TWGLoader label="" size="small" \/>/u);
 	assert.match(AGENT_ACTIVITY_STARTUP_SOURCE, /<Shimmer[\s\S]*>\s*\{label\}\s*<\/Shimmer>/u);
-	assert.match(AGENT_ACTIVITY_STARTUP_SOURCE, /"block min-w-0 truncate text-text"/u);
+	assert.match(AGENT_ACTIVITY_STARTUP_SOURCE, /className="block min-w-0 truncate text-sm leading-5"/u);
 	assert.match(AGENT_ACTIVITY_STARTUP_SOURCE, /shouldReduceMotion \? "working"/u);
 	assert.match(AGENT_ACTIVITY_STARTUP_SOURCE, /Date\.now\(\) - startedAtMs/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /featuredActivity\?\.startedAtMs/u);
