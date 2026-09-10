@@ -629,8 +629,8 @@ function ExperimentalJiraKanbanView({
 		onCardDragEnd?.();
 	};
 
-	// Assigning an agent from a card's own menu links it to that card exactly as
-	// a session drop does, so it earns the same acknowledgement.
+	// Assigning an agent from a card's own menu still earns Glow's halo, but
+	// skips the travelling-chip collapse a session drop uses.
 	const handleCardGenerativeActionSubmit = boardSessionDrag
 		.withAssignedAgentLink(onCardGenerativeActionSubmit);
 

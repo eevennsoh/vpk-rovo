@@ -184,12 +184,10 @@ function JiraIssueAgentRowLabel({
 	isAwaitingInput,
 	rowLabel,
 	startupPhase,
-	usesStrokeChrome,
 }: Readonly<{
 	isAwaitingInput: boolean;
 	rowLabel: string;
 	startupPhase: ReturnType<typeof useJiraIssueAgentStartupPhase>;
-	usesStrokeChrome: boolean;
 }>): ReactElement {
 	if (isAwaitingInput) {
 		return (
@@ -201,14 +199,13 @@ function JiraIssueAgentRowLabel({
 	}
 
 	if (startupPhase === "intro") {
-		return <JiraIssueAgentIntroLabel usesStrokeChrome={usesStrokeChrome} />;
+		return <JiraIssueAgentIntroLabel />;
 	}
 
 	if (startupPhase === "gathering-context") {
 		return (
 			<JiraIssueShimmeringAgentLabel
 				label="Gathering context"
-				usesStrokeChrome={usesStrokeChrome}
 			/>
 		);
 	}
@@ -228,7 +225,6 @@ export function JiraIssueAgentRowContent({
 	showUnlinkControl,
 	startupPhase,
 	statusIcon,
-	usesStrokeChrome,
 }: Readonly<{
 	activities: readonly JiraIssueAgentActivity[];
 	featuredActivity: JiraIssueAgentActivity | undefined;
@@ -237,7 +233,6 @@ export function JiraIssueAgentRowContent({
 	showUnlinkControl: boolean;
 	startupPhase: ReturnType<typeof useJiraIssueAgentStartupPhase>;
 	statusIcon: ReactElement;
-	usesStrokeChrome: boolean;
 }>): ReactElement {
 	return (
 		<>
@@ -267,7 +262,6 @@ export function JiraIssueAgentRowContent({
 					isAwaitingInput={isAwaitingInput}
 					rowLabel={rowLabel}
 					startupPhase={startupPhase}
-					usesStrokeChrome={usesStrokeChrome}
 				/>
 			</div>
 			{showUnlinkControl ? null : statusIcon}

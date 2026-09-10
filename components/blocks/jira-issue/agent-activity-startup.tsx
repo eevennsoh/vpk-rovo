@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { Shimmer } from "@/components/ui-custom/shimmer";
 import TextEffects from "@/components/visual/text-effects";
 import { configForEffect } from "@/components/visual/text-effects/data";
-import { cn } from "@/lib/utils";
 
 const STARTUP_INTRO_MS = 1800;
 const STARTUP_CONTEXT_MS = 2200;
@@ -69,14 +68,9 @@ export function useJiraIssueAgentStartupPhase(
 	return phase;
 }
 
-export function JiraIssueAgentIntroLabel({ usesStrokeChrome }: Readonly<{ usesStrokeChrome: boolean }>) {
+export function JiraIssueAgentIntroLabel() {
 	return (
-		<span
-			className={cn(
-				"flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden text-text-subtlest",
-				usesStrokeChrome ? "text-xs leading-4" : "text-sm leading-5",
-			)}
-		>
+		<span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden text-sm leading-5 text-text">
 			<TextEffects
 				className="min-w-0 truncate"
 				config={INTRO_TEXT_CONFIG}
@@ -92,18 +86,14 @@ export function JiraIssueAgentIntroLabel({ usesStrokeChrome }: Readonly<{ usesSt
 
 export function JiraIssueShimmeringAgentLabel({
 	label,
-	usesStrokeChrome,
 }: Readonly<{
 	label: string;
-	usesStrokeChrome: boolean;
 }>) {
 	return (
 		<Shimmer
 			as="span"
-			className={cn(
-				"block min-w-0 truncate",
-				usesStrokeChrome ? "text-xs leading-4" : "text-sm leading-5",
-			)}
+			baseColor="var(--color-text)"
+			className="block min-w-0 truncate text-sm leading-5"
 			duration={SHIMMER_DURATION}
 			spread={SHIMMER_SPREAD}
 			wave={false}
