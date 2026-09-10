@@ -82,6 +82,7 @@ export function AgentSession({
 	arrivingItemIds,
 	canViewItem,
 	capturedItemIds,
+	density = "short",
 	getResumeCommand,
 	getSuggestedWorkItemKey,
 	getSuggestedWorkItemKeys,
@@ -89,15 +90,19 @@ export function AgentSession({
 	issueKey,
 	isResumable,
 	newItemIds,
+	onContinueInAgent,
 	onCopyResume,
 	onArchiveSession,
 	onCreateWorkItem,
 	onArrivalComplete,
+	onDeleteSession,
 	onLinkWorkItem,
+	onRenameSession,
 	onSubtasks,
 	onItemHover,
 	onSelectedItemIdChange,
 	onToggleVisibility,
+	onUnlinkSession,
 	onView,
 	rowTriage,
 	selectedItemId: selectedItemIdProp,
@@ -212,6 +217,7 @@ export function AgentSession({
 							<AgentSessionCard
 								arrivalDelaySeconds={arrivalDelays.get(item.id)}
 								captured={capturedItemIds?.has(item.id) ?? false}
+								density={density}
 								flyoutHandle={flyoutHandle}
 								flyoutSession={flyoutSession}
 								getResumeCommand={getResumeCommand}
@@ -222,12 +228,16 @@ export function AgentSession({
 								isSelected={item.id === selectedItemId}
 								item={item}
 								key={item.id}
+								onContinueInAgent={onContinueInAgent}
 								onCopyResume={onCopyResume}
+								onDeleteSession={onDeleteSession}
 								onArrivalComplete={onArrivalComplete === undefined
 									? undefined
 									: () => onArrivalComplete(item.id)}
 								onItemHover={onItemHover}
+								onRenameSession={onRenameSession}
 								onToggleVisibility={onToggleVisibility}
+								onUnlinkSession={onUnlinkSession}
 								onView={itemOnView}
 								sessionDrag={sessionDrag}
 								triageRow={rowTriage?.get(item.id)}
@@ -303,10 +313,19 @@ export function AgentSession({
 	);
 }
 
-export { AGENT_SESSION_ATTACHED_ITEMS, AGENT_SESSION_ITEMS, AGENT_SESSION_MULTI_LINK_KEYS } from "./data";
+export { AGENT_SESSION_ATTACHED_ITEMS, AGENT_SESSION_CLOUD_ITEMS, AGENT_SESSION_ITEMS, AGENT_SESSION_MULTI_LINK_KEYS } from "./data";
 export { approveActionLabel, resolveApproveTarget } from "./agent-session-approve";
 export type { ApproveTarget, ApproveUnavailableReason } from "./agent-session-approve";
 export { AgentSessionCard } from "./agent-session-card";
+export {
+	AGENT_SESSION_STATUS_LABEL,
+	toAgentSessionMetadataSegments,
+} from "./agent-session-long-metadata";
+export type {
+	AgentSessionMetadataInput,
+	AgentSessionMetadataSegment,
+	AgentSessionMetadataSegmentKind,
+} from "./agent-session-long-metadata";
 export {
 	bindAgentSessionFlyoutActions,
 	resolveAgentSessionWorkItemKey,
@@ -315,6 +334,7 @@ export {
 	toJiraIssueAgentActivityFromSession,
 } from "./agent-session-work-item";
 export type {
+	AgentSessionDensity,
 	AgentSessionItem,
 	AgentSessionProps,
 	AgentSessionSelectionGesture,
