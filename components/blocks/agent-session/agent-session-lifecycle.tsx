@@ -21,9 +21,14 @@ import type { AgentSessionItem } from "./agent-session-types";
 const INDICATOR_ENTER = { duration: 0.15, ease: [0.4, 1, 0.6, 1] } as const;
 const INDICATOR_EXIT = { duration: 0.1, ease: [0.6, 0, 0.8, 0.6] } as const;
 
-/** Fixed-size shell so a state change never reflows the row's trailing column. */
+/**
+ * Fixed-size shell so a state change never reflows the row's trailing column.
+ *
+ * A `div` rather than a `span`: every non-running glyph is an `IconTile`, whose
+ * root is a block element, and phrasing content cannot legally contain one.
+ */
 function IndicatorSlot({ children }: Readonly<{ children: React.ReactNode }>) {
-	return <span className="grid size-6 shrink-0 place-items-center">{children}</span>;
+	return <div className="grid size-6 shrink-0 place-items-center">{children}</div>;
 }
 
 function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }>) {
@@ -111,7 +116,7 @@ export function AgentSessionLifecycle({ state }: Readonly<{ state: AgentSessionI
 	return (
 		<IndicatorSlot>
 			<AnimatePresence initial={false} mode="popLayout">
-				<motion.span
+				<motion.div
 					animate={{ opacity: 1, scale: 1 }}
 					className="grid place-items-center"
 					exit={{ opacity: 0, scale: 0.6, transition: INDICATOR_EXIT }}
@@ -121,7 +126,7 @@ export function AgentSessionLifecycle({ state }: Readonly<{ state: AgentSessionI
 					transition={INDICATOR_ENTER}
 				>
 					<IndicatorGlyph state={state} />
-				</motion.span>
+				</motion.div>
 			</AnimatePresence>
 		</IndicatorSlot>
 	);

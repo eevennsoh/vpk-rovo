@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
 import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
@@ -20,7 +20,6 @@ import {
 } from "@/components/blocks/product-sidebar/variants/jira-session-flyout";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
 import { Icon } from "@/components/ui/icon";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 import {
@@ -45,21 +44,7 @@ import {
 	type AgentSessionSelectionGesture,
 	type AgentSessionTriageRow,
 } from "./agent-session-types";
-
-/** How long the trailing slot reads "Copied prompt" after the clipboard write. */
-const COPIED_RESET_MS = 2000;
-
-async function copyResumeCommand(command: string): Promise<void> {
-	if (typeof navigator === "undefined" || navigator.clipboard?.writeText === undefined) {
-		return;
-	}
-
-	try {
-		await navigator.clipboard.writeText(command);
-	} catch {
-		// Keep the click successful when clipboard permission is denied.
-	}
-}
+import { useAgentSessionMenu } from "./use-agent-session-menu";
 
 export function AgentSessionCard({
 	arrivalDelaySeconds,
@@ -125,9 +110,6 @@ export function AgentSessionCard({
 	visibilityLabel?: string;
 }>) {
 	const shouldReduceMotion = useReducedMotion();
-	const [copiedPrompt, setCopiedPrompt] = useState(false);
-	const [isMenuOpen, setIsMenuOpen] = useState(false);
-	const copiedResetRef = useRef<number | undefined>(undefined);
 	const onItemHoverRef = useRef(onItemHover);
 	// Whether the pointer is on *this* row, so unmount cleanup can tell "I was
 	// the hovered row" from "a sibling went away".
@@ -138,7 +120,6 @@ export function AgentSessionCard({
 	}, [onItemHover]);
 
 	useEffect(() => () => {
-		window.clearTimeout(copiedResetRef.current);
 		// Hide / filter can unmount the hovered row before pointerleave fires.
 		// Only the row that owns the hover may clear it: a filter or capture that
 		// unmounts a sibling must not wipe a highlight the pointer still rests on,
@@ -211,47 +192,27 @@ export function AgentSessionCard({
 	const articleTabIndex = mark == null ? undefined : isLead ? 0 : -1;
 
 	// One trailing affordance instead of a Resume/Archive pair: everything a row
-	// can do now lives behind "…", and which actions exist depends on where the
-	// session runs. Approve is the exception — it is a triage decision the column
-	// surfaces inline, not a session action, so it keeps its own button.
+	// can do now lives behind "…". Approve is the exception — it is a triage
+	// decision the column surfaces inline, not a session action, so it keeps its
+	// own button.
 	const isCloudSession = !isLocalAgentListItem(item);
-	const handleCopyPrompt = () => {
-		void copyResumeCommand(resumeCommand).then(() => {
-			onCopyResume?.(item);
-			setCopiedPrompt(true);
-			window.clearTimeout(copiedResetRef.current);
-			copiedResetRef.current = window.setTimeout(() => {
-				setCopiedPrompt(false);
-			}, COPIED_RESET_MS);
-		});
-	};
-	const menuActions = {
-		onContinueInAgent: onContinueInAgent === undefined || isCloudSession
-			? undefined
-			: () => onContinueInAgent(item),
-		// Copying writes to the clipboard before any callback runs, so a row the
-		// host cannot resume must not offer an enabled control.
-		onCopyPrompt: canResume && !isCloudSession ? handleCopyPrompt : undefined,
-		onDelete: onDeleteSession === undefined || !isCloudSession
-			? undefined
-			: () => onDeleteSession(item),
-		onDismiss: onToggleVisibility === undefined
-			? undefined
-			: () => {
-				onItemHover?.(null);
-				onToggleVisibility(item);
-			},
-		onRename: onRenameSession === undefined || !isCloudSession
-			? undefined
-			: () => onRenameSession(item),
-		onUnlink: onUnlinkSession === undefined || !isCloudSession
-			? undefined
-			: () => onUnlinkSession(item),
-	};
+	const menu = useAgentSessionMenu({
+		canResume,
+		isCloud: isCloudSession,
+		item,
+		onContinueInAgent,
+		onCopyResume,
+		onDeleteSession,
+		onItemHover,
+		onRenameSession,
+		onToggleVisibility,
+		onUnlinkSession,
+		resumeCommand,
+	});
 	const hoverActions: AgentListRowHoverActions = {
 		// The reveal must outlive the pointer: a portalled popup and a post-click
 		// confirmation both take the cursor off the row.
-		pinned: isMenuOpen || copiedPrompt,
+		pinned: menu.isOpen || menu.copied,
 		primary: approve
 			? {
 				disabled: approve.target.kind === "unavailable",
@@ -260,32 +221,17 @@ export function AgentSessionCard({
 				onClick: approve.onApprove,
 			}
 			: undefined,
-		menu: copiedPrompt ? (
-			<Tooltip open>
-				<TooltipTrigger
-					render={(
-						<span
-							aria-label="Copied prompt"
-							className="grid size-6 shrink-0 place-items-center"
-							role="img"
-						/>
-					)}
-				>
-					<Icon
-						className="text-icon-success"
-						render={<CheckMarkIcon color="currentColor" label="" size="small" />}
-					/>
-				</TooltipTrigger>
-				<TooltipContent>Copied prompt</TooltipContent>
-			</Tooltip>
-		) : (
+		menu: (
 			<AgentSessionMoreMenu
-				actions={menuActions}
-				dismissLabel={visibilityLabel === "Unarchive" ? "Unarchive" : "Dismiss"}
+				actions={menu.actions}
+				copied={menu.copied}
+				// Only the legacy "Archive" default becomes "Dismiss". Any other label
+				// is caller-authored copy for this row and passes through verbatim.
+				dismissLabel={visibilityLabel === "Archive" ? "Dismiss" : visibilityLabel}
 				isCloud={isCloudSession}
 				item={item}
-				onOpenChange={setIsMenuOpen}
-				open={isMenuOpen}
+				onOpenChange={menu.setIsOpen}
+				open={menu.isOpen}
 			/>
 		),
 	};

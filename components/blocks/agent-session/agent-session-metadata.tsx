@@ -37,6 +37,7 @@ function MetadataDot() {
  * pairing the Jira session flyout's Session row uses, so the glyph means the
  * same thing wherever it appears.
  */
+// react-doctor-disable-next-line react-doctor/no-multi-component-file -- These are the sub-parts of one metadata line, colocated so short and long densities cannot drift apart; splitting six presentational fragments across six files would cost more than it explains.
 export function AgentSessionHostSegment({ isLocal }: Readonly<{ isLocal: boolean }>) {
 	return (
 		<span className="flex shrink-0 items-center gap-1 text-text-subtle" title="Session host">
@@ -58,6 +59,7 @@ export function AgentSessionHostSegment({ isLocal }: Readonly<{ isLocal: boolean
  * Which agent, where it ran, when it last moved. Pull request details stay in
  * the flyout, which has the room to name them.
  */
+// react-doctor-disable-next-line react-doctor/no-multi-component-file -- These are the sub-parts of one metadata line, colocated so short and long densities cannot drift apart; splitting six presentational fragments across six files would cost more than it explains.
 export function AgentSessionProvenanceMetadata({ item }: Readonly<{ item: AgentSessionItem }>) {
 	return (
 		<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
@@ -94,6 +96,7 @@ function toArtifactLabel(item: AgentSessionItem): string | undefined {
  * supported footprint is a 24px frame — the pair is the point, so it gets the
  * extra 8px rather than collapsing into an unreadable overlap.
  */
+// react-doctor-disable-next-line react-doctor/no-multi-component-file -- These are the sub-parts of one metadata line, colocated so short and long densities cannot drift apart; splitting six presentational fragments across six files would cost more than it explains.
 function LongMetadataIdentity({ item }: Readonly<{ item: AgentSessionItem }>) {
 	if (item.invokedBy) {
 		return <AgentListIdentity agent={item.agent} attributedBy={item.invokedBy} sizePx={24} />;
@@ -113,6 +116,7 @@ function LongMetadataIdentity({ item }: Readonly<{ item: AgentSessionItem }>) {
 	);
 }
 
+// react-doctor-disable-next-line react-doctor/no-multi-component-file -- These are the sub-parts of one metadata line, colocated so short and long densities cannot drift apart; splitting six presentational fragments across six files would cost more than it explains.
 function LongMetadataSegment({
 	item,
 	segment,
@@ -164,6 +168,7 @@ function LongMetadataSegment({
  * The chunk list comes from {@link toAgentSessionMetadataSegments}, which is
  * pure and unit-tested; this component only decides how each chunk looks.
  */
+// react-doctor-disable-next-line react-doctor/no-multi-component-file -- These are the sub-parts of one metadata line, colocated so short and long densities cannot drift apart; splitting six presentational fragments across six files would cost more than it explains.
 export function AgentSessionLongMetadata({ item }: Readonly<{ item: AgentSessionItem }>) {
 	// Deliberately not `getAgentListHost`, which answers "cloud" for a payload
 	// that simply never said. Undefined here means the row stays quiet about

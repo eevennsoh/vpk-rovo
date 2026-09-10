@@ -49,6 +49,7 @@ const DRAG_INTERACTIVE_SOURCE = readFileSync(
 );
 const LIFECYCLE_SOURCE = readFileSync(join(__dirname, "agent-session-lifecycle.tsx"), "utf8");
 const METADATA_SOURCE = readFileSync(join(__dirname, "agent-session-metadata.tsx"), "utf8");
+const MENU_HOOK_SOURCE = readFileSync(join(__dirname, "use-agent-session-menu.ts"), "utf8");
 const SESSION_MORE_MENU_SOURCE = readFileSync(join(__dirname, "agent-session-more-menu.tsx"), "utf8");
 const INDEX_SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
@@ -446,8 +447,8 @@ test("the row reveals one … menu where Agent List puts its hover pair", () => 
 		/import \{[\s\S]*AgentListIdentity,[\s\S]*AgentListRow,[\s\S]*type AgentListRowHoverActions,[\s\S]*\} from "@\/components\/blocks\/agent-list\/agent-list-card";/u,
 	);
 	assert.match(CARD_SOURCE, /const hoverActions: AgentListRowHoverActions = \{/u);
-	assert.match(CARD_SOURCE, /menu: copiedPrompt \? \(/u);
-	assert.match(CARD_SOURCE, /<AgentSessionMoreMenu[\s\S]*actions=\{menuActions\}/u);
+	assert.match(CARD_SOURCE, /<AgentSessionMoreMenu[\s\S]*actions=\{menu\.actions\}/u);
+	assert.match(CARD_SOURCE, /<AgentSessionMoreMenu[\s\S]*copied=\{menu\.copied\}/u);
 	assert.match(CARD_SOURCE, /<AgentSessionMoreMenu[\s\S]*isCloud=\{isCloudSession\}/u);
 	// Resume and Archive no longer have their own buttons; both moved into the menu.
 	assert.doesNotMatch(CARD_SOURCE, /"Resume"/u);
@@ -460,7 +461,7 @@ test("the row reveals one … menu where Agent List puts its hover pair", () => 
 	assert.match(CARD_SOURCE, /approveActionLabel\(approve\.target\)/u);
 	// The archived view reuses the same capability, so the shared row renames
 	// itself rather than growing a second control.
-	assert.match(CARD_SOURCE, /dismissLabel=\{visibilityLabel === "Unarchive" \? "Unarchive" : "Dismiss"\}/u);
+	assert.match(CARD_SOURCE, /dismissLabel=\{visibilityLabel === "Archive" \? "Dismiss" : visibilityLabel\}/u);
 	assert.match(CARD_SOURCE, /visibilityLabel = "Archive"/u);
 	assert.doesNotMatch(CARD_SOURCE, /EyeOpenIcon|EyeOpenStrikethroughIcon|visibilityLabel = "Hide"|visibilityLabel === "Show"/u);
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text/u);
@@ -476,7 +477,7 @@ test("the row reveals one … menu where Agent List puts its hover pair", () => 
 	assert.doesNotMatch(CARD_SOURCE, /group\/agent-row group\/uncaptured-work/u);
 	// Dismiss calls the optional handler; the column supplies Archive vs
 	// Unarchive so the row's copy matches the action.
-	assert.match(CARD_SOURCE, /onToggleVisibility\(item\)/u);
+	assert.match(MENU_HOOK_SOURCE, /onToggleVisibility\(item\)/u);
 	assert.match(INDEX_SOURCE, /onToggleVisibility=\{onToggleVisibility\}/u);
 	assert.match(INDEX_SOURCE, /visibilityLabel=\{visibilityLabel\}/u);
 	assert.match(TYPES_SOURCE, /onToggleVisibility\?: \(item: AgentSessionItem\) => void;/u);
@@ -504,7 +505,7 @@ test("the row reveals one … menu where Agent List puts its hover pair", () => 
 	);
 	// Dismiss clears the hover highlight before removing the row, so a card that
 	// disappears cannot leave its board counterpart lit.
-	assert.match(CARD_SOURCE, /onItemHover\?\.\(null\);\s*onToggleVisibility\(item\);/u);
+	assert.match(MENU_HOOK_SOURCE, /onItemHover\?\.\(null\);\s*onToggleVisibility\(item\);/u);
 	// The shared row fades actions in; uncaptured-work snaps them on.
 	assert.match(LIST_CARD_SOURCE, /group-data-\[variant=uncaptured-work\]\/agent-row:transition-none/u);
 	assert.match(CARD_SOURCE, /data-variant="uncaptured-work"/u);
@@ -647,17 +648,17 @@ test("the menu offers host-appropriate actions, disabled without the capability"
 		CARD_SOURCE,
 		/const canResume = \(isResumable\?\.\(item\) \?\? true\) && resumeCommand\.length > 0;/u,
 	);
-	assert.match(CARD_SOURCE, /onCopyPrompt: canResume && !isCloudSession \? handleCopyPrompt : undefined,/u);
+	assert.match(MENU_HOOK_SOURCE, /onCopyPrompt: canResume && !isCloud \? handleCopyPrompt : undefined,/u);
 	assert.match(CARD_SOURCE, /toAgentListResumeCommand\(item\)/u);
 	assert.match(CARD_SOURCE, /const isCloudSession = !isLocalAgentListItem\(item\);/u);
 	// Continue in is local-only; the record actions are cloud-only. Each is also
 	// gated on its callback, so a host that supplies nothing gets a disabled row
 	// rather than an enabled control backed by an optional call.
-	assert.match(CARD_SOURCE, /onContinueInAgent: onContinueInAgent === undefined \|\| isCloudSession/u);
-	assert.match(CARD_SOURCE, /onDelete: onDeleteSession === undefined \|\| !isCloudSession/u);
-	assert.match(CARD_SOURCE, /onRename: onRenameSession === undefined \|\| !isCloudSession/u);
-	assert.match(CARD_SOURCE, /onUnlink: onUnlinkSession === undefined \|\| !isCloudSession/u);
-	assert.match(CARD_SOURCE, /onDismiss: onToggleVisibility === undefined/u);
+	assert.match(MENU_HOOK_SOURCE, /onContinueInAgent: onContinueInAgent === undefined \|\| isCloud/u);
+	assert.match(MENU_HOOK_SOURCE, /onDelete: onDeleteSession === undefined \|\| !isCloud/u);
+	assert.match(MENU_HOOK_SOURCE, /onRename: onRenameSession === undefined \|\| !isCloud/u);
+	assert.match(MENU_HOOK_SOURCE, /onUnlink: onUnlinkSession === undefined \|\| !isCloud/u);
+	assert.match(MENU_HOOK_SOURCE, /onDismiss: onToggleVisibility === undefined/u);
 
 	assert.match(SESSION_MORE_MENU_SOURCE, /<DropdownMenuLabel>Continue in<\/DropdownMenuLabel>/u);
 	assert.match(SESSION_MORE_MENU_SOURCE, /description="Copy prompt"[\s\S]*<TerminalIcon label="" size="small" \/>[\s\S]*Terminal/u);
@@ -679,20 +680,29 @@ test("the menu offers host-appropriate actions, disabled without the capability"
 test("copying the prompt confirms with a green check the reveal cannot swallow", () => {
 	// The popup takes the pointer off the row and the confirmation outlives the
 	// hover that produced it; both would collapse the reveal without a pin.
-	assert.match(CARD_SOURCE, /pinned: isMenuOpen \|\| copiedPrompt,/u);
+	assert.match(CARD_SOURCE, /pinned: menu\.isOpen \|\| menu\.copied,/u);
 	assert.match(LIST_CARD_SOURCE, /pinned\?: boolean;/u);
 	assert.match(LIST_CARD_SOURCE, /pinned && "grid-cols-\[1fr\]"/u);
 	assert.match(LIST_CARD_SOURCE, /pinned && "pointer-events-auto opacity-100"/u);
 	assert.match(LIST_CARD_SOURCE, /showHoverActions && hoverActions\?\.pinned && "hidden"/u);
 
-	assert.match(CARD_SOURCE, /const COPIED_RESET_MS = 2000;/u);
-	assert.match(CARD_SOURCE, /aria-label="Copied prompt"/u);
-	assert.match(CARD_SOURCE, /<TooltipContent>Copied prompt<\/TooltipContent>/u);
-	assert.match(CARD_SOURCE, /className="text-icon-success"/u);
-	assert.match(CARD_SOURCE, /setCopiedPrompt\(true\)/u);
-	assert.match(CARD_SOURCE, /setCopiedPrompt\(false\);\s*\}, COPIED_RESET_MS\)/u);
+	assert.match(MENU_HOOK_SOURCE, /export const AGENT_SESSION_COPIED_RESET_MS = 2000;/u);
+	assert.match(MENU_HOOK_SOURCE, /setCopied\(true\)/u);
+	assert.match(MENU_HOOK_SOURCE, /setCopied\(false\);\s*\}, AGENT_SESSION_COPIED_RESET_MS\)/u);
 	// The timeout is cleared on unmount so a removed row cannot set state later.
-	assert.match(CARD_SOURCE, /window\.clearTimeout\(copiedResetRef\.current\);/u);
+	assert.match(MENU_HOOK_SOURCE, /useEffect\(\(\) => \(\) => \{\s*window\.clearTimeout\(resetRef\.current\);\s*\}, \[\]\)/u);
+
+	// The confirmation is a state of the trigger, not a replacement for it. Base
+	// UI restores focus to the trigger when the menu closes, so swapping the
+	// element out would drop the caret to the document body.
+	assert.match(
+		SESSION_MORE_MENU_SOURCE,
+		/render=\{copied\s*\? <CheckMarkIcon color="currentColor" label="" size="small" \/>\s*: <ShowMoreHorizontalIcon color="currentColor" label="" size="small" \/>\}/u,
+	);
+	assert.match(SESSION_MORE_MENU_SOURCE, /className=\{copied \? "text-icon-success" : "text-icon-subtle"\}/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /aria-label=\{copied \? "Copied prompt" : `More actions for \$\{item\.title\}`\}/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /<TooltipContent anchor=\{triggerRef\}>Copied prompt<\/TooltipContent>/u);
+	assert.doesNotMatch(SESSION_MORE_MENU_SOURCE, /role="img"/u);
 });
 
 test("the long density is title-led, with its own metadata line and lifecycle", () => {
@@ -742,6 +752,23 @@ test("a working long row breathes with the experimental spinner, not the pixel l
 	assert.match(LIFECYCLE_SOURCE, /<AnimatePresence initial=\{false\} mode="popLayout">/u);
 	// Reduced motion renders the same glyph with no presence animation at all.
 	assert.match(LIFECYCLE_SOURCE, /if \(shouldReduceMotion\) \{/u);
+	// `IconTile` is a block element, so the slot that holds it — and the shared
+	// row's trailing column — must be block too, or the invalid nesting surfaces
+	// as a hydration recovery on server-rendered lists.
+	assert.match(LIFECYCLE_SOURCE, /<div className="grid size-6 shrink-0 place-items-center">\{children\}<\/div>/u);
+	assert.match(LIFECYCLE_SOURCE, /<motion\.div/u);
+	assert.doesNotMatch(LIFECYCLE_SOURCE, /<motion\.span|<span className="grid size-6/u);
+	assert.match(LIST_CARD_SOURCE, /<div\s*className=\{cn\(\s*"ml-3 flex w-6 shrink-0 items-center"/u);
+});
+
+test("a caller-authored dismiss label survives the Archive-to-Dismiss rename", () => {
+	// `visibilityLabel` is documented as arbitrary copy for this row. Only the
+	// legacy "Archive" default is translated; anything else passes through, so a
+	// consumer that supplies "Restore" does not silently get "Dismiss".
+	assert.match(CARD_SOURCE, /dismissLabel=\{visibilityLabel === "Archive" \? "Dismiss" : visibilityLabel\}/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /dismissLabel = "Dismiss",/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /\{dismissLabel\}/u);
+	assert.match(TYPES_SOURCE, /visibilityLabel\?: string;/u);
 });
 
 test("reuses the Agent List row model instead of forking a parallel one", () => {

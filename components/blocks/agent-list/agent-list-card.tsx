@@ -796,7 +796,11 @@ export function AgentListRow({
 						)}
 					</RowBody>
 					{lifecycleNode ? (
-						<span
+						// A `div`, not a `span`: every non-running indicator is an
+						// `IconTile`, whose root is a block element. Phrasing content
+						// cannot contain it, and the invalid nesting surfaces as a
+						// hydration recovery on server-rendered session lists.
+						<div
 							className={cn(
 								"ml-3 flex w-6 shrink-0 items-center",
 								showHoverActions &&
@@ -805,7 +809,7 @@ export function AgentListRow({
 							)}
 						>
 							{lifecycleNode}
-						</span>
+						</div>
 					) : null}
 					{showHoverActions ? (
 						<CardActions

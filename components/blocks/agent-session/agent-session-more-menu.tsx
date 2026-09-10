@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 
+import { useRef } from "react";
+
 import TerminalIcon from "@atlaskit/icon-lab/core/terminal";
+import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import EditIcon from "@atlaskit/icon/core/edit";
 import LinkBrokenIcon from "@atlaskit/icon/core/link-broken";
@@ -21,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import { LogoThirdParty } from "@/components/ui/logo-third-party";
+import { Tooltip, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 import type { AgentSessionItem } from "./agent-session-types";
@@ -65,6 +69,7 @@ function AgentMenuGlyph({ agent }: Readonly<{ agent: AgentSessionItem["agent"] }
 
 export function AgentSessionMoreMenu({
 	actions,
+	copied = false,
 	dismissLabel = "Dismiss",
 	isCloud,
 	item,
@@ -72,6 +77,16 @@ export function AgentSessionMoreMenu({
 	open,
 }: Readonly<{
 	actions: AgentSessionMoreMenuActions;
+	/**
+	 * Show the copy confirmation on the trigger itself.
+	 *
+	 * Deliberately a state of this button rather than a replacement for it. Base
+	 * UI returns focus to the trigger when the menu closes, so swapping the
+	 * element out mid-confirmation would hand focus to a node that unmounts a
+	 * beat later and drop the caret to the document body — the keyboard path that
+	 * reaches this control is the same one that would lose its place.
+	 */
+	copied?: boolean;
 	/**
 	 * Copy for the shared bottom row. "Dismiss" in an active list; the archived
 	 * view passes "Unarchive", where the same capability restores rather than hides.
@@ -83,26 +98,32 @@ export function AgentSessionMoreMenu({
 	onOpenChange: (open: boolean) => void;
 	open: boolean;
 }>) {
+	const triggerRef = useRef<HTMLButtonElement | null>(null);
+
 	return (
-		<DropdownMenu onOpenChange={onOpenChange} open={open}>
-			<DropdownMenuTrigger
-				render={(
-					<Button
-						aria-label={`More actions for ${item.title}`}
-						className={cn(open && "bg-surface-hovered")}
-						// The card owns pointerdown for drag; the trigger is not a drag handle.
-						onPointerDown={(event) => event.stopPropagation()}
-						size="icon-compact"
-						type="button"
-						variant="ghost"
+		<>
+			<DropdownMenu onOpenChange={onOpenChange} open={open}>
+				<DropdownMenuTrigger
+					render={(
+						<Button
+							aria-label={copied ? "Copied prompt" : `More actions for ${item.title}`}
+							className={cn(open && "bg-surface-hovered")}
+							// The card owns pointerdown for drag; the trigger is not a drag handle.
+							onPointerDown={(event) => event.stopPropagation()}
+							ref={triggerRef}
+							size="icon-compact"
+							type="button"
+							variant="ghost"
+						/>
+					)}
+				>
+					<Icon
+						className={copied ? "text-icon-success" : "text-icon-subtle"}
+						render={copied
+							? <CheckMarkIcon color="currentColor" label="" size="small" />
+							: <ShowMoreHorizontalIcon color="currentColor" label="" size="small" />}
 					/>
-				)}
-			>
-				<Icon
-					className="text-icon-subtle"
-					render={<ShowMoreHorizontalIcon color="currentColor" label="" size="small" />}
-				/>
-			</DropdownMenuTrigger>
+				</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="min-w-44">
 				{isCloud ? (
 					<>
@@ -160,6 +181,15 @@ export function AgentSessionMoreMenu({
 					{dismissLabel}
 				</DropdownMenuItem>
 			</DropdownMenuContent>
-		</DropdownMenu>
+			</DropdownMenu>
+			{/* Anchored to the trigger rather than wrapping it, so the tooltip is
+			    purely the visual half of the confirmation and the button keeps its
+			    single role. The accessible half rides on the trigger's aria-label. */}
+			{copied ? (
+				<Tooltip open>
+					<TooltipContent anchor={triggerRef}>Copied prompt</TooltipContent>
+				</Tooltip>
+			) : null}
+		</>
 	);
 }
