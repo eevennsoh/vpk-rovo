@@ -21,6 +21,10 @@ import {
 import { cn } from "@/lib/utils";
 
 import { SESSION_DRAG_INTERACTIVE_SELECTOR } from "./agent-session-drag-interactive";
+import {
+	sessionDragPlaceholderClasses,
+	sessionDragSourceClasses,
+} from "./agent-session-drag-layout";
 import { measureSessionDragIdentityOrigin } from "./agent-session-drag-motion";
 import { AgentSessionDragOverlay } from "./agent-session-drag-overlay";
 import { toSessionTransferMember } from "./agent-session-transfer-member";
@@ -278,15 +282,17 @@ export function AgentSessionMediumDrag({
 	// VPK duration tokens do not collapse themselves. Card `shouldPlayArrival`
 	// reads `shouldReduceMotion` permissively, so the chip matches it.
 	const reduceChipMotion = Boolean(shouldReduceMotion);
+	const layoutState = {
+		hasDragBind: sessionDragBind !== undefined,
+		isDragging,
+		isDraggedOut,
+		isFollower,
+		preserveSourceFootprint,
+	};
 
 	return (
 		<div
-			className={cn(
-				"min-w-0",
-				isDragging && "relative w-full",
-				isFollower && !preserveSourceFootprint && "h-0 overflow-hidden",
-				isDragging && !preserveSourceFootprint && (isDraggedOut ? "h-0" : "h-[33px]"),
-			)}
+			className={cn(sessionDragPlaceholderClasses(layoutState))}
 			data-session-chip-out={isDraggedOut || undefined}
 			data-session-drag-placeholder={preserveSourceFootprint || undefined}
 			data-session-transfer-faded={isFollower || undefined}
@@ -297,14 +303,7 @@ export function AgentSessionMediumDrag({
 			    disabled-opacity ghost so their reserved space never reads as a hole. */}
 			<div
 				aria-hidden={isDragging || isFollower || undefined}
-				className={cn(
-					"min-w-0",
-					isDragging && preserveSourceFootprint && "pointer-events-none absolute inset-x-0 top-0 opacity-(--opacity-disabled)",
-					isFollower && preserveSourceFootprint && "pointer-events-none opacity-(--opacity-disabled)",
-					(isFollower && !preserveSourceFootprint || (isDragging && !preserveSourceFootprint)) && "pointer-events-none absolute inset-x-0 top-0 opacity-0",
-					sessionDragBind && "touch-none select-none",
-					isDragging && "cursor-grabbing [&_article]:cursor-grabbing",
-				)}
+				className={cn(sessionDragSourceClasses(layoutState))}
 				inert={isDragging || isFollower || undefined}
 			>
 				{children(sessionDragBind)}

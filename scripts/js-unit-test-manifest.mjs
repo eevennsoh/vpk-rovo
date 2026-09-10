@@ -235,6 +235,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/agent-session/session-cohort.test.js",
 		"components/blocks/agent-session/agent-session-drag-chip.test.js",
 		"components/blocks/agent-session/agent-session-drag-motion.test.js",
+		"components/blocks/agent-session/agent-session-drag-layout.test.js",
 		"components/blocks/agent-session/agent-session-transfer-member.test.js",
 		"components/blocks/agent-session/agent-session-work-item.test.js",
 		"components/blocks/agent-session-column/agent-session-column-overflow.test.ts",

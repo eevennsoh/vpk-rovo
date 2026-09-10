@@ -33,6 +33,10 @@ const DRAG_OVERLAY_SOURCE = readFileSync(
 	join(__dirname, "agent-session-drag-overlay.tsx"),
 	"utf8",
 );
+const DRAG_LAYOUT_SOURCE = readFileSync(
+	join(__dirname, "agent-session-drag-layout.ts"),
+	"utf8",
+);
 const COHORT_CHIP_SOURCE = readFileSync(
 	join(__dirname, "agent-session-cohort-chip.tsx"),
 	"utf8",
@@ -286,22 +290,12 @@ test("medium drag keeps pointer capture on the motion host instead of swapping a
 	// so the card stuck on an empty grey attach chin.
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /isDragging \? chip : children\(sessionDragBind\)/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isDragging && preserveSourceFootprint && "pointer-events-none absolute inset-x-0 top-0 opacity-\(--opacity-disabled\)"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isFollower && preserveSourceFootprint && "pointer-events-none opacity-\(--opacity-disabled\)"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isFollower && !preserveSourceFootprint && "h-0 overflow-hidden"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/\(isFollower && !preserveSourceFootprint \|\| \(isDragging && !preserveSourceFootprint\)\) && "pointer-events-none absolute inset-x-0 top-0 opacity-0"/u,
-	);
+	// The placeholder/ghost class combinations moved to a pure module with its
+	// own suite (`agent-session-drag-layout.test.js`), so this file pins the
+	// delegation rather than re-grepping the class strings.
+	assert.match(MEDIUM_DRAG_SOURCE, /cn\(sessionDragPlaceholderClasses\(layoutState\)\)/u);
+	assert.match(MEDIUM_DRAG_SOURCE, /cn\(sessionDragSourceClasses\(layoutState\)\)/u);
+	assert.match(MEDIUM_DRAG_SOURCE, /from "\.\/agent-session-drag-layout"/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /aria-hidden=\{isDragging \|\| isFollower \|\| undefined\}/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /inert=\{isDragging \|\| isFollower \|\| undefined\}/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /window\.addEventListener\("pointerup", onPointerUp\)/u);
@@ -515,9 +509,10 @@ test("agent session hover keeps the default cursor instead of a drag-handle curs
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text/u);
 	assert.doesNotMatch(CARD_SOURCE, /cursor-grab(?!bing)/u);
 	assert.doesNotMatch(CARD_SOURCE, /cursor-pointer/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /sessionDragBind && "touch-none select-none"/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /cursor-grab(?!bing)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
+	// The grab cursor and touch-action suppression live in the layout module.
+	assert.match(DRAG_LAYOUT_SOURCE, /hasDragBind && "touch-none select-none"/u);
+	assert.doesNotMatch(DRAG_LAYOUT_SOURCE, /cursor-grab(?!bing)/u);
+	assert.match(DRAG_LAYOUT_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
 });
 
 test("the hover checkbox replaces the avatar instantly, with no opacity transition", () => {
