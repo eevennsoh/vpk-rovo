@@ -275,3 +275,63 @@ test("the collapsed options menu offers Pin and Expand", async ({ page }) => {
 	await page.getByRole("heading", { name: "Jira Design" }).hover();
 	await expect(page.getByRole("menuitem", { name: "Expand" })).toHaveCount(0);
 });
+
+test("scrolling the session column preserves the active flyout until pointer movement", async ({ page }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBoard(page);
+	const column = page.locator("[data-agent-session-column]");
+	const row = column.locator('[data-slot="hover-card-trigger"]').nth(3);
+	await row.hover();
+	const popup = page.locator('[data-slot="hover-card-content"]');
+	await expect(popup).toBeVisible();
+	const title = await popup.locator("[data-current] h2").textContent();
+	const before = await popup.boundingBox();
+	const scrollport = column.locator("div.overflow-y-auto").first();
+	await page.mouse.wheel(0, 450);
+	await expect.poll(() => scrollport.evaluate((element) => element.scrollTop)).toBeGreaterThan(200);
+	await expect(popup).toBeVisible();
+	await expect(popup.locator("[data-current] h2")).toHaveText(title!);
+	const after = await popup.boundingBox();
+	expect(Math.abs(after!.y - before!.y)).toBeLessThan(2);
+	expect(Math.abs(after!.x - before!.x)).toBeLessThan(2);
+	// The original trigger can leave the viewport without taking its preview away.
+	await page.mouse.wheel(0, 450);
+	await expect.poll(() => scrollport.evaluate((element) => element.scrollTop)).toBeGreaterThan(500);
+	await expect(popup.locator("[data-current] h2")).toHaveText(title!);
+	await page.mouse.wheel(0, -2000);
+	await expect.poll(() => scrollport.evaluate((element) => element.scrollTop)).toBe(0);
+	await expect(popup.locator("[data-current] h2")).toHaveText(title!);
+	await expect(popup).toBeVisible();
+	const nextRow = column.locator('[data-slot="hover-card-trigger"]').nth(1);
+	await nextRow.hover();
+	await expect(popup.locator("[data-current] h2")).not.toHaveText(title!);
+	await popup.hover();
+	await expect(popup).toBeVisible();
+	await page.screenshot({ path: "output/agent-browser/scrollbug/fixed.png" });
+	await page.keyboard.press("Escape");
+	await expect(popup).toHaveCount(0);
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await scrollport.evaluate((element) => { element.scrollTop = 0; });
+	await row.hover();
+	await expect(popup).toBeVisible();
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(popup).toHaveCount(0);
+});
+
+test("a scrolled session preview keeps its portalled actions usable", async ({ page }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBoard(page);
+	const column = page.locator("[data-agent-session-column]");
+	await column.locator('[data-slot="hover-card-trigger"]').nth(3).hover();
+	const popup = page.locator('[data-slot="hover-card-content"]');
+	await expect(popup).toBeVisible();
+	const title = await popup.locator("[data-current] h2").textContent();
+	await page.mouse.wheel(0, 450);
+	await expect.poll(() => column.locator("[data-agent-session-column-scrollport]").evaluate((element) => element.scrollTop)).toBeGreaterThan(200);
+	await popup.getByRole("button", { name: /^More actions for/u }).click();
+	const archive = page.getByRole("menuitem", { name: "Archive" });
+	await archive.hover();
+	await expect(archive).toBeVisible();
+	await archive.click();
+	await expect(column.locator('[data-slot="hover-card-trigger"]').filter({ hasText: title! })).toHaveCount(0);
+});
