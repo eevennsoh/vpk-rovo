@@ -778,35 +778,28 @@ test("dropping an Untracked session on Create new work item appends and reveals 
 	);
 	await expect(createDropZone).toHaveAttribute("data-armed", "true");
 	await page.evaluate(() => {
-		let pulseStartedAt: number | null = null;
-		const observeBackdropPulse = () => {
-			const pulse = document.querySelector("[data-created-card-backdrop]");
-			if (pulse && pulseStartedAt === null) {
-				pulseStartedAt = performance.now();
-				document.documentElement.setAttribute("data-created-card-backdrop-observed", "true");
-				return;
-			}
-			if (!pulse && pulseStartedAt !== null) {
-				document.documentElement.setAttribute(
-					"data-created-card-backdrop-duration",
-					String(performance.now() - pulseStartedAt),
-				);
-				observer.disconnect();
+		const observeBlueCreateFlash = () => {
+			const flashed = Array.from(document.querySelectorAll<HTMLElement>(
+				'[data-board-agent-session-drop-zone="issue"]',
+			)).some((card) => (
+				card.className.includes("bg-bg-accent-blue-subtlest")
+				|| card.querySelector<HTMLElement>('[data-slot="jira-issue-agent-backdrop"]')
+					?.className.includes("bg-bg-accent-blue-subtlest")
+			));
+			if (flashed) {
+				document.documentElement.setAttribute("data-blue-create-flash-observed", "true");
 			}
 		};
-		const observer = new MutationObserver(observeBackdropPulse);
+		const observer = new MutationObserver(observeBlueCreateFlash);
 		observer.observe(document.body, {
-			attributeFilter: ["class", "data-created-card-backdrop"],
+			attributeFilter: ["class"],
 			attributes: true,
 			childList: true,
 			subtree: true,
 		});
+		window.setTimeout(() => observer.disconnect(), 2000);
 	});
 	await page.mouse.up();
-	await expect(page.locator("html")).toHaveAttribute("data-created-card-backdrop-observed", "true");
-	await expect.poll(async () => Number(
-		await page.locator("html").getAttribute("data-created-card-backdrop-duration"),
-	)).toBeGreaterThanOrEqual(600);
 
 	await expect(issueCards).toHaveCount(initialCardCount + 1);
 	const createdCard = issueCards.last();
@@ -820,6 +813,7 @@ test("dropping an Untracked session on Create new work item appends and reveals 
 	await expect(createdCard.getByRole("button", {
 		name: /^Open Claude in Rovo chat:/u,
 	})).toBeVisible();
+	await expect(page.locator("html")).not.toHaveAttribute("data-blue-create-flash-observed", "true");
 	await expect(untrackedColumn.getByTestId(`agent-session-row-${sessionId}`)).toHaveCount(0);
 
 	await expect.poll(
