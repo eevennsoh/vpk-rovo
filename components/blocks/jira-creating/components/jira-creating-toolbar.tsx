@@ -7,15 +7,15 @@ import { Icon } from "@/components/ui/icon";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { token } from "@/lib/tokens";
 
-import type { JiraCreateExample } from "../data/jira-create-board";
-import type { JiraCreateInsertPosition } from "../lib/jira-create-insert";
+import type { JiraCreateExample } from "../data/jira-creating-board";
+import type { JiraCreateInsertPosition } from "../lib/jira-creating-insert";
 
 export interface JiraCreateToolbarProps {
 	example: JiraCreateExample;
 	onAdd: (count: 1 | 2) => void;
 	onExampleChange: (values: readonly string[]) => void;
 	onPositionChange: (values: readonly string[]) => void;
-	onReplay: () => void;
+	onRestart: () => void;
 	position: JiraCreateInsertPosition;
 }
 
@@ -24,7 +24,7 @@ export function JiraCreateToolbar({
 	onAdd,
 	onExampleChange,
 	onPositionChange,
-	onReplay,
+	onRestart,
 	position,
 }: Readonly<JiraCreateToolbarProps>) {
 	return (
@@ -61,7 +61,7 @@ export function JiraCreateToolbar({
 			</ToggleGroup>
 			<Button
 				aria-label="Restart create animation"
-				onClick={onReplay}
+				onClick={onRestart}
 				size="compact"
 				type="button"
 				variant="outline"

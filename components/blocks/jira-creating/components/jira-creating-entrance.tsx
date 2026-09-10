@@ -9,7 +9,7 @@ import {
 	getJiraCreateMotion,
 	getJiraCreateSlotTransition,
 	JIRA_CREATE_MOTION_STYLE,
-} from "../lib/jira-create-motion";
+} from "../lib/jira-creating-motion";
 
 export interface JiraCreateEntranceProps {
 	/** Play the insert-and-push entrance. Off keeps the slot at rest so callers can keep children mounted. */
@@ -38,8 +38,8 @@ export function JiraCreateEntrance({
 		<motion.div
 			animate={{ height: "auto" }}
 			className={cn("w-full min-w-0 shrink-0", active ? "overflow-hidden" : null)}
-			data-jira-create-item-id={itemId}
-			data-slot="jira-create-slot"
+			data-jira-creating-item-id={itemId}
+			data-slot="jira-creating-slot"
 			exit={shouldReduceMotion ? { height: "auto" } : { height: 0 }}
 			initial={playEntrance ? { height: 0 } : false}
 			style={{ boxSizing: "border-box" }}
@@ -48,7 +48,7 @@ export function JiraCreateEntrance({
 			<motion.div
 				animate="show"
 				className={cn("w-full min-w-0", className)}
-				data-slot="jira-create-card"
+				data-slot="jira-creating-card"
 				exit="exit"
 				initial={active ? "hidden" : false}
 				onAnimationComplete={active ? onAnimationComplete : undefined}
