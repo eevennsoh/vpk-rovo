@@ -65,3 +65,11 @@ export function JiraIssueDemoAgentActivityStatesExperimental() {
 		</div>
 	);
 }
+
+export function JiraIssueDemoAgentActivityStatesExperimentalV2() {
+	return (
+		<div className="flex w-full justify-center p-6">
+			<JiraIssuePage variant="agent-activity-states-experimental-v2" />
+		</div>
+	);
+}

@@ -11,9 +11,7 @@ import {
 	type AgentListItem,
 	toAgentSessionFlyoutItem,
 } from "@/components/blocks/agent-list";
-import type {
-	JiraIssueAgentActivityIndicatorRenderer,
-} from "@/components/blocks/jira-issue/agent-activity";
+import type { JiraIssueAgentActivityIndicatorRenderer } from "@/components/blocks/jira-issue/agent-activity";
 import type { JiraIssueAgentActivityLayout } from "@/components/blocks/jira-issue/agent-activity-model";
 import {
 	createJiraSessionFlyoutHandle,
@@ -226,6 +224,7 @@ export function JiraIssueAgentDone({
 	);
 }
 
+/** Compact / original experimental only. Comfortable (v2) never mounts this. */
 function JiraIssueAgentDoneMerged({
 	onOpenChange,
 	onView,

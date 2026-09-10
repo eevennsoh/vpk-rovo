@@ -26,6 +26,7 @@ export const JIRA_ISSUE_DETAIL: ComponentDetail = {
 		{ title: "Parent epic", description: "Issue card with a parent epic selector embedded through the Jira epic block.", demoSlug: "jira-issue-demo-parent-epic" },
 		{ title: "Agent activity states", description: "Interactive issue card states for agents working, awaiting input, and completed work.", demoSlug: "jira-issue-demo-agent-activity-states" },
 		{ id: "agent-activity-states-experimental", title: "Agent activity states (experimental)", description: "Agent activity uses the same merged chin and shared flyout for one or many attached sessions, matching the Jira Team EU26 experience. The transfer phases show unlinking a session, keeping one running session with two detached sessions, and linking or dragging those sessions back onto the card.", demoSlug: "jira-issue-demo-agent-activity-states-experimental" },
+		{ id: "agent-activity-states-experimental-v2", title: "Agent activity states (experimental v2)", description: "Same merged-chin playground as the experimental agent activity states, with 16px issue-type, priority, and subtask icons, 24px avatars, and nested subtask cards that stay stroke regardless of the parent Raised/Stroke toggle.", demoSlug: "jira-issue-demo-agent-activity-states-experimental-v2" },
 	],
 	props: [
 		{ name: "variant", type: '"default" | "uncaptured-work"', default: '"default"', description: "Selects the standard Jira issue card or the uncaptured-work presentation." },
@@ -50,6 +51,8 @@ export const JIRA_ISSUE_DETAIL: ComponentDetail = {
 		{ name: "showPriorityIndicator", type: "boolean", default: "true", description: "Controls whether the priority icon is shown in the issue metadata row." },
 		{ name: "selected", type: "boolean", default: "false", description: "Applies the selected border/background and aria-pressed state." },
 		{ name: "dragging", type: "boolean", default: "false", description: "Applies the drag cursor and faded drag state." },
+		{ name: "iconScale", type: '"compact" | "comfortable"', default: '"compact"', description: "Compact keeps 12px icons and 16px avatars on compact/stroke cards. Comfortable uses 16px icons and 24px avatars." },
+		{ name: "subtaskChrome", type: '"raised" | "stroke"', description: "Chrome for nested subtask cards. Compact cards default to stroke so Raised/Stroke only changes the parent. Stroke keeps a border even when the parent is raised." },
 		{ name: "assigneeAvatarSrc", type: "string", description: "Assignee avatar image source." },
 		{ name: "assigneeUnassignedKind", type: '"person" | "agent"', description: "Renders the shared unassigned avatar placeholder instead of an assignee image." },
 		{ name: "agentActivities", type: "readonly JiraIssueAgentActivity[]", description: "Active agents aggregated into one priority row. One or many attached sessions reveal the same shared assignment flyout; multiple agents use the cycling Agent Loading visual." },
