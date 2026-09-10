@@ -41,6 +41,7 @@ const FAB_GEOMETRY_SOURCE = readProjectFile(
 
 test("the route pins the shared Agent Session column beside Jira statuses", () => {
 	assert.match(PAGE_SOURCE, /showAgentSessionColumn/u);
+	assert.match(PAGE_SOURCE, /agentSessionMultiSelect=\{false\}/u);
 	assert.match(PAGE_SOURCE, /showAgentSessionFilter=\{false\}/u);
 	assert.match(PAGE_SOURCE, /showAgentSessionOverflow=\{false\}/u);
 	assert.match(PAGE_SOURCE, /defaultAgentSessionColumnCollapsed/u);
