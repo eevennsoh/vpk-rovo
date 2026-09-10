@@ -620,7 +620,10 @@ test("Kanban column add-agent controls use the AI agent add icon", () => {
 	assert.match(DEFAULT_BOARD_SOURCE, /import AiAgentAddIcon from "@atlaskit\/icon-lab\/core\/ai-agent-add"/u);
 	assert.match(DEFAULT_BOARD_SOURCE, /render=\{<AiAgentAddIcon label="" \/>\}/u);
 	assert.doesNotMatch(DEFAULT_BOARD_SOURCE, /import AiAgentIcon from "@atlaskit\/icon\/core\/ai-agent"/u);
-	const experimentalBoard = readFileSync(join(EXPERIMENTAL_DIR, "experimental-jira-kanban.tsx"), "utf8");
+	const experimentalBoard = [
+		readFileSync(join(EXPERIMENTAL_DIR, "experimental-jira-kanban.tsx"), "utf8"),
+		readFileSync(join(EXPERIMENTAL_DIR, "components", "board-column-agent-assignment.tsx"), "utf8"),
+	].join("\n");
 	assert.match(experimentalBoard, /import AiAgentAddIcon from "@atlaskit\/icon-lab\/core\/ai-agent-add"/u);
 	assert.match(experimentalBoard, /render=\{<AiAgentAddIcon label="" \/>\}/u);
 	assert.doesNotMatch(experimentalBoard, /import AiAgentIcon from "@atlaskit\/icon\/core\/ai-agent"/u);

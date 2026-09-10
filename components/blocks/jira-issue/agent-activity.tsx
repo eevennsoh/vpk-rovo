@@ -6,18 +6,27 @@ import {
 	useRef,
 	useState,
 	type CSSProperties,
+	type Dispatch,
 	type MouseEvent as ReactMouseEvent,
 	type PointerEvent as ReactPointerEvent,
 	type ReactElement,
+	type RefObject,
+	type SetStateAction,
 } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useMotionValue, useSpring, type Transition } from "motion/react";
-import StatusInformationIcon from "@atlaskit/icon/core/status-information";
+import {
+	AnimatePresence,
+	motion,
+	useMotionValue,
+	useSpring,
+	type MotionValue,
+	type Transition,
+} from "motion/react";
 
 import { ROVO_AGENT_SELECTOR_AGENTS } from "@/app/data/directory/agents";
 import {
-	AgentAssignment,
 	type AgentAssignmentAgent,
+	type AgentAssignmentStatusKind,
 } from "@/components/blocks/agent-assignment";
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
 import {
@@ -26,8 +35,6 @@ import {
 	type JiraIssueAgentActivityLayout,
 } from "@/components/blocks/jira-issue/agent-activity-model";
 import {
-	JiraIssueAgentIntroLabel,
-	JiraIssueShimmeringAgentLabel,
 	useJiraIssueAgentStartupPhase,
 } from "@/components/blocks/jira-issue/agent-activity-startup";
 import {
@@ -36,25 +43,25 @@ import {
 	type JiraIssueAgentSessionDragBinding,
 } from "@/components/blocks/jira-issue/agent-session-drag";
 import { AgentSessionMentionChip } from "@/components/blocks/jira-issue/agent-session-mention-chip";
-import {
-	JiraIssueAgentLinkFlashOverlay,
-	type JiraIssueAgentLinkFlash,
-} from "@/components/blocks/jira-issue/agent-link-flash";
+import type { JiraIssueAgentLinkFlash } from "@/components/blocks/jira-issue/agent-link-flash";
 import { JiraIssueAttachChinSlot } from "@/components/blocks/jira-issue/attach-chin";
+import type { JiraIssueIconScale } from "@/components/blocks/jira-issue/types";
 import { useSessionDragChipPointer } from "@/components/blocks/jira-issue/use-session-drag-chip-pointer";
-import { JiraIssueAgentSessionUnlinkButton } from "@/components/blocks/jira-issue/agent-session-unlink-button";
 import type { QuestionCardQuestion } from "@/components/blocks/question-card/types";
-import { AgentAvatarVisual } from "@/components/ui-custom/agent-avatar-visual";
-import { AgentLoading, type AgentLoadingAgent } from "@/components/ui-custom/agent-loading";
-import { AnimatedDots } from "@/components/ui-custom/animated-dots";
 import {
 	usePointerDrag,
 	type PointerDragPosition,
 } from "@/components/ui-custom/hooks/use-pointer-drag";
-import { TWGLoader } from "@/components/ui-custom/twg-loader";
 import type { ThirdPartyLogoName } from "@/components/ui/data/logo-third-party-data";
-import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+
+import {
+	JiraIssueAgentAssignmentHandle,
+	JiraIssueAgentRowContent,
+	JiraIssueAgentRowSurface,
+	JiraIssueAgentStatusIcon,
+	type JiraIssueAgentAssignment,
+} from "./agent-activity-row-presentation";
 
 export type JiraIssueAgentActivityMode = "none" | "working" | "awaiting-input" | "completed";
 export type JiraIssueAgentActivityState = "working" | "awaiting-input" | "completed";
@@ -131,10 +138,6 @@ function getJiraIssuePresenceMotion(shouldReduceMotion: boolean | null) {
 	} as const;
 }
 
-function getAgentInitial(name: string): string {
-	return name.trim()[0]?.toUpperCase() ?? "A";
-}
-
 function getJiraIssueAgentWorkingLabels(activity: JiraIssueAgentActivity | undefined): readonly string[] {
 	if (!activity) {
 		return [];
@@ -152,6 +155,23 @@ function getJiraIssueAgentWorkingLabels(activity: JiraIssueAgentActivity | undef
 	return labels;
 }
 
+function toAssignedAgentStatusKind(
+	state: JiraIssueAgentActivityState,
+): AgentAssignmentStatusKind {
+	switch (state) {
+		case "working":
+			return "working";
+		case "awaiting-input":
+			return "needs-input";
+		case "completed":
+			return "finished";
+		default: {
+			const exhaustiveState: never = state;
+			return exhaustiveState;
+		}
+	}
+}
+
 function toAgentAssignmentAgent(activity: JiraIssueAgentActivity): AgentAssignmentAgent {
 	return {
 		id: activity.id,
@@ -160,6 +180,7 @@ function toAgentAssignmentAgent(activity: JiraIssueAgentActivity): AgentAssignme
 		...(activity.avatarSrc ? { avatarSrc: activity.avatarSrc } : {}),
 		...(activity.agentBrandName ? { brandName: activity.agentBrandName } : {}),
 		status: activity.label,
+		statusKind: toAssignedAgentStatusKind(activity.state),
 		statusSequence: activity.state === "working" ? getJiraIssueAgentWorkingLabels(activity) : undefined,
 		...(activity.cycleIntervalMs !== undefined ? { statusCycleIntervalMs: activity.cycleIntervalMs } : {}),
 		...(activity.cycleIntervalJitterMs !== undefined ? { statusCycleJitterMs: activity.cycleIntervalJitterMs } : {}),
@@ -177,31 +198,260 @@ function toSelectorAgent(activity: JiraIssueAgentActivity): AgentSelectorAgent {
 	};
 }
 
-function toAgentLoadingAgent(activity: JiraIssueAgentActivity): AgentLoadingAgent {
+function getJiraIssueAgentCatalog(
+	activities: readonly JiraIssueAgentActivity[],
+): readonly AgentSelectorAgent[] {
+	const extras = activities
+		.filter((activity) => !ROVO_AGENT_SELECTOR_AGENTS.some((agent) => agent.id === activity.id))
+		.map(toSelectorAgent);
+	return extras.length > 0
+		? [...extras, ...ROVO_AGENT_SELECTOR_AGENTS]
+		: ROVO_AGENT_SELECTOR_AGENTS;
+}
+
+function resolveJiraIssueAgentRowPresentation(
+	activities: readonly JiraIssueAgentActivity[],
+	linkFlash: JiraIssueAgentLinkFlash | undefined,
+	hasViewChat: boolean,
+) {
+	const summary = summarizeJiraIssueAgentActivities(activities);
+	const isCompletedRow = activities.length > 0
+		&& activities.every((activity) => activity.state === "completed");
+	const isFailedRow = isCompletedRow
+		&& activities.some((activity) => activity.label === "Failed");
+	const isSingleAgent = summary.activityCount === 1;
+	const rowLinkFlash = linkFlash
+		&& activities.some((activity) => linkFlash.activityIds.includes(activity.id))
+		? linkFlash
+		: null;
+	const isAwaitingInput = !isCompletedRow && summary.priorityState === "awaiting-input";
+	const featuredActivity = summary.featuredActivityIndex !== null
+		? activities[summary.featuredActivityIndex]
+		: undefined;
+	const rowLabel = isCompletedRow
+		? featuredActivity?.label ?? "Finished"
+		: summary.label;
+	const canOpenChat = isSingleAgent && hasViewChat;
+	const activityKey = activities.map((activity) => activity.id).join("\n");
+	const startupSequenceKey = isSingleAgent && featuredActivity?.startupSequence === "jira-work-item-start"
+		? activityKey
+		: null;
+	const openChatAriaLabel = canOpenChat
+		? `Open ${activities[0]?.name ?? "agent"} in Rovo chat: ${rowLabel}`
+		: isSingleAgent
+			? `${activities[0]?.name ?? "Agent"}: ${rowLabel}`
+			: `${summary.activityCount} agents: ${rowLabel}`;
+
 	return {
-		id: activity.id,
-		name: activity.name,
-		status: activity.state === "completed" ? "finished" : "working",
-		avatar: {
-			...(activity.avatarSrc ? { avatarSrc: activity.avatarSrc } : {}),
-			...(activity.agentBrandName ? { brandName: activity.agentBrandName } : {}),
-			fallbackText: getAgentInitial(activity.name),
+		canOpenChat,
+		featuredActivity,
+		isAwaitingInput,
+		isCompletedRow,
+		isFailedRow,
+		openChatAriaLabel,
+		rowLabel,
+		rowLinkFlash,
+		startupSequenceKey,
+	};
+}
+
+function createOpenChatHandler(
+	activities: readonly JiraIssueAgentActivity[],
+	onViewChat: ((activity: JiraIssueAgentActivity) => void) | undefined,
+	canOpenChat: boolean,
+) {
+	return canOpenChat ? () => onViewChat?.(activities[0]) : undefined;
+}
+
+function resolveJiraIssueSessionDragPresentation(
+	sessionDrag: JiraIssueAgentSessionDragBinding | undefined,
+	drag: ReturnType<typeof usePointerDrag>,
+	iconScale: JiraIssueIconScale,
+) {
+	const isDragging = Boolean(sessionDrag) && drag.dragging;
+	const isDraggedOut = isDragging
+		&& Math.hypot(drag.position.x, drag.position.y) >= JIRA_ISSUE_SESSION_DRAG_CHIP_DISTANCE_PX;
+	const showUnlinkControl = iconScale !== "comfortable"
+		&& Boolean(sessionDrag?.onUnlink)
+		&& !isDraggedOut;
+
+	return { isDraggedOut, isDragging, showUnlinkControl };
+}
+
+function createJiraIssueSessionDragBind({
+	activities,
+	chipPointer,
+	drag,
+	onSessionDragChange,
+	pointerOriginRef,
+	sessionDrag,
+	setDragOffset,
+}: Readonly<{
+	activities: readonly JiraIssueAgentActivity[];
+	chipPointer: ReturnType<typeof useSessionDragChipPointer>;
+	drag: ReturnType<typeof usePointerDrag>;
+	onSessionDragChange?: (
+		dragging: boolean,
+		pointer: PointerDragPosition | null,
+		cancelled: boolean,
+	) => void;
+	pointerOriginRef: RefObject<PointerDragPosition | null>;
+	sessionDrag?: JiraIssueAgentSessionDragBinding;
+	setDragOffset: Dispatch<SetStateAction<PointerDragPosition>>;
+}>) {
+	if (!sessionDrag) {
+		return undefined;
+	}
+
+	function publishSessionDrag(
+		dragging: boolean,
+		event?: ReactPointerEvent<HTMLElement>,
+		cancelled = false,
+	) {
+		onSessionDragChange?.(
+			dragging,
+			event ? { x: event.clientX, y: event.clientY } : null,
+			cancelled,
+		);
+	}
+
+	const { onKeyDown: _ignoredPointerDragKeyDown, ...dragBindWithoutKeyboard } = drag.bind;
+	void _ignoredPointerDragKeyDown;
+
+	return {
+		...dragBindWithoutKeyboard,
+		onFocus: () => sessionDrag.onFocusedActivitiesChange(activities),
+		// The card `<article>` is `draggable`, so a plain pointerdown would hand
+		// the gesture to native HTML5 drag. Cancelling the compatibility
+		// mousedown suppresses `dragstart`; focus has to be restored by hand.
+		onMouseDown: (event: ReactMouseEvent<HTMLElement>) => {
+			event.preventDefault();
+			event.currentTarget.focus();
+		},
+		onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => {
+			drag.bind.onPointerCancel(event);
+			pointerOriginRef.current = null;
+			setDragOffset(JIRA_ISSUE_SESSION_DRAG_ORIGIN);
+			publishSessionDrag(false, undefined, true);
+		},
+		onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
+			drag.bind.onPointerDown(event);
+			pointerOriginRef.current = { x: event.clientX, y: event.clientY };
+			chipPointer.snapToPointer({ x: event.clientX, y: event.clientY });
+		},
+		onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
+			drag.bind.onPointerMove(event);
+			chipPointer.followPointer({ x: event.clientX, y: event.clientY });
+			const origin = pointerOriginRef.current;
+			const moved = Boolean(
+				origin
+				&& (
+					Math.abs(event.clientX - origin.x) > JIRA_ISSUE_SESSION_DRAG_PUBLISH_THRESHOLD_PX
+					|| Math.abs(event.clientY - origin.y) > JIRA_ISSUE_SESSION_DRAG_PUBLISH_THRESHOLD_PX
+				),
+			);
+			if (moved) {
+				publishSessionDrag(true, event);
+			}
+		},
+		onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
+			drag.bind.onPointerUp(event);
+			pointerOriginRef.current = null;
+			setDragOffset(JIRA_ISSUE_SESSION_DRAG_ORIGIN);
+			publishSessionDrag(false, event);
 		},
 	};
 }
 
+function JiraIssueAgentDragWrapper({
+	chipPointer,
+	children,
+	dragChip,
+	dragX,
+	dragY,
+	isDraggedOut,
+	isDragging,
+	sessionDragEnabled,
+}: Readonly<{
+	chipPointer: ReturnType<typeof useSessionDragChipPointer>;
+	children: ReactElement;
+	dragChip: ReactElement;
+	dragX: MotionValue<number>;
+	dragY: MotionValue<number>;
+	isDraggedOut: boolean;
+	isDragging: boolean;
+	sessionDragEnabled: boolean;
+}>): ReactElement {
+	if (!sessionDragEnabled) {
+		return children;
+	}
+
+	return (
+		<div
+			className={cn(
+				"min-w-0",
+				isDragging && "relative w-full",
+				isDragging && (isDraggedOut ? "h-0" : "h-10"),
+			)}
+			data-session-chip-out={isDraggedOut || undefined}
+			data-slot="jira-issue-agent-row-wrap"
+		>
+			{/* The spring lives on the wrapper, not the row: `AgentAssignment`
+			    clones the trigger and forwards no ref, so the row cannot carry
+			    motion values of its own. While dragging it also has to outrank
+			    the drop wells, which are later siblings and would otherwise
+			    paint over the travelling chip. Once the chip is out the wrapper
+			    hugs it so a full-width box is not left behind a small pill. */}
+			<motion.div
+				className={cn(
+					"min-w-0",
+					isDragging && "absolute inset-x-0 top-0",
+					isDraggedOut && "pointer-events-none opacity-0",
+				)}
+				style={{ x: dragX, y: dragY }}
+			>
+				{children}
+			</motion.div>
+			{isDraggedOut && typeof document !== "undefined" ? createPortal(
+				<motion.div
+					aria-hidden
+					className="pointer-events-none left-0 top-0 z-[300] w-fit"
+					data-session-drag-overlay=""
+					data-session-dragging=""
+					style={{
+						x: chipPointer.x,
+						y: chipPointer.y,
+						...sessionDragChipViewportStyle(true),
+					}}
+				>
+					{dragChip}
+				</motion.div>,
+				document.body,
+			) : null}
+		</div>
+	);
+}
+
 function JiraIssueAgentActivityRow({
 	activities,
+	assignment,
+	iconScale = "compact",
 	linkFlash,
 	onOpenChange,
 	onSessionDragChange,
 	onViewChat,
 	renderAgentActivityIndicator,
 	sessionDrag,
+	inheritChinSurface = false,
+	showAssignmentFlyout = true,
 	shouldReduceMotion,
 	usesStrokeChrome,
 }: Readonly<{
 	activities: readonly JiraIssueAgentActivity[];
+	assignment?: JiraIssueAgentAssignment;
+	iconScale?: JiraIssueIconScale;
+	/** Rest shows the parent well; hover still paints only this row. */
+	inheritChinSurface?: boolean;
 	/** Set on the row a session has just been linked into; other rows ignore it. */
 	linkFlash?: JiraIssueAgentLinkFlash;
 	onOpenChange?: (open: boolean) => void;
@@ -213,44 +463,35 @@ function JiraIssueAgentActivityRow({
 	onViewChat?: (activity: JiraIssueAgentActivity) => void;
 	renderAgentActivityIndicator?: JiraIssueAgentActivityIndicatorRenderer;
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
+	/** Hover assignment menu. Completed rows stay assignment-flyout-free. */
+	showAssignmentFlyout?: boolean;
 	shouldReduceMotion: boolean | null;
 	usesStrokeChrome: boolean;
 }>) {
-	const summary = summarizeJiraIssueAgentActivities(activities);
-	const isSingleAgent = summary.activityCount === 1;
 	// Any row that gained one of the linked sessions sweeps, including a merged
 	// "N Working" row. Dropping onto a card that is already busy changes that
 	// row — its count just went up — so skipping it would leave the one place
 	// the link actually landed as the only place that never acknowledged it.
-	const rowLinkFlash = linkFlash
-		&& activities.some((activity) => linkFlash.activityIds.includes(activity.id))
-		? linkFlash
-		: null;
-	const isAwaitingInput = summary.priorityState === "awaiting-input";
-	const featuredActivity = summary.featuredActivityIndex !== null
-		? activities[summary.featuredActivityIndex]
-		: undefined;
-	const canOpenChat = isSingleAgent && Boolean(onViewChat);
-	const activityKey = activities.map((activity) => activity.id).join("\n");
-	const startupSequenceKey = isSingleAgent && featuredActivity?.startupSequence === "jira-work-item-start"
-		? activityKey
-		: null;
+	const {
+		canOpenChat,
+		featuredActivity,
+		isAwaitingInput,
+		isCompletedRow,
+		isFailedRow,
+		openChatAriaLabel,
+		rowLabel,
+		rowLinkFlash,
+		startupSequenceKey,
+	} = resolveJiraIssueAgentRowPresentation(activities, linkFlash, Boolean(onViewChat));
 	const startupPhase = useJiraIssueAgentStartupPhase(
 		startupSequenceKey,
 		shouldReduceMotion,
 		featuredActivity?.startedAtMs,
 	);
-	const catalogAgents = useMemo(() => {
-		const extras = activities
-			.filter((activity) => !ROVO_AGENT_SELECTOR_AGENTS.some((agent) => agent.id === activity.id))
-			.map(toSelectorAgent);
-		return extras.length > 0
-			? [...extras, ...ROVO_AGENT_SELECTOR_AGENTS]
-			: ROVO_AGENT_SELECTOR_AGENTS;
-	}, [activities]);
-	const assignedAgents = activities.map(toAgentAssignmentAgent);
+	const catalogAgents = useMemo(() => getJiraIssueAgentCatalog(activities), [activities]);
+	const assignedAgents = assignment?.assignedAgents ?? activities.map(toAgentAssignmentAgent);
 
-	const handleOpenChat = canOpenChat ? () => onViewChat?.(activities[0]) : undefined;
+	const handleOpenChat = createOpenChatHandler(activities, onViewChat, canOpenChat);
 	const [dragOffset, setDragOffset] = useState<PointerDragPosition>(JIRA_ISSUE_SESSION_DRAG_ORIGIN);
 	// `onActivate` (not a sibling `onClick`) is how the row keeps its open-chat
 	// behaviour: the hook owns `bind.onClick` and swallows exactly one click
@@ -266,14 +507,11 @@ function JiraIssueAgentActivityRow({
 	const dragX = shouldReduceMotion ? dragOffsetX : springX;
 	const dragY = shouldReduceMotion ? dragOffsetY : springY;
 	const chipPointer = useSessionDragChipPointer(shouldReduceMotion);
-	/**
-	 * Session is clear of the chin: show it as the chip it is about to become.
-	 * Held back until the row has actually travelled so the first pointermove
-	 * does not snap straight to a hard-edged tag.
-	 */
-	const isDragging = Boolean(sessionDrag) && drag.dragging;
-	const isDraggedOut = isDragging
-		&& Math.hypot(drag.position.x, drag.position.y) >= JIRA_ISSUE_SESSION_DRAG_CHIP_DISTANCE_PX;
+	const {
+		isDraggedOut,
+		isDragging,
+		showUnlinkControl,
+	} = resolveJiraIssueSessionDragPresentation(sessionDrag, drag, iconScale);
 	const pointerOriginRef = useRef<PointerDragPosition | null>(null);
 
 	useEffect(() => {
@@ -281,76 +519,20 @@ function JiraIssueAgentActivityRow({
 		dragOffsetY.set(drag.position.y);
 	}, [dragOffsetX, dragOffsetY, drag.position.x, drag.position.y]);
 
-	function publishSessionDrag(
-		dragging: boolean,
-		event?: ReactPointerEvent<HTMLElement>,
-		cancelled = false,
-	) {
-		onSessionDragChange?.(dragging, event ? { x: event.clientX, y: event.clientY } : null, cancelled);
-	}
-
-	function endSessionDrag(event: ReactPointerEvent<HTMLElement>) {
-		drag.bind.onPointerUp(event);
-		pointerOriginRef.current = null;
-		setDragOffset(JIRA_ISSUE_SESSION_DRAG_ORIGIN);
-		publishSessionDrag(false, event);
-	}
-
-	// `pointercancel` is an interruption, not a release: end the gesture but flag
-	// it so the transfer region drops its armed target instead of committing it.
-	function cancelSessionDrag(event: ReactPointerEvent<HTMLElement>) {
-		drag.bind.onPointerCancel(event);
-		pointerOriginRef.current = null;
-		setDragOffset(JIRA_ISSUE_SESSION_DRAG_ORIGIN);
-		publishSessionDrag(false, undefined, true);
-	}
-
 	// `onKeyDown` is deliberately dropped from the spread: the shared pointer-drag
 	// hook nudges position with arrow keys, but only the pointer handlers publish
 	// transfer state, so keyboard movement would displace a focused row with no
 	// way to arm, drop, or reset it. Keyboard users unlink from the chin link-broken;
 	// the well is a drop target only.
-	const { onKeyDown: _ignoredPointerDragKeyDown, ...dragBindWithoutKeyboard } = drag.bind;
-	void _ignoredPointerDragKeyDown;
-	const sessionDragBind = sessionDrag
-		? {
-			...dragBindWithoutKeyboard,
-			onFocus: () => sessionDrag.onFocusedActivitiesChange(activities),
-			// The card `<article>` is `draggable`, so a plain pointerdown would hand
-			// the gesture to native HTML5 drag. Cancelling the compatibility
-			// mousedown suppresses `dragstart`; focus has to be restored by hand.
-			onMouseDown: (event: ReactMouseEvent<HTMLElement>) => {
-				event.preventDefault();
-				event.currentTarget.focus();
-			},
-			onPointerCancel: cancelSessionDrag,
-			onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
-				drag.bind.onPointerDown(event);
-				pointerOriginRef.current = { x: event.clientX, y: event.clientY };
-				chipPointer.snapToPointer(
-					{ x: event.clientX, y: event.clientY },
-				);
-			},
-			onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
-				drag.bind.onPointerMove(event);
-				chipPointer.followPointer(
-					{ x: event.clientX, y: event.clientY },
-				);
-				const origin = pointerOriginRef.current;
-				const moved = Boolean(
-					origin
-					&& (
-						Math.abs(event.clientX - origin.x) > JIRA_ISSUE_SESSION_DRAG_PUBLISH_THRESHOLD_PX
-						|| Math.abs(event.clientY - origin.y) > JIRA_ISSUE_SESSION_DRAG_PUBLISH_THRESHOLD_PX
-					),
-				);
-				if (moved) {
-					publishSessionDrag(true, event);
-				}
-			},
-			onPointerUp: endSessionDrag,
-		}
-		: undefined;
+	const sessionDragBind = createJiraIssueSessionDragBind({
+		activities,
+		chipPointer,
+		drag,
+		onSessionDragChange,
+		pointerOriginRef,
+		sessionDrag,
+		setDragOffset,
+	});
 	const dragChip = (
 		<div
 			className="pointer-events-none -translate-x-1/2 -translate-y-1/2"
@@ -369,116 +551,20 @@ function JiraIssueAgentActivityRow({
 		</div>
 	);
 
-	function withSessionDrag(node: ReactElement) {
-		if (!sessionDrag) {
-			return node;
-		}
-
-		return (
-			// The slot only reserves the row's height while the session is still
-			// leaving the chin. Once the chip is free it collapses, so the card's
-			// grey backdrop closes up and hugs what is left of the card instead of
-			// holding an empty band open under a tag that has gone.
-			//
-			// `data-session-chip-out` is what closes the row list's gutter, via a
-			// `:has()` selector up there. Publishing the flip through a callback
-			// cost an extra render AND landed the collapse in a later commit than
-			// the one the transfer region's hit test measures — so a release with
-			// no further pointer move could commit against the well's pre-collapse
-			// rect. An attribute settles the whole 48px in this same commit.
-			<div
-				className={cn(
-					"min-w-0",
-					isDragging && "relative w-full",
-				isDragging && (isDraggedOut ? "h-0" : "h-10"),
-				)}
-				data-session-chip-out={isDraggedOut || undefined}
-				data-slot="jira-issue-agent-row-wrap"
-			>
-				{/* The spring lives on the wrapper, not the row: `AgentAssignment`
-				    clones the trigger and forwards no ref, so the row cannot carry
-				    motion values of its own. While dragging it also has to outrank
-				    the drop wells, which are later siblings and would otherwise
-				    paint over the travelling chip. Once the chip is out the wrapper
-				    hugs it so a full-width box is not left behind a small pill. */}
-				<motion.div
-					className={cn(
-						"min-w-0",
-						isDragging && "absolute inset-x-0 top-0",
-						isDraggedOut && "pointer-events-none opacity-0",
-					)}
-					style={{
-						x: dragX,
-						y: dragY,
-					}}
-				>
-					{node}
-				</motion.div>
-				{isDraggedOut ? createPortal(
-					<motion.div
-						aria-hidden
-						className="pointer-events-none left-0 top-0 z-[300] w-fit"
-						data-session-drag-overlay=""
-						data-session-dragging=""
-						style={{
-							x: chipPointer.x,
-							y: chipPointer.y,
-							...sessionDragChipViewportStyle(true),
-						}}
-					>
-						{dragChip}
-					</motion.div>,
-					document.body,
-				) : null}
-			</div>
-		);
-	}
-
-	const showUnlinkControl = Boolean(sessionDrag?.onUnlink) && !isDraggedOut;
-	const statusIcon = !isAwaitingInput && startupPhase === "intro" ? (
-		<span
-			aria-hidden="true"
-			className="grid size-6 shrink-0 place-items-center"
+	const statusIcon = (
+		<JiraIssueAgentStatusIcon
+			iconScale={iconScale}
+			isAwaitingInput={isAwaitingInput}
+			isCompletedRow={isCompletedRow}
+			isFailedRow={isFailedRow}
+			renderAgentActivityIndicator={renderAgentActivityIndicator}
+			startupPhase={startupPhase}
 		/>
-	) : !isAwaitingInput && startupPhase === "gathering-context" ? (
-		<span
-			aria-hidden="true"
-			className="grid size-6 shrink-0 place-items-center"
-		>
-			<TWGLoader label="" size="small" />
-		</span>
-	) : renderAgentActivityIndicator ? (
-		<span
-			aria-hidden="true"
-			className="grid size-6 shrink-0 place-items-center text-icon"
-		>
-			{renderAgentActivityIndicator(isAwaitingInput ? "awaiting-input" : "working")}
-		</span>
-	) : isAwaitingInput ? (
-		<span
-			aria-hidden="true"
-			className="grid size-6 shrink-0 place-items-center text-icon-information"
-		>
-			<StatusInformationIcon label="" size="small" color="currentColor" />
-		</span>
-	) : (
-		<span
-			className="grid size-6 shrink-0 place-items-center text-icon"
-			aria-hidden="true"
-		>
-			<Spinner label="" />
-		</span>
 	);
 	const rowHandle = (
 		<button
 			type="button"
-			aria-label={
-				canOpenChat
-					? `Open ${activities[0]?.name ?? "agent"} in Rovo chat: ${summary.label}`
-					: isSingleAgent
-						? `${activities[0]?.name ?? "Agent"}: ${summary.label}`
-						: `${summary.activityCount} agents: ${summary.label}`
-			}
+			aria-label={openChatAriaLabel}
 			{...(sessionDragBind ?? { onClick: handleOpenChat })}
 			{...(sessionDragBind
 				? {
@@ -493,103 +579,65 @@ function JiraIssueAgentActivityRow({
 				sessionDragBind && "touch-none select-none",
 			)}
 		>
-			<>
-				<div className="flex min-w-0 flex-1 items-center gap-2">
-					{featuredActivity ? (
-						<AgentAvatarVisual
-							avatarClassName="shrink-0"
-							avatarSrc={featuredActivity.avatarSrc}
-							brandName={featuredActivity.agentBrandName}
-							fallbackText={getAgentInitial(featuredActivity.name)}
-							label={featuredActivity.name}
-							sizePx={24}
-						/>
-					) : (
-						<AgentLoading
-							agents={activities.map(toAgentLoadingAgent)}
-							announce={false}
-							className="shrink-0"
-						/>
-					)}
-					{isAwaitingInput ? (
-						<span className="flex min-w-0 flex-1 items-baseline overflow-hidden text-sm leading-5 text-text-subtlest">
-							<span className="block min-w-0 truncate text-sm leading-5">
-								{summary.label}
-							</span>
-							<AnimatedDots />
-						</span>
-					) : startupPhase === "intro" ? (
-						<JiraIssueAgentIntroLabel usesStrokeChrome={usesStrokeChrome} />
-					) : startupPhase === "gathering-context" ? (
-						<JiraIssueShimmeringAgentLabel
-							label="Gathering context"
-							usesStrokeChrome={usesStrokeChrome}
-						/>
-					) : (
-						<span className="block min-w-0 flex-1 truncate text-sm leading-5 text-text">
-							{summary.label}
-						</span>
-					)}
-				</div>
-				{showUnlinkControl ? null : statusIcon}
-			</>
+			<JiraIssueAgentRowContent
+				activities={activities}
+				featuredActivity={featuredActivity}
+				isAwaitingInput={isAwaitingInput}
+				rowLabel={rowLabel}
+				showUnlinkControl={showUnlinkControl}
+				startupPhase={startupPhase}
+				statusIcon={statusIcon}
+				usesStrokeChrome={usesStrokeChrome}
+			/>
 		</button>
 	);
 	const assignedRowHandle = (
-		<AgentAssignment
+		<JiraIssueAgentAssignmentHandle
+			activities={activities}
 			agents={catalogAgents}
 			assignedAgents={assignedAgents}
-			onAssignedAgentSelect={(agent) => {
-				const activity = activities.find((candidate) => candidate.id === agent.id);
-				if (activity) {
-					onViewChat?.(activity);
-				}
-			}}
+			assignment={assignment}
+			isCompletedRow={isCompletedRow}
 			onOpenChange={onOpenChange}
-			openMode="hover"
-			positionerClassName="z-[575]"
-			trigger={rowHandle}
+			onViewChat={onViewChat}
+			rowHandle={rowHandle}
+			showAssignmentFlyout={showAssignmentFlyout}
 		/>
 	);
 
-	return withSessionDrag(
-		<div
-			className={cn(
-				"group/agent-chin-row relative flex min-w-0 items-center",
-			isDraggedOut
-				? "h-auto w-fit max-w-full justify-start bg-transparent p-0"
-				: "h-10 w-full justify-between rounded-md px-2 py-2 hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
-			)}
-			data-agent-startup-phase={startupSequenceKey ? startupPhase : undefined}
-			data-session-chin=""
-			data-slot="jira-issue-agent-row"
+	return (
+		<JiraIssueAgentDragWrapper
+			chipPointer={chipPointer}
+			dragChip={dragChip}
+			dragX={dragX}
+			dragY={dragY}
+			isDraggedOut={isDraggedOut}
+			isDragging={isDragging}
+			sessionDragEnabled={Boolean(sessionDrag)}
 		>
-			{rowLinkFlash ? <JiraIssueAgentLinkFlashOverlay flash={rowLinkFlash} /> : null}
-			{assignedRowHandle}
-			{showUnlinkControl ? (
-				<div className="flex shrink-0 items-center gap-0">
-					<JiraIssueAgentSessionUnlinkButton
-						onUnlink={() => sessionDrag?.onUnlink?.({
-							id: featuredActivity?.id ?? activities[0]?.id ?? "",
-							name: featuredActivity?.name ?? activities[0]?.name ?? "Agent",
-						})}
-					/>
-					{/* Same trailing slot as the detached link — avatar column, size-6 -mr-1. */}
-					<span
-						className="flex size-6 shrink-0 items-center justify-center -mr-1"
-						data-slot="jira-issue-assignee-slot"
-					>
-						{statusIcon}
-					</span>
-				</div>
-			) : null}
-		</div>,
+			<JiraIssueAgentRowSurface
+				activities={activities}
+				assignedRowHandle={assignedRowHandle}
+				featuredActivity={featuredActivity}
+				iconScale={iconScale}
+				inheritChinSurface={inheritChinSurface}
+				isDraggedOut={isDraggedOut}
+				rowLinkFlash={rowLinkFlash}
+				sessionDrag={sessionDrag}
+				showUnlinkControl={showUnlinkControl}
+				startupPhase={startupPhase}
+				startupSequenceKey={startupSequenceKey}
+				statusIcon={statusIcon}
+			/>
+		</JiraIssueAgentDragWrapper>
 	);
 }
 
 export function JiraIssueAgentActivityRows({
 	activities,
+	assignment,
 	attachPreviewCopy,
+	iconScale = "compact",
 	instantSessionTransfer = false,
 	linkFlash,
 	layout = "merged",
@@ -597,12 +645,19 @@ export function JiraIssueAgentActivityRows({
 	onViewChat,
 	renderAgentActivityIndicator,
 	sessionDrag,
+	inheritChinSurface = false,
+	showAssignmentFlyout = true,
 	shouldReduceMotion,
 	usesStrokeChrome,
 }: Readonly<{
 	activities: readonly JiraIssueAgentActivity[];
+	/** Full assignment menu (Assign agent footer) when the host supplies edit capability. */
+	assignment?: JiraIssueAgentAssignment;
 	/** Occupies the last chin row while a session is approaching, or opens a chin when none exist. */
 	attachPreviewCopy?: string;
+	iconScale?: JiraIssueIconScale;
+	/** Rest shows the parent well; hover still paints only this row. */
+	inheritChinSurface?: boolean;
 	/** Board-controlled moves remount the presence boundary so one row cannot linger in two cards. */
 	instantSessionTransfer?: boolean;
 	/** One-shot brand sweep across the row a session was just linked into. */
@@ -614,10 +669,13 @@ export function JiraIssueAgentActivityRows({
 	renderAgentActivityIndicator?: JiraIssueAgentActivityIndicatorRenderer;
 	/** Opt-in: makes every chin row a draggable session handle. */
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
+	/** Hover assignment menu. Completed rows stay assignment-flyout-free. */
+	showAssignmentFlyout?: boolean;
 	shouldReduceMotion: boolean | null;
 	usesStrokeChrome: boolean;
 }>) {
 	const [sessionDragging, setSessionDragging] = useState(false);
+	const [assignmentHoverOpen, setAssignmentHoverOpen] = useState(false);
 	const layoutTransition = getJiraIssueLayoutTransition(shouldReduceMotion);
 	const presenceMotion = getJiraIssuePresenceMotion(shouldReduceMotion);
 	const hasActivities = activities.length > 0;
@@ -626,10 +684,12 @@ export function JiraIssueAgentActivityRows({
 	const rowPresenceKey = instantSessionTransfer
 		? rowGroups.map((rowGroup) => rowGroup.key).join("|")
 		: "animated";
-	// A pointer drag re-renders the row on every move. Freezing `layout` for the
-	// duration keeps Motion from re-measuring the whole LayoutGroup projection
-	// tree each frame, and stops popLayout from animating the dragged row.
-	const rowLayout = shouldReduceMotion || sessionDragging ? false : "position";
+	// A pointer drag re-renders the row on every move. Hovering the assignment
+	// flyout also remounts trigger attrs. Freezing `layout` keeps Motion from
+	// re-measuring the LayoutGroup and fighting the reserved h-10 chin.
+	const rowLayout = shouldReduceMotion || sessionDragging || assignmentHoverOpen
+		? false
+		: "position";
 
 	return (
 		<motion.div
@@ -662,8 +722,14 @@ export function JiraIssueAgentActivityRows({
 					) : (
 						<JiraIssueAgentActivityRow
 							activities={rowGroup.activities}
+							assignment={assignment}
+							iconScale={iconScale}
+							inheritChinSurface={inheritChinSurface}
 							linkFlash={linkFlash}
-							onOpenChange={onOpenChange}
+							onOpenChange={(open) => {
+								setAssignmentHoverOpen(open);
+								onOpenChange?.(open);
+							}}
 							onSessionDragChange={(dragging, pointer, cancelled) => {
 								setSessionDragging(dragging);
 								const activity = rowGroup.activities[0];
@@ -700,6 +766,7 @@ export function JiraIssueAgentActivityRows({
 							onViewChat={onViewChat}
 							renderAgentActivityIndicator={renderAgentActivityIndicator}
 							sessionDrag={rowSessionDrag}
+							showAssignmentFlyout={showAssignmentFlyout}
 							shouldReduceMotion={shouldReduceMotion}
 							usesStrokeChrome={usesStrokeChrome}
 						/>

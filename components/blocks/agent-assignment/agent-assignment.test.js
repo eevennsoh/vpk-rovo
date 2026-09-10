@@ -16,6 +16,7 @@ test("Agent Assignment exposes a reusable controlled block contract", () => {
 	const source = readProjectFile("components/blocks/agent-assignment/components/agent-assignment.tsx");
 	const index = readProjectFile("components/blocks/agent-assignment/index.ts");
 	const page = readProjectFile("components/blocks/agent-assignment/page.tsx");
+	const demoAssigned = readProjectFile("components/blocks/agent-assignment/demo-assigned-agents.ts");
 
 	assert.match(source, /export interface AgentAssignmentAgent extends AgentSelectorAgent/u);
 	assert.match(source, /status\?: ReactNode;/u);
@@ -40,14 +41,15 @@ test("Agent Assignment exposes a reusable controlled block contract", () => {
 	assert.match(index, /export \{ AgentAssignment \} from "\.\/components\/agent-assignment";/u);
 	assert.match(index, /export \{ resolveAssignedAgentStatusKind \} from "\.\/components\/assigned-agent-status";/u);
 	assert.match(index, /AgentAssignmentAgent,[\s\S]*AgentAssignmentProps,[\s\S]*AgentAssignmentStatusKind/u);
-	assert.match(page, /"github-copilot": \{[\s\S]*statusKind: "working"[\s\S]*"Checking the proposed patch across every changed file in this review"/u);
-	assert.match(page, /"release-notes-drafter": \{[\s\S]*statusKind: "needs-input"/u);
-	assert.match(page, /"code-reviewer": \{[\s\S]*statusKind: "idle"/u);
-	assert.match(page, /"readiness-checker": \{[\s\S]*statusKind: "idle"/u);
-	assert.match(page, /statusKind: demoStatus\.statusKind,[\s\S]*statusSequence: demoStatus\.labels/u);
+	assert.match(demoAssigned, /"github-copilot": \{[\s\S]*statusKind: "working"[\s\S]*"Checking the proposed patch across every changed file in this review"/u);
+	assert.match(demoAssigned, /"release-notes-drafter": \{[\s\S]*statusKind: "needs-input"/u);
+	assert.match(demoAssigned, /"code-reviewer": \{[\s\S]*statusKind: "idle"/u);
+	assert.match(demoAssigned, /"readiness-checker": \{[\s\S]*statusKind: "idle"/u);
+	assert.match(demoAssigned, /statusKind: demoStatus\.statusKind,[\s\S]*statusSequence: demoStatus\.labels/u);
+	assert.match(demoAssigned, /statusKind: "finished"/u);
+	assert.match(page, /getAgentAssignmentDemoAssignedAgents\(assignedAgentIds, \{\s*codeReviewerFinished,/u);
 	assert.match(page, /import \{ SONNER_TOAST_AUTO_DISMISS_MS \} from "@\/components\/ui\/sonner"/u);
 	assert.match(page, /window\.setTimeout\(\(\) => \{\s*setCodeReviewerFinished\(true\);\s*\}, SONNER_TOAST_AUTO_DISMISS_MS \+ 400\)/u);
-	assert.match(page, /statusKind: "finished" as const/u);
 	assert.doesNotMatch(page, /DemoAgentActivity|setInterval|useReducedMotion/u);
 
 	const avatar = readProjectFile("components/blocks/agent-assignment/components/assignment-avatar.tsx");
@@ -262,11 +264,13 @@ test("Agent Assignment filled pins follow the space pin set, not assignment or u
 		/export const DEFAULT_PINNED_SPACE_AGENT_IDS = \[\s*"rfp-drafting-agent",\s*"readiness-checker",\s*\] as const;/u,
 	);
 	assert.match(page, /defaultPinnedAgentIds=\{DEFAULT_PINNED_SPACE_AGENT_IDS\}/u);
-	assert.match(page, /const DEMO_USED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*\] as const;/u);
+	const demoAssigned = readProjectFile("components/blocks/agent-assignment/demo-assigned-agents.ts");
+	assert.match(demoAssigned, /export const DEMO_USED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*\] as const;/u);
 	assert.match(
-		page,
-		/const INITIAL_ASSIGNED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*"code-reviewer",\s*"readiness-checker",\s*\] as const;/u,
+		demoAssigned,
+		/export const INITIAL_ASSIGNED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*"code-reviewer",\s*"readiness-checker",\s*\] as const;/u,
 	);
+	assert.match(page, /getAgentAssignmentDemoAssignedAgents\(assignedAgentIds/u);
 	assert.doesNotMatch(page, /defaultPinnedAgentIds=\{(?:DEMO_USED_AGENT_IDS|INITIAL_ASSIGNED_AGENT_IDS)\}/u);
 	assert.doesNotMatch(pickerOptions, /"github-copilot"|"release-notes-drafter"|"code-reviewer"/u);
 
@@ -287,7 +291,7 @@ test("Agent Assignment filled pins follow the space pin set, not assignment or u
 
 test("assigned-agent action rows truncate 8px from CTAs and idle the byline on hover-out", () => {
 	const menu = readProjectFile("components/blocks/agent-assignment/components/assigned-agents-menu.tsx");
-	const page = readProjectFile("components/blocks/agent-assignment/page.tsx");
+	const demoAssigned = readProjectFile("components/blocks/agent-assignment/demo-assigned-agents.ts");
 	const suggestionMenu = readProjectFile("components/ui-custom/rich-text-editor/suggestion-menu.tsx");
 	const suggestionMenuCss = readProjectFile("components/ui-custom/rich-text-editor/suggestion-menu-actions.css");
 	const editorCss = readProjectFile("components/ui-custom/rich-text-editor/rich-text-editor.css");
@@ -311,7 +315,7 @@ test("assigned-agent action rows truncate 8px from CTAs and idle the byline on h
 	// Long-label fixture: the 2nd-line toolcall must be long enough to ellipsis
 	// before the View CTA (gotchas-ui: hover-reveal + truncating copy).
 	assert.match(
-		page,
+		demoAssigned,
 		/Checking the proposed patch across every changed file in this review/u,
 	);
 
@@ -358,7 +362,7 @@ test("Agent Assignment is registered with a catalog demo and documentation", () 
 	assert.match(page, /defaultPinnedAgentIds=\{DEFAULT_PINNED_SPACE_AGENT_IDS\}/u);
 	assert.match(page, /pinnedItemsLabel=\{WORK_ITEM_PINNED_ITEMS_LABEL\}/u);
 	assert.match(page, /usedAgentIds=\{DEMO_USED_AGENT_IDS\}/u);
-	assert.match(page, /const DEMO_USED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*\] as const;/u);
+	assert.match(page, /from "@\/components\/blocks\/agent-assignment\/demo-assigned-agents"/u);
 	assert.match(page, /onContinueExistingSession=\{\(\) => undefined\}/u);
 	assert.match(page, /onStartNewSession=\{\(\) => undefined\}/u);
 	assert.match(demo, /AgentAssignmentPage/u);
