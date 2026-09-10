@@ -34,6 +34,9 @@ test("Glow continuously collapses and fades, and reduced motion settles immediat
 	assert.equal(resolveJiraLinkingGlowSettleMs(false), 260);
 	assert.equal(resolveJiraLinkingGlowSettleMs(null), 260);
 	assert.equal(resolveJiraLinkingGlowSettleMs(true), 0);
+	assert.equal(resolveJiraLinkingGlowSettleMs(false, { drop: { from: { x: 0, y: 0 }, members: [], playback: "stagger" } }), 260);
+	assert.equal(resolveJiraLinkingGlowSettleMs(false, {}), 0);
+	assert.equal(resolveJiraLinkingGlowSettleMs(false, { drop: undefined }), 0);
 });
 
 test("Glow derives its halo and backdrop pulse from the lead avatar tint", () => {

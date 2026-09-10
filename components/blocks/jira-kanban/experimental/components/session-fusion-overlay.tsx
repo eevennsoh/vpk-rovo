@@ -70,10 +70,10 @@ export interface SessionFusionOverlayProps {
  * the create well, and the chin-row sweep waits until those flights have
  * landed.
  *
- * Glow draws nothing on approach: it arms on release only, collapsing one
- * cohort chip into the card surface and acknowledging it with the card's own
- * halo and backdrop pulse. It stays mounted after the host clears `release` so
- * that backdrop can finish.
+ * Glow draws nothing on approach: it arms on release only. A drop collapses
+ * one cohort chip into the card; a click-to-assign release omits that chip
+ * and goes straight to the halo and backdrop pulse. It stays mounted after
+ * the host clears `release` so that backdrop can finish.
  */
 export function SessionFusionOverlay({
 	members,
