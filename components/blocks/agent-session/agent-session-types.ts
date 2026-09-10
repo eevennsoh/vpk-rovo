@@ -7,15 +7,33 @@ import type { ApproveTarget } from "./agent-session-approve";
 import type { SessionCohort } from "./session-cohort";
 
 /**
+ * Who this session card is for.
+ *
+ * `owner` is the person who started the session and can act on it. `viewer` is
+ * a teammate who can see that the work exists but cannot open its controls.
+ * `expired` is a cloud session past the 28-day history window: it can no
+ * longer be resumed, so the row keeps an X instead of a menu or lifecycle icon.
+ */
+export type AgentSessionRole = "owner" | "viewer" | "expired";
+
+/**
  * An agent session rendered either detached from or attached to a work item.
  *
  * Structurally identical to an Agent List row — the card renders the shared
  * `AgentListRow` presenter inside a dashed uncaptured-work frame — so this is
  * an alias rather than a parallel model. Consumers that already build
  * `AgentListItem` values (Pulse maps loose-work fixtures into them) need no
- * conversion step.
+ * conversion step. `role` is session-card vocabulary: Agent List rows have no
+ * owner/viewer split.
  */
-export type AgentSessionItem = AgentListItem;
+export type AgentSessionItem = AgentListItem & {
+	role?: AgentSessionRole;
+};
+
+/** Defaults to `owner` so existing payloads keep the more menu. */
+export function getAgentSessionRole(item: AgentSessionItem): AgentSessionRole {
+	return item.role ?? "owner";
+}
 
 /**
  * Visible identity for an agent session.
@@ -42,12 +60,13 @@ export type AgentSessionVariant = "large" | "medium-detached" | "medium-attached
 /**
  * Row shape for the large footprint.
  *
- * `short` leads with a 32px identity and says only who, where, and when — the
- * form a narrow rail or sidebar can afford. `long` drops the leading avatar,
- * gives the title the full width, and spends the reclaimed room on a fuller
- * metadata line (agent mark, host, lifecycle status, artifact, time) plus a
- * trailing lifecycle indicator. Same data either way; the difference is how
- * much of it the surface has room to state.
+ * `short` leads with a 32px identity and an agent · host · time byline. `long`
+ * drops the leading avatar, gives the title the full width, and spends the
+ * reclaimed room on a fuller metadata line (agent mark, host, artifact, time)
+ * plus a trailing lifecycle indicator. Progression is the far-right icon, not a
+ * byline clause. Long rows have no hover flyout — highlight and trailing
+ * controls only. Same data either way; the difference is how much of it the
+ * surface has room to state.
  */
 export type AgentSessionDensity = "short" | "long";
 
@@ -161,8 +180,7 @@ export interface AgentSessionProps {
 	 */
 	onContinueInAgent?: (item: AgentSessionItem) => void;
 	/**
-	 * Breaks a cloud session's link to its work item. Omit to render the menu's
-	 * Unlink row disabled. Local sessions never show it.
+	 * Reserved. The more menu does not offer Unlink; this callback is unused.
 	 */
 	onUnlinkSession?: (item: AgentSessionItem) => void;
 	/** Renames a cloud session. Omit to render the menu's Rename row disabled. */

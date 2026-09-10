@@ -15,7 +15,11 @@ import {
 } from "@/components/blocks/jira-work-item/experimental-v3/lib/work-item-picker-options";
 import { SONNER_TOAST_AUTO_DISMISS_MS } from "@/components/ui/sonner";
 
-export default function AgentAssignmentPage() {
+export default function AgentAssignmentPage({
+	variant = "default",
+}: Readonly<{
+	variant?: "default" | "simple";
+}>) {
 	const [assignedAgentIds, setAssignedAgentIds] = useState<readonly string[]>(INITIAL_ASSIGNED_AGENT_IDS);
 	const [codeReviewerFinished, setCodeReviewerFinished] = useState(false);
 
@@ -46,9 +50,11 @@ export default function AgentAssignmentPage() {
 					onBrowseAgents={() => undefined}
 					onContinueExistingSession={() => undefined}
 					onCreateAgent={() => undefined}
+					onRenameAssignedAgent={() => undefined}
 					onStartNewSession={() => undefined}
 					pinnedItemsLabel={WORK_ITEM_PINNED_ITEMS_LABEL}
 					usedAgentIds={DEMO_USED_AGENT_IDS}
+					variant={variant}
 				/>
 			</div>
 		</div>

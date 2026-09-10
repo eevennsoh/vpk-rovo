@@ -1,7 +1,13 @@
 "use client";
 
 import { AgentAvatarVisual } from "@/components/ui-custom/agent-avatar-visual";
-import { Avatar, AvatarFallback, AvatarImage, type AvatarProps } from "@/components/ui/avatar";
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarGroup,
+	AvatarImage,
+	type AvatarProps,
+} from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 import { actorInitials } from "./agent-list-actor";
@@ -9,6 +15,7 @@ import type { AgentListAgent, AgentListInvoker } from "./agent-list-types";
 
 /** The two leading-avatar footprints the row uses, as Avatar size tokens. */
 const PX_TO_PERSON_AVATAR_SIZE: Record<number, NonNullable<AvatarProps["size"]>> = {
+	16: "xs",
 	24: "sm",
 	32: "default",
 };
@@ -40,6 +47,43 @@ const PX_TO_ATTRIBUTED_PERSON_AVATAR_SIZE: Record<
 	40: "sm",
 	48: "sm",
 };
+
+export function AgentListAttributionAvatarGroup({
+	agent,
+	attributedBy,
+	className,
+	sizePx,
+}: Readonly<{
+	agent: AgentListAgent;
+	attributedBy: AgentListInvoker;
+	className?: string;
+	sizePx: number;
+}>) {
+	return (
+		<AvatarGroup
+			className={cn("shrink-0", className)}
+			label={`${agent.name}, used by ${attributedBy.name}`}
+			size={PX_TO_PERSON_AVATAR_SIZE[sizePx] ?? "default"}
+		>
+			<AgentAvatarVisual
+				avatarSrc={agent.avatarSrc}
+				brandName={agent.brandName}
+				label=""
+				sizePx={sizePx}
+				vpkLogo={agent.vpkLogo}
+			/>
+			<Avatar
+				label=""
+				size={PX_TO_PERSON_AVATAR_SIZE[sizePx] ?? "default"}
+			>
+				{attributedBy.avatarSrc ? (
+					<AvatarImage alt="" src={attributedBy.avatarSrc} />
+				) : null}
+				<AvatarFallback>{actorInitials(attributedBy.name)}</AvatarFallback>
+			</Avatar>
+		</AvatarGroup>
+	);
+}
 
 /**
  * The row's leading identity. Agents keep the shared hexagon agent visual;

@@ -653,7 +653,7 @@ export function AgentListRow({
 	 * can state its own vocabulary without Agent List learning it.
 	 */
 	lifecycle?: ReactNode;
-	/** Caller-owned metadata for a specialized row, such as Agent Session's provenance line. */
+	/** Caller-owned metadata. Pass `null` to omit the default metadata line. */
 	metadata?: ReactNode;
 	onView?: (item: AgentListItem) => void;
 	/**
@@ -712,7 +712,7 @@ export function AgentListRow({
 	return (
 		<div
 			className={cn(
-				"flex min-w-0 gap-0",
+				"flex w-full min-w-0 gap-0",
 				// A summary makes the row taller than one line; the identity and the
 				// trailing controls then belong beside the title, not floating in the
 				// middle of a paragraph.
@@ -763,7 +763,7 @@ export function AgentListRow({
 							)}
 							{stateAwareTitle && stateMeta.showDots ? <AnimatedDots /> : null}
 						</span>
-						{metadata ?? (
+						{metadata === undefined ? (
 							<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
 								{item.metadataPrefix ? (
 									<>
@@ -793,7 +793,7 @@ export function AgentListRow({
 									<AgentListTime item={item} />
 								</span>
 							</span>
-						)}
+						) : metadata}
 					</RowBody>
 					{lifecycleNode ? (
 						// A `div`, not a `span`: every non-running indicator is an

@@ -2,6 +2,8 @@
 
 import { cloneElement, useRef, useState, type ReactElement, type ReactNode } from "react";
 
+import type { AgentListHost, AgentListInvoker } from "@/components/blocks/agent-list/agent-list-types";
+import type { AgentSessionRole } from "@/components/blocks/agent-session/agent-session-types";
 import {
 	AgentSelector,
 	type AgentSelectorAgent,
@@ -10,7 +12,10 @@ import {
 	AgentSessionTargetMenu,
 	type AgentSessionTargetChoice,
 } from "@/components/blocks/agent-assignment/components/agent-session-target-menu";
+import { AgentAssignmentDefaultField } from "@/components/blocks/agent-assignment/components/agent-assignment-default-field";
 import { AssignedAgentsMenu } from "@/components/blocks/agent-assignment/components/assigned-agents-menu";
+import { AssignedAgentsSessionMenu } from "@/components/blocks/agent-assignment/components/assigned-agents-session-menu";
+import type { AgentAssignmentVariant } from "@/components/blocks/agent-assignment/components/assignment-session";
 import { AssignmentAvatar } from "@/components/blocks/agent-assignment/components/assignment-avatar";
 import {
 	resolveAssignedAgentStatusKind,
@@ -48,6 +53,15 @@ export interface AgentAssignmentAgent extends AgentSelectorAgent {
 	 */
 	statusKind?: AgentAssignmentStatusKind;
 	statusLabel: string;
+	/** Human who invoked this assigned session, shown in the Default picker byline combo. */
+	invokedBy?: AgentListInvoker;
+	/** Where the assigned session runs. Defaults to cloud in the session mapper. */
+	host?: AgentListHost;
+	/**
+	 * Owner sees the session more-menu; viewer sees the information hint.
+	 * Omit to keep the owner menu.
+	 */
+	role?: AgentSessionRole;
 	/** Agent-specific tool-call narration. Avoid sharing one sequence across agents. */
 	statusSequence?: readonly string[];
 }
@@ -64,6 +78,8 @@ export interface AgentAssignmentProps {
 	onAssignedAgentSelect: (agent: AgentAssignmentAgent) => void;
 	onBrowseAgents?: () => void;
 	onContinueExistingSession?: (agent: AgentSelectorAgent) => void;
+	/** Rename a cloud assigned session from the Default picker more-menu. */
+	onRenameAssignedAgent?: (agent: AgentAssignmentAgent) => void;
 	onCreateAgent?: () => void;
 	onOpenChange?: (open: boolean) => void;
 	onStartNewSession?: (agent: AgentSelectorAgent) => void;
@@ -79,6 +95,25 @@ export interface AgentAssignmentProps {
 	 * from the directory opens Continue / Start new instead of toggling assign.
 	 */
 	usedAgentIds?: readonly string[];
+	/**
+	 * `default` is the attached activity-row field plus long session-card picker.
+	 * `simple` keeps the facepile trigger and suggestion-menu rows.
+	 */
+	variant?: AgentAssignmentVariant;
+}
+
+function runAssignedSessionAction(
+	agents: readonly AgentAssignmentAgent[],
+	itemId: string,
+	action: ((agent: AgentAssignmentAgent) => void) | undefined,
+) {
+	if (action === undefined) {
+		return;
+	}
+	const agent = agents.find((candidate) => candidate.id === itemId);
+	if (agent !== undefined) {
+		action(agent);
+	}
 }
 
 export function AgentAssignment({
@@ -92,6 +127,7 @@ export function AgentAssignment({
 	onAssignedAgentSelect,
 	onBrowseAgents,
 	onContinueExistingSession,
+	onRenameAssignedAgent,
 	onCreateAgent,
 	onOpenChange,
 	onStartNewSession,
@@ -103,6 +139,7 @@ export function AgentAssignment({
 	trigger,
 	triggerLabel = "Edit agents",
 	usedAgentIds = [],
+	variant = "default",
 }: Readonly<AgentAssignmentProps>) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
@@ -154,6 +191,18 @@ export function AgentAssignment({
 			&& openMode === "hover"
 			&& view !== "assigned"
 			&& eventDetails?.reason === "trigger-hover"
+		) {
+			eventDetails.cancel?.();
+			return;
+		}
+		// The owner more-menu portals to the document. Focusing it looks like
+		// leaving the picker, which would close the list before Rename / Continue
+		// in can be used. Escape and outside presses still close.
+		if (
+			!nextOpen
+			&& variant === "default"
+			&& view === "assigned"
+			&& eventDetails?.reason === "focus-out"
 		) {
 			eventDetails.cancel?.();
 			return;
@@ -273,14 +322,33 @@ export function AgentAssignment({
 		onAssignedAgentSelect?.(agent);
 	};
 
-	const menu = effectiveView === "assigned" ? (
+	const assignedMenu = variant === "simple" ? (
 		<AssignedAgentsMenu
 			onAddAgent={onAssignedAgentIdsChange ? handleShowSelector : undefined}
 			onArchiveAgent={onAssignedAgentIdsChange ? handleArchiveAgent : undefined}
 			onSelectAgent={handleAssignedAgentSelect}
 			rows={assignedAgents}
 		/>
-	) : effectiveView === "session" && pendingSessionAgent ? (
+	) : (
+		<AssignedAgentsSessionMenu
+			onAddAgent={onAssignedAgentIdsChange ? handleShowSelector : undefined}
+			onContinueInAgent={onContinueExistingSession
+				? (item) => runAssignedSessionAction(assignedAgents, item.id, onContinueExistingSession)
+				: undefined}
+			onDeleteSession={onAssignedAgentIdsChange
+				? (item) => runAssignedSessionAction(assignedAgents, item.id, handleArchiveAgent)
+				: undefined}
+			onRenameSession={onRenameAssignedAgent
+				? (item) => runAssignedSessionAction(assignedAgents, item.id, onRenameAssignedAgent)
+				: undefined}
+			onSelectAgent={handleAssignedAgentSelect}
+			onToggleVisibility={onAssignedAgentIdsChange
+				? (item) => runAssignedSessionAction(assignedAgents, item.id, handleArchiveAgent)
+				: undefined}
+			rows={assignedAgents}
+		/>
+	);
+	const menu = effectiveView === "assigned" ? assignedMenu : effectiveView === "session" && pendingSessionAgent ? (
 		<AgentSessionTargetMenu
 			onBack={() => {
 				setPendingSessionAgent(null);
@@ -333,7 +401,7 @@ export function AgentAssignment({
 					<HoverCardContent
 						align="start"
 						aria-label="Agent assignment"
-						className="max-h-none w-[360px] gap-0 overflow-hidden rounded-xl p-0 shadow-none"
+						className="max-h-none w-[360px] gap-0 overflow-visible rounded-xl p-0 shadow-none"
 						positionerClassName={overlayPositionerClassName}
 						side={side ?? "right"}
 						sideOffset={8}
@@ -351,6 +419,19 @@ export function AgentAssignment({
 			<Popover onOpenChange={handleOpenChange} open={open}>
 				{resolvedTrigger ? (
 					<PopoverTrigger render={resolvedTrigger} />
+				) : variant === "default" ? (
+					<div className={cn("relative w-full min-w-0 overflow-visible", className)}>
+						<PopoverTrigger
+							render={
+								<button
+									aria-label={shown.length === 0 ? "Assign agent" : triggerLabel}
+									className="absolute inset-0 z-0 rounded-md outline-none"
+									type="button"
+								/>
+							}
+						/>
+						<AgentAssignmentDefaultField assignedAgents={assignedAgents} />
+					</div>
 				) : (
 					<div className={cn("relative flex min-h-8 w-full min-w-0 items-center gap-0.5 overflow-visible px-2", className)}>
 						<PopoverTrigger
@@ -389,7 +470,7 @@ export function AgentAssignment({
 				<PopoverContent
 					align="start"
 					aria-label="Agent assignment"
-					className="max-h-none w-[360px] gap-0 overflow-hidden rounded-xl p-0"
+					className="max-h-none w-[360px] gap-0 overflow-visible rounded-xl p-0"
 					positionerClassName={positionerClassName}
 					side={side}
 					sideOffset={8}

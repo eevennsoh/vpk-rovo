@@ -1,8 +1,8 @@
 "use client";
 
 import type { ReactElement } from "react";
+import QuestionCircleFilledIcon from "@atlaskit/icon-lab/core/question-circle-filled";
 import StatusErrorIcon from "@atlaskit/icon/core/status-error";
-import StatusInformationIcon from "@atlaskit/icon/core/status-information";
 import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
 
 import {
@@ -23,13 +23,16 @@ import type { JiraIssueIconScale } from "@/components/blocks/jira-issue/types";
 import { AgentAvatarVisual } from "@/components/ui-custom/agent-avatar-visual";
 import { AgentLoading, type AgentLoadingAgent } from "@/components/ui-custom/agent-loading";
 import { AnimatedDots } from "@/components/ui-custom/animated-dots";
+import { Shimmer } from "@/components/ui-custom/shimmer";
 import { TWGLoader } from "@/components/ui-custom/twg-loader";
+import { AvatarGroup } from "@/components/ui/avatar";
+import { IconTile } from "@/components/ui/icon-tile";
 import { Spinner } from "@/components/ui/spinner";
-import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
 import type {
 	JiraIssueAgentActivity,
+	JiraIssueAgentActivityAvatarLayout,
 	JiraIssueAgentActivityIndicatorRenderer,
 } from "./agent-activity";
 
@@ -66,6 +69,28 @@ function toAgentLoadingAgent(activity: JiraIssueAgentActivity): AgentLoadingAgen
 	};
 }
 
+/** 16px glyph in a 24px transparent IconTile — same recipe as completed-agent-runs. */
+function JiraIssueAgentStatusIconTile({
+	className,
+	icon,
+}: Readonly<{
+	className?: string;
+	icon: ReactElement;
+}>): ReactElement {
+	return (
+		<IconTile
+			aria-hidden
+			as="span"
+			className={className}
+			icon={icon}
+			iconSize="medium"
+			label=""
+			size="small"
+			variant="transparent"
+		/>
+	);
+}
+
 function JiraIssueCompletedAgentStatusIcon({
 	isFailed,
 	renderAgentActivityIndicator,
@@ -73,30 +98,32 @@ function JiraIssueCompletedAgentStatusIcon({
 	isFailed: boolean;
 	renderAgentActivityIndicator?: JiraIssueAgentActivityIndicatorRenderer;
 }>): ReactElement {
-	let indicator: ReactElement;
 	if (isFailed) {
-		indicator = <StatusErrorIcon color="currentColor" label="" size="small" />;
-	} else if (renderAgentActivityIndicator) {
-		indicator = renderAgentActivityIndicator("finished");
-	} else {
-		indicator = <StatusSuccessIcon color={token("color.icon.success")} label="" size="small" />;
+		return (
+			<JiraIssueAgentStatusIconTile
+				className="text-icon-danger"
+				icon={<StatusErrorIcon color="currentColor" label="" size="small" />}
+			/>
+		);
+	}
+
+	if (renderAgentActivityIndicator) {
+		return (
+			<span aria-hidden="true" className="grid size-6 shrink-0 place-items-center text-icon">
+				{renderAgentActivityIndicator("finished")}
+			</span>
+		);
 	}
 
 	return (
-		<span
-			className={cn(
-				"grid size-6 shrink-0 place-items-center",
-				isFailed ? "text-icon-danger" : "text-icon",
-			)}
-			aria-hidden="true"
-		>
-			{indicator}
-		</span>
+		<JiraIssueAgentStatusIconTile
+			className="text-icon-success"
+			icon={<StatusSuccessIcon color="currentColor" label="" size="small" />}
+		/>
 	);
 }
 
 function JiraIssueActiveAgentStatusIcon({
-	iconScale,
 	isAwaitingInput,
 	renderAgentActivityIndicator,
 }: Readonly<{
@@ -114,22 +141,19 @@ function JiraIssueActiveAgentStatusIcon({
 
 	if (isAwaitingInput) {
 		return (
-			<span
-				aria-hidden="true"
-				className="grid size-6 shrink-0 place-items-center text-icon-information"
-			>
-				<StatusInformationIcon label="" size="medium" color="currentColor" />
-			</span>
+			<JiraIssueAgentStatusIconTile
+				className="text-icon-information"
+				icon={<QuestionCircleFilledIcon color="currentColor" label="" size="small" />}
+			/>
 		);
 	}
 
 	return (
-		<span className="grid size-6 shrink-0 place-items-center text-icon" aria-hidden="true">
-			{iconScale === "comfortable" ? (
-				<Spinner label="" pulse size="xl" variant="experimental" />
-			) : (
-				<Spinner label="" />
-			)}
+		<span
+			aria-hidden="true"
+			className="grid size-6 shrink-0 place-items-center text-icon"
+		>
+			<Spinner label="" pulse size="xl" variant="experimental" />
 		</span>
 	);
 }
@@ -181,18 +205,20 @@ export function JiraIssueAgentStatusIcon({
 
 function JiraIssueAgentRowLabel({
 	isAwaitingInput,
+	isWorking,
 	rowLabel,
 	startupPhase,
 	usesStrokeChrome,
 }: Readonly<{
 	isAwaitingInput: boolean;
+	isWorking: boolean;
 	rowLabel: string;
 	startupPhase: ReturnType<typeof useJiraIssueAgentStartupPhase>;
 	usesStrokeChrome: boolean;
 }>): ReactElement {
 	if (isAwaitingInput) {
 		return (
-			<span className="flex min-w-0 flex-1 items-baseline overflow-hidden text-sm leading-5 text-text-subtlest">
+			<span className="flex min-w-0 flex-1 items-baseline overflow-hidden text-sm leading-5 text-text">
 				<span className="block min-w-0 truncate text-sm leading-5">{rowLabel}</span>
 				<AnimatedDots />
 			</span>
@@ -212,6 +238,19 @@ function JiraIssueAgentRowLabel({
 		);
 	}
 
+	if (isWorking) {
+		return (
+			<Shimmer
+				as="span"
+				className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"
+				duration={1.4}
+				spread={2}
+			>
+				{rowLabel}
+			</Shimmer>
+		);
+	}
+
 	return (
 		<span className="block min-w-0 flex-1 truncate text-sm leading-5 text-text">
 			{rowLabel}
@@ -221,8 +260,10 @@ function JiraIssueAgentRowLabel({
 
 export function JiraIssueAgentRowContent({
 	activities,
+	avatarLayout,
 	featuredActivity,
 	isAwaitingInput,
+	isWorking,
 	rowLabel,
 	showUnlinkControl,
 	startupPhase,
@@ -230,40 +271,70 @@ export function JiraIssueAgentRowContent({
 	usesStrokeChrome,
 }: Readonly<{
 	activities: readonly JiraIssueAgentActivity[];
+	avatarLayout: JiraIssueAgentActivityAvatarLayout;
 	featuredActivity: JiraIssueAgentActivity | undefined;
 	isAwaitingInput: boolean;
+	isWorking: boolean;
 	rowLabel: string;
 	showUnlinkControl: boolean;
 	startupPhase: ReturnType<typeof useJiraIssueAgentStartupPhase>;
 	statusIcon: ReactElement;
 	usesStrokeChrome: boolean;
 }>): ReactElement {
+	let avatar: ReactElement;
+	if (featuredActivity !== undefined) {
+		avatar = (
+			<span className="grid size-6 shrink-0 place-items-center">
+				<AgentAvatarVisual
+					animate={false}
+					avatarClassName="shrink-0"
+					avatarSrc={featuredActivity.avatarSrc}
+					brandName={featuredActivity.agentBrandName}
+					fallbackText={getAgentInitial(featuredActivity.name)}
+					label={featuredActivity.name}
+					sizePx={24}
+				/>
+			</span>
+		);
+	} else if (avatarLayout === "horizontal-group") {
+		avatar = (
+			<AvatarGroup
+				className="shrink-0 gap-1 space-x-0"
+				label={`${activities.length} agents: ${rowLabel}`}
+				size="sm"
+			>
+				{activities.map((activity) => (
+					<AgentAvatarVisual
+						animate={false}
+						avatarSrc={activity.avatarSrc}
+						brandName={activity.agentBrandName}
+						fallbackText={getAgentInitial(activity.name)}
+						key={activity.id}
+						label=""
+						sizePx={24}
+					/>
+				))}
+			</AvatarGroup>
+		);
+	} else {
+		avatar = (
+			<span className="grid size-6 shrink-0 place-items-center">
+				<AgentLoading
+					agents={activities.map(toAgentLoadingAgent)}
+					announce={false}
+					className="shrink-0"
+				/>
+			</span>
+		);
+	}
+
 	return (
 		<>
 			<div className="flex min-w-0 flex-1 items-center gap-2">
-				{featuredActivity ? (
-					<span className="grid size-6 shrink-0 place-items-center">
-						<AgentAvatarVisual
-							animate={false}
-							avatarClassName="shrink-0"
-							avatarSrc={featuredActivity.avatarSrc}
-							brandName={featuredActivity.agentBrandName}
-							fallbackText={getAgentInitial(featuredActivity.name)}
-							label={featuredActivity.name}
-							sizePx={24}
-						/>
-					</span>
-				) : (
-					<span className="grid size-6 shrink-0 place-items-center">
-						<AgentLoading
-							agents={activities.map(toAgentLoadingAgent)}
-							announce={false}
-							className="shrink-0"
-						/>
-					</span>
-				)}
+				{avatar}
 				<JiraIssueAgentRowLabel
 					isAwaitingInput={isAwaitingInput}
+					isWorking={isWorking}
 					rowLabel={rowLabel}
 					startupPhase={startupPhase}
 					usesStrokeChrome={usesStrokeChrome}

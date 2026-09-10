@@ -101,7 +101,7 @@ export function JiraIssueShimmeringAgentLabel({
 		<Shimmer
 			as="span"
 			className={cn(
-				"block min-w-0 truncate",
+				"block min-w-0 truncate text-text",
 				usesStrokeChrome ? "text-xs leading-4" : "text-sm leading-5",
 			)}
 			duration={SHIMMER_DURATION}

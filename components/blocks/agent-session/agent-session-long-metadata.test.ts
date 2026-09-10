@@ -7,8 +7,8 @@ import { AGENT_SESSION_STATUS_LABEL, toAgentSessionMetadataSegments } from "./ag
 type Segment = {
 	kind: string;
 	label?: string;
-	isPending?: boolean;
 	prStatus?: string;
+	host?: "cloud" | "local";
 };
 
 type Input = {
@@ -16,7 +16,6 @@ type Input = {
 	artifactLabel?: string;
 	host?: "cloud" | "local";
 	prStatus?: "created" | "merged" | "failed";
-	state: "attention" | "complete" | "needs-input" | "running";
 };
 
 const build = toAgentSessionMetadataSegments as (input: Input) => readonly Segment[];
@@ -30,54 +29,65 @@ function chunk(input: Input, kind: string): Segment | undefined {
 	return build(input).find((segment) => segment.kind === kind);
 }
 
-test("a fully described session reads agent, host, status, artifact, then time", () => {
+test("a fully described session reads agent, artifact, then host-tagged time", () => {
 	assert.deepEqual(
 		kinds({
 			agentName: "Claude",
 			artifactLabel: "#124: Cargo retract",
 			host: "local",
 			prStatus: "created",
-			state: "running",
 		}),
-		["agent", "host", "status", "artifact", "time"],
+		["agent", "artifact", "time"],
+	);
+	assert.equal(
+		chunk({
+			agentName: "Claude",
+			artifactLabel: "#124: Cargo retract",
+			host: "local",
+		}, "time")?.host,
+		"local",
 	);
 });
 
 test("agent and time are the only chunks a row always has", () => {
 	// A session that declared no host and produced nothing yet still says who ran
-	// it, how it is going, and when — never an empty placeholder in between.
-	assert.deepEqual(kinds({ agentName: "Canva", state: "needs-input" }), ["agent", "status", "time"]);
+	// it and when — never an empty placeholder in between. Progression is the
+	// trailing lifecycle icon, not a byline clause.
+	assert.deepEqual(kinds({ agentName: "Canva" }), ["agent", "time"]);
+});
+
+test("long metadata never states progression in the byline", () => {
+	const segments = build({
+		agentName: "Claude",
+		artifactLabel: "#124: Cargo retract",
+		host: "cloud",
+	});
+
+	assert.equal(segments.some((segment) => segment.kind === "status"), false);
+	assert.equal(segments.some((segment) => segment.label === "Working"), false);
+	assert.equal(segments.some((segment) => segment.label === "Needs input"), false);
+	assert.equal(segments.some((segment) => segment.label === "Complete"), false);
 });
 
 test("an undeclared host stays silent rather than claiming the cloud", () => {
 	// `getAgentListHost` answers "cloud" for a payload that never said, which is
 	// the right default for behavior and the wrong claim to print on a card.
-	assert.equal(chunk({ agentName: "Rovo", state: "complete" }, "host"), undefined);
+	assert.equal(chunk({ agentName: "Rovo" }, "host"), undefined);
 });
 
-test("the host chunk names the place it runs", () => {
-	assert.equal(chunk({ agentName: "Claude", host: "local", state: "complete" }, "host")?.label, "Local");
-	assert.equal(chunk({ agentName: "Claude", host: "cloud", state: "complete" }, "host")?.label, "Cloud");
+test("the time chunk carries the declared host so icon and clock stay one clause", () => {
+	assert.equal(chunk({ agentName: "Claude", host: "local" }, "time")?.host, "local");
+	assert.equal(chunk({ agentName: "Claude", host: "cloud" }, "time")?.host, "cloud");
+	assert.equal(chunk({ agentName: "Claude", host: "local" }, "host"), undefined);
+	assert.equal(kinds({ agentName: "Claude", host: "cloud" }).includes("host"), false);
 });
 
-test("every lifecycle state has status copy, and only the in-flight ones shimmer", () => {
+test("status copy stays available for trailing indicators", () => {
 	assert.deepEqual(AGENT_SESSION_STATUS_LABEL, {
 		attention: "Needs attention",
 		complete: "Complete",
 		"needs-input": "Needs input",
 		running: "Working",
-	});
-
-	const states = ["running", "needs-input", "complete", "attention"] as const;
-	const pendingByState = Object.fromEntries(
-		states.map((state) => [state, chunk({ agentName: "Claude", state }, "status")?.isPending]),
-	);
-
-	assert.deepEqual(pendingByState, {
-		attention: false,
-		complete: false,
-		"needs-input": true,
-		running: true,
 	});
 });
 
@@ -85,18 +95,17 @@ test("an artifact chunk needs a real label and carries a glyph status", () => {
 	// An empty string is not an artifact. Rendering the chunk anyway would put a
 	// pull-request glyph next to nothing at all.
 	assert.equal(
-		kinds({ agentName: "Claude", artifactLabel: "", state: "complete" }).includes("artifact"),
+		kinds({ agentName: "Claude", artifactLabel: "" }).includes("artifact"),
 		false,
 	);
 
 	assert.equal(
-		chunk({ agentName: "Claude", artifactLabel: "#124: Cargo retract", state: "complete" }, "artifact")
-			?.prStatus,
+		chunk({ agentName: "Claude", artifactLabel: "#124: Cargo retract" }, "artifact")?.prStatus,
 		"created",
 	);
 	assert.equal(
 		chunk(
-			{ agentName: "Claude", artifactLabel: "#124: Cargo retract", prStatus: "merged", state: "complete" },
+			{ agentName: "Claude", artifactLabel: "#124: Cargo retract", prStatus: "merged" },
 			"artifact",
 		)?.prStatus,
 		"merged",
@@ -104,7 +113,7 @@ test("an artifact chunk needs a real label and carries a glyph status", () => {
 });
 
 test("the builder is pure: same input, equal output, no shared mutation", () => {
-	const input: Input = { agentName: "Claude", host: "cloud", state: "running" };
+	const input: Input = { agentName: "Claude", host: "cloud" };
 	const first = build(input);
 	const second = build(input);
 

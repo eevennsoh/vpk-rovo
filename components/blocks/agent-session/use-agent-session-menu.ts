@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentSessionMoreMenuActions } from "./agent-session-more-menu";
 import type { AgentSessionItem } from "./agent-session-types";
 
-/** How long the trigger reads "Copied prompt" after the clipboard write. */
+/** How long the Terminal row keeps its copied check after the clipboard write. */
 export const AGENT_SESSION_COPIED_RESET_MS = 2000;
 
 async function copyResumeCommand(command: string): Promise<void> {
@@ -22,7 +22,7 @@ async function copyResumeCommand(command: string): Promise<void> {
 
 export interface AgentSessionMenuState {
 	readonly actions: AgentSessionMoreMenuActions;
-	/** Whether the trigger is showing the copy confirmation. */
+	/** Whether the Terminal row is showing the copy confirmation check. */
 	readonly copied: boolean;
 	readonly isOpen: boolean;
 	readonly setIsOpen: (open: boolean) => void;
@@ -50,7 +50,6 @@ export function useAgentSessionMenu({
 	onItemHover,
 	onRenameSession,
 	onToggleVisibility,
-	onUnlinkSession,
 	resumeCommand,
 }: Readonly<{
 	canResume: boolean;
@@ -62,7 +61,6 @@ export function useAgentSessionMenu({
 	onItemHover?: (item: AgentSessionItem | null) => void;
 	onRenameSession?: (item: AgentSessionItem) => void;
 	onToggleVisibility?: (item: AgentSessionItem) => void;
-	onUnlinkSession?: (item: AgentSessionItem) => void;
 	resumeCommand: string;
 }>): AgentSessionMenuState {
 	const [copied, setCopied] = useState(false);
@@ -103,9 +101,6 @@ export function useAgentSessionMenu({
 		onRename: onRenameSession === undefined || !isCloud
 			? undefined
 			: () => onRenameSession(item),
-		onUnlink: onUnlinkSession === undefined || !isCloud
-			? undefined
-			: () => onUnlinkSession(item),
 	};
 
 	return { actions, copied, isOpen, setIsOpen };

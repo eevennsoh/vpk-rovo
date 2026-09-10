@@ -8,6 +8,7 @@ const AGENT_ACTIVITY_SOURCE = [
 	readFileSync(join(__dirname, "agent-activity.tsx"), "utf8"),
 	readFileSync(join(__dirname, "agent-activity-row-presentation.tsx"), "utf8"),
 ].join("\n");
+const STARTUP_SOURCE = readFileSync(join(__dirname, "agent-activity-startup.tsx"), "utf8");
 // The summary cluster and the standalone card types were split out of index.tsx
 // to keep it under the 1000-line budget; these assertions follow them.
 const SUMMARY_SOURCE = readFileSync(join(__dirname, "summary.tsx"), "utf8");
@@ -664,25 +665,50 @@ test("Jira issue renders one aggregate Figma-sized agent row and always exposes 
 	assert.match(AGENT_ACTIVITY_SOURCE, /const summary = summarizeJiraIssueAgentActivities\(activities\);/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const isSingleAgent = summary\.activityCount === 1;/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const featuredActivity = summary\.featuredActivityIndex !== null[\s\S]*\? activities\[summary\.featuredActivityIndex\][\s\S]*: undefined;/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /featuredActivity \? \([\s\S]*<span className="grid size-6 shrink-0 place-items-center">[\s\S]*<AgentAvatarVisual[\s\S]*animate=\{false\}[\s\S]*avatarClassName="shrink-0"[\s\S]*avatarSrc=\{featuredActivity\.avatarSrc\}[\s\S]*label=\{featuredActivity\.name\}[\s\S]*sizePx=\{24\}[\s\S]*: \(\s*<span className="grid size-6 shrink-0 place-items-center">[\s\S]*<AgentLoading[\s\S]*agents=\{activities\.map\(toAgentLoadingAgent\)\}[\s\S]*className="shrink-0"/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /if \(featuredActivity !== undefined\) \{[\s\S]*<AgentAvatarVisual[\s\S]*animate=\{false\}[\s\S]*avatarClassName="shrink-0"[\s\S]*avatarSrc=\{featuredActivity\.avatarSrc\}[\s\S]*label=\{featuredActivity\.name\}[\s\S]*sizePx=\{24\}[\s\S]*else if \(avatarLayout === "horizontal-group"\) \{[\s\S]*<AvatarGroup[\s\S]*else \{[\s\S]*<AgentLoading[\s\S]*agents=\{activities\.map\(toAgentLoadingAgent\)\}[\s\S]*className="shrink-0"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const isAwaitingInput = !isCompletedRow && summary\.priorityState === "awaiting-input";/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /shouldCycleSingleAgentLabel|JiraIssueCyclingAgentLabel/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /status: activity\.label,[\s\S]*statusSequence: activity\.state === "working" \? getJiraIssueAgentWorkingLabels\(activity\) : undefined,[\s\S]*statusCycleIntervalMs: activity\.cycleIntervalMs[\s\S]*statusCycleJitterMs: activity\.cycleIntervalJitterMs/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /\{rowLabel\}[\s\S]*<AnimatedDots/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"[\s\S]*\{rowLabel\}/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /PixelLoader/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /className="flex min-w-0 flex-1 items-center gap-2"/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /className="grid size-6 shrink-0 place-items-center text-icon"/u);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/className="grid size-6 shrink-0 place-items-center text-icon-information"[\s\S]*<StatusInformationIcon label="" size="medium" color="currentColor" \/>/u,
+		/if \(isAwaitingInput\) \{[\s\S]*className="flex min-w-0 flex-1 items-baseline overflow-hidden text-sm leading-5 text-text"/u,
 	);
 	assert.doesNotMatch(
 		AGENT_ACTIVITY_SOURCE,
-		/<StatusInformationIcon label="" size="small"/u,
+		/if \(isAwaitingInput\) \{[\s\S]*text-text-subtlest/u,
+	);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/if \(isWorking\) \{[\s\S]*<Shimmer[\s\S]*as="span"[\s\S]*className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"[\s\S]*duration=\{1\.4\}[\s\S]*spread=\{2\}[\s\S]*\{rowLabel\}/u,
+	);
+	assert.match(AGENT_ACTIVITY_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"[\s\S]*\{rowLabel\}/u);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/if \(isAwaitingInput\) \{[\s\S]*?<span className="block min-w-0 truncate text-sm leading-5">\{rowLabel\}<\/span>[\s\S]*?<AnimatedDots \/>/u,
+	);
+	assert.match(STARTUP_SOURCE, /className=\{\s*cn\(\s*"block min-w-0 truncate text-text"/u);
+	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /PixelLoader/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /className="flex min-w-0 flex-1 items-center gap-2"/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /className="grid size-6 shrink-0 place-items-center text-icon"/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /import \{ IconTile \} from "@\/components\/ui\/icon-tile";/u);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/function JiraIssueAgentStatusIconTile[\s\S]*<IconTile[\s\S]*iconSize="medium"[\s\S]*size="small"[\s\S]*variant="transparent"/u,
+	);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/icon=\{<QuestionCircleFilledIcon color="currentColor" label="" size="small" \/>\}/u,
+	);
+	assert.doesNotMatch(
+		AGENT_ACTIVITY_SOURCE,
+		/<StatusInformationIcon label="" size="medium"/u,
 	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /import \{ Spinner \} from "@\/components\/ui\/spinner";/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /iconScale === "comfortable" \? \(\s*<Spinner label="" pulse size="xl" variant="experimental" \/>\s*\) : \(\s*<Spinner label="" \/>\s*\)/u);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/<span[\s\S]*className="grid size-6 shrink-0 place-items-center text-icon"[\s\S]*<Spinner[\s\S]*pulse[\s\S]*size="xl"[\s\S]*variant="experimental"/u,
+	);
 	assert.match(SOURCE, /<JiraIssueAgentActivityRows[\s\S]*iconScale=\{iconScale\}/);
 	assert.match(SOURCE, /<JiraIssueAgentActivityRows[\s\S]*inheritChinSurface/);
 	assert.match(AGENT_ACTIVITY_SOURCE, /if \(!showAssignmentFlyout \|\| isCompletedRow\) \{\s*return rowHandle;[\s\S]*<AgentAssignment[\s\S]*openMode="hover"[\s\S]*trigger=\{rowHandle\}/u);

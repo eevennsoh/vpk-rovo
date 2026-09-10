@@ -20,19 +20,20 @@ import { AgentSessionNotchMark } from "./agent-session-notch";
 import type { AgentSessionItem, AgentSessionVariant } from "./agent-session-types";
 import { toJiraIssueAgentActivityFromSession } from "./agent-session-work-item";
 
-function AttachedAgentSession({
+export function AgentSessionAttachedCard({
 	isArriving,
 	isNew,
-	item,
+	items,
 	onView,
 }: Readonly<{
 	isArriving: boolean;
 	isNew: boolean;
-	item: AgentSessionItem;
+	items: readonly AgentSessionItem[];
 	onView?: (item: AgentSessionItem) => void;
 }>) {
 	const shouldReduceMotion = useReducedMotion();
 	const shouldPlayArrival = isArriving && !shouldReduceMotion;
+	const activities = items.map(toJiraIssueAgentActivityFromSession);
 
 	return (
 		<motion.div
@@ -53,13 +54,21 @@ function AttachedAgentSession({
 				</>
 			) : null}
 			<JiraIssueAgentActivityRows
-				activities={[toJiraIssueAgentActivityFromSession(item)]}
+				activities={activities}
 				assignment={{
 					defaultPinnedAgentIds: DEFAULT_PINNED_SPACE_AGENT_IDS,
 					pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL,
 				}}
+				avatarLayout="animated"
 				inheritChinSurface
-				onViewChat={onView === undefined ? undefined : () => onView(item)}
+				onViewChat={onView === undefined
+					? undefined
+					: (activity) => {
+						const item = items.find((candidate) => candidate.id === activity.id);
+						if (item !== undefined) {
+							onView(item);
+						}
+					}}
 				shouldReduceMotion={shouldReduceMotion}
 				usesStrokeChrome
 			/>
@@ -150,10 +159,10 @@ export function AgentSessionCompactCard({
 			onView={onView}
 		/>
 	) : variant === "medium-attached" ? (
-		<AttachedAgentSession
+		<AgentSessionAttachedCard
 			isArriving={isArriving}
 			isNew={isNew}
-			item={item}
+			items={[item]}
 			onView={onView}
 		/>
 	) : (
