@@ -47,6 +47,12 @@ export const AGENT_SESSION_DETAIL: ComponentDetail = {
 				"The shared 12×2px session mark from the collapsed Agent Session Column rail, with the same session flyout available on hover or focus.",
 			demoSlug: "agent-session-demo-small",
 		},
+		{
+			title: "Drag",
+			description:
+				"Large cards as drag handles. A session travels as an elevated identity chip on the pointer while its card stays in place; mark several sessions first and they travel together as a stacked deck with a count. Nothing accepts a drop here, so every release snaps back.",
+			demoSlug: "agent-session-demo-drag",
+		},
 	],
 	importStatement: `import { AgentSession } from "@/components/blocks/agent-session";`,
 	usage: `import { AgentSession } from "@/components/blocks/agent-session";

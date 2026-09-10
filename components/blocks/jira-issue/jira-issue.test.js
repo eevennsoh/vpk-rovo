@@ -8,6 +8,8 @@ const AGENT_ACTIVITY_SOURCE = [
 	readFileSync(join(__dirname, "agent-activity.tsx"), "utf8"),
 	readFileSync(join(__dirname, "agent-activity-row-presentation.tsx"), "utf8"),
 ].join("\n");
+// The row's "no agent-list / agent-states components" import contract lives in
+// agent-activity-imports.test.js, which keeps this file inside its line budget.
 // The summary cluster and the standalone card types were split out of index.tsx
 // to keep it under the 1000-line budget; these assertions follow them.
 const SUMMARY_SOURCE = readFileSync(join(__dirname, "summary.tsx"), "utf8");
@@ -393,8 +395,6 @@ test("Jira issue keeps activity rows composer-free and uses one shared assignmen
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /assignedIdDraft|toActivityFromAssignedAgent/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /trigger=\{rowHandle\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /<JiraIssueAgentDragWrapper/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-list"/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-states"/u);
 	// Every attached-session chin opens the same assignment flyout, whether the
 	// merged group contains one agent or many.
 	assert.match(
@@ -657,8 +657,6 @@ test("Jira issue stroke chrome uses compact inline subtask counts", () => {
 });
 
 test("Jira issue renders one aggregate Figma-sized agent row and always exposes the shared flyout", () => {
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-list"/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-states"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /import \{ AgentAvatarVisual \} from "@\/components\/ui-custom\/agent-avatar-visual";/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /import \{ Avatar, AvatarFallback \} from "@\/components\/ui\/avatar";/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const summary = summarizeJiraIssueAgentActivities\(activities\);/u);

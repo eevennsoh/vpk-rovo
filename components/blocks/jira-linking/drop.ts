@@ -12,6 +12,7 @@ import {
 	JIRA_DROPZONE_REDUCED_MOTION_PROFILE,
 	// @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
 } from "../jira-dropzone/lib/jira-dropzone-motion.ts";
+import type { AgentListInvoker } from "@/components/blocks/agent-list";
 import type { ThirdPartyLogoName } from "@/components/ui/data/logo-third-party-data";
 
 export interface JiraLinkingPoint {
@@ -23,6 +24,8 @@ export interface JiraLinkingDropMember {
 	readonly avatarSrc?: string;
 	readonly brandName?: ThirdPartyLogoName;
 	readonly id: string;
+	/** Human who invoked the session, so the flight chip keeps the face. */
+	readonly invoker?: AgentListInvoker;
 	readonly name: string;
 	readonly vpkLogo?: "rovo";
 }
