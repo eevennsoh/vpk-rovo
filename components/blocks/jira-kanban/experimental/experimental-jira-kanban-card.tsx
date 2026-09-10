@@ -87,12 +87,6 @@ function getCardAssigneeAvatarShape(card: JiraKanbanCardData) {
 	return getCardAssigneeAvatarSrc(card)?.startsWith("/avatar-agent/") ? "hexagon" as const : undefined;
 }
 
-function toSessionFlyoutPriority(priority: JiraKanbanCardData["priority"]) {
-	if (priority === "major") return "high" as const;
-	if (priority === "minor") return "low" as const;
-	return "medium" as const;
-}
-
 export function ExperimentalJiraKanbanCard({
 	active,
 	agentActivityLayout,
@@ -170,17 +164,6 @@ export function ExperimentalJiraKanbanCard({
 			agentActivityMode={agentActivityMode}
 			agentSessionDragControl={agentSessionDragControl}
 			agentSessionTargetPreview={{ highlighted: agentSessionTargetHighlighted }}
-			agentSessionFlyout={{
-			assignee: card.assignee
-				? { name: card.assignee.name, src: card.assignee.avatarSrc }
-				: undefined,
-			issueKey: card.code,
-			issueStatus: columnTitle,
-			issueSummary: card.title,
-			priority: toSessionFlyoutPriority(card.priority),
-			pullRequestNumber: card.pullRequestNumber,
-			pullRequestTitle: card.pullRequestPreview?.title,
-		}}
 			agentDoneRuns={card.agentDoneRuns}
 			agentSessionTransfer={canTransferAgentSession ? {
 				onLink: canLinkAgentSession

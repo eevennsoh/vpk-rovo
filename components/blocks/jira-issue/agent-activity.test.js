@@ -11,7 +11,7 @@ const GENERATIVE_ACTIONS_SOURCE = readFileSync(
 	"utf8",
 );
 
-test("Needs input titles stay solid; only cycling tool-call labels shimmer", () => {
+test("chin rows keep lifecycle copy stable while flyout rows retain detailed status sequences", () => {
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
 		/isAwaitingInput \? \(\s*<span[\s\S]*\{summary\.label\}[\s\S]*<AnimatedDots/u,
@@ -20,18 +20,9 @@ test("Needs input titles stay solid; only cycling tool-call labels shimmer", () 
 		AGENT_ACTIVITY_SOURCE,
 		/isAwaitingInput \? \([\s\S]*?<Shimmer[\s\S]*?\{summary\.label\}/u,
 	);
-	assert.match(
-		AGENT_ACTIVITY_SOURCE,
-		/const isCycling = !shouldReduceMotion && labels\.length > 1;/u,
-	);
-	assert.match(
-		AGENT_ACTIVITY_SOURCE,
-		/isCycling \? \(\s*<Shimmer[\s\S]*duration=\{JIRA_ISSUE_AGENT_SHIMMER_DURATION\}[\s\S]*spread=\{JIRA_ISSUE_AGENT_SHIMMER_SPREAD\}[\s\S]*\{label\}[\s\S]*<\/Shimmer>\s*\) : label/u,
-	);
-	assert.match(
-		AGENT_ACTIVITY_SOURCE,
-		/if \(!isCycling\) \{\s*return undefined;/u,
-	);
+	assert.match(AGENT_ACTIVITY_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"[\s\S]*\{summary\.label\}/u);
+	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /JiraIssueCyclingAgentLabel|JIRA_ISSUE_AGENT_SHIMMER/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /statusSequence: activity\.state === "working" \? getJiraIssueAgentWorkingLabels\(activity\) : undefined/u);
 });
 
 test("new Jira agent and skill sessions use the staged startup presentation", () => {

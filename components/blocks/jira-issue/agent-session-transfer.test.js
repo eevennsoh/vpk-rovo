@@ -180,7 +180,7 @@ test("Jira issue raised agent activity demo still exposes exactly the original s
 	for (const value of ["agent-session-unlink", "agent-session-running-unlink", "agent-session-link"]) {
 		assert.doesNotMatch(BASE_DEMO_STATES_BLOCK, new RegExp(`"${value}"`, "u"));
 	}
-	assert.match(PAGE_SOURCE, /agentActivityLayout="split"/u);
+	assert.match(PAGE_SOURCE, /agentActivityLayout="merged"/u);
 	assert.match(PAGE_SOURCE, /onChromeChange=\{setChrome\}/u);
 	assert.doesNotMatch(PAGE_SOURCE, /chrome=\{isExperimentalAgentActivityVariant \? "stroke" : "raised"\}/u);
 });
