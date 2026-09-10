@@ -9,6 +9,12 @@ const JIRA_ISSUE_SOURCE = readFileSync(
 	join(__dirname, "../jira-issue/agent-activity.tsx"),
 	"utf8",
 );
+/**
+ * Value imports only. A type-only specifier erases at build time and cannot
+ * mount a flyout, so pinning it would make this guard about import spelling
+ * rather than about which surface owns Agent States.
+ */
+const JIRA_ISSUE_VALUE_IMPORTS = JIRA_ISSUE_SOURCE.replace(/^import type [\s\S]*?;$/gmu, "");
 const AGENT_LIST_SOURCE = readFileSync(
 	join(__dirname, "../agent-list/agent-list-card.tsx"),
 	"utf8",
@@ -174,7 +180,7 @@ test("compact agent surfaces use their intended elevation treatment", () => {
 });
 
 test("Jira Issue agent rows do not open Agent States; Agent List still owns that flyout", () => {
-	assert.doesNotMatch(JIRA_ISSUE_SOURCE, /from "@\/components\/blocks\/agent-list"/u);
+	assert.doesNotMatch(JIRA_ISSUE_VALUE_IMPORTS, /from "@\/components\/blocks\/agent-list"/u);
 	assert.doesNotMatch(JIRA_ISSUE_SOURCE, /<AgentList/u);
 	assert.doesNotMatch(JIRA_ISSUE_SOURCE, /<AgentStates/u);
 	assert.doesNotMatch(JIRA_ISSUE_SOURCE, /<HoverCard/u);

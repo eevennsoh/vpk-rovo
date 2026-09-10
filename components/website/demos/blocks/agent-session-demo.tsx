@@ -18,6 +18,10 @@ export function AgentSessionDemoSmall() {
 	return <Page variant="small" />;
 }
 
+export function AgentSessionDemoDrag() {
+	return <Page drag />;
+}
+
 export function AgentSessionDemoLocalShort() {
 	return <Page density="short" host="local" />;
 }

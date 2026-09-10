@@ -46,7 +46,7 @@ import {
 } from "@/components/blocks/jira-linking";
 
 /**
- * The travelling at-mention chip `AgentSessionMediumDrag` portals to the body.
+ * The travelling drag pill `AgentSessionMediumDrag` portals to the body.
  *
  * The same selector `jira-golden-journeys-v4` measures. Only one drag can be in
  * flight at a time, so a document-wide selector is correct here even with
@@ -177,6 +177,7 @@ function toDropMembers(
 		avatarSrc: session.agent.avatarSrc,
 		brandName: session.agent.brandName,
 		id: session.id,
+		invoker: session.invokedBy,
 		name: session.agent.name,
 		vpkLogo: session.agent.vpkLogo,
 	}));
