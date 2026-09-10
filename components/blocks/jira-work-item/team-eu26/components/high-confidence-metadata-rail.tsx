@@ -12,7 +12,6 @@ import {
 	DateRowField,
 	PersonRowField,
 	PriorityRowField,
-	StatusPill,
 } from "@/components/blocks/jira-work-item/team-eu26/components/detail-field-editors";
 import { DetailFieldRow, DetailValueTrigger } from "@/components/blocks/jira-work-item/team-eu26/components/detail-field-row";
 import {
@@ -69,9 +68,6 @@ export function HighConfidenceMetadataRail() {
 
 	return (
 		<aside aria-label="Work item details" className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto" data-team-eu26-high-confidence-rail>
-			<div className="flex h-12 shrink-0 items-center rounded-lg bg-bg-selected px-3">
-				<StatusPill onChange={(status) => actions.updateMetadata({ status })} value={metadata.status} />
-			</div>
 			<section aria-labelledby="team-eu26-details-heading" className="rounded-lg border border-border bg-surface p-4">
 				<h2 className="mb-4 text-sm font-semibold text-text" id="team-eu26-details-heading">Details</h2>
 				<div className="space-y-4">
@@ -139,7 +135,6 @@ export function HighConfidenceMetadataRail() {
 			</DisclosureCard>
 			<DisclosureCard title="Automation">No automation rules have run for this work item.</DisclosureCard>
 			<DisclosureCard title="Apps">No connected apps are showing content.</DisclosureCard>
-			<p aria-live="polite" className="sr-only">Current status: {metadata.status}</p>
 		</aside>
 	);
 }
