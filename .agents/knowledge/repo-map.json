@@ -5419,7 +5419,7 @@
 	},
 	"components": {
 		"summary": {
-			"manifestEntryCount": 440,
+			"manifestEntryCount": 441,
 			"categoryCount": 9
 		},
 		"categories": [
@@ -6259,7 +6259,7 @@
 			},
 			{
 				"category": "ui",
-				"entryCount": 80,
+				"entryCount": 81,
 				"entries": [
 					{
 						"category": "ui",
@@ -6638,6 +6638,12 @@
 						"slug": "scroll-area",
 						"name": "Scroll Area",
 						"importPath": "@/components/ui/scroll-area"
+					},
+					{
+						"category": "ui",
+						"slug": "scroll-fade",
+						"name": "Scroll Fade",
+						"importPath": "@/components/ui/scroll-fade"
 					},
 					{
 						"category": "ui",
