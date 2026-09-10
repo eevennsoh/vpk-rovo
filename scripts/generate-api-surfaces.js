@@ -2,13 +2,27 @@
 
 "use strict";
 
-const { readFileSync, writeFileSync } = require("node:fs");
+const { existsSync, mkdirSync, readFileSync, writeFileSync } = require("node:fs");
 const path = require("node:path");
 
-const DOC_PATH = ".agents/rules/api-surfaces.md";
+// The tables live in `.agents/knowledge/` rather than `.agents/rules/` because everything
+// under `.agents/rules/` is eagerly loaded into every agent session. `.agents/knowledge/` is
+// committed and drift-checked, but not auto-loaded.
+const DOC_PATH = ".agents/knowledge/api-surfaces.md";
+const GUIDANCE_DOC_PATH = ".agents/rules/api-surfaces.md";
 const ROUTE_MANIFEST_PATH = "backend/routes/route-manifest.json";
 const GENERATED_BEGIN = "<!-- generated:begin -->";
 const GENERATED_END = "<!-- generated:end -->";
+const DOC_PREAMBLE = [
+	"# API Surfaces — generated endpoint tables",
+	"",
+	"Generated file. Do not edit by hand — run `node scripts/generate-api-surfaces.js`.",
+	"",
+	`Judgment guidance lives in \`${GUIDANCE_DOC_PATH}\`; the tables live here because everything`,
+	"under `.agents/rules/` is eagerly loaded into every agent session. Source of truth is",
+	`\`${ROUTE_MANIFEST_PATH}\`.`,
+	"",
+].join("\n");
 
 function readJson(filePath, cwd = process.cwd()) {
 	return JSON.parse(readFileSync(path.join(cwd, filePath), "utf8"));
@@ -129,19 +143,23 @@ function updateApiSurfacesDocument({
 	write = true,
 } = {}) {
 	const absoluteDocPath = path.join(cwd, docPath);
-	const documentText = readFileSync(absoluteDocPath, "utf8");
+	const documentText = existsSync(absoluteDocPath)
+		? readFileSync(absoluteDocPath, "utf8")
+		: DOC_PREAMBLE;
 	const routeManifest = readJson(manifestPath, cwd);
 	const nextDocumentText = replaceGeneratedSection(
 		documentText,
 		buildGeneratedSection(routeManifest),
 	);
+	const changed = !existsSync(absoluteDocPath) || nextDocumentText !== documentText;
 
-	if (write && nextDocumentText !== documentText) {
+	if (write && changed) {
+		mkdirSync(path.dirname(absoluteDocPath), { recursive: true });
 		writeFileSync(absoluteDocPath, nextDocumentText);
 	}
 
 	return {
-		changed: nextDocumentText !== documentText,
+		changed,
 		docPath,
 		nextDocumentText,
 	};
@@ -170,8 +188,10 @@ if (require.main === module) {
 
 module.exports = {
 	DOC_PATH,
+	DOC_PREAMBLE,
 	GENERATED_BEGIN,
 	GENERATED_END,
+	GUIDANCE_DOC_PATH,
 	ROUTE_MANIFEST_PATH,
 	buildGeneratedSection,
 	replaceGeneratedSection,

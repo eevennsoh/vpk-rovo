@@ -1,7 +1,5 @@
 ---
 description: Chat and Rovo gotchas — session management, AI SDK useChat, message deletion
-globs: app/contexts/context-rovo-chat.tsx, backend/lib/rovo-*.js
-alwaysApply: false
 ---
 
 # Chat / Rovo Gotchas
