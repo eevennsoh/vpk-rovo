@@ -56,6 +56,7 @@ import { OPEN_IN_CHAT_DETAIL } from "./ui-custom/open-in-chat";
 import { NODE_DETAIL } from "./ui-custom/node";
 import { SCHEMA_DISPLAY_DETAIL } from "./ui-custom/schema-display";
 import { SHIMMER_DETAIL } from "./ui-custom/shimmer";
+import { SHIMMER_WAVE_DETAIL } from "./ui-custom/shimmer-wave";
 import { SNIPPET_DETAIL } from "./ui-custom/snippet";
 import { SPEECH_INPUT_DETAIL } from "./ui-custom/speech-input";
 import { SOURCES_DETAIL } from "./ui-custom/sources";
@@ -131,6 +132,7 @@ export const UI_CUSTOM_DETAILS: Record<string, ComponentDetail> = {
 	node: NODE_DETAIL,
 	"schema-display": SCHEMA_DISPLAY_DETAIL,
 	shimmer: SHIMMER_DETAIL,
+	"shimmer-wave": SHIMMER_WAVE_DETAIL,
 	snippet: SNIPPET_DETAIL,
 	"speech-input": SPEECH_INPUT_DETAIL,
 	sources: SOURCES_DETAIL,

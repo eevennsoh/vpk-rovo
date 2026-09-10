@@ -5419,7 +5419,7 @@
 	},
 	"components": {
 		"summary": {
-			"manifestEntryCount": 440,
+			"manifestEntryCount": 442,
 			"categoryCount": 9
 		},
 		"categories": [
@@ -6259,7 +6259,7 @@
 			},
 			{
 				"category": "ui",
-				"entryCount": 80,
+				"entryCount": 81,
 				"entries": [
 					{
 						"category": "ui",
@@ -6623,6 +6623,12 @@
 					},
 					{
 						"category": "ui",
+						"slug": "questionnaire",
+						"name": "Questionnaire",
+						"importPath": "@/components/ui/questionnaire"
+					},
+					{
+						"category": "ui",
 						"slug": "radio-group",
 						"name": "Radio Group",
 						"importPath": "@/components/ui/radio-group"
@@ -6979,7 +6985,7 @@
 			},
 			{
 				"category": "ui-custom",
-				"entryCount": 73,
+				"entryCount": 74,
 				"entries": [
 					{
 						"category": "ui-custom",
@@ -7310,6 +7316,12 @@
 						"slug": "shimmer",
 						"name": "Shimmer",
 						"importPath": "@/components/ui-custom/shimmer"
+					},
+					{
+						"category": "ui-custom",
+						"slug": "shimmer-wave",
+						"name": "Shimmer Wave",
+						"importPath": "@/components/ui-custom/shimmer-wave"
 					},
 					{
 						"category": "ui-custom",
