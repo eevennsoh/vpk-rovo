@@ -14,13 +14,13 @@ const GENERATIVE_ACTIONS_SOURCE = readFileSync(
 test("chin rows keep lifecycle copy stable while flyout rows retain detailed status sequences", () => {
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/isAwaitingInput \? \(\s*<span[\s\S]*\{summary\.label\}[\s\S]*<AnimatedDots/u,
+		/isAwaitingInput \? \(\s*<span[\s\S]*\{rowLabel\}[\s\S]*<AnimatedDots/u,
 	);
 	assert.doesNotMatch(
 		AGENT_ACTIVITY_SOURCE,
-		/isAwaitingInput \? \([\s\S]*?<Shimmer[\s\S]*?\{summary\.label\}/u,
+		/isAwaitingInput \? \([\s\S]*?<Shimmer[\s\S]*?\{rowLabel\}/u,
 	);
-	assert.match(AGENT_ACTIVITY_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"[\s\S]*\{summary\.label\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"[\s\S]*\{rowLabel\}/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /JiraIssueCyclingAgentLabel|JIRA_ISSUE_AGENT_SHIMMER/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /statusSequence: activity\.state === "working" \? getJiraIssueAgentWorkingLabels\(activity\) : undefined/u);
 });
