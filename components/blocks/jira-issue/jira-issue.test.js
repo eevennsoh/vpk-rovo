@@ -375,6 +375,8 @@ test("Jira issue keeps activity rows composer-free and uses one shared assignmen
 	// The drag wrapper is applied around the row shell. AgentAssignment still
 	// clones only the drag handle so the hover card keeps `aria-expanded`.
 	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<AgentAssignment/u);
+	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /onAssignedAgentIdsChange=/u);
+	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /assignedIdDraft|toActivityFromAssignedAgent/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /trigger=\{rowHandle\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /return withSessionDrag\(/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-list"/u);

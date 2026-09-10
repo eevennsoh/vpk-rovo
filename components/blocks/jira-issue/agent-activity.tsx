@@ -190,17 +190,6 @@ function toAgentLoadingAgent(activity: JiraIssueAgentActivity): AgentLoadingAgen
 	};
 }
 
-function toActivityFromAssignedAgent(agent: AgentAssignmentAgent): JiraIssueAgentActivity {
-	return {
-		id: agent.id,
-		name: agent.name,
-		...(agent.avatarSrc ? { avatarSrc: agent.avatarSrc } : {}),
-		...(agent.brandName ? { agentBrandName: agent.brandName } : {}),
-		label: agent.statusLabel,
-		state: "working",
-	};
-}
-
 function JiraIssueAgentActivityRow({
 	activities,
 	linkFlash,
@@ -251,13 +240,6 @@ function JiraIssueAgentActivityRow({
 		shouldReduceMotion,
 		featuredActivity?.startedAtMs,
 	);
-	const [assignedIdDraft, setAssignedIdDraft] = useState<{
-		key: string;
-		ids: readonly string[];
-	} | null>(null);
-	const assignedIds = assignedIdDraft?.key === activityKey
-		? assignedIdDraft.ids
-		: activities.map((activity) => activity.id);
 	const catalogAgents = useMemo(() => {
 		const extras = activities
 			.filter((activity) => !ROVO_AGENT_SELECTOR_AGENTS.some((agent) => agent.id === activity.id))
@@ -266,16 +248,7 @@ function JiraIssueAgentActivityRow({
 			? [...extras, ...ROVO_AGENT_SELECTOR_AGENTS]
 			: ROVO_AGENT_SELECTOR_AGENTS;
 	}, [activities]);
-	const assignedAgents = assignedIds.flatMap((agentId): AgentAssignmentAgent[] => {
-		const activity = activities.find((candidate) => candidate.id === agentId);
-		if (activity) {
-			return [toAgentAssignmentAgent(activity)];
-		}
-		const catalogAgent = catalogAgents.find((candidate) => candidate.id === agentId);
-		return catalogAgent
-			? [{ ...catalogAgent, statusLabel: "Assigned" }]
-			: [];
-	});
+	const assignedAgents = activities.map(toAgentAssignmentAgent);
 
 	const handleOpenChat = canOpenChat ? () => onViewChat?.(activities[0]) : undefined;
 	const [dragOffset, setDragOffset] = useState<PointerDragPosition>(JIRA_ISSUE_SESSION_DRAG_ORIGIN);
@@ -412,12 +385,12 @@ function JiraIssueAgentActivityRow({
 			// cost an extra render AND landed the collapse in a later commit than
 			// the one the transfer region's hit test measures — so a release with
 			// no further pointer move could commit against the well's pre-collapse
-			// rect. An attribute settles the whole 32px in this same commit.
+			// rect. An attribute settles the whole 48px in this same commit.
 			<div
 				className={cn(
 					"min-w-0",
 					isDragging && "relative w-full",
-					isDragging && (isDraggedOut ? "h-0" : "h-6"),
+				isDragging && (isDraggedOut ? "h-0" : "h-10"),
 				)}
 				data-session-chip-out={isDraggedOut || undefined}
 				data-slot="jira-issue-agent-row-wrap"
@@ -566,12 +539,11 @@ function JiraIssueAgentActivityRow({
 		<AgentAssignment
 			agents={catalogAgents}
 			assignedAgents={assignedAgents}
-			onAssignedAgentIdsChange={(agentIds) => {
-				setAssignedIdDraft({ ids: agentIds, key: activityKey });
-			}}
 			onAssignedAgentSelect={(agent) => {
 				const activity = activities.find((candidate) => candidate.id === agent.id);
-				onViewChat?.(activity ?? toActivityFromAssignedAgent(agent));
+				if (activity) {
+					onViewChat?.(activity);
+				}
 			}}
 			onOpenChange={onOpenChange}
 			openMode="hover"
