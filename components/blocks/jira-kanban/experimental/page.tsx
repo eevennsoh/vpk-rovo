@@ -220,6 +220,7 @@ function ExperimentalJiraKanbanPageContent({
 	onTimelineLastViewedAtChange,
 	ref,
 	showAgentSessionColumn = false,
+	showAgentSessionFlyoutFooter = true,
 	showAgentSessionFilter = true,
 	showAgentSessionOverflow = true,
 	showBoardContent = true,
@@ -548,6 +549,7 @@ function ExperimentalJiraKanbanPageContent({
 			: handleUntrackedLinkWorkItem,
 		showFilter: showAgentSessionFilter,
 		showOverflow: showAgentSessionOverflow,
+		showUntrackedWorkFooter: showAgentSessionFlyoutFooter,
 		triage: untrackedTriage,
 	} : undefined;
 	const untrackedHoveredWorkItemKey = untrackedHoveredSession === null
@@ -958,6 +960,7 @@ function ExperimentalJiraKanbanPageContent({
 									onCreateWorkItem: agentSessionHandlers.onCreateWorkItem,
 									onLinkWorkItem: agentSessionHandlers.onLinkWorkItem,
 									onSubtasks: agentSessionHandlers.onSubtasks,
+									showUntrackedWorkFooter: showAgentSessionFlyoutFooter,
 								}}
 								agents={agents}
 								ariaLabel={ariaLabel}

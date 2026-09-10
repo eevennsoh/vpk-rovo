@@ -115,6 +115,8 @@ export interface AgentSessionProps {
 	 * first key; takes precedence over `getSuggestedWorkItemKey` when returned.
 	 */
 	getSuggestedWorkItemKeys?: (item: AgentSessionItem) => readonly string[] | undefined;
+	/** Shows the untracked-work flyout rationale and actions below the card body. Defaults to true. */
+	showUntrackedWorkFooter?: boolean;
 	/** Links a session to a suggested work item. Receives the flyout's offered key. */
 	onLinkWorkItem?: (item: AgentSessionItem, workItemKey?: string) => void;
 	/** Creates a work item from a session. Omit to expose an unavailable Create action. */

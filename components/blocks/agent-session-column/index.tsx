@@ -746,6 +746,7 @@ export function AgentSessionColumn({
 			onView={handleNotchView}
 			playIntro={isGutterCollapsed ? playGutterIntro : false}
 			sessionDrag={sessionProps.sessionDrag}
+			showUntrackedWorkFooter={sessionProps.showUntrackedWorkFooter}
 		/>
 	) : (
 		<>

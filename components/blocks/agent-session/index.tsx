@@ -103,6 +103,7 @@ export function AgentSession({
 	selectedItemId: selectedItemIdProp,
 	sessionDrag,
 	draggingIds,
+	showUntrackedWorkFooter,
 	style,
 	variant = "large",
 	visibilityLabel,
@@ -298,6 +299,7 @@ export function AgentSession({
 				onArchiveSession={flyoutActions.onArchiveSession}
 				onCreateWorkItem={flyoutActions.onCreateWorkItem}
 				onLinkWorkItem={flyoutActions.onLinkWorkItem}
+				showUntrackedWorkFooter={showUntrackedWorkFooter}
 			/>
 		</>
 	);

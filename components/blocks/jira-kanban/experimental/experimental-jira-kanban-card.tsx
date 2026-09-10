@@ -71,6 +71,7 @@ interface ExperimentalJiraKanbanCardProps {
 	) => void;
 	/** When false, chin rows stay draggable but the dashed unlink well is omitted. */
 	showUnlinkWell?: boolean;
+	showUntrackedWorkFooter?: boolean;
 	onSubtasks?: (item: AgentSessionItem) => void;
 	selected: boolean;
 }
@@ -126,6 +127,7 @@ export function ExperimentalJiraKanbanCard({
 	onSubtasks,
 	selected,
 	showUnlinkWell = true,
+	showUntrackedWorkFooter,
 }: Readonly<ExperimentalJiraKanbanCardProps>) {
 	const shouldReduceMotion = useReducedMotion();
 	const proximityMotion = getJiraIssuePresenceMotion(shouldReduceMotion);
@@ -254,9 +256,10 @@ export function ExperimentalJiraKanbanCard({
 									? handleLinkWorkItem
 									: undefined}
 								onSubtasks={onSubtasks}
-							sessionDrag={canLinkAgentSession
-								? detachedSessionDrag ?? localSessionDrag
-								: undefined}
+								sessionDrag={canLinkAgentSession
+									? detachedSessionDrag ?? localSessionDrag
+									: undefined}
+								showUntrackedWorkFooter={showUntrackedWorkFooter}
 								style={{ marginTop: token("space.025") }}
 								variant="medium-detached"
 							/>

@@ -52,17 +52,19 @@ test("shared hover flyout defaults to session details and exposes composer and u
 	assert.match(source, /flex min-w-0 shrink-0 items-center gap-1\.5 text-xs font-medium leading-4 text-text-subtle/u);
 	assert.match(source, /className="shrink-0 text-xs font-normal text-text-subtlest"/u);
 	assert.doesNotMatch(source, /<span aria-hidden="true"> · <\/span>/u);
-	assert.match(cardShellSource, /flex w-\[320px\] max-w-\[calc\(100vw-48px\)\] flex-col gap-3 pt-3 text-text/u);
+	assert.match(
+		cardShellSource,
+		/cn\(\s*"flex w-\[320px\] max-w-\[calc\(100vw-48px\)\] flex-col gap-3 pt-3 text-text",\s*hasBodyRegion \|\| footer \? undefined : "pb-3",\s*\)/u,
+	);
 	assert.match(cardShellSource, /border-t border-border-disabled p-3/u);
 	assert.match(cardShellSource, /body\?: ReactNode;/u);
 	assert.match(cardShellSource, /artifacts\?: readonly SmartLinkItem\[\];/u);
 	assert.match(cardShellSource, /\{hasBodyRegion \|\| footer \? \(/u);
 	assert.match(cardShellSource, /\{hasBodyRegion \? \(/u);
 	assert.match(cardShellSource, /import \{ SmartLink, type SmartLinkItem \} from "@\/components\/blocks\/smart-link";/u);
-	assert.match(
-		cardShellSource,
-		/<h3 className="text-xs leading-4 font-medium text-text" id=\{artifactsId\}>[\s\S]*?Artifacts[\s\S]*?<\/h3>/u,
-	);
+	assert.doesNotMatch(cardShellSource, /\bArtifacts\b/u);
+	assert.doesNotMatch(cardShellSource, /artifactsId|useId/u);
+	assert.match(cardShellSource, /<ul className="flex flex-col gap-1">/u);
 	assert.match(
 		cardShellSource,
 		/<SmartLink[\s\S]*className="max-w-full"[\s\S]*item=\{item\}[\s\S]*showStatus=\{item\.variant === "pull-request"\}[\s\S]*side="right"[\s\S]*\/>/u,
@@ -157,6 +159,41 @@ test("shared hover flyout defaults to session details and exposes composer and u
 	assert.match(source, /return "completed"/u);
 });
 
+test("untracked-work suggestion footer is visible by default and can be hidden through public owners", () => {
+	const flyoutSource = readRepoFile(FLYOUT_BODY_PATH);
+	const cardSource = readRepoFile(UNTRACKED_CARD_PATH);
+	const blockSource = readBlockFile("components/agent-session-flyout.tsx");
+	const agentSessionSource = readRepoFile("components/blocks/agent-session/index.tsx");
+	const agentSessionTypes = readRepoFile("components/blocks/agent-session/agent-session-types.ts");
+	const detailSource = readRepoFile("app/data/details/blocks/agent-session-flyout.ts");
+
+	assert.match(cardSource, /showFooter = true,/u);
+	assert.match(cardSource, /showFooter\?: boolean;/u);
+	assert.match(
+		cardSource,
+		/aria-labelledby=\{showFooter \? `\$\{titleId\} \$\{rationaleId\}` : undefined\}/u,
+	);
+	assert.match(cardSource, /footer=\{\s*showFooter \? \(/u);
+	assert.match(cardSource, /<JiraSessionUntrackedWorkActions[\s\S]*?\/>\s*<\/>\s*\) : undefined\s*\}/u);
+	assert.match(
+		cardSource,
+		/trailing=\{showFooter && hasIssueKey \? <Lozenge className="shrink-0" variant="success">High<\/Lozenge> : null\}/u,
+	);
+
+	assert.match(flyoutSource, /showUntrackedWorkFooter\?: boolean;/u);
+	assert.match(flyoutSource, /showFooter=\{props\.showUntrackedWorkFooter\}/u);
+	assert.match(
+		flyoutSource,
+		/<JiraSessionFlyoutPayload[\s\S]*showUntrackedWorkFooter=\{showUntrackedWorkFooter\}/u,
+	);
+	assert.match(blockSource, /"showUntrackedWorkFooter"/u);
+	assert.match(blockSource, /showUntrackedWorkFooter=\{showUntrackedWorkFooter\}/u);
+	assert.match(agentSessionTypes, /showUntrackedWorkFooter\?: boolean;/u);
+	assert.match(agentSessionSource, /showUntrackedWorkFooter=\{showUntrackedWorkFooter\}/u);
+	assert.match(detailSource, /name: "showUntrackedWorkFooter"/u);
+	assert.match(detailSource, /default: "true"/u);
+});
+
 test("details hover card uses Figma chrome without panel property rows", () => {
 	const source = readRepoFile(FLYOUT_BODY_PATH);
 	const cardShellSource = readRepoFile(FLYOUT_CARD_PATH);
@@ -212,7 +249,7 @@ test("details hover card uses Figma chrome without panel property rows", () => {
 	assert.doesNotMatch(source, /ScreenIcon/u);
 });
 
-test("session flyout Artifacts render the PR as a GitHub Smart Link", () => {
+test("session flyout artifact rows render the PR as a GitHub Smart Link without a heading", () => {
 	const cardShellSource = readRepoFile(FLYOUT_CARD_PATH);
 	const detailsSource = readRepoFile(DETAILS_CARD_PATH);
 	const cardSource = readRepoFile(UNTRACKED_CARD_PATH);
@@ -239,7 +276,7 @@ test("session flyout Artifacts render the PR as a GitHub Smart Link", () => {
 	assert.match(detailsSource, /artifacts=\{sessionArtifactItems\(session\)\}/u);
 	assert.match(cardSource, /artifacts=\{artifacts\}/u);
 	assert.match(cardSource, /sessionArtifactItems/u);
-	assert.match(cardShellSource, /Artifacts/u);
+	assert.doesNotMatch(cardShellSource, />\s*Artifacts\s*</u);
 	assert.match(
 		cardShellSource,
 		/<SmartLink[\s\S]*className="max-w-full"[\s\S]*item=\{item\}[\s\S]*showStatus=\{item\.variant === "pull-request"\}[\s\S]*side="right"[\s\S]*\/>/u,

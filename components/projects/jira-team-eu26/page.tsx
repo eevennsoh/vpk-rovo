@@ -362,6 +362,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						}}
 						renderAgentActivityIndicator={renderJiraTeamEu26AgentActivityIndicator}
 						showAgentSessionColumn
+						showAgentSessionFlyoutFooter={false}
 						showAgentSessionFilter={false}
 						showAgentSessionOverflow={false}
 						showBoardContent={showBoardContent}

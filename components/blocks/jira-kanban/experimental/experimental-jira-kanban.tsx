@@ -188,6 +188,7 @@ export interface ExperimentalJiraKanbanProps extends JiraKanbanProps {
 		onCreateWorkItem?: AgentSessionColumnProps["onCreateWorkItem"];
 		onLinkWorkItem?: AgentSessionColumnProps["onLinkWorkItem"];
 		onSubtasks?: AgentSessionColumnProps["onSubtasks"];
+		showUntrackedWorkFooter?: AgentSessionColumnProps["showUntrackedWorkFooter"];
 	};
 	/**
 	 * Which columns are collapsed, when the host wants to own that.
@@ -1011,6 +1012,7 @@ function ExperimentalJiraKanbanView({
 											onSessionLink={onCardAgentSessionLink}
 												onSessionUnlink={onCardAgentSessionUnlink}
 												onSubtasks={proximityActions.onSubtasks}
+												showUntrackedWorkFooter={proximityAgentSession?.showUntrackedWorkFooter}
 												showUnlinkWell={showAgentSessionUnlinkWell}
 												selected={isSelected}
 											/>
