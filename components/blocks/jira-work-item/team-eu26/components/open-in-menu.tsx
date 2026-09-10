@@ -72,7 +72,7 @@ export function OpenInMenu({
 	trigger,
 }: Readonly<{
 	align?: "start" | "end";
-	trigger: ReactElement;
+	trigger: ReactElement<{ "aria-pressed"?: boolean }>;
 }>) {
 	const [open, setOpen] = useState(false);
 	const { contextResources } = useJiraWorkItemState();

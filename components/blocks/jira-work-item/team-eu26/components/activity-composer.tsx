@@ -164,7 +164,6 @@ export function ActivityComposer({
 	autoFocus = false,
 	onAgentPromptSubmit,
 	onFailingChecksSubmit,
-	onOpenAgentChat,
 	pullRequestFix,
 	pullRequestReview,
 }: Readonly<{
@@ -324,11 +323,6 @@ export function ActivityComposer({
 			return;
 		}
 		setSessionTargetSelection({ sessionId: mentionedWorkingAgentSession.id, choice });
-	};
-
-	const handleOpenWorkingSession = (agentId: string, sessionId: string) => {
-		actions.openSession(sessionId);
-		onOpenAgentChat?.(agentId);
 	};
 
 	const handleSubmit = (body: string) => {

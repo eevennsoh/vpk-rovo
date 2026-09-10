@@ -49,7 +49,7 @@ export function WorkItemBody({
 
 	return (
 		<div className="flex min-w-0 flex-col gap-4">
-			{initialPreset === "blank" || initialPreset === "empty" ? (
+			{initialPreset === "blank" ? (
 				<WorkItemSection id="description" label="Description">
 					<AiPlannerScope header={<AiPlannerPanel />}>
 						<ContextEditableDescription />
