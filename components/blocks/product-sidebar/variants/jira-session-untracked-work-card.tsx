@@ -147,6 +147,7 @@ export function JiraSessionUntrackedWorkCard({
 	onCreateWorkItem,
 	onLinkWorkItem,
 	session,
+	showFooter = true,
 }: Readonly<{
 	animateAvatars?: boolean;
 	archiveActionLabel?: string;
@@ -155,6 +156,7 @@ export function JiraSessionUntrackedWorkCard({
 	onCreateWorkItem?: () => void;
 	onLinkWorkItem?: (workItemKey: string) => void;
 	session: JiraSidebarSessionItem;
+	showFooter?: boolean;
 }>) {
 	const titleId = useId();
 	const rationaleId = useId();
@@ -167,7 +169,7 @@ export function JiraSessionUntrackedWorkCard({
 
 	return (
 		<JiraSessionFlyoutCard
-			aria-labelledby={`${titleId} ${rationaleId}`}
+			aria-labelledby={showFooter ? `${titleId} ${rationaleId}` : undefined}
 			artifacts={artifacts}
 			body={
 				artifacts.length > 0 ? (
@@ -176,24 +178,26 @@ export function JiraSessionUntrackedWorkCard({
 			}
 			bodyClassName="gap-1"
 			footer={
-				<>
-					<div className="flex flex-col gap-2">
-						<h3 className="text-xs leading-4 font-medium text-text" id={rationaleId}>
-							{rationaleTitle}
-						</h3>
-						<p className="text-xs leading-4 text-text-subtlest">
-							{confidenceRationale}
-						</p>
-					</div>
-					<JiraSessionUntrackedWorkActions
-						archiveActionLabel={archiveActionLabel}
-						issueKey={session.issueKey}
-						onAddAsSubtask={onAddAsSubtask}
-						onArchiveSession={onArchiveSession}
-						onCreateWorkItem={onCreateWorkItem}
-						onLinkWorkItem={onLinkWorkItem}
-					/>
-				</>
+				showFooter ? (
+					<>
+						<div className="flex flex-col gap-2">
+							<h3 className="text-xs leading-4 font-medium text-text" id={rationaleId}>
+								{rationaleTitle}
+							</h3>
+							<p className="text-xs leading-4 text-text-subtlest">
+								{confidenceRationale}
+							</p>
+						</div>
+						<JiraSessionUntrackedWorkActions
+							archiveActionLabel={archiveActionLabel}
+							issueKey={session.issueKey}
+							onAddAsSubtask={onAddAsSubtask}
+							onArchiveSession={onArchiveSession}
+							onCreateWorkItem={onCreateWorkItem}
+							onLinkWorkItem={onLinkWorkItem}
+						/>
+					</>
+				) : undefined
 			}
 			meta={
 				<div className="flex h-4 min-w-0 items-center gap-1">
@@ -218,7 +222,7 @@ export function JiraSessionUntrackedWorkCard({
 			}
 			title={session.title}
 			titleId={titleId}
-			trailing={hasIssueKey ? <Lozenge className="shrink-0" variant="success">High</Lozenge> : null}
+			trailing={showFooter && hasIssueKey ? <Lozenge className="shrink-0" variant="success">High</Lozenge> : null}
 		/>
 	);
 }

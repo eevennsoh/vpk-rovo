@@ -32,6 +32,12 @@ const EXPERIMENTAL_CARD_SOURCE = readProjectFile(
 const PANEL_SOURCE = readProjectFile(
 	"components/blocks/jira-kanban/experimental/components/agent-session-panel.tsx",
 );
+const AGENT_SESSION_COLUMN_SOURCE = readProjectFile(
+	"components/blocks/agent-session-column/index.tsx",
+);
+const AGENT_SESSION_COLUMN_RAIL_SOURCE = readProjectFile(
+	"components/blocks/agent-session-column/agent-session-column-rail.tsx",
+);
 const PANEL_RESIZE_HOOK_SOURCE = readProjectFile(
 	"components/blocks/jira-kanban/experimental/hooks/use-agent-session-panel-resize.ts",
 );
@@ -74,6 +80,38 @@ test("the route pins the shared Agent Session column beside Jira statuses", () =
 		/"flex min-h-full w-max min-w-full items-stretch ps-6"/u,
 	);
 	assert.doesNotMatch(EXPERIMENTAL_PAGE_SOURCE, /inFlowAgentSessionColumn/u);
+});
+
+test("the route hides untracked-work confidence chrome across column and card flyouts", () => {
+	assert.match(PAGE_SOURCE, /showAgentSessionFlyoutFooter=\{false\}/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showAgentSessionFlyoutFooter\?: boolean;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showAgentSessionFlyoutFooter = true,/u);
+	assert.match(
+		EXPERIMENTAL_PAGE_SOURCE,
+		/showUntrackedWorkFooter: showAgentSessionFlyoutFooter,/u,
+	);
+	assert.match(
+		EXPERIMENTAL_PAGE_SOURCE,
+		/proximityAgentSession=\{\{[\s\S]*showUntrackedWorkFooter: showAgentSessionFlyoutFooter,/u,
+	);
+	assert.match(EXPERIMENTAL_BOARD_SOURCE, /showUntrackedWorkFooter\?: AgentSessionColumnProps\["showUntrackedWorkFooter"\];/u);
+	assert.match(
+		EXPERIMENTAL_BOARD_SOURCE,
+		/showUntrackedWorkFooter=\{proximityAgentSession\?\.showUntrackedWorkFooter\}/u,
+	);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /showUntrackedWorkFooter\?: boolean;/u);
+	assert.match(
+		EXPERIMENTAL_CARD_SOURCE,
+		/<AgentSession[\s\S]*showUntrackedWorkFooter=\{showUntrackedWorkFooter\}/u,
+	);
+	assert.match(
+		AGENT_SESSION_COLUMN_SOURCE,
+		/<AgentSessionColumnRail[\s\S]*showUntrackedWorkFooter=\{sessionProps\.showUntrackedWorkFooter\}/u,
+	);
+	assert.match(
+		AGENT_SESSION_COLUMN_RAIL_SOURCE,
+		/<JiraSessionFlyoutSurface[\s\S]*showUntrackedWorkFooter=\{showUntrackedWorkFooter\}/u,
+	);
 });
 
 test("the route locks untracked work to the in-flow column", () => {
