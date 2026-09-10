@@ -8,7 +8,6 @@ import MergeSuccessIcon from "@atlaskit/icon/core/merge-success";
 import PriorityTrivialIcon from "@atlaskit/icon/core/priority-trivial";
 import PullRequestIcon from "@atlaskit/icon/core/pull-request";
 import ScreenIcon from "@atlaskit/icon/core/screen";
-import StatusInformationIcon from "@atlaskit/icon/core/status-information";
 import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
 import CloudIcon from "@atlaskit/icon-lab/core/cloud";
 import GroupIcon from "@atlaskit/icon-lab/core/group";
@@ -148,11 +147,6 @@ export function BoardNeedsInputButton({
 			onClick={() => onAgentFilterIdChange?.(selected ? null : "needs-input")}
 			variant="outline"
 		>
-			<Icon
-				className="text-icon-information! [&_svg]:text-icon-information!"
-				data-icon="inline-start"
-				render={<StatusInformationIcon color="currentColor" label="" size="small" />}
-			/>
 			Needs input
 			<Badge max={false} variant="information">{count}</Badge>
 		</Button>
