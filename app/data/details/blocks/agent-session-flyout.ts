@@ -55,6 +55,13 @@ export const AGENT_SESSION_FLYOUT_DETAIL: ComponentDetail = {
 			description: "Additional classes applied to the compact session-list container.",
 		},
 		{
+			name: "showUntrackedWorkFooter",
+			type: "boolean",
+			default: "true",
+			description:
+				"Shows the untracked-work rationale and action controls below the flyout card body.",
+		},
+		{
 			name: "onLinkWorkItem",
 			type: "(session: JiraSidebarSessionItem, workItemKey: string) => void",
 			description: "Links the session to the suggested work item. When omitted, the action is exposed as unavailable.",
