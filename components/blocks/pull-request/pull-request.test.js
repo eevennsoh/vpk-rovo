@@ -34,13 +34,12 @@ test("PullRequest exposes the dropdown, spacious, and flyout card props contract
 	);
 	assert.match(
 		TYPES_SOURCE,
-		/export interface PullRequestProps \{[\s\S]*variant\?: PullRequestVariant;[\s\S]*number: number;[\s\S]*title: string;[\s\S]*status: PullRequestStatus;[\s\S]*author\?: PullRequestAuthor;[\s\S]*repository\?: string;[\s\S]*branch\?: string;[\s\S]*targetBranch\?: string;[\s\S]*additions: number;[\s\S]*deletions: number;[\s\S]*filesChanged\?: number;[\s\S]*timestampMs\?: number;[\s\S]*relativeTime\?: string;[\s\S]*selected\?: boolean;[\s\S]*onActivate\?: \(\) => void;/u,
+		/export interface PullRequestProps \{[\s\S]*variant\?: PullRequestVariant;[\s\S]*number: number;[\s\S]*title: string;[\s\S]*status: PullRequestStatus;[\s\S]*author\?: PullRequestAuthor;[\s\S]*branch\?: string;[\s\S]*targetBranch\?: string;[\s\S]*additions: number;[\s\S]*deletions: number;[\s\S]*filesChanged\?: number;[\s\S]*timestampMs\?: number;[\s\S]*relativeTime\?: string;[\s\S]*selected\?: boolean;[\s\S]*onActivate\?: \(\) => void;/u,
 	);
 });
 
-test("PullRequest card reuses Avatar, Tag, Lozenge, BrandLogoMark, and ArrowRight", () => {
+test("PullRequest card reuses Avatar, Lozenge, BrandLogoMark, and ArrowRight", () => {
 	assert.match(COMPONENT_SOURCE, /from "@\/components\/ui\/avatar"/u);
-	assert.match(COMPONENT_SOURCE, /from "@\/components\/ui\/tag"/u);
 	assert.match(COMPONENT_SOURCE, /from "@\/components\/ui\/lozenge"/u);
 	assert.match(COMPONENT_SOURCE, /from "@\/components\/ui\/logo-mark"/u);
 	assert.match(COMPONENT_SOURCE, /from "@atlaskit\/icon\/core\/arrow-right"/u);
@@ -65,7 +64,7 @@ test("PullRequest card reuses Avatar, Tag, Lozenge, BrandLogoMark, and ArrowRigh
 	assert.match(COMPONENT_SOURCE, /ArrowRightIcon/u);
 	assert.match(
 		COMPONENT_SOURCE,
-		/flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden/u,
+		/flex min-w-0 flex-nowrap items-center gap-1\.5 overflow-hidden/u,
 	);
 	// Source/head is the flexible truncating part; target/base never truncates.
 	assert.match(
@@ -100,12 +99,14 @@ test("PullRequest selection styling works for read-only and interactive cards", 
 		COMPONENT_SOURCE,
 		/<div[\s\S]*aria-current=\{selected \? "true" : undefined\}[\s\S]*data-pull-request=\{number\}[\s\S]*data-selected=\{selected \? "true" : undefined\}[\s\S]*role="group"/u,
 	);
-	assert.match(COMPONENT_SOURCE, /border border-border px-3 py-1\.5/u);
+	// Trailing inset is half the leading one so the status lozenge clears the
+	// top and right borders by the same 7px.
+	assert.match(COMPONENT_SOURCE, /border border-border py-1\.5 ps-3 pe-1\.5/u);
 	assert.match(COMPONENT_SOURCE, /items-center gap-2 rounded-lg/u);
 	assert.doesNotMatch(COMPONENT_SOURCE, /bg-\[#|text-\[#|purple-500|Open preview modal/u);
 });
 
-test("PullRequest spacious variant restores the original three-row dropdown card", () => {
+test("PullRequest spacious variant renders the three-row dropdown card", () => {
 	assert.match(COMPONENT_SOURCE, /variant = "dropdown"/u);
 	assert.match(COMPONENT_SOURCE, /const isSpacious = variant === "spacious"/u);
 	assert.match(
@@ -123,11 +124,29 @@ test("PullRequest spacious variant restores the original three-row dropdown card
 		COMPONENT_SOURCE,
 		/function PullRequestSpaciousBody[\s\S]*<PullRequestGitHubMark \/>[\s\S]*<PullRequestBranchPath branch=\{branch\} targetBranch=\{targetBranch\} \/>/u,
 	);
-	assert.doesNotMatch(
-		COMPONENT_SOURCE,
-		/function PullRequestSpaciousBody[\s\S]*<PullRequestRepositoryTag /u,
-	);
 	assert.doesNotMatch(COMPONENT_SOURCE, /function PullRequestCompactBody|variant = "compact"/u);
+});
+
+/**
+ * Figma 3173:2888 moved the status out of the leading slot: row one is the
+ * wrapping `#N` + title with the lozenge trailing, right-aligned. Slice the
+ * body so a greedy match cannot satisfy the order by wandering into the flyout
+ * body, which has always trailed its lozenge.
+ */
+test("PullRequest spacious row one leads with the title and trails the status", () => {
+	const spaciousBody = COMPONENT_SOURCE.slice(
+		COMPONENT_SOURCE.indexOf("function PullRequestSpaciousBody"),
+		COMPONENT_SOURCE.indexOf("function PullRequestFlyoutBody"),
+	);
+
+	assert.ok(spaciousBody.length > 0, "spacious body not found before the flyout body");
+	assert.ok(
+		spaciousBody.indexOf("<PullRequestInlineTitle")
+			< spaciousBody.indexOf("<PullRequestStatusLozenge"),
+		"spacious row one must render the title before the status lozenge",
+	);
+	// `flex-1` on the title is the only thing pushing the lozenge to the edge.
+	assert.match(spaciousBody, /<PullRequestInlineTitle\s*className="flex-1 font-medium"/u);
 });
 
 test("PullRequest flyout and spacious titles wrap as one inline text run", () => {
@@ -173,8 +192,11 @@ test("PullRequest flyout variant matches the overlay summary card", () => {
 	assert.match(COMPONENT_SOURCE, /function PullRequestDropdownBody/u);
 	assert.match(COMPONENT_SOURCE, /function PullRequestFlyoutBody/u);
 	assert.match(COMPONENT_SOURCE, /function PullRequestStatusLozenge/u);
-	assert.match(COMPONENT_SOURCE, /function PullRequestRepositoryTag/u);
 	assert.match(COMPONENT_SOURCE, /function PullRequestGitHubMark/u);
+	// No card prints the repo: the GitHub mark and `#N` already say where the
+	// change lives, so the pill and its `repository` prop are both gone.
+	assert.doesNotMatch(COMPONENT_SOURCE, /PullRequestRepositoryTag|repository/u);
+	assert.doesNotMatch(TYPES_SOURCE, /repository/u);
 	assert.match(
 		COMPONENT_SOURCE,
 		/function PullRequestDropdownBody[\s\S]*text-sm font-medium leading-5[\s\S]*function PullRequestFlyoutBody/u,
@@ -201,10 +223,6 @@ test("PullRequest flyout variant matches the overlay summary card", () => {
 	assert.doesNotMatch(
 		COMPONENT_SOURCE,
 		/function PullRequestFlyoutBody[\s\S]*<PullRequestMetaLeadingIcon \/>[\s\S]*<PullRequestGitHubMark \/>/u,
-	);
-	assert.doesNotMatch(
-		COMPONENT_SOURCE,
-		/function PullRequestFlyoutBody[\s\S]*<PullRequestRepositoryTag /u,
 	);
 	assert.match(
 		COMPONENT_SOURCE,

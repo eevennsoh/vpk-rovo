@@ -1,7 +1,5 @@
 ---
 description: AI SDK / Chat architecture — useChat, Rovo Serve, data parts, streaming
-globs: app/contexts/context-rovo-chat.tsx, backend/chat/**, backend/routes/chat-*.js, backend/routes/rovo-*.js, backend/lib/rovo-*.js, rovo/**
-alwaysApply: false
 ---
 
 # AI SDK / Chat Architecture

@@ -134,7 +134,6 @@ export function JiraIssuePullRequestCluster({
 					filesChanged={pullRequestPreview?.filesChanged}
 					number={pullRequestNumber}
 					relativeTime={pullRequestPreview?.relativeTime}
-					repository={pullRequestPreview?.repository}
 					status={toPullRequestCardStatus(pullRequestStatus)}
 					targetBranch={pullRequestPreview?.targetBranch}
 					title={overlayTitle}

@@ -10,9 +10,11 @@ import {
 import type { JiraIssueAgentSessionDragState } from "@/components/blocks/jira-issue/agent-session-drag";
 
 import {
+	AGENT_SESSION_CLOUD_ITEMS,
 	AGENT_SESSION_ITEMS,
 	AGENT_SESSION_ATTACHED_ITEMS,
 	AgentSession,
+	type AgentSessionDensity,
 	type AgentSessionItem,
 	type AgentSessionSelectionGesture,
 	type AgentSessionTriageRow,
@@ -20,11 +22,13 @@ import {
 } from "./index";
 import { selectDragCohort } from "./session-cohort";
 
-// One card is the whole story here — a second only repeats the same states.
+// One card is the whole story for the short local row — a second only repeats
+// the same states. The cloud list keeps three so the lifecycle indicators
+// (working, needs input, complete) can be compared side by side.
 const AGENT_SESSION_DEMO_ITEMS = AGENT_SESSION_ITEMS.slice(0, 1);
 
 const NO_DRAGGING_IDS: ReadonlySet<string> = new Set<string>();
-/** The three non-drag examples pass no rows, so the hook builds nothing. */
+/** Every non-drag example passes no rows, so the hook builds nothing. */
 const NO_TRIAGE_ITEMS: readonly AgentSessionItem[] = [];
 const NO_TRIAGE_ROWS: ReadonlyMap<string, AgentSessionTriageRow> = new Map();
 
@@ -64,25 +68,62 @@ function useDemoSessionMarks(
 }
 
 export default function AgentSessionPage({
+	density = "short",
 	drag = false,
+	host = "local",
 	variant = "large",
-}: Readonly<{ drag?: boolean; variant?: AgentSessionVariant }>) {
+}: Readonly<{
+	density?: AgentSessionDensity;
+	/** Marks plus drag handles, so a cohort can be picked up as one stacked chip. */
+	drag?: boolean;
+	/** Which fixture list to render. Host is a property of the data, not the layout. */
+	host?: "local" | "cloud";
+	variant?: AgentSessionVariant;
+}>) {
 	const [capturedIds, setCapturedIds] = useState<ReadonlySet<string>>(() => new Set());
 	const [draggingIds, setDraggingIds] = useState<ReadonlySet<string>>(() => NO_DRAGGING_IDS);
-	// Drag needs several rows to mark, so it takes the whole sample list; every
-	// other example keeps the single card it has always shown.
-	const demoItems = drag
-		? AGENT_SESSION_ITEMS
-		: variant === "medium-attached"
-			? AGENT_SESSION_ATTACHED_ITEMS
-			: AGENT_SESSION_DEMO_ITEMS;
-	const rowTriage = useDemoSessionMarks(drag ? demoItems : NO_TRIAGE_ITEMS);
+	const isLong = variant === "large" && density === "long";
+	const [items, setItems] = useState<readonly AgentSessionItem[]>(() => {
+		// Drag needs several rows to mark, so it takes the whole sample list.
+		if (drag) {
+			return AGENT_SESSION_ITEMS;
+		}
+		if (variant === "medium-attached") {
+			return AGENT_SESSION_ATTACHED_ITEMS;
+		}
+		if (host === "cloud") {
+			return isLong ? AGENT_SESSION_CLOUD_ITEMS : AGENT_SESSION_CLOUD_ITEMS.slice(0, 1);
+		}
+		return isLong ? AGENT_SESSION_ITEMS.slice(0, 3) : AGENT_SESSION_DEMO_ITEMS;
+	});
+	// Marks follow the live list, so a row the menu removed stops being markable
+	// and cannot be dragged along as part of a cohort.
+	const rowTriage = useDemoSessionMarks(drag ? items : NO_TRIAGE_ITEMS);
 
 	const handleCapture = useCallback((item: AgentSessionItem) => {
 		setCapturedIds((current) => new Set(current).add(item.id));
 	}, []);
 	const handleLink = useCallback((item: AgentSessionItem) => {
 		setCapturedIds((current) => new Set(current).add(item.id));
+	}, []);
+	// The menu's destructive and dismissive rows really remove the row, so the
+	// demo shows the outcome rather than an enabled control that does nothing.
+	const handleRemove = useCallback((item: AgentSessionItem) => {
+		setItems((current) => current.filter((candidate) => candidate.id !== item.id));
+	}, []);
+	const handleRename = useCallback((item: AgentSessionItem) => {
+		setItems((current) => current.map((candidate) => (
+			candidate.id === item.id
+				? { ...candidate, shortTitle: `${candidate.shortTitle ?? candidate.title} (renamed)`, title: `${candidate.title} (renamed)` }
+				: candidate
+		)));
+	}, []);
+	const handleUnlink = useCallback((item: AgentSessionItem) => {
+		setItems((current) => current.map((candidate) => (
+			candidate.id === item.id
+				? { ...candidate, prStatus: undefined, sessionDetails: { ...candidate.sessionDetails, pullRequestNumber: undefined, pullRequestTitle: undefined } }
+				: candidate
+		)));
 	}, []);
 	// Drag-only: there is no drop target here, so release simply clears the set
 	// and the wrapper snaps the card back on its own.
@@ -108,13 +149,19 @@ export default function AgentSessionPage({
 				className={variant === "large"
 					// `gap-1 p-1` is what lets adjacent marked rows fuse, exactly as the
 					// column and the linking surfaces set it up.
-					? drag ? "w-[320px] gap-1 p-1" : "w-[320px]"
+					? isLong ? "w-[520px]" : drag ? "w-[320px] gap-1 p-1" : "w-[320px]"
 					: "w-fit"}
+				density={density}
 				draggingIds={drag ? draggingIds : undefined}
-				items={demoItems}
+				items={items}
+				onContinueInAgent={handleCapture}
 				onCreateWorkItem={handleCapture}
+				onDeleteSession={handleRemove}
 				onLinkWorkItem={handleLink}
+				onRenameSession={handleRename}
 				onSubtasks={handleCapture}
+				onToggleVisibility={handleRemove}
+				onUnlinkSession={handleUnlink}
 				rowTriage={drag ? rowTriage : undefined}
 				sessionDrag={drag ? sessionDrag : undefined}
 				variant={variant}

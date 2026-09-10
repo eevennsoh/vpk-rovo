@@ -75,9 +75,14 @@ test("running drops the redundant label; awaiting swaps the title to the Needs i
 		CARD_SOURCE,
 		/return item\.state === "needs-input" \? AWAITING_INPUT_TITLE : item\.title;/u,
 	);
-	// The helper drives the native card title slots and remains the default for
+	// The helper drives both native card title slots and remains the default for
 	// the shared header when a consumer does not lead with the agent identity.
-	assert.equal((CARD_SOURCE.match(/\{getSessionTitle\(item\)\}/gu) ?? []).length, 2);
+	assert.equal((CARD_SOURCE.match(/getSessionTitle\(item\)/gu) ?? []).length, 3);
+	// A row whose caller-owned metadata already states the lifecycle can opt out,
+	// so the state is not said twice with the work name nowhere on the card.
+	assert.match(CARD_SOURCE, /stateAwareTitle = true,/u);
+	assert.match(CARD_SOURCE, /\{stateAwareTitle \? getSessionTitle\(item\) : item\.title\}/u);
+	assert.match(CARD_SOURCE, /\{stateAwareTitle && stateMeta\.showDots \? <AnimatedDots/u);
 	assert.match(
 		CARD_SOURCE,
 		/const title = leadWithAgentName \? item\.agent\.name : getSessionTitle\(item\);/u,
@@ -466,9 +471,11 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		/const viewItem = onView === undefined \? undefined : \(\) => onView\(item\);/u,
 	);
 	assert.match(CARD_SOURCE, /onView=\{viewItem\}/u);
+	// A caller-owned `menu` counts as a revealed control too — a row whose only
+	// action is a dropdown must still reveal it and still hide the lifecycle slot.
 	assert.match(
 		CARD_SOURCE,
-		/const showHoverActions = \(!isSelected \|\| showHoverActionsWhenSelected\) &&\s*\(hoverActions\?\.primary !== undefined \|\| hoverActions\?\.secondary !== undefined\);/u,
+		/const showHoverActions = \(!isSelected \|\| showHoverActionsWhenSelected\) &&\s*\(hoverActions\?\.primary !== undefined\s*\|\| hoverActions\?\.secondary !== undefined\s*\|\| hoverActions\?\.menu !== undefined\);/u,
 	);
 	assert.match(CARD_SOURCE, /\{showHoverActions \? \(\s*<CardActions/u);
 	assert.match(CARD_SOURCE, /<AgentListRowActionButton action=\{primary\}/u);

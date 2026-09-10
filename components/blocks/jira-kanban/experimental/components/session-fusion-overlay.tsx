@@ -7,6 +7,7 @@ import {
 	JiraLinking,
 	type JiraLinkingIdentity,
 	type JiraLinkingRelease,
+	type JiraLinkingVariant,
 } from "@/components/blocks/jira-linking";
 
 import { resolveAgentBrandTint } from "../lib/agent-brand-tint";
@@ -57,20 +58,29 @@ export interface SessionFusionOverlayProps {
 	proximity: BoardAgentSessionAttachProximity | null;
 	/** Armed on an attach drop so subjects fly into the card. */
 	release?: JiraLinkingRelease | null;
+	/** Which linking decoration to draw. Defaults to the metaball `fuse`. */
+	variant?: JiraLinkingVariant;
 }
 
 /**
  * Board adapter for the reusable Jira linking.
  *
- * Approach is the metaball field. An attach drop arms `release.drop` so the
- * subjects fly into the card's agent session row with the same stagger as the
- * create well, and the chin-row sweep waits until those flights have landed.
+ * Fuse's approach is the metaball field. An attach drop arms `release.drop` so
+ * the subjects fly into the card's agent session row with the same stagger as
+ * the create well, and the chin-row sweep waits until those flights have
+ * landed.
+ *
+ * Glow draws nothing on approach: it arms on release only, collapsing one
+ * cohort chip into the card surface and acknowledging it with the card's own
+ * halo and backdrop pulse. It stays mounted after the host clears `release` so
+ * that backdrop can finish.
  */
 export function SessionFusionOverlay({
 	members,
 	onFuseSettled,
 	proximity,
 	release = null,
+	variant = "fuse",
 }: Readonly<SessionFusionOverlayProps>) {
 	const identities = useMemo(() => toLinkingIdentities(members), [members]);
 
@@ -82,6 +92,7 @@ export function SessionFusionOverlay({
 			release={release}
 			sourceSelector={CHIP_SELECTOR}
 			target={release?.target ?? toSessionFusionTarget(proximity)}
+			variant={variant}
 			zIndex={FUSION_Z_INDEX}
 		/>
 	);

@@ -188,6 +188,7 @@ function ExperimentalJiraKanbanPageContent({
 	defaultShowUntracked = true,
 	detachedAgentSessionsByCard,
 	agentSessionAssigneeIdAliases,
+	agentSessionLinkingVariant = "fuse",
 	agentSessionPresentation = "column",
 	agentSessionMultiSelect = true,
 	agents = BOARD_AGENTS,
@@ -832,6 +833,7 @@ function ExperimentalJiraKanbanPageContent({
 	const boardSessionDrag = useBoardAgentSessionDrag({
 		boardColumns: filteredBoardColumns,
 		detachedSessionsByCard: proximityAgentSessionsByCard,
+		linkingVariant: agentSessionLinkingVariant,
 		onCreate: onBoardAgentSessionCreate ? handleBoardAgentSessionCreate : undefined,
 		// Same create path as the well, with a slot. Each cohort member advances
 		// the index, and the refs behind `handleBoardAgentSessionCreate` grow with

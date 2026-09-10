@@ -88,6 +88,31 @@ test("half of the queued Jira v5 sessions arrive with linked PR metadata", async
 	);
 });
 
+/**
+ * The session row only prints `#number: title`, but hovering the row opens a
+ * flyout whose Artifacts chip expands into a pull-request Smart Link card — repo
+ * tag, branch path, diff stats, and summary. A PR authored with only the row's
+ * three fields renders that card nearly empty, so every queued PR has to carry
+ * the whole payload.
+ */
+test("every queued Jira v5 pull request carries the full Smart Link payload", async () => {
+	const sync = await loadSyncModule();
+	const pullRequests = sync.JIRA_TEAM_EU26_SYNC_SESSIONS
+		.map((session) => session.pullRequest)
+		.filter((pullRequest) => pullRequest !== undefined);
+
+	assert.ok(pullRequests.length > 0, "no PR-bearing sessions left to check");
+
+	for (const pullRequest of pullRequests) {
+		const where = `PR #${pullRequest.number}`;
+		assert.ok(pullRequest.files > 0, `${where} has no file count`);
+		assert.ok(pullRequest.additions > 0, `${where} has no additions`);
+		assert.ok(pullRequest.deletions > 0, `${where} has no deletions`);
+		assert.match(pullRequest.branch, /^pay-\d+-[a-z0-9-]+$/u, `${where} branch`);
+		assert.ok(pullRequest.description.length > 40, `${where} summary is too thin`);
+	}
+});
+
 test("reviewing synced sessions clears all or only the named arrival marks", async () => {
 	const sync = await loadSyncModule();
 	const current = new Set(["first", "second", "third"]);

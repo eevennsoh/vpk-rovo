@@ -17,6 +17,7 @@ import {
 	type JiraIssueGenerativeActionPresentation,
 } from "@/components/blocks/jira-issue";
 import type { JiraIssueAgentSessionRef } from "@/components/blocks/jira-issue/agent-session-transfer";
+import type { JiraLinkingVariant } from "@/components/blocks/jira-linking";
 import { JiraSessionFlyoutSuspensionProvider } from "@/components/blocks/product-sidebar/variants/jira-session-flyout";
 import {
 	mapAgentToMentionItem,
@@ -134,6 +135,16 @@ export interface ExperimentalJiraKanbanProps extends JiraKanbanProps {
 	scrollEndInset?: number;
 	/** Detached sessions keyed by the Jira card they should remain beneath. */
 	detachedAgentSessionsByCard?: Readonly<Record<string, readonly AgentSessionItem[]>>;
+	/**
+	 * Which decoration plays when a session is linked to a card. Defaults to the
+	 * metaball `fuse`; `glow` collapses one cohort chip into the card and lets
+	 * the card's own halo and backdrop pulse acknowledge it.
+	 *
+	 * Only read when this board owns its drag hook. A host that injects
+	 * {@link boardAgentSessionDrag} passes the variant to that hook instead, so
+	 * the armed release and the effect that plays it cannot disagree.
+	 */
+	agentSessionLinkingVariant?: JiraLinkingVariant;
 	onCardAgentSessionUnlink?: (
 		session: JiraIssueAgentSessionRef,
 		card: JiraKanbanCardData,
@@ -778,6 +789,11 @@ function ExperimentalJiraKanbanView({
 		onCardDragEnd?.();
 	};
 
+	// Assigning an agent from a card's own menu links it to that card exactly as
+	// a session drop does, so it earns the same acknowledgement.
+	const handleCardGenerativeActionSubmit = boardSessionDrag
+		.withAssignedAgentLink(onCardGenerativeActionSubmit);
+
 	const handleSessionView = (item: AgentSessionItem) => {
 		const nextKey = resolveVisibleFocusedIssueKey(
 			resolveBoardUntrackedIssueKey(item),
@@ -1004,7 +1020,7 @@ function ExperimentalJiraKanbanView({
 												onCreateWorkItem={proximityActions.onCreateWorkItem}
 												onDragEnd={handleCardDragEndInternal}
 												onDragStart={(event) => handleCardDragStartInternal(card, column.title, event)}
-												onGenerativeActionSubmit={onCardGenerativeActionSubmit}
+												onGenerativeActionSubmit={handleCardGenerativeActionSubmit}
 											onLinkWorkItem={proximityActions.onLinkWorkItem}
 											onItemHover={handleSessionHover}
 											renderAgentActivityIndicator={renderAgentActivityIndicator}
@@ -1075,6 +1091,7 @@ function ExperimentalJiraKanbanView({
 					?? boardSessionDrag.fusionDrop?.proximity
 					?? null}
 				release={boardSessionDrag.fusionDrop?.release ?? null}
+				variant={boardSessionDrag.linkingVariant}
 			/>
 		</div>
 	);
@@ -1084,6 +1101,7 @@ function ExperimentalJiraKanbanOwned(props: Readonly<ExperimentalJiraKanbanProps
 	const boardSessionDrag = useBoardAgentSessionDrag({
 		boardColumns: props.boardColumns,
 		detachedSessionsByCard: props.detachedAgentSessionsByCard,
+		linkingVariant: props.agentSessionLinkingVariant,
 		onCreate: props.proximityAgentSession?.onCreateWorkItem,
 		onLink: props.onCardAgentSessionLink,
 		onMove: props.onCardAgentSessionMove,

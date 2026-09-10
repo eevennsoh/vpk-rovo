@@ -7,7 +7,7 @@ Use this when adding, deleting, or changing an Express API route or its Next.js 
 1. `backend/routes/<owner>.js` for extracted route groups.
 2. `backend/server.js` only for routes not extracted yet, startup wiring, and chat-adjacent endpoints.
 3. `app/api/**/route.ts` for dev proxy behavior.
-4. `backend/routes/route-manifest.json` and `.agents/rules/api-surfaces.md` for generated route tables.
+4. `backend/routes/route-manifest.json` and `.agents/knowledge/api-surfaces.md` for generated route tables.
 5. Route-local tests next to the owner, plus proxy tests when request rewriting lives in `app/api`.
 
 ## Workflow

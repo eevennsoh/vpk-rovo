@@ -109,7 +109,6 @@ function PullRequestNumberLink({
 	filesChanged,
 	href,
 	number,
-	repository,
 	status,
 	targetBranch,
 	title,
@@ -122,7 +121,6 @@ function PullRequestNumberLink({
 	filesChanged?: number;
 	href: string;
 	number: number;
-	repository?: string;
 	status: PullRequestStatus;
 	targetBranch?: string;
 	title: string;
@@ -159,7 +157,6 @@ function PullRequestNumberLink({
 					deletions={deletions}
 					filesChanged={filesChanged}
 					number={number}
-					repository={repository}
 					status={status}
 					targetBranch={targetBranch}
 					title={title}
@@ -266,7 +263,6 @@ export function ContextBarPullRequest({
 				filesChanged={filesChanged}
 				href={href}
 				number={number}
-				repository={repository}
 				status={status}
 				targetBranch={targetBranch}
 				title={title}
