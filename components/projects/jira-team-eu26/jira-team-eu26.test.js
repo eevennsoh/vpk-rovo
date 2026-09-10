@@ -66,7 +66,7 @@ const TRANSFER_SOURCE = readProjectFile(
 
 test("the route renders the Payments board directly inside Jira app chrome", () => {
 	assert.match(PAGE_SOURCE, /import AppLayout from "@\/components\/projects\/page"/u);
-	assert.match(PAGE_SOURCE, /<AppLayout[\s\S]*defaultSidebarOpen=\{true\}[\s\S]*hideSettings[\s\S]*product="jira"/u);
+	assert.match(PAGE_SOURCE, /<AppLayout[\s\S]*defaultSidebarOpen=\{true\}[\s\S]*product="jira"[\s\S]*settingsIconOnly/u);
 	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage/u);
 	assert.match(PAGE_SOURCE, /createJiraTeamEu26PayBoardColumns/u);
 	assert.match(PAGE_SOURCE, /JIRA_TEAM_EU26_PAY_BOARD_AGENTS/u);
