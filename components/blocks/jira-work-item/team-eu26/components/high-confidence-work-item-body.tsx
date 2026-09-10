@@ -229,27 +229,13 @@ export function HighConfidenceWorkItemBody() {
 			</section>
 
 			<section aria-labelledby="team-eu26-attachments-heading">
-				<Tabs
-					className="gap-2"
-					onValueChange={(value) => value ? setAttachmentFilter(value as AttachmentFilter) : undefined}
-					value={attachmentFilter}
-				>
-					<div className="group/attachments relative flex min-h-9 min-w-0 items-center justify-between gap-3 py-0.5 transition-none">
-						<div
-							aria-label="Attachments"
-							aria-controls="team-eu26-attachments-content"
-							aria-expanded={attachmentsExpanded}
-							className="absolute inset-0 z-0 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-							onClick={() => setAttachmentsExpanded((current) => !current)}
-							onKeyDown={(event) => {
-								if (event.key !== "Enter" && event.key !== " ") return;
-								event.preventDefault();
-								setAttachmentsExpanded((current) => !current);
-							}}
-							role="button"
-							tabIndex={0}
-						>
-							<h2 className="flex h-full min-w-0 items-center gap-1 text-sm font-semibold text-text" id="team-eu26-attachments-heading">
+					<Tabs
+						className="gap-2"
+						onValueChange={(value) => value ? setAttachmentFilter(value as AttachmentFilter) : undefined}
+						value={attachmentFilter}
+					>
+						<div className="group/attachments relative flex min-h-9 min-w-0 items-center justify-between gap-3 py-0.5 transition-none">
+							<h2 className="pointer-events-none absolute inset-0 z-10 flex min-w-0 items-center gap-1 text-sm font-semibold text-text" id="team-eu26-attachments-heading">
 								<span>Attachments</span>
 								<span
 									aria-hidden
@@ -258,7 +244,15 @@ export function HighConfidenceWorkItemBody() {
 									{attachmentsExpanded ? <ChevronDownIcon label="" size="small" /> : <ChevronRightIcon label="" size="small" />}
 								</span>
 							</h2>
-						</div>
+							<button
+								aria-label="Attachments"
+								aria-controls="team-eu26-attachments-content"
+								aria-expanded={attachmentsExpanded}
+								className="absolute inset-0 z-0 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+								onClick={() => setAttachmentsExpanded((current) => !current)}
+								type="button"
+							>
+							</button>
 						<div
 							aria-hidden={!attachmentsExpanded}
 							className={cn("relative z-10 ml-auto flex shrink-0 items-center gap-2", !attachmentsExpanded && "pointer-events-none opacity-0")}

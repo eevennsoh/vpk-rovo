@@ -109,7 +109,9 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	assert.doesNotMatch(bodySource, /ButtonGroup/u);
 	assert.match(bodySource, /const \[attachmentsExpanded, setAttachmentsExpanded\] = useState\(true\)/u);
 	assert.match(bodySource, /aria-label="Attachments"[\s\S]*aria-controls="team-eu26-attachments-content"[\s\S]*aria-expanded=\{attachmentsExpanded\}/u);
-	assert.match(bodySource, /role="button"[\s\S]*tabIndex=\{0\}[\s\S]*group-hover\/attachments:opacity-100 group-focus-within\/attachments:opacity-100/u);
+	assert.match(bodySource, /<h2 className="pointer-events-none absolute inset-0 z-10 flex[\s\S]*id="team-eu26-attachments-heading"/u);
+	assert.match(bodySource, /<button[\s\S]*aria-label="Attachments"[\s\S]*aria-controls="team-eu26-attachments-content"[\s\S]*type="button"/u);
+	assert.doesNotMatch(bodySource, /role="button"[\s\S]*tabIndex=\{0\}/u);
 	assert.match(bodySource, /className="inline-flex items-center justify-center opacity-0 transition-opacity/u);
 	assert.match(bodySource, /className="group\/attachments relative flex min-h-9[\s\S]*className="absolute inset-0 z-0/u);
 	assert.doesNotMatch(bodySource, /<Button\s+aria-controls="team-eu26-attachments-content"/u);
