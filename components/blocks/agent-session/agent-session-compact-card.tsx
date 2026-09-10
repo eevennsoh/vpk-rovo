@@ -1,9 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
 import { JiraIssueAgentActivityRows } from "@/components/blocks/jira-issue/agent-activity";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
+import {
+	DEFAULT_PINNED_SPACE_AGENT_IDS,
+	WORK_ITEM_PINNED_ITEMS_LABEL,
+} from "@/components/blocks/jira-work-item/experimental-v3/lib/work-item-picker-options";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +34,7 @@ function AttachedAgentSession({
 }>) {
 	const shouldReduceMotion = useReducedMotion();
 	const shouldPlayArrival = isArriving && !shouldReduceMotion;
+	const [, setAssignedAgentIds] = useState<readonly string[]>([item.id]);
 
 	return (
 		<motion.div
@@ -50,6 +56,12 @@ function AttachedAgentSession({
 			) : null}
 			<JiraIssueAgentActivityRows
 				activities={[toJiraIssueAgentActivityFromSession(item)]}
+				assignment={{
+					defaultPinnedAgentIds: DEFAULT_PINNED_SPACE_AGENT_IDS,
+					onAssignedAgentIdsChange: setAssignedAgentIds,
+					pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL,
+				}}
+				inheritChinSurface
 				onViewChat={onView === undefined ? undefined : () => onView(item)}
 				shouldReduceMotion={shouldReduceMotion}
 				usesStrokeChrome

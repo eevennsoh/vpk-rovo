@@ -14,7 +14,9 @@ import { resolveAgentSessionWorkItemKey } from "@/components/blocks/agent-sessio
 import {
 	type JiraIssueAgentActivityLayout,
 	type JiraIssueAgentActivityIndicatorRenderer,
+	type JiraIssueChrome,
 	type JiraIssueGenerativeActionPresentation,
+	type JiraIssueIconScale,
 } from "@/components/blocks/jira-issue";
 import type { JiraIssueAgentSessionRef } from "@/components/blocks/jira-issue/agent-session-transfer";
 import type { JiraLinkingVariant } from "@/components/blocks/jira-linking";
@@ -163,7 +165,11 @@ export interface ExperimentalJiraKanbanProps extends JiraKanbanProps {
 	onCardAgentSessionMove?: (session: JiraIssueAgentSessionRef, sourceCard: JiraKanbanCardData, targetCard: JiraKanbanCardData, sourceColumnTitle: string, targetColumnTitle: string) => void;
 	/** Chooses where card agent and skill actions are presented. */
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
+	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
+	iconScale?: JiraIssueIconScale;
 	renderAgentActivityIndicator?: JiraIssueAgentActivityIndicatorRenderer;
+	/** Nested subtask cards inherit the parent chrome unless set. */
+	subtaskChrome?: JiraIssueChrome;
 	/**
 	 * Sessions that never became work items, pinned as a column to the
 	 * left of the board. Omit to render only Jira status columns.
@@ -592,6 +598,7 @@ function ExperimentalJiraKanbanView({
 	boardColumns,
 	cardGenerativeActionPresentation = "sparkle",
 	cardMoveAnimation,
+	iconScale = "compact",
 	collapsedColumns: controlledCollapsedColumns,
 	columnChrome = DEFAULT_KANBAN_COLUMN_CHROME,
 	createdCardArrival,
@@ -626,6 +633,7 @@ function ExperimentalJiraKanbanView({
 	paddingTop = token("space.150"),
 	selectionToolbar,
 	captureBoardSessionDragRoot = true,
+	subtaskChrome,
 	untrackedSessions,
 }: Readonly<ExperimentalJiraKanbanProps> & {
 	boardSessionDrag: BoardAgentSessionDrag;
@@ -1012,6 +1020,7 @@ function ExperimentalJiraKanbanView({
 												generativeActionPresentation={cardGenerativeActionPresentation}
 												generativeActionSkills={generativeActionSkills}
 												highlightedSessionId={highlightedSessionId}
+												iconScale={iconScale}
 												onAgentActivityOpenChange={onCardAgentActivityOpenChange}
 												onAgentActivityViewChat={onCardAgentActivityViewChat}
 												onAgentDoneRunReview={onCardAgentDoneRunReview}
@@ -1030,6 +1039,7 @@ function ExperimentalJiraKanbanView({
 												showUntrackedWorkFooter={proximityAgentSession?.showUntrackedWorkFooter}
 												showUnlinkWell={showAgentSessionUnlinkWell}
 												selected={isSelected}
+												subtaskChrome={subtaskChrome}
 											/>
 											</CreatedCardArrivalMotion>
 										</motion.div>

@@ -183,6 +183,7 @@ function ExperimentalJiraKanbanPageContent({
 	additionalAgentSessions,
 	agentActivityLayout,
 	cardGenerativeActionPresentation,
+	iconScale,
 	createWorkItemDropZoneLabel,
 	defaultAgentSessionColumnCollapsed = false,
 	defaultShowUntracked = true,
@@ -215,6 +216,7 @@ function ExperimentalJiraKanbanPageContent({
 	onCardAgentSessionUnlink,
 	onListAgentSessionCreate,
 	showAgentSessionUnlinkWell = true,
+	subtaskChrome,
 	onInsightsWorkItemClick,
 	onModeChange,
 	onResumeLooseWork,
@@ -984,6 +986,7 @@ function ExperimentalJiraKanbanPageContent({
 								assignedAgentIdsByColumn={columnAgentAssignments}
 								boardColumns={filteredBoardColumns}
 								cardGenerativeActionPresentation={cardGenerativeActionPresentation}
+								iconScale={iconScale}
 								collapsedColumns={displayedCollapsedColumns}
 								columnChrome={columnChrome}
 								createdCardArrival={createdCardArrival ?? undefined}
@@ -1009,6 +1012,7 @@ function ExperimentalJiraKanbanPageContent({
 									? handleCardAgentSessionUnlink
 									: undefined}
 								showAgentSessionUnlinkWell={showAgentSessionUnlinkWell}
+								subtaskChrome={subtaskChrome}
 								onCardSelect={handleCardSelect}
 								onCardDragStart={handleCardDragStart}
 								onCardDrop={handleCardDrop}

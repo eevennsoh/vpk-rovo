@@ -12,6 +12,7 @@ import {
 	toAgentSessionFlyoutItem,
 } from "@/components/blocks/agent-list";
 import type {
+	JiraIssueAgentActivity,
 	JiraIssueAgentActivityIndicatorRenderer,
 } from "@/components/blocks/jira-issue/agent-activity";
 import type { JiraIssueAgentActivityLayout } from "@/components/blocks/jira-issue/agent-activity-model";
@@ -75,6 +76,19 @@ function toCompletedAgentListItem(run: JiraIssueCompletedAgentRun): AgentListIte
 			repository: "payments-platform/payments",
 		},
 		title: run.summary,
+	};
+}
+
+export function toJiraIssueAgentActivityFromCompletedRun(
+	run: JiraIssueCompletedAgentRun,
+): JiraIssueAgentActivity {
+	return {
+		id: run.id,
+		name: run.agentName,
+		avatarSrc: run.agentAvatarSrc,
+		agentBrandName: run.agentBrandName,
+		label: run.state === "failed" ? "Failed" : "Finished",
+		state: "completed",
 	};
 }
 
@@ -226,6 +240,7 @@ export function JiraIssueAgentDone({
 	);
 }
 
+/** Compact / original experimental only. Comfortable (v2) never mounts this. */
 function JiraIssueAgentDoneMerged({
 	onOpenChange,
 	onView,

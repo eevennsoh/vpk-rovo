@@ -13,6 +13,7 @@ import {
 	type JiraIssueChrome,
 	type JiraIssueGenerativeActionConfig,
 	type JiraIssueGenerativeActionPresentation,
+	type JiraIssueIconScale,
 } from "@/components/blocks/jira-issue";
 import { resolveRelatedJiraIssueAgentActivityMode } from "@/components/blocks/jira-issue/agent-activity-model";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
@@ -45,6 +46,7 @@ interface ExperimentalJiraKanbanCardProps {
 	generativeActionAgents: JiraIssueGenerativeActionConfig["agents"];
 	generativeActionPresentation: JiraIssueGenerativeActionPresentation;
 	generativeActionSkills: JiraIssueGenerativeActionConfig["skills"];
+	iconScale?: JiraIssueIconScale;
 	/** Session hovered in the Untracked work column; lights its row here. */
 	highlightedSessionId?: string | null;
 	onAgentActivityOpenChange?: JiraKanbanProps["onCardAgentActivityOpenChange"];
@@ -74,6 +76,7 @@ interface ExperimentalJiraKanbanCardProps {
 	showUntrackedWorkFooter?: boolean;
 	onSubtasks?: (item: AgentSessionItem) => void;
 	selected: boolean;
+	subtaskChrome?: JiraIssueChrome;
 }
 
 function getCardAssigneeAvatarSrc(card: JiraKanbanCardData) {
@@ -104,6 +107,7 @@ export function ExperimentalJiraKanbanCard({
 	generativeActionPresentation,
 	generativeActionSkills,
 	highlightedSessionId,
+	iconScale = "compact",
 	onAgentActivityOpenChange,
 	onAgentActivityViewChat,
 	onAgentDoneRunReview,
@@ -122,6 +126,7 @@ export function ExperimentalJiraKanbanCard({
 	selected,
 	showUnlinkWell = true,
 	showUntrackedWorkFooter,
+	subtaskChrome,
 }: Readonly<ExperimentalJiraKanbanCardProps>) {
 	const shouldReduceMotion = useReducedMotion();
 	const proximityMotion = getJiraIssuePresenceMotion(shouldReduceMotion);
@@ -187,6 +192,7 @@ export function ExperimentalJiraKanbanCard({
 			chrome={chrome}
 			compact
 			dragging={dragging}
+			iconScale={iconScale}
 			generativeAction={{
 				agents: generativeActionAgents,
 				onSubmit: (request) => {
@@ -250,6 +256,7 @@ export function ExperimentalJiraKanbanCard({
 					</AnimatePresence>
 				)
 				: undefined}
+			subtaskChrome={subtaskChrome}
 			summary={card.title}
 			tags={card.tags}
 		/>

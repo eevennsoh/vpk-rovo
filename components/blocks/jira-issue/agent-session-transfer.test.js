@@ -59,7 +59,7 @@ test("Jira issue agent session transfer adds demo phases gated to the experiment
 	);
 	assert.match(
 		PAGE_SOURCE,
-		/<JiraIssueAgentActivityStatesDemo[\s\S]*showSessionTransferStates\s*\n\s*\/>/u,
+		/<JiraIssueAgentActivityStatesDemo[\s\S]*showSessionTransferStates=\{iconScale !== "comfortable"\}[\s\S]*\/>/u,
 	);
 	assert.match(
 		PAGE_SOURCE,
@@ -114,7 +114,7 @@ test("Jira issue unlink detaches under the work item; Link remounts the chin", (
 	);
 	assert.match(
 		SOURCE,
-		/const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"[\s\S]*\|\| resolvedAgentActivityMode === "awaiting-input"[\s\S]*\|\| hasAgentDoneNotification;/u,
+		/const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"[\s\S]*\|\| resolvedAgentActivityMode === "awaiting-input"[\s\S]*\|\| hasCompletedAgentChin;/u,
 	);
 	assert.match(
 		SOURCE,
@@ -306,7 +306,7 @@ test("Jira issue session transfer motion honours reduced motion at every layer",
 	// A pointer drag must not fight Motion's layout projection.
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const rowLayout = shouldReduceMotion \|\| sessionDragging \? false : "position";/u,
+		/const rowLayout = shouldReduceMotion \|\| sessionDragging \|\| assignmentHoverOpen\s*\n\s*\? false\s*\n\s*: "position";/u,
 	);
 });
 
@@ -554,7 +554,10 @@ test("Jira issue travelling mention chip uses an opaque surface fill", () => {
 test("Jira issue chin unlink unlinks without nesting a button in the drag handle", () => {
 	assert.match(DRAG_SOURCE, /onUnlink\?: \(session\?: \{ id: string; name: string \}\) => void;/u);
 	assert.match(SOURCE, /onUnlink: agentSessionTransfer\.onUnlink,/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const showUnlinkControl = Boolean\(sessionDrag\?\.onUnlink\) && !isDraggedOut;/u);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/const showUnlinkControl = iconScale !== "comfortable"\s*\n\s*&& Boolean\(sessionDrag\?\.onUnlink\)\s*\n\s*&& !isDraggedOut;/u,
+	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /data-slot="jira-issue-agent-row"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /<JiraIssueAgentSessionUnlinkButton/u);
 	assert.match(

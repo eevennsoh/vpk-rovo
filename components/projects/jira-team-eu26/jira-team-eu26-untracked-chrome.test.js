@@ -366,7 +366,7 @@ test("the route locks the board to default kanban chrome", () => {
 		/<ExperimentalJiraKanban[\s\S]*columnChrome=\{columnChrome\}/u,
 	);
 	// Simple kanban only swaps card chrome (stroke hairline vs raised elevation).
-	// Experimental internals stay compact in both column recipes.
+	// Experimental internals stay compact; iconScale/subtaskChrome are board props.
 	assert.match(EXPERIMENTAL_BOARD_SOURCE, /chrome=\{chrome\.cardChrome\}/u);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /<JiraIssue[\s\S]*chrome=\{chrome\}[\s\S]*compact/u);
 });

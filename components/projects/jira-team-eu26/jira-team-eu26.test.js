@@ -108,6 +108,35 @@ test("the route imports the Pulse session guard used by its resume callback", ()
 	assert.match(PAGE_SOURCE, /if \(!isPulseAgentSession\(item\)\) return;/u);
 });
 
+test("Team EU board cards use experimental v2 raised defaults", () => {
+	// One board-level default, not per-card forks. Raised chrome already
+	// comes from columnChrome="default"; comfortable + stroke is v2.
+	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*iconScale="comfortable"/u);
+	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*subtaskChrome="stroke"/u);
+	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*columnChrome="default"/u);
+	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*cardGenerativeActionPresentation="more-actions"/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /iconScale\?: JiraIssueIconScale;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /subtaskChrome\?: JiraIssueChrome;/u);
+	assert.match(
+		EXPERIMENTAL_PAGE_SOURCE,
+		/<ExperimentalJiraKanban[\s\S]*iconScale=\{iconScale\}/u,
+	);
+	assert.match(
+		EXPERIMENTAL_PAGE_SOURCE,
+		/<ExperimentalJiraKanban[\s\S]*subtaskChrome=\{subtaskChrome\}/u,
+	);
+	assert.match(EXPERIMENTAL_BOARD_SOURCE, /iconScale=\{iconScale\}/u);
+	assert.match(EXPERIMENTAL_BOARD_SOURCE, /subtaskChrome=\{subtaskChrome\}/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /<JiraIssue[\s\S]*iconScale=\{iconScale\}/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /<JiraIssue[\s\S]*subtaskChrome=\{subtaskChrome\}/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /<JiraIssue[\s\S]*chrome=\{chrome\}[\s\S]*compact/u);
+	assert.doesNotMatch(
+		PAGE_SOURCE,
+		/iconScale="compact"/u,
+		"Team EU must not mix compact iconScale with v2 comfortable cards",
+	);
+});
+
 test("chin-row layout uses Team EU's merged grouping", () => {
 	// Team EU groups every active agent into one merged chin. The route owns
 	// the choice; the shared board stays agnostic, matching Panel and
@@ -141,7 +170,7 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 		/const rowSessionDrag = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionDrag : undefined;/u,
 	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /sessionDrag=\{rowSessionDrag\}/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<AgentAssignment/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = showAssignmentFlyout && !isCompletedRow \? \(\s*<div className="flex h-full min-w-0 flex-1 items-center">\s*<AgentAssignment/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout|JiraSessionFlyoutTrigger/u);
 });
@@ -162,7 +191,7 @@ test("chin-row agent activity indicators use the Team EU renderer", () => {
 	assert.match(INDICATORS_SOURCE, /import \{ Spinner \} from "@\/components\/ui\/spinner";/u);
 	assert.match(
 		INDICATORS_SOURCE,
-		/renderJiraTeamEu26AgentActivityIndicator[\s\S]*state === "awaiting-input" \? \(\s*<QuestionCircleFilledIcon color=\{token\("color\.icon\.information"\)\} label="" size="small" \/>\s*\) : \(\s*<Spinner label="" pulse size="default" variant="experimental" \/>\s*\)/u,
+		/renderJiraTeamEu26AgentActivityIndicator[\s\S]*state === "awaiting-input" \? \(\s*<QuestionCircleFilledIcon color=\{token\("color\.icon\.information"\)\} label="" size="medium" \/>\s*\) : \(\s*<Spinner label="" pulse size="xl" variant="experimental" \/>\s*\)/u,
 	);
 	// A finished run gets the filled success status in the ADS success green,
 	// pairing with the filled error status a failed run already shows. The
@@ -170,7 +199,7 @@ test("chin-row agent activity indicators use the Team EU renderer", () => {
 	assert.match(INDICATORS_SOURCE, /import StatusSuccessIcon from "@atlaskit\/icon\/core\/status-success";/u);
 	assert.match(
 		INDICATORS_SOURCE,
-		/renderJiraTeamEu26AgentActivityIndicator[\s\S]*if \(state === "finished"\) \{\s*return <StatusSuccessIcon color=\{token\("color\.icon\.success"\)\} label="" size="small" \/>;\s*\}/u,
+		/renderJiraTeamEu26AgentActivityIndicator[\s\S]*if \(state === "finished"\) \{\s*return <StatusSuccessIcon color=\{token\("color\.icon\.success"\)\} label="" size="medium" \/>;\s*\}/u,
 	);
 	assert.doesNotMatch(INDICATORS_SOURCE, /PixelLoader|2000-years-later|DesignVariationId/u);
 	assert.doesNotMatch(PAGE_SOURCE, /PixelLoader|useDesignVariation|design-variation/u);
@@ -186,10 +215,9 @@ test("chin-row agent activity indicators use the Team EU renderer", () => {
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /<ExperimentalJiraKanban[\s\S]*renderAgentActivityIndicator=\{renderAgentActivityIndicator\}/u);
 	assert.match(EXPERIMENTAL_BOARD_SOURCE, /<ExperimentalJiraKanbanCard[\s\S]*renderAgentActivityIndicator=\{renderAgentActivityIndicator\}/u);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /<JiraIssue[\s\S]*renderAgentActivityIndicator=\{renderAgentActivityIndicator\}/u);
-	// Team EU's Done-column chin is the merged "N Finished" row, not a split
-	// per-run row. That path must call the same finished renderer in the
-	// trailing status slot so PAY-101's check sits on the far right, matching
-	// working/awaiting-input.
+	// Comfortable (v2) paints finished runs as h-10 session rows, which call
+	// the same finished renderer. The compact merged "N Finished" chip still
+	// exists for other boards and must keep that trailing slot.
 	assert.match(
 		COMPLETED_RUNS_SOURCE,
 		/const finishedIndicator = !hasFailedRun && renderAgentActivityIndicator\s*\n\s*\? renderAgentActivityIndicator\("finished"\)\s*\n\s*: null;/u,
@@ -411,7 +439,7 @@ test("Team EU returns unlinked sessions to Untracked without parking them on sta
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /showUnlinkWell = true,/u);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const showUnlinkControl = Boolean\(sessionDrag\?\.onUnlink\) && !isDraggedOut;/u,
+		/const showUnlinkControl = iconScale !== "comfortable"\s*\n\s*&& Boolean\(sessionDrag\?\.onUnlink\)\s*\n\s*&& !isDraggedOut;/u,
 	);
 	assert.match(
 		TRANSFER_SOURCE,

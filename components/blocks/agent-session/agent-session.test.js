@@ -390,6 +390,7 @@ test("medium attached reuses the Jira issue agent activity row", () => {
 	assert.match(COMPACT_CARD_SOURCE, /data-new=\{isNew \|\| undefined\}/u);
 	assert.match(COMPACT_CARD_SOURCE, /isNew \? "ring-1 ring-border-discovery" : null/u);
 	assert.match(COMPACT_CARD_SOURCE, /relative w-\[276px\] rounded-\[10px\] bg-bg-neutral/u);
+	assert.doesNotMatch(COMPACT_CARD_SOURCE, /relative w-\[276px\][^"]*hover:bg-bg-neutral-hovered/u);
 	assert.doesNotMatch(
 		COMPACT_CARD_SOURCE,
 		/relative w-\[276px\][^"]*bg-bg-neutral-subtle/u,
@@ -400,7 +401,19 @@ test("medium attached reuses the Jira issue agent activity row", () => {
 	assert.doesNotMatch(COMPACT_CARD_SOURCE, /absolute left-1 top-1 /u);
 	assert.match(COMPACT_CARD_SOURCE, /initial=\{shouldPlayArrival \? \{ opacity: 0, y: AGENT_SESSION_ARRIVAL_OFFSET_PX \} : false\}/u);
 	assert.match(INDEX_SOURCE, /const isAttached = variant === "medium-attached";/u);
-	assert.match(INDEX_SOURCE, /content=\{isAttached \? "details" : "untracked-work"\}/u);
+	assert.match(INDEX_SOURCE, /if \(isAttached\) \{\s*return \(\s*<li data-testid=\{"agent-session-row-" \+ item\.id\} key=\{item\.id\}>/u);
+	assert.match(INDEX_SOURCE, /\{isAttached \? null : \(\s*<JiraSessionFlyoutSurface/u);
+	assert.doesNotMatch(INDEX_SOURCE, /content=\{isAttached \? "details" : "untracked-work"\}/u);
+	assert.match(COMPACT_CARD_SOURCE, /inheritChinSurface/u);
+	assert.doesNotMatch(COMPACT_CARD_SOURCE, /showAssignmentFlyout=\{false\}/u);
+	assert.doesNotMatch(
+		COMPACT_CARD_SOURCE,
+		/from "@\/components\/blocks\/agent-assignment\/demo-assigned-agents"/u,
+	);
+	assert.doesNotMatch(COMPACT_CARD_SOURCE, /getAgentAssignmentDemoAssignedAgents|INITIAL_ASSIGNED_AGENT_IDS|DEMO_USED_AGENT_IDS/u);
+	assert.match(COMPACT_CARD_SOURCE, /onAssignedAgentIdsChange: setAssignedAgentIds/u);
+	assert.match(COMPACT_CARD_SOURCE, /useState<readonly string\[\]>\(\[item\.id\]\)/u);
+	assert.doesNotMatch(COMPACT_CARD_SOURCE, /assignedAgents,/u);
 });
 
 test("medium preserves newly synced state and its one-shot arrival beat", () => {
@@ -547,7 +560,7 @@ test("the untracked-work flyout owns capture, so the card has no footer chin", (
 	);
 	assert.match(INDEX_SOURCE, /<JiraSessionFlyoutSurface/u);
 	assert.match(INDEX_SOURCE, /capturedSessionIds=\{capturedItemIds\}/u);
-	assert.match(INDEX_SOURCE, /content=\{isAttached \? "details" : "untracked-work"\}/u);
+	assert.match(INDEX_SOURCE, /content="untracked-work"/u);
 	assert.match(INDEX_SOURCE, /const \[flyoutHandle\] = useState\(createJiraSessionFlyoutHandle\);/u);
 	assert.match(INDEX_SOURCE, /bindAgentSessionFlyoutActions/u);
 	assert.match(INDEX_SOURCE, /capturedItemIds\?\.has\(item\.id\)/u);
@@ -592,10 +605,10 @@ test("sessions share one moving untracked-work flyout instead of a popup per row
 	assert.match(INDEX_SOURCE, /onLinkWorkItem=\{flyoutActions\.onLinkWorkItem\}/u);
 });
 
-test("every size variant opens the shared agent-session flyout", () => {
-	// Large connects inside AgentSessionCard; attached compact variants connect
-	// at the list-item boundary so Medium attached, Medium detached, and Small
-	// keep their geometry while every session still opens the shared surface.
+test("detached and large variants open the shared agent-session flyout; medium attached does not", () => {
+	// Large connects inside AgentSessionCard; detached compact variants connect
+	// at the list-item boundary. Medium attached is already on its work item, so
+	// it renders a plain list row and skips the shared session-details surface.
 	assert.match(CARD_SOURCE, /<JiraSessionFlyoutTrigger/u);
 	assert.match(
 		INDEX_SOURCE,
@@ -608,6 +621,10 @@ test("every size variant opens the shared agent-session flyout", () => {
 	);
 	assert.match(
 		INDEX_SOURCE,
+		/if \(isAttached\) \{\s*return \(\s*<li data-testid=\{"agent-session-row-" \+ item\.id\} key=\{item\.id\}>\s*\{compactCard\}/u,
+	);
+	assert.match(
+		INDEX_SOURCE,
 		/<JiraSessionFlyoutTrigger[\s\S]*render=\{<li data-testid=\{"agent-session-row-" \+ item\.id\} \/>\}[\s\S]*\{compactCard\}[\s\S]*<\/JiraSessionFlyoutTrigger>/u,
 	);
 	assert.doesNotMatch(INDEX_SOURCE, /renderMore=/u);
@@ -615,7 +632,7 @@ test("every size variant opens the shared agent-session flyout", () => {
 	assert.match(MEDIUM_CARD_SOURCE, /onView === undefined && !flyout/u);
 	assert.match(
 		INDEX_SOURCE,
-		/<JiraSessionFlyoutSurface[\s\S]*content=\{isAttached \? "details" : "untracked-work"\}[\s\S]*handle=\{flyoutHandle\}/u,
+		/\{isAttached \? null : \(\s*<JiraSessionFlyoutSurface[\s\S]*content="untracked-work"[\s\S]*handle=\{flyoutHandle\}/u,
 	);
 	// The list and the collapsed rail are the same hover surface at two widths,
 	// so both snap. Dropping `instantPosition` here would animate the shell on
