@@ -377,12 +377,12 @@ export function InFlowAgentSessionColumn({
 	const dragHandle = reposition.enabled ? (
 		<button
 			aria-label={`Move ${agentSessionColumn.title ?? IN_FLOW_AGENT_SESSION_COLUMN_TITLE} column`}
-			className="me-1 inline-flex size-3 shrink-0 cursor-grab touch-none items-center justify-center text-icon-subtle active:cursor-grabbing [&_svg]:text-icon-subtle"
+			className="me-1 inline-flex size-3 shrink-0 cursor-grab touch-none items-center justify-center text-icon-disabled active:cursor-grabbing [&_svg]:text-icon-disabled"
 			data-session-column-move-handle=""
 			title={reposition.dragging ? undefined : "Drag to move column. Use arrow keys, Home or End to reposition."}
 			type="button"
 		>
-			<Icon className="size-3 text-icon-subtle" render={<DragHandleVerticalIcon color="currentColor" label="" size="small" />} />
+			<Icon className="size-3 text-icon-disabled" render={<DragHandleVerticalIcon color="currentColor" label="" size="small" />} />
 		</button>
 	) : undefined;
 

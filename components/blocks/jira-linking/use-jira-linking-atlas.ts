@@ -88,7 +88,7 @@ function resolveTintVariable(variable: string): readonly [number, number, number
 	return [parsed.r / 255, parsed.g / 255, parsed.b / 255];
 }
 
-function resolveIdentityTint(
+export function resolveJiraLinkingIdentityTint(
 	identity: Readonly<JiraLinkingIdentity>,
 ): readonly [number, number, number] {
 	if (identity.tint) {
@@ -121,7 +121,7 @@ function toFusionMembers(
 	return (identities ?? []).map((identity) => ({
 		atlasIndex: identity.imageSrc ? atlasIndex++ : JIRA_LINKING_NO_ATLAS_INDEX,
 		id: identity.id,
-		tint: resolveIdentityTint(identity),
+		tint: resolveJiraLinkingIdentityTint(identity),
 	}));
 }
 

@@ -186,6 +186,7 @@ function ExperimentalJiraKanbanPageContent({
 	detachedAgentSessionsByCard,
 	agentSessionAssigneeIdAliases,
 	agentSessionPresentation = "column",
+	agentSessionMultiSelect = true,
 	agents = BOARD_AGENTS,
 	ariaLabel = "Experimental RFP board columns. Scroll horizontally to review all statuses.",
 	boardColumns: controlledBoardColumns,
@@ -537,6 +538,7 @@ function ExperimentalJiraKanbanPageContent({
 		collapsed: displayedAgentSessionColumnCollapsed,
 		hasScrollingEffect: true,
 		items: untrackedAgentSessionItems,
+		multiSelect: agentSessionMultiSelect,
 		newItemIds: newAgentSessionIds,
 		onCollapsedChange: handleAgentSessionColumnCollapsedChange,
 		onItemHover: handleUntrackedItemHover,
@@ -748,6 +750,16 @@ function ExperimentalJiraKanbanPageContent({
 		boardFilter.actions.setAssigneeIds(assigneeIds);
 	};
 
+	// Same contract as the assignee filter: the focus row takes cards off the
+	// board, and bulk status, agent assignment, and multi-drag all read the raw
+	// selection rather than what is on screen. A selection that outlives the
+	// change would silently move or reassign cards the viewer can no longer see.
+	const handleAgentFilterChange = (nextAgentFilterId: BoardAgentFilterId | null) => {
+		setSelection(createJiraKanbanSelectionState());
+		setDraggedCard(null);
+		setAgentFilterId(nextAgentFilterId);
+	};
+
 	const handlePulseMemberChange = (memberId: string | null) => {
 		handleAssigneeFilterChange(toPulseMemberAssigneeIds(memberId));
 	};
@@ -839,7 +851,7 @@ function ExperimentalJiraKanbanPageContent({
 				onShownSessionStateIdsChange={setShownSessionStateIds}
 				onShowUntrackedChange={setShowUntracked}
 				agentFilterId={agentFilterId}
-				onAgentFilterIdChange={setAgentFilterId}
+				onAgentFilterIdChange={handleAgentFilterChange}
 				needsInputCount={needsInputCount}
 				onViewChange={renderListContent ? onViewChange : undefined}
 				searchPlaceholder={`Search ${activeView}`}

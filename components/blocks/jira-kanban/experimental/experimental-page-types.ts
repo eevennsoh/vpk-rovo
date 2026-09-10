@@ -64,6 +64,11 @@ export interface ExperimentalJiraKanbanPageProps {
 	 * decides. Only one presentation ever mounts, so the two can never drift.
 	 */
 	agentSessionPresentation?: "column" | "panel";
+	/**
+	 * Whether the unattached sessions column supports additive/range selection
+	 * and multi-session drag cohorts. Defaults to true.
+	 */
+	agentSessionMultiSelect?: boolean;
 	agents?: readonly JiraKanbanAgentData[];
 	ariaLabel?: string;
 	boardColumns?: readonly JiraKanbanColumnData[];

@@ -31,6 +31,10 @@ const SELECTION_COPY_SOURCE = readFileSync(
 	join(__dirname, "untracked-selection.ts"),
 	"utf8",
 );
+const SELECTION_HOOK_SOURCE = readFileSync(
+	join(__dirname, "use-untracked-selection.ts"),
+	"utf8",
+);
 const PANEL_SOURCE = readFileSync(
 	join(__dirname, "../../ui/panel.tsx"),
 	"utf8",
@@ -47,6 +51,10 @@ const PANEL_DEMO_SOURCE = readFileSync(
 );
 const CARD_SOURCE = readFileSync(
 	join(__dirname, "../agent-session/agent-session-card.tsx"),
+	"utf8",
+);
+const SESSION_DRAG_SOURCE = readFileSync(
+	join(__dirname, "../agent-session/agent-session-medium-drag.tsx"),
 	"utf8",
 );
 const SESSION_INDEX_SOURCE = readFileSync(
@@ -463,11 +471,11 @@ test("a notch is reachable and legible without a pointer", () => {
 	assert.match(INDEX_SOURCE, /hover:opacity-100 focus-visible:opacity-100/u);
 });
 
-test("the in-flow column move handle is a 12px icon, not a 24px button", () => {
+test("the in-flow column move handle is a 12px disabled icon, not a 24px button", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /data-session-column-move-handle=""/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/<button[\s\S]*?className="me-1 inline-flex size-3 shrink-0 cursor-grab[\s\S]*?text-icon-subtle[\s\S]*?\[&_svg\]:text-icon-subtle[\s\S]*?<\/button>/u,
+		/<button[\s\S]*?className="me-1 inline-flex size-3 shrink-0 cursor-grab[\s\S]*?text-icon-disabled[\s\S]*?\[&_svg\]:text-icon-disabled[\s\S]*?<\/button>/u,
 	);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
@@ -475,11 +483,11 @@ test("the in-flow column move handle is a 12px icon, not a 24px button", () => {
 	);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/<Icon className="size-3 text-icon-subtle"/u,
+		/<Icon className="size-3 text-icon-disabled"/u,
 	);
 	assert.doesNotMatch(
 		IN_FLOW_COLUMN_SOURCE,
-		/data-session-column-move-handle=""[\s\S]*?text-icon-disabled/u,
+		/data-session-column-move-handle=""[\s\S]*?text-icon-subtle/u,
 	);
 	assert.doesNotMatch(
 		IN_FLOW_COLUMN_SOURCE,
@@ -716,7 +724,10 @@ test("the column keeps the selected session id across collapse remounts", () => 
 	assert.match(INDEX_SOURCE, /const \[uncontrolledSelectedItemId, setUncontrolledSelectedItemId\]/u);
 	assert.match(INDEX_SOURCE, /selectedItemId=\{selectedItemId\}/u);
 	assert.match(INDEX_SOURCE, /onSelectedItemIdChange=\{handleSelectedItemIdChange\}/u);
-	assert.match(INDEX_SOURCE, /onKeyDown=\{untrackedSelection\.onKeyDown\}/u);
+	assert.match(
+		INDEX_SOURCE,
+		/onKeyDown=\{multiSelect \? untrackedSelection\.onKeyDown : undefined\}/u,
+	);
 	assert.match(INDEX_SOURCE, /canActivateItem\(item\)/u);
 	assert.match(INDEX_SOURCE, /handleSelectedItemIdChange\(null\)/u);
 	assert.match(
@@ -724,6 +735,23 @@ test("the column keeps the selected session id across collapse remounts", () => 
 		/if \(!isSelectionControlled\) \{\s*\n\s*setUncontrolledSelectedItemId\(itemId\);\s*\n\s*\}/u,
 	);
 	assert.match(SESSION_TYPES_SOURCE, /selectedItemId\?: string \| null;/u);
+});
+
+test("multiSelect=false removes multi-selection while preserving a singleton drag", () => {
+	assert.match(TYPES_SOURCE, /multiSelect\?: boolean;/u);
+	assert.match(INDEX_SOURCE, /multiSelect = true,/u);
+	assert.match(INDEX_SOURCE, /multiSelect,\s*\n\s*onLeadItem: handleLeadItem,/u);
+	assert.match(
+		INDEX_SOURCE,
+		/onKeyDown=\{multiSelect \? untrackedSelection\.onKeyDown : undefined\}/u,
+	);
+	assert.match(SELECTION_HOOK_SOURCE, /multiSelect: boolean;/u);
+	assert.match(SELECTION_HOOK_SOURCE, /\(\) => input\.multiSelect\s*\?/u);
+	assert.match(SELECTION_HOOK_SOURCE, /drag: input\.multiSelect\s*\?/u);
+	assert.match(SELECTION_HOOK_SOURCE, /mark: input\.multiSelect\s*\?/u);
+	assert.match(SESSION_DRAG_SOURCE, /cohort\?\.\(\) \?\? singletonSessionCohort\(item\)/u);
+	assert.match(PANEL_DEMO_SOURCE, /multiSelect=\{multiSelect\}/u);
+	assert.match(DETAIL_SOURCE, /name: "multiSelect"/u);
 });
 
 test("the column owns a hidden-id set and filters items before AgentSession", () => {
