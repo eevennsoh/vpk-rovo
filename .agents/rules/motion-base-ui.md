@@ -1,7 +1,5 @@
 ---
 description: Animating Base UI components with Motion for React
-globs: *.tsx, *.jsx
-alwaysApply: false
 ---
 
 # Animating Base UI with Motion for React
