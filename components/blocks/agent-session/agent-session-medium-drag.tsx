@@ -8,15 +8,10 @@ import {
 	type PointerEvent as ReactPointerEvent,
 	type ReactElement,
 } from "react";
-import { createPortal } from "react-dom";
-import { motion } from "motion/react";
 
 import {
-	sessionDragChipViewportStyle,
-	sessionTransferTintSeed,
 	type JiraIssueAgentSessionDragBinding,
 	type JiraIssueAgentSessionDragSource,
-	type JiraIssueAgentSessionTransferMember,
 } from "@/components/blocks/jira-issue/agent-session-drag";
 import { useSessionDragChipPointer } from "@/components/blocks/jira-issue/use-session-drag-chip-pointer";
 import {
@@ -25,8 +20,14 @@ import {
 } from "@/components/ui-custom/hooks/use-pointer-drag";
 import { cn } from "@/lib/utils";
 
-import { AgentSessionCohortChip } from "./agent-session-cohort-chip";
 import { SESSION_DRAG_INTERACTIVE_SELECTOR } from "./agent-session-drag-interactive";
+import {
+	sessionDragPlaceholderClasses,
+	sessionDragSourceClasses,
+} from "./agent-session-drag-layout";
+import { measureSessionDragIdentityOrigin } from "./agent-session-drag-motion";
+import { AgentSessionDragOverlay } from "./agent-session-drag-overlay";
+import { toSessionTransferMember } from "./agent-session-transfer-member";
 import { toJiraIssueAgentActivityFromSession } from "./agent-session-work-item";
 import { singletonSessionCohort, type SessionCohort } from "./session-cohort";
 import type { AgentSessionItem } from "./agent-session-types";
@@ -35,26 +36,6 @@ const SESSION_DRAG_ORIGIN: PointerDragPosition = { x: 0, y: 0 };
 /** Same 2px threshold as `usePointerDrag` — publish/arm only after a real move. */
 const SESSION_DRAG_PUBLISH_THRESHOLD_PX = 2;
 const SESSION_DRAG_CHIP_DISTANCE_PX = 12;
-
-/**
- * Identity the fusion overlay needs to draw this member: the avatar URL when
- * one exists, and a stable seed for the deterministic colour fallback when it
- * does not — most agents identify by a brand logo component, not an image.
- */
-function toSessionTransferMember(
-	member: AgentSessionItem,
-): JiraIssueAgentSessionTransferMember {
-	return {
-		avatarSrc: member.agent.avatarSrc,
-		id: member.id,
-		name: member.agent.name,
-		tintSeed: sessionTransferTintSeed(
-			member.agent.brandName,
-			member.agent.vpkLogo,
-			member.agent.name,
-		),
-	};
-}
 
 export function AgentSessionMediumDrag({
 	cohort,
@@ -80,6 +61,12 @@ export function AgentSessionMediumDrag({
 	const [publishedDragging, setPublishedDragging] = useState(false);
 	const [ghostCohort, setGhostCohort] = useState<SessionCohort<AgentSessionItem> | null>(null);
 	const [sourceHeight, setSourceHeight] = useState<number | undefined>(undefined);
+	// Where the chip starts, as an offset from the pointer that published the
+	// drag. Stored as the resolved delta so nothing has to read a ref at render.
+	const [chipOrigin, setChipOrigin] = useState<PointerDragPosition | null>(null);
+	// Drops `will-change` once the entrance lands so the promoted layer does not
+	// outlive the 150ms it was for.
+	const [chipSettled, setChipSettled] = useState(false);
 	const drag = usePointerDrag(dragOffset, setDragOffset, sessionDrag?.bounds);
 	const chipPointer = useSessionDragChipPointer(shouldReduceMotion);
 	const isDragging = Boolean(sessionDrag) && drag.dragging && publishedDragging;
@@ -88,6 +75,14 @@ export function AgentSessionMediumDrag({
 		&& Math.hypot(drag.position.x, drag.position.y) >= SESSION_DRAG_CHIP_DISTANCE_PX;
 
 	const pointerOriginRef = useRef<PointerDragPosition | null>(null);
+	// Absolute viewport centre of the grabbed identity mark, kept raw. The chip
+	// mounts on the *publishing* pointermove, not on pointerdown, and the portal
+	// has already followed the pointer there — so the delta can only be taken
+	// against that later position. Resolving it at pointerdown would start the
+	// chip at `identityOrigin + firstMoveDelta` and it would visibly jump,
+	// worst with coalesced touch and stylus moves that clear the 2px threshold
+	// in one large step.
+	const identityOriginRef = useRef<PointerDragPosition | null>(null);
 	const didPublishDragRef = useRef(false);
 	const dragTargetRef = useRef<HTMLElement | null>(null);
 
@@ -132,10 +127,13 @@ export function AgentSessionMediumDrag({
 		}
 		drag.bind.onPointerUp(event);
 		pointerOriginRef.current = null;
+		identityOriginRef.current = null;
 		dragTargetRef.current = null;
 		setPublishedDragging(false);
 		setGhostCohort(null);
 		setSourceHeight(undefined);
+		setChipOrigin(null);
+		setChipSettled(false);
 		setDragOffset(SESSION_DRAG_ORIGIN);
 		publishSessionDrag(false, event);
 	}
@@ -147,11 +145,14 @@ export function AgentSessionMediumDrag({
 		drag.bind.onPointerCancel(event);
 		drag.bind.onClick();
 		pointerOriginRef.current = null;
+		identityOriginRef.current = null;
 		dragTargetRef.current = null;
 		didPublishDragRef.current = false;
 		setPublishedDragging(false);
 		setGhostCohort(null);
 		setSourceHeight(undefined);
+		setChipOrigin(null);
+		setChipSettled(false);
 		setDragOffset(SESSION_DRAG_ORIGIN);
 		publishSessionDrag(false, undefined, true);
 	}
@@ -232,6 +233,7 @@ export function AgentSessionMediumDrag({
 				didPublishDragRef.current = false;
 				dragTargetRef.current = event.currentTarget;
 				setSourceHeight(event.currentTarget.getBoundingClientRect().height);
+				identityOriginRef.current = measureSessionDragIdentityOrigin(event.currentTarget);
 				drag.bind.onPointerDown(event);
 				pointerOriginRef.current = { x: event.clientX, y: event.clientY };
 				chipPointer.snapToPointer(
@@ -252,6 +254,18 @@ export function AgentSessionMediumDrag({
 					),
 				);
 				if (moved) {
+					// Only the move that actually publishes resolves the origin.
+					// Later moves already have the chip mounted; recomputing would
+					// restart the entrance mid-drag.
+					if (!didPublishDragRef.current) {
+						const identityOrigin = identityOriginRef.current;
+						setChipOrigin(identityOrigin === null
+							? null
+							: {
+								x: identityOrigin.x - event.clientX,
+								y: identityOrigin.y - event.clientY,
+							});
+					}
 					didPublishDragRef.current = true;
 					setPublishedDragging(true);
 					publishSessionDrag(true, event);
@@ -265,28 +279,20 @@ export function AgentSessionMediumDrag({
 		return children(undefined);
 	}
 
-	const chip = (
-		<div
-			aria-hidden
-			className="pointer-events-none flex w-fit max-w-full -translate-x-1/2 -translate-y-1/2 items-center justify-start"
-			data-session-chip-centered=""
-			data-session-fusion-chip=""
-		>
-			<AgentSessionCohortChip
-				cohort={ghostCohort ?? singletonSessionCohort(item)}
-				elevated
-			/>
-		</div>
-	);
+	// VPK duration tokens do not collapse themselves. Card `shouldPlayArrival`
+	// reads `shouldReduceMotion` permissively, so the chip matches it.
+	const reduceChipMotion = Boolean(shouldReduceMotion);
+	const layoutState = {
+		hasDragBind: sessionDragBind !== undefined,
+		isDragging,
+		isDraggedOut,
+		isFollower,
+		preserveSourceFootprint,
+	};
 
 	return (
 		<div
-			className={cn(
-				"min-w-0",
-				isDragging && "relative w-full",
-				isFollower && !preserveSourceFootprint && "h-0 overflow-hidden",
-				isDragging && !preserveSourceFootprint && (isDraggedOut ? "h-0" : "h-[33px]"),
-			)}
+			className={cn(sessionDragPlaceholderClasses(layoutState))}
 			data-session-chip-out={isDraggedOut || undefined}
 			data-session-drag-placeholder={preserveSourceFootprint || undefined}
 			data-session-transfer-faded={isFollower || undefined}
@@ -297,35 +303,22 @@ export function AgentSessionMediumDrag({
 			    disabled-opacity ghost so their reserved space never reads as a hole. */}
 			<div
 				aria-hidden={isDragging || isFollower || undefined}
-				className={cn(
-					"min-w-0",
-					isDragging && preserveSourceFootprint && "pointer-events-none absolute inset-x-0 top-0 opacity-(--opacity-disabled)",
-					isFollower && preserveSourceFootprint && "pointer-events-none opacity-(--opacity-disabled)",
-					(isFollower && !preserveSourceFootprint || (isDragging && !preserveSourceFootprint)) && "pointer-events-none absolute inset-x-0 top-0 opacity-0",
-					sessionDragBind && "touch-none select-none",
-					isDragging && "cursor-grabbing [&_article]:cursor-grabbing",
-				)}
+				className={cn(sessionDragSourceClasses(layoutState))}
 				inert={isDragging || isFollower || undefined}
 			>
 				{children(sessionDragBind)}
 			</div>
-			{isDragging ? createPortal(
-				<motion.div
-					aria-hidden
-					// Above the docked panel (z-40) and session hover flyout (z-200).
-					className="pointer-events-none left-0 top-0 z-[400] w-fit"
-					data-session-chip-out={isDraggedOut || undefined}
-					data-session-drag-overlay=""
-					data-session-dragging=""
-					style={{
-						x: chipPointer.x,
-						y: chipPointer.y,
-						...sessionDragChipViewportStyle(true),
-					}}
-				>
-					{chip}
-				</motion.div>,
-				document.body,
+			{isDragging ? (
+				<AgentSessionDragOverlay
+					chipOrigin={chipOrigin}
+					cohort={ghostCohort ?? singletonSessionCohort(item)}
+					isDraggedOut={isDraggedOut}
+					onEntranceSettled={() => setChipSettled(true)}
+					pointerX={chipPointer.x}
+					pointerY={chipPointer.y}
+					reduceMotion={reduceChipMotion}
+					settled={chipSettled}
+				/>
 			) : null}
 		</div>
 	);

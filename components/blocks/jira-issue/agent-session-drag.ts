@@ -3,6 +3,7 @@ import type {
 	PointerDragPosition,
 } from "@/components/ui-custom/hooks/use-pointer-drag";
 
+import type { AgentListInvoker } from "@/components/blocks/agent-list";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue/agent-activity";
 
 // Kept out of `agent-activity.tsx` on purpose: that file exports components, and
@@ -20,6 +21,11 @@ export interface JiraIssueAgentSessionTransferMember {
 	/** Absolute `public/` path to the agent avatar, when the source has one. */
 	readonly avatarSrc?: string;
 	readonly id: string;
+	/**
+	 * Human who invoked the session. Carried through the transfer so the
+	 * post-drop flight chip keeps the face the drag chip was already showing.
+	 */
+	readonly invoker?: AgentListInvoker;
 	readonly name: string;
 	/**
 	 * Stable identity seed for a deterministic fallback colour. Most agents

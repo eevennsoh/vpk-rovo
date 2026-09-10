@@ -23,6 +23,7 @@ import {
 	AGENT_SESSION_ARRIVAL_OFFSET_PX,
 	AGENT_SESSION_ARRIVAL_TRANSITION,
 } from "./agent-session-arrival-motion";
+import { agentSessionIdentityLabel } from "./agent-session-identity-label";
 import { AgentSessionMediumDrag } from "./agent-session-medium-drag";
 import { AgentSessionMediumMoreMenu } from "./agent-session-medium-more-menu";
 import type { AgentSessionItem } from "./agent-session-types";
@@ -84,9 +85,7 @@ export function AgentSessionMediumCard({
 	 * no avatar to read it off.
 	 */
 	const sessionTitle = item.shortTitle ?? item.title;
-	const identityLabel = invoker === undefined
-		? item.agent.name
-		: `${item.agent.name} with ${invoker.name}`;
+	const identityLabel = agentSessionIdentityLabel(item);
 	const linkLabel = uncapturedWorkLinkLabel(issueKey ?? item.sessionDetails?.issueKey);
 	const strokeToken = !captured && isNew ? "border-border-discovery" : "border-border-disabled";
 	const onItemHoverRef = useRef(onItemHover);
@@ -122,14 +121,19 @@ export function AgentSessionMediumCard({
 	function renderCard(bind: Record<string, unknown> | undefined) {
 		const identity = (
 			<>
-				<AgentAvatarVisual
-					avatarSrc={item.agent.avatarSrc}
-					brandName={item.agent.brandName}
-					fallbackText={item.agent.name.slice(0, 1)}
-					label={item.agent.name}
-					sizePx={16}
-					vpkLogo={item.agent.vpkLogo}
-				/>
+				{/* Origin of the travelling drag chip's FLIP. Same marker the large
+				    card sets, so every `AgentSessionMediumDrag` host shares one
+				    entrance recipe instead of some rows fading in place. */}
+				<span className="flex shrink-0 items-center" data-session-drag-identity="">
+					<AgentAvatarVisual
+						avatarSrc={item.agent.avatarSrc}
+						brandName={item.agent.brandName}
+						fallbackText={item.agent.name.slice(0, 1)}
+						label={item.agent.name}
+						sizePx={16}
+						vpkLogo={item.agent.vpkLogo}
+					/>
+				</span>
 				<span className="min-w-0 flex-1 truncate text-left text-xs font-normal leading-4 text-text-subtlest">
 					{sessionTitle}
 				</span>

@@ -78,3 +78,18 @@ test("split keeps unlinked detached sessions available after the first attach", 
 	assert.equal(afterBoth.linked.length, 2);
 	assert.equal(afterBoth.remaining.length, 0);
 });
+
+test("attaching a session keeps the human who invoked it", () => {
+	// Without this the chin row the session becomes drags as bare "Claude"
+	// instead of "Claude with Priya Raman", and a later unlink hands the card
+	// assignee back as the invoker.
+	const invoker = { avatarSrc: "/avatar-user/priya.png", name: "Priya Raman" };
+	const activity = toJiraIssueDemoAttachedActivity({ ...CLAUDE, invokedBy: invoker });
+
+	assert.deepEqual(activity.invokedBy, invoker);
+});
+
+test("a session with no invoker attaches without inventing one", () => {
+	assert.equal(toJiraIssueDemoAttachedActivity(CLAUDE).invokedBy, undefined);
+	assert.ok(!("invokedBy" in toJiraIssueDemoAttachedActivity(CLAUDE)));
+});

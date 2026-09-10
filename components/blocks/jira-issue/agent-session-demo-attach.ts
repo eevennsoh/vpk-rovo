@@ -3,6 +3,7 @@
  * Framework-free so the suite runs under `node --test` with strip-types.
  */
 
+import type { AgentListInvoker } from "@/components/blocks/agent-list";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue/agent-activity";
 
 /** The session fields attach needs. Avoids importing the React session card type. */
@@ -15,6 +16,12 @@ export interface JiraIssueDemoAttachableSession {
 		avatarSrc?: string;
 		brandName?: JiraIssueAgentActivity["agentBrandName"];
 	};
+	/**
+	 * Attaching a session must not cost it its face. Without this the chin row
+	 * it becomes drags as bare "Claude" instead of "Claude with Priya", and a
+	 * later unlink hands the card assignee back as the invoker.
+	 */
+	invokedBy?: AgentListInvoker;
 }
 
 /**
@@ -33,6 +40,7 @@ export function toJiraIssueDemoAttachedActivity(
 			: "working",
 		...(session.agent.avatarSrc ? { avatarSrc: session.agent.avatarSrc } : {}),
 		...(session.agent.brandName ? { agentBrandName: session.agent.brandName } : {}),
+		...(session.invokedBy ? { invokedBy: session.invokedBy } : {}),
 	};
 }
 
