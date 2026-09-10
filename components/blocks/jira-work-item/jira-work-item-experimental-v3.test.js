@@ -729,7 +729,7 @@ test("the v3 assigned-agents menu lists live agent state and ends in an Assign a
 	);
 	assert.match(
 		menuSource,
-		/inlineMetadata: getAssignedAgentHoverByline\(row, statusKind, rowIndex\),[\s\S]*hoverActions: \{[\s\S]*primaryLabel: "View"[\s\S]*secondaryLabel: "Archive"/u,
+		/inlineMetadata: getAssignedAgentHoverByline\(row, statusKind, rowIndex\),[\s\S]*hoverActions: onArchiveAgent \? \{[\s\S]*primaryLabel: "View"[\s\S]*secondaryLabel: "Archive"/u,
 	);
 	assert.match(
 		detailsEditorsSource,

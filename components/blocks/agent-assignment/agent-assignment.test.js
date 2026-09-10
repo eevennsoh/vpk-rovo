@@ -31,7 +31,7 @@ test("Agent Assignment exposes a reusable controlled block contract", () => {
 	assert.match(source, /export interface AgentAssignmentProps/u);
 	assert.match(source, /agents: readonly AgentSelectorAgent\[\];/u);
 	assert.match(source, /assignedAgents: readonly AgentAssignmentAgent\[\];/u);
-	assert.match(source, /onAssignedAgentIdsChange: \(agentIds: readonly string\[\]\) => void;/u);
+	assert.match(source, /onAssignedAgentIdsChange\?: \(agentIds: readonly string\[\]\) => void;/u);
 	assert.match(source, /onAgentAssign\?: \(agent: AgentSelectorAgent\) => void;/u);
 	assert.match(source, /onAssignedAgentSelect: \(agent: AgentAssignmentAgent\) => void;/u);
 	assert.match(source, /onContinueExistingSession\?: \(agent: AgentSelectorAgent\) => void;/u);
@@ -119,7 +119,10 @@ test("Agent Assignment preserves the work-item trigger and two-stage menu behavi
 		source,
 		/const showSessionView = view === "session" && pendingSessionAgent !== null;[\s\S]*const effectiveView = showSessionView[\s\S]*assignedAgents\.length === 0 \|\| view === "session"[\s\S]*"selector"/u,
 	);
-	assert.match(source, /<AssignedAgentsMenu[\s\S]*onAddAgent=\{handleShowSelector\}/u);
+	assert.match(source, /<AssignedAgentsMenu[\s\S]*onAddAgent=\{onAssignedAgentIdsChange \? handleShowSelector : undefined\}[\s\S]*onArchiveAgent=\{onAssignedAgentIdsChange \? handleArchiveAgent : undefined\}/u);
+	assert.match(menu, /onAddAgent\?: \(\) => void;[\s\S]*onArchiveAgent\?: \(agent: AgentAssignmentAgent\) => void;/u);
+	assert.match(menu, /hoverActions: onArchiveAgent \? \{[\s\S]*secondaryLabel: "Archive",[\s\S]*\} : undefined,/u);
+	assert.match(menu, /\{onAddAgent \? \([\s\S]*Assign agent[\s\S]*\) : null\}/u);
 	assert.match(source, /if \(usedAgentIds\.includes\(agentId\)\) \{\s*retainPopoverOpenRef\.current = true;\s*menuRootRef\.current\?\.focus\(\);\s*setPendingSessionAgent\(agent\);\s*setView\("session"\);/u);
 	assert.match(source, /<AgentSessionTargetMenu[\s\S]*onChoose=\{\(choice\) => handleSessionChoice\(pendingSessionAgent, choice\)\}/u);
 	assert.match(source, /<AgentSelector[\s\S]*searchVariant="palette"[\s\S]*selectionMode="single"/u);
@@ -149,7 +152,7 @@ test("Agent Assignment preserves the work-item trigger and two-stage menu behavi
 	assert.match(menu, /inlineMetadata: getAssignedAgentHoverByline\(row, statusKind, rowIndex\)/u);
 	assert.match(menu, /case "working":\s*return <AssignedAgentStatus agent=\{agent\} rowIndex=\{rowIndex\} \/>;/u);
 	assert.doesNotMatch(menu, /setInterval/u);
-	assert.match(menu, /hoverActions: \{[\s\S]*primaryLabel: "View"[\s\S]*secondaryLabel: "Archive"/u);
+	assert.match(menu, /hoverActions: onArchiveAgent \? \{[\s\S]*primaryLabel: "View"[\s\S]*secondaryLabel: "Archive"/u);
 	assert.match(menu, /function AssignedAgentTrailingStatus\(/u);
 	assert.match(menu, /const statusKind = resolveAssignedAgentStatusKind\(row\);/u);
 	assert.match(menu, /<Spinner label=\{`\$\{agent\.name\} running`\} size="sm" \/>/u);
@@ -506,6 +509,15 @@ async function loadAgentAssignmentClickHarness() {
 						openMode: "hover",
 					});
 				}
+
+				export function DisplayOnlyAssignmentProbe() {
+					return React.createElement(AgentAssignment, {
+						agents: AGENTS,
+						assignedAgents: [{ ...AGENTS[0], statusLabel: "Working" }],
+						onAssignedAgentSelect() {},
+						openMode: "hover",
+					});
+				}
 			`,
 			loader: "tsx",
 			resolveDir: process.cwd(),
@@ -543,11 +555,11 @@ async function loadAgentAssignmentClickHarness() {
 								contents: `
 									import React from "react";
 									export function AssignedAgentsMenu(props) {
-										return React.createElement(
+										return props.onAddAgent ? React.createElement(
 											"button",
 											{ onClick: props.onAddAgent, type: "button" },
 											"Assign agent",
-										);
+										) : React.createElement("div", null, "Read only");
 									}
 								`,
 								loader: "tsx",
@@ -654,6 +666,15 @@ test("hover-open Agent Assignment only retains explicitly transitioned interacti
 		assert.match(window.document.body.textContent, /Continue in existing session/u);
 		assert.match(window.document.body.textContent, /Start a new session/u);
 		assert.doesNotMatch(window.document.body.textContent, /GitHub Copilot/u);
+
+		await React.act(async () => {
+			root.render(React.createElement(harness.DisplayOnlyAssignmentProbe));
+		});
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-open]").click();
+		});
+		assert.match(window.document.body.textContent, /Read only/u);
+		assert.doesNotMatch(window.document.body.textContent, /Assign agent/u);
 
 		await React.act(async () => {
 			root.render(React.createElement(harness.EmptyHoverAssignmentProbe));

@@ -180,7 +180,7 @@ test("Jira issue raised agent activity demo still exposes exactly the original s
 	for (const value of ["agent-session-unlink", "agent-session-running-unlink", "agent-session-link"]) {
 		assert.doesNotMatch(BASE_DEMO_STATES_BLOCK, new RegExp(`"${value}"`, "u"));
 	}
-	assert.match(PAGE_SOURCE, /agentActivityLayout="split"/u);
+	assert.match(PAGE_SOURCE, /agentActivityLayout="merged"/u);
 	assert.match(PAGE_SOURCE, /onChromeChange=\{setChrome\}/u);
 	assert.doesNotMatch(PAGE_SOURCE, /chrome=\{isExperimentalAgentActivityVariant \? "stroke" : "raised"\}/u);
 });
@@ -526,7 +526,7 @@ test("Jira issue dragged session reads as the at-mention chip it becomes", () =>
 
 test("Jira issue at-mention chip hugs its own width once it leaves the chin", () => {
 	assert.match(AGENT_ACTIVITY_SOURCE, /className="pointer-events-none left-0 top-0 z-\[300\] w-fit"/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /isDragging && \(isDraggedOut \? "h-0" : "h-6"\),/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /isDragging && \(isDraggedOut \? "h-0" : "h-10"\),/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /JIRA_ISSUE_SESSION_DRAG_CHIP_MORPH|JIRA_ISSUE_SESSION_DRAG_MORPH|JIRA_ISSUE_SESSION_DRAG_DISSOLVE/u);
 });
 
@@ -618,7 +618,7 @@ test("Jira issue card hugs its content the moment the chip leaves the chin", () 
 	// white surface to fill it.
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/isDragging && \(isDraggedOut \? "h-0" : "h-6"\),/u,
+		/isDragging && \(isDraggedOut \? "h-0" : "h-10"\),/u,
 	);
 	// The row flags itself; the list closes its gutter off that flag with `:has()`.
 	assert.match(AGENT_ACTIVITY_SOURCE, /data-session-chip-out=\{isDraggedOut \|\| undefined\}/u);

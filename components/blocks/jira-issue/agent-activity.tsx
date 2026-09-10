@@ -11,7 +11,7 @@ import {
 	type ReactElement,
 } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring, type Transition } from "motion/react";
+import { AnimatePresence, motion, useMotionValue, useSpring, type Transition } from "motion/react";
 import StatusInformationIcon from "@atlaskit/icon/core/status-information";
 
 import { ROVO_AGENT_SELECTOR_AGENTS } from "@/app/data/directory/agents";
@@ -43,11 +43,6 @@ import {
 import { JiraIssueAttachChinSlot } from "@/components/blocks/jira-issue/attach-chin";
 import { useSessionDragChipPointer } from "@/components/blocks/jira-issue/use-session-drag-chip-pointer";
 import { JiraIssueAgentSessionUnlinkButton } from "@/components/blocks/jira-issue/agent-session-unlink-button";
-import {
-	createJiraSessionFlyoutHandle,
-	JiraSessionFlyoutSurface,
-	JiraSessionFlyoutTrigger,
-} from "@/components/blocks/product-sidebar/variants/jira-session-flyout";
 import type { QuestionCardQuestion } from "@/components/blocks/question-card/types";
 import { AgentAvatarVisual } from "@/components/ui-custom/agent-avatar-visual";
 import { AgentLoading, type AgentLoadingAgent } from "@/components/ui-custom/agent-loading";
@@ -56,16 +51,10 @@ import {
 	usePointerDrag,
 	type PointerDragPosition,
 } from "@/components/ui-custom/hooks/use-pointer-drag";
-import { Shimmer } from "@/components/ui-custom/shimmer";
 import { TWGLoader } from "@/components/ui-custom/twg-loader";
 import type { ThirdPartyLogoName } from "@/components/ui/data/logo-third-party-data";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import type {
-	JiraSidebarAssignee,
-	JiraSidebarSessionItem,
-	JiraSidebarWorkItemPriority,
-} from "@/components/blocks/product-sidebar/variants/jira";
 
 export type JiraIssueAgentActivityMode = "none" | "working" | "awaiting-input" | "completed";
 export type JiraIssueAgentActivityState = "working" | "awaiting-input" | "completed";
@@ -108,45 +97,6 @@ export interface JiraIssueAgentActivity {
 	state: JiraIssueAgentActivityState;
 }
 
-/** Card context which turns a board activity row into the shared session-flyout payload. */
-export interface JiraIssueAgentSessionFlyoutContext {
-	assignee?: JiraSidebarAssignee;
-	issueKey: string;
-	issueStatus?: string;
-	issueSummary: string;
-	priority?: JiraSidebarWorkItemPriority;
-	pullRequestNumber?: number;
-	pullRequestTitle?: string;
-}
-
-function toJiraIssueAgentSessionFlyoutItem(
-	activity: JiraIssueAgentActivity,
-	context: JiraIssueAgentSessionFlyoutContext,
-): JiraSidebarSessionItem {
-	const status = activity.state === "awaiting-input" ? "awaiting-input" : "running";
-
-	return {
-		agentAvatarSrc: activity.avatarSrc,
-		agentName: activity.name,
-		assignee: context.assignee,
-		branch: `rovo/${context.issueKey.toLowerCase()}-${activity.id.split(":").at(-1) ?? "session"}`,
-		brandName: activity.agentBrandName,
-		checks: { failed: status === "awaiting-input" ? 1 : 0, passed: 12 },
-		commit: "a8c4e2d",
-		host: "cloud",
-		id: activity.id,
-		issueKey: context.issueKey,
-		issueStatus: context.issueStatus,
-		issueSummary: context.issueSummary,
-		priority: context.priority,
-		pullRequestNumber: context.pullRequestNumber,
-		pullRequestTitle: context.pullRequestTitle,
-		repository: "payments-platform/payments",
-		status,
-		title: activity.label,
-	};
-}
-
 const JIRA_ISSUE_SESSION_DRAG_ORIGIN: PointerDragPosition = { x: 0, y: 0 };
 /** Same 2px threshold as `usePointerDrag` — publish/arm only after a real move. */
 const JIRA_ISSUE_SESSION_DRAG_PUBLISH_THRESHOLD_PX = 2;
@@ -160,11 +110,6 @@ const JIRA_ISSUE_MOTION_EXIT: Transition = { duration: 0.1, ease: [0.6, 0, 0.8, 
 const JIRA_ISSUE_MOTION_LAYOUT: Transition = { duration: 0.2, ease: [0.4, 0, 0, 1] }; // duration-medium + ease-in-out
 const JIRA_ISSUE_MOTION_REDUCED: Transition = { duration: 0 };
 const JIRA_ISSUE_MOTION_STYLE: CSSProperties = { willChange: "transform, opacity" };
-const JIRA_ISSUE_AGENT_LABEL_TRANSITION = { duration: 0.2, ease: "easeOut" } as const;
-const JIRA_ISSUE_AGENT_LABEL_CYCLE_INTERVAL_MS = 5200;
-const JIRA_ISSUE_AGENT_LABEL_CYCLE_JITTER_MS = 1800;
-const JIRA_ISSUE_AGENT_SHIMMER_DURATION = 1.4;
-const JIRA_ISSUE_AGENT_SHIMMER_SPREAD = 2;
 
 function getJiraIssueLayoutTransition(shouldReduceMotion: boolean | null): Transition {
 	return shouldReduceMotion ? JIRA_ISSUE_MOTION_REDUCED : JIRA_ISSUE_MOTION_LAYOUT;
@@ -188,10 +133,6 @@ function getJiraIssuePresenceMotion(shouldReduceMotion: boolean | null) {
 
 function getAgentInitial(name: string): string {
 	return name.trim()[0]?.toUpperCase() ?? "A";
-}
-
-function getJiraIssueAgentCycleDelay(intervalMs: number, jitterMs: number): number {
-	return Math.max(1000, intervalMs) + Math.round(Math.random() * Math.max(0, jitterMs));
 }
 
 function getJiraIssueAgentWorkingLabels(activity: JiraIssueAgentActivity | undefined): readonly string[] {
@@ -249,17 +190,6 @@ function toAgentLoadingAgent(activity: JiraIssueAgentActivity): AgentLoadingAgen
 	};
 }
 
-function toActivityFromAssignedAgent(agent: AgentAssignmentAgent): JiraIssueAgentActivity {
-	return {
-		id: agent.id,
-		name: agent.name,
-		...(agent.avatarSrc ? { avatarSrc: agent.avatarSrc } : {}),
-		...(agent.brandName ? { agentBrandName: agent.brandName } : {}),
-		label: agent.statusLabel,
-		state: "working",
-	};
-}
-
 function JiraIssueAgentActivityRow({
 	activities,
 	linkFlash,
@@ -267,7 +197,6 @@ function JiraIssueAgentActivityRow({
 	onSessionDragChange,
 	onViewChat,
 	renderAgentActivityIndicator,
-	sessionFlyout,
 	sessionDrag,
 	shouldReduceMotion,
 	usesStrokeChrome,
@@ -283,7 +212,6 @@ function JiraIssueAgentActivityRow({
 	) => void;
 	onViewChat?: (activity: JiraIssueAgentActivity) => void;
 	renderAgentActivityIndicator?: JiraIssueAgentActivityIndicatorRenderer;
-	sessionFlyout?: JiraIssueAgentSessionFlyoutContext;
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
 	shouldReduceMotion: boolean | null;
 	usesStrokeChrome: boolean;
@@ -302,7 +230,6 @@ function JiraIssueAgentActivityRow({
 	const featuredActivity = summary.featuredActivityIndex !== null
 		? activities[summary.featuredActivityIndex]
 		: undefined;
-	const shouldCycleSingleAgentLabel = isSingleAgent && !isAwaitingInput;
 	const canOpenChat = isSingleAgent && Boolean(onViewChat);
 	const activityKey = activities.map((activity) => activity.id).join("\n");
 	const startupSequenceKey = isSingleAgent && featuredActivity?.startupSequence === "jira-work-item-start"
@@ -313,13 +240,6 @@ function JiraIssueAgentActivityRow({
 		shouldReduceMotion,
 		featuredActivity?.startedAtMs,
 	);
-	const [assignedIdDraft, setAssignedIdDraft] = useState<{
-		key: string;
-		ids: readonly string[];
-	} | null>(null);
-	const assignedIds = assignedIdDraft?.key === activityKey
-		? assignedIdDraft.ids
-		: activities.map((activity) => activity.id);
 	const catalogAgents = useMemo(() => {
 		const extras = activities
 			.filter((activity) => !ROVO_AGENT_SELECTOR_AGENTS.some((agent) => agent.id === activity.id))
@@ -328,16 +248,7 @@ function JiraIssueAgentActivityRow({
 			? [...extras, ...ROVO_AGENT_SELECTOR_AGENTS]
 			: ROVO_AGENT_SELECTOR_AGENTS;
 	}, [activities]);
-	const assignedAgents = assignedIds.flatMap((agentId): AgentAssignmentAgent[] => {
-		const activity = activities.find((candidate) => candidate.id === agentId);
-		if (activity) {
-			return [toAgentAssignmentAgent(activity)];
-		}
-		const catalogAgent = catalogAgents.find((candidate) => candidate.id === agentId);
-		return catalogAgent
-			? [{ ...catalogAgent, statusLabel: "Assigned" }]
-			: [];
-	});
+	const assignedAgents = activities.map(toAgentAssignmentAgent);
 
 	const handleOpenChat = canOpenChat ? () => onViewChat?.(activities[0]) : undefined;
 	const [dragOffset, setDragOffset] = useState<PointerDragPosition>(JIRA_ISSUE_SESSION_DRAG_ORIGIN);
@@ -474,12 +385,12 @@ function JiraIssueAgentActivityRow({
 			// cost an extra render AND landed the collapse in a later commit than
 			// the one the transfer region's hit test measures — so a release with
 			// no further pointer move could commit against the well's pre-collapse
-			// rect. An attribute settles the whole 32px in this same commit.
+			// rect. An attribute settles the whole 48px in this same commit.
 			<div
 				className={cn(
 					"min-w-0",
 					isDragging && "relative w-full",
-					isDragging && (isDraggedOut ? "h-0" : "h-6"),
+				isDragging && (isDraggedOut ? "h-0" : "h-10"),
 				)}
 				data-session-chip-out={isDraggedOut || undefined}
 				data-slot="jira-issue-agent-row-wrap"
@@ -527,47 +438,35 @@ function JiraIssueAgentActivityRow({
 	const statusIcon = !isAwaitingInput && startupPhase === "intro" ? (
 		<span
 			aria-hidden="true"
-			className={cn(
-				"grid shrink-0 place-items-center",
-				usesStrokeChrome ? "size-4" : "-my-1 size-6",
-			)}
+			className="grid size-6 shrink-0 place-items-center"
 		/>
 	) : !isAwaitingInput && startupPhase === "gathering-context" ? (
 		<span
 			aria-hidden="true"
-			className={cn(
-				"grid shrink-0 place-items-center",
-				usesStrokeChrome ? "size-4" : "-my-1 size-6",
-			)}
+			className="grid size-6 shrink-0 place-items-center"
 		>
 			<TWGLoader label="" size="small" />
 		</span>
 	) : renderAgentActivityIndicator ? (
 		<span
-			className={cn(
-				"grid shrink-0 place-items-center text-icon",
-				usesStrokeChrome ? "size-4" : "-my-1 size-6",
-			)}
 			aria-hidden="true"
+			className="grid size-6 shrink-0 place-items-center text-icon"
 		>
 			{renderAgentActivityIndicator(isAwaitingInput ? "awaiting-input" : "working")}
 		</span>
 	) : isAwaitingInput ? (
 		<span
-			className={cn(
-				"grid shrink-0 place-items-center text-icon-information",
-				usesStrokeChrome ? "size-4" : "-my-1 size-6",
-			)}
 			aria-hidden="true"
+			className="grid size-6 shrink-0 place-items-center text-icon-information"
 		>
 			<StatusInformationIcon label="" size="small" color="currentColor" />
 		</span>
 	) : (
 		<span
-			className="grid size-4 shrink-0 place-items-center text-icon"
+			className="grid size-6 shrink-0 place-items-center text-icon"
 			aria-hidden="true"
 		>
-			<Spinner label="" size="xs" />
+			<Spinner label="" />
 		</span>
 	);
 	const rowHandle = (
@@ -595,80 +494,56 @@ function JiraIssueAgentActivityRow({
 			)}
 		>
 			<>
-			<div className={cn("flex min-w-0 flex-1 items-center", usesStrokeChrome ? "gap-1.5" : "gap-2")}>
-				{featuredActivity ? (
-					<AgentAvatarVisual
-						avatarClassName={cn("shrink-0", usesStrokeChrome && "ml-px")}
-						avatarSrc={featuredActivity.avatarSrc}
-						brandName={featuredActivity.agentBrandName}
-						fallbackText={getAgentInitial(featuredActivity.name)}
-						label={featuredActivity.name}
-						sizePx={16}
-					/>
-				) : (
-					<AgentLoading
-						agents={activities.map(toAgentLoadingAgent)}
-						announce={false}
-						className={cn("shrink-0", usesStrokeChrome && "ml-px")}
-						size="small"
-					/>
-				)}
-				{isAwaitingInput ? (
-					<span
-						className={cn(
-							"flex min-w-0 flex-1 items-baseline overflow-hidden text-text-subtlest",
-							usesStrokeChrome ? "text-xs leading-4" : "text-sm leading-5",
-						)}
-					>
-						<span
-							className={cn(
-								"block min-w-0 truncate",
-								usesStrokeChrome ? "text-xs leading-4" : "text-sm leading-5",
-							)}
-						>
+				<div className="flex min-w-0 flex-1 items-center gap-2">
+					{featuredActivity ? (
+						<AgentAvatarVisual
+							avatarClassName="shrink-0"
+							avatarSrc={featuredActivity.avatarSrc}
+							brandName={featuredActivity.agentBrandName}
+							fallbackText={getAgentInitial(featuredActivity.name)}
+							label={featuredActivity.name}
+							sizePx={24}
+						/>
+					) : (
+						<AgentLoading
+							agents={activities.map(toAgentLoadingAgent)}
+							announce={false}
+							className="shrink-0"
+						/>
+					)}
+					{isAwaitingInput ? (
+						<span className="flex min-w-0 flex-1 items-baseline overflow-hidden text-sm leading-5 text-text-subtlest">
+							<span className="block min-w-0 truncate text-sm leading-5">
+								{summary.label}
+							</span>
+							<AnimatedDots />
+						</span>
+					) : startupPhase === "intro" ? (
+						<JiraIssueAgentIntroLabel usesStrokeChrome={usesStrokeChrome} />
+					) : startupPhase === "gathering-context" ? (
+						<JiraIssueShimmeringAgentLabel
+							label="Gathering context"
+							usesStrokeChrome={usesStrokeChrome}
+						/>
+					) : (
+						<span className="block min-w-0 flex-1 truncate text-sm leading-5 text-text">
 							{summary.label}
 						</span>
-						<AnimatedDots className={usesStrokeChrome ? "[&>span]:text-xs" : undefined} />
-					</span>
-				) : startupPhase === "intro" ? (
-					<JiraIssueAgentIntroLabel usesStrokeChrome={usesStrokeChrome} />
-				) : startupPhase === "gathering-context" ? (
-					<JiraIssueShimmeringAgentLabel
-						label="Gathering context"
-						usesStrokeChrome={usesStrokeChrome}
-					/>
-				) : shouldCycleSingleAgentLabel ? (
-					<JiraIssueCyclingAgentLabel
-						cycleIntervalJitterMs={activities[0]?.cycleIntervalJitterMs ?? JIRA_ISSUE_AGENT_LABEL_CYCLE_JITTER_MS}
-						cycleIntervalMs={activities[0]?.cycleIntervalMs ?? JIRA_ISSUE_AGENT_LABEL_CYCLE_INTERVAL_MS}
-						labels={getJiraIssueAgentWorkingLabels(activities[0])}
-						usesStrokeChrome={usesStrokeChrome}
-					/>
-				) : (
-					<span
-						className={cn(
-							"block min-w-0 flex-1 truncate text-text-subtlest",
-							usesStrokeChrome ? "text-xs leading-4" : "text-sm leading-5",
-						)}
-					>
-						{summary.label}
-					</span>
-				)}
-			</div>
-			{showUnlinkControl ? null : statusIcon}
+					)}
+				</div>
+				{showUnlinkControl ? null : statusIcon}
 			</>
 		</button>
 	);
-	const assignedRowHandle = isSingleAgent || sessionFlyout ? rowHandle : (
+	const assignedRowHandle = (
 		<AgentAssignment
 			agents={catalogAgents}
 			assignedAgents={assignedAgents}
-			onAssignedAgentIdsChange={(agentIds) => {
-				setAssignedIdDraft({ ids: agentIds, key: activityKey });
-			}}
 			onAssignedAgentSelect={(agent) => {
 				const activity = activities.find((candidate) => candidate.id === agent.id);
-				onViewChat?.(activity ?? toActivityFromAssignedAgent(agent));
+				if (activity) {
+					onViewChat?.(activity);
+				}
 			}}
 			onOpenChange={onOpenChange}
 			openMode="hover"
@@ -683,7 +558,7 @@ function JiraIssueAgentActivityRow({
 				"group/agent-chin-row relative flex min-w-0 items-center",
 				isDraggedOut
 					? "h-auto w-fit max-w-full justify-start bg-transparent p-0"
-					: "h-6 w-full justify-between rounded-md px-2 py-1 hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
+					: "h-10 w-full justify-between rounded-md bg-bg-neutral px-2 py-2 hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed",
 			)}
 			data-agent-startup-phase={startupSequenceKey ? startupPhase : undefined}
 			data-session-chin=""
@@ -712,97 +587,6 @@ function JiraIssueAgentActivityRow({
 	);
 }
 
-function JiraIssueCyclingAgentLabelContent({
-	cycleIntervalJitterMs,
-	cycleIntervalMs,
-	labels,
-	usesStrokeChrome,
-}: Readonly<{
-	cycleIntervalJitterMs: number;
-	cycleIntervalMs: number;
-	labels: readonly string[];
-	usesStrokeChrome: boolean;
-}>) {
-	const shouldReduceMotion = useReducedMotion();
-	const [labelIndex, setLabelIndex] = useState(0);
-	const label = labels[labelIndex % labels.length] ?? "";
-	const isCycling = !shouldReduceMotion && labels.length > 1;
-	const labelClassName = cn(
-		"block min-w-0 truncate",
-		usesStrokeChrome ? "text-xs leading-4" : "text-sm leading-5",
-	);
-
-	useEffect(() => {
-		if (!isCycling) {
-			return undefined;
-		}
-
-		let timeoutId: number | undefined;
-		const queueNextCycle = () => {
-			timeoutId = window.setTimeout(() => {
-				setLabelIndex((currentIndex) => (currentIndex + 1) % labels.length);
-				queueNextCycle();
-			}, getJiraIssueAgentCycleDelay(cycleIntervalMs, cycleIntervalJitterMs));
-		};
-
-		queueNextCycle();
-
-		return () => {
-			if (timeoutId !== undefined) {
-				window.clearTimeout(timeoutId);
-			}
-		};
-	}, [cycleIntervalJitterMs, cycleIntervalMs, isCycling, labels.length]);
-
-	return (
-		<span
-			className={cn(
-				"block min-w-0 flex-1 overflow-hidden text-text-subtlest",
-				usesStrokeChrome ? "text-xs leading-4" : "text-sm leading-5",
-			)}
-		>
-			<span className={cn("block min-w-0 overflow-hidden", usesStrokeChrome ? "min-h-4" : "min-h-5")}>
-				<AnimatePresence mode="wait">
-					<motion.span
-						key={label}
-						animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-						className={labelClassName}
-						exit={shouldReduceMotion ? undefined : { opacity: 0, y: 4 }}
-						initial={shouldReduceMotion ? false : { opacity: 0, y: -4 }}
-						transition={JIRA_ISSUE_AGENT_LABEL_TRANSITION}
-					>
-						{isCycling ? (
-							<Shimmer
-								as="span"
-								className={labelClassName}
-								duration={JIRA_ISSUE_AGENT_SHIMMER_DURATION}
-								spread={JIRA_ISSUE_AGENT_SHIMMER_SPREAD}
-								wave={false}
-							>
-								{label}
-							</Shimmer>
-						) : label}
-					</motion.span>
-				</AnimatePresence>
-			</span>
-		</span>
-	);
-}
-
-function JiraIssueCyclingAgentLabel(props: Readonly<{
-	cycleIntervalJitterMs: number;
-	cycleIntervalMs: number;
-	labels: readonly string[];
-	usesStrokeChrome: boolean;
-}>) {
-	return (
-		<JiraIssueCyclingAgentLabelContent
-			key={props.labels.join("\n")}
-			{...props}
-		/>
-	);
-}
-
 export function JiraIssueAgentActivityRows({
 	activities,
 	attachPreviewCopy,
@@ -812,7 +596,6 @@ export function JiraIssueAgentActivityRows({
 	onOpenChange,
 	onViewChat,
 	renderAgentActivityIndicator,
-	sessionFlyout,
 	sessionDrag,
 	shouldReduceMotion,
 	usesStrokeChrome,
@@ -829,8 +612,6 @@ export function JiraIssueAgentActivityRows({
 	onOpenChange?: (open: boolean) => void;
 	onViewChat?: (activity: JiraIssueAgentActivity) => void;
 	renderAgentActivityIndicator?: JiraIssueAgentActivityIndicatorRenderer;
-	/** Opt-in for board rows: show the shared session details instead of a composer. */
-	sessionFlyout?: JiraIssueAgentSessionFlyoutContext;
 	/** Opt-in: makes every chin row a draggable session handle. */
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
 	shouldReduceMotion: boolean | null;
@@ -845,7 +626,6 @@ export function JiraIssueAgentActivityRows({
 	const rowPresenceKey = instantSessionTransfer
 		? rowGroups.map((rowGroup) => rowGroup.key).join("|")
 		: "animated";
-	const [flyoutHandle] = useState(createJiraSessionFlyoutHandle);
 	// A pointer drag re-renders the row on every move. Freezing `layout` for the
 	// duration keeps Motion from re-measuring the whole LayoutGroup projection
 	// tree each frame, and stops popLayout from animating the dragged row.
@@ -871,14 +651,11 @@ export function JiraIssueAgentActivityRows({
 		>
 			<AnimatePresence key={rowPresenceKey} initial={false} mode="popLayout">
 				{rowGroups.map((rowGroup, index) => {
-					// A grouped chin is many agents, not one session. Session
-					// details belong on a single-agent row; the merged row
-					// opens assignment instead so hover lists every agent.
-					// Drag uses the same gate: transferring `activities[0]`
+					// A grouped chin is many agents, not one session. Drag uses
+					// the single-row gate: transferring `activities[0]`
 					// would silently move one agent while the row still says "N".
 					const replaceLastRowWithAttach = hasAttachPreview && index === rowGroups.length - 1;
 					const isSingleAgentRow = rowGroup.activities.length === 1;
-					const rowSessionFlyout = replaceLastRowWithAttach ? undefined : isSingleAgentRow ? sessionFlyout : undefined;
 					const rowSessionDrag = replaceLastRowWithAttach ? undefined : isSingleAgentRow ? sessionDrag : undefined;
 					const row = replaceLastRowWithAttach && attachPreviewCopy ? (
 						<JiraIssueAttachChinSlot copy={attachPreviewCopy} />
@@ -923,7 +700,6 @@ export function JiraIssueAgentActivityRows({
 							onViewChat={onViewChat}
 							renderAgentActivityIndicator={renderAgentActivityIndicator}
 							sessionDrag={rowSessionDrag}
-							sessionFlyout={rowSessionFlyout}
 							shouldReduceMotion={shouldReduceMotion}
 							usesStrokeChrome={usesStrokeChrome}
 						/>
@@ -931,27 +707,18 @@ export function JiraIssueAgentActivityRows({
 
 					return (
 						<motion.div
-						key={rowGroup.key}
-						animate={presenceMotion.animate}
-						className="min-w-0"
-						data-slot={replaceLastRowWithAttach ? "jira-issue-attach-chin" : undefined}
-						exit={presenceMotion.exit}
-						initial={presenceMotion.initial}
-						layout={rowLayout}
-						style={shouldReduceMotion ? undefined : JIRA_ISSUE_MOTION_STYLE}
-						transition={layoutTransition}
-					>
-							{rowSessionFlyout ? (
-								<JiraSessionFlyoutTrigger
-									closeDelay={160}
-									handle={flyoutHandle}
-									render={<div className="min-w-0" />}
-									session={toJiraIssueAgentSessionFlyoutItem(rowGroup.activities[0], rowSessionFlyout)}
-								>
-									{row}
-								</JiraSessionFlyoutTrigger>
-							) : row}
-					</motion.div>
+							key={rowGroup.key}
+							animate={presenceMotion.animate}
+							className="min-w-0"
+							data-slot={replaceLastRowWithAttach ? "jira-issue-attach-chin" : undefined}
+							exit={presenceMotion.exit}
+							initial={presenceMotion.initial}
+							layout={rowLayout}
+							style={shouldReduceMotion ? undefined : JIRA_ISSUE_MOTION_STYLE}
+							transition={layoutTransition}
+						>
+							{row}
+						</motion.div>
 					);
 				})}
 			</AnimatePresence>
@@ -960,7 +727,6 @@ export function JiraIssueAgentActivityRows({
 					<JiraIssueAttachChinSlot copy={attachPreviewCopy} />
 				</div>
 			) : null}
-			{sessionFlyout ? <JiraSessionFlyoutSurface handle={flyoutHandle} /> : null}
 		</motion.div>
 	);
 }
