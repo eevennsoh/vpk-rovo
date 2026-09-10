@@ -2,7 +2,6 @@
 
 import {
 	useCallback,
-	useEffect,
 	useLayoutEffect,
 	useRef,
 	useState,
@@ -10,7 +9,7 @@ import {
 } from "react";
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
-import { subscribeCreatedCardBottomReveal } from "@/components/blocks/jira-create/lib/jira-create-column-scroll";
+import { subscribeCreatedCardBottomReveal } from "@/components/blocks/jira-creating/lib/jira-creating-column-scroll";
 
 export interface JiraKanbanCreatedCardArrival {
 	readonly id: number;
@@ -24,8 +23,6 @@ export interface JiraKanbanCreatedCardArrival {
 	 */
 	readonly appended: boolean;
 }
-
-const JIRA_KANBAN_CREATED_CARD_BACKDROP_HOLD_MS = 600; // duration-slowest
 
 export function useBoardCreatedCardArrival({
 	captureSession,
@@ -71,33 +68,14 @@ export function useBoardCreatedCardArrival({
 
 export function useCreatedCardArrivalCompletion(
 	onComplete: ((arrivalId: number) => void) | undefined,
-	holdMs: number = JIRA_KANBAN_CREATED_CARD_BACKDROP_HOLD_MS,
 ): (arrivalId: number) => void {
 	const completedIdsRef = useRef(new Set<number>());
-	const holdTimeoutRef = useRef<number | null>(null);
-
-	useEffect(() => () => {
-		if (holdTimeoutRef.current !== null) {
-			window.clearTimeout(holdTimeoutRef.current);
-		}
-	}, []);
 
 	return useCallback((arrivalId: number) => {
 		if (completedIdsRef.current.has(arrivalId)) return;
 		completedIdsRef.current.add(arrivalId);
-		if (holdTimeoutRef.current !== null) {
-			window.clearTimeout(holdTimeoutRef.current);
-			holdTimeoutRef.current = null;
-		}
-		if (holdMs <= 0) {
-			onComplete?.(arrivalId);
-			return;
-		}
-		holdTimeoutRef.current = window.setTimeout(() => {
-			holdTimeoutRef.current = null;
-			onComplete?.(arrivalId);
-		}, holdMs);
-	}, [holdMs, onComplete]);
+		onComplete?.(arrivalId);
+	}, [onComplete]);
 }
 
 export function useCreatedCardArrivalScroll({

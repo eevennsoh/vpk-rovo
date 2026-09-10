@@ -12,11 +12,11 @@ async function loadInsertHarness() {
 					getJiraCreateInsertIndex,
 					insertItemsAt,
 					isJiraCreateInsertPosition,
-				} from "./components/blocks/jira-create/lib/jira-create-insert";
+				} from "./components/blocks/jira-creating/lib/jira-creating-insert";
 			`,
 			loader: "ts",
 			resolveDir: process.cwd(),
-			sourcefile: "jira-create-insert-harness.ts",
+			sourcefile: "jira-creating-insert-harness.ts",
 		},
 		bundle: true,
 		format: "cjs",
@@ -25,7 +25,7 @@ async function loadInsertHarness() {
 		write: false,
 	});
 
-	return loadCjsModuleFromText(result.outputFiles[0].text, "jira-create-insert-harness.cjs");
+	return loadCjsModuleFromText(result.outputFiles[0].text, "jira-creating-insert-harness.cjs");
 }
 
 test("insert index maps top, middle, and bottom onto a column", async () => {
