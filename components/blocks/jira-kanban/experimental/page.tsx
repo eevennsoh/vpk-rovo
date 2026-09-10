@@ -182,8 +182,7 @@ function ExperimentalJiraKanbanPageContent({
 	activeCardCode,
 	additionalAgentSessions,
 	agentActivityLayout,
-	cardGenerativeActionPresentation,
-	iconScale,
+	cardGenerativeActionPresentation, iconScale,
 	createWorkItemDropZoneLabel,
 	defaultAgentSessionColumnCollapsed = false,
 	defaultShowUntracked = true,
@@ -215,8 +214,7 @@ function ExperimentalJiraKanbanPageContent({
 	onCardAgentSessionMove,
 	onCardAgentSessionUnlink,
 	onListAgentSessionCreate,
-	showAgentSessionUnlinkWell = true,
-	subtaskChrome,
+	showAgentSessionUnlinkWell = true, subtaskChrome,
 	onInsightsWorkItemClick,
 	onModeChange,
 	onResumeLooseWork,
@@ -985,8 +983,7 @@ function ExperimentalJiraKanbanPageContent({
 								ariaLabel={ariaLabel}
 								assignedAgentIdsByColumn={columnAgentAssignments}
 								boardColumns={filteredBoardColumns}
-								cardGenerativeActionPresentation={cardGenerativeActionPresentation}
-								iconScale={iconScale}
+								cardGenerativeActionPresentation={cardGenerativeActionPresentation} iconScale={iconScale}
 								collapsedColumns={displayedCollapsedColumns}
 								columnChrome={columnChrome}
 								createdCardArrival={createdCardArrival ?? undefined}
@@ -1011,8 +1008,7 @@ function ExperimentalJiraKanbanPageContent({
 								onCardAgentSessionUnlink={onCardAgentSessionUnlink
 									? handleCardAgentSessionUnlink
 									: undefined}
-								showAgentSessionUnlinkWell={showAgentSessionUnlinkWell}
-								subtaskChrome={subtaskChrome}
+								showAgentSessionUnlinkWell={showAgentSessionUnlinkWell} subtaskChrome={subtaskChrome}
 								onCardSelect={handleCardSelect}
 								onCardDragStart={handleCardDragStart}
 								onCardDrop={handleCardDrop}

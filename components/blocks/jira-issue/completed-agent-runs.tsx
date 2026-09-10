@@ -11,10 +11,7 @@ import {
 	type AgentListItem,
 	toAgentSessionFlyoutItem,
 } from "@/components/blocks/agent-list";
-import type {
-	JiraIssueAgentActivity,
-	JiraIssueAgentActivityIndicatorRenderer,
-} from "@/components/blocks/jira-issue/agent-activity";
+import type { JiraIssueAgentActivityIndicatorRenderer } from "@/components/blocks/jira-issue/agent-activity";
 import type { JiraIssueAgentActivityLayout } from "@/components/blocks/jira-issue/agent-activity-model";
 import {
 	createJiraSessionFlyoutHandle,
@@ -76,19 +73,6 @@ function toCompletedAgentListItem(run: JiraIssueCompletedAgentRun): AgentListIte
 			repository: "payments-platform/payments",
 		},
 		title: run.summary,
-	};
-}
-
-export function toJiraIssueAgentActivityFromCompletedRun(
-	run: JiraIssueCompletedAgentRun,
-): JiraIssueAgentActivity {
-	return {
-		id: run.id,
-		name: run.agentName,
-		avatarSrc: run.agentAvatarSrc,
-		agentBrandName: run.agentBrandName,
-		label: run.state === "failed" ? "Failed" : "Finished",
-		state: "completed",
 	};
 }
 

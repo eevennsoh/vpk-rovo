@@ -33,9 +33,9 @@ import {
 } from "@/components/blocks/jira-issue/agent-session-transfer";
 import {
 	JiraIssueAgentDone,
-	toJiraIssueAgentActivityFromCompletedRun,
 	type JiraIssueCompletedAgentRun,
 } from "@/components/blocks/jira-issue/completed-agent-runs";
+import { toJiraIssueAgentActivityFromCompletedRun } from "@/components/blocks/jira-issue/completed-agent-runs-model";
 import {
 	getCompletedCount,
 	getJiraIssueAgentSurfaceOffsets,
