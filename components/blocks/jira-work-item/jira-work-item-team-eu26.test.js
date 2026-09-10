@@ -136,6 +136,8 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	assert.match(workItemsTableSource, /LozengeDropdownTrigger/u);
 	assert.match(workItemsTableSource, /font-medium text-link underline underline-offset-2/u);
 	assert.match(workItemsTableSource, /SubtasksIcon/u);
+	assert.match(workItemsTableSource, /<Icon color="currentColor" label=\{`\$\{priority\} priority`\} size="small" \/>/u);
+	assert.doesNotMatch(workItemsTableSource, /<Icon color="currentColor" label=""/u);
 	assert.match(bodySource, /import \{ Tabs, TabsContent, TabsList, TabsTrigger \} from "@\/components\/ui\/tabs"/u);
 	assert.doesNotMatch(bodySource, /ButtonGroup/u);
 	assert.match(bodySource, /const \[attachmentsExpanded, setAttachmentsExpanded\] = useState\(true\)/u);

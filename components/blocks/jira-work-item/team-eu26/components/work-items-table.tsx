@@ -88,7 +88,7 @@ function Priority({ priority }: Readonly<Pick<TeamEu26TableWorkItem, "priority">
 	return (
 		<span className="inline-flex items-center gap-0.5">
 			<span className={className}>
-				<Icon color="currentColor" label="" size="small" />
+				<Icon color="currentColor" label={`${priority} priority`} size="small" />
 			</span>
 			<span className="text-sm text-text">{label}</span>
 		</span>
