@@ -15,6 +15,7 @@ const {
 	resolveBoardAgentSessionDropTarget,
 	resolveBoardCreateDropzoneDrag,
 	SESSION_ATTACH_PROXIMITY_RANGE_PX,
+	toBoardAgentSessionCardProximity,
 	toChinFreeBoardCardBounds,
 	toListSessionDropIntent,
 	updateBoardAgentSessionDragTransaction,
@@ -736,4 +737,35 @@ test("transactions carry proximity alongside the discrete target and clear both 
 	const idle = updateBoardAgentSessionDragTransaction(approach, { x: 900, y: 900 }, ZONES);
 	assert.equal(idle.proximity, null);
 	assert.equal(cancelBoardAgentSessionDragTransaction(idle), idle);
+});
+
+test("a named card resolves as its own link target, with no pointer to measure", () => {
+	// Assigning an agent from the card's own menu links the same agent to the
+	// same card a drop does, so it reuses the drop path's proximity shape rather
+	// than growing a second one. There is no pointer, so the card is the winner
+	// by construction: distance 0, nearness 1.
+	const winner = toBoardAgentSessionCardProximity(ZONES, "PAY-128");
+	assert.equal(winner.cardCode, "PAY-128");
+	assert.equal(winner.distance, 0);
+	assert.equal(winner.nearness, 1);
+	assert.deepEqual(winner.bounds, TARGET_ISSUE.bounds);
+
+	// The geometry the effect needs is carried through, absent when unmeasured.
+	assert.equal(winner.dockRect, null);
+	assert.equal(winner.landRect, null);
+	assert.equal(winner.surfaceRect, null);
+	const measured = toBoardAgentSessionCardProximity(
+		[{ ...TARGET_ISSUE, surfaceRect: { bottom: 190, left: 230, right: 410, top: 10 } }],
+		"PAY-128",
+	);
+	assert.deepEqual(measured.surfaceRect, { bottom: 190, left: 230, right: 410, top: 10 });
+});
+
+test("only an issue zone can be a named card's link target", () => {
+	// A card not on the board, and a same-code zone of another kind, both yield
+	// nothing: the acknowledgement must not point at a card it cannot measure,
+	// nor at the unlink well sharing that card's code.
+	assert.equal(toBoardAgentSessionCardProximity(ZONES, "PAY-999"), null);
+	assert.equal(toBoardAgentSessionCardProximity([SOURCE_UNLINK], "PAY-121"), null);
+	assert.equal(toBoardAgentSessionCardProximity([], "PAY-121"), null);
 });

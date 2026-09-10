@@ -8,6 +8,7 @@ import { createSessionCohort } from "@/components/blocks/agent-session/session-c
 import type {
 	JiraIssueAgentSessionDragControl,
 	JiraIssueAgentSessionDragState,
+	JiraIssueGenerativeActionRequest,
 } from "@/components/blocks/jira-issue";
 import {
 	JIRA_ISSUE_LINK_FLASH_DURATION_MS,
@@ -21,18 +22,21 @@ import type { JiraIssueAgentSessionRef } from "@/components/blocks/jira-issue/ag
 import type { SessionDropReceipt } from "@/components/blocks/jira-dropzone";
 import {
 	JIRA_LINKING_FULL_DROP_PROFILE,
+	resolveJiraLinkingGlowSettleMs,
 	resolveJiraLinkingReleaseSettleMs,
 	type JiraLinkingRelease,
+	type JiraLinkingVariant,
 } from "@/components/blocks/jira-linking";
 
 import type { JiraListInsertion } from "@/components/blocks/jira-list/jira-list-types";
-import type { JiraKanbanCardData, JiraKanbanColumnData } from "../index";
+import type { JiraKanbanCardData, JiraKanbanColumnData, JiraKanbanProps } from "../index";
 import {
 	createBoardAgentSessionDragTransaction,
 	parseBoardCardGapZones,
 	parseBoardEmptyColumnGapZone,
 	parseListRowDropZone,
 	resolveBoardAgentSessionDropAction,
+	toBoardAgentSessionCardProximity,
 	toChinFreeBoardCardBounds,
 	toListSessionDropIntent,
 	updateBoardAgentSessionDragTransaction,
@@ -53,6 +57,8 @@ import {
 } from "./lib/session-transfer-plan";
 import {
 	toBoardAgentSessionLinkFlash,
+	toAssignedAgentTransferMember,
+	toSessionFusionAssignmentOrigin,
 	toSessionFusionDrop,
 	type BoardAgentSessionLinkFlash,
 	type PendingSessionLinkFlash,
@@ -143,6 +149,20 @@ function resolveIssueLandRect(node: HTMLElement): BoardAgentSessionDropBounds | 
 	const rows = issue.querySelectorAll('[data-slot="jira-issue-agent-row"]');
 	const lastRow = rows[rows.length - 1];
 	return lastRow ? toDropBounds(lastRow) : null;
+}
+
+/**
+ * The card's own visible surface, without the activity rows stacked under it.
+ *
+ * Glow linking collapses its chip into the card body, so it aims here rather
+ * than at the shell — which grows downward as rows attach and would pull the
+ * landing point below the card the viewer is dropping on.
+ */
+function resolveIssueSurfaceRect(node: HTMLElement): BoardAgentSessionDropBounds | null {
+	const surface = node
+		.closest<HTMLElement>("[data-issue-key]")
+		?.querySelector<HTMLElement>('[data-slot="jira-issue-surface"]');
+	return surface ? toDropBounds(surface) : null;
 }
 
 function clipBoundsToScrollport(
@@ -320,6 +340,7 @@ function collectDropZones(root: HTMLElement | null): BoardAgentSessionDropZone[]
 				dockRect: resolveIssueDockRect(node, bounds),
 				kind,
 				landRect: resolveIssueLandRect(node),
+				surfaceRect: resolveIssueSurfaceRect(node),
 			},
 			...collectCardGapZones(node, issueKey, bounds),
 		];
@@ -340,6 +361,7 @@ function findBoardCard(
 export function useBoardAgentSessionDrag({
 	boardColumns,
 	detachedSessionsByCard,
+	linkingVariant = "fuse",
 	onBoardGapCreate,
 	onCreate,
 	onCreateWellReceive,
@@ -351,6 +373,13 @@ export function useBoardAgentSessionDrag({
 }: Readonly<{
 	boardColumns: readonly JiraKanbanColumnData[];
 	detachedSessionsByCard?: Readonly<Record<string, readonly AgentSessionItem[]>>;
+	/**
+	 * Which linking decoration a card attach plays. Defaults to the metaball
+	 * `fuse`, so boards that never opt in keep the effect they have. `glow`
+	 * collapses one cohort chip into the card and acknowledges it with the
+	 * card's own halo and backdrop pulse, which replaces the chin-row sweep.
+	 */
+	linkingVariant?: JiraLinkingVariant;
 	/**
 	 * Mint work items at a specific slot in a column's card stack, with the
 	 * sessions already linked to them. Omit it and no card-gap zone is ever
@@ -392,6 +421,8 @@ export function useBoardAgentSessionDrag({
 	} | null>(null);
 	const linkFlashTokenRef = useRef(0);
 	const pendingAttachRef = useRef<PendingSessionLinkFlash | null>(null);
+	/** Deferred assignment measurement, so unmounting cannot arm against a dead board. */
+	const assignmentFrameRef = useRef<number | null>(null);
 	const settleDeadlineRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const flashRetireRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const ports: SessionTransferPorts = useMemo(() => ({
@@ -497,12 +528,132 @@ export function useBoardAgentSessionDrag({
 		armLinkFlash(pending.flash);
 	}, [armLinkFlash]);
 
+	/**
+	 * Put a committed link's acknowledgement on screen and arm its backstop.
+	 *
+	 * Shared by both paths that link an agent to a card — the drop, and the
+	 * card's own assign menu — so a link acknowledges itself the same way
+	 * however it was made, and only one clock ever owns the flush.
+	 */
+	const armFusionRelease = useCallback((input: Readonly<{
+		flash: BoardAgentSessionLinkFlash | null;
+		members: readonly JiraIssueAgentSessionTransferMember[];
+		proximity: NonNullable<BoardAgentSessionDragTransaction["proximity"]>;
+		release: JiraLinkingRelease;
+	}>) => {
+		pendingAttachRef.current = { flash: input.flash };
+		// The sweep waits for the chips to land, but it does not depend on
+		// them: the overlay is decoration, mounted through a portal behind a
+		// lazy chunk, and a decoration that never calls back must not be able
+		// to swallow the acknowledgement for a link that already committed.
+		settleDeadlineRef.current = setTimeout(
+			flushPendingAttach,
+			(linkingVariant === "glow"
+				? resolveJiraLinkingGlowSettleMs(shouldReduceMotion)
+				: resolveJiraLinkingReleaseSettleMs(input.release, JIRA_LINKING_FULL_DROP_PROFILE))
+				+ SESSION_FUSION_SETTLE_GRACE_MS,
+		);
+		setFusionDrop({
+			members: input.members,
+			proximity: input.proximity,
+			release: input.release,
+		});
+	}, [flushPendingAttach, linkingVariant, shouldReduceMotion]);
+
+	/**
+	 * Acknowledge an agent the card's own assign menu just linked.
+	 *
+	 * The menu commits the link itself; this only draws the same effect the
+	 * drop draws, against the card named by `cardCode`. Silent when the card is
+	 * not on the board, when reduced motion is on, or when the submit put no
+	 * agent row on the card — the link still stands in every one of those
+	 * cases, because the decoration was never what committed it.
+	 *
+	 * Measured a frame late, on purpose. A drop hit-tests a board the pointer
+	 * was already over, but an assignment's own link can move the card it
+	 * targets: a host that advances the work item on start re-columns it in the
+	 * very commit this acknowledges. Measuring first would aim the flight at the
+	 * vacated slot and, worse, hand Glow a stale anchor whose hit test finds
+	 * whichever card slid in behind — so the wrong card would glow.
+	 *
+	 * Glow only. Fuse acknowledges a link with a chin-row sweep keyed to the
+	 * activity id the host minted, and that id is the host's own convention —
+	 * `jira-golden-journeys-v4` builds `${card.code}:${selection.id}` from a
+	 * mention id this board never sees. A sweep the board cannot target would
+	 * silently never play, so fuse boards keep the assign menu they have today.
+	 */
+	const armAssignedAgentLink = useCallback((
+		cardCode: string,
+		request: Readonly<JiraIssueGenerativeActionRequest>,
+	) => {
+		const member = toAssignedAgentTransferMember(request);
+		if (!member || shouldReduceMotion || linkingVariant !== "glow") {
+			return;
+		}
+		if (assignmentFrameRef.current !== null) {
+			cancelAnimationFrame(assignmentFrameRef.current);
+		}
+		assignmentFrameRef.current = requestAnimationFrame(() => {
+			assignmentFrameRef.current = null;
+			const proximity = toBoardAgentSessionCardProximity(
+				collectDropZones(boardRootRef.current),
+				cardCode,
+			);
+			const from = toSessionFusionAssignmentOrigin(proximity, linkingVariant);
+			if (!proximity || !from) {
+				return;
+			}
+			// Whatever the previous link still owed is settled first. A card wears
+			// one acknowledgement at a time, and consuming the pending record is
+			// what keeps the two paths from arming two flushes against one drop.
+			flushPendingAttach();
+			linkFlashTokenRef.current += 1;
+			const members = [member];
+			const release = toSessionFusionDrop({
+				from,
+				id: linkFlashTokenRef.current,
+				members,
+				proximity,
+				variant: linkingVariant,
+			});
+			if (!release) {
+				return;
+			}
+			armFusionRelease({
+				// Glow's halo and backdrop pulse are the whole acknowledgement, and
+				// they key off the card rather than the rows inside it.
+				flash: null,
+				members,
+				proximity,
+				release,
+			});
+		});
+	}, [armFusionRelease, flushPendingAttach, linkingVariant, shouldReduceMotion]);
+
+	/**
+	 * A card's generative-action handler with the link acknowledgement attached.
+	 *
+	 * The host runs first: it owns the link, and the effect is only a receipt for
+	 * one it made. Returns `undefined` without a host handler, so no card can
+	 * glow for a link nobody committed. Composed here rather than in the board so
+	 * the wrapper and the arming it pairs with stay in one place.
+	 */
+	const withAssignedAgentLink = useCallback((
+		onSubmit: JiraKanbanProps["onCardGenerativeActionSubmit"],
+	): JiraKanbanProps["onCardGenerativeActionSubmit"] => onSubmit && ((request, card, columnTitle) => {
+		void onSubmit(request, card, columnTitle);
+		armAssignedAgentLink(card.code, request);
+	}), [armAssignedAgentLink]);
+
 	useEffect(() => () => {
 		if (settleDeadlineRef.current !== null) {
 			clearTimeout(settleDeadlineRef.current);
 		}
 		if (flashRetireRef.current !== null) {
 			clearTimeout(flashRetireRef.current);
+		}
+		if (assignmentFrameRef.current !== null) {
+			cancelAnimationFrame(assignmentFrameRef.current);
 		}
 	}, []);
 
@@ -552,6 +703,7 @@ export function useBoardAgentSessionDrag({
 					? finalTransaction.target.cardCode
 					: null,
 				token: linkFlashTokenRef.current,
+				variant: linkingVariant,
 			});
 			const release = isCardLink
 				? toSessionFusionDrop({
@@ -559,21 +711,13 @@ export function useBoardAgentSessionDrag({
 					id: linkFlashTokenRef.current,
 					members: finalTransaction.cohort.members,
 					proximity: finalTransaction.proximity,
+					variant: linkingVariant,
 				})
 				: null;
 			commitDrop(finalTransaction);
 			if (release && finalTransaction.proximity && !shouldReduceMotion) {
-				pendingAttachRef.current = { flash };
-				// The sweep waits for the chips to land, but it does not depend on
-				// them: the overlay is decoration, mounted through a portal behind a
-				// lazy chunk, and a decoration that never calls back must not be able
-				// to swallow the acknowledgement for a link that already committed.
-				settleDeadlineRef.current = setTimeout(
-					flushPendingAttach,
-					resolveJiraLinkingReleaseSettleMs(release, JIRA_LINKING_FULL_DROP_PROFILE)
-						+ SESSION_FUSION_SETTLE_GRACE_MS,
-				);
-				setFusionDrop({
+				armFusionRelease({
+					flash,
 					members: finalTransaction.cohort.members,
 					proximity: finalTransaction.proximity,
 					release,
@@ -589,7 +733,7 @@ export function useBoardAgentSessionDrag({
 				? { ...JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE, cancelled: true }
 				: JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE,
 		);
-	}, [armLinkFlash, cardGapsEnabled, commitDrop, flushPendingAttach, shouldReduceMotion]);
+	}, [armFusionRelease, armLinkFlash, cardGapsEnabled, commitDrop, flushPendingAttach, linkingVariant, shouldReduceMotion]);
 
 	function createBinding(
 		origin: BoardAgentSessionDragOrigin,
@@ -665,6 +809,11 @@ export function useBoardAgentSessionDrag({
 	}, [dragState, fusionDrop]);
 
 	return {
+		/**
+		 * Acknowledge an agent the card's own assign menu linked, with the same
+		 * effect a drop draws. The menu owns the link; this only draws it.
+		 */
+		withAssignedAgentLink,
 		boardRootRef,
 		/**
 		 * The slot the board should draw its insertion line in, or null. Derived
@@ -679,6 +828,12 @@ export function useBoardAgentSessionDrag({
 		enablement,
 		fusionDrop,
 		linkFlash,
+		/**
+		 * Which decoration the overlay should draw. Returned rather than plumbed
+		 * to the board as its own prop, the same way `listDropIntent` is, so the
+		 * release this hook armed and the effect that plays it cannot disagree.
+		 */
+		linkingVariant,
 		getCardDragState,
 		listDropIntent: onLink || onListCreate
 			? toListSessionDropIntent(transaction?.target ?? null)
