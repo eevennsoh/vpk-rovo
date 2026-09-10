@@ -556,9 +556,9 @@ function JiraIssueAgentActivityRow({
 		<div
 			className={cn(
 				"group/agent-chin-row relative flex min-w-0 items-center",
-				isDraggedOut
-					? "h-auto w-fit max-w-full justify-start bg-transparent p-0"
-					: "h-10 w-full justify-between rounded-md bg-bg-neutral px-2 py-2 hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed",
+			isDraggedOut
+				? "h-auto w-fit max-w-full justify-start bg-transparent p-0"
+				: "h-10 w-full justify-between rounded-md px-2 py-2 hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 			)}
 			data-agent-startup-phase={startupSequenceKey ? startupPhase : undefined}
 			data-session-chin=""
