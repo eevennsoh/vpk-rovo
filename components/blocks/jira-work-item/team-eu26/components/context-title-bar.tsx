@@ -116,7 +116,7 @@ export function WorkItemKeyCopy() {
 /**
  * Editable title in the dialog header band. Expanded mode places the control
  * row beneath the title; compact mode keeps status + Add inline before it.
- * Owns the header-band padding so the two-column body starts beneath this band.
+ * Stays padding-free so the title, icon actions, and status share one center.
  */
 export function ContextTitleBar({
 	controlRow,
@@ -136,8 +136,8 @@ export function ContextTitleBar({
 	return (
 		<motion.div
 			className={cn(
-				"min-w-0 self-stretch px-10",
-				presentedCompact ? "pb-0" : "pb-2",
+				"min-w-0 self-center",
+				"px-0",
 			)}
 			data-header-variant={variant}
 			data-jira-work-item-title-block

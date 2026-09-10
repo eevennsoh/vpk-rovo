@@ -80,12 +80,15 @@ test("Team EU26 owns the Team EU VITA-1 reference content and geometry", () => {
 
 	const layoutSource = readBlockFile("team-eu26/components/experimental-work-item-layout.tsx");
 	assert.match(layoutSource, /max-w-\[1920px\]/u);
-	assert.match(layoutSource, /@\[860px\]\/agentlayout:pl-10 @\[860px\]\/agentlayout:pr-6/u);
-	assert.match(layoutSource, /@\[860px\]\/agentlayout:bottom-5/u);
+	assert.match(layoutSource, /@\[860px\]\/agentlayout:px-6/u);
+	assert.match(
+		layoutSource,
+		/@\[860px\]\/agentlayout:static @\[860px\]\/agentlayout:shrink-0 @\[860px\]\/agentlayout:bg-transparent/u,
+	);
 	assert.match(readBlockFile("team-eu26/lib/layout-constants.ts"), /METADATA_PANEL_DEFAULT_WIDTH_PX = 440/u);
 
 	const composerSource = readBlockFile("team-eu26/components/activity-composer.tsx");
-	assert.match(composerSource, /Add a comment, @mention or \/ for actions/u);
+	assert.match(composerSource, /Comment, @mention an agent, or \/ for skills/u);
 	assert.doesNotMatch(composerSource, /Needs input|AiAgentIcon/u);
 });
 
@@ -102,24 +105,24 @@ test("Team EU26 status control uses the project workflow phases", () => {
 	assert.match(editorDataSource, /"In review": "warning"/u);
 });
 
-test("Team EU26 does not expand the comment composer into an Improve-description prompt", () => {
+test("Team EU26 uses the v5 comment composer without an Improve-description prompt", () => {
 	const composerSource = readBlockFile("team-eu26/components/activity-composer.tsx");
 	const bodyOwner = readBlockFile("team-eu26/components/work-item-body.tsx");
 	const bodySource = readBlockFile("team-eu26/components/high-confidence-work-item-body.tsx");
 
 	assert.match(
 		composerSource,
-		/<JiraActivityComposer[\s\S]*placeholder="Add a comment, @mention or \/ for actions"/u,
+		/<JiraActivityComposer[\s\S]*expandOnFocus[\s\S]*placeholder="Comment, @mention an agent, or \/ for skills"/u,
 	);
-	assert.doesNotMatch(composerSource, /<JiraActivityComposer[\s\S]*\bexpandOnFocus\b/u);
 	assert.doesNotMatch(composerSource, /Type \/ai to ask Rovo|Improve description/u);
 
 	assert.match(bodyOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceWorkItemBody \/>/u);
 	assert.match(
 		bodySource,
-		/<h2 className="text-sm font-semibold text-text" id="team-eu26-description-heading">Description<\/h2>\s*<p className="max-w-none text-sm leading-5 text-text">\{TEAM_EU26_DESCRIPTION\}<\/p>/u,
+		/<CollapsibleWorkItemSection headingId="team-eu26-description-heading" label="Description">[\s\S]*<ContextEditableDescription \/>/u,
 	);
-	assert.doesNotMatch(bodySource, /ContextEditableDescription|Type \/ai to ask Rovo|Improve description/u);
+	assert.match(bodySource, /ContextEditableDescription/u);
+	assert.doesNotMatch(bodySource, /Type \/ai to ask Rovo|Improve description/u);
 });
 
 test("Team EU26 filled preset renders the high-confidence sections and details rail", () => {
@@ -135,17 +138,24 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	const dialogSource = readBlockFile("team-eu26/components/experimental-work-item-dialog.tsx");
 
 	assert.match(bodyOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceWorkItemBody \/>/u);
-	for (const copy of ["Description", "Attachments", "Subitems", "Linked work items", "Show more attachments"]) {
+	for (const copy of ["Description", "Attachments", "Subtasks", "Linked work items", "Show more attachments"]) {
 		assert.match(bodySource, new RegExp(copy, "u"));
 	}
+	assert.doesNotMatch(bodySource, />Subitmes</u);
+	assert.match(bodySource, /<CollapsibleWorkItemSection[\s\S]*headingId="team-eu26-subtasks-heading"[\s\S]*label="Subtasks"/u);
 	assert.match(bodySource, /<Table[\s\S]*<TableHeader[\s\S]*<TableBody/u);
 	assert.match(bodySource, /<WorkItemsTable aria-label="Subitems"/u);
 	assert.match(bodySource, /<WorkItemsTable aria-label="Linked work items"/u);
+	assert.match(bodySource, /WORK_ITEM_TABLE_CONTAINER_CLASS[\s\S]*WORK_ITEM_TABLE_CLASS/u);
 	assert.match(bodySource, /import \{ WorkItemsTable \} from "@\/components\/blocks\/jira-work-item\/team-eu26\/components\/work-items-table"/u);
 	const workItemsTableSource = readBlockFile("team-eu26/components/work-items-table.tsx");
-	assert.match(workItemsTableSource, /bg-surface-sunken \[&_tr\]:border-0/u);
-	assert.match(workItemsTableSource, /not-first:border-l not-first:border-border/u);
-	assert.match(workItemsTableSource, /overflow-hidden rounded-md border border-border/u);
+	const tableStylesSource = readBlockFile("team-eu26/components/work-item-table-styles.ts");
+	assert.match(tableStylesSource, /rounded-md border border-border/u);
+	assert.match(tableStylesSource, /w-full table-fixed/u);
+	assert.match(tableStylesSource, /h-10 border-b-0 border-t border-border/u);
+	assert.match(workItemsTableSource, /WORK_ITEM_TABLE_HEADER_CLASS/u);
+	assert.match(workItemsTableSource, /WORK_ITEM_TABLE_HEAD_CLASS/u);
+	assert.match(workItemsTableSource, /WORK_ITEM_TABLE_CONTAINER_CLASS/u);
 	assert.match(workItemsTableSource, /LozengeDropdownTrigger/u);
 	assert.match(workItemsTableSource, /font-medium text-link underline underline-offset-2/u);
 	assert.match(workItemsTableSource, /SubtasksIcon/u);
@@ -153,17 +163,37 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	assert.doesNotMatch(workItemsTableSource, /<Icon color="currentColor" label=""/u);
 	assert.match(bodySource, /import \{ Tabs, TabsContent, TabsList, TabsTrigger \} from "@\/components\/ui\/tabs"/u);
 	assert.doesNotMatch(bodySource, /ButtonGroup/u);
-	assert.match(bodySource, /const \[attachmentsExpanded, setAttachmentsExpanded\] = useState\(true\)/u);
-	assert.match(bodySource, /aria-label="Attachments"[\s\S]*aria-controls="team-eu26-attachments-content"[\s\S]*aria-expanded=\{attachmentsExpanded\}/u);
-	assert.match(bodySource, /<h2 className="pointer-events-none absolute inset-0 z-10 flex[\s\S]*id="team-eu26-attachments-heading"/u);
-	assert.match(bodySource, /<button[\s\S]*aria-label="Attachments"[\s\S]*aria-controls="team-eu26-attachments-content"[\s\S]*type="button"/u);
-	assert.doesNotMatch(bodySource, /role="button"[\s\S]*tabIndex=\{0\}/u);
-	assert.match(bodySource, /className="inline-flex items-center justify-center opacity-0 transition-opacity/u);
-	assert.match(bodySource, /className="group\/attachments relative flex min-h-9[\s\S]*className="absolute inset-0 z-0/u);
-	assert.doesNotMatch(bodySource, /<Button\s+aria-controls="team-eu26-attachments-content"/u);
-	assert.match(bodySource, /className="group\/attachments relative flex min-h-9[\s\S]*transition-none/u);
-	assert.match(bodySource, /className=\{cn\("relative z-10 ml-auto flex shrink-0/u);
-	assert.match(bodySource, /aria-hidden=\{!attachmentsExpanded\}[\s\S]*inert=\{!attachmentsExpanded \? true : undefined\}/u);
+	const sectionSource = readBlockFile("team-eu26/components/collapsible-work-item-section.tsx");
+	const railPanelSource = readBlockFile("team-eu26/components/team-eu-rail-panel.tsx");
+	const panelMotionSource = readBlockFile("team-eu26/components/panel-content-motion.ts");
+	assert.match(bodySource, /import \{ CollapsibleWorkItemSection \}/u);
+	assert.match(sectionSource, /aria-controls=\{contentId\}[\s\S]*aria-expanded=\{expanded\}/u);
+	assert.match(sectionSource, /id=\{contentId\}/u);
+	assert.match(sectionSource, /absolute inset-0 z-0/u);
+	assert.match(sectionSource, /pointer-events-none relative z-10/u);
+	assert.doesNotMatch(sectionSource, /variant="ghost"/u);
+	assert.doesNotMatch(sectionSource, /aria-expanded:hover:bg-bg-neutral-subtle-hovered/u);
+	assert.match(sectionSource, /panelContentVariants\(shouldReduceMotion\)/u);
+	assert.match(sectionSource, /inert=\{!expanded \? true : undefined\}/u);
+	assert.match(sectionSource, /group-hover\/section:opacity-100 group-focus-within\/section:opacity-100/u);
+	assert.match(sectionSource, /expanded[\s\S]*opacity-0[\s\S]*: "opacity-100"/u);
+	assert.match(sectionSource, /<span className="min-w-0 truncate">\{label\}<\/span>[\s\S]*ChevronDownIcon/u);
+	assert.match(sectionSource, /animate=\{\{ rotate: expanded \? 0 : -90 \}\}/u);
+	assert.match(sectionSource, /from "motion\/react"/u);
+	assert.match(sectionSource, /useReducedMotion/u);
+	assert.match(railPanelSource, /absolute inset-0 z-0/u);
+	assert.match(railPanelSource, /pointer-events-none relative z-10/u);
+	assert.match(railPanelSource, /relative flex min-h-12 items-center px-4/u);
+	assert.doesNotMatch(railPanelSource, /variant="ghost"/u);
+	assert.doesNotMatch(railPanelSource, /aria-expanded:hover:bg-bg-neutral-subtle-hovered/u);
+	assert.match(railPanelSource, /panelContentVariants\(shouldReduceMotion\)/u);
+	assert.match(railPanelSource, /inert=\{!open \? true : undefined\}/u);
+	assert.match(railPanelSource, /from "motion\/react"/u);
+	assert.match(panelMotionSource, /const CONTENT_ENTER =/u);
+	assert.match(panelMotionSource, /const CONTENT_EXIT =/u);
+	assert.match(panelMotionSource, /height: "auto"/u);
+	assert.match(panelMotionSource, /height: 0/u);
+	assert.match(panelMotionSource, /duration: 0\.24/u);
 	assert.match(bodySource, /<Tabs[\s\S]*onValueChange=\{\(value\) => value \? setAttachmentFilter\(value as AttachmentFilter\) : undefined\}[\s\S]*value=\{attachmentFilter\}/u);
 	assert.match(bodySource, /<TabsList aria-label="Filter attachments" size="default" variant="default">[\s\S]*<TabsTrigger/u);
 	assert.match(bodySource, /<TabsContent[\s\S]*value=\{filter\.value\}/u);
@@ -196,16 +226,28 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	}
 	assert.match(agentSessionsSource, /import \{ TEAM_EU26_AGENT_SESSIONS \} from "@\/components\/blocks\/jira-work-item\/team-eu26\/data\/high-confidence-work-item"/u);
 	assert.match(agentSessionsSource, /<span aria-hidden[\s\S]*<StatusIcon label="" size="small" \/>/u);
-	assert.match(activitySource, /meta\.initialPreset === "filled" \? "Activity" : "4 days ago"/u);
-	assert.match(layoutSource, /showInFlowComposer = initialPreset === "filled" && composerVisible/u);
-	assert.match(layoutSource, /data-team-eu26-comment-composer[\s\S]*\{composer\}/u);
-	assert.match(railOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceMetadataRail/u);
+	assert.match(activitySource, /meta\.initialPreset === "filled" \|\| meta\.initialPreset === "empty" \? "Activity" : "4 days ago"/u);
+	assert.match(layoutSource, /showStickyComposer = planner\.status === "inactive" \|\| planner\.status === "applied"/u);
+	assert.match(
+		layoutSource,
+		/@\[860px\]\/agentlayout:static @\[860px\]\/agentlayout:shrink-0 @\[860px\]\/agentlayout:bg-transparent/u,
+	);
+	assert.match(layoutSource, /data-jira-work-item-composer-dock[\s\S]*\{composer\}/u);
+	assert.doesNotMatch(layoutSource, /showInFlowComposer/u);
+	assert.doesNotMatch(layoutSource, /@\[860px\]\/agentlayout:absolute/u);
+	assert.match(railOwner, /initialPreset === "filled" \|\| initialPreset === "empty"[\s\S]*<EmptyMetadataRail \/>[\s\S]*<HighConfidenceMetadataRail/u);
+	assert.match(
+		railSource,
+		/<CollapsibleWorkItemSection headingId="team-eu26-details-heading" label="Details" variant="rail">/u,
+	);
+	assert.match(sectionSource, /isRail \? "min-h-12 px-4" : expanded \? "min-h-9" : "min-h-8"/u);
 	for (const copy of ["Needs input..", "Development", "Automation", "Apps"]) {
 		assert.match(railSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 	}
 	assert.match(railSource, /<TeamEuDevelopmentPanel \/>/u);
 	assert.match(railSource, /<TeamEuAutomationPanel[\s\S]*rules=\{automationRules\}/u);
 	assert.match(railSource, /<TeamEuAutomationPanel[\s\S]*onShowRecentRuns/u);
+	assert.match(railSource, /flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto @\[860px\]\/agentlayout:pt-6/u);
 	assert.match(railSource, /<TeamEuAppsPanel \/>/u);
 	assert.match(railSource, /aria-hidden=\{showRecentAutomationRuns \|\| undefined\}[\s\S]*inert=\{showRecentAutomationRuns \? true : undefined\}/u);
 	assert.match(readBlockFile("team-eu26/components/metadata-rail.tsx"), /<HighConfidenceMetadataRail automationRules=\{automationRules\} \/>/u);
@@ -235,8 +277,107 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	assert.match(workItemStateSource, /name: "Automatic"/u);
 	assert.match(workItemStateSource, /preset === "filled" \? TEAM_EU26_PEOPLE\.automatic/u);
 	assert.match(dialogSource, /aria-label="Breadcrumb"[\s\S]*Vitafleet[\s\S]*VITA-22[\s\S]*<WorkItemKeyCopy \/>/u);
-	assert.match(dialogSource, /aria-label="Open Rovo"[\s\S]*openChat\("floating"\)/u);
+	assert.match(dialogSource, /<WorkItemAgentSelectorMenu[\s\S]*aria-label="Open agent"/u);
+	assert.match(dialogSource, /<OpenInMenu[\s\S]*aria-label="Open in code"/u);
+	assert.doesNotMatch(dialogSource, /openChat|setChatOpen/u);
+	assert.match(dialogSource, /import AiAgentIcon from "@atlaskit\/icon\/core\/ai-agent"/u);
+	assert.match(dialogSource, /data-jira-work-item-header-actions[\s\S]*<AppsIcon label="" size="medium" \/>[\s\S]*<AddIcon label="" size="medium" \/>[\s\S]*<AiAgentIcon aria-hidden label="" size="medium" \/>[\s\S]*<AngleBracketsIcon label="" size="medium" \/>/u);
+	assert.match(
+		readBlockFile("team-eu26/components/work-item-header-status.tsx"),
+		/className="flex h-10 min-w-0 w-full shrink-0 items-center justify-between rounded-lg bg-bg-selected p-2"/u,
+	);
+	assert.match(
+		readBlockFile("team-eu26/components/work-item-header-status.tsx"),
+		/<StatusPill compact onChange=\{\(status\) => actions\.updateMetadata\(\{ status \}\)\}/u,
+	);
 	assert.match(readBlockFile("team-eu26/data/team-eu26-vita-one.ts"), /Due date changed to May 25, 2026 by/u);
+});
+
+test("Team EU26 empty preset uses sparse wiv-v2 body and rail", () => {
+	const bodyOwner = readBlockFile("team-eu26/components/work-item-body.tsx");
+	const emptyBodySource = readBlockFile("team-eu26/components/empty-work-item-body.tsx");
+	const emptyRailSource = readBlockFile("team-eu26/components/empty-metadata-rail.tsx");
+	const emptyDataSource = readBlockFile("team-eu26/data/empty-work-item.ts");
+	const workItemStateSource = readBlockFile("team-eu26/data/team-eu26-vita-one.ts");
+	const developmentSource = readBlockFile("team-eu26/components/team-eu-development-panel.tsx");
+	const automationSource = readBlockFile("team-eu26/components/team-eu-automation-panel.tsx");
+	const compositionSource = readBlockFile("team-eu26/team-eu26-jira-work-item.tsx");
+
+	assert.match(bodyOwner, /initialPreset === "empty"[\s\S]*<EmptyWorkItemBody \/>/u);
+	assert.doesNotMatch(bodyOwner, /initialPreset === "empty"[\s\S]*<HighConfidenceWorkItemBody/u);
+	assert.match(emptyBodySource, /Add a description/u);
+	assert.match(emptyBodySource, /Add attachment/u);
+	assert.match(emptyBodySource, /Add subtask/u);
+	assert.match(emptyBodySource, /Add linked work item/u);
+	assert.doesNotMatch(emptyBodySource, /The current onboarding experience has a high drop-off rate/u);
+	assert.doesNotMatch(emptyBodySource, /TEAM_EU26_ATTACHMENTS|TEAM_EU26_SUBITEMS|TEAM_EU26_LINKED_ITEMS/u);
+
+	assert.match(emptyRailSource, /export function EmptyMetadataRail/u);
+	assert.match(emptyRailSource, /flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto @\[860px\]\/agentlayout:pt-6/u);
+	assert.match(emptyRailSource, /headingId="team-eu26-details-heading"[\s\S]*label="Details"[\s\S]*variant="rail"/u);
+	assert.match(emptyRailSource, /Add agents/u);
+	assert.match(emptyRailSource, /<TeamEuDevelopmentPanel empty \/>/u);
+	assert.match(emptyRailSource, /<TeamEuAutomationPanel[\s\S]*empty[\s\S]*rules=\{\[\]\}/u);
+	assert.doesNotMatch(emptyRailSource, /TeamEuAppsPanel/u);
+	assert.doesNotMatch(emptyRailSource, /Needs input\.\./u);
+
+	assert.match(developmentSource, /Start with agent/u);
+	assert.match(developmentSource, /Start local session/u);
+	assert.match(automationSource, /Add manually triggered automation/u);
+	assert.match(automationSource, /See templates/u);
+	assert.match(automationSource, /Create an automation to perform tasks with the click of a button/u);
+	assert.match(automationSource, /Recent run rules/u);
+	assert.match(automationSource, /<SetToRecurRow \/>/u);
+	assert.match(automationSource, /Create automation/u);
+
+	assert.match(emptyDataSource, /Dev Rana/u);
+	assert.match(emptyDataSource, /created this work item/u);
+	assert.match(emptyDataSource, /6 hours ago/u);
+	assert.match(workItemStateSource, /preset === "empty"/u);
+	assert.match(workItemStateSource, /priority: "Medium"/u);
+	assert.match(workItemStateSource, /status: "To do"/u);
+	assert.match(workItemStateSource, /dueDate: undefined/u);
+	assert.match(workItemStateSource, /TEAM_EU26_EMPTY_ACTIVITY_EVENTS/u);
+	assert.match(workItemStateSource, /createAgentPlannerState\("filled"/u);
+
+	assert.match(compositionSource, /statusControl=\{initialPreset === "filled" \|\| initialPreset === "empty"/u);
+	assert.match(readBlockFile("team-eu26/components/panel-content-motion.ts"), /const CONTENT_ENTER =/u);
+	assert.match(readBlockFile("team-eu26/components/panel-content-motion.ts"), /const CONTENT_EXIT =/u);
+	assert.match(readBlockFile("team-eu26/components/team-eu-rail-panel.tsx"), /absolute inset-0 z-0/u);
+});
+
+test("Team EU26 header and empty Development share Open in and agent selector menus", () => {
+	const dialogSource = readBlockFile("team-eu26/components/experimental-work-item-dialog.tsx");
+	const developmentSource = readBlockFile("team-eu26/components/team-eu-development-panel.tsx");
+	const openInSource = readBlockFile("team-eu26/components/open-in-menu.tsx");
+	const agentSelectorSource = readBlockFile("team-eu26/components/work-item-agent-selector.tsx");
+
+	assert.match(dialogSource, /<WorkItemAgentSelectorMenu[\s\S]*aria-label="Open agent"/u);
+	assert.match(dialogSource, /<OpenInMenu[\s\S]*aria-label="Open in code"/u);
+	assert.match(developmentSource, /<WorkItemAgentSelectorMenu[\s\S]*Start with agent/u);
+	assert.match(developmentSource, /<OpenInMenu[\s\S]*Start local session/u);
+
+	assert.match(openInSource, /Open in\.\.\./u);
+	assert.match(openInSource, /Claude Code/u);
+	assert.match(openInSource, /Codex/u);
+	assert.match(openInSource, /Cursor/u);
+	assert.match(openInSource, /GitHub Copilot/u);
+	assert.match(openInSource, /Rovo CLI/u);
+	assert.match(openInSource, /VS Code/u);
+	assert.match(openInSource, /Copy prompt/u);
+	assert.match(
+		openInSource,
+		/<DropdownMenuGroup>[\s\S]*<DropdownMenuLabel>Open in\.\.\.<\/DropdownMenuLabel>[\s\S]*<\/DropdownMenuGroup>/u,
+	);
+	assert.match(openInSource, /<DropdownMenuItem[\s\S]*onSelect=/u);
+	assert.doesNotMatch(openInSource, /<DropdownMenuItem[^>]*onClick=/u);
+
+	assert.match(agentSelectorSource, /export function WorkItemAgentSelectorMenu/u);
+	assert.match(agentSelectorSource, /heading="Select agent"/u);
+	assert.match(agentSelectorSource, /searchVariant="boxed"/u);
+	assert.match(agentSelectorSource, /onBrowseAgents=\{handleFooterAction\}/u);
+	assert.match(agentSelectorSource, /onCreateAgent=\{handleFooterAction\}/u);
+	assert.match(agentSelectorSource, /actions\.invokeAgent/u);
 });
 
 test("Team EU26 is isolated from v1 and v2", () => {
@@ -318,8 +459,18 @@ test("the Team EU26 dialog owns the high-confidence identity and action row", ()
 	assert.match(dialogSource, /grid-rows-\[auto_minmax\(0,1fr\)\]/u);
 	assert.match(
 		dialogSource,
-		/data-jira-work-item-header-band[\s\S]*<WorkItemKeyCopy \/>[\s\S]*<ContextTitleBar \/>[\s\S]*controlRow \? controlRow\(true\)[\s\S]*aria-label="Manage work item apps"[\s\S]*aria-label="Open Rovo"[\s\S]*aria-label="Open in code"[\s\S]*aria-label="Close work item"[\s\S]*\{navigation\}/u,
+		/data-jira-work-item-header-band[\s\S]*data-jira-work-item-header-breadcrumb-row[\s\S]*<WorkItemKeyCopy \/>[\s\S]*data-jira-work-item-header-close[\s\S]*<CollapseWorkItemButton \/>[\s\S]*aria-label="Close work item"[\s\S]*data-jira-work-item-header-title-row[\s\S]*<ContextTitleBar \/>[\s\S]*data-jira-work-item-header-actions[\s\S]*aria-label="Manage work item apps"[\s\S]*aria-label="Open agent"[\s\S]*aria-label="Open in code"[\s\S]*data-jira-work-item-header-status[\s\S]*\{navigation\}/u,
 	);
+	assert.match(
+		dialogSource,
+		/data-jira-work-item-header-actions[\s\S]*aria-label="Manage work item apps"[\s\S]*aria-label="Add to work item"[\s\S]*aria-label="Open agent"[\s\S]*aria-label="Open in code"[\s\S]*\{statusControl \?/u,
+	);
+	assert.match(
+		dialogSource,
+		/<Dialog\.Root[\s\S]*<Dialog\.Portal keepMounted>[\s\S]*<Dialog\.Backdrop[\s\S]*fixed inset-0[\s\S]*<Dialog\.Popup[\s\S]*fixed inset-4/u,
+	);
+	assert.match(dialogSource, /borderRadius: isFlushInlineSurface \? 0 : token\("radius\.xlarge"\)/u);
+	assert.match(dialogSource, /boxShadow: isFlushInlineSurface \? "none" : token\("elevation\.shadow\.overlay"\)/u);
 	assert.doesNotMatch(dialogSource, /position:\s*sticky|sticky top-0/u);
 
 	const navSource = readBlockFile("team-eu26/components/work-item-section-nav.tsx");
@@ -352,7 +503,7 @@ test("the Team EU26 dialog owns the high-confidence identity and action row", ()
 	const compositionSource = readBlockFile("team-eu26/team-eu26-jira-work-item.tsx");
 	assert.match(
 		compositionSource,
-		/navigation=\{initialPreset === "filled" \? undefined : \([\s\S]*<WorkItemSectionNav[\s\S]*endControl=\{\([\s\S]*<PullRequestsSelect/u,
+		/navigation=\{initialPreset === "filled" \|\| initialPreset === "empty" \? undefined : \([\s\S]*<WorkItemSectionNav[\s\S]*endControl=\{\([\s\S]*<PullRequestsSelect/u,
 	);
 	assert.doesNotMatch(compositionSource, /header=\{|<ContextHeader/u);
 
@@ -362,7 +513,15 @@ test("the Team EU26 dialog owns the high-confidence identity and action row", ()
 	assert.match(layoutSource, /data-jira-work-item-column-chrome/u);
 	assert.match(
 		layoutSource,
-		/data-jira-work-item-column-chrome[\s\S]*@\[860px\]\/agentlayout:overflow-y-auto @\[860px\]\/agentlayout:overscroll-y-none @\[860px\]\/agentlayout:pl-10 @\[860px\]\/agentlayout:pr-6 @\[860px\]\/agentlayout:pt-6 @\[860px\]\/agentlayout:pb-24[\s\S]*data-jira-work-item-scroll-region/u,
+		/data-jira-work-item-column-chrome[\s\S]*@\[860px\]\/agentlayout:overflow-y-auto @\[860px\]\/agentlayout:overscroll-y-none @\[860px\]\/agentlayout:px-6 @\[860px\]\/agentlayout:pt-6 @\[860px\]\/agentlayout:pb-6[\s\S]*data-jira-work-item-scroll-region/u,
+	);
+	assert.match(
+		layoutSource,
+		/@\[860px\]\/agentlayout:overflow-visible @\[860px\]\/agentlayout:pl-4 @\[860px\]\/agentlayout:pr-6[\s\S]*data-jira-work-item-metadata-slot/u,
+	);
+	assert.match(
+		readBlockFile("team-eu26/components/metadata-rail.tsx"),
+		/overflow-y-auto overscroll-y-none @\[860px\]\/agentlayout:pt-6 @\[860px\]\/agentlayout:pb-8/u,
 	);
 	assert.match(layoutSource, /setWideScrollContainer\(element\)/u);
 	assert.match(layoutSource, /setNarrowScrollContainer\(element\)/u);
@@ -377,14 +536,10 @@ test("the Team EU26 dialog owns the high-confidence identity and action row", ()
 	);
 	assert.doesNotMatch(spyHookSource, /data-work-item-section-nav/u);
 
-	// Read the applied style rather than mirroring the breakpoint in JS, so the
-	// resolver cannot drift from the container query that drives it.
+	// The section scroller still resolves from the applied container style, but
+	// the Team EU header itself intentionally remains expanded while scrolling.
 	const navigationSource = readBlockFile("team-eu26/context-section-navigation.tsx");
-	assert.match(navigationSource, /useSyncExternalStore/u);
-	assert.match(
-		navigationSource,
-		/\(scrollContainer\?\.scrollTop \?\? 0\) >= collapseOffset \? "compact" : "expanded"/u,
-	);
+	assert.match(navigationSource, /export function useWorkItemHeaderVariant\(\): WorkItemHeaderVariant \{\s*return "expanded";/u);
 	assert.match(
 		navigationSource,
 		/getComputedStyle\(wideScrollContainer\)\.display !== "contents"/u,
@@ -444,12 +599,29 @@ test("open work-item chrome publishes a document flag that hides the JGP launche
 	assert.match(dialogSource, /\}, \[open\]\);/u);
 });
 
-test("the Team EU26 header is stable without compact-mode reflow", () => {
+test("the Team EU26 header stays stable while the body scrolls", () => {
 	const dialogSource = readBlockFile("team-eu26/components/experimental-work-item-dialog.tsx");
+	const navigationSource = readBlockFile("team-eu26/context-section-navigation.tsx");
 
-	assert.match(dialogSource, /"shrink-0 pt-6[^"]*"/u);
-	assert.match(dialogSource, /className="flex min-w-0 items-center justify-between gap-4 px-10"/u);
-	assert.doesNotMatch(dialogSource, /headerHeight|headerContentRef|useWorkItemHeaderVariant/u);
+	assert.match(dialogSource, /useWorkItemHeaderVariant/u);
+	assert.match(navigationSource, /export function useWorkItemHeaderVariant\(\): WorkItemHeaderVariant \{\s*return "expanded";/u);
+	assert.match(dialogSource, /"flex min-w-0 items-center gap-2 text-sm text-text-subtle"/u);
+	assert.match(dialogSource, /"flex min-w-0 flex-col gap-1"/u);
+	assert.match(dialogSource, /aria-label="Manage work item apps"[\s\S]*size="icon"/u);
+	assert.doesNotMatch(dialogSource, /aria-label="Manage work item apps"[\s\S]*size=\{compactHeader \? "icon-compact" : "icon"\}/u);
+	assert.match(dialogSource, /aria-label="Breadcrumb"[\s\S]*Vitafleet[\s\S]*VITA-22[\s\S]*<WorkItemKeyCopy \/>/u);
+	assert.match(dialogSource, /"--metadata-panel-width": `\$\{sidebarWidth\}px`/u);
+	assert.match(dialogSource, /className="flex min-w-0 items-center"\s*data-jira-work-item-header-title-row/u);
+	assert.match(dialogSource, /className="flex min-w-0 flex-1 items-center gap-4 px-6" data-jira-work-item-header-title-actions/u);
+	assert.match(
+		dialogSource,
+		/w-\[var\(--metadata-panel-width\)\] pl-4 pr-6[\s\S]*data-jira-work-item-header-status/u,
+	);
+	assert.match(
+		readBlockFile("team-eu26/components/experimental-work-item-layout.tsx"),
+		/@\[860px\]\/agentlayout:w-\[var\(--metadata-panel-width\)\][\s\S]*@\[860px\]\/agentlayout:pl-4 @\[860px\]\/agentlayout:pr-6/u,
+	);
+	assert.doesNotMatch(dialogSource, /headerHeight|headerContentRef/u);
 });
 
 test("PR select shares the section navigation list without becoming a section", () => {
@@ -605,7 +777,8 @@ test("Team EU26 insight sources reuse work-item, session, activity, and pull-req
 		/JiraInsightSource|handleInsightSourceSelect/u,
 	);
 	assert.doesNotMatch(composerSource, /newInsightsCount|onNewInsightsSelect|onSectionSelect/u);
-	assert.match(composerSource, /contextBar=\{composerContextBar\}/u);
+	assert.doesNotMatch(composerSource, /ActivityComposerContextPills|contextBar=\{composerContextBar\}/u);
+	assert.match(composerSource, /placeholder="Comment, @mention an agent, or \/ for skills"/u);
 	assert.match(pillsSource, /contextBar !== undefined \? \([\s\S]*flex-1 items-center \[&_\[data-context-bar\]\]:mb-0">[\s\S]*\{contextBar\}/u);
 	assert.doesNotMatch(pillsSource, /onNewInsightsSelect|selectSection\("insights"\)|data-jira-work-item-new-insights-pill/u);
 });

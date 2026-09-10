@@ -70,3 +70,12 @@ export function ExperimentalBreadcrumbActions() {
 		</>
 	);
 }
+
+/** Shared v5-style modal collapse affordance for the breadcrumb row. */
+export function CollapseWorkItemButton() {
+	return (
+		<Button aria-label="Collapse" size="icon" variant="ghost">
+			<ShrinkDiagonalIcon label="" />
+		</Button>
+	);
+}
