@@ -189,6 +189,7 @@ function ExperimentalJiraKanbanPageContent({
 	detachedAgentSessionsByCard,
 	agentSessionAssigneeIdAliases,
 	agentSessionLinkingVariant = "fuse",
+	suggestSessionBoardLinkOnHover = true,
 	agentSessionPresentation = "column",
 	agentSessionMultiSelect = true,
 	agents = BOARD_AGENTS,
@@ -208,6 +209,7 @@ function ExperimentalJiraKanbanPageContent({
 	onBoardColumnsChange,
 	onCardClick,
 	onCardAgentActivityViewChat,
+	onCardAssignedAgentIdsChange,
 	onCardAgentDoneRunView,
 	onCardGenerativeActionSubmit,
 	onCardAgentSessionLink,
@@ -945,7 +947,9 @@ function ExperimentalJiraKanbanPageContent({
 								agentSessionColumn={{
 									...agentSessionColumnConfig,
 									draggingIds: boardSessionDrag.draggingIds,
-									highlightedItemId: untrackedHoveredSessionId,
+									highlightedItemId: suggestSessionBoardLinkOnHover
+										? untrackedHoveredSessionId
+										: undefined,
 									sessionDrag: boardSessionDrag.untrackedBinding,
 								}}
 								className="pb-4 md:pb-5"
@@ -968,8 +972,13 @@ function ExperimentalJiraKanbanPageContent({
 								agentActivityLayout={agentActivityLayout}
 								boardAgentSessionDrag={boardSessionDrag}
 								untrackedSessions={agentSessionColumnConfig?.items}
-								proximityHighlightedSessionId={untrackedHoveredSessionId}
-								proximityHighlightedWorkItemKey={untrackedHoveredWorkItemKey}
+								proximityHighlightedSessionId={suggestSessionBoardLinkOnHover
+									? untrackedHoveredSessionId
+									: null}
+								proximityHighlightedWorkItemKey={suggestSessionBoardLinkOnHover
+									? untrackedHoveredWorkItemKey
+									: null}
+								suggestSessionBoardLinkOnHover={suggestSessionBoardLinkOnHover}
 								scrollEndInset={boardScrollEndInset}
 								proximityAgentSession={{
 									actionableSessionIds: proximityActionableSessionIds,
@@ -997,6 +1006,7 @@ function ExperimentalJiraKanbanPageContent({
 								selectedCardCodes={selection.selectedCardCodes}
 								onCardClick={handleCardClick}
 								onCardAgentActivityViewChat={onCardAgentActivityViewChat}
+								onCardAssignedAgentIdsChange={onCardAssignedAgentIdsChange}
 								onCardAgentDoneRunView={onCardAgentDoneRunView}
 								onCardGenerativeActionSubmit={onCardGenerativeActionSubmit}
 								onCardAgentSessionLink={onCardAgentSessionLink

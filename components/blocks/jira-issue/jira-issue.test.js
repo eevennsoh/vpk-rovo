@@ -391,6 +391,8 @@ test("Jira issue keeps activity rows composer-free and uses one shared assignmen
 	assert.match(AGENT_ACTIVITY_SOURCE, /assignedAgents = assignment\?\.assignedAgents \?\? activities\.map\(toAgentAssignmentAgent\)/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /statusKind: toAssignedAgentStatusKind\(activity\.state\)/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /case "awaiting-input":\s*return "needs-input";/u);
+	assert.match(SOURCE, /assignment\?: JiraIssueAgentAssignment;/u);
+	assert.match(SOURCE, /assignment=\{assignment\}/u);
 	assert.doesNotMatch(SOURCE, /onAssignedAgentIdsChange=/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /assignedIdDraft|toActivityFromAssignedAgent/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /trigger=\{rowHandle\}/u);
@@ -429,7 +431,8 @@ test("Jira issue shows PR metadata with the specified summary-row spacing", () =
 	assert.match(SOURCE, /const inferredPullRequestNumber = agentDoneRuns\.find\(\(run\) => run\.pullRequestNumber\)\?\.pullRequestNumber;/u);
 	assert.match(SOURCE, /const resolvedPullRequestNumber = pullRequestNumber \?\? inferredPullRequestNumber;/u);
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /export function JiraIssuePullRequestCluster\(/u);
-	assert.match(SUMMARY_SOURCE, /const pullRequestCluster = pullRequestNumber \? \([\s\S]*<JiraIssuePullRequestCluster[\s\S]*pullRequestPreview=\{pullRequestPreview\}[\s\S]*pullRequestTitle=\{pullRequestTitle \?\? summary\}[\s\S]*usesStrokeChrome=\{usesStrokeChrome\}/u);
+	assert.match(SUMMARY_SOURCE, /const compactIconClassName = iconMetrics\.compactIconClassName;/u);
+	assert.match(SUMMARY_SOURCE, /const pullRequestCluster = pullRequestNumber \? \([\s\S]*<JiraIssuePullRequestCluster[\s\S]*iconScale=\{iconScale\}[\s\S]*pullRequestPreview=\{pullRequestPreview\}[\s\S]*pullRequestTitle=\{pullRequestTitle \?\? summary\}[\s\S]*usesStrokeChrome=\{usesStrokeChrome\}/u);
 	// Default chrome keeps the PR cluster beside the issue key; stroke chrome
 	// moves it next to the priority/assignee (metadata) cluster instead.
 	assert.match(SUMMARY_BLOCK, /\{usesStrokeChrome \? null : pullRequestCluster\}/u);
@@ -448,6 +451,9 @@ test("Jira issue shows PR metadata with the specified summary-row spacing", () =
 	// Raised chrome still shows the PR number beside the icon. Stroke chrome
 	// drops the visible #N label and reveals the flyout Pull Request card.
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /if \(!usesStrokeChrome\) \{[\s\S]*#\{pullRequestNumber\}/u);
+	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /iconScale = "compact",/u);
+	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /const iconMetrics = resolveJiraIssueIconMetrics\(iconScale\);/u);
+	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /className=\{cn\(colorClass, "\[&_svg\]:text-current", iconMetrics\.compactIconClassName\)\}/u);
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /<HoverCard>[\s\S]*render=\{\(\s*<Button[\s\S]*aria-label=\{accessibleName\}[\s\S]*onClick=\{stopNestedActivation\}[\s\S]*onPointerDown=\{stopNestedActivation\}[\s\S]*size="icon-compact"[\s\S]*type="button"[\s\S]*variant="ghost"/u);
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /<Button[\s\S]*size="icon-compact"[\s\S]*variant="ghost"/u);
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /<PullRequest[\s\S]*relativeTime=\{pullRequestPreview\?\.relativeTime\}[\s\S]*variant="flyout"/u);

@@ -205,6 +205,64 @@ export function resolveHoveredBoardIssueKey(
 	);
 }
 
+export interface SessionBoardLinkHoverPreviewInput {
+	boardColumns: readonly { cards: readonly { code: string }[] }[];
+	columnSessions?: readonly AgentSessionItem[];
+	enabled: boolean;
+	hoveredColumnSessionId: string | null;
+	hoveredSessionId: string | null;
+	proximityHighlightedSessionId: string | null;
+	proximityHighlightedWorkItemKey?: string | null;
+	resolveColumnWorkItemKey?: (item: AgentSessionItem) => string | null | undefined;
+	untrackedSessions?: readonly AgentSessionItem[];
+}
+
+export interface SessionBoardLinkHoverPreview {
+	highlightedSessionId: string | null;
+	hoveredIssueKey: string | null;
+}
+
+/**
+ * Suggested-link hover preview between the session column and board cards.
+ *
+ * When `enabled` is false, both sides stay inert: hovering a session does not
+ * light a Jira card, and hovering a related card does not light a session.
+ */
+export function resolveSessionBoardLinkHoverPreview(
+	input: SessionBoardLinkHoverPreviewInput,
+): SessionBoardLinkHoverPreview {
+	if (!input.enabled) {
+		return {
+			highlightedSessionId: null,
+			hoveredIssueKey: null,
+		};
+	}
+
+	const highlightedSessionId = input.hoveredSessionId
+		?? input.hoveredColumnSessionId
+		?? input.proximityHighlightedSessionId;
+	const hostHoveredIssueKey = input.proximityHighlightedWorkItemKey === undefined
+		? resolveHoveredBoardIssueKey(
+			input.proximityHighlightedSessionId,
+			input.untrackedSessions,
+			input.boardColumns,
+		)
+		: resolveVisibleFocusedIssueKey(input.proximityHighlightedWorkItemKey, input.boardColumns);
+	const hoveredIssueKey = input.hoveredColumnSessionId === null
+		? hostHoveredIssueKey
+		: resolveHoveredBoardIssueKey(
+			input.hoveredColumnSessionId,
+			input.columnSessions,
+			input.boardColumns,
+			input.resolveColumnWorkItemKey,
+		);
+
+	return {
+		highlightedSessionId,
+		hoveredIssueKey,
+	};
+}
+
 interface ScrollBounds {
 	containerEnd: number;
 	containerStart: number;

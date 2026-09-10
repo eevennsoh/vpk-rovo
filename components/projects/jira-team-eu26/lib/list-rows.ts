@@ -202,23 +202,40 @@ function createAssignedActivity(
 	};
 }
 
+function canonicalizeAssignedAgentIds(
+	agentIds: readonly string[],
+	catalog: readonly JiraKanbanAgentData[],
+): string[] {
+	return agentIds.map((agentId) => {
+		if (catalog.some((agent) => agent.id === agentId)) {
+			return agentId;
+		}
+		const suffix = agentId.includes(":") ? agentId.slice(agentId.lastIndexOf(":") + 1) : "";
+		if (suffix && catalog.some((agent) => agent.id === suffix)) {
+			return suffix;
+		}
+		return agentId;
+	});
+}
+
 export function applyAssignedAgentIdsToCard(
 	card: JiraKanbanCardData,
 	agentIds: readonly string[],
 	catalog: readonly JiraKanbanAgentData[],
 ): JiraKanbanCardData {
-	const nextIds = new Set(agentIds);
+	const nextIds = canonicalizeAssignedAgentIds(agentIds, catalog);
+	const nextIdSet = new Set(nextIds);
 	const activities = (card.agentActivities ?? []).filter((activity) => (
-		nextIds.has(resolveCatalogAgentId(activity.name, activity.id, catalog))
+		nextIdSet.has(resolveCatalogAgentId(activity.name, activity.id, catalog))
 	));
 	const doneRuns = (card.agentDoneRuns ?? []).filter((run) => (
-		nextIds.has(resolveCatalogAgentId(run.agentName, run.id, catalog))
+		nextIdSet.has(resolveCatalogAgentId(run.agentName, run.id, catalog))
 	));
 	const presentIds = new Set([
 		...activities.map((activity) => resolveCatalogAgentId(activity.name, activity.id, catalog)),
 		...doneRuns.map((run) => resolveCatalogAgentId(run.agentName, run.id, catalog)),
 	]);
-	const addedActivities = agentIds.flatMap((agentId) => {
+	const addedActivities = nextIds.flatMap((agentId) => {
 		if (presentIds.has(agentId)) {
 			return [];
 		}

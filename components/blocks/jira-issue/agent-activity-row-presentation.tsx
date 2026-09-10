@@ -36,6 +36,7 @@ import type {
 export type JiraIssueAgentAssignment = Partial<
 	Pick<
 		AgentAssignmentProps,
+		| "agents"
 		| "assignedAgents"
 		| "defaultPinnedAgentIds"
 		| "onAgentAssign"
@@ -302,7 +303,9 @@ export function JiraIssueAgentAssignmentHandle({
 				onAgentAssign={assignment?.onAgentAssign}
 				onAssignedAgentIdsChange={assignment?.onAssignedAgentIdsChange}
 				onAssignedAgentSelect={(agent) => {
-					const activity = activities.find((candidate) => candidate.id === agent.id);
+					const activity = activities.find((candidate) => (
+						candidate.id === agent.id || candidate.id.endsWith(`:${agent.id}`)
+					));
 					if (activity) {
 						onViewChat?.(activity);
 					}
