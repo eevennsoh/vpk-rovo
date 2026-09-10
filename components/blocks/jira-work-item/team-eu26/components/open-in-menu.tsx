@@ -43,7 +43,7 @@ function thirdPartyAgentLogo(name: ThirdPartyLogoName): ReactNode {
  * empty Development "Start local session" action. Logos reuse the same 1P / 3P
  * marks as {@link ContextTitleActions}.
  */
-export const OPEN_IN_MENU_AGENTS: readonly OpenInAgent[] = [
+const OPEN_IN_MENU_AGENTS: readonly OpenInAgent[] = [
 	{ id: "claude-code", label: "Claude Code", logo: thirdPartyAgentLogo("claude") },
 	{ id: "codex", label: "Codex", logo: thirdPartyAgentLogo("openai-codex") },
 	{ id: "cursor", label: "Cursor", logo: thirdPartyAgentLogo("cursor") },
@@ -52,7 +52,7 @@ export const OPEN_IN_MENU_AGENTS: readonly OpenInAgent[] = [
 	{ id: "vs-code", label: "VS Code", logo: thirdPartyAgentLogo("vs-code") },
 ];
 
-export const OPEN_IN_MENU_CONTENT = {
+const OPEN_IN_MENU_CONTENT = {
 	align: "end",
 	className: "min-w-56 p-0",
 	positionerClassName: "z-[502]",
