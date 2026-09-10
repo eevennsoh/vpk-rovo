@@ -68,6 +68,7 @@ export type { JiraIssueAgentAssignment } from "./agent-activity-row-presentation
 
 export type JiraIssueAgentActivityMode = "none" | "working" | "awaiting-input" | "completed";
 export type JiraIssueAgentActivityState = "working" | "awaiting-input" | "completed";
+export type JiraIssueAgentActivityAvatarLayout = "animated" | "horizontal-group";
 /**
  * The chin-row glyph states a host may override. `working` and `awaiting-input`
  * come from a live activity row; `finished` is the per-run outcome the split
@@ -443,6 +444,7 @@ function JiraIssueAgentDragWrapper({
 function JiraIssueAgentActivityRow({
 	activities,
 	assignment,
+	avatarLayout,
 	iconScale = "compact",
 	linkFlash,
 	onOpenChange,
@@ -456,6 +458,7 @@ function JiraIssueAgentActivityRow({
 }: Readonly<{
 	activities: readonly JiraIssueAgentActivity[];
 	assignment?: JiraIssueAgentAssignment;
+	avatarLayout: JiraIssueAgentActivityAvatarLayout;
 	iconScale?: JiraIssueIconScale;
 	/** Rest shows the parent well; hover still paints only this row. */
 	inheritChinSurface?: boolean;
@@ -595,8 +598,10 @@ function JiraIssueAgentActivityRow({
 		>
 			<JiraIssueAgentRowContent
 				activities={activities}
+				avatarLayout={avatarLayout}
 				featuredActivity={featuredActivity}
 				isAwaitingInput={isAwaitingInput}
+				isWorking={!isCompletedRow && !isAwaitingInput}
 				rowLabel={rowLabel}
 				showUnlinkControl={showUnlinkControl}
 				startupPhase={startupPhase}
@@ -650,6 +655,7 @@ export function JiraIssueAgentActivityRows({
 	activities,
 	assignment,
 	attachPreviewCopy,
+	avatarLayout = "animated",
 	iconScale = "compact",
 	instantSessionTransfer = false,
 	linkFlash,
@@ -667,6 +673,8 @@ export function JiraIssueAgentActivityRows({
 	assignment?: JiraIssueAgentAssignment;
 	/** Occupies the last chin row while a session is approaching, or opens a chin when none exist. */
 	attachPreviewCopy?: string;
+	/** Multiple-agent identity treatment. */
+	avatarLayout?: JiraIssueAgentActivityAvatarLayout;
 	iconScale?: JiraIssueIconScale;
 	/** Rest shows the parent well; hover still paints only this row. */
 	inheritChinSurface?: boolean;
@@ -735,6 +743,7 @@ export function JiraIssueAgentActivityRows({
 						<JiraIssueAgentActivityRow
 							activities={rowGroup.activities}
 							assignment={assignment}
+							avatarLayout={avatarLayout}
 							iconScale={iconScale}
 							inheritChinSurface={inheritChinSurface}
 							linkFlash={linkFlash}

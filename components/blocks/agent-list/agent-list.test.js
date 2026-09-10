@@ -166,7 +166,7 @@ test("people render a circular photo beside the hexagon agents in the same list"
 	// One identity component, so the list row and the activity header cannot
 	// disagree about what an agent or a person looks like.
 	assert.equal((CARD_SOURCE.match(/<AgentListIdentity\b/gu) ?? []).length, 2);
-	assert.match(IDENTITY_SOURCE, /PX_TO_PERSON_AVATAR_SIZE: Record<number, NonNullable<AvatarProps\["size"\]>> = \{\s*24: "sm",\s*32: "default",/u);
+	assert.match(IDENTITY_SOURCE, /PX_TO_PERSON_AVATAR_SIZE: Record<number, NonNullable<AvatarProps\["size"\]>> = \{\s*16: "xs",\s*24: "sm",\s*32: "default",/u);
 });
 
 test("agent identities can show a human invoker in the 32px attribution frame", () => {
@@ -175,6 +175,18 @@ test("agent identities can show a human invoker in the 32px attribution frame", 
 	assert.match(IDENTITY_SOURCE, /PX_TO_ATTRIBUTED_AGENT_SIZE: Record<number, number> = \{[\s\S]*32: 24,/u);
 	assert.match(IDENTITY_SOURCE, /PX_TO_ATTRIBUTED_PERSON_AVATAR_SIZE:[\s\S]*32: "xs",/u);
 	assert.match(IDENTITY_SOURCE, /className="absolute bottom-0 right-0 ring-2 ring-background"/u);
+});
+
+test("agent attribution groups overlap the agent and invoker like a facepile", () => {
+	assert.match(
+		IDENTITY_SOURCE,
+		/export function AgentListAttributionAvatarGroup[\s\S]*<AvatarGroup[\s\S]*className=\{cn\("shrink-0", className\)\}[\s\S]*label=\{`\$\{agent\.name\}, used by \$\{attributedBy\.name\}`\}/u,
+	);
+	assert.doesNotMatch(IDENTITY_SOURCE, /gap-1 space-x-0/u);
+	assert.match(
+		IDENTITY_SOURCE,
+		/export function AgentListAttributionAvatarGroup[\s\S]*<AgentAvatarVisual[\s\S]*sizePx=\{sizePx\}[\s\S]*<Avatar[\s\S]*size=\{PX_TO_PERSON_AVATAR_SIZE\[sizePx\] \?\? "default"\}/u,
+	);
 });
 
 test("the attention state keeps the row's own title and warns instead of shimmering", () => {

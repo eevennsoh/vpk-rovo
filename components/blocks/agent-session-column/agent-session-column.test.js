@@ -146,7 +146,8 @@ test("the column does not fuse large session cards into one stroke", () => {
 	assert.doesNotMatch(SESSION_INDEX_SOURCE, /data-stack=/u);
 	assert.match(SESSION_INDEX_SOURCE, /variant === "large"\s*\n\s*\? "gap-0"/u);
 	assert.doesNotMatch(SESSION_INDEX_SOURCE, /gap: token\("space\.100"\)/u);
-	assert.match(CARD_SOURCE, /rounded-lg p-3 text-left text-text/u);
+	assert.match(CARD_SOURCE, /rounded-lg text-left text-text/u);
+	assert.match(CARD_SOURCE, /padding === "compact" \? "px-3 py-2" : "p-3"/u);
 	assert.match(CARD_SOURCE, /\[\[data-marked\]\+&\[data-marked\]\]:in-\[\.gap-1\]:-mt-1/u);
 	assert.doesNotMatch(CARD_SOURCE, /\[li:first-child_&\]:rounded-t-lg/u);
 	assert.doesNotMatch(CARD_SOURCE, /\[li:last-child_&\]:rounded-b-lg/u);

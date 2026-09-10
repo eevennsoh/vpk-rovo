@@ -5,6 +5,20 @@ import { BLOCK_VARIANT_CATALOG_DEMO_ENTRIES } from "./blocks-variants-catalog";
 
 export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 	...BLOCK_VARIANT_CATALOG_DEMO_ENTRIES,
+	"agent-assignment-demo-default": dynamic(
+		() =>
+			import("../demos/blocks/agent-assignment-demo").then((mod) => ({
+				default: mod.AgentAssignmentDemoDefault,
+			})),
+		{ ssr: false },
+	),
+	"agent-assignment-demo-simple": dynamic(
+		() =>
+			import("../demos/blocks/agent-assignment-demo").then((mod) => ({
+				default: mod.AgentAssignmentDemoSimple,
+			})),
+		{ ssr: false },
+	),
 	"agent-list-demo-compact": dynamic(
 		() =>
 			import("../demos/blocks/agent-list-demo").then((mod) => ({

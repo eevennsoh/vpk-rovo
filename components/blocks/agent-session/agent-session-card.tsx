@@ -32,9 +32,11 @@ import { AgentSessionLifecycle } from "./agent-session-lifecycle";
 import { AgentSessionMediumDrag } from "./agent-session-medium-drag";
 import {
 	AgentSessionLongMetadata,
-	AgentSessionProvenanceMetadata,
+	AgentSessionShortMetadata,
 } from "./agent-session-metadata";
 import { AgentSessionMoreMenu } from "./agent-session-more-menu";
+import { AgentSessionExpiredHint } from "./agent-session-expired-hint";
+import { AgentSessionViewerHint } from "./agent-session-viewer-hint";
 import { AgentSessionSelectMark } from "./agent-session-select-mark";
 import { selectionGestureFromModifierKeys } from "./agent-session-selection-gesture";
 import { isTransferSourceFaded } from "./session-cohort";
@@ -42,6 +44,7 @@ import {
 	type AgentSessionDensity,
 	type AgentSessionItem,
 	type AgentSessionSelectionGesture,
+	getAgentSessionRole,
 	type AgentSessionTriageRow,
 } from "./agent-session-types";
 import { useAgentSessionMenu } from "./use-agent-session-menu";
@@ -59,6 +62,8 @@ export function AgentSessionCard({
 	isResumable,
 	isSelected = false,
 	item,
+	moreMenuPortalled,
+	moreMenuPositionerClassName,
 	onArrivalComplete,
 	onContinueInAgent,
 	onCopyResume,
@@ -66,9 +71,10 @@ export function AgentSessionCard({
 	onItemHover,
 	onRenameSession,
 	onToggleVisibility,
-	onUnlinkSession,
 	onView,
+	padding = "default",
 	sessionDrag,
+	showMoreMenu = true,
 	triageRow,
 	draggingIds,
 	visibilityLabel = "Archive",
@@ -77,8 +83,9 @@ export function AgentSessionCard({
 	captured?: boolean;
 	/** Row shape — see {@link AgentSessionDensity}. Defaults to the avatar-led short row. */
 	density?: AgentSessionDensity;
-	flyoutHandle: JiraSessionFlyoutHandle;
-	flyoutSession: JiraSidebarSessionItem;
+	/** Omit on long density — those rows have no hover flyout. */
+	flyoutHandle?: JiraSessionFlyoutHandle;
+	flyoutSession?: JiraSidebarSessionItem;
 	getResumeCommand?: (item: AgentSessionItem) => string | undefined;
 	/** Play the one-shot arrival beat. A remounted card must not re-arm it. */
 	isArriving?: boolean;
@@ -100,10 +107,22 @@ export function AgentSessionCard({
 	/** Rename a cloud session. Omit to disable the menu row. */
 	onRenameSession?: (item: AgentSessionItem) => void;
 	onToggleVisibility?: (item: AgentSessionItem) => void;
-	/** Break a cloud session's link to its work item. Omit to disable the menu row. */
-	onUnlinkSession?: (item: AgentSessionItem) => void;
 	onView?: (item: AgentSessionItem) => void;
+	/**
+	 * Article inset. Assignment pickers use `compact` (`px-3 py-2` / 8px
+	 * vertical) so stacked menu rows sit tighter than catalog cards.
+	 */
+	padding?: "default" | "compact";
+	/**
+	 * Overlay stacking for the owner more-menu. Assignment's picker sits above
+	 * the default dropdown tier, so it passes a higher `z-` or the menu opens
+	 * behind the picker.
+	 */
+	moreMenuPositionerClassName?: string;
+	/** Keep the more-menu inside a parent overlay instead of portalling to the document. */
+	moreMenuPortalled?: boolean;
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
+	showMoreMenu?: boolean;
 	triageRow?: AgentSessionTriageRow | null;
 	draggingIds?: ReadonlySet<string>;
 	/** Accessible name for the menu's dismiss row. Archive in the active list, Unarchive in the archived view. */
@@ -206,13 +225,45 @@ export function AgentSessionCard({
 		onItemHover,
 		onRenameSession,
 		onToggleVisibility,
-		onUnlinkSession,
 		resumeCommand,
 	});
+	const role = getAgentSessionRole(item);
+	const trailingControl = (() => {
+		if (!showMoreMenu) {
+			return undefined;
+		}
+
+		switch (role) {
+			case "expired":
+				return undefined;
+			case "viewer":
+				return <AgentSessionViewerHint />;
+			case "owner":
+				return (
+					<AgentSessionMoreMenu
+						actions={menu.actions}
+						copied={menu.copied}
+						// Only the legacy "Archive" default becomes "Dismiss". Any other
+						// label is caller-authored copy for this row and passes through.
+						dismissLabel={visibilityLabel === "Archive" ? "Dismiss" : visibilityLabel}
+						isCloud={isCloudSession}
+						item={item}
+						onOpenChange={menu.setIsOpen}
+						open={menu.isOpen}
+						portalled={moreMenuPortalled}
+						positionerClassName={moreMenuPositionerClassName}
+					/>
+				);
+			default: {
+				const exhaustiveRole: never = role;
+				return exhaustiveRole;
+			}
+		}
+	})();
 	const hoverActions: AgentListRowHoverActions = {
 		// The reveal must outlive the pointer: a portalled popup and a post-click
 		// confirmation both take the cursor off the row.
-		pinned: menu.isOpen || menu.copied,
+		pinned: showMoreMenu && role === "owner" && (menu.isOpen || menu.copied),
 		primary: approve
 			? {
 				disabled: approve.target.kind === "unavailable",
@@ -221,19 +272,7 @@ export function AgentSessionCard({
 				onClick: approve.onApprove,
 			}
 			: undefined,
-		menu: (
-			<AgentSessionMoreMenu
-				actions={menu.actions}
-				copied={menu.copied}
-				// Only the legacy "Archive" default becomes "Dismiss". Any other label
-				// is caller-authored copy for this row and passes through verbatim.
-				dismissLabel={visibilityLabel === "Archive" ? "Dismiss" : visibilityLabel}
-				isCloud={isCloudSession}
-				item={item}
-				onOpenChange={menu.setIsOpen}
-				open={menu.isOpen}
-			/>
-		),
+		menu: trailingControl,
 	};
 
 	// A triage mark lives on the leading avatar, so a markable row keeps its
@@ -288,19 +327,15 @@ export function AgentSessionCard({
 				shouldReduceMotion={shouldReduceMotion}
 				source="untracked"
 			>
-				{(bind) => (
-					<JiraSessionFlyoutTrigger
-						closeDelay={160}
-						handle={flyoutHandle}
-						render={<div className="w-full" />}
-						session={flyoutSession}
-					>
+				{(bind) => {
+					const card = (
 						<article
 							{...bind}
 							aria-current={isSelected ? "true" : undefined}
 							aria-roledescription={bind ? "Draggable agent session" : undefined}
 							className={cn(
-						"group/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text",
+						"group/agent-row relative flex w-full cursor-default rounded-lg text-left text-text",
+						padding === "compact" ? "px-3 py-2" : "p-3",
 						// Borderless tiles, 8px radius — same chrome as editor-palette
 						// suggestion rows. The list owns the gap between them.
 						"transition-[background-color,border-radius] duration-xxshort ease-out-practical",
@@ -343,10 +378,14 @@ export function AgentSessionCard({
 								item={item}
 								// The title-led row states its own lifecycle, including the
 								// success check Agent List has no slot for.
-								lifecycle={isLongDensity ? <AgentSessionLifecycle state={item.state} /> : undefined}
-								metadata={isLongDensity
-									? <AgentSessionLongMetadata item={item} />
-									: <AgentSessionProvenanceMetadata item={item} />}
+								lifecycle={role === "expired"
+									? <AgentSessionExpiredHint />
+									: <AgentSessionLifecycle state={item.state} />}
+								metadata={
+									isLongDensity
+										? <AgentSessionLongMetadata item={item} />
+										: <AgentSessionShortMetadata item={item} />
+								}
 								onView={mark == null && bind === undefined ? onView : undefined}
 								renderIdentity={() => {
 									const sessionIdentity = (
@@ -376,14 +415,28 @@ export function AgentSessionCard({
 									);
 								}}
 								showHoverActionsWhenSelected
-								// The long metadata line already says "Needs input", so letting
-								// the title say it too would state the block twice and leave the
-								// actual work name nowhere on the card.
+								// Long form keeps the work title; progression is the trailing
+								// icon, not a state-aware title swap.
 								stateAwareTitle={!isLongDensity}
 							/>
 						</article>
-					</JiraSessionFlyoutTrigger>
-				)}
+					);
+
+					if (isLongDensity || flyoutHandle === undefined || flyoutSession === undefined) {
+						return card;
+					}
+
+					return (
+						<JiraSessionFlyoutTrigger
+							closeDelay={160}
+							handle={flyoutHandle}
+							render={<div className="w-full" />}
+							session={flyoutSession}
+						>
+							{card}
+						</JiraSessionFlyoutTrigger>
+					);
+				}}
 			</AgentSessionMediumDrag>
 		</motion.li>
 	);

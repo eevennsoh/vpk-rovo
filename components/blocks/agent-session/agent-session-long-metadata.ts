@@ -3,25 +3,25 @@ import type { AgentListHost, AgentListPrStatus, AgentListState } from "@/compone
 /**
  * One `·`-separated chunk of a long-form session row's metadata line.
  *
- * The line is a sentence about provenance — who ran this, where, how it is
- * going, what it produced, and when it last moved — and every middle clause is
- * optional. A session with no declared host, no artifact, or no interesting
- * status simply drops that clause rather than rendering an em-dash placeholder.
+ * The line is a sentence about provenance — who ran this, where, what it
+ * produced, and when it last moved — and every middle clause is optional. A
+ * session with no declared host or no artifact simply drops that clause rather
+ * than rendering an em-dash placeholder. Progression lives on the trailing
+ * lifecycle icon, not in this line.
  */
-export type AgentSessionMetadataSegmentKind = "agent" | "host" | "status" | "artifact" | "time";
+export type AgentSessionMetadataSegmentKind = "agent" | "artifact" | "time";
 
 export interface AgentSessionMetadataSegment {
 	readonly kind: AgentSessionMetadataSegmentKind;
 	/** Plain text for the chunk. The `time` chunk carries none — the row clocks it. */
 	readonly label?: string;
-	/**
-	 * Whether the chunk describes work still in flight, which the renderer marks
-	 * with the shimmer + animated-dots treatment the rest of the system uses for
-	 * a live agent.
-	 */
-	readonly isPending?: boolean;
 	/** Pull-request lifecycle for the artifact chunk, selecting its glyph. */
 	readonly prStatus?: AgentListPrStatus;
+	/**
+	 * Declared session host, attached to the time chunk so the byline can
+	 * render icon + timestamp as one clause instead of `Cloud · 12s`.
+	 */
+	readonly host?: AgentListHost;
 }
 
 export interface AgentSessionMetadataInput {
@@ -35,22 +35,18 @@ export interface AgentSessionMetadataInput {
 	 * should stay quiet rather than assert the cloud.
 	 */
 	readonly host?: AgentListHost;
-	readonly state: AgentListState;
 	/** Pre-formatted artifact name, e.g. `#1306: Add guest checkout`. */
 	readonly artifactLabel?: string;
 	readonly prStatus?: AgentListPrStatus;
 }
 
-/** Status copy per lifecycle state, shared by the metadata line and its tooltip. */
+/** Status copy per lifecycle state, used by trailing indicators and tooltips. */
 export const AGENT_SESSION_STATUS_LABEL: Readonly<Record<AgentListState, string>> = {
 	attention: "Needs attention",
 	complete: "Complete",
 	"needs-input": "Needs input",
 	running: "Working",
 };
-
-/** States whose status copy shimmers, because the agent has not finished. */
-const PENDING_STATES: ReadonlySet<AgentListState> = new Set<AgentListState>(["needs-input", "running"]);
 
 /**
  * Ordered metadata chunks for a long-form session row.
@@ -66,16 +62,6 @@ export function toAgentSessionMetadataSegments(
 		{ kind: "agent", label: input.agentName },
 	];
 
-	if (input.host !== undefined) {
-		segments.push({ kind: "host", label: input.host === "local" ? "Local" : "Cloud" });
-	}
-
-	segments.push({
-		isPending: PENDING_STATES.has(input.state),
-		kind: "status",
-		label: AGENT_SESSION_STATUS_LABEL[input.state],
-	});
-
 	if (input.artifactLabel !== undefined && input.artifactLabel.length > 0) {
 		segments.push({
 			kind: "artifact",
@@ -84,7 +70,10 @@ export function toAgentSessionMetadataSegments(
 		});
 	}
 
-	segments.push({ kind: "time" });
+	segments.push({
+		kind: "time",
+		...(input.host !== undefined ? { host: input.host } : {}),
+	});
 
 	return segments;
 }

@@ -4,14 +4,12 @@ import CloudIcon from "@atlaskit/icon-lab/core/cloud";
 import DevicesIcon from "@atlaskit/icon/core/devices";
 
 import {
-	AgentListIdentity,
 	AgentListPrStatusIcon,
 	AgentListTime,
 } from "@/components/blocks/agent-list/agent-list-card";
-import { isLocalAgentListItem } from "@/components/blocks/agent-list/agent-list-session";
+import { AgentListAttributionAvatarGroup } from "@/components/blocks/agent-list/agent-list-identity";
 import { AgentAvatarVisual } from "@/components/ui-custom/agent-avatar-visual";
-import { AnimatedDots } from "@/components/ui-custom/animated-dots";
-import { Shimmer } from "@/components/ui-custom/shimmer";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 import {
@@ -30,7 +28,9 @@ function MetadataDot() {
 }
 
 /**
- * Where the session runs.
+ * Where the session runs — icon only. The tooltip names the host; the
+ * timestamp sits beside this mark so the byline never prints "Cloud" or
+ * "Local".
  *
  * `cloud` comes from icon-lab because `@atlaskit/icon/core` only ships
  * `cloud-arrow-up` (an upload action, not a location); `devices` is core. Same
@@ -39,41 +39,27 @@ function MetadataDot() {
  */
 // react-doctor-disable-next-line react-doctor/no-multi-component-file -- These are the sub-parts of one metadata line, colocated so short and long densities cannot drift apart; splitting six presentational fragments across six files would cost more than it explains.
 export function AgentSessionHostSegment({ isLocal }: Readonly<{ isLocal: boolean }>) {
+	const label = isLocal ? "Local session" : "Cloud session";
+
 	return (
-		<span className="flex shrink-0 items-center gap-1 text-text-subtle" title="Session host">
-			<span aria-hidden="true" className="grid size-4 shrink-0 place-items-center">
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<span
+						aria-label={label}
+						className="grid size-4 shrink-0 place-items-center text-text-subtle"
+						tabIndex={0}
+					/>
+				}
+			>
 				{isLocal ? (
 					<DevicesIcon color="currentColor" label="" size="small" />
 				) : (
 					<CloudIcon color="currentColor" label="" size="small" />
 				)}
-			</span>
-			{isLocal ? "Local" : "Cloud"}
-		</span>
-	);
-}
-
-/**
- * Short-form provenance metadata: `Claude · Local · 2m`.
- *
- * Which agent, where it ran, when it last moved. Pull request details stay in
- * the flyout, which has the room to name them.
- */
-// react-doctor-disable-next-line react-doctor/no-multi-component-file -- These are the sub-parts of one metadata line, colocated so short and long densities cannot drift apart; splitting six presentational fragments across six files would cost more than it explains.
-export function AgentSessionProvenanceMetadata({ item }: Readonly<{ item: AgentSessionItem }>) {
-	return (
-		<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
-			{/* The only flexible segment, so a long agent name owns the ellipsis. */}
-			<span className="min-w-0 truncate text-text-subtle" title={item.agent.name}>
-				{item.agent.name}
-			</span>
-			<MetadataDot />
-			<AgentSessionHostSegment isLocal={isLocalAgentListItem(item)} />
-			<MetadataDot />
-			<span className="shrink-0 text-nowrap" title="Last update">
-				<AgentListTime item={item} />
-			</span>
-		</span>
+			</TooltipTrigger>
+			<TooltipContent positionerClassName="z-[600]">{label}</TooltipContent>
+		</Tooltip>
 	);
 }
 
@@ -92,14 +78,19 @@ function toArtifactLabel(item: AgentSessionItem): string | undefined {
  * The agent mark inside the metadata line.
  *
  * A bare session shows its agent at 16px, flush with the text. A session with a
- * known invoker shows the shared agent+person composite instead, whose smallest
- * supported footprint is a 24px frame — the pair is the point, so it gets the
- * extra 8px rather than collapsing into an unreadable overlap.
+ * known invoker overlaps the agent hexagon and person photo in the shared
+ * AvatarGroup facepile at 16px.
  */
 // react-doctor-disable-next-line react-doctor/no-multi-component-file -- These are the sub-parts of one metadata line, colocated so short and long densities cannot drift apart; splitting six presentational fragments across six files would cost more than it explains.
 function LongMetadataIdentity({ item }: Readonly<{ item: AgentSessionItem }>) {
 	if (item.invokedBy) {
-		return <AgentListIdentity agent={item.agent} attributedBy={item.invokedBy} sizePx={24} />;
+		return (
+			<AgentListAttributionAvatarGroup
+				agent={item.agent}
+				attributedBy={item.invokedBy}
+				sizePx={16}
+			/>
+		);
 	}
 
 	return (
@@ -131,19 +122,6 @@ function LongMetadataSegment({
 					</span>
 				</span>
 			);
-		case "host":
-			return <AgentSessionHostSegment isLocal={segment.label === "Local"} />;
-		case "status":
-			return segment.isPending ? (
-				<span className="inline-flex shrink-0 items-baseline" title={segment.label}>
-					<Shimmer as="span" duration={1.4} spread={2}>
-						{segment.label ?? ""}
-					</Shimmer>
-					<AnimatedDots />
-				</span>
-			) : (
-				<span className="shrink-0 text-text-subtle">{segment.label}</span>
-			);
 		case "artifact":
 			return (
 				<span className="flex min-w-0 shrink items-center gap-1">
@@ -155,18 +133,28 @@ function LongMetadataSegment({
 			);
 		case "time":
 			return (
-				<span className="shrink-0 text-nowrap" title="Last update">
-					<AgentListTime item={item} />
+				<span className="flex shrink-0 items-center gap-1 text-nowrap">
+					{segment.host === undefined ? null : (
+						<AgentSessionHostSegment isLocal={segment.host === "local"} />
+					)}
+					<span title="Last update">
+						<AgentListTime item={item} />
+					</span>
 				</span>
 			);
+		default: {
+			const _exhaustive: never = segment.kind;
+			return _exhaustive;
+		}
 	}
 }
 
 /**
- * Long-form metadata: `<mark> Claude · Local · Working · #1306: … · 2m`.
+ * Long-form metadata: `<mark> Claude · ☁ 2m` or `Claude · #1306: … · ☁ 2m`.
  *
- * The chunk list comes from {@link toAgentSessionMetadataSegments}, which is
- * pure and unit-tested; this component only decides how each chunk looks.
+ * Progression is the trailing lifecycle icon, not a byline clause. The chunk
+ * list comes from {@link toAgentSessionMetadataSegments}, which is pure and
+ * unit-tested; this component only decides how each chunk looks.
  */
 // react-doctor-disable-next-line react-doctor/no-multi-component-file -- These are the sub-parts of one metadata line, colocated so short and long densities cannot drift apart; splitting six presentational fragments across six files would cost more than it explains.
 export function AgentSessionLongMetadata({ item }: Readonly<{ item: AgentSessionItem }>) {
@@ -179,7 +167,6 @@ export function AgentSessionLongMetadata({ item }: Readonly<{ item: AgentSession
 		artifactLabel: toArtifactLabel(item),
 		host: declaredHost,
 		prStatus: item.prStatus,
-		state: item.state,
 	});
 
 	return (
@@ -199,6 +186,35 @@ export function AgentSessionLongMetadata({ item }: Readonly<{ item: AgentSession
 					<LongMetadataSegment item={item} segment={segment} />
 				</span>
 			))}
+		</span>
+	);
+}
+
+/**
+ * Owner short byline: `Claude · ☁ Last week`.
+ *
+ * The leading 32px identity already shows the agent (and invoker). This line
+ * only names who ran it and pairs the host icon with when — no status or
+ * artifact chip, and no "Cloud" / "Local" label.
+ */
+// react-doctor-disable-next-line react-doctor/no-multi-component-file -- Short and long metadata stay together so the two densities cannot drift apart.
+export function AgentSessionShortMetadata({ item }: Readonly<{ item: AgentSessionItem }>) {
+	const declaredHost = item.host ?? item.sessionDetails?.host;
+
+	return (
+		<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
+			<span className="shrink-0 text-text-subtle" title={item.agent.name}>
+				{item.agent.name}
+			</span>
+			<MetadataDot />
+			<span className="flex shrink-0 items-center gap-1 text-nowrap">
+				{declaredHost === undefined ? null : (
+					<AgentSessionHostSegment isLocal={declaredHost === "local"} />
+				)}
+				<span title="Last update">
+					<AgentListTime item={item} />
+				</span>
+			</span>
 		</span>
 	);
 }
