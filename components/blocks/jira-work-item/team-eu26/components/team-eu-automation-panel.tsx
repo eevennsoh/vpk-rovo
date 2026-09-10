@@ -13,54 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { IconTile } from "@/components/ui/icon-tile";
 
-export const TEAM_EU_REFERENCE_AUTOMATION_RULES: readonly WorkItemAutomationRule[] =
-	[
-		{
-			id: "reminder",
-			title: "Send reminder 24 hours before due date",
-			iconVariant: "green",
-			lastRunAt: "167 days ago",
-		},
-		{
-			id: "status-done",
-			title: "Notify team when status changes to Done",
-			iconVariant: "green",
-		},
-		{
-			id: "subtasks-done",
-			title: "Mark as complete when all subtasks done",
-			iconVariant: "green",
-		},
-		{
-			id: "sprint-board",
-			title: "Update sprint board when task moves to In Progress",
-			iconVariant: "green",
-			lastRunAt: "167 days ago",
-		},
-		{
-			id: "overdue",
-			title: "Escalate to manager if overdue by 3 days",
-			iconVariant: "green",
-		},
-		{
-			id: "daily-digest",
-			title: "Send daily digest of open tasks to team",
-			iconVariant: "green",
-			lastRunAt: "167 days ago",
-		},
-		{
-			id: "log-time",
-			title: "Log time automatically when status changes",
-			iconVariant: "green",
-		},
-		{
-			id: "slack",
-			title: "Create Slack notification for high priority items",
-			iconVariant: "green",
-			lastRunAt: "167 days ago",
-		},
-	] as const;
-
 const REFERENCE_RECENT_ORDER = [
 	"sprint-board",
 	"slack",
@@ -71,7 +23,9 @@ const ACTION_ROW_CLASS =
 	"flex min-h-10 w-full min-w-0 items-center gap-2 px-4 text-left text-sm text-text";
 
 function recentRules(rules: readonly WorkItemAutomationRule[]) {
-	const order = new Map<string, number>(REFERENCE_RECENT_ORDER.map((id, index) => [id, index]));
+	const order = new Map<string, number>(
+		REFERENCE_RECENT_ORDER.map((id, index) => [id, index]),
+	);
 	return rules
 		.filter((rule) => rule.lastRunAt)
 		.toSorted(

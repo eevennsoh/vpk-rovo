@@ -17,7 +17,6 @@ import { TeamEuAppsPanel } from "@/components/blocks/jira-work-item/team-eu26/co
 import {
 	TeamEuAutomationPanel,
 	TeamEuRecentAutomationRuns,
-	TEAM_EU_REFERENCE_AUTOMATION_RULES,
 } from "@/components/blocks/jira-work-item/team-eu26/components/team-eu-automation-panel";
 import type { WorkItemAutomationRule } from "@/components/blocks/jira-work-item/team-eu26/components/automation-tab";
 import { TeamEuDevelopmentPanel } from "@/components/blocks/jira-work-item/team-eu26/components/team-eu-development-panel";
@@ -40,8 +39,8 @@ function FieldValue({ children, icon }: Readonly<{ children: ReactNode; icon: Re
 }
 
 export function HighConfidenceMetadataRail({
-	automationRules = TEAM_EU_REFERENCE_AUTOMATION_RULES,
-}: Readonly<{ automationRules?: readonly WorkItemAutomationRule[] }>) {
+	automationRules,
+}: Readonly<{ automationRules: readonly WorkItemAutomationRule[] }>) {
 	const { metadata } = useJiraWorkItemState();
 	const { workItem } = useJiraWorkItemMeta();
 	const actions = useJiraWorkItemActions();

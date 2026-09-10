@@ -169,12 +169,14 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 		assert.match(developmentPanelSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 	}
 	const automationPanelSource = readBlockFile("team-eu26/components/team-eu-automation-panel.tsx");
+	const automationDataSource = readBlockFile("team-eu26/data/team-eu-automation-rules.ts");
 	for (const copy of ["Send reminder 24 hours before due date", "Notify team when status changes to Done", "Mark as complete when all subtasks done", "Recent run rules", "Create automation", "167 days ago"]) {
-		assert.match(automationPanelSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+		assert.match(`${automationPanelSource}\n${automationDataSource}`, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 	}
 	assert.match(automationPanelSource, /rules\.map[\s\S]*<SetToRecurRow \/>/u);
 	assert.match(automationPanelSource, /const runs = recentRules\(rules\)/u);
 	assert.match(readBlockFile("team-eu26/components/set-to-recur-popover.tsx"), /Set to recur/u);
+	assert.match(readBlockFile("team-eu26/team-eu26-jira-work-item.tsx"), /automationRules=\{props\.automationRules \?\? TEAM_EU_REFERENCE_AUTOMATION_RULES\}/u);
 	const appsPanelSource = readBlockFile("team-eu26/components/team-eu-apps-panel.tsx");
 	for (const copy of ["My Reminders", "Tempo", "PagerDuty", "Sentry", "Checklist", "Invision for Jira", "Trello Assistant"]) {
 		assert.match(appsPanelSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
