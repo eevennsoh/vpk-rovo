@@ -2,12 +2,21 @@
 
 import { useCallback, useMemo, useReducer, useState } from "react";
 
+import { type AgentAssignmentAgent } from "@/components/blocks/agent-assignment";
+import {
+	DEMO_USED_AGENT_IDS,
+	getAgentAssignmentDemoAssignedAgents,
+} from "@/components/blocks/agent-assignment/demo-assigned-agents";
 import {
 	NO_SELECTION_MARKS,
 	reduceSelectionMarks,
 	resolveVisibleLeadId,
 } from "@/components/blocks/agent-session-column/untracked-selection";
 import type { JiraIssueAgentSessionDragState } from "@/components/blocks/jira-issue/agent-session-drag";
+import {
+	DEFAULT_PINNED_SPACE_AGENT_IDS,
+	WORK_ITEM_PINNED_ITEMS_LABEL,
+} from "@/components/blocks/jira-work-item/experimental-v3/lib/work-item-picker-options";
 
 import {
 	AGENT_SESSION_CLOUD_ITEMS,
@@ -67,6 +76,45 @@ function useDemoSessionMarks(
 	}, [items, leadId, marks, orderedIds]);
 }
 
+function sessionAssignmentId(item: AgentSessionItem): string {
+	return item.agent.id ?? item.id;
+}
+
+function toDemoAssignedAgentFromSession(item: AgentSessionItem): AgentAssignmentAgent {
+	const statusKind = item.state === "needs-input" || item.state === "attention"
+		? "needs-input"
+		: item.state === "complete"
+			? "finished"
+			: "working";
+
+	return {
+		id: sessionAssignmentId(item),
+		name: item.agent.name,
+		byline: "",
+		...(item.agent.avatarSrc ? { avatarSrc: item.agent.avatarSrc } : {}),
+		...(item.agent.brandName ? { brandName: item.agent.brandName } : {}),
+		status: item.title,
+		statusKind,
+		statusLabel: item.title,
+	};
+}
+
+function getMediumAttachedDemoAssignedAgents(
+	assignedAgentIds: readonly string[],
+	items: readonly AgentSessionItem[],
+): AgentAssignmentAgent[] {
+	const sessionByAgentId = new Map(items.map((item) => [sessionAssignmentId(item), item] as const));
+	const sessionById = new Map(items.map((item) => [item.id, item] as const));
+
+	return assignedAgentIds.flatMap((agentId) => {
+		const item = sessionByAgentId.get(agentId) ?? sessionById.get(agentId);
+		if (item) {
+			return [toDemoAssignedAgentFromSession(item)];
+		}
+		return getAgentAssignmentDemoAssignedAgents([agentId]);
+	});
+}
+
 export default function AgentSessionPage({
 	density = "short",
 	drag = false,
@@ -99,6 +147,13 @@ export default function AgentSessionPage({
 	// Marks follow the live list, so a row the menu removed stops being markable
 	// and cannot be dragged along as part of a cohort.
 	const rowTriage = useDemoSessionMarks(drag ? items : NO_TRIAGE_ITEMS);
+	const [assignedAgentIds, setAssignedAgentIds] = useState<readonly string[]>(() => (
+		AGENT_SESSION_ATTACHED_ITEMS.map(sessionAssignmentId)
+	));
+	const attachedAssignedAgents = useMemo(
+		() => getMediumAttachedDemoAssignedAgents(assignedAgentIds, items),
+		[assignedAgentIds, items],
+	);
 
 	const handleCapture = useCallback((item: AgentSessionItem) => {
 		setCapturedIds((current) => new Set(current).add(item.id));
@@ -145,6 +200,19 @@ export default function AgentSessionPage({
 				</p>
 			) : null}
 			<AgentSession
+				assignment={variant === "medium-attached"
+					? {
+						assignedAgents: attachedAssignedAgents,
+						defaultPinnedAgentIds: DEFAULT_PINNED_SPACE_AGENT_IDS,
+						onAssignedAgentIdsChange: setAssignedAgentIds,
+						onBrowseAgents: () => undefined,
+						onContinueExistingSession: () => undefined,
+						onCreateAgent: () => undefined,
+						onStartNewSession: () => undefined,
+						pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL,
+						usedAgentIds: [...DEMO_USED_AGENT_IDS, ...items.map(sessionAssignmentId)],
+					}
+					: undefined}
 				capturedItemIds={capturedIds}
 				className={variant === "large"
 					// `gap-1 p-1` is what lets adjacent marked rows fuse, exactly as the

@@ -123,8 +123,23 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	assert.match(bodySource, /<TabsList aria-label="Filter attachments" size="default" variant="default">[\s\S]*<TabsTrigger/u);
 	assert.match(bodySource, /<TabsContent[\s\S]*value=\{filter\.value\}/u);
 	assert.match(bodySource, /aria-label="More attachment actions"[\s\S]*size="icon"/u);
-	assert.match(bodySource, /<div className="space-y-1">[\s\S]*<span className="text-sm text-text-subtle">0% Done<\/span>[\s\S]*className="flex h-2 overflow-hidden rounded-full bg-bg-neutral-bold"[\s\S]*<span aria-hidden className="w-1\/3 bg-bg-selected-bold" \/>/u);
-	assert.match(bodySource, /0% complete; 1 of 3 subitems in progress/u);
+	assert.match(
+		bodySource,
+		/import \{ toWorkItemChildItems \} from "@\/components\/blocks\/jira-work-item\/team-eu26\/lib\/child-items-progress"/u,
+	);
+	assert.match(
+		bodySource,
+		/import \{ ChildItemsProgressBar \} from "@\/components\/projects\/jira\/components\/work-item-modal\/child-items-progress-bar"/u,
+	);
+	assert.match(bodySource, /const childItems = toWorkItemChildItems\(TEAM_EU26_SUBITEMS, statuses\)/u);
+	assert.match(bodySource, /<ChildItemsProgressBar items=\{childItems\} \/>/u);
+	assert.match(
+		fs.readFileSync(
+			path.join(process.cwd(), "components/projects/jira/components/work-item-modal/child-items-progress-bar.tsx"),
+			"utf8",
+		),
+		/aria-valuemax=\{100\}[\s\S]*aria-valuemin=\{0\}[\s\S]*aria-valuenow=\{donePercent\}[\s\S]*role="progressbar"/u,
+	);
 	assert.match(bodySource, /const \[statuses, setStatuses\] = useState<Record<string/u);
 	assert.doesNotMatch(bodySource, /useState\(initialStatus\)/u);
 	assert.match(bodyOwner, /<HighConfidenceAgentSessions \/>[\s\S]*\{activity\}/u);

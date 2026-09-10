@@ -147,11 +147,10 @@ export function JiraIssueSummary({
 	const priorityColor = PRIORITY_COLORS[priority];
 	const iconMetrics = resolveJiraIssueIconMetrics(iconScale);
 	const comfortableIcons = iconScale === "comfortable";
-	const compactIconClassName = comfortableIcons
-		? "[&_[data-slot=icon]:not([class*='size-'])]:size-4! [&_[data-slot=icon]:not([class*='size-'])>span]:size-4! [&_svg:not([class*='size-'])]:size-4!"
-		: undefined;
+	const compactIconClassName = iconMetrics.compactIconClassName;
 	const pullRequestCluster = pullRequestNumber ? (
 		<JiraIssuePullRequestCluster
+			iconScale={iconScale}
 			pullRequestNumber={pullRequestNumber}
 			pullRequestPreview={pullRequestPreview}
 			pullRequestStatus={pullRequestStatus}

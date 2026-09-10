@@ -64,6 +64,8 @@ import {
 	type JiraIssueAgentAssignment,
 } from "./agent-activity-row-presentation";
 
+export type { JiraIssueAgentAssignment } from "./agent-activity-row-presentation";
+
 export type JiraIssueAgentActivityMode = "none" | "working" | "awaiting-input" | "completed";
 export type JiraIssueAgentActivityState = "working" | "awaiting-input" | "completed";
 /**
@@ -494,7 +496,10 @@ function JiraIssueAgentActivityRow({
 		shouldReduceMotion,
 		featuredActivity?.startedAtMs,
 	);
-	const catalogAgents = useMemo(() => getJiraIssueAgentCatalog(activities), [activities]);
+	const catalogAgents = useMemo(
+		() => assignment?.agents ?? getJiraIssueAgentCatalog(activities),
+		[activities, assignment?.agents],
+	);
 	const assignedAgents = assignment?.assignedAgents ?? activities.map(toAgentAssignmentAgent);
 
 	const handleOpenChat = createOpenChatHandler(activities, onViewChat, canOpenChat);

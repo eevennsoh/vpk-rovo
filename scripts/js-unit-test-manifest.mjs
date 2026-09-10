@@ -165,6 +165,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/jira-work-item/team-eu26/lib/activity-composer-session-routing.test.js",
 		"components/blocks/jira-work-item/team-eu26/lib/agent-row-status.test.js",
 		"components/blocks/jira-work-item/team-eu26/lib/assigned-agent-rows.test.js",
+		"components/blocks/jira-work-item/team-eu26/lib/child-items-progress.test.js",
 		"components/blocks/jira-work-item/team-eu26/lib/development-commands.test.js",
 		"components/blocks/jira-work-item/team-eu26/lib/failing-checks-composer-context.test.js",
 		"components/blocks/jira-work-item/team-eu26/lib/jira-activity-adapter-static.test.js",

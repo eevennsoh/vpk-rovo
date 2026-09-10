@@ -10,7 +10,7 @@ import {
 	type JiraIssueAgentActivity,
 	type JiraIssueAgentActivityIndicatorRenderer,
 	type JiraIssueAgentActivityLayout,
-	type JiraIssueAgentActivityMode,
+	type JiraIssueAgentActivityMode, type JiraIssueAgentAssignment,
 	type JiraIssueAgentSessionDragBinding,
 	type JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue/agent-activity";
@@ -100,7 +100,7 @@ export type {
 	JiraIssueAgentActivityIndicatorState,
 	JiraIssueAgentActivityLayout,
 	JiraIssueAgentActivityMode,
-	JiraIssueAgentActivityState,
+	JiraIssueAgentActivityState, JiraIssueAgentAssignment,
 	JiraIssueAgentSessionDragBinding,
 	JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue/agent-activity";
@@ -224,6 +224,7 @@ export interface JiraIssueDefaultProps extends Omit<ComponentProps<"button">, "c
 	agentActivities?: readonly JiraIssueAgentActivity[];
 	agentDoneRuns?: readonly JiraIssueCompletedAgentRun[];
 	agentActivityMode?: JiraIssueAgentActivityMode;
+	assignment?: JiraIssueAgentAssignment;
 	/** Stable preview capability for Agent Session column targeting. Keep present while highlighted changes. */
 	agentSessionTargetPreview?: Readonly<{ highlighted: boolean }>;
 	/** Merged collapses active agents into one prioritized chin row; split gives each agent its own row. */
@@ -272,7 +273,7 @@ function JiraIssueDefault({
 	active = false,
 	agentActivities,
 	agentActivityMode,
-	agentActivityLayout = "merged",
+	agentActivityLayout = "merged", assignment,
 	agentSessionDragControl,
 	agentSessionTargetPreview,
 	agentDoneRuns = [],
@@ -845,7 +846,7 @@ function JiraIssueDefault({
 				    row instead of stacking. Split layouts keep the other rows so the
 				    card height — and drop-zone geometry — stays put. */}
 				<JiraIssueAgentActivityRows
-					activities={activeAgentActivities}
+					activities={activeAgentActivities} assignment={assignment}
 					attachPreviewCopy={replaceDetachedTransfer ? undefined : attachChinCopy}
 					iconScale={iconScale}
 					inheritChinSurface
