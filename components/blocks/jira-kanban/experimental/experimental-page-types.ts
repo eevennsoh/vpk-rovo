@@ -172,6 +172,13 @@ export interface ExperimentalJiraKanbanPageProps {
 	 */
 	showAgentSessionFilter?: boolean;
 	/**
+	 * Whether an unattached session row offers the hover check that links it to
+	 * its suggested work item. Defaults to true so other boards keep one-click
+	 * linking. jira-team-eu26 passes false: that board no longer ships the
+	 * feature, so the row shows no link affordance at all.
+	 */
+	showAgentSessionLinkAction?: boolean;
+	/**
 	 * Whether the unattached sessions column shows the overflow (ellipsis)
 	 * menu. Collapse remains when this is off. Defaults to true.
 	 */

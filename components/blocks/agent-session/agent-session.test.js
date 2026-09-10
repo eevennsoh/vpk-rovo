@@ -620,9 +620,12 @@ test("the long density is title-led, with its own metadata line and lifecycle", 
 	// identity column even in the title-led density.
 	assert.match(CARD_SOURCE, /const hideIdentity = isLongDensity && mark == null;/u);
 	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*hideIdentity=\{hideIdentity\}/u);
+	// Only the long row carries a resting status glyph. A short row passes an
+	// explicit `null` so the trailing column stays empty until hover.
+	assert.match(CARD_SOURCE, /lifecycle=\{lifecycleIndicator\}/u);
 	assert.match(
 		CARD_SOURCE,
-		/lifecycle=\{role === "expired"\s*\? <AgentSessionExpiredHint \/>\s*: <AgentSessionLifecycle state=\{item\.state\} \/>\}/u,
+		/const lifecycleIndicator = !isLongDensity\s*\? null\s*: role === "expired"\s*\? <AgentSessionExpiredHint \/>\s*: <AgentSessionLifecycle state=\{item\.state\} \/>;/u,
 	);
 	assert.match(CARD_SOURCE, /<AgentSessionLongMetadata item=\{item\} \/>/u);
 	assert.match(
@@ -649,9 +652,11 @@ test("the long density is title-led, with its own metadata line and lifecycle", 
 	assert.match(LIST_CARD_SOURCE, /hideIdentity\?: boolean;/u);
 	assert.match(LIST_CARD_SOURCE, /lifecycle\?: ReactNode;/u);
 	assert.match(LIST_CARD_SOURCE, /stateAwareTitle\?: boolean;/u);
+	// `undefined` falls back to the built-in gate; an explicit `null` omits the
+	// slot. `??` would have collapsed the two and re-shown the built-in glyph.
 	assert.match(
 		LIST_CARD_SOURCE,
-		/const lifecycleNode = lifecycle\s*\?\? \(stateMeta\.showLifecycle \? <LifecycleIndicator state=\{item\.state\} \/> : null\);/u,
+		/const lifecycleNode = lifecycle === undefined\s*\? \(stateMeta\.showLifecycle \? <LifecycleIndicator state=\{item\.state\} \/> : null\)\s*: lifecycle;/u,
 	);
 	assert.match(LIST_CARD_SOURCE, /\{hideIdentity \? null : \(/u);
 	// Long metadata no longer says "Needs input", but the trailing icon does, so
@@ -659,7 +664,12 @@ test("the long density is title-led, with its own metadata line and lifecycle", 
 	assert.match(CARD_SOURCE, /stateAwareTitle=\{!isLongDensity\}/u);
 	assert.match(TYPES_SOURCE, /export type AgentSessionRole = "owner" \| "viewer" \| "expired"/u);
 	assert.match(CARD_SOURCE, /case "viewer":\s*return <AgentSessionViewerHint \/>;/u);
-	assert.match(CARD_SOURCE, /case "expired":\s*return undefined;/u);
+	// An expired short row has no resting slot, so its hint joins the
+	// hover-revealed column instead of disappearing with the status glyph.
+	assert.match(
+		CARD_SOURCE,
+		/case "expired":\s*(?:\/\/[^\n]*\n\s*)*return isLongDensity \? undefined : <AgentSessionExpiredHint \/>;/u,
+	);
 	assert.match(CARD_SOURCE, /role === "expired"\s*\? <AgentSessionExpiredHint \/>/u);
 	assert.match(INDEX_SOURCE, /const isLongDensity = variant === "large" && density === "long";/u);
 	assert.match(INDEX_SOURCE, /const showUntrackedWorkFlyout = !isAttached && !isLongDensity;/u);

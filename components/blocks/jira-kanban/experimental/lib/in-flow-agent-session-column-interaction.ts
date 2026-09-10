@@ -27,6 +27,21 @@ export function inFlowCollapsedMenuPinLabel(pinned: boolean): "Pin" | "Unpin" {
 	return pinned ? "Unpin" : "Pin";
 }
 
+/** Base UI's close-interaction kinds, mirrored so this module stays UI-free. */
+export type InFlowCollapsedMenuCloseType = "mouse" | "touch" | "pen" | "keyboard" | "";
+
+/**
+ * Base UI returns focus to the trigger when the menu closes. This menu opens on
+ * hover, so a pointer-driven Pin/Expand would leave a focus ring on a rail
+ * button the pointer never focused. Restore focus only for keyboard closes,
+ * where the ring is the user's position indicator.
+ */
+export function shouldRestoreInFlowCollapsedMenuFocus(
+	closeType: InFlowCollapsedMenuCloseType,
+): boolean {
+	return closeType === "keyboard";
+}
+
 export function reduceInFlowSessionColumnAxes(
 	state: InFlowSessionColumnAxes,
 	action: InFlowSessionColumnAction,

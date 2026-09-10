@@ -247,6 +247,7 @@ function ExperimentalJiraKanbanPageContent({
 	showAgentSessionColumn = false,
 	showAgentSessionFlyoutFooter = true,
 	showAgentSessionFilter = true,
+	showAgentSessionLinkAction = true,
 	showAgentSessionOverflow = true,
 	showBoardContent = true,
 	timelineLastViewedAt: controlledTimelineLastViewedAt,
@@ -578,6 +579,7 @@ function ExperimentalJiraKanbanPageContent({
 			? undefined
 			: handleUntrackedLinkWorkItem,
 		showFilter: showAgentSessionFilter,
+		showLinkAction: showAgentSessionLinkAction,
 		showOverflow: showAgentSessionOverflow,
 		showUntrackedWorkFooter: showAgentSessionFlyoutFooter,
 		triage: untrackedTriage,

@@ -650,7 +650,9 @@ export function AgentListRow({
 	/**
 	 * Caller-owned trailing lifecycle indicator, replacing the built-in one and
 	 * its `STATE_META` gate. Symmetric with {@link metadata}: a specialized row
-	 * can state its own vocabulary without Agent List learning it.
+	 * can state its own vocabulary without Agent List learning it, and `null`
+	 * omits the slot entirely. A row whose title already carries the state
+	 * reserves no resting width for an indicator that would only repeat it.
 	 */
 	lifecycle?: ReactNode;
 	/** Caller-owned metadata. Pass `null` to omit the default metadata line. */
@@ -698,9 +700,13 @@ export function AgentListRow({
 			|| hoverActions?.menu !== undefined);
 	// A caller-owned indicator states its own vocabulary, so it renders whenever
 	// it is supplied — Agent Session marks a finished session with a check where
-	// `STATE_META` would reserve no slot at all.
-	const lifecycleNode = lifecycle
-		?? (stateMeta.showLifecycle ? <LifecycleIndicator state={item.state} /> : null);
+	// `STATE_META` would reserve no slot at all. `undefined` is "no opinion" and
+	// falls back to the built-in gate; an explicit `null` is "no indicator", the
+	// same contract `metadata` uses. `??` collapsed the two and silently
+	// restored the built-in glyph for a row that asked for none.
+	const lifecycleNode = lifecycle === undefined
+		? (stateMeta.showLifecycle ? <LifecycleIndicator state={item.state} /> : null)
+		: lifecycle;
 	const identity = (
 		<AgentListIdentity
 			agent={item.agent}

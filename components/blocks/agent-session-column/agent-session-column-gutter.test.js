@@ -142,10 +142,12 @@ test("the collapsed options menu uses Atlaskit show-more-horizontal, not a custo
 	assert.match(IN_FLOW_MENU_SOURCE, /<TriggerGlyph color="currentColor" label="" size="small" \/>/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /<PinGlyph label="" size="small" \/>/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /<GrowHorizontalIcon label="" size="small" \/>/u);
-	assert.match(
-		IN_FLOW_MENU_SOURCE,
-		/<DropdownMenuContent align="start" className="min-w-0 w-max" side="right">/u,
-	);
+	// Anchoring is the contract, not the JSX line breaks: assert the props the
+	// popup needs rather than one formatted line that reflows on any edit.
+	assert.match(IN_FLOW_MENU_SOURCE, /<DropdownMenuContent[\s\S]*?>/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /align="start"/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /className="min-w-0 w-max"/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /side="right"/u);
 	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /align="center"/u);
 	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /side="bottom"/u);
 	assert.match(
