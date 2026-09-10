@@ -106,7 +106,7 @@ test("collapse survives a switch to the list or Pulse view", () => {
 	// The page that owns the view switch owns the state.
 	assert.match(PAGE_SOURCE, /const \[collapsedColumns, setCollapsedColumns\] = useState\(\s*EMPTY_COLLAPSED_BOARD_COLUMNS,?\s*\)/u);
 	assert.match(PAGE_SOURCE, /collapsedColumns=\{displayedCollapsedColumns\}/u);
-	assert.match(PAGE_SOURCE, /onCollapsedColumnsChange=\{setCollapsedColumns\}/u);
+	assert.match(PAGE_SOURCE, /onCollapsedColumnsChange=\{handleCollapsedColumnsChange\}/u);
 	assert.match(PAGE_SOURCE, /useAgentFilterDisplay\(/u);
 	assert.match(
 		PAGE_SOURCE,
@@ -119,6 +119,11 @@ test("collapse survives a switch to the list or Pulse view", () => {
 	// The header writes through a handler, but the state it writes is still the
 	// page-owned one that outlives the view branch.
 	assert.match(PAGE_SOURCE, /const handleAgentFilterChange = \([\s\S]*?setAgentFilterId\(nextAgentFilterId\)/u);
+	assert.match(PAGE_SOURCE, /setFocusedCollapsedColumns\(null\);[\s\S]*?setAgentFilterId\(nextAgentFilterId\)/u);
+	assert.match(
+		PAGE_SOURCE,
+		/const handleCollapsedColumnsChange = \(nextCollapsedColumns: CollapsedBoardColumns\) => \{[\s\S]*?agentFilterId === null[\s\S]*?setCollapsedColumns\(nextCollapsedColumns\)[\s\S]*?setFocusedCollapsedColumns\(nextCollapsedColumns\)/u,
+	);
 });
 
 test("the resize button swaps its icon without using selected button state", () => {
