@@ -247,9 +247,9 @@ test("buildUserMessage no longer injects ticket or work-summary prompt-specific 
 	assert.doesNotMatch(workSummaryMessage, /\[Work Summary Scope\]/);
 });
 
-test("buildUserMessage omits situational protocol blocks when neither context nor message calls for them", () => {
-	// Both the context and the message must lack the gate keywords, otherwise
-	// this would pass for the wrong reason once the gates fail open.
+test("buildUserMessage omits the Figma protocol when neither context nor message mentions Figma", () => {
+	// Both the context and the message must lack the gate keyword, otherwise
+	// this would pass for the wrong reason once the gate fails open.
 	const message = buildUserMessage(
 		"What is the status of PROJ-12?",
 		[],
@@ -257,28 +257,19 @@ test("buildUserMessage omits situational protocol blocks when neither context no
 	);
 
 	assert.doesNotMatch(message, /\[Figma Tool Protocol\]/);
-	assert.doesNotMatch(message, /\[Shell Chrome Policy\]/);
 	assert.match(message, /\[Clarification Protocol\]/);
 });
 
-test("buildUserMessage keeps situational blocks when there is no text to judge", () => {
+test("buildUserMessage keeps the Figma protocol when there is no text to judge", () => {
 	const message = buildUserMessage("", [], undefined);
 
 	assert.match(message, /\[Figma Tool Protocol\]/);
-	assert.match(message, /\[Shell Chrome Policy\]/);
-});
-
-test("buildUserMessage gates on the user message when no context is supplied", () => {
-	const message = buildUserMessage("build me a React page", [], undefined);
-
-	assert.match(message, /\[Shell Chrome Policy\]/);
 });
 
 test("buildUserMessage gates the Figma protocol on the user message too", () => {
 	const message = buildUserMessage("Can you open my Figma file?", [], undefined);
 
 	assert.match(message, /\[Figma Tool Protocol\]/);
-	assert.doesNotMatch(message, /\[Shell Chrome Policy\]/);
 });
 
 test("buildUserMessage includes the Figma protocol only when context mentions Figma", () => {
@@ -291,14 +282,32 @@ test("buildUserMessage includes the Figma protocol only when context mentions Fi
 	assert.match(message, /\[Figma Tool Protocol\]/);
 });
 
-test("buildUserMessage includes the shell chrome policy only for code-generation context", () => {
-	const message = buildUserMessage(
-		"Do it",
-		[],
-		"Build a new React component for the assets page.",
-	);
+test("buildUserMessage always includes the shell chrome policy", () => {
+	// Code-generation intent is not reliably detectable from free text. A keyword
+	// gate here silently dropped the policy for ordinary phrasings, letting
+	// generated pages duplicate the host shell, so the block is unconditional.
+	const phrasings = [
+		"Code a Next.js dashboard",
+		"Create an admin UI",
+		"Write a settings screen",
+		"build me a React page",
+		"What is the status of PROJ-12?",
+		"",
+	];
 
-	assert.match(message, /\[Shell Chrome Policy\]/);
+	for (const phrasing of phrasings) {
+		assert.match(
+			buildUserMessage(phrasing, [], undefined),
+			/\[Shell Chrome Policy\]/,
+			`shell chrome policy must survive: ${JSON.stringify(phrasing)}`,
+		);
+	}
+
+	assert.match(
+		buildUserMessage("Do it", [], "[BOARD CONTEXT]\nThe active board is Sprint 7."),
+		/\[Shell Chrome Policy\]/,
+		"present even when the context is unrelated to code generation",
+	);
 });
 
 test("buildUserMessage orders instructions, context, history, then the question", () => {

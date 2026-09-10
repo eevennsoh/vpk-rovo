@@ -117,7 +117,7 @@ async function runBedrockStream({ sse, chunkSize = 4096, ...options }) {
 	}
 }
 
-test("sends the system prefix as a content block carrying an ephemeral cache breakpoint", async () => {
+test("sends the system prompt through unchanged", async () => {
 	const { requestBody } = await runBedrockStream({
 		sse: textDelta("ok"),
 		system: "STABLE SYSTEM PREFIX",
@@ -125,11 +125,7 @@ test("sends the system prefix as a content block carrying an ephemeral cache bre
 		messages: [],
 	});
 
-	assert.deepEqual(
-		requestBody.system,
-		[{ type: "text", text: "STABLE SYSTEM PREFIX", cache_control: { type: "ephemeral" } }],
-		"cache_control can only ride on a content block, so system must not be a bare string",
-	);
+	assert.equal(requestBody.system, "STABLE SYSTEM PREFIX");
 	assert.equal(requestBody.anthropic_version, "bedrock-2023-05-31");
 });
 
@@ -140,7 +136,7 @@ test("omits system entirely when no system prompt is supplied", async () => {
 		messages: [],
 	});
 
-	assert.equal("system" in requestBody, false, "absent, not an empty array the gateway would reject");
+	assert.equal("system" in requestBody, false, "absent, not an empty string the gateway would reject");
 });
 
 test("accumulates usage across message_start and message_delta frames", async () => {

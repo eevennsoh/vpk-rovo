@@ -314,16 +314,6 @@ function mentionsFigmaContext(contextDescription, message) {
 	return /figma/i.test(haystack);
 }
 
-function mentionsCodeGenerationContext(contextDescription, message) {
-	const haystack = getGateHaystack(contextDescription, message);
-	// Fail open: with no text to judge, keep the block rather than silently dropping it.
-	if (haystack.trim().length === 0) {
-		return true;
-	}
-
-	return /\b(react|component|page|build|implement|generate)\b/i.test(haystack);
-}
-
 function getInstructionBlocksForProfile(profile, contextDescription, message) {
 	if (profile === "plain-chat") {
 		return [PLAIN_CHAT_INSTRUCTION];
@@ -337,7 +327,11 @@ function getInstructionBlocksForProfile(profile, contextDescription, message) {
 		DEEP_PLAN_INSTRUCTION,
 		planModeContextActive ? null : GENUI_SPEC_INSTRUCTION,
 		EXECUTION_TRACE_INSTRUCTION,
-		mentionsCodeGenerationContext(contextDescription, message) ? SHELL_CHROME_AVOIDANCE_INSTRUCTION : null,
+		// Always included: code-generation intent is not reliably detectable from
+		// free text, and omitting this policy lets generated pages duplicate the
+		// host shell. A keyword gate here missed phrasings like "Code a Next.js
+		// dashboard" and "Write a settings screen".
+		SHELL_CHROME_AVOIDANCE_INSTRUCTION,
 		mentionsFigmaContext(contextDescription, message) ? FIGMA_CLARIFICATION_INSTRUCTION : null,
 		WEB_SEARCH_INSTRUCTION,
 		DURABLE_MEMORY_INSTRUCTION,

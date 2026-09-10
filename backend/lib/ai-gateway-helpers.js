@@ -483,11 +483,13 @@ async function streamBedrockGatewayManualSse({ gatewayUrl, envVars, system, prom
 		messages: resolvedMessages,
 	};
 	if (system) {
-		// Cache the system prefix; it is stable across turns once the timestamp
-		// moved below it (see buildAIGatewaySystemPrompt in rovo/config.js).
-		payload.system = [
-			{ type: "text", text: system, cache_control: { type: "ephemeral" } },
-		];
+		// No cache_control yet. buildAIGatewaySystemPrompt returns a single
+		// string whose tail carries the timestamp and runtimeContext, so a
+		// breakpoint here would put volatile text inside the cached prefix and
+		// miss on most turns. Caching needs stable and volatile emitted as
+		// separate content blocks, which means threading the split through
+		// gateway-stream -> ai-gateway-provider -> here. Tracked separately.
+		payload.system = system;
 	}
 
 	debugLog("BEDROCK_SSE", `Streaming to: ${gatewayUrl}`);
