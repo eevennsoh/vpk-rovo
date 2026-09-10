@@ -148,19 +148,22 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, portalRoot, release, s
 		}
 		let cancelled = false;
 		const animations: Animation[] = [];
+		let haloAnimation: Animation | null = null;
+		let pulseAnimation: Animation | null = null;
 		const finish = () => {
 			if (!cancelled) onComplete(release.id);
 		};
 		const landed = () => {
 			if (cancelled) return;
 			flight.style.visibility = "hidden";
-			animations.push(halo.animate([{ opacity: 1 }, { opacity: 0 }], {
+			haloAnimation = halo.animate([{ opacity: 1 }, { opacity: 0 }], {
 				duration: JIRA_LINKING_GLOW_FADE_DURATION_MS,
 				easing: "ease-out",
 				fill: "forwards",
-			}));
+			});
+			animations.push(haloAnimation);
 			if (pulse) {
-				const pulseAnimation = pulse.animate([
+				pulseAnimation = pulse.animate([
 					{ transform: "translateY(0)" },
 					{ transform: "translateY(-200%)" },
 				], {
@@ -172,11 +175,15 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, portalRoot, release, s
 				pulseAnimation.addEventListener("finish", finish, { once: true });
 				pulseAnimation.addEventListener("cancel", finish, { once: true });
 			} else {
-				const haloAnimation = animations.at(-1);
-				haloAnimation?.addEventListener("finish", finish, { once: true });
-				haloAnimation?.addEventListener("cancel", finish, { once: true });
+				haloAnimation.addEventListener("finish", finish, { once: true });
+				haloAnimation.addEventListener("cancel", finish, { once: true });
 			}
 			onSettled(release.id);
+		};
+		const cancelFlight = () => {
+			if (cancelled) return;
+			onSettled(release.id);
+			finish();
 		};
 		const animation = flight.animate(createJiraLinkingGlowDropKeyframes(drop.from, landing.anchor), {
 			duration: JIRA_LINKING_GLOW_DROP_DURATION_MS,
@@ -185,13 +192,15 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, portalRoot, release, s
 		});
 		animations.push(animation);
 		animation.addEventListener("finish", landed, { once: true });
-		animation.addEventListener("cancel", () => {
-			if (cancelled) return;
-			onSettled(release.id);
-			finish();
-		}, { once: true });
+		animation.addEventListener("cancel", cancelFlight, { once: true });
 		return () => {
 			cancelled = true;
+			animation.removeEventListener("finish", landed);
+			animation.removeEventListener("cancel", cancelFlight);
+			haloAnimation?.removeEventListener("finish", finish);
+			haloAnimation?.removeEventListener("cancel", finish);
+			pulseAnimation?.removeEventListener("finish", finish);
+			pulseAnimation?.removeEventListener("cancel", finish);
 			for (const running of animations) running.cancel();
 		};
 	}, [backdrop, drop, landing, onComplete, onSettled, release.id, shouldReduceMotion]);
