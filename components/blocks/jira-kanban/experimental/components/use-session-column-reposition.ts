@@ -220,14 +220,63 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 			}
 		};
 		sync();
+		// ResizeObserver sees size changes, not a slot moving when its sibling
+		// columns collapse. Follow only those bounded width transitions; the
+		// mutation path also supplies one final frame when motion is disabled.
+		let positionFrame = 0;
+		const activeColumnTransitions = new Set<EventTarget>();
+		const trackColumnPosition = () => {
+			sync();
+			if (activeColumnTransitions.size === 0) {
+				positionFrame = 0;
+				return;
+			}
+			positionFrame = requestAnimationFrame(trackColumnPosition);
+		};
+		const schedulePositionSync = () => {
+			if (positionFrame === 0) {
+				positionFrame = requestAnimationFrame(trackColumnPosition);
+			}
+		};
+		const isColumnWidthTransition = (
+			event: TransitionEvent,
+		): event is TransitionEvent & { target: HTMLElement } => (
+			event.propertyName === "max-width"
+			&& event.target instanceof HTMLElement
+			&& event.target.hasAttribute("data-jira-kanban-column")
+		);
+		const handleColumnTransitionRun = (event: TransitionEvent) => {
+			if (!isColumnWidthTransition(event)) return;
+			activeColumnTransitions.add(event.target);
+			schedulePositionSync();
+		};
+		const handleColumnTransitionEnd = (event: TransitionEvent) => {
+			if (!isColumnWidthTransition(event)) return;
+			activeColumnTransitions.delete(event.target);
+			sync();
+		};
+		const positionObserver = new MutationObserver(schedulePositionSync);
+		positionObserver.observe(root, {
+			attributeFilter: ["data-collapsed"],
+			attributes: true,
+			subtree: true,
+		});
 		const observer = new ResizeObserver(sync);
 		observer.observe(root);
 		const slot = root.querySelector("[data-session-column-slot]");
 		if (slot) observer.observe(slot);
 		root.addEventListener("scroll", sync, true);
+		root.addEventListener("transitionrun", handleColumnTransitionRun);
+		root.addEventListener("transitionend", handleColumnTransitionEnd);
+		root.addEventListener("transitioncancel", handleColumnTransitionEnd);
 		return () => {
+			if (positionFrame !== 0) cancelAnimationFrame(positionFrame);
+			positionObserver.disconnect();
 			observer.disconnect();
 			root.removeEventListener("scroll", sync, true);
+			root.removeEventListener("transitionrun", handleColumnTransitionRun);
+			root.removeEventListener("transitionend", handleColumnTransitionEnd);
+			root.removeEventListener("transitioncancel", handleColumnTransitionEnd);
 		};
 	}, [hostRef, placement?.index, placement?.preview, placement?.rootRef, shifted, width]);
 
@@ -386,6 +435,9 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 		enabled: placement !== null && !disabled,
 		shifted,
 		dragging: placement?.preview !== null && placement?.preview !== undefined,
+		moveToLeadingGutter: () => {
+			placement?.move(0);
+		},
 		bindings: {
 			onPointerDownCapture,
 			onPointerMove,

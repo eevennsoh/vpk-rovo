@@ -291,6 +291,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/jira-issue/compact-chrome.test.js",
 		"components/blocks/jira-issue/jira-issue.test.js",
 		"components/blocks/jira-issue/uncaptured-work-chin.test.js",
+		"components/blocks/jira-kanban/jira-kanban-docs.test.js",
 		"components/blocks/jira-list/jira-list.test.js",
 		"components/blocks/next-best-action/next-best-action.test.js",
 		"components/blocks/pull-request/pull-request.test.js",

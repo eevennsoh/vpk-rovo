@@ -18,6 +18,10 @@ const { test } = require("node:test");
 
 const EXPERIMENTAL_DIR = __dirname;
 const PAGE_SOURCE = readFileSync(join(EXPERIMENTAL_DIR, "page.tsx"), "utf8");
+const BOARD_FILTER_HOOK_SOURCE = readFileSync(
+	join(EXPERIMENTAL_DIR, "hooks/use-board-filter.ts"),
+	"utf8",
+);
 
 /** Body of a single-expression arrow handler declared as `const <name> = (...) => { ... }`. */
 function handlerBody(source, name) {
@@ -54,8 +58,20 @@ test("the focus row control is wired to that handler, not the raw setter", () =>
 test("the assignee filter still clears the same state, so both paths agree", () => {
 	const body = handlerBody(PAGE_SOURCE, "handleAssigneeFilterChange");
 
-	assert.match(body, /setSelection\(createJiraKanbanSelectionState\(\)\)/u);
-	assert.match(body, /setDraggedCard\(null\)/u);
+	assert.match(body, /boardFilter\.actions\.setAssigneeIds\(assigneeIds\)/u);
+});
+
+test("every board-filter assignee mutation clears focused collapse and card state", () => {
+	assert.match(
+		PAGE_SOURCE,
+		/const resetAssigneeScopedBoardState = useCallback\(\(\) => \{[\s\S]*?setSelection\(createJiraKanbanSelectionState\(\)\)[\s\S]*?setDraggedCard\(null\)[\s\S]*?setFocusedCollapsedColumns\(null\)[\s\S]*?\}, \[\]\);/u,
+	);
+	assert.match(PAGE_SOURCE, /useBoardFilter\(\{ onAssigneeChange: resetAssigneeScopedBoardState \}\)/u);
+	assert.match(BOARD_FILTER_HOOK_SOURCE, /if \(fieldId === "assignee"\) onAssigneeChange\?\.\(\);[\s\S]*?toggleBoardFilterValue/u);
+	assert.match(BOARD_FILTER_HOOK_SOURCE, /const setAssigneeIds = useCallback\([\s\S]*?onAssigneeChange\?\.\(\);/u);
+	assert.match(BOARD_FILTER_HOOK_SOURCE, /const clearField = useCallback\([\s\S]*?if \(fieldId === "assignee"\) onAssigneeChange\?\.\(\);/u);
+	assert.match(BOARD_FILTER_HOOK_SOURCE, /const clearAll = useCallback\([\s\S]*?onAssigneeChange\?\.\(\);/u);
+	assert.match(PAGE_SOURCE, /boardFilter\.actions\.setAssigneeIds\(nextAssigneeIds\)/u);
 });
 
 test("bulk actions read the raw selection, which is why the reset is required", () => {

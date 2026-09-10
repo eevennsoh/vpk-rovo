@@ -44,7 +44,10 @@ import {
 	ExperimentalJiraKanban,
 	type ExperimentalJiraKanbanProps,
 } from "./experimental-jira-kanban";
-import { EMPTY_COLLAPSED_BOARD_COLUMNS } from "./lib/board-column-collapse";
+import {
+	EMPTY_COLLAPSED_BOARD_COLUMNS,
+	type CollapsedBoardColumns,
+} from "./lib/board-column-collapse";
 import { useBoardAgentSessionDrag } from "./use-board-agent-session-drag";
 import { SessionColumnPlacementProvider } from "./components/session-column-placement";
 import {
@@ -285,6 +288,9 @@ function ExperimentalJiraKanbanPageContent({
 	const agentSessionPanelRef = useRef<HTMLDivElement | null>(null);
 	const [listContentUnderlapsPanel, setListContentUnderlapsPanel] = useState(false);
 	const [collapsedColumns, setCollapsedColumns] = useState(EMPTY_COLLAPSED_BOARD_COLUMNS);
+	const [focusedCollapsedColumns, setFocusedCollapsedColumns] = useState<CollapsedBoardColumns | null>(
+		null,
+	);
 	const [agentFilterId, setAgentFilterId] = useState<BoardAgentFilterId | null>(null);
 	const [showUntracked, setShowUntracked] = useState(defaultShowUntracked);
 	const [appliedShowUntrackedDefault, setAppliedShowUntrackedDefault] = useState(defaultShowUntracked);
@@ -312,7 +318,12 @@ function ExperimentalJiraKanbanPageContent({
 	const [draggedCard, setDraggedCard] = useState<DraggedCardState | null>(null);
 	const [selection, setSelection] = useState(createJiraKanbanSelectionState);
 	const [assignedAgentIdsByCard, setAssignedAgentIdsByCard] = useState<Record<string, string[]>>({});
-	const boardFilter = useBoardFilter();
+	const resetAssigneeScopedBoardState = useCallback(() => {
+		setSelection(createJiraKanbanSelectionState());
+		setDraggedCard(null);
+		setFocusedCollapsedColumns(null);
+	}, []);
+	const boardFilter = useBoardFilter({ onAssigneeChange: resetAssigneeScopedBoardState });
 	const selectedAssigneeIds = boardFilter.selectedAssigneeIds;
 	const [localTimelineLastViewedAt, setLocalTimelineLastViewedAt] = useState<string | null>(() => (
 		insightsEnabled && controlledMode === "pulse"
@@ -347,8 +358,6 @@ function ExperimentalJiraKanbanPageContent({
 		const nextAssigneeIds = insightsDefaultAssigneeIds === undefined
 			? toInsightsAssigneeIds(selectedAssigneeIds, PULSE_MEMBER_IDS)
 			: new Set(insightsDefaultAssigneeIds);
-		setSelection(createJiraKanbanSelectionState());
-		setDraggedCard(null);
 		boardFilter.actions.setAssigneeIds(nextAssigneeIds);
 		updateMode("pulse");
 	}, [boardFilter.actions, insightsDefaultAssigneeIds, insightsEnabled, markTimelineAsViewed, selectedAssigneeIds, updateMode]);
@@ -427,6 +436,7 @@ function ExperimentalJiraKanbanPageContent({
 	} = useAgentFilterDisplay({
 		agentFilterId,
 		boardColumns,
+		focusedCollapsedColumns,
 		selectedAssigneeIds,
 		viewerAgentSessionColumnCollapsed: agentSessionColumnCollapsed,
 		viewerCollapsedColumns: collapsedColumns,
@@ -745,8 +755,6 @@ function ExperimentalJiraKanbanPageContent({
 	};
 
 	const handleAssigneeFilterChange = (assigneeIds: Set<string>) => {
-		setSelection(createJiraKanbanSelectionState());
-		setDraggedCard(null);
 		boardFilter.actions.setAssigneeIds(assigneeIds);
 	};
 
@@ -757,7 +765,16 @@ function ExperimentalJiraKanbanPageContent({
 	const handleAgentFilterChange = (nextAgentFilterId: BoardAgentFilterId | null) => {
 		setSelection(createJiraKanbanSelectionState());
 		setDraggedCard(null);
+		setFocusedCollapsedColumns(null);
 		setAgentFilterId(nextAgentFilterId);
+	};
+
+	const handleCollapsedColumnsChange = (nextCollapsedColumns: CollapsedBoardColumns) => {
+		if (agentFilterId === null) {
+			setCollapsedColumns(nextCollapsedColumns);
+			return;
+		}
+		setFocusedCollapsedColumns(nextCollapsedColumns);
 	};
 
 	const handlePulseMemberChange = (memberId: string | null) => {
@@ -971,7 +988,7 @@ function ExperimentalJiraKanbanPageContent({
 									? createWorkItemDropZoneLabel
 									: undefined}
 								detachedAgentSessionsByCard={proximityAgentSessionsByCard}
-								onCollapsedColumnsChange={setCollapsedColumns}
+								onCollapsedColumnsChange={handleCollapsedColumnsChange}
 								onCreatedCardArrivalComplete={handleCreatedCardArrivalComplete}
 								draggedCardCode={draggedCard?.card.code ?? null}
 								selectedCardCodes={selection.selectedCardCodes}

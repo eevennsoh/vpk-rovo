@@ -172,6 +172,21 @@ test("an active focus overlays viewer collapse without mutating the saved set", 
 	assert.deepEqual([...viewer], ["In review"]);
 });
 
+test("an active focus honors a temporary viewer override so empty columns can expand", () => {
+	const viewer = new Set(["In review"]);
+	const focusedOverride = new Set(["Done", "In progress"]);
+	const displayed = displayedCollapsedColumnsForAgentFilter({
+		columns: columnsFixture(),
+		filterId: "needs-input",
+		focusedOverride,
+		viewerCollapsed: viewer,
+	});
+
+	assert.equal(displayed, focusedOverride);
+	assert.equal(displayed.has("To do"), false);
+	assert.deepEqual([...viewer], ["In review"]);
+});
+
 test("clearing the overlay returns the viewer's collapse set by identity", () => {
 	const viewer = new Set(["Done"]);
 	const displayed = displayedCollapsedColumnsForAgentFilter({
