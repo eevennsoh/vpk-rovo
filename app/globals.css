@@ -717,6 +717,44 @@
 	}
 }
 
+/* Dropzone well: the existing 1px dashed stroke travels along its path.
+   Native `border-style: dashed` cannot offset, so a same-thickness path
+   takes that paint while the stroke moves. Reduced motion keeps the CSS
+   dashes and hides the moving stroke. */
+@keyframes jira-dropzone-ants {
+	to {
+		stroke-dashoffset: -6px;
+	}
+}
+
+@utility jira-dropzone-ants {
+	position: relative;
+	/* Beat `border-border` / `border-border-selected` so only the moving 1px stroke paints. */
+	border-color: transparent !important;
+
+	@media (prefers-reduced-motion: reduce) {
+		border-color: revert-layer !important;
+	}
+}
+
+@utility jira-dropzone-ants-stroke {
+	animation: jira-dropzone-ants var(--duration-slowest) var(--ease-linear) infinite;
+	fill: none;
+	height: calc(100% - 1px);
+	rx: calc(var(--radius-lg) - 0.5px);
+	ry: calc(var(--radius-lg) - 0.5px);
+	stroke-dasharray: 3 3;
+	stroke-width: 1px;
+	width: calc(100% - 1px);
+	x: 0.5px;
+	y: 0.5px;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+		visibility: hidden;
+	}
+}
+
 /* -----------------------------------------------------------------
    Unlayered Overrides
 

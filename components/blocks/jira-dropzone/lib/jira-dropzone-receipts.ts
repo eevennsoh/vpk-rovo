@@ -77,10 +77,11 @@ export function resolveJiraDropzoneBounce(
 }
 
 export function shouldImpulseDropzoneChrome(input: {
+	readonly bounce: JiraDropzoneBouncePlayback;
 	readonly impacts: number;
 	readonly receiving: boolean;
 }): boolean {
-	return input.impacts > 0 && input.receiving;
+	return input.bounce !== "off" && input.impacts > 0 && input.receiving;
 }
 
 export const JIRA_DROPZONE_COLLAPSE_MS = 150;
@@ -196,12 +197,10 @@ function landFlight(
 	}
 	const flights = channel.flights.filter((flight) => flight.key !== flightKey);
 	const channels = new Map(state.channels);
-	channels.set(title, {
-		...channel,
-		flights,
-		impacts: impactsAfterLand(channel, landed),
-		settling: flights.length === 0,
-	});
+	channels.set(
+		title,
+		finishReceiveAfterLand(channel, flights, impactsAfterLand(channel, landed)),
+	);
 	return { ...state, channels };
 }
 
@@ -211,14 +210,38 @@ function settleChannel(state: JiraDropzoneFieldState, title: string): JiraDropzo
 		return state;
 	}
 	const channels = new Map(state.channels);
-	const [nextQueued, ...remaining] = channel.queued;
-	channels.set(
-		title,
-		nextQueued
-			? startReceive(channel, nextQueued.receipt, nextQueued.profile, remaining)
-			: { ...channel, settling: false },
-	);
+	channels.set(title, advanceQueuedReceive(channel));
 	return { ...state, channels };
+}
+
+function finishReceiveAfterLand(
+	channel: JiraDropzoneChannel,
+	flights: readonly SessionFlight[],
+	impacts: number,
+): JiraDropzoneChannel {
+	const landed = { ...channel, flights, impacts };
+	if (flights.length > 0) {
+		return landed;
+	}
+	const bounce = resolveJiraDropzoneBounce(channel.lastReceipt);
+	switch (bounce) {
+		case "off":
+			return advanceQueuedReceive(landed);
+		case "each":
+		case "once":
+			return { ...landed, settling: true };
+		default: {
+			const exhaustive: never = bounce;
+			return exhaustive;
+		}
+	}
+}
+
+function advanceQueuedReceive(channel: JiraDropzoneChannel): JiraDropzoneChannel {
+	const [nextQueued, ...remaining] = channel.queued;
+	return nextQueued
+		? startReceive(channel, nextQueued.receipt, nextQueued.profile, remaining)
+		: { ...channel, settling: false };
 }
 
 function startReceive(
@@ -273,6 +296,8 @@ function impactsAfterLand(
 	switch (bounce) {
 		case "each":
 			return channel.impacts + 1;
+		case "off":
+			return channel.impacts;
 		case "once": {
 			// One gobble as the first chip lands — the well reacts when
 			// the sequence starts, not after the last stagger delay.

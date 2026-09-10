@@ -43,7 +43,7 @@ export interface JiraLinkingDrop {
 	readonly playback?: JiraLinkingDropPlayback;
 }
 
-export type JiraLinkingDropTravel = "arc" | "none";
+export type JiraLinkingDropTravel = "arc" | "linear" | "none";
 
 export interface JiraLinkingDropProfile {
 	readonly arcPeak: number;
@@ -70,8 +70,10 @@ export interface JiraLinkingFlight {
 }
 
 /**
- * The create-well flight recipe, plus `direction: "automatic"` so Motion picks
- * a stable screen-space bulge instead of locking clockwise or counter-clockwise.
+ * The create-well flight recipe, plus `direction: "automatic"` so an arc
+ * override still lets Motion pick a stable screen-space bulge instead of
+ * locking clockwise or counter-clockwise. Default travel follows the well
+ * (straight drop); hosts opt into `arc` the same way the catalog does.
  */
 export const JIRA_LINKING_FULL_DROP_PROFILE: JiraLinkingDropProfile = {
 	arcPeak: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcPeak,

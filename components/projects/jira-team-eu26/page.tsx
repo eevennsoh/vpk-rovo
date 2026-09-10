@@ -301,6 +301,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						agentSessionMultiSelect={false}
 						cardGenerativeActionPresentation="more-actions"
 						iconScale="comfortable"
+						createWellBounce="off"
 						createWorkItemDropZoneLabel={createWorkItemDropZoneLabel}
 						agentSessionAssigneeIdAliases={JIRA_TEAM_EU26_PAY_SESSION_MEMBER_ID_BY_ASSIGNEE_ID}
 						agentSessionLinkingVariant="glow"

@@ -15,7 +15,12 @@ import {
 	resolveAgentSessionWorkItemKey,
 	type AgentSessionItem,
 } from "@/components/blocks/agent-session";
-import { JiraDropzoneField, useJiraDropzoneReceive } from "@/components/blocks/jira-dropzone";
+import {
+	JiraDropzoneField,
+	useJiraDropzoneReceive,
+	type FlightProfile,
+	type SessionDropReceipt,
+} from "@/components/blocks/jira-dropzone";
 import type { JiraListInsertion } from "@/components/blocks/jira-list";
 import {
 	AGENT_SESSION_COLUMN_COLLAPSED_WIDTH_PX,
@@ -127,6 +132,7 @@ export type {
 } from "./experimental-page-types";
 
 const DEFAULT_CREATED_COLUMN_AGENT_ID = "readiness-checker";
+const CREATE_WELL_BOUNCE_OFF_PROFILE: Partial<FlightProfile> = { impact: null };
 const PULSE_MEMBER_IDS = new Set(PULSE_TIMELINE.members.map((member) => member.id));
 const EMPTY_PROXIMITY_SESSIONS: Readonly<Record<string, readonly AgentSessionItem[]>> = {};
 
@@ -173,8 +179,20 @@ function useAgentSessionReview(
 	};
 }
 
-export default function ExperimentalJiraKanbanPage(props: ExperimentalJiraKanbanPageProps) {
-	return <JiraDropzoneField><ExperimentalJiraKanbanPageContent {...props} /></JiraDropzoneField>;
+export default function ExperimentalJiraKanbanPage({
+	createWellBounce = "once",
+	...props
+}: ExperimentalJiraKanbanPageProps) {
+	return (
+		<JiraDropzoneField
+			profile={createWellBounce === "off" ? CREATE_WELL_BOUNCE_OFF_PROFILE : undefined}
+		>
+			<ExperimentalJiraKanbanPageContent
+				{...props}
+				createWellBounce={createWellBounce}
+			/>
+		</JiraDropzoneField>
+	);
 }
 
 function ExperimentalJiraKanbanPageContent({
@@ -183,6 +201,7 @@ function ExperimentalJiraKanbanPageContent({
 	additionalAgentSessions,
 	agentActivityLayout,
 	cardGenerativeActionPresentation, iconScale,
+	createWellBounce = "once",
 	createWorkItemDropZoneLabel,
 	defaultAgentSessionColumnCollapsed = false,
 	defaultShowUntracked = true,
@@ -829,7 +848,10 @@ function ExperimentalJiraKanbanPageContent({
 		});
 	};
 
-	const receiveCreateWell = useJiraDropzoneReceive();
+	const receiveCreateWellRaw = useJiraDropzoneReceive();
+	const receiveCreateWell = useCallback((receipt: SessionDropReceipt) => (
+		receiveCreateWellRaw({ ...receipt, bounce: createWellBounce })
+	), [createWellBounce, receiveCreateWellRaw]);
 	const boardSessionDrag = useBoardAgentSessionDrag({
 		boardColumns: filteredBoardColumns,
 		detachedSessionsByCard: proximityAgentSessionsByCard,
