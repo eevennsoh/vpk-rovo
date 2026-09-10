@@ -50,6 +50,20 @@ export function summarizeJiraIssueAgentActivities(
 	const activeActivities = activities
 		.map((activity, index) => ({ activity, index }))
 		.filter(({ activity }) => activity.state !== "completed");
+	if (activeActivities.length === 0) {
+		const completedActivities = activities
+			.map((activity, index) => ({ activity, index }))
+			.filter(({ activity }) => activity.state === "completed");
+		const featured = completedActivities[0];
+
+		return {
+			activityCount: completedActivities.length,
+			featuredActivityIndex: featured === undefined ? null : featured.index,
+			label: "Finished",
+			priorityCount: completedActivities.length,
+			priorityState: "working",
+		};
+	}
 	const awaitingInputActivities = activeActivities.filter(({ activity }) => activity.state === "awaiting-input");
 	const awaitingInputCount = awaitingInputActivities.length;
 	const priorityState = awaitingInputCount > 0 ? "awaiting-input" : "working";
@@ -73,8 +87,9 @@ export function summarizeJiraIssueAgentActivities(
 }
 
 /**
- * Resolves the chin rows to render. Completed activities never take a row, so
- * both layouts operate on the active set only.
+ * Resolves the chin rows to render. Completed activities never join an active
+ * row. When nothing is still running they become one session row per agent —
+ * never a merged "N Finished" chip.
  */
 export function groupJiraIssueAgentActivityRows<TActivity extends JiraIssueAgentActivityRowInput>(
 	activities: readonly TActivity[],
@@ -82,15 +97,17 @@ export function groupJiraIssueAgentActivityRows<TActivity extends JiraIssueAgent
 ): readonly JiraIssueAgentActivityRowGroup<TActivity>[] {
 	const activeActivities = activities.filter((activity) => activity.state !== "completed");
 
-	if (activeActivities.length === 0) {
-		return [];
+	if (activeActivities.length > 0) {
+		if (layout === "split") {
+			return activeActivities.map((activity) => ({ activities: [activity], key: activity.id }));
+		}
+
+		const summary = summarizeJiraIssueAgentActivities(activeActivities);
+
+		return [{ activities: activeActivities, key: `${summary.priorityState}-${summary.activityCount}` }];
 	}
 
-	if (layout === "split") {
-		return activeActivities.map((activity) => ({ activities: [activity], key: activity.id }));
-	}
-
-	const summary = summarizeJiraIssueAgentActivities(activeActivities);
-
-	return [{ activities: activeActivities, key: `${summary.priorityState}-${summary.activityCount}` }];
+	return activities
+		.filter((activity) => activity.state === "completed")
+		.map((activity) => ({ activities: [activity], key: activity.id }));
 }

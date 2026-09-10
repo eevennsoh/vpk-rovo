@@ -22,9 +22,14 @@ import { Tag, TagGroup } from "@/components/ui/tag";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
-import { getIssueInitial, resolveIssueAssigneeUnassignedKind } from "@/components/blocks/jira-issue/lib";
+import {
+	getIssueInitial,
+	resolveIssueAssigneeUnassignedKind,
+	resolveJiraIssueIconMetrics,
+} from "@/components/blocks/jira-issue/lib";
 import { JiraIssuePullRequestCluster } from "@/components/blocks/jira-issue/pull-request-cluster";
 import type {
+	JiraIssueIconScale,
 	JiraIssuePriority,
 	JiraIssuePullRequestPreview,
 	JiraIssuePullRequestStatus,
@@ -101,6 +106,7 @@ export function JiraIssueSummary({
 	assigneeAvatarSrc,
 	assigneePulse,
 	assigneeUnassignedKind,
+	iconScale = "compact",
 	issueKey,
 	issueTypeLabel,
 	isMounted,
@@ -121,6 +127,7 @@ export function JiraIssueSummary({
 	assigneeAvatarSrc?: string;
 	assigneePulse: boolean;
 	assigneeUnassignedKind?: AvatarUnassignedKind;
+	iconScale?: JiraIssueIconScale;
 	issueKey: string;
 	issueTypeLabel: string;
 	isMounted: boolean;
@@ -138,6 +145,11 @@ export function JiraIssueSummary({
 }>) {
 	const PriorityIcon = PRIORITY_ICONS[priority];
 	const priorityColor = PRIORITY_COLORS[priority];
+	const iconMetrics = resolveJiraIssueIconMetrics(iconScale);
+	const comfortableIcons = iconScale === "comfortable";
+	const compactIconClassName = comfortableIcons
+		? "[&_[data-slot=icon]:not([class*='size-'])]:size-4! [&_[data-slot=icon]:not([class*='size-'])>span]:size-4! [&_svg:not([class*='size-'])]:size-4!"
+		: undefined;
 	const pullRequestCluster = pullRequestNumber ? (
 		<JiraIssuePullRequestCluster
 			pullRequestNumber={pullRequestNumber}
@@ -154,6 +166,7 @@ export function JiraIssueSummary({
 				className={cn(
 					buttonVariants({ size: "icon-compact", variant: "ghost" }),
 					"text-icon-accent-orange [&_svg]:text-current",
+					compactIconClassName,
 				)}
 			>
 				<Icon render={<AutomationIcon label="" size="small" color="currentColor" />} />
@@ -164,7 +177,7 @@ export function JiraIssueSummary({
 			</span>
 		)
 	) : (
-		<div className={cn("flex shrink-0 items-center", usesStrokeChrome ? "gap-0" : "gap-1.5")}>
+		<div className={cn("flex shrink-0 items-center", usesStrokeChrome ? (comfortableIcons ? "gap-1" : "gap-0") : "gap-1.5")}>
 			{showPriorityIndicator ? (
 				usesStrokeChrome ? (
 					<span
@@ -172,6 +185,7 @@ export function JiraIssueSummary({
 						className={cn(
 							buttonVariants({ size: "icon-compact", variant: "ghost" }),
 							"[&_svg]:text-current",
+							compactIconClassName,
 						)}
 						style={{ color: priorityColor }}
 					>
@@ -187,7 +201,10 @@ export function JiraIssueSummary({
 			{isMounted ? (
 				usesStrokeChrome ? (
 					<span
-						className="flex size-6 shrink-0 items-center justify-center -mr-1"
+						className={cn(
+							"flex size-6 shrink-0 items-center justify-center",
+							comfortableIcons ? undefined : "-mr-1",
+						)}
 						data-slot="jira-issue-assignee-slot"
 					>
 						<JiraIssueAssignee
@@ -197,7 +214,7 @@ export function JiraIssueSummary({
 							assigneePulse={assigneePulse}
 							assigneeUnassignedKind={assigneeUnassignedKind}
 							issueKey={issueKey}
-							size="xs"
+							size={iconMetrics.assigneeSize}
 						/>
 					</span>
 				) : (
@@ -257,9 +274,9 @@ export function JiraIssueSummary({
 								<IconTile
 									as="span"
 									icon={<TaskIcon label="" color={token("color.icon.brand")} size="small" />}
-									iconSize="small"
+									iconSize={iconMetrics.iconTileIconSize}
 									label={issueTypeLabel}
-									size="xxsmall"
+									size={iconMetrics.iconTileSize}
 									variant="transparent"
 								/>
 							) : (
@@ -271,7 +288,7 @@ export function JiraIssueSummary({
 							<span
 								className={
 									usesStrokeChrome
-										? "text-xs font-normal leading-4 text-text-subtlest"
+										? iconMetrics.issueKeyClassName
 										: "text-xs font-semibold text-text-subtlest"
 								}
 							>

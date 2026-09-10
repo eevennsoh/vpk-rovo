@@ -15,10 +15,16 @@ const JIRA_KANBAN_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "components/blocks/jira-kanban/index.tsx"),
 	"utf8",
 );
-const JIRA_ISSUE_AGENT_ACTIVITY_SOURCE = fs.readFileSync(
-	path.join(process.cwd(), "components/blocks/jira-issue/agent-activity.tsx"),
-	"utf8",
-);
+const JIRA_ISSUE_AGENT_ACTIVITY_SOURCE = [
+	fs.readFileSync(
+		path.join(process.cwd(), "components/blocks/jira-issue/agent-activity.tsx"),
+		"utf8",
+	),
+	fs.readFileSync(
+		path.join(process.cwd(), "components/blocks/jira-issue/agent-activity-row-presentation.tsx"),
+		"utf8",
+	),
+].join("\n");
 
 test("Kanban stage wires the shared issue lifecycle callbacks", () => {
 	assert.match(STAGE_SOURCE, /<JiraKanbanBoardHeader/u);
@@ -46,7 +52,10 @@ test("ASX Kanban reuses the Jira Issue aggregate row for working agents", () => 
 	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<AgentLoading[\s\S]*agents=\{activities\.map\(toAgentLoadingAgent\)\}[\s\S]*className="shrink-0"/u);
 	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<Spinner label="" \/>/u);
 	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /PixelLoader/u);
-	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /\$\{summary\.activityCount\} agents: \$\{summary\.label\}/u);
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /const rowLabel = isCompletedRow[\s\S]*: summary\.label;/u);
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /if \(isAwaitingInput\) \{[\s\S]*\{rowLabel\}[\s\S]*<AnimatedDots/u);
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"[\s\S]*\{rowLabel\}/u);
+	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /JiraIssueCyclingAgentLabel|JIRA_ISSUE_AGENT_SHIMMER/u);
 	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /phaseOffsetMs=/u);
 	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /variant="rainbow"/u);
 });

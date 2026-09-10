@@ -594,6 +594,9 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 	"jira-issue-demo-agent-activity-states-experimental": dynamic(() => import("../demos/blocks/jira-issue-demo").then((mod) => ({
 		default: mod.JiraIssueDemoAgentActivityStatesExperimental,
 	})), { ssr: false }),
+	"jira-issue-demo-agent-activity-states-experimental-v2": dynamic(() => import("../demos/blocks/jira-issue-demo").then((mod) => ({
+		default: mod.JiraIssueDemoAgentActivityStatesExperimentalV2,
+	})), { ssr: false }),
 	"jira-create-demo-work-item": dynamic(() => import("../demos/blocks/jira-create-demo").then((mod) => ({
 		default: mod.JiraCreateDemoWorkItem,
 	})), { ssr: false }),
