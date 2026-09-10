@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import ChildWorkItemsIcon from "@atlaskit/icon/core/child-work-items";
+import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
+import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import FilesIcon from "@atlaskit/icon/core/files";
 import ImageIcon from "@atlaskit/icon/core/image";
 import LinkIcon from "@atlaskit/icon/core/link";
@@ -25,7 +27,6 @@ import {
 } from "@/components/blocks/jira-work-item/team-eu26/data/high-confidence-work-item";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import { ConfluenceIcon, LoomIcon } from "@/components/ui/logo";
 import { GoogleDriveLogo } from "@/components/ui/logo-third-party";
 import {
@@ -36,6 +37,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Columns3Icon } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +79,58 @@ function AttachmentIcon({ attachment }: Readonly<{ attachment: TeamEu26Attachmen
 	if (attachment.kind === "image") return <ImageIcon label="" size="small" />;
 	if (attachment.kind === "video") return <VideoIcon label="" size="small" />;
 	return <PageIcon label="" size="small" />;
+}
+
+function AttachmentPanel({
+	filter,
+	onShowAllChange,
+	showAll,
+}: Readonly<{
+	filter: AttachmentFilter;
+	onShowAllChange: () => void;
+	showAll: boolean;
+}>) {
+	const filteredAttachments = TEAM_EU26_ATTACHMENTS.filter((attachment) =>
+		attachmentMatchesFilter(attachment, filter),
+	);
+	const visibleAttachments = showAll ? filteredAttachments : filteredAttachments.slice(0, 5);
+
+	return (
+		<>
+			<div className="overflow-hidden rounded-lg border border-border">
+				<Table containerClassName="max-w-full" className="min-w-[42rem] table-fixed">
+					<TableHeader className="bg-bg-neutral-subtle [&_tr]:border-b [&_tr]:border-border">
+						<TableRow className="h-10 hover:bg-bg-neutral-subtle">
+							<TableHead className="w-auto">Name</TableHead>
+							<TableHead className="w-36">Date added</TableHead>
+							<TableHead className="w-32">Added by</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{visibleAttachments.map((attachment) => (
+							<TableRow className="h-11" key={attachment.id}>
+								<TableCell className="overflow-hidden">
+									<a className="flex min-w-0 items-center gap-3 text-text hover:underline" href={`#attachment-${attachment.id}`}>
+										<span aria-hidden className="flex size-6 shrink-0 items-center justify-center text-icon-information"><AttachmentIcon attachment={attachment} /></span>
+										<span className="truncate">{attachment.name}</span>
+									</a>
+								</TableCell>
+								<TableCell>{attachment.dateAdded}</TableCell>
+								<TableCell>
+									<Avatar animate={false} label={attachment.addedBy} size="sm"><AvatarFallback>{initials(attachment.addedBy)}</AvatarFallback></Avatar>
+								</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			</div>
+			{filteredAttachments.length > 5 ? (
+				<Button className="h-auto px-0 text-text-subtle" onClick={onShowAllChange} size="compact" type="button" variant="link">
+					{showAll ? "Show fewer attachments" : "Show more attachments"}
+				</Button>
+			) : null}
+		</>
+	);
 }
 
 function Priority({ priority }: Readonly<Pick<TeamEu26TableWorkItem, "priority">>) {
@@ -155,6 +209,7 @@ function SectionHeading({ actionLabel, children, expanded, id, onMore }: Readonl
 
 export function HighConfidenceWorkItemBody() {
 	const [attachmentFilter, setAttachmentFilter] = useState<AttachmentFilter>("all");
+	const [attachmentsExpanded, setAttachmentsExpanded] = useState(true);
 	const [showAllAttachments, setShowAllAttachments] = useState(false);
 	const [showAllLinkedItems, setShowAllLinkedItems] = useState(false);
 	const [announcement, setAnnouncement] = useState("");
@@ -163,11 +218,6 @@ export function HighConfidenceWorkItemBody() {
 			[...TEAM_EU26_SUBITEMS, ...TEAM_EU26_LINKED_ITEMS].map((item) => [item.key, item.status]),
 		),
 	);
-	const filteredAttachments = useMemo(
-		() => TEAM_EU26_ATTACHMENTS.filter((attachment) => attachmentMatchesFilter(attachment, attachmentFilter)),
-		[attachmentFilter],
-	);
-	const visibleAttachments = showAllAttachments ? filteredAttachments : filteredAttachments.slice(0, 5);
 	const visibleLinkedItems = showAllLinkedItems ? TEAM_EU26_LINKED_ITEMS : TEAM_EU26_LINKED_ITEMS.slice(0, 1);
 
 	return (
@@ -178,62 +228,70 @@ export function HighConfidenceWorkItemBody() {
 				<p className="max-w-none text-sm leading-5 text-text">{TEAM_EU26_DESCRIPTION}</p>
 			</section>
 
-			<section aria-labelledby="team-eu26-attachments-heading" className="space-y-2">
-				<div className="flex min-w-0 items-center justify-between gap-3">
-					<h2 className="text-sm font-semibold text-text" id="team-eu26-attachments-heading">Attachments</h2>
-					<div className="flex shrink-0 items-center gap-2">
-						<ButtonGroup aria-label="Filter attachments" variant="connected">
-							{ATTACHMENT_FILTERS.map((filter) => (
-								<Button
-									aria-label={`Show ${filter.label.toLowerCase()} attachments`}
-									aria-pressed={attachmentFilter === filter.value}
-									key={filter.value}
-									onClick={() => setAttachmentFilter(filter.value)}
-									size={filter.icon ? "icon-compact" : "compact"}
-									type="button"
-									variant={attachmentFilter === filter.value ? "outline" : "ghost"}
+			<section aria-labelledby="team-eu26-attachments-heading">
+				<Tabs
+					className="gap-2"
+					onValueChange={(value) => value ? setAttachmentFilter(value as AttachmentFilter) : undefined}
+					value={attachmentFilter}
+				>
+					<div className="group/attachments relative flex min-h-9 min-w-0 items-center justify-between gap-3 py-0.5 transition-none">
+						<div
+							aria-label="Attachments"
+							aria-controls="team-eu26-attachments-content"
+							aria-expanded={attachmentsExpanded}
+							className="absolute inset-0 z-0 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+							onClick={() => setAttachmentsExpanded((current) => !current)}
+							onKeyDown={(event) => {
+								if (event.key !== "Enter" && event.key !== " ") return;
+								event.preventDefault();
+								setAttachmentsExpanded((current) => !current);
+							}}
+							role="button"
+							tabIndex={0}
+						>
+							<h2 className="flex h-full min-w-0 items-center gap-1 text-sm font-semibold text-text" id="team-eu26-attachments-heading">
+								<span>Attachments</span>
+								<span
+									aria-hidden
+									className="inline-flex items-center justify-center opacity-0 transition-opacity duration-xxshort ease-out-practical group-hover/attachments:opacity-100 group-focus-within/attachments:opacity-100 motion-reduce:transition-none"
 								>
-									{filter.icon ?? filter.label}
-								</Button>
-							))}
-						</ButtonGroup>
-						<Button aria-label="More attachment actions" onClick={() => setAnnouncement("Attachment actions opened")} size="icon-compact" type="button" variant="ghost">
-							<ShowMoreHorizontalIcon label="" size="small" />
-						</Button>
+									{attachmentsExpanded ? <ChevronDownIcon label="" size="small" /> : <ChevronRightIcon label="" size="small" />}
+								</span>
+							</h2>
+						</div>
+						<div
+							aria-hidden={!attachmentsExpanded}
+							className={cn("relative z-10 ml-auto flex shrink-0 items-center gap-2", !attachmentsExpanded && "pointer-events-none opacity-0")}
+							inert={!attachmentsExpanded ? true : undefined}
+						>
+							<TabsList aria-label="Filter attachments" size="default" variant="default">
+								{ATTACHMENT_FILTERS.map((filter) => (
+									<TabsTrigger
+										aria-label={filter.icon ? filter.label : undefined}
+										key={filter.value}
+										value={filter.value}
+									>
+										{filter.icon ?? filter.label}
+									</TabsTrigger>
+								))}
+							</TabsList>
+							<Button aria-label="More attachment actions" onClick={() => setAnnouncement("Attachment actions opened")} size="icon" type="button" variant="ghost">
+								<ShowMoreHorizontalIcon label="" size="small" />
+							</Button>
+						</div>
 					</div>
-				</div>
-				<div className="overflow-hidden rounded-lg border border-border">
-					<Table containerClassName="max-w-full" className="min-w-[42rem] table-fixed">
-						<TableHeader className="bg-bg-neutral-subtle [&_tr]:border-b [&_tr]:border-border">
-							<TableRow className="h-10 hover:bg-bg-neutral-subtle">
-								<TableHead className="w-auto">Name</TableHead>
-								<TableHead className="w-36">Date added</TableHead>
-								<TableHead className="w-32">Added by</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{visibleAttachments.map((attachment) => (
-								<TableRow className="h-11" key={attachment.id}>
-									<TableCell className="overflow-hidden">
-										<a className="flex min-w-0 items-center gap-3 text-text hover:underline" href={`#attachment-${attachment.id}`}>
-											<span aria-hidden className="flex size-6 shrink-0 items-center justify-center text-icon-information"><AttachmentIcon attachment={attachment} /></span>
-											<span className="truncate">{attachment.name}</span>
-										</a>
-									</TableCell>
-									<TableCell>{attachment.dateAdded}</TableCell>
-									<TableCell>
-										<Avatar animate={false} label={attachment.addedBy} size="sm"><AvatarFallback>{initials(attachment.addedBy)}</AvatarFallback></Avatar>
-									</TableCell>
-								</TableRow>
-							))}
-						</TableBody>
-					</Table>
-				</div>
-				{filteredAttachments.length > 5 ? (
-					<Button className="h-auto px-0 text-text-subtle" onClick={() => setShowAllAttachments((current) => !current)} size="compact" type="button" variant="link">
-						{showAllAttachments ? "Show fewer attachments" : "Show more attachments"}
-					</Button>
-				) : null}
+					<div id="team-eu26-attachments-content" hidden={!attachmentsExpanded}>
+						{ATTACHMENT_FILTERS.map((filter) => (
+							<TabsContent className="space-y-2" key={filter.value} value={filter.value}>
+								<AttachmentPanel
+									filter={filter.value}
+									onShowAllChange={() => setShowAllAttachments((current) => !current)}
+									showAll={showAllAttachments}
+								/>
+							</TabsContent>
+						))}
+					</div>
+				</Tabs>
 			</section>
 
 			<section aria-labelledby="team-eu26-subitems-heading" className="space-y-2">
