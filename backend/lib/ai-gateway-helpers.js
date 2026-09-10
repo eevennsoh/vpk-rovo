@@ -483,7 +483,11 @@ async function streamBedrockGatewayManualSse({ gatewayUrl, envVars, system, prom
 		messages: resolvedMessages,
 	};
 	if (system) {
-		payload.system = system;
+		// Cache the system prefix; it is stable across turns once the timestamp
+		// moved below it (see buildAIGatewaySystemPrompt in rovo/config.js).
+		payload.system = [
+			{ type: "text", text: system, cache_control: { type: "ephemeral" } },
+		];
 	}
 
 	debugLog("BEDROCK_SSE", `Streaming to: ${gatewayUrl}`);
@@ -508,6 +512,7 @@ async function streamBedrockGatewayManualSse({ gatewayUrl, envVars, system, prom
 	const decoder = new TextDecoder();
 	let buffer = "";
 	let fullText = "";
+	const usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
 
 	const processLine = (line) => {
 		const trimmed = line.trim();
@@ -525,6 +530,16 @@ async function streamBedrockGatewayManualSse({ gatewayUrl, envVars, system, prom
 			parsed = JSON.parse(dataContent);
 		} catch {
 			return;
+		}
+
+		if (parsed.type === "message_start" && parsed.message?.usage) {
+			const messageUsage = parsed.message.usage;
+			usage.inputTokens = messageUsage.input_tokens ?? 0;
+			usage.cacheReadTokens = messageUsage.cache_read_input_tokens ?? 0;
+			usage.cacheWriteTokens = messageUsage.cache_creation_input_tokens ?? 0;
+		}
+		if (parsed.type === "message_delta" && parsed.usage?.output_tokens) {
+			usage.outputTokens = parsed.usage.output_tokens;
 		}
 
 		if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
@@ -558,8 +573,11 @@ async function streamBedrockGatewayManualSse({ gatewayUrl, envVars, system, prom
 		processLine(buffer);
 	}
 
-	debugLog("BEDROCK_SSE", `Stream complete - ${fullText.length} chars text`);
-	return { text: fullText };
+	debugLog(
+		"BEDROCK_SSE",
+		`Stream complete - ${fullText.length} chars, in=${usage.inputTokens} out=${usage.outputTokens} cacheRead=${usage.cacheReadTokens} cacheWrite=${usage.cacheWriteTokens}`,
+	);
+	return { text: fullText, usage };
 }
 
 async function streamGoogleGatewayManualSse({

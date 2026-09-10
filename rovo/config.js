@@ -37,22 +37,22 @@ const REQUEST_USER_INPUT_INSTRUCTION = [
 	"[Clarification Protocol]",
 	"When you need to ask the user clarifying questions before proceeding (e.g. to gather requirements, preferences, or missing details), you MUST use the `ask_user_questions` tool instead of writing questions as plain text.",
 	"The tool renders an interactive question card in the UI. Provide 2–4 questions only when needed, each with a short label, optional description, and 1–3 predefined options. The UI automatically appends one free-text option.",
-	"Keep each option description/byline to one short sentence, ideally 12 words or fewer.",
+	"Keep each option description/byline to one short sentence of 12 words or fewer — longer text is truncated by the question card.",
 	"Do NOT include an option that tells the user to use the free-text field (e.g. \"I'll describe it now\", \"I'll type it out\", \"Let me provide details\"). Every option must be a concrete, pre-composed answer — never a meta-reference to the input method.",
 	"Each option must be a specific, concrete answer to its question (e.g. site names, technologies, team names) — never generic labels like \"Quick\", \"Balanced\", or \"Detailed\".",
-	"If you need clarification, call `ask_user_questions` FIRST, before running any other tools (invoke_subagents, get_skill, code search, or shell commands). After calling ask_user_questions, STOP and do not call any other tools — wait for the user's answers before proceeding.",
+	"If you need clarification, call `ask_user_questions` before running any other tools (invoke_subagents, get_skill, code search, or shell commands).",
 	"When context explicitly marks the turn as the initial make interview, you MUST call `ask_user_questions` as the first tool call before any other tools.",
 	"After that initial make interview turn, do not call `ask_user_questions` again by default.",
 	"Only ask follow-up questions when a hard blocker prevents progress.",
 	"For short or open-ended action requests — such as creating, drafting, sending, translating, or searching — where the user has not specified essential details like the subject, content, recipients, target, or source material, you MUST use the tool to gather those details before attempting the task. Do not guess or proceed with fabricated inputs.",
 	"Skip the tool only for requests where all essential inputs are already present and the task can be completed deterministically (e.g. a rewrite with source text provided, a translation with both text and target language specified, or a specific search query).",
-	"When you call ask_user_questions, it will pause your execution. The user's answers will be returned as the tool result. Do NOT continue generating text or calling other tools after ask_user_questions — your turn ends when you call it. NEVER fall back to using bash/cat to output question JSON — always use ask_user_questions.",
+	"Calling `ask_user_questions` ends your turn: execution pauses, and the user's answers arrive as the tool result on the next turn. Emit no further text or tool calls after it.",
 	"[End Clarification Protocol]",
 ].join("\n");
 
 const PLAN_DESCRIPTION_INSTRUCTION = [
 	"[Plan Description Protocol]",
-	"When calling create-plan (or any tool that produces a plan widget), keep the plan `description` field to a single short phrase — ideally under 60 characters.",
+	"When calling create-plan (or any tool that produces a plan widget), keep the plan `description` field to a single phrase under 60 characters — the plan widget clips longer text.",
 	"Describe the goal, not the implementation steps. Omit routing details, page paths, and technical specifics — those belong in task labels.",
 	"Good examples: \"IT asset management page\", \"Refactor auth to use JWT\", \"Add dark mode support\".",
 	"Bad examples: \"Build a new IT asset management page at /it-assets integrated into the existing sidebar navigation with full CRUD support\".",
@@ -78,7 +78,7 @@ const GENUI_SPEC_INSTRUCTION = [
 	"Rules:",
 	"- Output exactly one ```spec block per response. Keep the ```spec block machine-parseable: no markdown bullets, no prose, no comments inside the fence.",
 	"- First patch must set /root. Each child key in children arrays must have a matching /elements/<key> patch.",
-	"- INTEGRITY CHECK: Before outputting any element that references children, you MUST output each child as its own element. A missing child causes that branch to be invisible.",
+	"- Every key listed in a children array needs its own /elements/<key> patch. A missing child renders that branch invisible.",
 	"- Use Lozenge for workflow statuses: Done→success, In Progress→information, To Do→neutral, Blocked→danger.",
 	"- For Atlassian data (Jira work items, Confluence pages): ALWAYS emit a spec. Use Card for single items, Timeline for activity feeds. Never use the word 'Issues' — use 'Work Items'. Use 'Pages' not 'Confluence Pages'.",
 	"- For work summaries with Jira items and Confluence pages, use WorkSummary component. Do not compose Metric, BarChart, or Tabs manually for work summaries — WorkSummary handles all layout.",
@@ -114,7 +114,6 @@ const WEB_SEARCH_INSTRUCTION = [
 	"[Web Search Protocol]",
 	"You have access to web search and web browsing MCP tools that can fetch live, real-time information from the internet.",
 	"When the user asks about current data (stock prices, news, weather, live scores, recent events, release dates, current status of services, or any question where the answer changes over time), you MUST use your web search tools to look up the information instead of saying you cannot access real-time data.",
-	"Do not apologize or say you lack access — search the web and provide the answer.",
 	"[End Web Search Protocol]",
 ].join("\n");
 
@@ -147,7 +146,7 @@ const HERMES_SKILL_DISCOVERABILITY_INSTRUCTION = [
 
 const DEEP_PLAN_INSTRUCTION = [
 	"[Deep Plan Protocol]",
-	"When plan mode is active, you are in the serve planning workflow. Follow these rules strictly:",
+	"When plan mode is active, you are in the serve planning workflow:",
 	"",
 	"1. Q&A BEFORE plan: If the user's request is ambiguous, under-specified, or missing essential build details, call `ask_user_questions` BEFORE `exit_plan_mode` to gather requirements. If the prompt is already specific enough, you may skip straight to `exit_plan_mode`. If you ask clarifying questions first and the answers provide enough detail, the next turn should call `exit_plan_mode`. If essential details are still missing after the user answers, you may call `ask_user_questions` again to gather what you need before planning.",
 	"2. NEVER Q&A AFTER plan: Once you have called `exit_plan_mode` in a turn, do NOT call `ask_user_questions` in that same turn. Further iteration happens through subsequent messages.",
@@ -220,7 +219,7 @@ const AI_GATEWAY_DEFERRED_TOOLS_INSTRUCTION = [
 	"```",
 	"",
 	"Question fields are `question`, `header`, and `options`. Provide 2–4 questions only when needed, with 1–3 concrete preset options per question.",
-	"Option fields are `label` and `description`. Keep each option description/byline to one short sentence, ideally 12 words or fewer. Do not include an `Other` option; the host UI appends one free-text option.",
+	"Option fields are `label` and `description`. Keep each option description/byline to one short sentence of 12 words or fewer. Do not include an `Other` option; the host UI appends one free-text option.",
 	"When you emit `ask_user_questions`, stop after the envelope and wait. The next turn will include an `[ask_user_questions Result]` block keyed by question text.",
 	"",
 	"For plan mode handoff, use `exit_plan_mode`:",
@@ -301,7 +300,31 @@ function isPlanModeContext(contextDescription) {
 	);
 }
 
-function getInstructionBlocksForProfile(profile, contextDescription) {
+function getGateHaystack(...parts) {
+	return parts.filter((part) => typeof part === "string").join("\n");
+}
+
+function mentionsFigmaContext(contextDescription, message) {
+	const haystack = getGateHaystack(contextDescription, message);
+	// Fail open: with no text to judge, keep the block rather than silently dropping it.
+	if (haystack.trim().length === 0) {
+		return true;
+	}
+
+	return /figma/i.test(haystack);
+}
+
+function mentionsCodeGenerationContext(contextDescription, message) {
+	const haystack = getGateHaystack(contextDescription, message);
+	// Fail open: with no text to judge, keep the block rather than silently dropping it.
+	if (haystack.trim().length === 0) {
+		return true;
+	}
+
+	return /\b(react|component|page|build|implement|generate)\b/i.test(haystack);
+}
+
+function getInstructionBlocksForProfile(profile, contextDescription, message) {
 	if (profile === "plain-chat") {
 		return [PLAIN_CHAT_INSTRUCTION];
 	}
@@ -314,8 +337,8 @@ function getInstructionBlocksForProfile(profile, contextDescription) {
 		DEEP_PLAN_INSTRUCTION,
 		planModeContextActive ? null : GENUI_SPEC_INSTRUCTION,
 		EXECUTION_TRACE_INSTRUCTION,
-		SHELL_CHROME_AVOIDANCE_INSTRUCTION,
-		FIGMA_CLARIFICATION_INSTRUCTION,
+		mentionsCodeGenerationContext(contextDescription, message) ? SHELL_CHROME_AVOIDANCE_INSTRUCTION : null,
+		mentionsFigmaContext(contextDescription, message) ? FIGMA_CLARIFICATION_INSTRUCTION : null,
 		WEB_SEARCH_INSTRUCTION,
 		DURABLE_MEMORY_INSTRUCTION,
 		HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
@@ -476,7 +499,8 @@ function loadAIGatewayPersonalityTemplate() {
 function formatAIGatewayCurrentDate(clientTimeZone) {
 	const options = {
 		dateStyle: "full",
-		timeStyle: "long",
+		// Minute precision only: seconds in the prompt prefix defeat prompt caching.
+		timeStyle: "short",
 	};
 	const normalizedTimeZone = getNonEmptyPromptString(clientTimeZone);
 	if (normalizedTimeZone) {
@@ -517,16 +541,31 @@ function buildAIGatewaySystemPrompt(options = {}) {
 			reasoning: getNonEmptyPromptString(previousAttempt.reasoning),
 		},
 	};
+	// The template grammar has no `or`, so precompute whether the user section
+	// has any content. Without this the heading renders above an empty body.
+	templateContext.has_user_context = [
+		templateContext.user.user_name,
+		templateContext.user.location_info,
+		templateContext.user.organisation,
+		templateContext.profile_memory,
+		templateContext.user_preferences,
+		templateContext.browsing_context,
+	].some((value) => typeof value === "string" && value.trim().length > 0)
+		? "yes"
+		: "";
 	const personalityPrompt = renderKnownPebbleTemplate(
 		loadAIGatewayPersonalityTemplate(),
 		templateContext,
 	);
 	const runtimeContext = getNonEmptyPromptString(options.runtimeContext);
 
+	// Volatile values go last so the stable prefix above them stays cacheable.
+	const currentDate = templateContext.current_date;
 	return [
 		personalityPrompt,
-		runtimeContext,
 		AI_GATEWAY_DEFERRED_TOOLS_INSTRUCTION,
+		currentDate ? `The current local time is ${currentDate}.` : "",
+		runtimeContext,
 	]
 		.filter(Boolean)
 		.join("\n\n");
@@ -546,23 +585,27 @@ function buildUserMessage(
 	const instructions = getInstructionBlocksForProfile(
 		profile,
 		contextDescription,
+		message,
 	)
 		.filter((entry) => typeof entry === "string" && entry.trim().length > 0)
 		.join("\n\n");
-	const combinedContext = contextDescription
-		? `${contextDescription}\n\n${instructions}`
-		: instructions;
-	const baseMessage = `${combinedContext}\n\nUser question: ${message}`;
 	const resolvedConversationHistory = getConversationHistoryForProfile(
 		profile,
 		conversationHistory
 	);
 
-	if (resolvedConversationHistory.length > 0) {
-		return `Previous conversation context:\n${resolvedConversationHistory.map((msg) => `${msg.type === "user" ? "User" : "Assistant"}: ${msg.content}`).join("\n")}\n\nCurrent question: ${baseMessage}`;
-	}
+	// Stable-to-volatile: fixed protocol text first so the prefix can cache,
+	// then per-turn context, then history, then the question.
+	const history =
+		resolvedConversationHistory.length > 0
+			? `Previous conversation context:\n${resolvedConversationHistory
+					.map((msg) => `${msg.type === "user" ? "User" : "Assistant"}: ${msg.content}`)
+					.join("\n")}`
+			: "";
 
-	return baseMessage;
+	return [instructions, contextDescription, history, `User question: ${message}`]
+		.filter((part) => typeof part === "string" && part.trim().length > 0)
+		.join("\n\n");
 }
 
 module.exports = {
