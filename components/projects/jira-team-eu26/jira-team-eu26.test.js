@@ -184,8 +184,10 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 	);
 	assert.match(
 		EXPERIMENTAL_CARD_SOURCE,
-		/assignment=\{onAssignedAgentIdsChange\s*\? \{[\s\S]*onAssignedAgentIdsChange: \(agentIds\) => onAssignedAgentIdsChange\(card\.code, agentIds\),/u,
+		/assignment=\{onAssignedAgentIdsChange\s*\? \{[\s\S]*assignedAgents,[\s\S]*onAssignedAgentIdsChange: \(agentIds\) => onAssignedAgentIdsChange\(\s*card\.code,\s*agentIds\.map\(\(agentId\) => canonicalizeAssignedAgentId\(card\.code, agentId\)\),/u,
 	);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /assignedAgentsFromKanbanCard\(card\)/u);
+	assert.match(EXPERIMENTAL_BOARD_SOURCE, /<ExperimentalJiraKanbanCard[\s\S]*agents=\{agents\}/u);
 	assert.match(
 		EXPERIMENTAL_BOARD_SOURCE,
 		/onAssignedAgentIdsChange=\{onCardAssignedAgentIdsChange\}/u,

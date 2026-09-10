@@ -496,7 +496,10 @@ function JiraIssueAgentActivityRow({
 		shouldReduceMotion,
 		featuredActivity?.startedAtMs,
 	);
-	const catalogAgents = useMemo(() => getJiraIssueAgentCatalog(activities), [activities]);
+	const catalogAgents = useMemo(
+		() => assignment?.agents ?? getJiraIssueAgentCatalog(activities),
+		[activities, assignment?.agents],
+	);
 	const assignedAgents = assignment?.assignedAgents ?? activities.map(toAgentAssignmentAgent);
 
 	const handleOpenChat = createOpenChatHandler(activities, onViewChat, canOpenChat);

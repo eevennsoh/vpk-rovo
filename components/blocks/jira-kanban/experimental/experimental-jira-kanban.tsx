@@ -840,6 +840,7 @@ function ExperimentalJiraKanbanView({
 											>
 												<ExperimentalJiraKanbanCard
 												active={isActive}
+													agents={agents}
 													agentActivityLayout={agentActivityLayout}
 													agentLinkFlash={boardSessionDrag.linkFlash?.cardCode === card.code
 														? boardSessionDrag.linkFlash.flash
