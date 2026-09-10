@@ -746,6 +746,7 @@ export function AgentSessionColumn({
 			onView={handleNotchView}
 			playIntro={isGutterCollapsed ? playGutterIntro : false}
 			sessionDrag={sessionProps.sessionDrag}
+			showUntrackedWorkFooter={sessionProps.showUntrackedWorkFooter}
 		/>
 	) : (
 		<>
@@ -763,6 +764,7 @@ export function AgentSessionColumn({
 				) : (
 					<div
 						ref={listRef}
+						data-agent-session-column-scrollport=""
 						className="min-h-0 min-w-0 flex-1 overflow-y-auto has-[:focus-visible]:overflow-visible relative z-0 scrollbar-auto-hide [&[data-scrolling]>ul]:pointer-events-none"
 					>
 						<AgentSession

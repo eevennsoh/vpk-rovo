@@ -180,6 +180,13 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
+	"jira-kanban-demo-empty-columns": dynamic(
+		() =>
+			import("../demos/blocks/jira-kanban-demo").then((mod) => ({
+				default: mod.JiraKanbanDemoEmptyColumns,
+			})),
+		{ ssr: false },
+	),
 	"jira-work-item-demo-standard": dynamic(
 		() =>
 			import("../demos/blocks/jira-work-item-demo").then((mod) => ({

@@ -59,6 +59,13 @@ export const AGENT_SESSION_DETAIL: ComponentDetail = {
 				"Ids of sessions marked captured. Medium detached uses the same solid disabled border at rest, and the default border on hover.",
 		},
 		{
+			name: "showUntrackedWorkFooter",
+			type: "boolean",
+			default: "true",
+			description:
+				"Shows the untracked-work rationale and action controls below the flyout card body.",
+		},
+		{
 			name: "onLinkWorkItem",
 			type: "(item: AgentSessionItem, workItemKey?: string) => void",
 			description:

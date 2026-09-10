@@ -67,6 +67,40 @@ test("buildAIGatewaySystemPrompt omits empty optional Pebble sections", () => {
 	assert.doesNotMatch(systemPrompt, /previous response and feedback/i);
 });
 
+test("buildAIGatewaySystemPrompt omits the user heading when no user fields are set", () => {
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30 AM AEST",
+	});
+
+	assert.doesNotMatch(systemPrompt, /## On the user you are connecting to/);
+});
+
+test("buildAIGatewaySystemPrompt renders the user heading when a user field is set", () => {
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30 AM AEST",
+		userName: "Eason",
+	});
+
+	assert.match(systemPrompt, /## On the user you are connecting to/);
+	assert.ok(
+		systemPrompt.indexOf("## On the user you are connecting to") <
+			systemPrompt.indexOf("The user is Eason."),
+		"The heading must sit above the user detail it introduces",
+	);
+});
+
+test("buildAIGatewaySystemPrompt renders the user heading for browsing context alone", () => {
+	// browsing_context is the one non-`user.*` field in the precomputed list,
+	// so it is the easiest to drop when that list is edited.
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30 AM AEST",
+		browsingContext: "[BROWSING CONTEXT]\nThe user is viewing example.com.",
+	});
+
+	assert.match(systemPrompt, /## On the user you are connecting to/);
+	assert.match(systemPrompt, /The user is viewing example\.com\./);
+});
+
 test("buildAIGatewaySystemPrompt excludes unsafe source-template instructions", () => {
 	const systemPrompt = buildAIGatewaySystemPrompt({
 		currentDate: "Thursday, May 14, 2026 at 10:30:00 AM AEST",
@@ -89,6 +123,45 @@ test("buildAIGatewaySystemPrompt preserves existing runtime context after person
 		systemPrompt.indexOf("You are Rovo Chat") <
 			systemPrompt.indexOf("[BROWSER TOOLS]"),
 		"Rovo personality should be prepended before runtime context",
+	);
+});
+
+test("buildAIGatewaySystemPrompt places volatile values after the cacheable prefix", () => {
+	const runtimeContext = "[BROWSER TOOLS]\nUse browser tools with the current thread id.";
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30 AM AEST",
+		runtimeContext,
+	});
+
+	const protocolIndex = systemPrompt.indexOf("[AI Gateway Deferred Tool Protocol]");
+	const dateIndex = systemPrompt.indexOf("The current local time is");
+	const runtimeIndex = systemPrompt.indexOf("[BROWSER TOOLS]");
+
+	assert.ok(protocolIndex >= 0 && dateIndex >= 0 && runtimeIndex >= 0);
+	assert.ok(
+		protocolIndex < dateIndex,
+		"Stable protocol text must precede the per-turn timestamp",
+	);
+	assert.ok(
+		dateIndex < runtimeIndex,
+		"Volatile runtime context must come last",
+	);
+});
+
+test("buildAIGatewaySystemPrompt emits the local time once, from the builder not the template", () => {
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30 AM AEST",
+	});
+
+	assert.equal(
+		(systemPrompt.match(/The current local time is/g) || []).length,
+		1,
+		"The timestamp is emitted exactly once, from the prompt builder rather than the template",
+	);
+	assert.ok(
+		systemPrompt.indexOf("The current local time is") >
+			systemPrompt.indexOf("## On your response and output format instructions"),
+		"The timestamp must sit below the stable personality body",
 	);
 });
 
@@ -134,7 +207,8 @@ test("buildUserMessage keeps ask_user_questions options and bylines compact", ()
 
 	assert.match(message, /1–3 predefined options/);
 	assert.match(message, /one free-text option/);
-	assert.match(message, /description\/byline to one short sentence, ideally 12 words or fewer/i);
+	assert.match(message, /description\/byline to one short sentence of 12 words or fewer/i);
+	assert.match(message, /truncated by the question card/i);
 	assert.doesNotMatch(message, /1–4 predefined options/);
 });
 
@@ -144,7 +218,7 @@ test("buildAIGatewaySystemPrompt keeps deferred ask_user_questions options and b
 	});
 
 	assert.match(systemPrompt, /1–3 concrete preset options per question/);
-	assert.match(systemPrompt, /description\/byline to one short sentence, ideally 12 words or fewer/i);
+	assert.match(systemPrompt, /description\/byline to one short sentence of 12 words or fewer/i);
 	assert.match(systemPrompt, /host UI appends one free-text option/i);
 });
 
@@ -171,6 +245,99 @@ test("buildUserMessage no longer injects ticket or work-summary prompt-specific 
 
 	assert.doesNotMatch(ticketMessage, /\[Ticket Classifier Protocol\]/);
 	assert.doesNotMatch(workSummaryMessage, /\[Work Summary Scope\]/);
+});
+
+test("buildUserMessage omits the Figma protocol when neither context nor message mentions Figma", () => {
+	// Both the context and the message must lack the gate keyword, otherwise
+	// this would pass for the wrong reason once the gate fails open.
+	const message = buildUserMessage(
+		"What is the status of PROJ-12?",
+		[],
+		"[BOARD CONTEXT]\nThe active board is Sprint 7.",
+	);
+
+	assert.doesNotMatch(message, /\[Figma Tool Protocol\]/);
+	assert.match(message, /\[Clarification Protocol\]/);
+});
+
+test("buildUserMessage keeps the Figma protocol when there is no text to judge", () => {
+	const message = buildUserMessage("", [], undefined);
+
+	assert.match(message, /\[Figma Tool Protocol\]/);
+});
+
+test("buildUserMessage gates the Figma protocol on the user message too", () => {
+	const message = buildUserMessage("Can you open my Figma file?", [], undefined);
+
+	assert.match(message, /\[Figma Tool Protocol\]/);
+});
+
+test("buildUserMessage includes the Figma protocol only when context mentions Figma", () => {
+	const message = buildUserMessage(
+		"Turn this into code",
+		[],
+		"The user attached a Figma frame from the design library.",
+	);
+
+	assert.match(message, /\[Figma Tool Protocol\]/);
+});
+
+test("buildUserMessage always includes the shell chrome policy", () => {
+	// Code-generation intent is not reliably detectable from free text. A keyword
+	// gate here silently dropped the policy for ordinary phrasings, letting
+	// generated pages duplicate the host shell, so the block is unconditional.
+	const phrasings = [
+		"Code a Next.js dashboard",
+		"Create an admin UI",
+		"Write a settings screen",
+		"build me a React page",
+		"What is the status of PROJ-12?",
+		"",
+	];
+
+	for (const phrasing of phrasings) {
+		assert.match(
+			buildUserMessage(phrasing, [], undefined),
+			/\[Shell Chrome Policy\]/,
+			`shell chrome policy must survive: ${JSON.stringify(phrasing)}`,
+		);
+	}
+
+	assert.match(
+		buildUserMessage("Do it", [], "[BOARD CONTEXT]\nThe active board is Sprint 7."),
+		/\[Shell Chrome Policy\]/,
+		"present even when the context is unrelated to code generation",
+	);
+});
+
+test("buildUserMessage orders instructions, context, history, then the question", () => {
+	const contextDescription = "[BOARD CONTEXT]\nThe active board is Sprint 7.";
+	const message = buildUserMessage(
+		"What should I pick up next?",
+		[{ type: "user", content: "earlier turn" }],
+		contextDescription,
+	);
+
+	const instructionsIndex = message.indexOf("[Clarification Protocol]");
+	const contextIndex = message.indexOf("[BOARD CONTEXT]");
+	const historyIndex = message.indexOf("Previous conversation context:");
+	const questionIndex = message.indexOf("User question: What should I pick up next?");
+
+	assert.ok(
+		instructionsIndex >= 0 && contextIndex >= 0 && historyIndex >= 0 && questionIndex >= 0,
+		"Every section should be present",
+	);
+	assert.ok(instructionsIndex < contextIndex, "Stable instructions come first");
+	assert.ok(contextIndex < historyIndex, "Per-turn context precedes history");
+	assert.ok(historyIndex < questionIndex, "History precedes the question");
+	assert.doesNotMatch(message, /Current question:/);
+});
+
+test("buildUserMessage still ends with the question when there is no context or history", () => {
+	const message = buildUserMessage("Ship it", [], undefined);
+
+	assert.ok(message.endsWith("User question: Ship it"));
+	assert.doesNotMatch(message, /Previous conversation context:/);
 });
 
 test("Hermes skill discoverability protocol distinguishes discoverable skills from active skills", () => {

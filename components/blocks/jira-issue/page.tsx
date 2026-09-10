@@ -537,7 +537,7 @@ function JiraIssueExperimentalAgentActivityStatesPage(): React.ReactElement {
 	return (
 		<RovoChatProvider agentProfiles={ASX_CHAT_AGENT_PROFILES}>
 			<JiraIssueAgentActivityStatesDemo
-				agentActivityLayout="split"
+				agentActivityLayout="merged"
 				chrome={chrome}
 				compact
 				onChromeChange={setChrome}

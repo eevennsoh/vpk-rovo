@@ -135,6 +135,8 @@ export interface ExperimentalJiraKanbanPageProps {
 	renderAgentActivityIndicator?: ExperimentalJiraKanbanProps["renderAgentActivityIndicator"];
 	showBoardContent?: boolean;
 	showAgentSessionColumn?: boolean;
+	/** Shows confidence rationale, actions, and status in untracked-session flyouts. Defaults to true. */
+	showAgentSessionFlyoutFooter?: boolean;
 	/**
 	 * Whether the unattached sessions column shows Filter sessions.
 	 * Defaults to true so other boards keep the current header. jira-team-eu26

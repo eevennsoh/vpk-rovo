@@ -94,6 +94,9 @@ function useInFlowAgentSessionColumnInteraction(
 		setPinned(next.pinned);
 		if (next.pinned) {
 			setIsHovered(true);
+		} else {
+			setIsHovered(false);
+			setIsMenuOpen(false);
 		}
 	};
 
@@ -373,6 +376,10 @@ export function InFlowAgentSessionColumn({
 			if (!pinned && !isFullWidth) handlePinnedChange(true);
 		},
 	});
+	const handlePinnedPlacementChange = (nextPinned: boolean) => {
+		handlePinnedChange(nextPinned);
+		if (!nextPinned) reposition.moveToLeadingGutter();
+	};
 	const isEmbedded = isInteractionEmbedded || reposition.shifted || reposition.dragging;
 	const dragHandle = reposition.enabled ? (
 		<button
@@ -402,7 +409,7 @@ export function InFlowAgentSessionColumn({
 					"z-30 flex min-h-0 shrink-0 self-stretch",
 					reposition.shifted ? "pointer-events-none absolute inset-y-0 left-0" : "relative",
 					reposition.enabled
-						? "[&_[data-agent-session-column-header]]:cursor-grab [&_[data-agent-session-column-header]]:touch-pan-y [&_[data-agent-session-column-rail]]:cursor-grab [&_[data-agent-session-column-rail]]:touch-pan-y"
+						? "[&_[data-agent-session-column-options]]:cursor-grab [&_[data-agent-session-column-options]]:touch-pan-y"
 						: null,
 					reposition.dragging ? "z-50" : null,
 				)}
@@ -455,7 +462,7 @@ export function InFlowAgentSessionColumn({
 					onExpand={handleExpand}
 					onGutterIntroComplete={() => setPlayGutterIntro(false)}
 					onMenuOpenChange={handleMenuOpenChange}
-					onPinnedChange={handlePinnedChange}
+					onPinnedChange={handlePinnedPlacementChange}
 					paddingBottom={paddingBottom}
 					paddingTop={paddingTop}
 					playGutterIntro={playGutterIntro}
