@@ -86,7 +86,7 @@ test("Team EU26 owns the Team EU VITA-1 reference content and geometry", () => {
 
 	const composerSource = readBlockFile("team-eu26/components/activity-composer.tsx");
 	assert.match(composerSource, /Add a comment, @mention or \/ for actions/u);
-	assert.match(composerSource, /Needs input/u);
+	assert.doesNotMatch(composerSource, /Needs input|AiAgentIcon/u);
 });
 
 test("Team EU26 filled preset renders the high-confidence sections and details rail", () => {
