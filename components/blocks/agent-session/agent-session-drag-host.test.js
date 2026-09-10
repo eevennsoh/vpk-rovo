@@ -38,6 +38,7 @@ test("the drag overlay portals the shared cohort chip with overlay elevation", (
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /createPortal/u);
 
 	assert.match(DRAG_OVERLAY_SOURCE, /import \{ createPortal \} from "react-dom";/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /z-\[400\]/u);
 	assert.match(DRAG_OVERLAY_SOURCE, /<AgentSessionCohortChip[\s\S]*elevated/u);
 	assert.match(
 		DRAG_OVERLAY_SOURCE,
@@ -113,7 +114,7 @@ test("medium drag publishes the attach transfer only after the pointer moves", (
 test("large untracked-work cards opt into the shared session drag without collapsing their row", () => {
 	assert.match(CARD_SOURCE, /sessionDrag\?: JiraIssueAgentSessionDragBinding;/u);
 	assert.match(CARD_SOURCE, /<AgentSessionMediumDrag[\s\S]*preserveSourceFootprint[\s\S]*source="untracked"/u);
-	assert.match(CARD_SOURCE, /\{\(bind\) => \([\s\S]*<article[\s\S]*\{\.\.\.bind\}/u);
+	assert.match(CARD_SOURCE, /\{\(bind\) => \{[\s\S]*<article[\s\S]*\{\.\.\.bind\}/u);
 	assert.match(INDEX_SOURCE, /<AgentSessionCard[\s\S]*sessionDrag=\{sessionDrag\}/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /preserveSourceFootprint \? sourceHeight : undefined/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /source: source/u);

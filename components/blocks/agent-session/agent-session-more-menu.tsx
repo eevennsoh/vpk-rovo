@@ -87,6 +87,7 @@ export function AgentSessionMoreMenu({
 	/** Cloud sessions get the record actions; local sessions get the continue-in group. */
 	isCloud: boolean;
 	item: AgentSessionItem;
+	onOpenChange: (open: boolean) => void;
 	open: boolean;
 	/**
 	 * Overlay stacking for the portalled menu. Defaults to the shared

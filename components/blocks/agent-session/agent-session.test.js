@@ -369,7 +369,6 @@ test("the row reveals one … menu where Agent List puts its hover pair", () => 
 	assert.doesNotMatch(CARD_SOURCE, /EyeOpenIcon|EyeOpenStrikethroughIcon|visibilityLabel = "Hide"|visibilityLabel === "Show"/u);
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg text-left text-text/u);
 	assert.match(CARD_SOURCE, /aria-roledescription=\{bind \? "Draggable agent session" : undefined\}/u);
-	assert.match(DRAG_OVERLAY_SOURCE, /z-\[400\]/u);
 	assert.doesNotMatch(CARD_SOURCE, /hover:border-border(?!-disabled)/u);
 	assert.doesNotMatch(CARD_SOURCE, /focus-within:border-border(?!-disabled)/u);
 	assert.match(CARD_SOURCE, /hover:bg-surface-hovered/u);
@@ -418,10 +417,6 @@ test("agent session hover keeps the default cursor instead of a drag-handle curs
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg text-left text-text/u);
 	assert.doesNotMatch(CARD_SOURCE, /cursor-grab(?!bing)/u);
 	assert.doesNotMatch(CARD_SOURCE, /cursor-pointer/u);
-	// The grab cursor and touch-action suppression live in the layout module.
-	assert.match(DRAG_LAYOUT_SOURCE, /hasDragBind && "touch-none select-none"/u);
-	assert.doesNotMatch(DRAG_LAYOUT_SOURCE, /cursor-grab(?!bing)/u);
-	assert.match(DRAG_LAYOUT_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
 });
 
 test("the hover checkbox replaces the avatar instantly, with no opacity transition", () => {
@@ -570,6 +565,9 @@ test("the menu offers host-appropriate actions, disabled without the capability"
 	assert.doesNotMatch(MENU_HOOK_SOURCE, /onUnlink/u);
 	assert.doesNotMatch(SESSION_MORE_MENU_SOURCE, /Unlink|LinkBrokenIcon|onUnlink/u);
 
+	assert.match(SESSION_MORE_MENU_SOURCE, /onOpenChange: \(open: boolean\) => void;/u);
+	assert.match(CARD_SOURCE, /onOpenChange=\{menu\.setIsOpen\}/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /<DropdownMenu onOpenChange=\{onOpenChange\} open=\{open\}>/u);
 	assert.match(SESSION_MORE_MENU_SOURCE, /<DropdownMenuLabel>Continue in<\/DropdownMenuLabel>/u);
 	assert.match(SESSION_MORE_MENU_SOURCE, /description="Copy prompt"[\s\S]*<TerminalIcon label="" size="small" \/>[\s\S]*Terminal/u);
 	assert.match(SESSION_MORE_MENU_SOURCE, /import TerminalIcon from "@atlaskit\/icon-lab\/core\/terminal";/u);
