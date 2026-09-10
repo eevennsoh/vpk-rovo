@@ -174,6 +174,7 @@ export function ActivityComposer() {
 				<JiraWorkItemComposerMotion placement="sticky">
 					<JiraActivityComposer
 						author={JIRA_WORK_ITEM_CURRENT_USER}
+						expandOnFocus
 						mentionSectionLabels={JIRA_WORK_ITEM_MENTION_LABELS}
 						onSubmit={handleSubmit}
 						onValueChange={handlePromptChange}
