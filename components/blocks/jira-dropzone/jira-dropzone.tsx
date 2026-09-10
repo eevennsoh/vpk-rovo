@@ -347,7 +347,12 @@ function JiraDropzoneWellChrome({
 				expanded ? "h-16 text-sm leading-5" : "h-6 text-xs leading-4",
 				phase === "resting" ? "h-6 text-xs leading-4" : null,
 				JIRA_DROPZONE_WELL_CHROME_CLASS,
-				"transition-[height,background-color] duration-normal ease-out-practical motion-reduce:transition-none [transition-property:height,background-color,border-color]",
+				// Colour is the only transitional feedback here. The h-6 -> h-16
+				// swap lands instantly: `height` is a layout property, and
+				// `.agents/rules/motion-decisions.md` limits transitions to fade,
+				// slide, scale, and colour. The spatial cue is already carried by
+				// the magnet/bounce transform and the marching-ants stroke.
+				"transition-[background-color,border-color] duration-normal ease-out-practical motion-reduce:transition-none",
 				selected
 					? "border-border-selected bg-bg-selected text-text-selected"
 					: "border-border bg-surface text-text-subtlest",
