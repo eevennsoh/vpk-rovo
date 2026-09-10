@@ -94,6 +94,7 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	const bodySource = readBlockFile("team-eu26/components/high-confidence-work-item-body.tsx");
 	const agentSessionsSource = readBlockFile("team-eu26/components/high-confidence-agent-sessions.tsx");
 	const highConfidenceDataSource = readBlockFile("team-eu26/data/high-confidence-work-item.ts");
+	const workItemStateSource = readBlockFile("team-eu26/data/team-eu26-vita-one.ts");
 	const activitySource = readBlockFile("team-eu26/components/activity-panel.tsx");
 	const layoutSource = readBlockFile("team-eu26/components/experimental-work-item-layout.tsx");
 	const railOwner = readBlockFile("team-eu26/components/metadata-rail.tsx");
@@ -139,9 +140,17 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	assert.match(layoutSource, /showInFlowComposer = initialPreset === "filled" && composerVisible/u);
 	assert.match(layoutSource, /data-team-eu26-comment-composer[\s\S]*\{composer\}/u);
 	assert.match(railOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceMetadataRail \/>/u);
-	for (const copy of ["Automatic", "Needs input..", "May 25, 2026", "Development", "Automation", "Apps"]) {
+	for (const copy of ["Needs input..", "Development", "Automation", "Apps"]) {
 		assert.match(railSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 	}
+	for (const editor of ["PersonRowField", "AgentsRowField", "PriorityRowField", "DateRowField"]) {
+		assert.match(railSource, new RegExp(`<${editor}`, "u"), `${editor} is not wired into the filled Details rail`);
+	}
+	assert.match(railSource, /actions\.updateMetadata/u);
+	assert.match(railSource, /dateValueMode="utc-date"/u);
+	assert.match(readBlockFile("team-eu26/components/detail-field-editors.tsx"), /allowArchive=\{false\}/u);
+	assert.match(workItemStateSource, /name: "Automatic"/u);
+	assert.match(workItemStateSource, /preset === "filled" \? TEAM_EU26_PEOPLE\.automatic/u);
 	assert.match(dialogSource, /aria-label="Breadcrumb"[\s\S]*Vitafleet[\s\S]*VITA-22[\s\S]*<WorkItemKeyCopy \/>/u);
 	assert.match(dialogSource, /aria-label="Open Rovo"[\s\S]*openChat\("floating"\)/u);
 	assert.match(readBlockFile("team-eu26/data/team-eu26-vita-one.ts"), /Due date changed to May 25, 2026 by/u);

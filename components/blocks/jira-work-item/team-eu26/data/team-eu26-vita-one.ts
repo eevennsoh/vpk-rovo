@@ -12,6 +12,10 @@ import { TEAM_EU26_DESCRIPTION } from "@/components/blocks/jira-work-item/team-e
 const DAY_MS = 24 * 60 * 60 * 1_000;
 
 export const TEAM_EU26_PEOPLE = {
+	automatic: {
+		name: "Automatic",
+		role: "Automatic assignment",
+	},
 	annie: {
 		name: "Annie Cook",
 		avatarUrl: "/avatar-user/victoria-styles/color/asow-dev-lime.png",
@@ -175,7 +179,7 @@ export function createTeamEu26VitaOneState(
 		},
 		metadata: {
 			...base.metadata,
-			assignee: TEAM_EU26_PEOPLE.annie,
+			assignee: preset === "filled" ? TEAM_EU26_PEOPLE.automatic : TEAM_EU26_PEOPLE.annie,
 			atlassianProject: null,
 			crew: [],
 			dueDate: new Date("2026-05-25T00:00:00.000Z"),
