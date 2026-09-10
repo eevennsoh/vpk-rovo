@@ -285,13 +285,18 @@ test("column session hover previews its suggested Jira issue at the grey hover r
 
 	assert.notStrictEqual(hoverHandlerStart, -1);
 	assert.match(BOARD_SOURCE, /onItemHover: handleColumnSessionHover,/u);
-	assert.match(hoverHandlerBody, /setHoveredColumnSessionId\(item\?\.id \?\? null\)/u);
+	assert.match(hoverHandlerBody, /if \(suggestSessionBoardLinkOnHover\) \{\s*setHoveredColumnSessionId\(item\?\.id \?\? null\);\s*\}/u);
 	assert.match(hoverHandlerBody, /agentSessionColumn\?\.onItemHover\?\.\(item\)/u);
-	assert.match(BOARD_SOURCE, /const hoveredIssueKey = hoveredColumnSessionId === null/u);
+	assert.match(BOARD_SOURCE, /const \{ highlightedSessionId, hoveredIssueKey \} = resolveSessionBoardLinkHoverPreview\(/u);
+	assert.match(BOARD_SOURCE, /enabled: suggestSessionBoardLinkOnHover,/u);
 	assert.match(PAGE_SOURCE, /const untrackedHoveredWorkItemKey = untrackedHoveredSession/u);
-	assert.match(PAGE_SOURCE, /proximityHighlightedWorkItemKey=\{untrackedHoveredWorkItemKey\}/u);
+	assert.match(
+		PAGE_SOURCE,
+		/proximityHighlightedWorkItemKey=\{suggestSessionBoardLinkOnHover\s*\? untrackedHoveredWorkItemKey\s*: null\}/u,
+	);
 	assert.match(BOARD_SOURCE, /proximityHighlightedWorkItemKey\?: string \| null;/u);
-	assert.match(BOARD_SOURCE, /const hostHoveredIssueKey = proximityHighlightedWorkItemKey === undefined/u);
+	assert.match(BOARD_SOURCE, /suggestSessionBoardLinkOnHover\?: boolean;/u);
+	assert.match(HELPER_SOURCE, /if \(!input\.enabled\) \{\s*return \{\s*highlightedSessionId: null,\s*hoveredIssueKey: null,/u);
 	assert.match(CARD_SOURCE, /agentSessionTargetPreview=\{\{ highlighted: agentSessionTargetHighlighted \}\}/u);
 	assert.match(JIRA_ISSUE_SOURCE, /agentSessionTargetHighlighted \? "bg-bg-neutral-hovered" : "bg-bg-neutral"/u);
 	// Hover previews the relationship with color only. Only a click owns focus,
@@ -332,6 +337,23 @@ test("a hovered detached board session lights its column twin", () => {
 	assert.match(MEDIUM_CARD_SOURCE, /onPointerLeave=\{\(\) => \{\s*[\s\S]*?onItemHover\?\.\(null\);\s*\}\}/u);
 	assert.match(SESSION_INDEX_SOURCE, /isHighlighted=\{item\.id === highlightedItemId\}/u);
 	assert.match(LARGE_CARD_SOURCE, /!showSelectedFill && isHighlighted && "bg-surface-hovered"/u);
+});
+
+test("suggested-link hover preview is a host capability that defaults on", () => {
+	assert.match(PAGE_SOURCE, /suggestSessionBoardLinkOnHover\?: boolean;/u);
+	assert.match(PAGE_SOURCE, /suggestSessionBoardLinkOnHover = true,/u);
+	assert.match(BOARD_SOURCE, /suggestSessionBoardLinkOnHover\?: boolean;/u);
+	assert.match(BOARD_SOURCE, /suggestSessionBoardLinkOnHover = true,/u);
+	assert.match(
+		PAGE_SOURCE,
+		/proximityHighlightedSessionId=\{suggestSessionBoardLinkOnHover\s*\? untrackedHoveredSessionId\s*: null\}/u,
+	);
+	assert.match(
+		PAGE_SOURCE,
+		/highlightedItemId: suggestSessionBoardLinkOnHover\s*\? untrackedHoveredSessionId\s*: undefined,/u,
+	);
+	assert.match(BOARD_SOURCE, /enabled: suggestSessionBoardLinkOnHover,/u);
+	assert.match(HELPER_SOURCE, /if \(!input\.enabled\) \{\s*return \{\s*highlightedSessionId: null,\s*hoveredIssueKey: null,/u);
 });
 
 test("column card click scrolls the related issue and applies the blue-subtlest spotlight", () => {

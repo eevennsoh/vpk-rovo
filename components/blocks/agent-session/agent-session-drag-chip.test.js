@@ -183,9 +183,10 @@ test("five marked sessions stack three sheets behind a badge carrying the total"
 	assert.match(markup, /data-session-deck-layer="2"/u);
 	assert.doesNotMatch(markup, /data-session-deck-layer="3"/u);
 
-	// Surface on surface needs an edge to separate the sheets, so each carries
-	// a border.
-	assert.match(openTag(markup, "data-session-deck-layer"), /border border-border/u);
+	// Overlay elevation is the sheet edge. A border on the same surface
+	// doubles it into a thick outline, so the layers stay borderless.
+	assert.doesNotMatch(openTag(markup, "data-session-deck-layer"), /border/u);
+	assert.match(openTag(markup, "data-session-deck-layer"), /box-shadow:/u);
 
 	// The badge counts every dragged session, not the three that are drawn.
 	assert.match(markup, /data-slot="badge"[^>]*>5<\/span>/u);
@@ -206,6 +207,19 @@ test("two sessions stack a single layer behind the lead", async () => {
 	assert.match(markup, /data-slot="badge"[^>]*>2<\/span>/u);
 });
 
+test("a resting stack keeps a border because it has no overlay shadow", async () => {
+	const harness = await loadDragChipHarness();
+	const markup = harness.renderChip({
+		cohort: cohort(session("lw-a", ANNIE), session("lw-b", ANNIE), session("lw-c", ANNIE)),
+	});
+
+	const sheet = openTag(markup, "data-session-deck-layer");
+	assert.match(sheet, /border border-border/u);
+	assert.match(sheet, /bg-bg-neutral/u);
+	assert.doesNotMatch(sheet, /box-shadow:/u);
+	assert.doesNotMatch(sheet, /bg-surface/u);
+});
+
 test("deck sheets paint a solid fill instead of fading into the page", async () => {
 	const harness = await loadDragChipHarness();
 	const markup = harness.renderChip({
@@ -214,10 +228,12 @@ test("deck sheets paint a solid fill instead of fading into the page", async () 
 	});
 
 	// A translucent sheet lets the page show through, which reads as a smudge
-	// under the stack rather than as a card behind a card. Depth is the offset,
-	// the border, and the overlay shadow — never opacity.
+	// under the stack rather than as a card behind a card. Depth is the offset
+	// and the overlay shadow — never opacity, never a border.
 	for (const sheet of markup.match(/<span[^>]*data-session-deck-layer="\d+"[^>]*>/gu) ?? []) {
 		assert.doesNotMatch(sheet, /opacity/u, `sheet is fully opaque: ${sheet}`);
+		assert.doesNotMatch(sheet, /border/u, `sheet has no extra border: ${sheet}`);
+		assert.match(sheet, /box-shadow:/u, `sheet uses overlay elevation: ${sheet}`);
 	}
 
 	// Sheets carry the lead pill's own fill, so the stack is one material.

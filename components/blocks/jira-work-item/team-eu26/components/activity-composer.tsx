@@ -12,7 +12,6 @@ import {
 import { AnimatePresence, motion, useReducedMotion, type Transition, type Variants } from "motion/react";
 
 import AddIcon from "@atlaskit/icon/core/add";
-import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import AiChatIcon from "@atlaskit/icon/core/ai-chat";
 
 import { ROVO_AGENT_SELECTOR_AGENTS, type SkillsDirectorySkill } from "@/app/data/directory";
@@ -55,7 +54,6 @@ import {
 	RichTextSuggestionMenu,
 	type RichTextSuggestionMenuItem,
 } from "@/components/ui-custom/rich-text-editor";
-import { Icon } from "@/components/ui/icon";
 import { Tag } from "@/components/ui/tag";
 
 const ACTIVITY_COMMENTS_PROMPT = "Discuss these activity comments.";
@@ -514,6 +512,7 @@ export function ActivityComposer({
 								<JiraActivityComposer
 									autoFocus={autoFocus}
 									author={JIRA_WORK_ITEM_CURRENT_USER}
+									expandOnFocus
 									className="min-h-13 rounded-xl"
 									inputContext={composerInputContext}
 									inputContextSubmitText={composerInputContextSubmitText}
@@ -532,12 +531,7 @@ export function ActivityComposer({
 										>
 											New session
 										</Tag>
-									) : (
-										<span className="order-2 inline-flex items-center gap-1.5 border-l border-border pl-3 text-sm text-text-subtle">
-											<Icon aria-hidden className="text-icon-subtle" render={<AiAgentIcon label="" size="small" />} />
-											Needs input
-										</span>
-									)}
+									) : null}
 									suggestionVariant={JIRA_WORK_ITEM_SUGGESTION_VARIANT}
 									value={draft}
 									variant="comment"
