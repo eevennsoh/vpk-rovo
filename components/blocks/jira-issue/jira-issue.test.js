@@ -5,6 +5,8 @@ const { test } = require("node:test");
 
 const SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
 const AGENT_ACTIVITY_SOURCE = readFileSync(join(__dirname, "agent-activity.tsx"), "utf8");
+// The row's "no agent-list / agent-states components" import contract lives in
+// agent-activity-imports.test.js, which keeps this file inside its line budget.
 // The summary cluster and the standalone card types were split out of index.tsx
 // to keep it under the 1000-line budget; these assertions follow them.
 const SUMMARY_SOURCE = readFileSync(join(__dirname, "summary.tsx"), "utf8");
@@ -377,8 +379,6 @@ test("Jira issue keeps generic activity rows composer-free unless board flyout c
 	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = isSingleAgent \|\| sessionFlyout \? rowHandle : \(/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /trigger=\{rowHandle\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /return withSessionDrag\(/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-list"/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-states"/u);
 	// A merged chin is many agents, not one session. Session flyout stays on
 	// single-agent rows; grouped rows drop it so AgentAssignment can open.
 	assert.match(
@@ -647,8 +647,6 @@ test("Jira issue stroke chrome uses compact inline subtask counts", () => {
 });
 
 test("Jira issue renders one aggregate agent row with prioritized status and no hover flyout", () => {
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-list"/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-states"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /import \{ AgentAvatarVisual \} from "@\/components\/ui-custom\/agent-avatar-visual";/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /import \{ Avatar, AvatarFallback \} from "@\/components\/ui\/avatar";/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const summary = summarizeJiraIssueAgentActivities\(activities\);/u);

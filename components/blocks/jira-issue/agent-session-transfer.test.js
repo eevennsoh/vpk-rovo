@@ -533,21 +533,26 @@ test("Jira issue at-mention chip hugs its own width once it leaves the chin", ()
 test("Jira issue dragged session does not paint a liquid silhouette", () => {
 	assert.doesNotMatch(SOURCE, /AGENT_SESSION_TRANSFER_GOO/u);
 	assert.doesNotMatch(SOURCE, /from "@\/components\/visual\/gooey"/u);
-	// Out of the chin the row renders the shared at-mention chip, not a bespoke pill.
+	// Out of the chin the row renders the shared drag pill, not a bespoke pill.
 	assert.match(AGENT_ACTIVITY_SOURCE, /const isDragging = Boolean\(sessionDrag\) && drag\.dragging;/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /sessionDragChipViewportStyle\(true\)/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /data-session-chip-centered=""/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /<AgentSessionMentionChip[\s\S]*elevated[\s\S]*name=\{featuredActivity\?\.name \?\? "Agent"\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /<AgentSessionDragPill[\s\S]*name: featuredActivity\?\.name \?\? "Agent",[\s\S]*elevated/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /data-session-drag-overlay=""/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /bg-surface-raised/u);
 });
 
-test("Jira issue travelling mention chip uses an opaque surface fill", () => {
-	const mentionChipSource = readFileSync(join(__dirname, "agent-session-mention-chip.tsx"), "utf8");
-	// Editor tags use alpha `bg-bg-neutral`; the dragged chip must cover the well.
-	assert.match(mentionChipSource, /className=\{elevated \? "bg-surface" : undefined\}/u);
-	assert.match(mentionChipSource, /backgroundColor: "var\(--color-surface\)",/u);
-	assert.match(mentionChipSource, /variant="editor"/u);
+test("Jira issue travelling drag pill uses an opaque surface fill", () => {
+	const dragChipSource = readFileSync(
+		join(__dirname, "../agent-session/agent-session-drag-chip.tsx"),
+		"utf8",
+	);
+	// Resting copies use alpha `bg-bg-neutral`; the dragged chip must cover the well.
+	// The fill is the semantic class per `.agents/rules/token-priority.md`; only
+	// the shadow, which has no Tailwind mapping, stays inline.
+	assert.match(dragChipSource, /elevated \? "bg-surface" : "bg-bg-neutral"/u);
+	assert.doesNotMatch(dragChipSource, /backgroundColor:/u);
+	assert.match(dragChipSource, /style=\{elevated \? DRAG_CHIP_ELEVATION : undefined\}/u);
 });
 
 test("Jira issue chin unlink unlinks without nesting a button in the drag handle", () => {
@@ -594,18 +599,22 @@ test("Jira issue chin unlink unlinks without nesting a button in the drag handle
 	);
 });
 
-test("Jira issue at-mention chip floats on overlay elevation, not a dead utility", () => {
+test("Jira issue drag pill floats on overlay elevation, not a dead utility", () => {
 	// `shadow-overlay` is not a utility in this theme — `--ds-shadow-overlay` is
 	// only mapped onto `--shadow-2xl` — so the class silently rendered no shadow
-	// and the chip read as flat against the card. Elevation belongs on the Tag.
-	const mentionChipSource = readFileSync(join(__dirname, "agent-session-mention-chip.tsx"), "utf8");
+	// and the chip read as flat against the card. Elevation belongs on the pill.
+	const dragChipSource = readFileSync(
+		join(__dirname, "../agent-session/agent-session-drag-chip.tsx"),
+		"utf8",
+	);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /[\s"']shadow-overlay[\s"']/u);
 	assert.match(
-		mentionChipSource,
+		dragChipSource,
 		/boxShadow: token\("elevation\.shadow\.overlay"\),/u,
 	);
-	assert.match(mentionChipSource, /type="agent"/u);
-	assert.match(mentionChipSource, /variant="editor"/u);
+	// The Figma pill is the agent hexagon with the human tucked in its corner.
+	assert.match(dragChipSource, /<AgentListIdentity agent=\{agent\} attributedBy=\{attributedBy\} sizePx=\{32\} \/>/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /attributedBy=\{featuredActivity\?\.invokedBy\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /elevated/u);
 });
 

@@ -19,7 +19,9 @@ import {
 	AgentAssignment,
 	type AgentAssignmentAgent,
 } from "@/components/blocks/agent-assignment";
+import type { AgentListInvoker } from "@/components/blocks/agent-list";
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
+import { AgentSessionDragPill } from "@/components/blocks/agent-session/agent-session-drag-chip";
 import {
 	groupJiraIssueAgentActivityRows,
 	summarizeJiraIssueAgentActivities,
@@ -35,7 +37,6 @@ import {
 	sessionTransferTintSeed,
 	type JiraIssueAgentSessionDragBinding,
 } from "@/components/blocks/jira-issue/agent-session-drag";
-import { AgentSessionMentionChip } from "@/components/blocks/jira-issue/agent-session-mention-chip";
 import {
 	JiraIssueAgentLinkFlashOverlay,
 	type JiraIssueAgentLinkFlash,
@@ -101,6 +102,11 @@ export interface JiraIssueAgentActivity {
 	startedAtMs?: number;
 	/** Optional seeded runtime for demos; active timers continue from this value. */
 	initialElapsedSeconds?: number;
+	/**
+	 * Human who invoked the session. Carried so a chin row dragged off the card
+	 * keeps the face beside the agent mark instead of degrading mid-flight.
+	 */
+	invokedBy?: AgentListInvoker;
 	cycleIntervalJitterMs?: number;
 	cycleIntervalMs?: number;
 	startupSequence?: "jira-work-item-start";
@@ -444,16 +450,21 @@ function JiraIssueAgentActivityRow({
 		<div
 			className="pointer-events-none -translate-x-1/2 -translate-y-1/2"
 			data-session-chip-centered=""
-			// The fusion overlay measures this node every frame to place the goo
-			// pill. The chip portal unmounts with the drop, so the overlay caches
-			// the last measured rect for the fuse rather than fading this copy out.
-			data-session-fusion-chip=""
 		>
-			<AgentSessionMentionChip
-				avatarSrc={featuredActivity?.avatarSrc}
-				brandName={featuredActivity?.agentBrandName}
+			{/* `isFusionSource` marks the pill itself, not this centring wrapper:
+			    the fusion overlay measures that node every frame to place the goo
+			    pill, so the measured box has to be the drawn chip. The chip portal
+			    unmounts with the drop, so the overlay caches the last measured rect
+			    for the fuse rather than fading this copy out. */}
+			<AgentSessionDragPill
+				agent={{
+					avatarSrc: featuredActivity?.avatarSrc,
+					brandName: featuredActivity?.agentBrandName,
+					name: featuredActivity?.name ?? "Agent",
+				}}
+				attributedBy={featuredActivity?.invokedBy}
 				elevated
-				name={featuredActivity?.name ?? "Agent"}
+				isFusionSource
 			/>
 		</div>
 	);
@@ -902,6 +913,7 @@ export function JiraIssueAgentActivityRows({
 											members: [{
 												avatarSrc: activity.avatarSrc,
 												id: activity.id,
+												invoker: activity.invokedBy,
 												name: activity.name,
 												tintSeed: sessionTransferTintSeed(
 													activity.agentBrandName,

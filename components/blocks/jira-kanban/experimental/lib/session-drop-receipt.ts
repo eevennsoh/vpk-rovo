@@ -13,6 +13,7 @@ export function toJiraDropzoneMember(session: AgentSessionItem): JiraDropzoneMem
 		avatarSrc: session.agent.avatarSrc,
 		brandName: session.agent.brandName,
 		id: session.id,
+		invoker: session.invokedBy,
 		name: session.agent.name,
 		vpkLogo: session.agent.vpkLogo,
 	};

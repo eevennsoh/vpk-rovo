@@ -47,6 +47,10 @@ const INDEX_SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
 const TYPES_SOURCE = readFileSync(join(__dirname, "agent-session-types.ts"), "utf8");
 const WORK_ITEM_SOURCE = readFileSync(join(__dirname, "agent-session-work-item.ts"), "utf8");
+const IDENTITY_LABEL_SOURCE = readFileSync(
+	join(__dirname, "agent-session-identity-label.ts"),
+	"utf8",
+);
 const FLYOUT_SOURCE = readFileSync(
 	join(__dirname, "../product-sidebar/variants/jira-session-flyout.tsx"),
 	"utf8",
@@ -216,9 +220,20 @@ test("medium matches the 276 by 33 Figma row and reuses shared identity primitiv
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /className="[^"]*\bhidden\b/u);
 	assert.match(MEDIUM_CARD_SOURCE, /<Avatar.*size="xs"/su);
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /\?\? \{ name: "person A" \}/u);
+	// "Claude with Annie" now lives in one place: the card spends it on
+	// accessible names, the drag chip prints it, and both must read alike.
+	assert.match(MEDIUM_CARD_SOURCE, /const identityLabel = agentSessionIdentityLabel\(item\);/u);
 	assert.match(
 		MEDIUM_CARD_SOURCE,
-		/const identityLabel = invoker === undefined[\s\S]*\? item\.agent\.name[\s\S]*: `\$\{item\.agent\.name\} with \$\{invoker\.name\}`;/u,
+		/import \{ agentSessionIdentityLabel \} from "\.\/agent-session-identity-label";/u,
+	);
+	assert.match(
+		IDENTITY_LABEL_SOURCE,
+		/return attributedBy === undefined[\s\S]*\? agent\.name[\s\S]*: `\$\{agent\.name\} with \$\{attributedBy\.name\}`;/u,
+	);
+	assert.match(
+		IDENTITY_LABEL_SOURCE,
+		/export function agentSessionIdentityLabel\(item: AgentSessionItem\): string \{\s*return agentIdentityLabel\(item\.agent, item\.invokedBy\);/u,
 	);
 	assert.match(MEDIUM_CARD_SOURCE, /invoker === undefined \? null : \(/u);
 	const dashSource = readFileSync(join(__dirname, "../../../app/dash-4-2.css"), "utf8");
@@ -245,6 +260,12 @@ test("medium drag chip is the shared agent mention tag with overlay elevation", 
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /chipPointer\.(?:snapToPointer|followPointer)\([\s\S]{0,100}event\.currentTarget/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /-translate-x-1\/2 -translate-y-1\/2/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /data-session-chip-centered=""/u);
+	// The goo measures the drawn lead pill, so this host marks it through
+	// `isFusionSource` and never stamps the attribute on the centring wrapper —
+	// `document.querySelector` would take the wrapper by document order and the
+	// source rect would sit still through the chip's entrance FLIP.
+	assert.match(MEDIUM_DRAG_SOURCE, /<AgentSessionCohortChip[\s\S]*isFusionSource/u);
+	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /data-session-fusion-chip=/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /bg-surface-raised/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /h-\[33px\] w-fit/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /from "@\/components\/visual\/gooey"/u);
@@ -280,7 +301,12 @@ test("medium drag keeps pointer capture on the motion host instead of swapping a
 });
 
 test("multi-session drag chips use the concise sessions count", () => {
-	assert.match(COHORT_CHIP_SOURCE, /const label = `\$\{cohort\.members\.length\} sessions`;/u);
+	// One copy of the sentence, in the chip that prints it. The cohort entry
+	// point is a pass-through so the two cannot drift apart.
+	const dragChipSource = readFileSync(join(__dirname, "agent-session-drag-chip.tsx"), "utf8");
+	assert.match(dragChipSource, /return `\$\{total\} sessions`;/u);
+	assert.doesNotMatch(dragChipSource, /agent sessions/u);
+	assert.doesNotMatch(COHORT_CHIP_SOURCE, /sessions`/u);
 	assert.doesNotMatch(COHORT_CHIP_SOURCE, /agent sessions/u);
 });
 
@@ -720,12 +746,15 @@ test("ships demo data and catalog entries for every attachment and size variant"
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoMediumDetached\(\)/u);
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoMediumAttached\(\)/u);
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoSmall\(\)/u);
+	assert.match(DEMO_SOURCE, /export function AgentSessionDemoDrag\(\)/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-medium-detached": dynamic\(/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-medium-attached": dynamic\(/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-small": dynamic\(/u);
+	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-drag": dynamic\(/u);
 	assert.match(DETAIL_SOURCE, /title: "Medium detached"/u);
 	assert.match(DETAIL_SOURCE, /title: "Medium attached"/u);
 	assert.match(DETAIL_SOURCE, /title: "Small"/u);
+	assert.match(DETAIL_SOURCE, /title: "Drag"/u);
 	assert.match(DETAIL_SOURCE, /name: "variant"/u);
 	assert.match(DETAIL_SOURCE, /type: '"large" \| "medium-detached" \| "medium-attached" \| "small"'/u);
 	assert.match(

@@ -124,6 +124,13 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
+	"agent-session-demo-drag": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-demo").then((mod) => ({
+				default: mod.AgentSessionDemoDrag,
+			})),
+		{ ssr: false },
+	),
 	"agent-session-column-demo": dynamic(
 		() =>
 			import("../demos/blocks/agent-session-column-demo").then((mod) => ({

@@ -17,3 +17,7 @@ export function AgentSessionDemoMediumAttached() {
 export function AgentSessionDemoSmall() {
 	return <Page variant="small" />;
 }
+
+export function AgentSessionDemoDrag() {
+	return <Page drag />;
+}

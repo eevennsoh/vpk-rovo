@@ -13,10 +13,8 @@ import { motion } from "motion/react";
 
 import {
 	sessionDragChipViewportStyle,
-	sessionTransferTintSeed,
 	type JiraIssueAgentSessionDragBinding,
 	type JiraIssueAgentSessionDragSource,
-	type JiraIssueAgentSessionTransferMember,
 } from "@/components/blocks/jira-issue/agent-session-drag";
 import { useSessionDragChipPointer } from "@/components/blocks/jira-issue/use-session-drag-chip-pointer";
 import {
@@ -27,6 +25,13 @@ import { cn } from "@/lib/utils";
 
 import { AgentSessionCohortChip } from "./agent-session-cohort-chip";
 import { SESSION_DRAG_INTERACTIVE_SELECTOR } from "./agent-session-drag-interactive";
+import {
+	measureSessionDragIdentityOrigin,
+	SESSION_DRAG_CHIP_ENTER_TARGET,
+	SESSION_DRAG_CHIP_ENTER_TRANSITION,
+	SESSION_DRAG_CHIP_REDUCED_TRANSITION,
+} from "./agent-session-drag-motion";
+import { toSessionTransferMember } from "./agent-session-transfer-member";
 import { toJiraIssueAgentActivityFromSession } from "./agent-session-work-item";
 import { singletonSessionCohort, type SessionCohort } from "./session-cohort";
 import type { AgentSessionItem } from "./agent-session-types";
@@ -35,26 +40,6 @@ const SESSION_DRAG_ORIGIN: PointerDragPosition = { x: 0, y: 0 };
 /** Same 2px threshold as `usePointerDrag` — publish/arm only after a real move. */
 const SESSION_DRAG_PUBLISH_THRESHOLD_PX = 2;
 const SESSION_DRAG_CHIP_DISTANCE_PX = 12;
-
-/**
- * Identity the fusion overlay needs to draw this member: the avatar URL when
- * one exists, and a stable seed for the deterministic colour fallback when it
- * does not — most agents identify by a brand logo component, not an image.
- */
-function toSessionTransferMember(
-	member: AgentSessionItem,
-): JiraIssueAgentSessionTransferMember {
-	return {
-		avatarSrc: member.agent.avatarSrc,
-		id: member.id,
-		name: member.agent.name,
-		tintSeed: sessionTransferTintSeed(
-			member.agent.brandName,
-			member.agent.vpkLogo,
-			member.agent.name,
-		),
-	};
-}
 
 export function AgentSessionMediumDrag({
 	cohort,
@@ -80,6 +65,12 @@ export function AgentSessionMediumDrag({
 	const [publishedDragging, setPublishedDragging] = useState(false);
 	const [ghostCohort, setGhostCohort] = useState<SessionCohort<AgentSessionItem> | null>(null);
 	const [sourceHeight, setSourceHeight] = useState<number | undefined>(undefined);
+	// Where the chip starts, as an offset from the pointer that published the
+	// drag. Stored as the resolved delta so nothing has to read a ref at render.
+	const [chipOrigin, setChipOrigin] = useState<PointerDragPosition | null>(null);
+	// Drops `will-change` once the entrance lands so the promoted layer does not
+	// outlive the 150ms it was for.
+	const [chipSettled, setChipSettled] = useState(false);
 	const drag = usePointerDrag(dragOffset, setDragOffset, sessionDrag?.bounds);
 	const chipPointer = useSessionDragChipPointer(shouldReduceMotion);
 	const isDragging = Boolean(sessionDrag) && drag.dragging && publishedDragging;
@@ -136,6 +127,8 @@ export function AgentSessionMediumDrag({
 		setPublishedDragging(false);
 		setGhostCohort(null);
 		setSourceHeight(undefined);
+		setChipOrigin(null);
+		setChipSettled(false);
 		setDragOffset(SESSION_DRAG_ORIGIN);
 		publishSessionDrag(false, event);
 	}
@@ -152,6 +145,8 @@ export function AgentSessionMediumDrag({
 		setPublishedDragging(false);
 		setGhostCohort(null);
 		setSourceHeight(undefined);
+		setChipOrigin(null);
+		setChipSettled(false);
 		setDragOffset(SESSION_DRAG_ORIGIN);
 		publishSessionDrag(false, undefined, true);
 	}
@@ -232,6 +227,10 @@ export function AgentSessionMediumDrag({
 				didPublishDragRef.current = false;
 				dragTargetRef.current = event.currentTarget;
 				setSourceHeight(event.currentTarget.getBoundingClientRect().height);
+				const identityOrigin = measureSessionDragIdentityOrigin(event.currentTarget);
+				setChipOrigin(identityOrigin === null
+					? null
+					: { x: identityOrigin.x - event.clientX, y: identityOrigin.y - event.clientY });
 				drag.bind.onPointerDown(event);
 				pointerOriginRef.current = { x: event.clientX, y: event.clientY };
 				chipPointer.snapToPointer(
@@ -265,17 +264,48 @@ export function AgentSessionMediumDrag({
 		return children(undefined);
 	}
 
+	// VPK duration tokens do not collapse themselves. Card `shouldPlayArrival`
+	// reads `shouldReduceMotion` permissively, so the chip matches it.
+	const reduceChipMotion = Boolean(shouldReduceMotion);
 	const chip = (
 		<div
 			aria-hidden
 			className="pointer-events-none flex w-fit max-w-full -translate-x-1/2 -translate-y-1/2 items-center justify-start"
 			data-session-chip-centered=""
-			data-session-fusion-chip=""
 		>
-			<AgentSessionCohortChip
-				cohort={ghostCohort ?? singletonSessionCohort(item)}
-				elevated
-			/>
+			{/* Measured FLIP. The chip slides out of the identity mark the pointer
+			    just grabbed and fades in. `data-session-fusion-chip` lives on the
+			    lead pill *inside* this transform, never on this wrapper, so the
+			    goo's source rect tracks the drawn chip while it converges instead
+			    of sitting at the settled pointer. Two properties only — opacity
+			    plus the translate — per `.agents/rules/motion-decisions.md`.
+			    No exit: the portal is pinned to unmount synchronously on pointerup
+			    (`agent-session.test.js` forbids wrapping it in AnimatePresence,
+			    which would keep pointer-capture state alive past the drop), and
+			    the fusion/flight overlay owns the outgoing frame by replaying the
+			    last measured rect. */}
+			<motion.div
+				animate={SESSION_DRAG_CHIP_ENTER_TARGET}
+				className="min-w-0"
+				initial={reduceChipMotion
+					? false
+					: { opacity: 0, x: chipOrigin?.x ?? 0, y: chipOrigin?.y ?? 0 }}
+				onAnimationComplete={() => setChipSettled(true)}
+				// Dropped once the entrance settles: a drag can last minutes and
+				// the compositor layer has nothing left to accelerate.
+				style={{
+					willChange: reduceChipMotion || chipSettled ? undefined : "opacity, transform",
+				}}
+				transition={reduceChipMotion
+					? SESSION_DRAG_CHIP_REDUCED_TRANSITION
+					: SESSION_DRAG_CHIP_ENTER_TRANSITION}
+			>
+				<AgentSessionCohortChip
+					cohort={ghostCohort ?? singletonSessionCohort(item)}
+					elevated
+					isFusionSource
+				/>
+			</motion.div>
 		</div>
 	);
 

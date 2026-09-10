@@ -168,6 +168,7 @@ function toDropMember(
 	return {
 		avatarSrc: member.avatarSrc,
 		id: member.id,
+		invoker: member.invoker,
 		name: member.name,
 	};
 }

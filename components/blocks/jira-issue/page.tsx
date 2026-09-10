@@ -332,7 +332,9 @@ function toUnlinkedAgentSession(activity: JiraIssueAgentActivity): AgentSessionI
 			name: activity.name,
 		},
 		host: "local",
-		invokedBy: UNLINKED_SESSION_INVOKER,
+		// A session that arrived from a card already knows its human; only a
+		// demo row with no attribution falls back to the sample invoker.
+		invokedBy: activity.invokedBy ?? UNLINKED_SESSION_INVOKER,
 		machineName: "Local",
 		timeLabel: "Just now",
 	};

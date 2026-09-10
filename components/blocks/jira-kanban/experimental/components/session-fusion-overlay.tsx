@@ -14,9 +14,10 @@ import type { BoardAgentSessionAttachProximity } from "../lib/board-agent-sessio
 import { toSessionFusionTarget } from "../lib/session-fusion-overlay-state";
 
 /**
- * Both drag sources put this attribute on the centred inner chip node. The
- * outer portal wrapper's border box ignores that child's transform, so
- * measuring the wrapper instead would be off by half the chip in both axes.
+ * Both drag sources mark the drawn lead pill — `AgentSessionDragPill` with
+ * `isFusionSource`, never the centring wrapper around it. The wrapper's border
+ * box ignores the chip's own transform, so measuring it would be off by half
+ * the chip in both axes and would sit still through the chip's entrance FLIP.
  */
 const CHIP_SELECTOR = "[data-session-drag-overlay] [data-session-fusion-chip]";
 
