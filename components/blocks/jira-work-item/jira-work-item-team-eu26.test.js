@@ -158,6 +158,21 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	for (const copy of ["Needs input..", "Development", "Automation", "Apps"]) {
 		assert.match(railSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 	}
+	assert.match(railSource, /<TeamEuDevelopmentPanel \/>/u);
+	assert.match(railSource, /<TeamEuAutomationPanel[\s\S]*onShowRecentRuns/u);
+	assert.match(railSource, /<TeamEuAppsPanel \/>/u);
+	const developmentPanelSource = readBlockFile("team-eu26/components/team-eu-development-panel.tsx");
+	for (const copy of ["1,000", "9,999+", "586", "23", "Needs attention", "Ongoing work", "Merge blocked by failing CI", "Unresolved comments need replies", "feat/dev-panel-empty-state-entry-points", "Annie"]) {
+		assert.match(developmentPanelSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+	}
+	const automationPanelSource = readBlockFile("team-eu26/components/team-eu-automation-panel.tsx");
+	for (const copy of ["Send reminder 24 hours before due date", "Notify team when status changes to Done", "Mark as complete when all subtasks done", "Recent run rules", "Set to recur", "Create automation", "167 days ago"]) {
+		assert.match(automationPanelSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+	}
+	const appsPanelSource = readBlockFile("team-eu26/components/team-eu-apps-panel.tsx");
+	for (const copy of ["My Reminders", "Tempo", "PagerDuty", "Sentry", "Checklist", "Invision for Jira", "Trello Assistant"]) {
+		assert.match(appsPanelSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+	}
 	for (const editor of ["PersonRowField", "AgentsRowField", "PriorityRowField", "DateRowField"]) {
 		assert.match(railSource, new RegExp(`<${editor}`, "u"), `${editor} is not wired into the filled Details rail`);
 	}
