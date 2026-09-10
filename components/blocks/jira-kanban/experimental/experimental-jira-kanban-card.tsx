@@ -22,6 +22,10 @@ import {
 	getJiraIssuePresenceMotion,
 	JIRA_ISSUE_MOTION_STYLE,
 } from "@/components/blocks/jira-issue/lib";
+import {
+	DEFAULT_PINNED_SPACE_AGENT_IDS,
+	WORK_ITEM_PINNED_ITEMS_LABEL,
+} from "@/components/blocks/jira-work-item/experimental-v3/lib/work-item-picker-options";
 import { token } from "@/lib/tokens";
 
 import type {
@@ -51,6 +55,7 @@ interface ExperimentalJiraKanbanCardProps {
 	highlightedSessionId?: string | null;
 	onAgentActivityOpenChange?: JiraKanbanProps["onCardAgentActivityOpenChange"];
 	onAgentActivityViewChat?: JiraKanbanProps["onCardAgentActivityViewChat"];
+	onAssignedAgentIdsChange?: (issueKey: string, agentIds: readonly string[]) => void;
 	onAgentDoneRunReview?: JiraKanbanProps["onCardAgentDoneRunReview"];
 	onAgentDoneRunView?: JiraKanbanProps["onCardAgentDoneRunView"];
 	onClick: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -110,6 +115,7 @@ export function ExperimentalJiraKanbanCard({
 	iconScale = "compact",
 	onAgentActivityOpenChange,
 	onAgentActivityViewChat,
+	onAssignedAgentIdsChange,
 	onAgentDoneRunReview,
 	onAgentDoneRunView,
 	onClick,
@@ -165,6 +171,13 @@ export function ExperimentalJiraKanbanCard({
 			active={active}
 			agentActivities={card.agentActivities}
 			agentActivityLayout={agentActivityLayout}
+			assignment={onAssignedAgentIdsChange
+				? {
+					defaultPinnedAgentIds: DEFAULT_PINNED_SPACE_AGENT_IDS,
+					onAssignedAgentIdsChange: (agentIds) => onAssignedAgentIdsChange(card.code, agentIds),
+					pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL,
+				}
+				: undefined}
 			agentLinkFlash={agentLinkFlash}
 			agentActivityMode={agentActivityMode}
 			agentSessionDragControl={agentSessionDragControl}

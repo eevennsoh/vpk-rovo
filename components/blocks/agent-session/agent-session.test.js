@@ -202,6 +202,7 @@ test("large remains the default while every card receives the selected size vari
 	assert.match(INDEX_SOURCE, /<AgentSessionCompactCard/u);
 	assert.match(INDEX_SOURCE, /captured=\{capturedItemIds\?\.has\(item\.id\) \?\? false\}/u);
 	assert.match(TYPES_SOURCE, /issueKey\?: string;/u);
+	assert.match(TYPES_SOURCE, /assignment\?: JiraIssueAgentAssignment;/u);
 	assert.match(INDEX_SOURCE, /issueKey=\{issueKey\}/u);
 	assert.match(INDEX_SOURCE, /render=\{<li data-testid=\{"agent-session-row-" \+ item\.id\} \/>\}/u);
 });
@@ -754,6 +755,7 @@ test("ships demo data and catalog entries for every attachment and size variant"
 	assert.match(DATA_SOURCE, /timeLabel: "18m ago"/u);
 	assert.match(DATA_SOURCE, /issueKey: "PAY-101"/u);
 	assert.match(PAGE_SOURCE, /<AgentSession/u);
+	assert.match(PAGE_SOURCE, /onAssignedAgentIdsChange: setAssignedAgentIds/u);
 	assert.doesNotMatch(PAGE_SOURCE, /data-slot="agent-session-attached-backdrop"/u);
 	assert.doesNotMatch(PAGE_SOURCE, /rounded-lg bg-bg-neutral p-1/u);
 	assert.match(DEMO_SOURCE, /@\/components\/blocks\/agent-session\/page/u);

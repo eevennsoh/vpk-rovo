@@ -59,7 +59,7 @@ import { SessionFusionOverlay } from "./components/session-fusion-overlay";
 import {
 	bindBoardProximitySessionActions,
 	resolveBoardUntrackedIssueKey,
-	resolveHoveredBoardIssueKey,
+	resolveSessionBoardLinkHoverPreview,
 	resolveVisibleFocusedIssueKey,
 	scrollBoardIssueIntoView,
 } from "./lib/board-untracked-sessions";
@@ -144,6 +144,7 @@ export interface ExperimentalJiraKanbanProps extends JiraKanbanProps {
 		card: JiraKanbanCardData,
 		columnTitle: string,
 	) => void;
+	onCardAssignedAgentIdsChange?: (issueKey: string, agentIds: readonly string[]) => void;
 	onCardAgentSessionMove?: (session: JiraIssueAgentSessionRef, sourceCard: JiraKanbanCardData, targetCard: JiraKanbanCardData, sourceColumnTitle: string, targetColumnTitle: string) => void;
 	/** Chooses where card agent and skill actions are presented. */
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
@@ -170,6 +171,12 @@ export interface ExperimentalJiraKanbanProps extends JiraKanbanProps {
 	proximityHighlightedSessionId?: string | null;
 	/** Resolved suggested Jira key from a host-owned Agent Session column. */
 	proximityHighlightedWorkItemKey?: string | null;
+	/**
+	 * Whether hovering a session previews a suggested Jira card (and the
+	 * reverse). Defaults on. A host can omit the preview without deleting
+	 * the shared hover wiring other playgrounds still use.
+	 */
+	suggestSessionBoardLinkOnHover?: boolean;
 	/**
 	 * Injected board-session drag API. The page supplies this when the
 	 * floating panel also needs `untrackedBinding`; omit to let the board
@@ -443,6 +450,7 @@ function ExperimentalJiraKanbanView({
 	onCardGenerativeActionSubmit,
 	onCardAgentActivityOpenChange,
 	onCardAgentActivityViewChat,
+	onCardAssignedAgentIdsChange,
 	onCardAgentSessionLink,
 	onCardAgentSessionMove,
 	onCardAgentSessionUnlink,
@@ -457,6 +465,7 @@ function ExperimentalJiraKanbanView({
 	proximityAgentSession,
 	proximityHighlightedSessionId = null,
 	proximityHighlightedWorkItemKey,
+	suggestSessionBoardLinkOnHover = true,
 	renderAgentActivityIndicator,
 	paddingBottom = token("space.150"),
 	paddingTop = token("space.150"),
@@ -489,28 +498,23 @@ function ExperimentalJiraKanbanView({
 	const [focusedIssueKey, setFocusedIssueKey] = useState<string | null>(null);
 	const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
 	const [hoveredColumnSessionId, setHoveredColumnSessionId] = useState<string | null>(null);
-	const highlightedSessionId = hoveredSessionId
-		?? hoveredColumnSessionId
-		?? proximityHighlightedSessionId;
-	const hostHoveredIssueKey = proximityHighlightedWorkItemKey === undefined
-		? resolveHoveredBoardIssueKey(
-			proximityHighlightedSessionId,
-			untrackedSessions,
-			boardColumns,
-		)
-		: resolveVisibleFocusedIssueKey(proximityHighlightedWorkItemKey, boardColumns);
-	const hoveredIssueKey = hoveredColumnSessionId === null
-		? hostHoveredIssueKey
-		: resolveHoveredBoardIssueKey(
-			hoveredColumnSessionId,
-			agentSessionColumn?.items,
-			boardColumns,
-			(item) => resolveAgentSessionWorkItemKey(
+	const { highlightedSessionId, hoveredIssueKey } = resolveSessionBoardLinkHoverPreview({
+		boardColumns,
+		columnSessions: agentSessionColumn?.items,
+		enabled: suggestSessionBoardLinkOnHover,
+		hoveredColumnSessionId,
+		hoveredSessionId,
+		proximityHighlightedSessionId,
+		proximityHighlightedWorkItemKey,
+		resolveColumnWorkItemKey: agentSessionColumn
+			? (item) => resolveAgentSessionWorkItemKey(
 				item,
-				agentSessionColumn?.getSuggestedWorkItemKey,
-				agentSessionColumn?.getSuggestedWorkItemKeys,
-			),
-		);
+				agentSessionColumn.getSuggestedWorkItemKey,
+				agentSessionColumn.getSuggestedWorkItemKeys,
+			)
+			: undefined,
+		untrackedSessions,
+	});
 	const spotlightIssueKey = resolveVisibleFocusedIssueKey(focusedIssueKey, boardColumns);
 	const collapsedColumns = controlledCollapsedColumns ?? uncontrolledCollapsedColumns;
 	const resolvedColumnRowPaddingInlineStart = resolveBoardColumnRowPaddingInlineStart(columnRowPaddingInlineStart, boardColumns[0]?.title, Boolean(chrome.dropContentPadding), collapsedColumns);
@@ -650,11 +654,15 @@ function ExperimentalJiraKanbanView({
 	// relationship simply has no row to light. Preview only: the click spotlight
 	// above still owns focus, scroll, and dimming.
 	const handleSessionHover = (item: AgentSessionItem | null) => {
-		setHoveredSessionId(item?.id ?? null);
+		if (suggestSessionBoardLinkOnHover) {
+			setHoveredSessionId(item?.id ?? null);
+		}
 		agentSessionColumn?.onItemHover?.(item);
 	};
 	const handleColumnSessionHover = (item: AgentSessionItem | null) => {
-		setHoveredColumnSessionId(item?.id ?? null);
+		if (suggestSessionBoardLinkOnHover) {
+			setHoveredColumnSessionId(item?.id ?? null);
+		}
 		agentSessionColumn?.onItemHover?.(item);
 	};
 
@@ -852,6 +860,7 @@ function ExperimentalJiraKanbanView({
 												iconScale={iconScale}
 												onAgentActivityOpenChange={onCardAgentActivityOpenChange}
 												onAgentActivityViewChat={onCardAgentActivityViewChat}
+												onAssignedAgentIdsChange={onCardAssignedAgentIdsChange}
 												onAgentDoneRunReview={onCardAgentDoneRunReview}
 												onAgentDoneRunView={onCardAgentDoneRunView}
 												onClick={handleClick}

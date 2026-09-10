@@ -64,6 +64,8 @@ import {
 	type JiraIssueAgentAssignment,
 } from "./agent-activity-row-presentation";
 
+export type { JiraIssueAgentAssignment } from "./agent-activity-row-presentation";
+
 export type JiraIssueAgentActivityMode = "none" | "working" | "awaiting-input" | "completed";
 export type JiraIssueAgentActivityState = "working" | "awaiting-input" | "completed";
 /**

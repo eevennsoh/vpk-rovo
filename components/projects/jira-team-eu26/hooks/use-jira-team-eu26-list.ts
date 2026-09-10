@@ -61,6 +61,7 @@ export interface UseJiraTeamEu26ListResult {
 	/** Returns the row the session landed in, so the caller can acknowledge it. */
 	createFromAgentSession: (input: CreateFromAgentSessionInput) => string;
 	getProps: (columns: readonly JiraKanbanColumnData[]) => JiraListProps;
+	onAssignedAgentIdsChange: (issueKey: string, agentIds: readonly string[]) => void;
 }
 
 export function useJiraTeamEu26List({
@@ -350,5 +351,5 @@ export function useJiraTeamEu26List({
 		selectedIssueKeys,
 	]);
 
-	return { createBoardFromAgentSession, createFromAgentSession, getProps };
+	return { createBoardFromAgentSession, createFromAgentSession, getProps, onAssignedAgentIdsChange: handleAssignedAgentIdsChange };
 }

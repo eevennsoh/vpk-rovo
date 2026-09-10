@@ -63,6 +63,13 @@ export interface ExperimentalJiraKanbanPageProps {
 	 */
 	agentSessionLinkingVariant?: ExperimentalJiraKanbanProps["agentSessionLinkingVariant"];
 	/**
+	 * Whether hovering an unattached session previews a suggested Jira card
+	 * (and the reverse twin highlight). Defaults on so other boards keep the
+	 * relationship preview. jira-team-eu26 passes false: sessions stay
+	 * independently inspectable without lighting a board card.
+	 */
+	suggestSessionBoardLinkOnHover?: boolean;
+	/**
 	 * Where untracked work lives on this board.
 	 *
 	 * `"column"` keeps it in flow, as a 280px column left of the status
@@ -117,6 +124,7 @@ export interface ExperimentalJiraKanbanPageProps {
 	) => string | undefined;
 	onCardClick?: (card: JiraKanbanCardData, columnTitle: string) => void;
 	onCardAgentActivityViewChat?: JiraKanbanProps["onCardAgentActivityViewChat"];
+	onCardAssignedAgentIdsChange?: (issueKey: string, agentIds: readonly string[]) => void;
 	onCardAgentDoneRunView?: JiraKanbanProps["onCardAgentDoneRunView"];
 	onCardGenerativeActionSubmit?: JiraKanbanProps["onCardGenerativeActionSubmit"];
 	onCardAgentSessionLink?: ExperimentalJiraKanbanProps["onCardAgentSessionLink"];
