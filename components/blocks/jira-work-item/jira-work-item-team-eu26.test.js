@@ -89,6 +89,26 @@ test("Team EU26 owns the Team EU VITA-1 reference content and geometry", () => {
 	assert.doesNotMatch(composerSource, /Needs input|AiAgentIcon/u);
 });
 
+test("Team EU26 does not expand the comment composer into an Improve-description prompt", () => {
+	const composerSource = readBlockFile("team-eu26/components/activity-composer.tsx");
+	const bodyOwner = readBlockFile("team-eu26/components/work-item-body.tsx");
+	const bodySource = readBlockFile("team-eu26/components/high-confidence-work-item-body.tsx");
+
+	assert.match(
+		composerSource,
+		/<JiraActivityComposer[\s\S]*placeholder="Add a comment, @mention or \/ for actions"/u,
+	);
+	assert.doesNotMatch(composerSource, /<JiraActivityComposer[\s\S]*\bexpandOnFocus\b/u);
+	assert.doesNotMatch(composerSource, /Type \/ai to ask Rovo|Improve description/u);
+
+	assert.match(bodyOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceWorkItemBody \/>/u);
+	assert.match(
+		bodySource,
+		/<h2 className="text-sm font-semibold text-text" id="team-eu26-description-heading">Description<\/h2>\s*<p className="max-w-none text-sm leading-5 text-text">\{TEAM_EU26_DESCRIPTION\}<\/p>/u,
+	);
+	assert.doesNotMatch(bodySource, /ContextEditableDescription|Type \/ai to ask Rovo|Improve description/u);
+});
+
 test("Team EU26 filled preset renders the high-confidence sections and details rail", () => {
 	const bodyOwner = readBlockFile("team-eu26/components/work-item-body.tsx");
 	const bodySource = readBlockFile("team-eu26/components/high-confidence-work-item-body.tsx");
@@ -106,6 +126,18 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 		assert.match(bodySource, new RegExp(copy, "u"));
 	}
 	assert.match(bodySource, /<Table[\s\S]*<TableHeader[\s\S]*<TableBody/u);
+	assert.match(bodySource, /<WorkItemsTable aria-label="Subitems"/u);
+	assert.match(bodySource, /<WorkItemsTable aria-label="Linked work items"/u);
+	assert.match(bodySource, /import \{ WorkItemsTable \} from "@\/components\/blocks\/jira-work-item\/team-eu26\/components\/work-items-table"/u);
+	const workItemsTableSource = readBlockFile("team-eu26/components/work-items-table.tsx");
+	assert.match(workItemsTableSource, /bg-surface-sunken \[&_tr\]:border-0/u);
+	assert.match(workItemsTableSource, /not-first:border-l not-first:border-border/u);
+	assert.match(workItemsTableSource, /overflow-hidden rounded-md border border-border/u);
+	assert.match(workItemsTableSource, /LozengeDropdownTrigger/u);
+	assert.match(workItemsTableSource, /font-medium text-link underline underline-offset-2/u);
+	assert.match(workItemsTableSource, /SubtasksIcon/u);
+	assert.match(workItemsTableSource, /<Icon color="currentColor" label=\{`\$\{priority\} priority`\} size="small" \/>/u);
+	assert.doesNotMatch(workItemsTableSource, /<Icon color="currentColor" label=""/u);
 	assert.match(bodySource, /import \{ Tabs, TabsContent, TabsList, TabsTrigger \} from "@\/components\/ui\/tabs"/u);
 	assert.doesNotMatch(bodySource, /ButtonGroup/u);
 	assert.match(bodySource, /const \[attachmentsExpanded, setAttachmentsExpanded\] = useState\(true\)/u);

@@ -259,7 +259,11 @@ test("the board reveals compact magnetic create targets that expand and arm duri
 	);
 	assert.match(
 		JIRA_DROPZONE_SOURCE,
-		/selected[\s\S]*\? "border-border-selected bg-bg-selected text-text-selected"[\s\S]*: "border-border bg-surface text-text-subtlest"/u,
+		/selected\s*\n\t\t\t\t\t\? "border-border-selected bg-bg-selected text-text-selected"\n\t\t\t\t\t: "border-border bg-surface text-text-subtlest"/u,
+	);
+	assert.match(
+		JIRA_DROPZONE_SOURCE,
+		/marching \? JIRA_DROPZONE_ANTS_CLASS : null/u,
 	);
 	assert.doesNotMatch(
 		JIRA_DROPZONE_SOURCE,
