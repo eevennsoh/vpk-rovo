@@ -23,8 +23,8 @@ import {
 } from "@/components/ui-custom/rich-text-editor";
 
 interface AssignedAgentsMenuProps {
-	onAddAgent: () => void;
-	onArchiveAgent: (agent: AgentAssignmentAgent) => void;
+	onAddAgent?: () => void;
+	onArchiveAgent?: (agent: AgentAssignmentAgent) => void;
 	onSelectAgent: (agent: AgentAssignmentAgent) => void;
 	rows: readonly AgentAssignmentAgent[];
 }
@@ -170,7 +170,7 @@ function AssignedAgentStatus({
 function toAgentItem(
 	row: AgentAssignmentAgent,
 	rowIndex: number,
-	onArchiveAgent: (agent: AgentAssignmentAgent) => void,
+	onArchiveAgent: ((agent: AgentAssignmentAgent) => void) | undefined,
 	onSelectAgent: (agent: AgentAssignmentAgent) => void,
 ): RichTextSuggestionMenuItem {
 	const statusKind = resolveAssignedAgentStatusKind(row);
@@ -182,13 +182,13 @@ function toAgentItem(
 		icon: null,
 		id: row.id,
 		inlineMetadata: getAssignedAgentHoverByline(row, statusKind, rowIndex),
-		hoverActions: {
+		hoverActions: onArchiveAgent ? {
 			onPrimary: () => onSelectAgent(row),
 			onSecondary: () => onArchiveAgent(row),
 			primaryLabel: "View",
 			secondaryIcon: <ArchiveBoxIcon label="" size="small" />,
 			secondaryLabel: "Archive",
-		},
+		} : undefined,
 		label: row.name,
 		trailing,
 		leadingVisual: (
@@ -293,19 +293,21 @@ export function AssignedAgentsMenu({
 					selectedIndex={selectedIndex}
 					title="Assigned agents"
 				/>
-				<div className="sticky bottom-0 z-10 mx-1 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-1 pb-1">
-					<Button
-						className="h-8 min-h-8 w-full justify-start gap-3 pl-2 pr-3 py-0 text-left text-sm font-normal"
-						onClick={onAddAgent}
-						type="button"
-						variant="ghost"
-					>
-						<span className="grid size-6 shrink-0 place-items-center text-icon-subtle">
-							<AiAgentAddIcon label="" />
-						</span>
-						<span className="text-text-subtle">Assign agent</span>
-					</Button>
-				</div>
+				{onAddAgent ? (
+					<div className="sticky bottom-0 z-10 mx-1 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-1 pb-1">
+						<Button
+							className="h-8 min-h-8 w-full justify-start gap-3 pl-2 pr-3 py-0 text-left text-sm font-normal"
+							onClick={onAddAgent}
+							type="button"
+							variant="ghost"
+						>
+							<span className="grid size-6 shrink-0 place-items-center text-icon-subtle">
+								<AiAgentAddIcon label="" />
+							</span>
+							<span className="text-text-subtle">Assign agent</span>
+						</Button>
+					</div>
+				) : null}
 			</>
 		</div>
 	);

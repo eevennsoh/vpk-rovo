@@ -158,6 +158,51 @@ test("session column slots between statuses and supports cancellation and keyboa
 	await expect(page.locator("[data-session-column-drop-marker]")).toHaveCount(0);
 });
 
+test("the collapsed options button still moves the column and opens its menu", async ({ page }) => {
+	await openCollapsedBoard(page);
+	await revealCollapsedAgentSessionColumn(page);
+	const options = page.getByRole("button", { name: "Unattached sessions column options" });
+	const start = (await options.boundingBox())!;
+	const todo = (await page.locator('[data-jira-kanban-column="To do"]').boundingBox())!;
+	await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(todo.x + todo.width - 8, start.y + start.height / 2, { steps: 12 });
+	await expect(page.locator("[data-session-column-drag-chip]")).toHaveCount(1);
+	await expect(page.locator("[data-session-drag-overlay]")).toHaveCount(0);
+	await page.mouse.up();
+	const placement = page.locator("[data-session-column-placement]");
+	await expect(placement).toHaveAttribute("data-session-column-placement", "1");
+	await expect(page.locator("[data-session-column-drag-chip]")).toHaveCount(0);
+	await options.click();
+	await expect(page.getByRole("menuitem", { name: "Expand" })).toBeVisible();
+	await page.keyboard.press("Escape");
+	await options.focus();
+	await page.keyboard.press("Alt+ArrowRight");
+	await expect(placement).toHaveAttribute("data-session-column-placement", "2");
+});
+
+test("dragging a session notch never starts a column drag", async ({ page }) => {
+	await openCollapsedBoard(page);
+	await revealCollapsedAgentSessionColumn(page);
+	const source = page.locator("[data-agent-session-column] [data-agent-session-notch]").first();
+	await source.hover();
+	const box = (await source.boundingBox())!;
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width / 2 + 4, box.y + box.height / 2 + 4);
+	await expect(page.locator("[data-session-drag-overlay]")).toHaveCount(1);
+	// Cross the separate 6px column threshold after the session drag starts.
+	await page.mouse.move(box.x + 200, box.y + box.height / 2, { steps: 8 });
+	await expect(page.locator("[data-session-column-drag-chip]")).toHaveCount(0);
+	await expect(page.locator("[data-session-column-drag-source]")).toHaveCount(0);
+	await expect(page.locator("[data-session-column-drop-marker]")).toHaveCount(0);
+	await expect(page.locator("[data-session-column-placement]")).toHaveAttribute("data-session-column-placement", "0");
+	await page.screenshot({ path: "output/agent-browser/session-drag-without-column.png" });
+	await page.keyboard.press("Escape");
+	await page.mouse.up();
+	await expect(page.locator("[data-session-drag-overlay]")).toHaveCount(0);
+	await expect(page.locator("[data-session-column-placement]")).toHaveAttribute("data-session-column-placement", "0");
+});
+
 test("compact session header drags without expanding and keeps its wider target", async ({ page }) => {
 	await openCollapsedBoard(page);
 	await revealCollapsedAgentSessionColumn(page);
@@ -274,4 +319,64 @@ test("the collapsed options menu offers Pin and Expand", async ({ page }) => {
 	await page.keyboard.press("Escape");
 	await page.getByRole("heading", { name: "Jira Design" }).hover();
 	await expect(page.getByRole("menuitem", { name: "Expand" })).toHaveCount(0);
+});
+
+test("scrolling the session column preserves the active flyout until pointer movement", async ({ page }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBoard(page);
+	const column = page.locator("[data-agent-session-column]");
+	const row = column.locator('[data-slot="hover-card-trigger"]').nth(3);
+	await row.hover();
+	const popup = page.locator('[data-slot="hover-card-content"]');
+	await expect(popup).toBeVisible();
+	const title = await popup.locator("[data-current] h2").textContent();
+	const before = await popup.boundingBox();
+	const scrollport = column.locator("div.overflow-y-auto").first();
+	await page.mouse.wheel(0, 450);
+	await expect.poll(() => scrollport.evaluate((element) => element.scrollTop)).toBeGreaterThan(200);
+	await expect(popup).toBeVisible();
+	await expect(popup.locator("[data-current] h2")).toHaveText(title!);
+	const after = await popup.boundingBox();
+	expect(Math.abs(after!.y - before!.y)).toBeLessThan(2);
+	expect(Math.abs(after!.x - before!.x)).toBeLessThan(2);
+	// The original trigger can leave the viewport without taking its preview away.
+	await page.mouse.wheel(0, 450);
+	await expect.poll(() => scrollport.evaluate((element) => element.scrollTop)).toBeGreaterThan(500);
+	await expect(popup.locator("[data-current] h2")).toHaveText(title!);
+	await page.mouse.wheel(0, -2000);
+	await expect.poll(() => scrollport.evaluate((element) => element.scrollTop)).toBe(0);
+	await expect(popup.locator("[data-current] h2")).toHaveText(title!);
+	await expect(popup).toBeVisible();
+	const nextRow = column.locator('[data-slot="hover-card-trigger"]').nth(1);
+	await nextRow.hover();
+	await expect(popup.locator("[data-current] h2")).not.toHaveText(title!);
+	await popup.hover();
+	await expect(popup).toBeVisible();
+	await page.screenshot({ path: "output/agent-browser/scrollbug/fixed.png" });
+	await page.keyboard.press("Escape");
+	await expect(popup).toHaveCount(0);
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await scrollport.evaluate((element) => { element.scrollTop = 0; });
+	await row.hover();
+	await expect(popup).toBeVisible();
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(popup).toHaveCount(0);
+});
+
+test("a scrolled session preview keeps its portalled actions usable", async ({ page }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBoard(page);
+	const column = page.locator("[data-agent-session-column]");
+	await column.locator('[data-slot="hover-card-trigger"]').nth(3).hover();
+	const popup = page.locator('[data-slot="hover-card-content"]');
+	await expect(popup).toBeVisible();
+	const title = await popup.locator("[data-current] h2").textContent();
+	await page.mouse.wheel(0, 450);
+	await expect.poll(() => column.locator("[data-agent-session-column-scrollport]").evaluate((element) => element.scrollTop)).toBeGreaterThan(200);
+	await popup.getByRole("button", { name: /^More actions for/u }).click();
+	const archive = page.getByRole("menuitem", { name: "Archive" });
+	await archive.hover();
+	await expect(archive).toBeVisible();
+	await archive.click();
+	await expect(column.locator('[data-slot="hover-card-trigger"]').filter({ hasText: title! })).toHaveCount(0);
 });

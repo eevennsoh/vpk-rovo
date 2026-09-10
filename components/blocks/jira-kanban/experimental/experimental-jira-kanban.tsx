@@ -188,6 +188,7 @@ export interface ExperimentalJiraKanbanProps extends JiraKanbanProps {
 		onCreateWorkItem?: AgentSessionColumnProps["onCreateWorkItem"];
 		onLinkWorkItem?: AgentSessionColumnProps["onLinkWorkItem"];
 		onSubtasks?: AgentSessionColumnProps["onSubtasks"];
+		showUntrackedWorkFooter?: AgentSessionColumnProps["showUntrackedWorkFooter"];
 	};
 	/**
 	 * Which columns are collapsed, when the host wants to own that.
@@ -460,7 +461,6 @@ function BoardColumn({
 					<BoardColumnResizeButton
 						className={cn(
 							BOARD_COLUMN_ACTION_REVEAL,
-							chrome.resizeButtonClassName,
 							"group-hover/board-column:pointer-events-auto group-hover/board-column:opacity-100",
 							"group-has-[:focus-visible]/board-column:pointer-events-auto group-has-[:focus-visible]/board-column:opacity-100",
 						)}
@@ -1011,6 +1011,7 @@ function ExperimentalJiraKanbanView({
 											onSessionLink={onCardAgentSessionLink}
 												onSessionUnlink={onCardAgentSessionUnlink}
 												onSubtasks={proximityActions.onSubtasks}
+												showUntrackedWorkFooter={proximityAgentSession?.showUntrackedWorkFooter}
 												showUnlinkWell={showAgentSessionUnlinkWell}
 												selected={isSelected}
 											/>

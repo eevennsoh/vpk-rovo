@@ -11,7 +11,6 @@ import {
 	type JiraIssueAgentActivityIndicatorRenderer,
 	type JiraIssueAgentActivityLayout,
 	type JiraIssueAgentActivityMode,
-	type JiraIssueAgentSessionFlyoutContext,
 	type JiraIssueAgentSessionDragBinding,
 	type JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue/agent-activity";
@@ -224,8 +223,6 @@ export interface JiraIssueDefaultProps extends Omit<ComponentProps<"button">, "c
 	agentActivityLayout?: JiraIssueAgentActivityLayout;
 	/** One-shot brand sweep across the chin row a session was just linked into. */
 	agentLinkFlash?: JiraIssueAgentLinkFlash;
-	/** Optional board context that makes attached activity rows open session details on hover. */
-	agentSessionFlyout?: JiraIssueAgentSessionFlyoutContext;
 	onAgentActivityOpenChange?: (open: boolean) => void;
 	onAgentActivityViewChat?: (activity: JiraIssueAgentActivity) => void;
 	/** Optional host-owned visual override for active agent-session states. */
@@ -269,7 +266,6 @@ function JiraIssueDefault({
 	agentActivities,
 	agentActivityMode,
 	agentActivityLayout = "merged",
-	agentSessionFlyout,
 	agentSessionDragControl,
 	agentSessionTargetPreview,
 	agentDoneRuns = [],
@@ -834,7 +830,6 @@ function JiraIssueDefault({
 					onOpenChange={handleAgentActivityOpenChange}
 					onViewChat={onAgentActivityViewChat}
 					renderAgentActivityIndicator={renderAgentActivityIndicator}
-					sessionFlyout={agentSessionFlyout}
 					sessionDrag={agentSessionDragBinding}
 					shouldReduceMotion={shouldReduceMotion}
 					usesStrokeChrome={usesCompactVisual}

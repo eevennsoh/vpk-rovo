@@ -125,8 +125,8 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 		EXPERIMENTAL_PAGE_SOURCE,
 		/<ExperimentalJiraKanban[\s\S]*agentActivityLayout=\{agentActivityLayout\}/u,
 	);
-	// Grouped chins must not steal hover for a single-session flyout. Dropping
-	// sessionFlyout on multi-agent rows is what lets AgentAssignment open.
+	// Every merged chin opens AgentAssignment, including the one-session case,
+	// so the interaction does not change when a second session attaches.
 	// Attach copy occupying the last chin also suppresses flyout and drag so
 	// the slot stays a drop target instead of a session handle.
 	assert.match(
@@ -135,16 +135,12 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 	);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const rowSessionFlyout = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionFlyout : undefined;/u,
-	);
-	assert.match(
-		AGENT_ACTIVITY_SOURCE,
 		/const rowSessionDrag = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionDrag : undefined;/u,
 	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /sessionDrag=\{rowSessionDrag\}/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = isSingleAgent \|\| sessionFlyout \? rowHandle : \(/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<AgentAssignment/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout \? \(\s*<JiraSessionFlyoutTrigger/u);
+	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout|JiraSessionFlyoutTrigger/u);
 });
 
 test("chin-row agent activity indicators use the Team EU renderer", () => {

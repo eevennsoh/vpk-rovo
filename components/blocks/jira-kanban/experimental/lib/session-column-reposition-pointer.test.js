@@ -12,12 +12,16 @@ const HOOK_SOURCE = readFileSync(
 	join(__dirname, "../components/use-session-column-reposition.ts"),
 	"utf8",
 );
+const COLUMN_SOURCE = readFileSync(
+	join(__dirname, "../components/in-flow-agent-session-column.tsx"),
+	"utf8",
+);
 const RAIL_SOURCE = readFileSync(
 	join(__dirname, "../../../agent-session-column/agent-session-column-rail.tsx"),
 	"utf8",
 );
 
-test("collapsed header, rail, and options start a move without an Expand aria-label", () => {
+test("only the collapsed options button and expanded move handle start a column move", () => {
 	assert.equal(
 		canStartSessionColumnReposition({
 			inHeader: true,
@@ -34,7 +38,7 @@ test("collapsed header, rail, and options start a move without an Expand aria-la
 			inRail: true,
 			interactiveKind: "notch",
 		}),
-		true,
+		false,
 	);
 	assert.equal(
 		canStartSessionColumnReposition({
@@ -43,7 +47,7 @@ test("collapsed header, rail, and options start a move without an Expand aria-la
 			inRail: true,
 			interactiveKind: "none",
 		}),
-		true,
+		false,
 	);
 	assert.equal(
 		canStartSessionColumnReposition({
@@ -53,6 +57,18 @@ test("collapsed header, rail, and options start a move without an Expand aria-la
 			interactiveKind: "move-handle",
 		}),
 		true,
+	);
+});
+
+test("empty column header space does not start a move", () => {
+	assert.equal(
+		canStartSessionColumnReposition({
+			inHeader: true,
+			inNotch: false,
+			inRail: false,
+			interactiveKind: "none",
+		}),
+		false,
 	);
 });
 
@@ -150,4 +166,30 @@ test("a short click stays a click; only a 6px move claims the gesture", () => {
 	assert.match(HOOK_SOURCE, /suppressClick.current = true/u);
 	assert.match(HOOK_SOURCE, /onClickCapture: \(event: React.MouseEvent<HTMLDivElement>\) => \{/u);
 	assert.match(HOOK_SOURCE, /if \(!suppressClick.current\) return/u);
+});
+
+test("unpinning a shifted session column returns it to the leading gutter", () => {
+	assert.match(
+		COLUMN_SOURCE,
+		/if \(next\.pinned\) \{\s*setIsHovered\(true\);\s*\} else \{\s*setIsHovered\(false\);\s*setIsMenuOpen\(false\);\s*\}/u,
+	);
+	assert.match(
+		HOOK_SOURCE,
+		/moveToLeadingGutter: \(\) => \{\s*placement\?\.move\(0\);\s*\}/u,
+	);
+	assert.match(
+		COLUMN_SOURCE,
+		/const handlePinnedPlacementChange = \(nextPinned: boolean\) => \{[\s\S]*?handlePinnedChange\(nextPinned\);[\s\S]*?if \(!nextPinned\) reposition\.moveToLeadingGutter\(\);[\s\S]*?\};/u,
+	);
+	assert.match(COLUMN_SOURCE, /onPinnedChange=\{handlePinnedPlacementChange\}/u);
+});
+
+test("a shifted session column follows status-column width transitions", () => {
+	assert.match(HOOK_SOURCE, /new MutationObserver\(schedulePositionSync\)/u);
+	assert.match(HOOK_SOURCE, /attributeFilter: \["data-collapsed"\]/u);
+	assert.match(HOOK_SOURCE, /root\.addEventListener\("transitionrun", handleColumnTransitionRun\)/u);
+	assert.match(HOOK_SOURCE, /root\.addEventListener\("transitionend", handleColumnTransitionEnd\)/u);
+	assert.match(HOOK_SOURCE, /root\.addEventListener\("transitioncancel", handleColumnTransitionEnd\)/u);
+	assert.match(HOOK_SOURCE, /positionFrame = requestAnimationFrame\(trackColumnPosition\)/u);
+	assert.match(HOOK_SOURCE, /cancelAnimationFrame\(positionFrame\)/u);
 });

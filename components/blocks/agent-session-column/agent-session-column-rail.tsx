@@ -592,6 +592,7 @@ export function AgentSessionColumnRail({
 	onView,
 	playIntro = false,
 	sessionDrag,
+	showUntrackedWorkFooter,
 }: Readonly<{
 	/** Subset of `newItemIds` whose arrival beat has not played yet. */
 	arrivingItemIds?: ReadonlySet<string>;
@@ -624,6 +625,7 @@ export function AgentSessionColumnRail({
 	 * take — without it the notches render exactly as before.
 	 */
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
+	showUntrackedWorkFooter?: boolean;
 }>) {
 	// One payload-aware flyout for the whole rail, exactly as Agent List does:
 	// the popup stays mounted and follows the hovered notch, so sliding down the
@@ -763,6 +765,7 @@ export function AgentSessionColumnRail({
 				onArchiveSession={flyoutActions.onArchiveSession}
 				onCreateWorkItem={flyoutActions.onCreateWorkItem}
 				onLinkWorkItem={flyoutActions.onLinkWorkItem}
+				showUntrackedWorkFooter={showUntrackedWorkFooter}
 			/>
 		</>
 	);

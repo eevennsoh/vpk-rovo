@@ -1,9 +1,10 @@
 export type PullRequestStatus = "Open" | "Merged";
 
 /**
- * Card layout. `dropdown` is the compact single-row list card used in select
- * menus. `spacious` is the original three-row dropdown/summary card (status +
- * title, GitHub branch path, author/diff footer). `flyout` is the overlay
+ * Card layout. `dropdown` is the compact two-row list card used in select
+ * menus (title + trailing status, then GitHub branch path and diff metrics).
+ * `spacious` is the three-row dropdown/summary card (title + trailing
+ * status, GitHub branch path, author/diff footer). `flyout` is the overlay
  * summary card: title + lozenge, author · time, then a divided GitHub branch
  * path and files / diff footer.
  */
@@ -25,19 +26,13 @@ export interface PullRequestProps {
 	status: PullRequestStatus;
 	/** Author shown as a circular avatar, and on the flyout as name · time. */
 	author?: PullRequestAuthor;
-	/** Owner/name path (e.g. `eevensoh/vpk-rovo`). Compact dropdown card only. */
-	repository?: string;
 	/** Source / head branch name shown before the arrow. */
 	branch?: string;
 	/** Target / base branch name shown after the arrow (e.g. `main`). */
 	targetBranch?: string;
 	additions: number;
 	deletions: number;
-	/**
-	 * Number of changed files, rendered as `N files` on spacious and flyout
-	 * cards. Ignored by the compact dropdown card, which has no room for the
-	 * metric.
-	 */
+	/** Number of changed files, rendered as `N files` on every card. */
 	filesChanged?: number;
 	/**
 	 * Absolute timestamp (ms). Reserved for callers that already track PR age;

@@ -71,6 +71,7 @@ interface ExperimentalJiraKanbanCardProps {
 	) => void;
 	/** When false, chin rows stay draggable but the dashed unlink well is omitted. */
 	showUnlinkWell?: boolean;
+	showUntrackedWorkFooter?: boolean;
 	onSubtasks?: (item: AgentSessionItem) => void;
 	selected: boolean;
 }
@@ -84,12 +85,6 @@ function getCardAssigneeAvatarShape(card: JiraKanbanCardData) {
 		return card.avatarShape;
 	}
 	return getCardAssigneeAvatarSrc(card)?.startsWith("/avatar-agent/") ? "hexagon" as const : undefined;
-}
-
-function toSessionFlyoutPriority(priority: JiraKanbanCardData["priority"]) {
-	if (priority === "major") return "high" as const;
-	if (priority === "minor") return "low" as const;
-	return "medium" as const;
 }
 
 export function ExperimentalJiraKanbanCard({
@@ -126,6 +121,7 @@ export function ExperimentalJiraKanbanCard({
 	onSubtasks,
 	selected,
 	showUnlinkWell = true,
+	showUntrackedWorkFooter,
 }: Readonly<ExperimentalJiraKanbanCardProps>) {
 	const shouldReduceMotion = useReducedMotion();
 	const proximityMotion = getJiraIssuePresenceMotion(shouldReduceMotion);
@@ -168,17 +164,6 @@ export function ExperimentalJiraKanbanCard({
 			agentActivityMode={agentActivityMode}
 			agentSessionDragControl={agentSessionDragControl}
 			agentSessionTargetPreview={{ highlighted: agentSessionTargetHighlighted }}
-			agentSessionFlyout={{
-			assignee: card.assignee
-				? { name: card.assignee.name, src: card.assignee.avatarSrc }
-				: undefined,
-			issueKey: card.code,
-			issueStatus: columnTitle,
-			issueSummary: card.title,
-			priority: toSessionFlyoutPriority(card.priority),
-			pullRequestNumber: card.pullRequestNumber,
-			pullRequestTitle: card.pullRequestPreview?.title,
-		}}
 			agentDoneRuns={card.agentDoneRuns}
 			agentSessionTransfer={canTransferAgentSession ? {
 				onLink: canLinkAgentSession
@@ -254,9 +239,10 @@ export function ExperimentalJiraKanbanCard({
 									? handleLinkWorkItem
 									: undefined}
 								onSubtasks={onSubtasks}
-							sessionDrag={canLinkAgentSession
-								? detachedSessionDrag ?? localSessionDrag
-								: undefined}
+								sessionDrag={canLinkAgentSession
+									? detachedSessionDrag ?? localSessionDrag
+									: undefined}
+								showUntrackedWorkFooter={showUntrackedWorkFooter}
 								style={{ marginTop: token("space.025") }}
 								variant="medium-detached"
 							/>
