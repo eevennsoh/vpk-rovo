@@ -539,9 +539,7 @@ function ExperimentalJiraKanbanPageContent({
 		}
 		untrackedTriage.attach(item, target);
 	};
-	// One config, both presentations. The in-flow column and the floating panel
-	// render the same `AgentSessionColumn` with the same data and handlers, so
-	// building it once is what stops them drifting as either host evolves.
+	// One config keeps the in-flow column and floating panel on the same data and handlers.
 	const agentSessionColumnConfig: AgentSessionColumnProps | undefined = showAgentSessionColumn ? {
 		capturedItemIds: capturedLooseWorkIds,
 		// Controlled so View → Agents can expand or collapse Untracked without
