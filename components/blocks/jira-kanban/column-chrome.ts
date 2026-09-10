@@ -122,8 +122,6 @@ export interface KanbanColumnChromeStyles {
 		readonly paddingInline: string;
 		readonly paddingBottom: string;
 	} | undefined;
-	/** Default well only: collapse control `pt-2`/`pb-1` (8px/4px). Empty on simple. */
-	readonly resizeButtonClassName: string;
 	readonly collapsed: KanbanCollapsedChromeStyles;
 }
 
@@ -166,7 +164,6 @@ const DEFAULT_KANBAN_COLUMN_CHROME_STYLES: KanbanColumnChromeStyles = Object.fre
 	dropIdleClassName: DEFAULT_KANBAN_DROP_IDLE_CLASS_NAME,
 	dropRingClipGutter: "",
 	dropContentPadding: undefined,
-	resizeButtonClassName: "pt-2 pb-1",
 	collapsed: DEFAULT_KANBAN_COLLAPSED_CHROME_STYLES,
 });
 
@@ -195,7 +192,6 @@ const SIMPLE_KANBAN_COLUMN_CHROME_STYLES: KanbanColumnChromeStyles = Object.free
 		paddingInline: SIMPLE_KANBAN_DROP_CONTENT_INSET,
 		paddingBottom: SIMPLE_KANBAN_DROP_CONTENT_INSET,
 	}),
-	resizeButtonClassName: "",
 	collapsed: SIMPLE_KANBAN_COLLAPSED_CHROME_STYLES,
 });
 

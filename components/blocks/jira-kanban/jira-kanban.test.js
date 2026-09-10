@@ -245,10 +245,6 @@ test("Experimental kanban default card gap and collapse padding come from the co
 	);
 	assert.match(
 		EXPERIMENTAL_SOURCE,
-		/BOARD_COLUMN_ACTION_REVEAL,\n\s+chrome\.resizeButtonClassName,/u,
-	);
-	assert.match(
-		EXPERIMENTAL_SOURCE,
 		/paddingBottom: token\("space\.100"\), \.\.\.chrome\.header/u,
 	);
 	assert.match(
@@ -256,6 +252,15 @@ test("Experimental kanban default card gap and collapse padding come from the co
 		/paddingTop=\{chrome\.header\.paddingTop \?\? paddingTop\}/u,
 	);
 	assert.doesNotMatch(EXPERIMENTAL_SOURCE, /gap: token\("space\.025"\)/u);
+});
+
+test("Experimental kanban collapse control is not padded by column chrome", () => {
+	assert.doesNotMatch(EXPERIMENTAL_SOURCE, /chrome\.resizeButtonClassName/u);
+	assert.doesNotMatch(EXPERIMENTAL_V2_SOURCE, /chrome\.resizeButtonClassName/u);
+	assert.match(
+		EXPERIMENTAL_SOURCE,
+		/BOARD_COLUMN_ACTION_REVEAL,\n\s+"group-hover\/board-column:pointer-events-auto/u,
+	);
 });
 
 test("Experimental kanban card gap matches the column gutter", () => {
