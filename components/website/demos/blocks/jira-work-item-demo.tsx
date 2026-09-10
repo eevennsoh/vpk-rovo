@@ -47,6 +47,9 @@ export function JiraWorkItemDemoExperimentalV5() {
 export function JiraWorkItemDemoExperimentalV6() {
 	return <JiraWorkItem variant="experimental-v6" initialExperimentalPreset="filled" />;
 }
+export function JiraWorkItemDemoTeamEu26() {
+	return <JiraWorkItem variant="team-eu26" initialExperimentalPreset="filled" />;
+}
 
 export function JiraWorkItemDemoExperimentalV3Empty() {
 	return <JiraWorkItem variant="experimental-v3" initialExperimentalPreset="empty" />;

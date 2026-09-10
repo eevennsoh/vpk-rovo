@@ -54,9 +54,10 @@ const INDICATORS_SOURCE = readProjectFile(
 const COMPLETED_RUNS_SOURCE = readProjectFile(
 	"components/blocks/jira-issue/completed-agent-runs.tsx",
 );
-const AGENT_ACTIVITY_SOURCE = readProjectFile(
-	"components/blocks/jira-issue/agent-activity.tsx",
-);
+const AGENT_ACTIVITY_SOURCE = [
+	readProjectFile("components/blocks/jira-issue/agent-activity.tsx"),
+	readProjectFile("components/blocks/jira-issue/agent-activity-row-presentation.tsx"),
+].join("\n");
 const TRANSFER_SOURCE = readProjectFile(
 	"components/blocks/jira-issue/agent-session-transfer.tsx",
 );
@@ -125,8 +126,8 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 		EXPERIMENTAL_PAGE_SOURCE,
 		/<ExperimentalJiraKanban[\s\S]*agentActivityLayout=\{agentActivityLayout\}/u,
 	);
-	// Grouped chins must not steal hover for a single-session flyout. Dropping
-	// sessionFlyout on multi-agent rows is what lets AgentAssignment open.
+	// Every merged chin opens AgentAssignment, including the one-session case,
+	// so the interaction does not change when a second session attaches.
 	// Attach copy occupying the last chin also suppresses flyout and drag so
 	// the slot stays a drop target instead of a session handle.
 	assert.match(
@@ -135,16 +136,12 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 	);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const rowSessionFlyout = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionFlyout : undefined;/u,
-	);
-	assert.match(
-		AGENT_ACTIVITY_SOURCE,
 		/const rowSessionDrag = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionDrag : undefined;/u,
 	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /sessionDrag=\{rowSessionDrag\}/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = isSingleAgent \|\| sessionFlyout \? rowHandle : \(/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<JiraIssueAgentAssignmentHandle/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout \? \(\s*<JiraSessionFlyoutTrigger/u);
+	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout|JiraSessionFlyoutTrigger/u);
 });
 
 test("chin-row agent activity indicators use the Team EU renderer", () => {
@@ -262,7 +259,11 @@ test("the board reveals compact magnetic create targets that expand and arm duri
 	);
 	assert.match(
 		JIRA_DROPZONE_SOURCE,
-		/selected[\s\S]*\? "border-border-selected bg-bg-selected text-text-selected"[\s\S]*: "border-border bg-surface text-text-subtlest"/u,
+		/selected\s*\n\t\t\t\t\t\? "border-border-selected bg-bg-selected text-text-selected"\n\t\t\t\t\t: "border-border bg-surface text-text-subtlest"/u,
+	);
+	assert.match(
+		JIRA_DROPZONE_SOURCE,
+		/marching \? JIRA_DROPZONE_ANTS_CLASS : null/u,
 	);
 	assert.doesNotMatch(
 		JIRA_DROPZONE_SOURCE,
@@ -412,7 +413,7 @@ test("Team EU returns unlinked sessions to Untracked without parking them on sta
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /showUnlinkWell = true,/u);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const showUnlinkControl = Boolean\(sessionDrag\?\.onUnlink\) && !isDraggedOut;/u,
+		/const showUnlinkControl = iconScale !== "comfortable"\s*\n\s*&& Boolean\(sessionDrag\?\.onUnlink\)\s*\n\s*&& !isDraggedOut;/u,
 	);
 	assert.match(
 		TRANSFER_SOURCE,
@@ -664,7 +665,7 @@ test("the Work items header switches between Board and List views with their ico
 	assert.ok(modeToggleIndex > 0 && modeToggleIndex < inlineMoreIndex);
 	assert.match(
 		EXPERIMENTAL_HEADER_SOURCE,
-		/\{filterControl\}\s*<BoardViewMenu[\s\S]*?\{modeToggle\}[\s\S]*?moreControlsPlacement === "inline"/u,
+		/\{filterControl\}[\s\S]*?<BoardViewMenu[\s\S]*?\{modeToggle\}[\s\S]*?moreControlsPlacement === "inline"/u,
 	);
 	assert.doesNotMatch(
 		EXPERIMENTAL_HEADER_SOURCE,

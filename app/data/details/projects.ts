@@ -82,6 +82,14 @@ export const PROJECT_DETAILS: Record<string, ComponentDetail> = {
 			previewContentWidth: "full",
 		},
 	},
+	"jira-team-eu26": {
+		description: "A Jira Team EU26 gallery with a Work Item stage for the software delivery story.",
+		importStatement: `import JiraTeamEu26Page from "@/components/projects/jira-team-eu26";`,
+		demoLayout: {
+			previewHeight: "fixed",
+			previewContentWidth: "full",
+		},
+	},
 	"rovo": {
 		description: "A Vercel-style AI chat workspace with persistent thread history, local attachments, artifact editing, and Rovo-backed streaming.",
 		importStatement: `import Rovo from "@/components/projects/rovo";`,

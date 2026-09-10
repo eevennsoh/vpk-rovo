@@ -34,6 +34,7 @@ interface AppLayoutProps {
 	embeddedHeight?: "parent" | "viewport";
 	hideFloatingRovo?: boolean;
 	hideRovoAction?: boolean;
+	settingsIconOnly?: boolean;
 	onChatSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
@@ -138,6 +139,7 @@ export default function AppLayout({
 	embeddedHeight = "viewport",
 	hideFloatingRovo,
 	hideRovoAction = false,
+	settingsIconOnly = false,
 	onChatSurfaceSwitch,
 	chatContextBar,
 	chatGreeting,
@@ -290,6 +292,7 @@ export default function AppLayout({
 			searchAlignment={topNavigationSearchAlignment}
 			variant="shell"
 			hideRovoAction={shouldHideRovoAction}
+			settingsIconOnly={settingsIconOnly}
 			sidebar={(slot) => (
 				<Sidebar
 					product={product}

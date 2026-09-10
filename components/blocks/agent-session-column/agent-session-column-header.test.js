@@ -72,7 +72,7 @@ test("the selecting header omits collapse so Clear and Deselect all can exit", (
 
 test("an open or selected filter reveals the whole header action cluster", () => {
 	assert.match(HEADER_SOURCE, /hasActiveFilters\?: boolean/u);
-	assert.match(HEADER_SOURCE, /const revealHeaderActions = hasActiveFilters && !isSelecting/u);
+	assert.match(HEADER_SOURCE, /const revealHeaderActions = \(hasActiveFilters \|\| pinned\) && !isSelecting/u);
 	assert.match(HEADER_SOURCE, /const HEADER_ACTIONS_VISIBLE/u);
 	assert.match(HEADER_SOURCE, /const HEADER_ACTIONS_REVEAL/u);
 	assert.doesNotMatch(HEADER_SOURCE, /HEADER_ACTIONS_PINNED/u);
@@ -83,7 +83,7 @@ test("an open or selected filter reveals the whole header action cluster", () =>
 	);
 	assert.match(
 		HEADER_SOURCE,
-		/className=\{headerActionsClass\}>\s*\{filter\}/u,
+		/filter === undefined \? null : \(\s*<div className=\{headerActionsClass\}>\s*\{filter\}/u,
 	);
 	assert.match(
 		HEADER_SOURCE,
@@ -95,4 +95,32 @@ test("an open or selected filter reveals the whole header action cluster", () =>
 	assert.doesNotMatch(HEADER_SOURCE, /group-hover\/session-column:w-12/u);
 	assert.match(HEADER_SOURCE, /flex-nowrap/u);
 	assert.match(HEADER_SOURCE, /motion-reduce:transition-none/u);
+});
+
+test("omitting filter or overflow does not leave an empty hover-reveal slot", () => {
+	assert.match(HEADER_SOURCE, /filter\?: ReactElement/u);
+	assert.match(HEADER_SOURCE, /overflow\?: ReactElement/u);
+	assert.match(
+		HEADER_SOURCE,
+		/filter === undefined \? null : \(\s*<div className=\{headerActionsClass\}>\s*\{filter\}/u,
+	);
+	assert.match(HEADER_SOURCE, /overflow === undefined \? null : overflow/u);
+	assert.match(HEADER_SOURCE, /<CollapseButton label=\{collapseLabel\} onCollapse=\{onCollapse\} \/>/u);
+});
+
+test("the pin control renders only when the host supplies onPinToggle", () => {
+	assert.match(HEADER_SOURCE, /onPinToggle\?: \(\) => void;/u);
+	assert.match(HEADER_SOURCE, /pinLabel\?: string;/u);
+	assert.match(
+		HEADER_SOURCE,
+		/const pinControl = onPinToggle === undefined \|\| pinLabel === undefined\s*\? null/u,
+	);
+	assert.match(HEADER_SOURCE, /aria-label=\{label\}/u);
+	assert.match(HEADER_SOURCE, /data-agent-session-column-pin=""/u);
+	assert.match(HEADER_SOURCE, /\{pinned \? "Unpin" : "Pin"\}/u);
+	assert.match(HEADER_SOURCE, /const PinGlyph = pinned \? PinFilledIcon : PinIcon;/u);
+	assert.match(HEADER_SOURCE, /<PinGlyph label="" size="small" \/>/u);
+	const panelChrome = HEADER_SOURCE.slice(HEADER_SOURCE.indexOf("function renderPanelChrome"));
+	assert.doesNotMatch(panelChrome, /onPinToggle/u);
+	assert.doesNotMatch(panelChrome, /PinButton/u);
 });

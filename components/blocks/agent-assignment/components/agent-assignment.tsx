@@ -55,11 +55,15 @@ export interface AgentAssignmentAgent extends AgentSelectorAgent {
 export interface AgentAssignmentProps {
 	agents: readonly AgentSelectorAgent[];
 	assignedAgents: readonly AgentAssignmentAgent[];
+	/** Whether assigned rows expose Archive. Disable when the owning state model
+	 * cannot remove a session-backed assignment without immediately restoring it. */
+	allowArchive?: boolean;
 	className?: string;
 	defaultPinnedAgentIds?: readonly string[];
 	maxVisibleAgents?: number;
 	onAgentAssign?: (agent: AgentSelectorAgent) => void;
-	onAssignedAgentIdsChange: (agentIds: readonly string[]) => void;
+	/** Enables assignment and archive controls. Omit for a display-only session list. */
+	onAssignedAgentIdsChange?: (agentIds: readonly string[]) => void;
 	onAssignedAgentSelect: (agent: AgentAssignmentAgent) => void;
 	onBrowseAgents?: () => void;
 	onContinueExistingSession?: (agent: AgentSelectorAgent) => void;
@@ -83,6 +87,7 @@ export interface AgentAssignmentProps {
 export function AgentAssignment({
 	agents,
 	assignedAgents,
+	allowArchive = true,
 	className,
 	defaultPinnedAgentIds = [],
 	maxVisibleAgents = 4,
@@ -198,7 +203,7 @@ export function AgentAssignment({
 
 	const ensureAssigned = (agent: AgentSelectorAgent) => {
 		if (!assignedAgentIds.includes(agent.id)) {
-			onAssignedAgentIdsChange([...assignedAgentIds, agent.id]);
+			onAssignedAgentIdsChange?.([...assignedAgentIds, agent.id]);
 		}
 	};
 
@@ -234,6 +239,9 @@ export function AgentAssignment({
 	};
 
 	const handleAgentToggle = (agentId: string) => {
+		if (!onAssignedAgentIdsChange) {
+			return;
+		}
 		const agent = agents.find((candidate) => candidate.id === agentId);
 		if (!agent) {
 			return;
@@ -260,7 +268,7 @@ export function AgentAssignment({
 	};
 
 	const handleArchiveAgent = (agent: AgentAssignmentAgent) => {
-		onAssignedAgentIdsChange(assignedAgentIds.filter((agentId) => agentId !== agent.id));
+		onAssignedAgentIdsChange?.(assignedAgentIds.filter((agentId) => agentId !== agent.id));
 	};
 
 	const handleAssignedAgentSelect = (agent: AgentAssignmentAgent) => {
@@ -271,8 +279,8 @@ export function AgentAssignment({
 
 	const menu = effectiveView === "assigned" ? (
 		<AssignedAgentsMenu
-			onAddAgent={handleShowSelector}
-			onArchiveAgent={handleArchiveAgent}
+			onAddAgent={onAssignedAgentIdsChange ? handleShowSelector : undefined}
+			onArchiveAgent={allowArchive && onAssignedAgentIdsChange ? handleArchiveAgent : undefined}
 			onSelectAgent={handleAssignedAgentSelect}
 			rows={assignedAgents}
 		/>

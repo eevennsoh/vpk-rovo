@@ -7,6 +7,7 @@ import MergeFailureIcon from "@atlaskit/icon/core/merge-failure";
 import MergeSuccessIcon from "@atlaskit/icon/core/merge-success";
 import PriorityTrivialIcon from "@atlaskit/icon/core/priority-trivial";
 import PullRequestIcon from "@atlaskit/icon/core/pull-request";
+import QuestionCircleIcon from "@atlaskit/icon/core/question-circle";
 import ScreenIcon from "@atlaskit/icon/core/screen";
 import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
 import CloudIcon from "@atlaskit/icon-lab/core/cloud";
@@ -123,6 +124,71 @@ function MenuLeadingIcon({ icon }: Readonly<{ icon: StateIcon }>) {
 			className={MENU_LEADING_ICON_CLASS_NAME}
 			render={<icon.glyph color={icon.color} label="" size="small" />}
 		/>
+	);
+}
+
+interface BoardNeedsInputButtonProps {
+	count: number;
+	agentFilterId?: BoardAgentFilterId | null;
+	onAgentFilterIdChange?: (agentFilterId: BoardAgentFilterId | null) => void;
+}
+
+export function BoardNeedsInputButton({
+	count,
+	agentFilterId = null,
+	onAgentFilterIdChange,
+}: Readonly<BoardNeedsInputButtonProps>) {
+	const selected = agentFilterId === "needs-input";
+	const agentLabel = count === 1 ? "agent" : "agents";
+
+	return (
+		<Button
+			aria-label={`Needs input: ${count} ${agentLabel}`}
+			aria-pressed={selected}
+			onClick={() => onAgentFilterIdChange?.(selected ? null : "needs-input")}
+			variant="outline"
+		>
+			<Icon data-icon="inline-start" render={<QuestionCircleIcon label="" />} />
+			Needs input
+			<Badge max={false} variant="information">{count}</Badge>
+		</Button>
+	);
+}
+
+export function BoardGroupByMenu() {
+	const [groupByFilterId, setGroupByFilterId] = useState<BoardGroupOptionId | null>(null);
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				render={<Button aria-label="Group by" variant="outline" />}
+			>
+				<Icon data-icon="inline-start" render={<GroupIcon label="" />} />
+				Group by
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" className="min-w-56">
+				<DropdownMenuRadioGroup
+					aria-label="Group by"
+					onValueChange={(id) => {
+						const option = BOARD_GROUP_OPTIONS.find((candidate) => candidate.id === id);
+						if (option) {
+							setGroupByFilterId(option.id);
+						}
+					}}
+					value={groupByFilterId ?? ""}
+				>
+					{BOARD_GROUP_OPTIONS.map((option) => (
+						<DropdownMenuRadioItem
+							indicatorPlacement="end"
+							key={option.id}
+							value={option.id}
+						>
+							{option.label}
+						</DropdownMenuRadioItem>
+					))}
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 

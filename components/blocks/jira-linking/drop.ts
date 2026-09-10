@@ -12,6 +12,7 @@ import {
 	JIRA_DROPZONE_REDUCED_MOTION_PROFILE,
 	// @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
 } from "../jira-dropzone/lib/jira-dropzone-motion.ts";
+import type { AgentListInvoker } from "@/components/blocks/agent-list";
 import type { ThirdPartyLogoName } from "@/components/ui/data/logo-third-party-data";
 
 export interface JiraLinkingPoint {
@@ -23,6 +24,8 @@ export interface JiraLinkingDropMember {
 	readonly avatarSrc?: string;
 	readonly brandName?: ThirdPartyLogoName;
 	readonly id: string;
+	/** Human who invoked the session, so the flight chip keeps the face. */
+	readonly invoker?: AgentListInvoker;
 	readonly name: string;
 	readonly vpkLogo?: "rovo";
 }
@@ -40,7 +43,7 @@ export interface JiraLinkingDrop {
 	readonly playback?: JiraLinkingDropPlayback;
 }
 
-export type JiraLinkingDropTravel = "arc" | "none";
+export type JiraLinkingDropTravel = "arc" | "linear" | "none";
 
 export interface JiraLinkingDropProfile {
 	readonly arcPeak: number;
@@ -67,8 +70,10 @@ export interface JiraLinkingFlight {
 }
 
 /**
- * The create-well flight recipe, plus `direction: "automatic"` so Motion picks
- * a stable screen-space bulge instead of locking clockwise or counter-clockwise.
+ * The create-well flight recipe, plus `direction: "automatic"` so an arc
+ * override still lets Motion pick a stable screen-space bulge instead of
+ * locking clockwise or counter-clockwise. Default travel follows the well
+ * (straight drop); hosts opt into `arc` the same way the catalog does.
  */
 export const JIRA_LINKING_FULL_DROP_PROFILE: JiraLinkingDropProfile = {
 	arcPeak: JIRA_DROPZONE_FULL_MOTION_PROFILE.arcPeak,
@@ -150,6 +155,24 @@ export function flightsFromLinkingDrop(
 			return exhaustive;
 		}
 	}
+}
+
+/**
+ * How long every flight in a drop needs to finish, in ms.
+ *
+ * The last chip off the line is the one the host is waiting for, so this is the
+ * largest stagger delay plus one flight's duration. A host that hangs work off
+ * `onSettled` uses this as the deadline it falls back to: the flights are
+ * decoration, and a decoration that never reports back must not be able to
+ * strand the real acknowledgement behind it.
+ */
+export function resolveJiraLinkingDropSettleMs(
+	drop: Readonly<JiraLinkingDrop>,
+	profile: JiraLinkingDropProfile,
+): number {
+	const flights = flightsFromLinkingDrop(drop, profile);
+	const lastDelayMs = flights.reduce((latest, flight) => Math.max(latest, flight.delayMs), 0);
+	return lastDelayMs + profile.durationMs;
 }
 
 function linkingFlightKey(

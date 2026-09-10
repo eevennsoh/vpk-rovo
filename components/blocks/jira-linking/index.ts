@@ -1,6 +1,7 @@
 /**
- * Jira linking — a WebGL2 metaball field that fuses a travelling element into
- * the thing it is being linked to.
+ * Jira linking — two decorative approaches to linking a dragged agent session.
+ * Fuse is the original WebGL2 metaball field. Glow reproduces the reference
+ * chip collapse, lead-avatar halo, and contextual card-backdrop pulse.
  *
  * Three beats: the field fades in as `nearness` rises, the two silhouettes neck
  * together through a signed-distance smooth union, and on release subjects fly
@@ -9,10 +10,15 @@
  * subjects marble together instead of averaging to grey.
  *
  * The host owns the gesture: this component only draws. It never intercepts a
- * pointer, and it unmounts entirely under `prefers-reduced-motion`.
+ * pointer; reduced motion suppresses decoration and Glow settles immediately.
  */
 
-export { JiraLinking, type JiraLinkingProps } from "./jira-linking";
+export { JiraLinking, type JiraLinkingProps, type JiraLinkingVariant } from "./jira-linking";
+export {
+	JIRA_LINKING_GLOW_DROP_DURATION_MS,
+	JIRA_LINKING_GLOW_FADE_DURATION_MS,
+	resolveJiraLinkingGlowSettleMs,
+} from "./glow-motion";
 export {
 	JIRA_LINKING_DEFAULT_RANGE_PX,
 	JIRA_LINKING_FUSE_DURATION_MS,
@@ -34,6 +40,7 @@ export {
 	resolveJiraLinkingArcOptions,
 	resolveJiraLinkingDropPlayback,
 	resolveJiraLinkingDropProfile,
+	resolveJiraLinkingDropSettleMs,
 	type JiraLinkingArcDirection,
 	type JiraLinkingArcOptions,
 	type JiraLinkingDrop,
@@ -50,6 +57,7 @@ export {
 } from "./use-jira-linking-atlas";
 export {
 	JIRA_LINKING_DEFAULT_SURFACE_VARIABLE,
+	resolveJiraLinkingReleaseSettleMs,
 	useJiraLinkingFrame,
 	type JiraLinkingFrameSource,
 	type JiraLinkingRelease,

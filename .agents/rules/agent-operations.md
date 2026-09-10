@@ -1,7 +1,5 @@
 ---
 description: Skills, parallel work model, agent teams, behavioral rules
-globs: .agents/skills/**, .agents/agents/**
-alwaysApply: false
 ---
 
 # Agent Operations

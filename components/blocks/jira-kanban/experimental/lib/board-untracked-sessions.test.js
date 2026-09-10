@@ -9,6 +9,7 @@ const {
 	groupBoardUntrackedSessions,
 	resolveBoardUntrackedIssueKey,
 	resolveHoveredBoardIssueKey,
+	resolveSessionBoardLinkHoverPreview,
 	resolveVisibleFocusedIssueKey,
 	selectBoardUntrackedSessions,
 	scrollBoardIssueIntoView,
@@ -225,6 +226,70 @@ test("resolveHoveredBoardIssueKey maps only the hovered suggested session onto a
 			() => "PAY-121",
 		),
 		"PAY-121",
+	);
+});
+
+test("resolveSessionBoardLinkHoverPreview lights the suggested card and session twin when enabled", () => {
+	const boardColumns = [
+		{ cards: [{ code: "PAY-101" }, { code: "PAY-121" }] },
+	];
+	const sessions = [
+		session("lw-scope-thread", "PAY-101"),
+		session("lw-kickoff-killswitch-session", "PAY-121"),
+	];
+
+	assert.deepEqual(
+		resolveSessionBoardLinkHoverPreview({
+			boardColumns,
+			columnSessions: sessions,
+			enabled: true,
+			hoveredColumnSessionId: "lw-kickoff-killswitch-session",
+			hoveredSessionId: null,
+			proximityHighlightedSessionId: null,
+		}),
+		{
+			highlightedSessionId: "lw-kickoff-killswitch-session",
+			hoveredIssueKey: "PAY-121",
+		},
+	);
+	assert.deepEqual(
+		resolveSessionBoardLinkHoverPreview({
+			boardColumns,
+			enabled: true,
+			hoveredColumnSessionId: null,
+			hoveredSessionId: null,
+			proximityHighlightedSessionId: "lw-scope-thread",
+			proximityHighlightedWorkItemKey: "PAY-101",
+			untrackedSessions: sessions,
+		}),
+		{
+			highlightedSessionId: "lw-scope-thread",
+			hoveredIssueKey: "PAY-101",
+		},
+	);
+});
+
+test("resolveSessionBoardLinkHoverPreview suppresses suggested-link hover when disabled", () => {
+	const boardColumns = [
+		{ cards: [{ code: "PAY-101" }] },
+	];
+	const sessions = [session("lw-scope-thread", "PAY-101")];
+
+	assert.deepEqual(
+		resolveSessionBoardLinkHoverPreview({
+			boardColumns,
+			columnSessions: sessions,
+			enabled: false,
+			hoveredColumnSessionId: "lw-scope-thread",
+			hoveredSessionId: "lw-scope-thread",
+			proximityHighlightedSessionId: "lw-scope-thread",
+			proximityHighlightedWorkItemKey: "PAY-101",
+			untrackedSessions: sessions,
+		}),
+		{
+			highlightedSessionId: null,
+			hoveredIssueKey: null,
+		},
 	);
 });
 

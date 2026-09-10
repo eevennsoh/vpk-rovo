@@ -357,19 +357,12 @@ async function waitForPublicUrl(sessionName, run, {
 
 async function startTunnel({
 	targetUrl = DEFAULT_TARGET_URL,
-	confirmPublic = false,
 	run = createRunner(),
 	resolveTarget = resolvePortlessTarget,
 	sleep = delay,
 	waitForUrl = waitForPublicUrl,
 	readFile = (filePath) => fs.readFileSync(filePath, "utf8"),
 } = {}) {
-	if (!confirmPublic) {
-		throw new Error(
-			"Public tunnel not started. Confirm the prototype contains only synthetic or fake data, then retry with --confirm-public.",
-		);
-	}
-
 	const target = await resolveTarget({ targetUrl });
 	assertTunnelDevOrigins({
 		configPath: nextConfigPathForTarget(target),
@@ -464,24 +457,25 @@ function parseCliArguments(argv) {
 	const urlOnlyStart = typeof firstArgument === "string" && /^https?:\/\//iu.test(firstArgument);
 	const command = urlOnlyStart ? "start" : firstArgument ?? "start";
 	const rest = urlOnlyStart ? argv : argv.slice(1);
-	const confirmPublic = rest.includes("--confirm-public");
+	// Keep the former confirmation flag as a no-op so existing shell history and
+	// scripts continue to work while the simpler command becomes canonical.
 	const positional = rest.filter((value) => value !== "--confirm-public");
 	if (!["resolve", "start", "status", "stop"].includes(command)) {
-		throw new Error("Usage: vpk-tunnel.js <resolve|start|status|stop> [Portless URL] [--confirm-public]");
+		throw new Error("Usage: vpk-tunnel <resolve|start|status|stop> [Portless URL]");
 	}
 	if (positional.length > 1) {
 		throw new Error("Pass at most one Portless URL.");
 	}
-	return { command, confirmPublic, targetUrl: positional[0] ?? DEFAULT_TARGET_URL };
+	return { command, targetUrl: positional[0] ?? DEFAULT_TARGET_URL };
 }
 
 async function main(argv = process.argv.slice(2)) {
-	const { command, confirmPublic, targetUrl } = parseCliArguments(argv);
+	const { command, targetUrl } = parseCliArguments(argv);
 	let result;
 	if (command === "resolve") {
 		result = await resolvePortlessTarget({ targetUrl });
 	} else if (command === "start") {
-		result = await startTunnel({ confirmPublic, targetUrl });
+		result = await startTunnel({ targetUrl });
 	} else if (command === "status") {
 		result = statusTunnel({ targetUrl });
 	} else {

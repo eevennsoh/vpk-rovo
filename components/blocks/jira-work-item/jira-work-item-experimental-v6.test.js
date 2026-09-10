@@ -75,7 +75,7 @@ test("experimental v6 owns the TeamEU VITA-1 reference content and geometry", ()
 
 	const composerSource = readBlockFile("experimental-v6/components/activity-composer.tsx");
 	assert.match(composerSource, /Add a comment, @mention or \/ for actions/u);
-	assert.match(composerSource, /Needs input/u);
+	assert.doesNotMatch(composerSource, /Needs input|AiAgentIcon/u);
 });
 
 test("experimental v6 is isolated from v1 and v2", () => {
@@ -629,7 +629,7 @@ test("the v5 assigned-agents menu lists live agent state and ends in an Assign a
 	);
 	assert.match(
 		menuSource,
-		/inlineMetadata: getAssignedAgentHoverByline\(row, statusKind, rowIndex\),[\s\S]*hoverActions: \{[\s\S]*primaryLabel: "View"[\s\S]*secondaryLabel: "Archive"/u,
+		/inlineMetadata: getAssignedAgentHoverByline\(row, statusKind, rowIndex\),[\s\S]*hoverActions: onArchiveAgent \? \{[\s\S]*primaryLabel: "View"[\s\S]*secondaryLabel: "Archive"/u,
 	);
 	assert.match(
 		detailsEditorsSource,

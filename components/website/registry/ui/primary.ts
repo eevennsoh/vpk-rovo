@@ -72,11 +72,17 @@ export const UI_PRIMARY_DEMOS: Record<string, ComponentType> = {
 	}),
 	popover: dynamic(() => import("../../demos/ui/popover-demo"), { ssr: false }),
 	progress: dynamic(() => import("../../demos/ui/progress-demo"), { ssr: false }),
+	questionnaire: dynamic(() => import("../../demos/ui/questionnaire-demo"), {
+		ssr: false,
+	}),
 	"radio-group": dynamic(() => import("../../demos/ui/radio-group-demo"), {
 		ssr: false,
 	}),
 	resizable: dynamic(() => import("../../demos/ui/resizable-demo"), { ssr: false }),
 	"scroll-area": dynamic(() => import("../../demos/ui/scroll-area-demo"), {
+		ssr: false,
+	}),
+	"scroll-fade": dynamic(() => import("../../demos/ui/scroll-fade-demo"), {
 		ssr: false,
 	}),
 	select: dynamic(() => import("../../demos/ui/select-demo"), { ssr: false }),

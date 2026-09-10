@@ -1,230 +1,88 @@
 "use client";
 
-import type { MotionProps, Transition } from "motion/react";
-import type { CSSProperties, ElementType, JSX } from "react";
+import type { CSSProperties, ElementType, HTMLAttributes } from "react";
 
-import { resolveWaveHighlightColor } from "@/components/ui-custom/lib/shimmer-colors";
 import { cn } from "@/lib/utils";
-import { motion, useReducedMotion } from "motion/react";
-import { memo, useMemo } from "react";
+import { memo } from "react";
 
-type MotionHTMLProps = MotionProps & Record<string, unknown>;
-
-// Cache motion components at module level to avoid creating during render
-const motionComponentCache = new Map<
-  keyof JSX.IntrinsicElements,
-  React.ComponentType<MotionHTMLProps>
->();
-
-const getMotionComponent = (element: keyof JSX.IntrinsicElements) => {
-  let component = motionComponentCache.get(element);
-  if (!component) {
-    component = motion.create(element);
-    motionComponentCache.set(element, component);
-  }
-  return component;
-};
-
-const WAVE_REPEAT_DELAY_FACTOR = 0.05;
-const DEFAULT_SHIMMER_DURATION = 2;
-const DEFAULT_SHIMMER_SPREAD = 2;
-const DEFAULT_WAVE_DURATION = 1;
-const DEFAULT_WAVE_SPREAD = 1;
-const DEFAULT_WAVE_Z_DISTANCE = 10;
-const DEFAULT_WAVE_X_DISTANCE = 2;
-const DEFAULT_WAVE_Y_DISTANCE = -2;
-const DEFAULT_WAVE_SCALE_DISTANCE = 1.1;
-const DEFAULT_WAVE_ROTATE_Y_DISTANCE = 10;
-const DEFAULT_WAVE_HIGHLIGHT_OPACITY = 0.88;
-
-export interface TextShimmerProps {
+export interface ShimmerProps
+	extends Omit<HTMLAttributes<HTMLElement>, "children"> {
 	children: string;
 	as?: ElementType;
 	className?: string;
+	/** Seconds for one sweep. Omit to use the utility default (2s). */
 	duration?: number;
+	/**
+	 * Highlight band width, as a multiplier of the text length (the resolved
+	 * width is `children.length * spread` pixels). Omit to use the utility
+	 * default (`3ch + 40px`).
+	 */
 	spread?: number;
-	wave?: boolean;
-	zDistance?: number;
-	xDistance?: number;
-	yDistance?: number;
-	scaleDistance?: number;
-	rotateYDistance?: number;
-	transition?: Transition;
+	/**
+	 * Resting text colour. The utility derives both the gradient base and its
+	 * highlight from `currentColor`, so this sets `color` rather than a bespoke
+	 * variable. Defaults to `text-muted-foreground`.
+	 */
 	baseColor?: string;
-	baseGradientColor?: string | readonly string[];
-	initialBackgroundPosition?: string;
 }
 
+/**
+ * Gradient sweep across text, for loading and in-progress states.
+ *
+ * Rendering is the `shimmer` utility from `shadcn/tailwind.css` — pure CSS, no
+ * Motion. `duration`, `spread`, and `baseColor` are overrides: pass none and the
+ * utility's own defaults apply, which also leaves the class modifiers free.
+ * Anything the utility exposes can be layered through `className`:
+ *
+ * ```tsx
+ * <Shimmer className="shimmer-color-blue-500/60">Generating…</Shimmer>
+ * <Shimmer className="shimmer-angle-45 shimmer-once">Done.</Shimmer>
+ * <Shimmer className="md:shimmer-none">Quiet on desktop</Shimmer>
+ * ```
+ *
+ * Reduced motion is handled by the utility itself, which drops the animation
+ * and restores the text fill — no guard needed at the call site.
+ *
+ * For the per-character 3D wave, use `ShimmerWave`. It is a separate component,
+ * not a mode of this one; the two share no rendering.
+ */
 const ShimmerComponent = ({
 	children,
 	as: Component = "p",
 	className,
 	duration,
 	spread,
-	wave = false,
-	zDistance = DEFAULT_WAVE_Z_DISTANCE,
-	xDistance = DEFAULT_WAVE_X_DISTANCE,
-	yDistance = DEFAULT_WAVE_Y_DISTANCE,
-	scaleDistance = DEFAULT_WAVE_SCALE_DISTANCE,
-	rotateYDistance = DEFAULT_WAVE_ROTATE_Y_DISTANCE,
-	transition,
 	baseColor,
-	baseGradientColor,
-	initialBackgroundPosition,
-}: TextShimmerProps) => {
-	const MotionComponent = getMotionComponent(
-		Component as keyof JSX.IntrinsicElements
-	);
-	const shouldReduceMotion = useReducedMotion();
-	const isWaveEnabled = wave && !shouldReduceMotion && children.length > 0;
-	const resolvedDuration =
-		duration ?? (isWaveEnabled ? DEFAULT_WAVE_DURATION : DEFAULT_SHIMMER_DURATION);
-	const resolvedSpread =
-		spread ?? (isWaveEnabled ? DEFAULT_WAVE_SPREAD : DEFAULT_SHIMMER_SPREAD);
-	const dynamicSpread = useMemo(
-		() => (children?.length ?? 0) * resolvedSpread,
-		[children, resolvedSpread]
-	);
-	const characters = useMemo(
-		() => (isWaveEnabled ? children.split("") : []),
-		[children, isWaveEnabled]
-	);
-	const repeatDelay = useMemo(
-		() =>
-			(characters.length * WAVE_REPEAT_DELAY_FACTOR) /
-			Math.max(resolvedSpread, 1),
-		[characters.length, resolvedSpread]
-	);
-	const resolvedBaseColor = baseColor ?? "var(--color-muted-foreground)";
-	const resolvedBaseGradientColor = useMemo(
-		() =>
-			characters.map((_, index) =>
-				resolveWaveHighlightColor(baseGradientColor, index, characters.length)
-			),
-		[baseGradientColor, characters]
-	);
-	const resolvedInitialBackgroundPosition = initialBackgroundPosition ?? "100% center";
+	style: styleProp,
+	...props
+}: ShimmerProps) => {
+	const style: CSSProperties = { ...styleProp };
 
-	if (isWaveEnabled) {
-		return (
-			<MotionComponent
-				className={cn(
-					"relative inline-block overflow-visible [perspective:500px]",
-					className,
-					"overflow-visible"
-				)}
-				style={
-					{
-						"--base-color": resolvedBaseColor,
-						"--base-gradient-color": resolveWaveHighlightColor(
-							baseGradientColor,
-							0,
-							Math.max(characters.length, 1)
-						),
-					} as CSSProperties
-				}
-			>
-				<span className="inline-flex items-baseline whitespace-pre [transform-style:preserve-3d]">
-					{characters.map((character, index) => {
-						const delay =
-							(index * resolvedDuration * (1 / Math.max(resolvedSpread, 1))) /
-							Math.max(characters.length, 1);
-						const renderedCharacter = character === " " ? "\u00A0" : character;
-						if (character === " ") {
-							return (
-								<span
-									key={`${character}-${index}`}
-									className="inline-block whitespace-pre [color:var(--base-color)]"
-								>
-									{renderedCharacter}
-								</span>
-							);
-						}
-						const waveTransition = {
-							delay,
-							duration: resolvedDuration,
-							ease: "easeInOut",
-							repeat: Number.POSITIVE_INFINITY,
-							repeatDelay,
-							...transition,
-						} satisfies Transition;
-
-							return (
-								<motion.span
-									key={`${character}-${index}`}
-									animate={{
-										rotateY: [0, rotateYDistance, 0],
-										scale: [1, scaleDistance, 1],
-										translateX: [0, xDistance, 0],
-										translateY: [0, yDistance, 0],
-										translateZ: [0, zDistance, 0],
-									}}
-									className="relative inline-block whitespace-pre transform-gpu [backface-visibility:hidden] [transform-origin:50%_100%] [transform-style:preserve-3d] [will-change:transform]"
-								initial={{
-									rotateY: 0,
-									scale: 1,
-									translateX: 0,
-									translateY: 0,
-									translateZ: 0,
-								}}
-								transition={waveTransition}
-							>
-								<span className="[color:var(--base-color)]">
-									{renderedCharacter}
-								</span>
-								<motion.span
-									aria-hidden="true"
-									animate={{ opacity: [0, DEFAULT_WAVE_HIGHLIGHT_OPACITY, 0] }}
-									className="pointer-events-none absolute inset-0 whitespace-pre"
-									initial={{
-										opacity: 0,
-									}}
-									style={{
-										color:
-											resolvedBaseGradientColor[index] ??
-											"var(--base-gradient-color)",
-									}}
-									transition={waveTransition}
-								>
-									{renderedCharacter}
-								</motion.span>
-							</motion.span>
-						);
-					})}
-				</span>
-			</MotionComponent>
-		);
+	if (duration !== undefined) {
+		(style as Record<string, string>)["--shimmer-duration"] = `${duration}s`;
 	}
 
-	if (shouldReduceMotion) {
-		return (
-			<MotionComponent
-				className={cn("relative inline-block [color:var(--color-muted-foreground)]", className)}
-			>
-				{children}
-			</MotionComponent>
-		);
+	if (spread !== undefined) {
+		(style as Record<string, string>)["--shimmer-spread"] =
+			`${children.length * spread}px`;
 	}
+
+	if (baseColor !== undefined) {
+		style.color = baseColor;
+	}
+
+	const PolymorphicShimmer = Component as ElementType<
+		HTMLAttributes<HTMLElement>
+	>;
 
 	return (
-		<MotionComponent
-			className={cn(
-				"shimmer-sweep-motion relative inline-block bg-[length:250%_100%,auto] bg-clip-text text-transparent",
-				"[--bg:linear-gradient(90deg,#0000_calc(50%-var(--spread)),var(--color-background),#0000_calc(50%+var(--spread)))] [background-repeat:no-repeat,padding-box]",
-				className
-			)}
-			style={
-				{
-					"--spread": `${dynamicSpread}px`,
-					"--text-shimmer-duration": `${resolvedDuration}s`,
-					"--text-shimmer-start-position": resolvedInitialBackgroundPosition,
-					backgroundImage:
-						"var(--bg), linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground))",
-				} as CSSProperties
-			}
+		<PolymorphicShimmer
+			className={cn("shimmer relative inline-block text-muted-foreground", className)}
+			style={style}
+			{...props}
 		>
 			{children}
-		</MotionComponent>
+		</PolymorphicShimmer>
 	);
 };
 

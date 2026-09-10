@@ -181,30 +181,11 @@ test("reports missing dependencies with setup guidance", () => {
 	assert.throws(() => checkDependencies(run), /Missing required tunnel dependency: atlas/u);
 });
 
-test("requires explicit public-sharing confirmation before any command runs", async () => {
-	let calls = 0;
-	await assert.rejects(
-		startTunnel({
-			confirmPublic: false,
-			run: () => {
-				calls += 1;
-				return result();
-			},
-		}),
-		/--confirm-public/u,
-	);
-	assert.equal(calls, 0);
-});
-
 test("treats a URL-only invocation as the documented start command", () => {
 	assert.deepEqual(
-		parseCliArguments([
-			"https://feature.localhost/demo",
-			"--confirm-public",
-		]),
+		parseCliArguments(["https://feature.localhost/demo"]),
 		{
 			command: "start",
-			confirmPublic: true,
 			targetUrl: "https://feature.localhost/demo",
 		},
 	);
@@ -227,7 +208,6 @@ test("reuses an existing scoped tunnel without starting another", async () => {
 		return result(0);
 	};
 	const tunnel = await startTunnel({
-		confirmPublic: true,
 		readFile: () => ALLOWED_NEXT_CONFIG,
 		resolveTarget: async () => ({
 			hostname: "feature.localhost",
@@ -270,7 +250,6 @@ test("restarts a scoped tunnel when its resolved frontend port changes", async (
 		return result(0);
 	};
 	const tunnel = await startTunnel({
-		confirmPublic: true,
 		readFile: () => ALLOWED_NEXT_CONFIG,
 		resolveTarget: async () => ({
 			hostname: "feature.localhost",
@@ -308,7 +287,6 @@ test("starts the canonical public Atlas command in a new scoped session", async 
 		return result(0);
 	};
 	const tunnel = await startTunnel({
-		confirmPublic: true,
 		readFile: () => ALLOWED_NEXT_CONFIG,
 		resolveTarget: async () => ({
 			hostname: "feature.localhost",
@@ -369,7 +347,6 @@ test("refuses to start when Next.js allowedDevOrigins omits Atlas Tunnel hosts",
 	let calls = 0;
 	await assert.rejects(
 		startTunnel({
-			confirmPublic: true,
 			readFile: () => `allowedDevOrigins: ["vpk-rovo.localhost"]`,
 			resolveTarget: async () => ({
 				hostname: "feature.localhost",

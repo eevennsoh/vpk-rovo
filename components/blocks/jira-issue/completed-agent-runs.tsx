@@ -11,9 +11,7 @@ import {
 	type AgentListItem,
 	toAgentSessionFlyoutItem,
 } from "@/components/blocks/agent-list";
-import type {
-	JiraIssueAgentActivityIndicatorRenderer,
-} from "@/components/blocks/jira-issue/agent-activity";
+import type { JiraIssueAgentActivityIndicatorRenderer } from "@/components/blocks/jira-issue/agent-activity";
 import type { JiraIssueAgentActivityLayout } from "@/components/blocks/jira-issue/agent-activity-model";
 import {
 	createJiraSessionFlyoutHandle,
@@ -98,7 +96,6 @@ function JiraIssueCompletedRunRow({
 	renderAgentActivityIndicator,
 	run,
 	showFlyout = true,
-	usesStrokeChrome,
 }: Readonly<{
 	/** Overrides the run summary, e.g. a single merged chin that just says Finished. */
 	label?: string;
@@ -106,7 +103,6 @@ function JiraIssueCompletedRunRow({
 	renderAgentActivityIndicator?: JiraIssueAgentActivityIndicatorRenderer;
 	run: JiraIssueCompletedAgentRun;
 	showFlyout?: boolean;
-	usesStrokeChrome: boolean;
 }>) {
 	const [flyoutHandle] = useState(createJiraSessionFlyoutHandle);
 	const hasFailed = run.state === "failed";
@@ -116,34 +112,28 @@ function JiraIssueCompletedRunRow({
 	const trigger = (
 		<button
 			aria-label={label ? `${run.agentName} ${label}` : `${run.agentName} ${outcomeLabel}: ${run.summary}`}
-			className="flex h-6 w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-1 text-left outline-none transition-colors duration-fast ease-out hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
+			className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-2 text-left outline-none transition-colors duration-fast ease-out hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
 			data-slot="jira-issue-agent-row"
 			onClick={showFlyout ? undefined : () => onView?.(run)}
 			type="button"
 		>
-			<span className={cn("flex min-w-0 flex-1 items-center", usesStrokeChrome ? "gap-1.5" : "gap-2")}>
+			<span className="flex min-w-0 flex-1 items-center gap-2">
 				<AgentAvatarVisual
-					avatarClassName={cn("shrink-0", usesStrokeChrome && "ml-px")}
+					avatarClassName="shrink-0"
 					avatarSrc={run.agentAvatarSrc}
 					brandName={run.agentBrandName}
 					fallbackText={getCompletedRunInitial(run.agentName)}
 					label={run.agentName}
-					sizePx={16}
+					sizePx={24}
 				/>
-				<span
-					className={cn(
-						"block min-w-0 flex-1 truncate text-text-subtlest",
-						usesStrokeChrome ? "text-xs leading-4" : "text-sm leading-5",
-					)}
-				>
+				<span className="block min-w-0 flex-1 truncate text-sm leading-5 text-text">
 					{displayText}
 				</span>
 			</span>
 			<span
 				className={cn(
-					"grid shrink-0 place-items-center",
+					"grid size-6 shrink-0 place-items-center",
 					hasFailed ? "text-icon-danger" : "text-icon-subtle",
-					usesStrokeChrome ? "size-4" : "-my-1 size-6",
 				)}
 				aria-hidden="true"
 			>
@@ -199,7 +189,6 @@ export function JiraIssueAgentDone({
 						onView={props.onView}
 						renderAgentActivityIndicator={props.renderAgentActivityIndicator}
 						run={run}
-						usesStrokeChrome={props.usesStrokeChrome}
 					/>
 				))}
 			</section>
@@ -219,7 +208,6 @@ export function JiraIssueAgentDone({
 					renderAgentActivityIndicator={props.renderAgentActivityIndicator}
 					run={run}
 					showFlyout={false}
-					usesStrokeChrome={props.usesStrokeChrome}
 				/>
 			</section>
 		);
@@ -236,6 +224,7 @@ export function JiraIssueAgentDone({
 	);
 }
 
+/** Compact / original experimental only. Comfortable (v2) never mounts this. */
 function JiraIssueAgentDoneMerged({
 	onOpenChange,
 	onView,
@@ -291,52 +280,41 @@ function JiraIssueAgentDoneMerged({
 						<button
 							aria-expanded={aggregateOpen}
 							aria-label={hasFailedRun ? `${finishedLabel}, includes errors` : finishedLabel}
-							className="flex h-6 w-full min-w-0 items-center justify-between gap-2 rounded-b-[6px] rounded-t-sm px-2 py-1 text-left outline-none transition-colors duration-fast ease-out hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
+							className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-b-[6px] rounded-t-sm px-2 py-2 text-left outline-none transition-colors duration-fast ease-out hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
 							data-slot="jira-issue-agent-row"
 							type="button"
 						>
-							<span className={cn("flex min-w-0 flex-1 items-center", usesStrokeChrome ? "gap-1.5" : "gap-2")}>
+							<span className="flex min-w-0 flex-1 items-center gap-2">
 								{usesStrokeChrome ? (
 									<IconTile
-										aria-hidden
-										as="span"
-										className="ml-px text-icon-subtle"
-										icon={<AiAgentIcon label="" size="small" />}
-										iconSize="small"
-										label=""
-										size="xxsmall"
-										variant="transparent"
-									/>
-								) : (
-									<span className="ml-px grid size-4 shrink-0 place-items-center text-text-subtlest" aria-hidden="true">
-										<AiAgentIcon label="" />
-									</span>
-								)}
-								<span
-									className={cn(
-										"truncate text-text-subtlest",
-										usesStrokeChrome ? "text-xs leading-4" : "text-sm leading-5",
-									)}
-								>
+									aria-hidden
+									as="span"
+									className="text-icon-subtle"
+									icon={<AiAgentIcon label="" size="small" />}
+									iconSize="medium"
+									label=""
+									size="small"
+									variant="transparent"
+								/>
+							) : (
+								<span className="grid size-6 shrink-0 place-items-center text-text-subtlest" aria-hidden="true">
+									<AiAgentIcon label="" />
+								</span>
+							)}
+							<span className="truncate text-sm leading-5 text-text">
 									{finishedLabel}
 								</span>
 							</span>
 							{hasFailedRun ? (
 								<span
-									className={cn(
-										"grid shrink-0 place-items-center text-icon-danger",
-										usesStrokeChrome ? "size-4" : "-my-1 size-6",
-									)}
+								className="grid size-6 shrink-0 place-items-center text-icon-danger"
 									aria-hidden="true"
 								>
 									<StatusErrorIcon color="currentColor" label="" size="small" />
 								</span>
 							) : finishedIndicator ? (
 								<span
-									className={cn(
-										"grid shrink-0 place-items-center text-icon-subtle",
-										usesStrokeChrome ? "size-4" : "-my-1 size-6",
-									)}
+								className="grid size-6 shrink-0 place-items-center text-icon-subtle"
 									aria-hidden="true"
 								>
 									{finishedIndicator}

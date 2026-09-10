@@ -111,8 +111,6 @@ export interface SmartLinkItem {
 		additions: number;
 		deletions: number;
 	};
-	/** Owner/name path rendered as a provider-logo tag (e.g. `eevensoh/vpk-rovo`). */
-	repository?: string;
 	/** Rendered in the metadata row as `source → target` (pull requests). */
 	branchPath?: SmartLinkBranchPath;
 	actions?: ReadonlyArray<SmartLinkAction>;

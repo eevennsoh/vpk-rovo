@@ -1,7 +1,5 @@
 ---
 description: Deciding which motion token to pick for a UI role (duration, easing, property)
-globs: components/**/*.tsx, app/**/*.tsx, *.css
-alwaysApply: false
 ---
 
 # Motion decisions

@@ -89,7 +89,9 @@ const AGENT_SESSION_COLUMN_TRANSITION = "width var(--duration-medium) var(--ease
  * bordered well (`radius.xlarge`) that clips fades and the hidden-work
  * footer so they cannot paint over the 1px stroke. Enclosed moves
  * `overflow-hidden` onto the list/footer region so header focus rings are
- * not sliced. Collapsed, the rail sits in the unframed fill. Cards are
+ * not sliced, and that clip carries the well's bottom radius so the fade
+ * cannot wash out the bottom corners. Collapsed, the rail sits in the
+ * unframed fill. Cards are
  * borderless. Expanded in-flow uses the same 4px list inset and row gap as
  * the panel; adjacent marked cards fuse across that gap.
  */
@@ -113,6 +115,20 @@ const AGENT_SESSION_WELL = cn(
  */
 const AGENT_SESSION_LIST_SPACING = "gap-1 p-1";
 
+/**
+ * Enclosed clips the list/footer region instead of the well, so the clip is a
+ * plain rectangle inset 1px inside the stroke. The straight runs of the border
+ * survive that, but `radius.xlarge` curves *inward* from the bottom corners:
+ * the arc and the last ~12px of each side stroke fall inside the rectangle,
+ * where the opaque end of the bottom scroll fade paints over them and the
+ * corner reads as clipped. Matching the well's radius on the clip keeps the
+ * fade off the arc. The clip is 1px inside the stroke, so its true inner curve
+ * is 11px; rounding to the full 12px only ever clips further from the border,
+ * and the well paints its own `bg-surface` behind that hairline.
+ */
+const AGENT_SESSION_ENCLOSED_BODY =
+	"flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-b-xl";
+
 function resolveAgentSessionPlaneClassName(
 	layout: AgentSessionColumnLayout,
 	collapsed: boolean,
@@ -133,12 +149,14 @@ function resolveAgentSessionPlaneClassName(
 
 function renderAgentSessionColumnFrame({
 	body,
+	bodyHidden,
 	collapsed,
 	header,
 	layout,
 	planeClassName,
 }: Readonly<{
 	body: ReactNode;
+	bodyHidden: boolean;
 	collapsed: boolean;
 	header: ReactNode;
 	layout: AgentSessionColumnLayout;
@@ -150,19 +168,19 @@ function renderAgentSessionColumnFrame({
 			return (
 				<>
 					{header}
-					<div className={planeClassName}>{body}</div>
+					<div aria-hidden={bodyHidden || undefined} inert={bodyHidden} className={planeClassName}>{body}</div>
 				</>
 			);
 		case "enclosed":
 			return collapsed ? (
 				<>
 					{header}
-					<div className={planeClassName}>{body}</div>
+					<div aria-hidden={bodyHidden || undefined} inert={bodyHidden} className={planeClassName}>{body}</div>
 				</>
 			) : (
 				<div className={planeClassName}>
 					{header}
-					<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+					<div className={AGENT_SESSION_ENCLOSED_BODY}>
 						{body}
 					</div>
 				</div>
@@ -203,12 +221,13 @@ function resolveCollapsedHeaderStyle(
 const HEADER_COUNT_AT_REST = cn(
 	"pointer-events-none transition-opacity duration-normal ease-out-practical",
 	"peer-hover/expand-control:opacity-0 peer-focus-visible/expand-control:opacity-0",
+	"peer-data-popup-open/expand-control:opacity-0",
 	"motion-reduce:transition-none",
 );
 
 const HEADER_CONTROL_ON_REVEAL = cn(
 	"peer/expand-control opacity-0 transition-opacity duration-normal ease-out-practical",
-	"hover:opacity-100 focus-visible:opacity-100",
+	"hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100",
 	"motion-reduce:transition-none",
 );
 
@@ -216,6 +235,10 @@ const HEADER_CONTROL_IN_GUTTER = cn(
 	HEADER_CONTROL_ON_REVEAL,
 	"hover:opacity-0",
 );
+
+/** Outlined overlay chip while the collapsed header is the live drag preview. */
+const COLLAPSED_REPOSITION_CHIP_CLASS_NAME =
+	"peer/expand-control relative z-50 cursor-grabbing border border-border bg-surface-overlay! text-icon-subtle opacity-100 transition-none hover:bg-surface-overlay! active:bg-surface-overlay!";
 
 /**
  * Expanded header actions: overflow + collapse, revealed together. Stay
@@ -281,6 +304,9 @@ const AGENT_SESSION_PLANE_BOTTOM_FADE_SIZE = `${AGENT_SESSION_DECK_END_SPACE_PX}
  * full-height bordered rail. `collapsedPresentation="gutter"` hides that
  * count and the expand icon at rest, while keeping the expand control in
  * the same slot for keyboard. Hover preview uses `"column"` so both return.
+ * Hosts that supply `collapsedMenu` replace that Expand button with their
+ * own control (in-flow: a "…" options menu). `onPinnedChange` adds a pin
+ * affordance to the expanded header; omit it and the pin control stays off.
  *
  * Two capabilities exist for hosts that dock the column into their own surface
  * rather than stand it on the board: `collapsed` makes the rail state
@@ -292,9 +318,11 @@ export function AgentSessionColumn({
 	headerSurface = "column",
 	columnFrame = DEFAULT_AGENT_SESSION_COLUMN_FRAME,
 	className,
+	headerDragHandle,
+	isRepositioning = false,
 	collapsed: collapsedProp,
 	collapsedPresentation = "column",
-	collapsedExpandAction,
+	collapsedMenu,
 	collapsedRailHitSlopPx = 0,
 	count,
 	defaultCollapsed = false,
@@ -304,17 +332,23 @@ export function AgentSessionColumn({
 	widthTransitionDisabled = false,
 	items = AGENT_SESSION_ITEMS,
 	listClassName,
+	multiSelect = true,
 	newItemIds,
 	notchShape = "circle",
 	onCollapsedChange,
 	onGutterIntroComplete,
 	onArchiveSession: onArchiveSessionProp,
+	onPinnedChange,
 	onSelectedItemIdChange,
 	onToggleVisibility,
+	pinned = false,
 	playGutterIntro = false,
 	selectedItemId: selectedItemIdProp,
+	showFilter = true,
+	showOverflow = true,
 	title = "Unattached sessions",
 	triage,
+	toggleChangesWidth = true,
 	...sessionProps
 }: Readonly<AgentSessionColumnProps>) {
 	const shouldReduceMotion = useReducedMotion();
@@ -405,9 +439,10 @@ export function AgentSessionColumn({
 	const columnRef = useRef<HTMLElement>(null);
 	const untrackedCount = count ?? visibleItems.length;
 	const showWellFooter = view === "hidden" || hiddenCount > 0;
-	const hasActiveFilters = selectedFilterCount > 0;
+	const hasActiveFilters = showFilter && selectedFilterCount > 0;
+	const displayedItems = showFilter ? filteredViewItems : viewItems;
 	const sessionCount = hasActiveFilters
-		? filteredViewItems.length
+		? displayedItems.length
 		: (view === "hidden" ? hiddenItems.length : untrackedCount);
 	// Coding sessions are always activatable; person rows only when `canViewItem`
 	// allows it. Selection, notches, and board spotlight share this gate.
@@ -439,31 +474,32 @@ export function AgentSessionColumn({
 		focusRow: handleFocusRow,
 		getSuggestedWorkItemKey: sessionProps.getSuggestedWorkItemKey,
 		getSuggestedWorkItemKeys: sessionProps.getSuggestedWorkItemKeys,
+		multiSelect,
 		onLeadItem: handleLeadItem,
 		title: displayTitle,
 		triage: selectionTriage,
 		visibilityLabel: view === "hidden" ? "Unarchive" : "Archive",
-		visibleItems: filteredViewItems,
+		visibleItems: displayedItems,
 	});
-	const overflowMenu = (
+	const overflowMenu = showOverflow ? (
 		<AgentSessionColumnOverflowMenu
 			capturedItemIds={sessionProps.capturedItemIds}
 			getSuggestedWorkItemKey={sessionProps.getSuggestedWorkItemKey}
 			getSuggestedWorkItemKeys={sessionProps.getSuggestedWorkItemKeys}
-			items={filteredViewItems}
+			items={displayedItems}
 			onLinkWorkItem={sessionProps.onLinkWorkItem}
 			size={headerSurface === "column" ? "icon-compact" : "icon"}
 			title={title}
 		/>
-	);
-	const filterMenu = (
+	) : undefined;
+	const filterMenu = showFilter ? (
 		<AgentSessionColumnFilterMenu
 			filter={filter}
 			items={viewItems}
 			onFilterChange={setFilter}
 			size={headerSurface === "column" ? "icon-compact" : "icon"}
 		/>
-	);
+	) : undefined;
 	const newCount = newItemIds === undefined
 		? 0
 		: visibleItems.reduce((total: number, item: AgentSessionItem) => (
@@ -555,7 +591,7 @@ export function AgentSessionColumn({
 		if (nextCollapsed) {
 			columnRef.current?.focus();
 		}
-		if (!shouldReduceMotion) {
+		if (!shouldReduceMotion && toggleChangesWidth) {
 			setIsResizing(true);
 		}
 		if (nextCollapsed) {
@@ -585,6 +621,7 @@ export function AgentSessionColumn({
 	const planeClassName = cn(
 		resolveAgentSessionPlaneClassName(layout, collapsed),
 		isGutterCollapsed ? "bg-transparent" : null,
+		collapsed && isRepositioning ? "invisible" : null,
 	);
 	// Gutter rest hides the digits and the expand icon so the rail can sit
 	// in the page inset. Hover preview switches to column presentation, so
@@ -594,30 +631,40 @@ export function AgentSessionColumn({
 	const collapsedCountLabel = newCount > 0
 		? `${sessionCount} sessions, ${newCount} newly synced`
 		: `${sessionCount} sessions`;
-	const collapsedExpandControl = (
-		<TooltipProvider>
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<Button
-							aria-label={`${collapsedExpandAction?.label ?? "Expand"} ${title} column`}
-							className={isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL}
-							onClick={handleToggleCollapsed}
-							size="icon-compact"
-							style={{ width: "100%" }}
-							type="button"
-							variant="ghost"
-						/>
-					}
+	const collapsedControlClassName = isRepositioning
+		? COLLAPSED_REPOSITION_CHIP_CLASS_NAME
+		: isGutterCollapsed ? HEADER_CONTROL_IN_GUTTER : HEADER_CONTROL_ON_REVEAL;
+	const collapsedExpandControl = collapsedMenu === undefined
+		? (
+			<TooltipProvider>
+				<Tooltip
+					animate={!isRepositioning}
+					disabled={isRepositioning}
 				>
-					{collapsedExpandAction?.icon ?? <Icon className="text-icon-subtle" render={<GrowHorizontalIcon label="" />} />}
-				</TooltipTrigger>
-				<TooltipContent>{collapsedExpandAction?.label ?? "Expand"}</TooltipContent>
-			</Tooltip>
-		</TooltipProvider>
-	);
+					<TooltipTrigger
+						render={
+							<Button
+								aria-label={`Expand ${title} column`}
+								aria-description={headerDragHandle ? "Drag horizontally to move the column, or use Alt with the arrow keys." : undefined}
+								className={collapsedControlClassName}
+								onClick={handleToggleCollapsed}
+								size="icon-compact"
+								style={{ width: "100%" }}
+								type="button"
+								variant={isRepositioning ? "outline" : "ghost"}
+							/>
+						}
+					>
+						<Icon className="text-icon-subtle" render={<GrowHorizontalIcon label="" />} />
+					</TooltipTrigger>
+					<TooltipContent>Expand</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+		)
+		: collapsedMenu({ className: collapsedControlClassName, dragging: isRepositioning });
 	const collapsedHeader = (
 		<div
+			data-agent-session-column-header=""
 			className={cn(
 				"flex min-w-0 items-center gap-1.5",
 				layout === "enclosed" ? "border border-solid border-transparent" : null,
@@ -637,7 +684,7 @@ export function AgentSessionColumn({
 						"absolute inset-x-1 inset-y-0 flex items-center justify-center text-xs font-normal",
 						"text-text-subtlest",
 						HEADER_COUNT_AT_REST,
-						hideGutterCount ? "opacity-0" : "opacity-100",
+						hideGutterCount || isRepositioning ? "opacity-0" : "opacity-100",
 					)}
 					data-agent-session-column-count=""
 				>
@@ -652,6 +699,7 @@ export function AgentSessionColumn({
 	);
 	const expandedHeader = (
 		<AgentSessionColumnHeader
+			dragHandle={headerDragHandle}
 			collapseLabel={headerSurface === "panel"
 				? "Collapse panel"
 				: `Collapse ${title} column`}
@@ -661,7 +709,16 @@ export function AgentSessionColumn({
 			model={untrackedSelection.header}
 			onAction={untrackedSelection.onHeaderAction}
 			onCollapse={handleToggleCollapsed}
+			onPinToggle={onPinnedChange === undefined
+				? undefined
+				: () => {
+					onPinnedChange(!pinned);
+				}}
 			overflow={overflowMenu}
+			pinLabel={onPinnedChange === undefined
+				? undefined
+				: `${pinned ? "Unpin" : "Pin"} ${title} column`}
+			pinned={pinned}
 			surface={headerSurface}
 		/>
 	);
@@ -673,7 +730,7 @@ export function AgentSessionColumn({
 			getSuggestedWorkItemKeys={sessionProps.getSuggestedWorkItemKeys}
 			highlightedItemId={sessionProps.highlightedItemId}
 			hitSlopPx={collapsedRailHitSlopPx}
-			items={filteredViewItems}
+			items={displayedItems}
 			maxVisibleItems={isGutterCollapsed && collapsedRailHitSlopPx === 0
 				? AGENT_SESSION_RAIL_MAX_VISIBLE_ITEMS
 				: undefined}
@@ -689,11 +746,12 @@ export function AgentSessionColumn({
 			onView={handleNotchView}
 			playIntro={isGutterCollapsed ? playGutterIntro : false}
 			sessionDrag={sessionProps.sessionDrag}
+			showUntrackedWorkFooter={sessionProps.showUntrackedWorkFooter}
 		/>
 	) : (
 		<>
 			<div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-				{filteredViewItems.length === 0 ? (
+				{displayedItems.length === 0 ? (
 					hasActiveFilters ? (
 						<Empty width="narrow">
 							<EmptyHeader>
@@ -706,6 +764,7 @@ export function AgentSessionColumn({
 				) : (
 					<div
 						ref={listRef}
+						data-agent-session-column-scrollport=""
 						className="min-h-0 min-w-0 flex-1 overflow-y-auto has-[:focus-visible]:overflow-visible relative z-0 scrollbar-auto-hide [&[data-scrolling]>ul]:pointer-events-none"
 					>
 						<AgentSession
@@ -714,7 +773,7 @@ export function AgentSessionColumn({
 								headerSurface === "column" ? AGENT_SESSION_LIST_SPACING : null,
 								listClassName,
 							)}
-							items={filteredViewItems}
+							items={displayedItems}
 							newItemIds={newItemIds}
 							onArrivalComplete={handleArrivalComplete}
 							{...sessionProps}
@@ -780,7 +839,7 @@ export function AgentSessionColumn({
 			data-agent-session-column={title}
 			data-collapsed={collapsed || undefined}
 			data-column-frame={layout === "panel" ? undefined : layout}
-			onKeyDown={untrackedSelection.onKeyDown}
+			onKeyDown={multiSelect ? untrackedSelection.onKeyDown : undefined}
 			onTransitionEnd={handleTransitionEnd}
 			tabIndex={-1}
 			style={{
@@ -795,6 +854,7 @@ export function AgentSessionColumn({
 		>
 			{renderAgentSessionColumnFrame({
 				body,
+				bodyHidden: collapsed && isRepositioning,
 				collapsed,
 				header: collapsed ? collapsedHeader : expandedHeader,
 				layout,

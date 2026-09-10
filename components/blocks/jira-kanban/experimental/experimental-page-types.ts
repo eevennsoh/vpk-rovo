@@ -1,13 +1,16 @@
 import type { ReactNode, Ref, RefObject } from "react";
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
+import type { JiraDropzoneBouncePlayback } from "@/components/blocks/jira-dropzone";
 import type {
 	JiraListAgentSessionDropIntent,
 	JiraListInsertion,
 } from "@/components/blocks/jira-list";
 import type {
 	JiraIssueAgentActivityLayout,
+	JiraIssueChrome,
 	JiraIssueGenerativeActionPresentation,
+	JiraIssueIconScale,
 } from "@/components/blocks/jira-issue";
 import type {
 	JiraKanbanAgentData,
@@ -17,7 +20,6 @@ import type {
 	JiraKanbanProps,
 } from "../index";
 import type { ExperimentalJiraKanbanProps } from "./experimental-jira-kanban";
-import type { BoardCardInsertion } from "./lib/board-agent-session-drag";
 import type { ExperimentalJiraKanbanView } from "./experimental-board-header";
 import type { ExperimentalJiraKanbanMode } from "./pulse/components/pulse-mode-controls";
 import type { PulseAgentSession, PulseLooseWork, PulseWorkItem } from "./pulse/types";
@@ -48,9 +50,31 @@ export interface ExperimentalJiraKanbanPageProps {
 	additionalAgentSessions?: readonly PulseAgentSession[];
 	agentActivityLayout?: JiraIssueAgentActivityLayout;
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
+	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
+	iconScale?: JiraIssueIconScale;
 	createWorkItemDropZoneLabel?: ExperimentalJiraKanbanProps["createWorkItemDropZoneLabel"];
+	/**
+	 * Bounce when a session lands in the create well. Defaults to `"once"` so
+	 * other boards keep the gobble; jira-team-eu26 passes `"off"`.
+	 */
+	createWellBounce?: JiraDropzoneBouncePlayback;
 	detachedAgentSessionsByCard?: ExperimentalJiraKanbanProps["detachedAgentSessionsByCard"];
 	agentSessionAssigneeIdAliases?: Readonly<Record<string, string>>;
+	/**
+	 * Which decoration plays when an agent session is dragged from the sessions
+	 * column onto a board card. Defaults to the metaball `fuse` so other boards
+	 * keep the effect they have; jira-team-eu26 passes `glow`, which collapses
+	 * one cohort chip into the card and acknowledges it with the card's own
+	 * halo and backdrop pulse instead of the chin-row sweep.
+	 */
+	agentSessionLinkingVariant?: ExperimentalJiraKanbanProps["agentSessionLinkingVariant"];
+	/**
+	 * Whether hovering an unattached session previews a suggested Jira card
+	 * (and the reverse twin highlight). Defaults on so other boards keep the
+	 * relationship preview. jira-team-eu26 passes false: sessions stay
+	 * independently inspectable without lighting a board card.
+	 */
+	suggestSessionBoardLinkOnHover?: boolean;
 	/**
 	 * Where untracked work lives on this board.
 	 *
@@ -65,6 +89,11 @@ export interface ExperimentalJiraKanbanPageProps {
 	 * decides. Only one presentation ever mounts, so the two can never drift.
 	 */
 	agentSessionPresentation?: "column" | "panel";
+	/**
+	 * Whether the unattached sessions column supports additive/range selection
+	 * and multi-session drag cohorts. Defaults to true.
+	 */
+	agentSessionMultiSelect?: boolean;
 	agents?: readonly JiraKanbanAgentData[];
 	ariaLabel?: string;
 	boardColumns?: readonly JiraKanbanColumnData[];
@@ -101,6 +130,7 @@ export interface ExperimentalJiraKanbanPageProps {
 	) => string | undefined;
 	onCardClick?: (card: JiraKanbanCardData, columnTitle: string) => void;
 	onCardAgentActivityViewChat?: JiraKanbanProps["onCardAgentActivityViewChat"];
+	onCardAssignedAgentIdsChange?: (issueKey: string, agentIds: readonly string[]) => void;
 	onCardAgentDoneRunView?: JiraKanbanProps["onCardAgentDoneRunView"];
 	onCardGenerativeActionSubmit?: JiraKanbanProps["onCardGenerativeActionSubmit"];
 	onCardAgentSessionLink?: ExperimentalJiraKanbanProps["onCardAgentSessionLink"];
@@ -120,6 +150,8 @@ export interface ExperimentalJiraKanbanPageProps {
 		insertion: JiraListInsertion,
 	) => void;
 	showAgentSessionUnlinkWell?: ExperimentalJiraKanbanProps["showAgentSessionUnlinkWell"];
+	/** Nested subtask cards inherit the parent chrome unless set. */
+	subtaskChrome?: JiraIssueChrome;
 	onInsightsWorkItemClick?: (workItem: PulseWorkItem) => void;
 	onModeChange?: (mode: ExperimentalJiraKanbanMode) => void;
 	onResumeLooseWork?: (item: PulseLooseWork) => void;
@@ -131,6 +163,19 @@ export interface ExperimentalJiraKanbanPageProps {
 	renderAgentActivityIndicator?: ExperimentalJiraKanbanProps["renderAgentActivityIndicator"];
 	showBoardContent?: boolean;
 	showAgentSessionColumn?: boolean;
+	/** Shows confidence rationale, actions, and status in untracked-session flyouts. Defaults to true. */
+	showAgentSessionFlyoutFooter?: boolean;
+	/**
+	 * Whether the unattached sessions column shows Filter sessions.
+	 * Defaults to true so other boards keep the current header. jira-team-eu26
+	 * passes false.
+	 */
+	showAgentSessionFilter?: boolean;
+	/**
+	 * Whether the unattached sessions column shows the overflow (ellipsis)
+	 * menu. Collapse remains when this is off. Defaults to true.
+	 */
+	showAgentSessionOverflow?: boolean;
 	/**
 	 * Controlled unread watermark, so an owner rendering its own insights
 	 * affordance counts the same unread snapshots the toggle's badge does.
@@ -161,4 +206,6 @@ export interface ExperimentalJiraKanbanPageProps {
 	 * Display-only unless a later owner supplies a real configure capability.
 	 */
 	showCustomizeControl?: boolean;
+	/** Focused Team EU26 header control count. Omit to keep the full View menu. */
+	needsInputCount?: number;
 }

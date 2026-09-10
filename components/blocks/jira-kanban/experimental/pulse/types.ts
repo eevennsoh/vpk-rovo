@@ -67,11 +67,28 @@ export interface PulseLooseWorkPullRequest {
 	branch?: string;
 }
 
-/** Pull request linked to a local coding session. */
+/**
+ * Pull request linked to a local coding session.
+ *
+ * The session row only shows `#number: title`, but the session flyout lists the
+ * PR as a Smart Link whose hover card renders the whole diff context. Those
+ * fields are required rather than optional so a new session fixture cannot ship
+ * a chip that expands into a near-empty card — the same contract the sibling
+ * `pull-request` loose-work kind already holds.
+ */
 export interface PulseAgentSessionPullRequest {
 	number: number;
 	status: "created" | "merged" | "failed";
 	title: string;
+	files: number;
+	additions: number;
+	deletions: number;
+	/** Source branch, e.g. `pay-121-account-targeting-kill-switch`. */
+	branch: string;
+	/** PR body summary shown on the Smart Link hover card. */
+	description: string;
+	/** Owner/name path. Defaults to `PULSE_SPACE_REPOSITORY` when omitted. */
+	repository?: string;
 }
 
 interface PulseLooseWorkBase {

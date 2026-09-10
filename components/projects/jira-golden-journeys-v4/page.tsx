@@ -291,6 +291,7 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 						activeView={activeView}
 						additionalAgentSessions={syncedAgentSessions}
 						agentActivityLayout="merged"
+						agentSessionMultiSelect={false}
 						cardGenerativeActionPresentation="more-actions"
 						createWorkItemDropZoneLabel={createWorkItemDropZoneLabel}
 						agentSessionAssigneeIdAliases={JIRA_GOLDEN_JOURNEYS_V4_PAY_SESSION_MEMBER_ID_BY_ASSIGNEE_ID}

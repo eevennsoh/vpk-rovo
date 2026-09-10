@@ -3,26 +3,23 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 export const SHIMMER_DETAIL: ComponentDetail = {
 	demoLayout: { previewContentWidth: "full" },
 	description:
-		"An animated text shimmer effect that sweeps across content, ideal for indicating loading states or drawing attention to dynamic content in AI applications. Supports optional wave motion with full geometry, timing, and color controls inspired by Motion Primitives.",
+		"An animated gradient sweep across text, for loading and in-progress states. Rendering is the `shimmer` utility from shadcn's Tailwind stylesheet — pure CSS with no Motion runtime — so every utility modifier (color, duration, spread, angle, once, reverse, disable) composes through `className`, including under variants like `md:` and `dark:`. Reduced motion is handled by the utility itself. For the per-character 3D wave, use Shimmer Wave.",
 	usage: `import { Shimmer } from "@/components/ui-custom/shimmer";
 
 <Shimmer>Thinking...</Shimmer>
-<Shimmer duration={1} as="span">Fast shimmer</Shimmer>
+<Shimmer as="span" duration={1}>Fast shimmer</Shimmer>
 <Shimmer spread={4} className="text-lg">Wide spread shimmer</Shimmer>
-<Shimmer wave duration={1.2}>Shimmer with wave</Shimmer>
-<Shimmer
-  wave
-  baseColor="var(--color-muted-foreground)"
-  baseGradientColor={["#1868db", "#bf63f3", "#fca700"]}
-  xDistance={3}
-  yDistance={-2}
-  zDistance={12}
-  scaleDistance={1.12}
-  rotateYDistance={14}
-  transition={{ ease: "easeInOut", repeatDelay: 0.1 }}
->
-  Full wave configuration
-</Shimmer>`,
+
+// Utility modifiers compose through className
+<Shimmer className="shimmer-color-blue-500/60">Generating response…</Shimmer>
+<Shimmer className="shimmer-duration-1000">Generating response…</Shimmer>
+<Shimmer className="shimmer-spread-24">Generating response…</Shimmer>
+<Shimmer className="shimmer-angle-45">Generating response…</Shimmer>
+<Shimmer className="shimmer-duration-1100 shimmer-once">Response generated.</Shimmer>
+<Shimmer className="md:shimmer-none">Static from md up</Shimmer>
+
+// The effect is a utility, so it also works without the component
+<MarkerContent className="shimmer">Thinking…</MarkerContent>`,
 	props: [
 		{
 			name: "children",
@@ -39,84 +36,47 @@ export const SHIMMER_DETAIL: ComponentDetail = {
 		{
 			name: "className",
 			type: "string",
-			description: "Additional CSS classes for styling.",
+			description:
+				"Additional CSS classes. Accepts the shimmer utility modifiers: shimmer-color-*, shimmer-duration-*, shimmer-spread-*, shimmer-angle-*, shimmer-once, shimmer-reverse, and shimmer-none.",
 		},
 		{
 			name: "duration",
 			type: "number",
-			default: "2 (shimmer), 1 (wave)",
-			description: "Animation duration in seconds.",
+			description:
+				"Seconds for one sweep. Overrides the utility default (2s). Omit to leave shimmer-duration-* free to control it.",
 		},
 		{
 			name: "spread",
 			type: "number",
-			default: "2 (shimmer), 1 (wave)",
-			description: "Shimmer gradient spread multiplier and wave stagger spread.",
-		},
-		{
-			name: "wave",
-			type: "boolean",
-			default: "false",
-			description: "Enables an additional per-character wave animation layered on top of the shimmer effect.",
+			description:
+				"Highlight band width as a multiplier of text length (resolves to children.length * spread pixels). Overrides the utility default (3ch + 40px). Omit to leave shimmer-spread-* free to control it.",
 		},
 		{
 			name: "baseColor",
 			type: "string",
-			description: "Base/resting text color used by wave mode.",
-		},
-		{
-			name: "baseGradientColor",
-			type: "string | string[]",
-			description: "Highlight color (or color stops) used by wave mode.",
-		},
-		{
-			name: "zDistance",
-			type: "number",
-			default: "10",
-			description: "Wave depth translation on the Z axis.",
-		},
-		{
-			name: "xDistance",
-			type: "number",
-			default: "2",
-			description: "Wave horizontal translation distance.",
-		},
-		{
-			name: "yDistance",
-			type: "number",
-			default: "-2",
-			description: "Wave vertical translation distance.",
-		},
-		{
-			name: "scaleDistance",
-			type: "number",
-			default: "1.1",
-			description: "Peak scale multiplier for wave characters.",
-		},
-		{
-			name: "rotateYDistance",
-			type: "number",
-			default: "10",
-			description: "Peak Y-axis rotation for wave characters.",
-		},
-		{
-			name: "transition",
-			type: "Transition",
-			description: "Optional Motion transition overrides for wave characters.",
+			default: "text-muted-foreground",
+			description:
+				"Resting text color. The utility derives both the gradient base and its highlight from currentColor, so this sets color rather than a bespoke variable.",
 		},
 	],
 	subComponents: [
-		{ name: "Shimmer", description: "Memoized motion component with infinite linear gradient sweep across text, and optional wave-only foreground animation when wave mode is enabled." },
+		{
+			name: "Shimmer",
+			description:
+				"Memoized polymorphic element carrying the shimmer utility class. Forwards remaining HTML attributes, so dir, role, and aria-* pass through.",
+		},
 	],
 	examples: [
-		{ title: "Custom duration", description: "Shimmer with varying animation speeds: fast (1s), slow (3s), and very slow (5s).", demoSlug: "shimmer-demo-custom-duration" },
-		{ title: "Custom spread", description: "Shimmer with narrow, wide, and extra wide gradient spread.", demoSlug: "shimmer-demo-custom-spread" },
-		{ title: "Wave", description: "Shimmer with optional wave motion enabled.", demoSlug: "shimmer-demo-wave" },
-		{ title: "Wave colors", description: "Neutral wave plus a dot-inspired gradient highlight using baseColor/baseGradientColor.", demoSlug: "shimmer-demo-wave-colors" },
-		{ title: "Wave geometry", description: "Compare xDistance and yDistance permutations.", demoSlug: "shimmer-demo-wave-geometry" },
-		{ title: "Wave depth", description: "Compare zDistance, scaleDistance, and rotateYDistance permutations.", demoSlug: "shimmer-demo-wave-depth" },
-		{ title: "Wave timing and spread", description: "Compare duration and spread permutations in wave mode.", demoSlug: "shimmer-demo-wave-timing-spread" },
-		{ title: "Wave full config", description: "Single showcase combining all wave controls including transition override.", demoSlug: "shimmer-demo-wave-full-config" },
+		{ title: "Custom duration", description: "Shimmer with varying animation speeds set through the duration prop: fast (1s), slow (3s), and very slow (5s).", demoSlug: "shimmer-demo-custom-duration" },
+		{ title: "Custom spread", description: "Shimmer with narrow, wide, and extra wide gradient spread set through the spread prop.", demoSlug: "shimmer-demo-custom-spread" },
+		{ title: "Color", description: "Custom highlight colors using a theme color with alpha and an arbitrary hex value.", demoSlug: "shimmer-demo-color" },
+		{ title: "Duration utility", description: "Animation speed set through the shimmer-duration-* class in milliseconds.", demoSlug: "shimmer-demo-duration-utility" },
+		{ title: "Spread utility", description: "Highlight band width set through shimmer-spread-* on the spacing scale and as an arbitrary length.", demoSlug: "shimmer-demo-spread-utility" },
+		{ title: "Angle", description: "Tilt the highlight band with shimmer-angle-*.", demoSlug: "shimmer-demo-angle" },
+		{ title: "Play once", description: "A single sweep with shimmer-once, useful for completion reveals.", demoSlug: "shimmer-demo-once" },
+		{ title: "Disabling", description: "Turn the effect off with shimmer-none, outright or responsively.", demoSlug: "shimmer-demo-disabled" },
+		{ title: "RTL", description: "The sweep reverses direction automatically under dir=\"rtl\".", demoSlug: "shimmer-demo-rtl" },
+		{ title: "With Marker", description: "The utility class applied directly to another component's content, without the Shimmer wrapper.", demoSlug: "shimmer-demo-marker" },
 		{ title: "Polymorphic", description: "Shimmer rendered as heading and span elements with different text sizes.", demoSlug: "shimmer-demo-heading" },
 	],
 };

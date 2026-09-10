@@ -97,6 +97,25 @@ test("an arrival is a transient beat plus a mark that outlives it", () => {
 	assert.match(CARD_SOURCE, /initial=\{shouldPlayArrival \? \{ opacity: 0, y: AGENT_SESSION_ARRIVAL_OFFSET_PX \} : false\}/u);
 });
 
+test("settled rail avatars reveal immediately while arrival morphing stays animated", () => {
+	const avatarStart = USER_NOTCH_SOURCE.indexOf("{avatarSrc ? (");
+	const avatarEnd = USER_NOTCH_SOURCE.indexOf("width={12}", avatarStart);
+	assert.notEqual(avatarStart, -1);
+	assert.notEqual(avatarEnd, -1);
+	const hoverRevealSource = USER_NOTCH_SOURCE.slice(
+		avatarStart,
+		avatarEnd,
+	);
+
+	assert.match(hoverRevealSource, /group-data-\[hovered\]\/notch:scale-100 group-data-\[hovered\]\/notch:opacity-100/u);
+	assert.match(hoverRevealSource, /group-has-\[:focus-visible\]\/notch:scale-100 group-has-\[:focus-visible\]\/notch:opacity-100/u);
+	assert.doesNotMatch(hoverRevealSource, /transition-\[opacity,scale\]/u);
+	assert.match(
+		hoverRevealSource,
+		/arrivalExiting && !isHighlighted[\s\S]*transition-transform duration-normal ease-in-out/u,
+	);
+});
+
 test("the rest disc stays hidden while the arrival face is on screen", () => {
 	// The regression: a 4px rest sitting under a 12px fading face reads as two
 	// layers. Reveal stays on through the shrink, and the rest disc is hidden

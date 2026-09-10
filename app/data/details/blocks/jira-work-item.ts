@@ -102,6 +102,11 @@ export const JIRA_WORK_ITEM_DETAIL: ComponentDetail = {
 			description: "Experimental v6 running preset pairs the VITA-1-inspired work item view with several concurrent, work-item-scoped agents and deterministic progress.",
 			demoSlug: "jira-work-item-demo-experimental-v6-running",
 		},
+		{
+			title: "Team EU26",
+			description: "Team EU26 work item experience recreated with VPK components and design tokens.",
+			demoSlug: "jira-work-item-demo-team-eu26",
+		},
 	],
 	props: [
 		{
@@ -117,9 +122,9 @@ export const JIRA_WORK_ITEM_DETAIL: ComponentDetail = {
 		},
 		{
 			name: "variant",
-			type: "\"default\" | \"experimental\" | \"experimental-v2\" | \"experimental-v3\" | \"experimental-v4\" | \"experimental-v5\" | \"experimental-v6\"",
+			type: "\"default\" | \"experimental\" | \"experimental-v2\" | \"experimental-v3\" | \"experimental-v4\" | \"experimental-v5\" | \"experimental-v6\" | \"team-eu26\"",
 			default: "\"default\"",
-			description: "Opt-in layout variation with independently versioned experimental component trees.",
+			description: "Opt-in layout variation with independently owned component trees.",
 		},
 		{
 			name: "initialExperimentalPreset",

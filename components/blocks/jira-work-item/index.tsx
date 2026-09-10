@@ -24,7 +24,12 @@ const ExperimentalV6JiraWorkItem = dynamic(
 		.then((module) => module.ExperimentalV6JiraWorkItem),
 );
 
-export type JiraWorkItemVariant = "default" | "experimental" | "experimental-v2" | "experimental-v3" | "experimental-v4" | "experimental-v5" | "experimental-v6";
+const TeamEu26JiraWorkItem = dynamic(
+	() => import("@/components/blocks/jira-work-item/team-eu26/team-eu26-jira-work-item")
+		.then((module) => module.TeamEu26JiraWorkItem),
+);
+
+export type JiraWorkItemVariant = "default" | "experimental" | "experimental-v2" | "experimental-v3" | "experimental-v4" | "experimental-v5" | "experimental-v6" | "team-eu26";
 export type JiraWorkItemExperimentalPreset = JiraWorkItemPreset;
 
 /**
@@ -39,6 +44,7 @@ const EXPERIMENTAL_SURFACES = {
 	"experimental-v4": ExperimentalV4JiraWorkItem,
 	"experimental-v5": ExperimentalV5JiraWorkItem,
 	"experimental-v6": ExperimentalV6JiraWorkItem,
+	"team-eu26": TeamEu26JiraWorkItem,
 } as const;
 
 type ExperimentalVariant = keyof typeof EXPERIMENTAL_SURFACES;

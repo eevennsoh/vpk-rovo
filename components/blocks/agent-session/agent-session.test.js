@@ -9,6 +9,10 @@ const LIST_CARD_SOURCE = readFileSync(
 	join(__dirname, "../agent-list/agent-list-card.tsx"),
 	"utf8",
 );
+const IDENTITY_SOURCE = readFileSync(
+	join(__dirname, "../agent-list/agent-list-identity.tsx"),
+	"utf8",
+);
 const LIST_ROW_ACTION_SOURCE = readFileSync(
 	join(__dirname, "../agent-list/agent-list-row-action.tsx"),
 	"utf8",
@@ -21,12 +25,12 @@ const MEDIUM_CARD_SOURCE = readFileSync(
 	join(__dirname, "agent-session-medium-card.tsx"),
 	"utf8",
 );
-const MEDIUM_DRAG_SOURCE = readFileSync(
-	join(__dirname, "agent-session-medium-drag.tsx"),
+const DRAG_OVERLAY_SOURCE = readFileSync(
+	join(__dirname, "agent-session-drag-overlay.tsx"),
 	"utf8",
 );
-const COHORT_CHIP_SOURCE = readFileSync(
-	join(__dirname, "agent-session-cohort-chip.tsx"),
+const DRAG_LAYOUT_SOURCE = readFileSync(
+	join(__dirname, "agent-session-drag-layout.ts"),
 	"utf8",
 );
 const MORE_MENU_SOURCE = readFileSync(
@@ -39,10 +43,22 @@ const ARRIVAL_MOTION_SOURCE = readFileSync(
 	"utf8",
 );
 const DATA_SOURCE = readFileSync(join(__dirname, "data.ts"), "utf8");
+const DRAG_INTERACTIVE_SOURCE = readFileSync(
+	join(__dirname, "agent-session-drag-interactive.ts"),
+	"utf8",
+);
+const LIFECYCLE_SOURCE = readFileSync(join(__dirname, "agent-session-lifecycle.tsx"), "utf8");
+const METADATA_SOURCE = readFileSync(join(__dirname, "agent-session-metadata.tsx"), "utf8");
+const MENU_HOOK_SOURCE = readFileSync(join(__dirname, "use-agent-session-menu.ts"), "utf8");
+const SESSION_MORE_MENU_SOURCE = readFileSync(join(__dirname, "agent-session-more-menu.tsx"), "utf8");
 const INDEX_SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
 const TYPES_SOURCE = readFileSync(join(__dirname, "agent-session-types.ts"), "utf8");
 const WORK_ITEM_SOURCE = readFileSync(join(__dirname, "agent-session-work-item.ts"), "utf8");
+const IDENTITY_LABEL_SOURCE = readFileSync(
+	join(__dirname, "agent-session-identity-label.ts"),
+	"utf8",
+);
 const FLYOUT_SOURCE = readFileSync(
 	join(__dirname, "../product-sidebar/variants/jira-session-flyout.tsx"),
 	"utf8",
@@ -112,12 +128,10 @@ test("renders each session as a solid uncaptured-work card around the shared row
 	assert.doesNotMatch(CARD_SOURCE, /top-1\.5/u);
 });
 
-test("large uncaptured-work rows lead with the human invoker while retaining agent semantics", () => {
-	assert.match(LIST_CARD_SOURCE, /export function AgentListIdentity/u);
-	assert.match(CARD_SOURCE, /const visibleIdentity = toAgentSessionVisibleIdentity\(item\);/u);
-	assert.match(CARD_SOURCE, /<AgentListIdentity[\s\S]*agent=\{visibleIdentity\}[\s\S]*sizePx=\{24\}/u);
+test("large uncaptured-work rows show the agent with its human invoker in a 32px identity", () => {
+	assert.match(IDENTITY_SOURCE, /export function AgentListIdentity/u);
+	assert.match(CARD_SOURCE, /<AgentListIdentity[\s\S]*agent=\{item\.agent\}[\s\S]*attributedBy=\{item\.invokedBy\}[\s\S]*sizePx=\{32\}/u);
 	assert.match(CARD_SOURCE, /renderIdentity=\{\(\) =>/u);
-	assert.doesNotMatch(CARD_SOURCE, /sizePx=\{32\}/u);
 	assert.match(TYPES_SOURCE, /export function toAgentSessionVisibleIdentity/u);
 	assert.match(TYPES_SOURCE, /kind: "person"/u);
 	assert.match(TYPES_SOURCE, /avatarSrc: item\.invokedBy\.avatarSrc/u);
@@ -125,17 +139,37 @@ test("large uncaptured-work rows lead with the human invoker while retaining age
 	assert.doesNotMatch(DATA_SOURCE, /name: "person A"/u);
 });
 
-test("large uncaptured-work rows keep timestamps after a truncating linked PR when present", () => {
-	assert.match(CARD_SOURCE, /AgentListTime,/u);
-	assert.match(CARD_SOURCE, /function AgentSessionPullRequestMetadata/u);
-	assert.match(CARD_SOURCE, /pullRequestNumber/u);
-	assert.match(CARD_SOURCE, /pullRequestTitle/u);
-	assert.match(CARD_SOURCE, /pullRequestUrl/u);
-	assert.match(CARD_SOURCE, /AgentListPrStatusIcon/u);
-	assert.match(CARD_SOURCE, /<MetadataPathLink[\s\S]*className="min-w-0 truncate text-text-subtle"[\s\S]*href=\{pullRequestUrl\}[\s\S]*\{pullRequestLabel\}[\s\S]*<\/MetadataPathLink>/u);
-	assert.match(CARD_SOURCE, /pullRequestLabel \? \([\s\S]*<\/MetadataPathLink>[\s\S]*<span aria-hidden="true" className="shrink-0 text-text-subtlest">\s*·\s*<\/span>[\s\S]*\) : null\}[\s\S]*<span className="shrink-0 text-nowrap" title="Last update">[\s\S]*<AgentListTime item=\{item\} \/>/u);
-	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*metadata=\{<AgentSessionPullRequestMetadata item=\{item\} \/>\}/u);
+test("large uncaptured-work rows read agent, session host, then timestamp", () => {
+	assert.match(METADATA_SOURCE, /AgentListTime,/u);
+	assert.match(METADATA_SOURCE, /export function AgentSessionProvenanceMetadata/u);
+	assert.match(METADATA_SOURCE, /import CloudIcon from "@atlaskit\/icon-lab\/core\/cloud";/u);
+	assert.match(METADATA_SOURCE, /import DevicesIcon from "@atlaskit\/icon\/core\/devices";/u);
+	assert.match(METADATA_SOURCE, /import \{ isLocalAgentListItem \} from "@\/components\/blocks\/agent-list\/agent-list-session";/u);
+	assert.match(
+		METADATA_SOURCE,
+		/<span className="min-w-0 truncate text-text-subtle" title=\{item\.agent\.name\}>\s*\{item\.agent\.name\}\s*<\/span>/u,
+	);
+	// One host segment, shared by both densities, so Local and Cloud cannot drift
+	// apart between the short and long rows.
+	assert.match(
+		METADATA_SOURCE,
+		/export function AgentSessionHostSegment[\s\S]*isLocal \? \(\s*<DevicesIcon color="currentColor" label="" size="small" \/>\s*\) : \(\s*<CloudIcon color="currentColor" label="" size="small" \/>\s*\)[\s\S]*\{isLocal \? "Local" : "Cloud"\}/u,
+	);
+	assert.match(
+		METADATA_SOURCE,
+		/\{item\.agent\.name\}[\s\S]*<MetadataDot \/>[\s\S]*<AgentSessionHostSegment isLocal=\{isLocalAgentListItem\(item\)\} \/>[\s\S]*<MetadataDot \/>[\s\S]*<span className="shrink-0 text-nowrap" title="Last update">[\s\S]*<AgentListTime item=\{item\} \/>/u,
+	);
+	assert.match(
+		CARD_SOURCE,
+		/metadata=\{isLongDensity[\s\S]*: <AgentSessionProvenanceMetadata item=\{item\} \/>\}/u,
+	);
+	// PR details stay in the flyout for the short row, and the machine name still
+	// belongs to the flyout host chip rather than any metadata line.
+	assert.doesNotMatch(CARD_SOURCE, /pullRequest/u);
+	assert.doesNotMatch(CARD_SOURCE, /MetadataPathLink/u);
+	assert.doesNotMatch(METADATA_SOURCE, /MetadataPathLink/u);
 	assert.doesNotMatch(CARD_SOURCE, /machineName/u);
+	assert.doesNotMatch(METADATA_SOURCE, /machineName/u);
 	assert.match(DATA_SOURCE, /pullRequestNumber: 1306,/u);
 	assert.match(DATA_SOURCE, /pullRequestTitle: "Add guest checkout to the storefront",/u);
 	assert.match(DATA_SOURCE, /pullRequestUrl: "https:\/\/github\.com\/eevensoh\/vpk-rovo\/pull\/1306",/u);
@@ -168,6 +202,7 @@ test("large remains the default while every card receives the selected size vari
 	assert.match(INDEX_SOURCE, /<AgentSessionCompactCard/u);
 	assert.match(INDEX_SOURCE, /captured=\{capturedItemIds\?\.has\(item\.id\) \?\? false\}/u);
 	assert.match(TYPES_SOURCE, /issueKey\?: string;/u);
+	assert.match(TYPES_SOURCE, /assignment\?: JiraIssueAgentAssignment;/u);
 	assert.match(INDEX_SOURCE, /issueKey=\{issueKey\}/u);
 	assert.match(INDEX_SOURCE, /render=\{<li data-testid=\{"agent-session-row-" \+ item\.id\} \/>\}/u);
 });
@@ -214,113 +249,24 @@ test("medium matches the 276 by 33 Figma row and reuses shared identity primitiv
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /className="[^"]*\bhidden\b/u);
 	assert.match(MEDIUM_CARD_SOURCE, /<Avatar.*size="xs"/su);
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /\?\? \{ name: "person A" \}/u);
+	// "Claude with Annie" now lives in one place: the card spends it on
+	// accessible names, the drag chip prints it, and both must read alike.
+	assert.match(MEDIUM_CARD_SOURCE, /const identityLabel = agentSessionIdentityLabel\(item\);/u);
 	assert.match(
 		MEDIUM_CARD_SOURCE,
-		/const identityLabel = invoker === undefined[\s\S]*\? item\.agent\.name[\s\S]*: `\$\{item\.agent\.name\} with \$\{invoker\.name\}`;/u,
+		/import \{ agentSessionIdentityLabel \} from "\.\/agent-session-identity-label";/u,
+	);
+	assert.match(
+		IDENTITY_LABEL_SOURCE,
+		/return attributedBy === undefined[\s\S]*\? agent\.name[\s\S]*: `\$\{agent\.name\} with \$\{attributedBy\.name\}`;/u,
+	);
+	assert.match(
+		IDENTITY_LABEL_SOURCE,
+		/export function agentSessionIdentityLabel\(item: AgentSessionItem\): string \{\s*return agentIdentityLabel\(item\.agent, item\.invokedBy\);/u,
 	);
 	assert.match(MEDIUM_CARD_SOURCE, /invoker === undefined \? null : \(/u);
 	const dashSource = readFileSync(join(__dirname, "../../../app/dash-4-2.css"), "utf8");
 	assert.doesNotMatch(dashSource, /@utility dash-4-4/u);
-});
-
-test("medium drag chip is the shared agent mention tag with overlay elevation", () => {
-	assert.match(MEDIUM_DRAG_SOURCE, /import \{ createPortal \} from "react-dom";/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /AgentSessionCohortChip/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /<AgentSessionCohortChip[\s\S]*elevated/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /isDragging \? createPortal\([\s\S]*\{chip\}/u);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/className="pointer-events-none flex w-fit max-w-full -translate-x-1\/2 -translate-y-1\/2 items-center justify-start"/u,
-	);
-	assert.match(MEDIUM_DRAG_SOURCE, /useSessionDragChipPointer/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /sessionDragChipViewportStyle\(true\)/u);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/createPortal\([\s\S]*data-session-drag-overlay=""[\s\S]*document\.body/u,
-	);
-	assert.match(MEDIUM_DRAG_SOURCE, /chipPointer\.snapToPointer\(\s*\{ x: event\.clientX, y: event\.clientY \},?\s*\);/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /chipPointer\.(?:snapToPointer|followPointer)\([\s\S]{0,100}event\.currentTarget/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /-translate-x-1\/2 -translate-y-1\/2/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /data-session-chip-centered=""/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /bg-surface-raised/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /h-\[33px\] w-fit/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /from "@\/components\/visual\/gooey"/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /<Gooey/u);
-});
-
-test("medium drag keeps pointer capture on the motion host instead of swapping a chip button", () => {
-	// Replacing `children(sessionDragBind)` with a new chip button on drag-start
-	// unmounted the node that called setPointerCapture. pointerup never fired,
-	// so the card stuck on an empty grey attach chin.
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /isDragging \? chip : children\(sessionDragBind\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isDragging && preserveSourceFootprint && "pointer-events-none absolute inset-x-0 top-0 opacity-\(--opacity-disabled\)"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isFollower && preserveSourceFootprint && "pointer-events-none opacity-\(--opacity-disabled\)"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isFollower && !preserveSourceFootprint && "h-0 overflow-hidden"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/\(isFollower && !preserveSourceFootprint \|\| \(isDragging && !preserveSourceFootprint\)\) && "pointer-events-none absolute inset-x-0 top-0 opacity-0"/u,
-	);
-	assert.match(MEDIUM_DRAG_SOURCE, /aria-hidden=\{isDragging \|\| isFollower \|\| undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /inert=\{isDragging \|\| isFollower \|\| undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /window\.addEventListener\("pointerup", onPointerUp\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /window\.addEventListener\("pointercancel", onPointerCancel\)/u);
-});
-
-test("multi-session drag chips use the concise sessions count", () => {
-	assert.match(COHORT_CHIP_SOURCE, /const label = `\$\{cohort\.members\.length\} sessions`;/u);
-	assert.doesNotMatch(COHORT_CHIP_SOURCE, /agent sessions/u);
-});
-
-test("drag-source ghosts leave the grid accessibility tree while inert", () => {
-	assert.match(CARD_SOURCE, /const isTransferSource = Boolean\(draggingIds\?\.has\(item\.id\)\);/u);
-	assert.match(CARD_SOURCE, /aria-hidden=\{isTransferSource \|\| undefined\}/u);
-	assert.match(CARD_SOURCE, /inert=\{isTransferSource \|\| undefined\}/u);
-});
-
-test("medium drag publishes the attach transfer only after the pointer moves", () => {
-	// Publishing on pointerdown grows the card chin under the pill and arms
-	// onLink, so a click without movement reattaches the session.
-	assert.match(MEDIUM_DRAG_SOURCE, /SESSION_DRAG_PUBLISH_THRESHOLD_PX = 2/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /pointerOriginRef\.current = \{ x: event\.clientX, y: event\.clientY \}/u);
-	assert.doesNotMatch(
-		MEDIUM_DRAG_SOURCE,
-		/onPointerDown: \(event: ReactPointerEvent<HTMLElement>\) => \{\s*\n\s*drag\.bind\.onPointerDown\(event\);\s*\n\s*publishSessionDrag\(true, event\);/u,
-	);
-	assert.match(MEDIUM_DRAG_SOURCE, /if \(moved\) \{[\s\S]*publishSessionDrag\(true, event\);/u);
-});
-
-test("large untracked-work cards opt into the shared session drag without collapsing their row", () => {
-	assert.match(CARD_SOURCE, /sessionDrag\?: JiraIssueAgentSessionDragBinding;/u);
-	assert.match(CARD_SOURCE, /<AgentSessionMediumDrag[\s\S]*preserveSourceFootprint[\s\S]*source="untracked"/u);
-	assert.match(CARD_SOURCE, /\{\(bind\) => \([\s\S]*<article[\s\S]*\{\.\.\.bind\}/u);
-	assert.match(INDEX_SOURCE, /<AgentSessionCard[\s\S]*sessionDrag=\{sessionDrag\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /preserveSourceFootprint \? sourceHeight : undefined/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /source: source/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /data-session-drag-placeholder=\{preserveSourceFootprint \|\| undefined\}/u);
-});
-
-test("session drag ignores nested controls and suppresses the click after a real pointer drag", () => {
-	assert.match(CARD_SOURCE, /from "\.\/agent-session-drag-interactive"/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /from "\.\/agent-session-drag-interactive"/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /export const SESSION_DRAG_INTERACTIVE_SELECTOR/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /SESSION_DRAG_INTERACTIVE_SELECTOR/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /event\.target\.closest\(SESSION_DRAG_INTERACTIVE_SELECTOR\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /interactiveTarget !== null && interactiveTarget !== event\.currentTarget/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /didPublishDragRef\.current = true/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /onClickCapture: \(event: ReactMouseEvent<HTMLElement>\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /event\.preventDefault\(\);\s*event\.stopPropagation\(\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /onPointerCancel: cancelSessionDrag/u);
 });
 
 test("medium more menu collapses until hover so the label can use the slot", () => {
@@ -344,33 +290,6 @@ test("medium more menu collapses until hover so the label can use the slot", () 
 	assert.match(MORE_MENU_SOURCE, /<DropdownMenuItem disabled=\{!hasCreateWorkItem\} onSelect=\{\(\) => onCreateWorkItem\?\.\(\)\}>\s*\n\s*Create new/u);
 	assert.match(INDEX_SOURCE, /onCreateWorkItem=\{onCreateWorkItem\}/u);
 	assert.match(INDEX_SOURCE, /onSubtasks=\{onSubtasks\}/u);
-});
-
-test("medium attached reuses the Jira issue agent activity row", () => {
-	assert.match(
-		COMPACT_CARD_SOURCE,
-		/import \{ JiraIssueAgentActivityRows \} from "@\/components\/blocks\/jira-issue\/agent-activity";/u,
-	);
-	assert.match(COMPACT_CARD_SOURCE, /variant === "medium-attached"/u);
-	assert.match(COMPACT_CARD_SOURCE, /<JiraIssueAgentActivityRows/u);
-	assert.match(COMPACT_CARD_SOURCE, /usesStrokeChrome/u);
-	assert.match(WORK_ITEM_SOURCE, /item\.state === "needs-input" \|\| item\.state === "attention"/u);
-	assert.match(COMPACT_CARD_SOURCE, /toJiraIssueAgentActivityFromSession\(item\)/u);
-	assert.match(COMPACT_CARD_SOURCE, /const shouldPlayArrival = isArriving && !shouldReduceMotion;/u);
-	assert.match(COMPACT_CARD_SOURCE, /data-new=\{isNew \|\| undefined\}/u);
-	assert.match(COMPACT_CARD_SOURCE, /isNew \? "ring-1 ring-border-discovery" : null/u);
-	assert.match(COMPACT_CARD_SOURCE, /relative w-\[276px\] rounded-\[10px\] bg-bg-neutral/u);
-	assert.doesNotMatch(
-		COMPACT_CARD_SOURCE,
-		/relative w-\[276px\][^"]*bg-bg-neutral-subtle/u,
-	);
-	assert.doesNotMatch(COMPACT_CARD_SOURCE, /bg-bg-accent-gray-subtlest/u);
-	assert.match(COMPACT_CARD_SOURCE, /Newly synced, not yet reviewed/u);
-	assert.match(COMPACT_CARD_SOURCE, /absolute left-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-icon-information/u);
-	assert.doesNotMatch(COMPACT_CARD_SOURCE, /absolute left-1 top-1 /u);
-	assert.match(COMPACT_CARD_SOURCE, /initial=\{shouldPlayArrival \? \{ opacity: 0, y: AGENT_SESSION_ARRIVAL_OFFSET_PX \} : false\}/u);
-	assert.match(INDEX_SOURCE, /const isAttached = variant === "medium-attached";/u);
-	assert.match(INDEX_SOURCE, /content=\{isAttached \? "details" : "untracked-work"\}/u);
 });
 
 test("medium preserves newly synced state and its one-shot arrival beat", () => {
@@ -409,29 +328,34 @@ test("small is the collapsed-column notch and stays keyboard operable when view 
 	assert.match(ARRIVAL_MOTION_SOURCE, /duration: 0\.25,\s*ease: \[0, 0\.4, 0, 1\]/u);
 });
 
-test("the row reveals Resume plus Archive / Unarchive where Agent List puts Archive", () => {
-	// The hover pair is the Agent List row's own generic slot, not a fork of its
-	// markup — the card only supplies the two action descriptors.
+test("the row reveals one … menu where Agent List puts its hover pair", () => {
+	// The reveal is the Agent List row's own generic slot, not a fork of its
+	// markup — the card only supplies what goes in it.
 	assert.match(
 		CARD_SOURCE,
 		/import \{[\s\S]*AgentListIdentity,[\s\S]*AgentListRow,[\s\S]*type AgentListRowHoverActions,[\s\S]*\} from "@\/components\/blocks\/agent-list\/agent-list-card";/u,
 	);
 	assert.match(CARD_SOURCE, /const hoverActions: AgentListRowHoverActions = \{/u);
-	assert.match(CARD_SOURCE, /label: copiedResume \? "Copied" : "Resume",/u);
+	assert.match(CARD_SOURCE, /<AgentSessionMoreMenu[\s\S]*actions=\{menu\.actions\}/u);
+	assert.match(CARD_SOURCE, /<AgentSessionMoreMenu[\s\S]*copied=\{menu\.copied\}/u);
+	assert.match(CARD_SOURCE, /<AgentSessionMoreMenu[\s\S]*isCloud=\{isCloudSession\}/u);
+	// Resume and Archive no longer have their own buttons; both moved into the menu.
+	assert.doesNotMatch(CARD_SOURCE, /"Resume"/u);
+	assert.doesNotMatch(CARD_SOURCE, /ArchiveBoxIcon|LibraryIcon/u);
+	assert.doesNotMatch(CARD_SOURCE, /secondary:/u);
+	// Approve is a triage decision the column surfaces inline, not a session
+	// action, so it keeps the primary button slot.
 	assert.match(CARD_SOURCE, /primary: approve\s*\?\s*\{/u);
 	assert.match(CARD_SOURCE, /<CheckMarkIcon label="" size="small" \/>/u);
 	assert.match(CARD_SOURCE, /approveActionLabel\(approve\.target\)/u);
-	assert.match(CARD_SOURCE, /visibilityLabel === "Unarchive"/u);
-	assert.match(CARD_SOURCE, /<LibraryIcon label="" size="small" \/>/u);
-	assert.match(CARD_SOURCE, /<ArchiveBoxIcon label="" size="small" \/>/u);
-	assert.match(CARD_SOURCE, /label: visibilityLabel,/u);
+	// The archived view reuses the same capability, so the shared row renames
+	// itself rather than growing a second control.
+	assert.match(CARD_SOURCE, /dismissLabel=\{visibilityLabel === "Archive" \? "Dismiss" : visibilityLabel\}/u);
 	assert.match(CARD_SOURCE, /visibilityLabel = "Archive"/u);
-	assert.match(CARD_SOURCE, /import ArchiveBoxIcon from "@atlaskit\/icon\/core\/archive-box";/u);
-	assert.match(CARD_SOURCE, /import LibraryIcon from "@atlaskit\/icon\/core\/library";/u);
 	assert.doesNotMatch(CARD_SOURCE, /EyeOpenIcon|EyeOpenStrikethroughIcon|visibilityLabel = "Hide"|visibilityLabel === "Show"/u);
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text/u);
 	assert.match(CARD_SOURCE, /aria-roledescription=\{bind \? "Draggable agent session" : undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /z-\[400\]/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /z-\[400\]/u);
 	assert.doesNotMatch(CARD_SOURCE, /hover:border-border(?!-disabled)/u);
 	assert.doesNotMatch(CARD_SOURCE, /focus-within:border-border(?!-disabled)/u);
 	assert.match(CARD_SOURCE, /hover:bg-surface-hovered/u);
@@ -439,11 +363,10 @@ test("the row reveals Resume plus Archive / Unarchive where Agent List puts Arch
 	assert.doesNotMatch(CARD_SOURCE, /hover:bg-white/u);
 	assert.doesNotMatch(CARD_SOURCE, /focus-within:bg-/u);
 	assert.doesNotMatch(CARD_SOURCE, /active:bg-/u);
-	assert.doesNotMatch(CARD_SOURCE, /hover:shadow-md/u);
 	assert.doesNotMatch(CARD_SOURCE, /group\/agent-row group\/uncaptured-work/u);
-	// The archive control always renders and calls the optional handler; the
-	// column supplies Archive vs Unarchive so the tooltip matches the action.
-	assert.match(CARD_SOURCE, /onToggleVisibility\?\.\(item\)/u);
+	// Dismiss calls the optional handler; the column supplies Archive vs
+	// Unarchive so the row's copy matches the action.
+	assert.match(MENU_HOOK_SOURCE, /onToggleVisibility\(item\)/u);
 	assert.match(INDEX_SOURCE, /onToggleVisibility=\{onToggleVisibility\}/u);
 	assert.match(INDEX_SOURCE, /visibilityLabel=\{visibilityLabel\}/u);
 	assert.match(TYPES_SOURCE, /onToggleVisibility\?: \(item: AgentSessionItem\) => void;/u);
@@ -469,7 +392,9 @@ test("the row reveals Resume plus Archive / Unarchive where Agent List puts Arch
 		CARD_SOURCE,
 		/useEffect\(\(\) => \{\s*onItemHoverRef\.current = onItemHover;\s*\}, \[onItemHover\]\)/u,
 	);
-	assert.match(CARD_SOURCE, /onItemHover\?\.\(null\);\s*onToggleVisibility\?\.\(item\)/u);
+	// Dismiss clears the hover highlight before removing the row, so a card that
+	// disappears cannot leave its board counterpart lit.
+	assert.match(MENU_HOOK_SOURCE, /onItemHover\?\.\(null\);\s*onToggleVisibility\(item\);/u);
 	// The shared row fades actions in; uncaptured-work snaps them on.
 	assert.match(LIST_CARD_SOURCE, /group-data-\[variant=uncaptured-work\]\/agent-row:transition-none/u);
 	assert.match(CARD_SOURCE, /data-variant="uncaptured-work"/u);
@@ -479,9 +404,10 @@ test("agent session hover keeps the default cursor instead of a drag-handle curs
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text/u);
 	assert.doesNotMatch(CARD_SOURCE, /cursor-grab(?!bing)/u);
 	assert.doesNotMatch(CARD_SOURCE, /cursor-pointer/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /sessionDragBind && "touch-none select-none"/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /cursor-grab(?!bing)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
+	// The grab cursor and touch-action suppression live in the layout module.
+	assert.match(DRAG_LAYOUT_SOURCE, /hasDragBind && "touch-none select-none"/u);
+	assert.doesNotMatch(DRAG_LAYOUT_SOURCE, /cursor-grab(?!bing)/u);
+	assert.match(DRAG_LAYOUT_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
 });
 
 test("the hover checkbox replaces the avatar instantly, with no opacity transition", () => {
@@ -511,7 +437,7 @@ test("the untracked-work flyout owns capture, so the card has no footer chin", (
 	);
 	assert.match(INDEX_SOURCE, /<JiraSessionFlyoutSurface/u);
 	assert.match(INDEX_SOURCE, /capturedSessionIds=\{capturedItemIds\}/u);
-	assert.match(INDEX_SOURCE, /content=\{isAttached \? "details" : "untracked-work"\}/u);
+	assert.match(INDEX_SOURCE, /content="untracked-work"/u);
 	assert.match(INDEX_SOURCE, /const \[flyoutHandle\] = useState\(createJiraSessionFlyoutHandle\);/u);
 	assert.match(INDEX_SOURCE, /bindAgentSessionFlyoutActions/u);
 	assert.match(INDEX_SOURCE, /capturedItemIds\?\.has\(item\.id\)/u);
@@ -556,10 +482,10 @@ test("sessions share one moving untracked-work flyout instead of a popup per row
 	assert.match(INDEX_SOURCE, /onLinkWorkItem=\{flyoutActions\.onLinkWorkItem\}/u);
 });
 
-test("every size variant opens the shared agent-session flyout", () => {
-	// Large connects inside AgentSessionCard; attached compact variants connect
-	// at the list-item boundary so Medium attached, Medium detached, and Small
-	// keep their geometry while every session still opens the shared surface.
+test("detached and large variants open the shared agent-session flyout; medium attached does not", () => {
+	// Large connects inside AgentSessionCard; detached compact variants connect
+	// at the list-item boundary. Medium attached is already on its work item, so
+	// it renders a plain list row and skips the shared session-details surface.
 	assert.match(CARD_SOURCE, /<JiraSessionFlyoutTrigger/u);
 	assert.match(
 		INDEX_SOURCE,
@@ -572,6 +498,10 @@ test("every size variant opens the shared agent-session flyout", () => {
 	);
 	assert.match(
 		INDEX_SOURCE,
+		/if \(isAttached\) \{\s*return \(\s*<li data-testid=\{"agent-session-row-" \+ item\.id\} key=\{item\.id\}>\s*\{compactCard\}/u,
+	);
+	assert.match(
+		INDEX_SOURCE,
 		/<JiraSessionFlyoutTrigger[\s\S]*render=\{<li data-testid=\{"agent-session-row-" \+ item\.id\} \/>\}[\s\S]*\{compactCard\}[\s\S]*<\/JiraSessionFlyoutTrigger>/u,
 	);
 	assert.doesNotMatch(INDEX_SOURCE, /renderMore=/u);
@@ -579,7 +509,7 @@ test("every size variant opens the shared agent-session flyout", () => {
 	assert.match(MEDIUM_CARD_SOURCE, /onView === undefined && !flyout/u);
 	assert.match(
 		INDEX_SOURCE,
-		/<JiraSessionFlyoutSurface[\s\S]*content=\{isAttached \? "details" : "untracked-work"\}[\s\S]*handle=\{flyoutHandle\}/u,
+		/\{isAttached \? null : \(\s*<JiraSessionFlyoutSurface[\s\S]*content="untracked-work"[\s\S]*handle=\{flyoutHandle\}/u,
 	);
 	// The list and the collapsed rail are the same hover surface at two widths,
 	// so both snap. Dropping `instantPosition` here would animate the shell on
@@ -605,18 +535,134 @@ test("the card file exports only a component", () => {
 	assert.match(INDEX_SOURCE, /toJiraIssueAgentActivityFromSession,/u);
 });
 
-test("Resume is gated on host capability before the clipboard write", () => {
-	// The hover Resume button copies the command before `onCopyResume` ever runs,
-	// so a row the host cannot resume must render no control rather than a
-	// failing one. The archive control stays regardless — it is not a resume affordance.
+test("the menu offers host-appropriate actions, disabled without the capability", () => {
+	// Copying writes to the clipboard before `onCopyResume` ever runs, so a row
+	// the host cannot resume must not offer an enabled Terminal row.
 	assert.match(
 		CARD_SOURCE,
 		/const canResume = \(isResumable\?\.\(item\) \?\? true\) && resumeCommand\.length > 0;/u,
 	);
-	assert.match(CARD_SOURCE, /: canResume\s*\?\s*\{/u);
-	assert.match(CARD_SOURCE, /: undefined,\s*secondary: \{/u);
-	assert.match(CARD_SOURCE, /primary: approve\s*\?\s*\{/u);
+	assert.match(MENU_HOOK_SOURCE, /onCopyPrompt: canResume && !isCloud \? handleCopyPrompt : undefined,/u);
 	assert.match(CARD_SOURCE, /toAgentListResumeCommand\(item\)/u);
+	assert.match(CARD_SOURCE, /const isCloudSession = !isLocalAgentListItem\(item\);/u);
+	// Continue in is local-only; the record actions are cloud-only. Each is also
+	// gated on its callback, so a host that supplies nothing gets a disabled row
+	// rather than an enabled control backed by an optional call.
+	assert.match(MENU_HOOK_SOURCE, /onContinueInAgent: onContinueInAgent === undefined \|\| isCloud/u);
+	assert.match(MENU_HOOK_SOURCE, /onDelete: onDeleteSession === undefined \|\| !isCloud/u);
+	assert.match(MENU_HOOK_SOURCE, /onRename: onRenameSession === undefined \|\| !isCloud/u);
+	assert.match(MENU_HOOK_SOURCE, /onUnlink: onUnlinkSession === undefined \|\| !isCloud/u);
+	assert.match(MENU_HOOK_SOURCE, /onDismiss: onToggleVisibility === undefined/u);
+
+	assert.match(SESSION_MORE_MENU_SOURCE, /<DropdownMenuLabel>Continue in<\/DropdownMenuLabel>/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /description="Copy prompt"[\s\S]*<TerminalIcon label="" size="small" \/>[\s\S]*Terminal/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /import TerminalIcon from "@atlaskit\/icon-lab\/core\/terminal";/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /<LinkBrokenIcon label="" size="small" \/>[\s\S]*Unlink/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /<EditIcon label="" size="small" \/>[\s\S]*Rename/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /<DeleteIcon label="" size="small" \/>[\s\S]*variant="destructive"[\s\S]*Delete/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /<DropdownMenuSeparator \/>\s*<DropdownMenuItem[\s\S]*\{dismissLabel\}/u);
+	// Every row disables itself when its capability is missing.
+	for (const capability of ["onUnlink", "onRename", "onDelete", "onContinueInAgent", "onCopyPrompt", "onDismiss"]) {
+		assert.match(SESSION_MORE_MENU_SOURCE, new RegExp(`disabled=\\{actions\\.${capability} === undefined\\}`, "u"));
+	}
+	// The trigger must not start a card drag, and the card's click guard already
+	// exempts buttons and menu items from activating the row.
+	assert.match(SESSION_MORE_MENU_SOURCE, /onPointerDown=\{\(event\) => event\.stopPropagation\(\)\}/u);
+	assert.match(DRAG_INTERACTIVE_SOURCE, /"\[role=menuitem\]"/u);
+});
+
+test("copying the prompt confirms with a green check the reveal cannot swallow", () => {
+	// The popup takes the pointer off the row and the confirmation outlives the
+	// hover that produced it; both would collapse the reveal without a pin.
+	assert.match(CARD_SOURCE, /pinned: menu\.isOpen \|\| menu\.copied,/u);
+	assert.match(LIST_CARD_SOURCE, /pinned\?: boolean;/u);
+	assert.match(LIST_CARD_SOURCE, /pinned && "grid-cols-\[1fr\]"/u);
+	assert.match(LIST_CARD_SOURCE, /pinned && "pointer-events-auto opacity-100"/u);
+	assert.match(LIST_CARD_SOURCE, /showHoverActions && hoverActions\?\.pinned && "hidden"/u);
+
+	assert.match(MENU_HOOK_SOURCE, /export const AGENT_SESSION_COPIED_RESET_MS = 2000;/u);
+	assert.match(MENU_HOOK_SOURCE, /setCopied\(true\)/u);
+	assert.match(MENU_HOOK_SOURCE, /setCopied\(false\);\s*\}, AGENT_SESSION_COPIED_RESET_MS\)/u);
+	// The timeout is cleared on unmount so a removed row cannot set state later.
+	assert.match(MENU_HOOK_SOURCE, /useEffect\(\(\) => \(\) => \{\s*window\.clearTimeout\(resetRef\.current\);\s*\}, \[\]\)/u);
+
+	// The confirmation is a state of the trigger, not a replacement for it. Base
+	// UI restores focus to the trigger when the menu closes, so swapping the
+	// element out would drop the caret to the document body.
+	assert.match(
+		SESSION_MORE_MENU_SOURCE,
+		/render=\{copied\s*\? <CheckMarkIcon color="currentColor" label="" size="small" \/>\s*: <ShowMoreHorizontalIcon color="currentColor" label="" size="small" \/>\}/u,
+	);
+	assert.match(SESSION_MORE_MENU_SOURCE, /className=\{copied \? "text-icon-success" : "text-icon-subtle"\}/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /aria-label=\{copied \? "Copied prompt" : `More actions for \$\{item\.title\}`\}/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /<TooltipContent anchor=\{triggerRef\}>Copied prompt<\/TooltipContent>/u);
+	assert.doesNotMatch(SESSION_MORE_MENU_SOURCE, /role="img"/u);
+});
+
+test("the long density is title-led, with its own metadata line and lifecycle", () => {
+	assert.match(TYPES_SOURCE, /export type AgentSessionDensity = "short" \| "long";/u);
+	assert.match(TYPES_SOURCE, /density\?: AgentSessionDensity;/u);
+	assert.match(INDEX_SOURCE, /density = "short",/u);
+	assert.match(INDEX_SOURCE, /<AgentSessionCard[\s\S]*density=\{density\}/u);
+	assert.match(CARD_SOURCE, /const isLongDensity = density === "long";/u);
+	// A triage mark lives on the leading avatar, so a markable row keeps its
+	// identity column even in the title-led density.
+	assert.match(CARD_SOURCE, /const hideIdentity = isLongDensity && mark == null;/u);
+	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*hideIdentity=\{hideIdentity\}/u);
+	assert.match(
+		CARD_SOURCE,
+		/lifecycle=\{isLongDensity \? <AgentSessionLifecycle state=\{item\.state\} \/> : undefined\}/u,
+	);
+	assert.match(
+		CARD_SOURCE,
+		/metadata=\{isLongDensity\s*\? <AgentSessionLongMetadata item=\{item\} \/>\s*: <AgentSessionProvenanceMetadata item=\{item\} \/>\}/u,
+	);
+	// The shared row grew symmetric overrides rather than a session-specific fork.
+	assert.match(LIST_CARD_SOURCE, /hideIdentity\?: boolean;/u);
+	assert.match(LIST_CARD_SOURCE, /lifecycle\?: ReactNode;/u);
+	assert.match(LIST_CARD_SOURCE, /stateAwareTitle\?: boolean;/u);
+	assert.match(
+		LIST_CARD_SOURCE,
+		/const lifecycleNode = lifecycle\s*\?\? \(stateMeta\.showLifecycle \? <LifecycleIndicator state=\{item\.state\} \/> : null\);/u,
+	);
+	assert.match(LIST_CARD_SOURCE, /\{hideIdentity \? null : \(/u);
+	// The long metadata line already says "Needs input", so the title must not say
+	// it too and leave the actual work name nowhere on the card.
+	assert.match(CARD_SOURCE, /stateAwareTitle=\{!isLongDensity\}/u);
+});
+
+test("a working long row breathes with the experimental spinner, not the pixel loader", () => {
+	assert.match(LIFECYCLE_SOURCE, /<Spinner[\s\S]*pulse[\s\S]*variant="experimental"/u);
+	assert.doesNotMatch(LIFECYCLE_SOURCE, /PixelLoader/u);
+	// Agent List keeps its own indicator; only the session card swapped.
+	assert.match(LIST_CARD_SOURCE, /PixelLoader/u);
+	// Complete earns a success check, which Agent List has no slot for.
+	assert.match(LIFECYCLE_SOURCE, /StatusSuccessIcon[\s\S]*text-icon-success|text-icon-success[\s\S]*StatusSuccessIcon/u);
+	// Grow in and out on the state swap, with the exit timing on the exit variant
+	// so it does not silently run at the enter timing.
+	assert.match(LIFECYCLE_SOURCE, /const INDICATOR_ENTER = \{ duration: 0\.15, ease: \[0\.4, 1, 0\.6, 1\] \}/u);
+	assert.match(LIFECYCLE_SOURCE, /const INDICATOR_EXIT = \{ duration: 0\.1, ease: \[0\.6, 0, 0\.8, 0\.6\] \}/u);
+	assert.match(LIFECYCLE_SOURCE, /exit=\{\{ opacity: 0, scale: 0\.6, transition: INDICATOR_EXIT \}\}/u);
+	assert.match(LIFECYCLE_SOURCE, /<AnimatePresence initial=\{false\} mode="popLayout">/u);
+	// Reduced motion renders the same glyph with no presence animation at all.
+	assert.match(LIFECYCLE_SOURCE, /if \(shouldReduceMotion\) \{/u);
+	// `IconTile` is a block element, so the slot that holds it — and the shared
+	// row's trailing column — must be block too, or the invalid nesting surfaces
+	// as a hydration recovery on server-rendered lists.
+	assert.match(LIFECYCLE_SOURCE, /<div className="grid size-6 shrink-0 place-items-center">\{children\}<\/div>/u);
+	assert.match(LIFECYCLE_SOURCE, /<motion\.div/u);
+	assert.doesNotMatch(LIFECYCLE_SOURCE, /<motion\.span|<span className="grid size-6/u);
+	assert.match(LIST_CARD_SOURCE, /<div\s*className=\{cn\(\s*"ml-3 flex w-6 shrink-0 items-center"/u);
+});
+
+test("a caller-authored dismiss label survives the Archive-to-Dismiss rename", () => {
+	// `visibilityLabel` is documented as arbitrary copy for this row. Only the
+	// legacy "Archive" default is translated; anything else passes through, so a
+	// consumer that supplies "Restore" does not silently get "Dismiss".
+	assert.match(CARD_SOURCE, /dismissLabel=\{visibilityLabel === "Archive" \? "Dismiss" : visibilityLabel\}/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /dismissLabel = "Dismiss",/u);
+	assert.match(SESSION_MORE_MENU_SOURCE, /\{dismissLabel\}/u);
+	assert.match(TYPES_SOURCE, /visibilityLabel\?: string;/u);
 });
 
 test("reuses the Agent List row model instead of forking a parallel one", () => {
@@ -668,8 +714,9 @@ test("a card body click toggles a single selected session on the selected token"
 		/const showHoverActions = \(!isSelected \|\| showHoverActionsWhenSelected\) &&/u,
 	);
 	// The article keeps pointer activation so padding and avatar toggle. Ordinary
-	// keyboard activation belongs to RowBody's real button, leaving the PR anchor
-	// outside any button role. Multi-select rows retain gridcell keyboard handling.
+	// keyboard activation belongs to RowBody's real button when the row is not
+	// draggable. A drag binding makes the article keyboard-operable, so RowBody
+	// stays presentational and cannot become a nested interactive control.
 	assert.match(CARD_SOURCE, /onClick=\{handleArticleClick\}/u);
 	assert.match(CARD_SOURCE, /onKeyDown=\{handleArticleKeyDown\}/u);
 	assert.match(CARD_SOURCE, /onView === undefined && mark == null/u);
@@ -677,13 +724,20 @@ test("a card body click toggles a single selected session on the selected token"
 	assert.match(CARD_SOURCE, /selectionGestureFromModifierKeys\(event\)/u);
 	assert.match(CARD_SOURCE, /const articleRole = mark == null \? undefined : "gridcell";/u);
 	assert.match(CARD_SOURCE, /role=\{articleRole\}/u);
+	assert.match(
+		CARD_SOURCE,
+		/tabIndex=\{articleTabIndex \?\? \(bind !== undefined && activateCard !== undefined \? 0 : undefined\)\}/u,
+	);
 	assert.doesNotMatch(CARD_SOURCE, /articleRole === "button"|\? "button"/u);
 	assert.match(CARD_SOURCE, /aria-selected=\{mark == null \? undefined : isMarked\}/u);
 	assert.match(CARD_SOURCE, /role=\{mark == null \? undefined : "row"\}/u);
 	assert.match(INDEX_SOURCE, /role=\{isMultiSelectList \? "grid" : undefined\}/u);
 	assert.match(INDEX_SOURCE, /aria-multiselectable=\{isMultiSelectList \? true : undefined\}/u);
 	assert.match(CARD_SOURCE, /event\.target\.closest\(SESSION_DRAG_INTERACTIVE_SELECTOR\) !== null/u);
-	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*onView=\{mark == null \? onView : undefined\}/u);
+	assert.match(
+		CARD_SOURCE,
+		/<AgentListRow[\s\S]*onView=\{mark == null && bind === undefined \? onView : undefined\}/u,
+	);
 	assert.match(CARD_SOURCE, /onActivate=\{activateCard \?\? mark\.onActivate\}/u);
 	assert.match(LIST_ROW_ACTION_SOURCE, /event\.stopPropagation\(\);\s*\n\s*action\.onClick\(\)/u);
 	assert.doesNotMatch(CARD_SOURCE, /isSelected=\{false\}/u);
@@ -701,6 +755,7 @@ test("ships demo data and catalog entries for every attachment and size variant"
 	assert.match(DATA_SOURCE, /timeLabel: "18m ago"/u);
 	assert.match(DATA_SOURCE, /issueKey: "PAY-101"/u);
 	assert.match(PAGE_SOURCE, /<AgentSession/u);
+	assert.match(PAGE_SOURCE, /onAssignedAgentIdsChange: setAssignedAgentIds/u);
 	assert.doesNotMatch(PAGE_SOURCE, /data-slot="agent-session-attached-backdrop"/u);
 	assert.doesNotMatch(PAGE_SOURCE, /rounded-lg bg-bg-neutral p-1/u);
 	assert.match(DEMO_SOURCE, /@\/components\/blocks\/agent-session\/page/u);
@@ -710,14 +765,42 @@ test("ships demo data and catalog entries for every attachment and size variant"
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoMediumDetached\(\)/u);
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoMediumAttached\(\)/u);
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoSmall\(\)/u);
+	assert.match(DEMO_SOURCE, /export function AgentSessionDemoDrag\(\)/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-medium-detached": dynamic\(/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-medium-attached": dynamic\(/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-small": dynamic\(/u);
+	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-drag": dynamic\(/u);
 	assert.match(DETAIL_SOURCE, /title: "Medium detached"/u);
 	assert.match(DETAIL_SOURCE, /title: "Medium attached"/u);
 	assert.match(DETAIL_SOURCE, /title: "Small"/u);
+	assert.match(DETAIL_SOURCE, /title: "Drag"/u);
 	assert.match(DETAIL_SOURCE, /name: "variant"/u);
 	assert.match(DETAIL_SOURCE, /type: '"large" \| "medium-detached" \| "medium-attached" \| "small"'/u);
+	// Local and cloud each ship both densities, so the two menus and the two row
+	// shapes are all reachable from the catalog rather than only from code.
+	for (const host of ["Local", "Cloud"]) {
+		for (const density of ["short", "long"]) {
+			const exportName = `AgentSessionDemo${host}${density === "short" ? "Short" : "Long"}`;
+			const slug = `agent-session-demo-${host.toLowerCase()}-${density}`;
+			assert.match(DEMO_SOURCE, new RegExp(`export function ${exportName}\\(\\)`, "u"));
+			assert.match(DEMO_SOURCE, new RegExp(`density="${density}" host="${host.toLowerCase()}"`, "u"));
+			assert.match(VARIANT_REGISTRY_SOURCE, new RegExp(`"${slug}": dynamic\\(`, "u"));
+			assert.match(VARIANT_REGISTRY_SOURCE, new RegExp(`default: mod\\.${exportName},`, "u"));
+			assert.match(DETAIL_SOURCE, new RegExp(`demoSlug: "${slug}"`, "u"));
+		}
+	}
+	assert.match(DETAIL_SOURCE, /name: "density"/u);
+	assert.match(DETAIL_SOURCE, /type: '"short" \| "long"'/u);
+	// Cloud fixtures stay a separate list: the column and the Pulse rail render
+	// AGENT_SESSION_ITEMS, and flipping those to cloud would change what those
+	// demos demonstrate.
+	assert.match(DATA_SOURCE, /export const AGENT_SESSION_CLOUD_ITEMS/u);
+	assert.match(DATA_SOURCE, /brandName: "canva"/u);
+	assert.match(DATA_SOURCE, /brandName: "figma"/u);
+	assert.doesNotMatch(
+		/export const AGENT_SESSION_ITEMS[\s\S]*?\n\];/u.exec(DATA_SOURCE)?.[0] ?? "",
+		/host: "cloud"/u,
+	);
 	assert.match(
 		DETAIL_SOURCE,
 		/import \{ AgentSession \} from "@\/components\/blocks\/agent-session";/u,

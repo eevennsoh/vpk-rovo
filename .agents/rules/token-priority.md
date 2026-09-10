@@ -1,7 +1,5 @@
 ---
 description: Token selection priority, theming, and common styling mistakes
-globs: components/**/*.tsx, app/**/*.tsx, *.css
-alwaysApply: true
 ---
 
 # Token Selection Priority

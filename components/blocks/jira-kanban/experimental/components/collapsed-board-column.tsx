@@ -56,8 +56,8 @@ export function BoardColumnResizeButton({
 						className="text-icon-subtle"
 						render={
 							collapsed
-								? <GrowHorizontalIcon label="" />
-								: <ShrinkHorizontalIcon label="" />
+								? <GrowHorizontalIcon label="" size="small" />
+								: <ShrinkHorizontalIcon label="" size="small" />
 						}
 					/>
 				</TooltipTrigger>

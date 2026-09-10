@@ -51,45 +51,101 @@ export const UI_CUSTOM_RUNTIME_VARIANT_DEMOS: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
-	"shimmer-demo-wave": dynamic(
+	"shimmer-demo-color": dynamic(
 		() =>
 			import("../../demos/ui-custom/shimmer-demo").then((mod) => ({
-				default: mod.ShimmerDemoWave,
+				default: mod.ShimmerDemoColor,
 			})),
 		{ ssr: false },
 	),
-	"shimmer-demo-wave-colors": dynamic(
+	"shimmer-demo-duration-utility": dynamic(
 		() =>
 			import("../../demos/ui-custom/shimmer-demo").then((mod) => ({
-				default: mod.ShimmerDemoWaveColors,
+				default: mod.ShimmerDemoDurationUtility,
 			})),
 		{ ssr: false },
 	),
-	"shimmer-demo-wave-geometry": dynamic(
+	"shimmer-demo-spread-utility": dynamic(
 		() =>
 			import("../../demos/ui-custom/shimmer-demo").then((mod) => ({
-				default: mod.ShimmerDemoWaveGeometry,
+				default: mod.ShimmerDemoSpreadUtility,
 			})),
 		{ ssr: false },
 	),
-	"shimmer-demo-wave-depth": dynamic(
+	"shimmer-demo-angle": dynamic(
 		() =>
 			import("../../demos/ui-custom/shimmer-demo").then((mod) => ({
-				default: mod.ShimmerDemoWaveDepth,
+				default: mod.ShimmerDemoAngle,
 			})),
 		{ ssr: false },
 	),
-	"shimmer-demo-wave-timing-spread": dynamic(
+	"shimmer-demo-once": dynamic(
 		() =>
 			import("../../demos/ui-custom/shimmer-demo").then((mod) => ({
-				default: mod.ShimmerDemoWaveTimingSpread,
+				default: mod.ShimmerDemoOnce,
 			})),
 		{ ssr: false },
 	),
-	"shimmer-demo-wave-full-config": dynamic(
+	"shimmer-demo-disabled": dynamic(
 		() =>
 			import("../../demos/ui-custom/shimmer-demo").then((mod) => ({
-				default: mod.ShimmerDemoWaveFullConfig,
+				default: mod.ShimmerDemoDisabled,
+			})),
+		{ ssr: false },
+	),
+	"shimmer-demo-rtl": dynamic(
+		() =>
+			import("../../demos/ui-custom/shimmer-demo").then((mod) => ({
+				default: mod.ShimmerDemoRtl,
+			})),
+		{ ssr: false },
+	),
+	"shimmer-demo-marker": dynamic(
+		() =>
+			import("../../demos/ui-custom/shimmer-demo").then((mod) => ({
+				default: mod.ShimmerDemoMarker,
+			})),
+		{ ssr: false },
+	),
+	"shimmer-wave-demo-basic": dynamic(
+		() =>
+			import("../../demos/ui-custom/shimmer-wave-demo").then((mod) => ({
+				default: mod.ShimmerWaveDemoBasic,
+			})),
+		{ ssr: false },
+	),
+	"shimmer-wave-demo-colors": dynamic(
+		() =>
+			import("../../demos/ui-custom/shimmer-wave-demo").then((mod) => ({
+				default: mod.ShimmerWaveDemoColors,
+			})),
+		{ ssr: false },
+	),
+	"shimmer-wave-demo-geometry": dynamic(
+		() =>
+			import("../../demos/ui-custom/shimmer-wave-demo").then((mod) => ({
+				default: mod.ShimmerWaveDemoGeometry,
+			})),
+		{ ssr: false },
+	),
+	"shimmer-wave-demo-depth": dynamic(
+		() =>
+			import("../../demos/ui-custom/shimmer-wave-demo").then((mod) => ({
+				default: mod.ShimmerWaveDemoDepth,
+			})),
+		{ ssr: false },
+	),
+	"shimmer-wave-demo-timing-spread": dynamic(
+		() =>
+			import("../../demos/ui-custom/shimmer-wave-demo").then((mod) => ({
+				default: mod.ShimmerWaveDemoTimingSpread,
+			})),
+		{ ssr: false },
+	),
+	"shimmer-wave-demo-full-config": dynamic(
+		() =>
+			import("../../demos/ui-custom/shimmer-wave-demo").then((mod) => ({
+				default: mod.ShimmerWaveDemoFullConfig,
 			})),
 		{ ssr: false },
 	),

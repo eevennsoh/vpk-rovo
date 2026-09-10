@@ -1,13 +1,24 @@
 "use client";
 
-import { useState, type KeyboardEvent, type ReactNode, type Ref } from "react";
+import {
+	useState,
+	type FocusEvent,
+	type KeyboardEvent,
+	type ReactNode,
+	type Ref,
+} from "react";
+import type { Editor } from "@tiptap/react";
 
 import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import AddIcon from "@atlaskit/icon/core/add";
 import AttachmentIcon from "@atlaskit/icon/core/attachment";
+import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
+import AiGenerativeTextIcon from "@atlaskit/icon-lab/core/ai-generative-text";
 
+import { EditorToolbar } from "@/components/blocks/editor-toolbar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { RovoColorIcon } from "@/components/ui/logo";
 import { FloatingComposer } from "@/components/projects/shared/components/floating-composer";
 import { RovoComposerActionButton } from "@/components/projects/shared/components/rovo-composer-send-controls";
 import { floatingComposerTextareaClassName } from "@/components/projects/shared/components/rovo-composer-styles";
@@ -60,6 +71,38 @@ const COMPOSER_SURFACES = {
 	},
 } as const;
 
+function insertEditorCommand(editor: Editor, command: string): void {
+	editor.chain().focus().insertContent(command).run();
+}
+
+function JiraCommentEditorToolbarLeading({ editor }: Readonly<{ editor: Editor }>) {
+	return (
+		<div className="flex shrink-0 items-center gap-1">
+			<Button
+				aria-label="Ask Rovo"
+				className="gap-1 px-1.5"
+				onClick={() => insertEditorCommand(editor, "/ai ")}
+				size="compact"
+				type="button"
+				variant="ghost"
+			>
+				<RovoColorIcon size="xxsmall" />
+				<ChevronDownIcon label="" size="small" />
+			</Button>
+			<Button
+				className="gap-1.5"
+				onClick={() => insertEditorCommand(editor, "/Improve description ")}
+				size="compact"
+				type="button"
+				variant="ghost"
+			>
+				<AiGenerativeTextIcon label="" size="small" />
+				Improve description
+			</Button>
+		</div>
+	);
+}
+
 export interface JiraActivityComposerProps {
 	author: JiraActivityActor;
 	placeholder: string;
@@ -77,6 +120,8 @@ export interface JiraActivityComposerProps {
 	onValueChange?: (value: string) => void;
 	/** Ref to the shared prompt editor used by the comment variant. */
 	textareaRef?: Ref<HTMLTextAreaElement>;
+	/** Expand the comment surface and expose its composer-safe toolbar on focus. */
+	expandOnFocus?: boolean;
 	/**
 	 * Focus the editor on mount. The comment variant is a contentEditable tiptap
 	 * editor that initialises asynchronously, so its own `autofocus` config is the
@@ -115,6 +160,7 @@ export function JiraActivityComposer({
 	defaultValue = "",
 	onValueChange,
 	textareaRef,
+	expandOnFocus = false,
 	autoFocus = false,
 	prefillMentionRequest,
 	mentionSources,
@@ -126,6 +172,9 @@ export function JiraActivityComposer({
 	className,
 }: Readonly<JiraActivityComposerProps>) {
 	const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
+	const isExpandableComment = variant === "comment" && expandOnFocus;
+	const [isExpanded, setIsExpanded] = useState(isExpandableComment && autoFocus);
+	const [editor, setEditor] = useState<Editor | null>(null);
 	const value = controlledValue ?? uncontrolledValue;
 	const trimmed = value.trim();
 	const hasInputContext = inputContext != null;
@@ -162,6 +211,16 @@ export function JiraActivityComposer({
 		if (event.key === "Enter" && !event.shiftKey) {
 			event.preventDefault();
 			submit();
+		}
+	}
+
+	function handleComposerBlur(event: FocusEvent<HTMLFormElement>): void {
+		if (
+			isExpandableComment
+			&& !value.trim()
+			&& !event.currentTarget.contains(event.relatedTarget as Node | null)
+		) {
+			setIsExpanded(false);
 		}
 	}
 
@@ -207,6 +266,21 @@ export function JiraActivityComposer({
 	}
 
 	const surface = COMPOSER_SURFACES[variant];
+	const expandedToolbar = isExpandableComment && isExpanded && editor ? (
+		<div className="flex w-full min-w-0 flex-col gap-2">
+			<EditorToolbar
+				className="min-h-10"
+				controlsOverflow="responsive"
+				editor={editor}
+				leadingSlot={<JiraCommentEditorToolbarLeading editor={editor} />}
+				showFormattingControls={false}
+			/>
+			{inputContext}
+		</div>
+	) : inputContext;
+	const resolvedPlaceholder = isExpandableComment && isExpanded
+		? "Type /ai to ask Rovo or @ to mention someone…"
+		: placeholder;
 
 	return (
 		<FloatingComposer
@@ -228,7 +302,7 @@ export function JiraActivityComposer({
 					/>
 				</>
 			}
-			addButton={
+			addButton={isExpandableComment && isExpanded ? null : (
 				<Button
 					aria-label="Add"
 					className={surface.controlClassName}
@@ -238,23 +312,41 @@ export function JiraActivityComposer({
 				>
 					<AddIcon label="" size={surface.iconSize} />
 				</Button>
-			}
+			)}
 			allowOverflow
 			aria-label={placeholder}
-			className={cn("w-full", surface.chrome, className)}
-			inputContext={inputContext}
+			className={cn(
+				"w-full",
+				surface.chrome,
+				isExpandableComment && isExpanded && "rounded-xl",
+				className,
+			)}
+			inputContext={expandedToolbar}
+			layout={isExpandableComment && isExpanded ? "stacked" : "auto"}
+			onBlurCapture={handleComposerBlur}
+			onFocusCapture={() => {
+				if (isExpandableComment) setIsExpanded(true);
+			}}
+			onPointerDownCapture={() => {
+				if (isExpandableComment) setIsExpanded(true);
+			}}
 			onSubmit={submit}
 		>
 			<PromptInputTextarea
 				aria-label={placeholder}
 				autoFocus={autoFocus}
 				autoResize
-				className={cn(floatingComposerTextareaClassName, "text-sm leading-5")}
+				className={cn(
+					floatingComposerTextareaClassName,
+					"text-sm leading-5",
+					isExpandableComment && isExpanded && "min-h-36 py-3",
+				)}
 				enableDirectoryAutocomplete={false}
 				mentionSources={mentionSources}
 				mentionSectionLabels={mentionSectionLabels}
 				onChange={(event) => updateValue(event.currentTarget.value)}
-				placeholder={placeholder}
+				onEditorReady={setEditor}
+				placeholder={resolvedPlaceholder}
 				prefillMentionRequest={prefillMentionRequest}
 				ref={textareaRef}
 				rows={1}

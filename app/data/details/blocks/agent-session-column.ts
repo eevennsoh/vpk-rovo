@@ -2,7 +2,7 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 	description:
-		'A kanban column of agent sessions that never became work items. It has two hosts: an in-flow board column (`headerSurface="column"`, the default) and a docked Panel (`headerSurface="panel"`). The catalog shows both. In-flow framing is a second axis: `columnFrame="caption"` (the shared-block default, and simple kanban chrome) leaves the header on the board surface so the title shares a baseline with status captions; `columnFrame="enclosed"` (default kanban chrome) moves that title inside the well so Unattached sessions reads as one painted object, matching the status columns beside it. The well stays `bg-surface` plus a 1px `border-border-disabled` stroke — not `surface-sunken` — because unattached work is outside the workflow, and it only appears while the column is expanded. In the ordinary collapsed presentation, the count sits in the same 24px header slot as a status pill. `collapsedPresentation="gutter"` hides that visual count at rest, keeps its expand control keyboard-reachable, and leaves the rail top-aligned below the same header slot. Hover preview switches to `"column"` so the count and expand control return. Inside the plane the column renders the Agent Session block verbatim, with each session led by the human who invoked it while the coding-agent identity continues to own Resume and flyout behavior. Each card keeps its dashed uncaptured-work chrome, its untracked-work flyout with Link / Create / Add as a subtask, its hover Resume and Archive / Unarchive, its Captured state, and its resume gating. Archive removes a session from the active list; when any are archived a sticky Archived N footer opens an Archived view of those sessions, with a header back arrow to return, and unarchiving the last one returns automatically. The list is a scrollport with top and bottom fade masks and a reserved 4px focus-ring gutter, so a focused card\'s ring is never clipped. `hasScrollingEffect` opts into the depth tail, extended bottom fade, and animated end summary; it is off by default. On the experimental board the in-flow host is pinned to the left of the horizontal scrollport rather than added to `boardColumns`, because unattached work is not a status: it has no place in the left-to-right progression the status columns describe, and it stays visible while the reader scrolls to the last column. A hover-revealed control collapses it, but not into the rotated label a status column becomes: a status is only a name, while these are live sessions, so the collapsed column is a full-height 32px marker rail. `notchShape="circle"` is the default: circular user dots rest at 4px, grow with the same gradual neighbor falloff as the original lines, and never exceed 12px; newly synced dots rest at 4px in `color.icon.subtle` after the arrival face shrinks into that rest. Hovering or focusing the selected dot reveals the same human face as the expanded card. `notchShape="line"` preserves the original horizontal marks and their length falloff. Both modes open the same payload-driven session flyout an Agent List row opens. Collapsing exits Archived so the rail never mixes the two lists; the gutter-rest compact scrollport shows at most the latest ten markers with a bottom mask while older sessions remain scrollable. Hovering the scaled hit area lifts that cap so every session is reachable in the column height, same as once the rail leaves the gutter (`collapsedPresentation="column"`). Panel framing does not apply: the docked header skin sits above a fill-only plane.',
+		"A column of unattached agent sessions — work that never became Jira items. The catalog shows the docked panel and the in-flow kanban board.",
 
 	demoLayout: { previewHeight: "fit", examplesContentWidth: "bleed" },
 	importStatement: `import { AgentSessionColumn } from "@/components/blocks/agent-session-column";`,
@@ -12,6 +12,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
   title="Unattached sessions"
   headerSurface="panel"
   hasScrollingEffect
+  multiSelect={false}
   onCreateWorkItem={(item) => console.log("create", item.id)}
   onLinkWorkItem={(item) => console.log("link", item.id)}
 />
@@ -90,20 +91,53 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 			type: '"column" | "gutter"',
 			default: '"column"',
 			description:
-				'Use "gutter" for the count-hidden, top-aligned compact rail at rest. The expand control remains keyboard-reachable. `"column"` keeps that total visible. The in-flow board uses `"gutter"` only while the rail is tucked; hover preview switches to `"column"` so the count and expand control return.',
+				'Use "gutter" for the count-hidden, top-aligned compact rail at rest. The expand control remains keyboard-reachable. `"column"` keeps that total visible. The in-flow board uses `"gutter"` only while the rail is tucked; hover preview switches to `"column"` so the count and options control return.',
+		},
+		{
+			name: "collapsedMenu",
+			type: '(slot: { className: string }) => ReactNode',
+			description:
+				'Host-owned collapsed header control. In-flow supplies a "…" menu with Pin/Unpin and Expand. Omit it to keep the default Expand button.',
+		},
+		{
+			name: "pinned",
+			type: "boolean",
+			default: "false",
+			description:
+				"Whether the column stays embedded after the pointer leaves. Only rendered when onPinnedChange is supplied.",
+		},
+		{
+			name: "onPinnedChange",
+			type: "(pinned: boolean) => void",
+			description:
+				"Pin capability. Omit it to hide the header pin control. Expand is width/presentation; pin is persistence.",
 		},
 		{
 			name: "onCollapsedChange",
 			type: "(collapsed: boolean) => void",
 			description: "Called after the viewer collapses or expands the column.",
 		},
-		{
-			name: "headerSurface",
-			type: '"column" | "panel"',
-			default: '"column"',
-			description:
-				'Which chrome the header wears. `"column"` is the in-flow board title row. `"panel"` is the docked rail\'s PanelHeader skin. The collapsed rail keeps its compact header in both modes. The board omits this prop so it stays on the default.',
-		},
+	{
+		name: "headerSurface",
+		type: '"column" | "panel"',
+		default: '"column"',
+		description:
+			'Which chrome the header wears. `"column"` is the in-flow board title row. `"panel"` is the docked rail\'s PanelHeader skin. The collapsed rail keeps its compact header in both modes. The board omits this prop so it stays on the default.',
+	},
+	{
+		name: "showFilter",
+		type: "boolean",
+		default: "true",
+		description:
+			"Shows the header Filter sessions control. Off omits the button and its hover-reveal slot; the column does not apply filter state.",
+	},
+	{
+		name: "showOverflow",
+		type: "boolean",
+		default: "true",
+		description:
+			"Shows the header overflow (ellipsis) menu. Off omits that control; collapse and any remaining real actions stay.",
+	},
 		{
 			name: "columnFrame",
 			type: '"enclosed" | "caption"',
@@ -112,10 +146,17 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 				'In-flow well framing. "enclosed" puts the header inside the well. "caption" leaves it on the host surface. Ignored when headerSurface is "panel". Kanban hosts derive this from columnChrome and overwrite whatever is passed on agentSessionColumn.',
 		},
 		{
+			name: "multiSelect",
+			type: "boolean",
+			default: "true",
+			description:
+				"Enables additive/range selection, selection keyboard shortcuts, bulk header actions, and multi-session drag cohorts. Set false to remove selection UI and make every drag carry only its originating session.",
+		},
+		{
 			name: "triage",
 			type: "UntrackedWorkTriage",
 			description:
-				"Enables hover select, the Selected N header, and bulk Link / Create / Archive / Clear. Omit it and the column stays a read-only list with Resume and Archive. `locateTarget` is the only lookup — `attach` consumes that value.",
+				"Enables row Approve and, while multiSelect is true, the Selected N header and bulk Link / Create / Archive / Clear. Omit it and the column stays a read-only list with Resume and Archive. `locateTarget` is the only lookup — `attach` consumes that value.",
 		},
 		{
 			name: "capturedItemIds",

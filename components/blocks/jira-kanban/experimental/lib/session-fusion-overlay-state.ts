@@ -12,9 +12,13 @@ import type {
 	JiraLinkingDropMember,
 	JiraLinkingRelease,
 	JiraLinkingTarget,
+	JiraLinkingVariant,
 } from "@/components/blocks/jira-linking";
 
-import type { JiraIssueAgentLinkFlash } from "@/components/blocks/jira-issue";
+import type {
+	JiraIssueAgentLinkFlash,
+	JiraIssueGenerativeActionRequest,
+} from "@/components/blocks/jira-issue";
 import type {
 	JiraIssueAgentSessionTransferMember,
 } from "@/components/blocks/jira-issue/agent-session-drag";
@@ -24,6 +28,10 @@ import {
 	resolveAgentBrandTintHex,
 	// @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
 } from "./agent-brand-tint.ts";
+import {
+	sessionTransferTintSeed,
+	// @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
+} from "../../../jira-issue/agent-session-drag.ts";
 import type {
 	BoardAgentSessionAttachProximity,
 	BoardAgentSessionDropBounds,
@@ -45,6 +53,12 @@ export const SESSION_FUSION_ROW_RADIUS_PX = 6;
 
 /** Height of `jira-issue-attach-chin-slot` (`h-6`) when the chin is not measured. */
 export const SESSION_FUSION_CHIN_HEIGHT_PX = 24;
+
+/**
+ * Matches `radius.large` on the issue's own card surface. Glow lands its chip
+ * on that surface, so a shell-sized radius would round a shape it never draws.
+ */
+export const SESSION_FUSION_SURFACE_RADIUS_PX = 8;
 
 function toTargetFromBounds(
 	bounds: Readonly<BoardAgentSessionDropBounds>,
@@ -102,6 +116,24 @@ export function toSessionFusionLandTarget(
 	);
 }
 
+/**
+ * Where a Glow release lands: the card's own surface, so the chip collapses
+ * into the card body the viewer aimed at. Falls back to the shell, then to the
+ * drop-zone bounds, before the surface can be measured.
+ */
+export function toSessionFusionGlowLandTarget(
+	proximity: BoardAgentSessionAttachProximity | null,
+): JiraLinkingTarget | null {
+	if (!proximity) {
+		return null;
+	}
+
+	return toTargetFromBounds(
+		proximity.surfaceRect ?? proximity.dockRect ?? proximity.bounds,
+		SESSION_FUSION_SURFACE_RADIUS_PX,
+	);
+}
+
 function bottomStrip(
 	bounds: Readonly<BoardAgentSessionDropBounds>,
 	height: number,
@@ -128,6 +160,8 @@ export interface SessionFusionLinkFlashInput {
 	targetCardCode: string | null;
 	/** Monotonic, so dropping the same session again replays the sweep. */
 	token: number;
+	/** Glow owns its own acknowledgement, so it never earns a chin-row sweep. */
+	variant?: JiraLinkingVariant;
 }
 
 /**
@@ -138,14 +172,21 @@ export interface SessionFusionLinkFlashInput {
  * afterward, so a Board/List switch cannot drop a successful attach. The chin
  * sweep still waits until the flights land. Unlink, create-well, create-list
  * and untracked drops still skip this: they never resolve attach proximity.
+ *
+ * Glow lands one cohort chip on the card surface instead, and snapshots the
+ * shell as `fromTarget` — the node it grows its halo and backdrop pulse inside.
  */
 export function toSessionFusionDrop(input: Readonly<{
 	from: { readonly x: number; readonly y: number };
 	id: number;
 	members: readonly JiraIssueAgentSessionTransferMember[];
 	proximity: BoardAgentSessionAttachProximity | null;
+	variant?: JiraLinkingVariant;
 }>): JiraLinkingRelease | null {
-	const target = toSessionFusionLandTarget(input.proximity);
+	const glow = input.variant === "glow";
+	const target = glow
+		? toSessionFusionGlowLandTarget(input.proximity)
+		: toSessionFusionLandTarget(input.proximity);
 	const [first, ...rest] = input.members;
 	if (!target || !first) {
 		return null;
@@ -157,8 +198,60 @@ export function toSessionFusionDrop(input: Readonly<{
 			members: [toDropMember(first), ...rest.map(toDropMember)],
 			playback: "stagger",
 		},
+		fromTarget: glow ? toSessionFusionTarget(input.proximity) : undefined,
 		id: input.id,
 		target,
+	};
+}
+
+/**
+ * A click-to-assign acknowledgement: the card's glow, with no travelling chip.
+ *
+ * A drop hands the effect a pointer and a cohort chip that collapses into the
+ * card. A menu assignment has neither — the agent is already on the work item
+ * — so this snapshots the same landing shape a glow drop uses and leaves
+ * `drop` unset. Glow then skips the flight and plays the halo and pulse.
+ *
+ * `null` when the card cannot be measured, which is the same gate
+ * {@link toSessionFusionDrop} applies — no shape, no acknowledgement.
+ */
+export function toSessionFusionAssignmentRelease(input: Readonly<{
+	id: number;
+	proximity: BoardAgentSessionAttachProximity | null;
+}>): JiraLinkingRelease | null {
+	const target = toSessionFusionGlowLandTarget(input.proximity);
+	if (!target) {
+		return null;
+	}
+
+	return {
+		fromTarget: toSessionFusionTarget(input.proximity),
+		id: input.id,
+		target,
+	};
+}
+
+/**
+ * The agent a generative-action submit puts on the card, as a link subject.
+ *
+ * `null` for Ask Rovo, which opens a chat instead of adding an agent row, and
+ * for a skill: a skill submit does land an agent row, but *which* agent runs
+ * the skill is the host's choice, so the board cannot name the subject the
+ * acknowledgement would be pointing at.
+ */
+export function toAssignedAgentTransferMember(
+	request: Readonly<JiraIssueGenerativeActionRequest>,
+): JiraIssueAgentSessionTransferMember | null {
+	const item = request.kind === "agent" ? request.selectedItem : undefined;
+	if (!item) {
+		return null;
+	}
+
+	return {
+		avatarSrc: item.avatarSrc,
+		id: item.id,
+		name: item.label,
+		tintSeed: sessionTransferTintSeed(item.label, item.id),
 	};
 }
 
@@ -168,6 +261,7 @@ function toDropMember(
 	return {
 		avatarSrc: member.avatarSrc,
 		id: member.id,
+		invoker: member.invoker,
 		name: member.name,
 	};
 }
@@ -181,11 +275,18 @@ function toDropMember(
  * keeps unlink, create-well, create-list and untracked drops on their existing
  * treatment: a jira-list row attach registers no issue zone, so it resolves no
  * proximity and therefore no flash.
+ *
+ * Glow earns no sweep at all: it acknowledges the drop with the card's own
+ * halo and backdrop pulse, so a chin-row sweep would be a second receipt
+ * competing with it for one link.
  */
 export function toBoardAgentSessionLinkFlash(
 	input: Readonly<SessionFusionLinkFlashInput>,
 ): BoardAgentSessionLinkFlash | null {
 	const { members, proximity, targetCardCode } = input;
+	if (input.variant === "glow") {
+		return null;
+	}
 	if (targetCardCode === null || !proximity || proximity.cardCode !== targetCardCode) {
 		return null;
 	}
@@ -201,4 +302,15 @@ export function toBoardAgentSessionLinkFlash(
 			token: input.token,
 		},
 	};
+}
+
+/**
+ * A drop's acknowledgement that has not been handed to the rows yet.
+ *
+ * `flash` is nullable because a drop can arm the flights without earning a
+ * sweep — the flights cover attach *and* move, the sweep only covers a drop
+ * whose proximity winner is the card it landed on.
+ */
+export interface PendingSessionLinkFlash {
+	flash: BoardAgentSessionLinkFlash | null;
 }

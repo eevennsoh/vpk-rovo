@@ -17,3 +17,23 @@ export function AgentSessionDemoMediumAttached() {
 export function AgentSessionDemoSmall() {
 	return <Page variant="small" />;
 }
+
+export function AgentSessionDemoDrag() {
+	return <Page drag />;
+}
+
+export function AgentSessionDemoLocalShort() {
+	return <Page density="short" host="local" />;
+}
+
+export function AgentSessionDemoLocalLong() {
+	return <Page density="long" host="local" />;
+}
+
+export function AgentSessionDemoCloudShort() {
+	return <Page density="short" host="cloud" />;
+}
+
+export function AgentSessionDemoCloudLong() {
+	return <Page density="long" host="cloud" />;
+}

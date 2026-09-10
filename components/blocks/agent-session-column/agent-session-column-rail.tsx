@@ -411,9 +411,6 @@ function AgentSessionUserNotch({
 							arrivalExiting && !isHighlighted
 								? "opacity-100 scale-[var(--agent-session-user-notch-morph)] transition-transform duration-normal ease-in-out"
 								: showAvatar ? "opacity-100 scale-100" : "scale-[var(--agent-session-user-notch-morph)] opacity-0",
-							arrivalExiting && !isHighlighted
-								? null
-								: "transition-[opacity,scale] duration-normal ease-out-practical",
 						)}
 						height={12}
 						src={avatarSrc}
@@ -495,6 +492,8 @@ function AgentSessionNotch({
 			className="group/notch flex h-6 w-full shrink-0 items-center"
 			data-hovered={isHovered || undefined}
 			layout={shouldReduceMotion ? false : "position"}
+			// Animate session-order changes, not the rail's scrolling or board placement.
+			layoutDependency={introIndex}
 			transition={AGENT_SESSION_ARRIVAL_TRANSITION}
 		>
 			{/* The drag host is a block child rather than the flex item itself, so
@@ -593,6 +592,7 @@ export function AgentSessionColumnRail({
 	onView,
 	playIntro = false,
 	sessionDrag,
+	showUntrackedWorkFooter,
 }: Readonly<{
 	/** Subset of `newItemIds` whose arrival beat has not played yet. */
 	arrivingItemIds?: ReadonlySet<string>;
@@ -625,6 +625,7 @@ export function AgentSessionColumnRail({
 	 * take — without it the notches render exactly as before.
 	 */
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
+	showUntrackedWorkFooter?: boolean;
 }>) {
 	// One payload-aware flyout for the whole rail, exactly as Agent List does:
 	// the popup stays mounted and follows the hovered notch, so sliding down the
@@ -700,6 +701,7 @@ export function AgentSessionColumnRail({
 			    column height. Arrival layout stays on each `motion.li`. */}
 			<ul
 				className="scrollbar-none flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto overscroll-contain px-1 py-0.5"
+				data-agent-session-column-rail=""
 				onPointerDown={isDocked ? dock.resetPointer : undefined}
 				onPointerEnter={isDocked ? dock.handlePointerEnter : undefined}
 				onPointerLeave={isDocked ? dock.handlePointerLeave : undefined}
@@ -763,6 +765,7 @@ export function AgentSessionColumnRail({
 				onArchiveSession={flyoutActions.onArchiveSession}
 				onCreateWorkItem={flyoutActions.onCreateWorkItem}
 				onLinkWorkItem={flyoutActions.onLinkWorkItem}
+				showUntrackedWorkFooter={showUntrackedWorkFooter}
 			/>
 		</>
 	);

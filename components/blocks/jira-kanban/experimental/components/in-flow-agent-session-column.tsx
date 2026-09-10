@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
-import { motion, useReducedMotion, type Variants } from "motion/react";
+import { useReducedMotion } from "motion/react";
+import DragHandleVerticalIcon from "@atlaskit/icon/core/drag-handle-vertical";
+import { Icon } from "@/components/ui/icon";
 
 import {
 	AgentSessionColumn,
@@ -21,8 +23,13 @@ import {
 	resolveInFlowAgentSessionColumnGapPx,
 	resolveInFlowResizeHandleOffsetPx,
 } from "../lib/in-flow-agent-session-column-geometry";
+import {
+	reduceInFlowSessionColumnAxes,
+	resolveInFlowSessionColumnRest,
+} from "../lib/in-flow-agent-session-column-interaction";
 import { useInFlowGutterScrollMask } from "./use-in-flow-gutter-scroll-mask";
-import { ExpandMoreHorizontalIcon } from "./expand-more-horizontal-icon";
+import { InFlowAgentSessionColumnCollapsedMenu } from "./in-flow-agent-session-column-collapsed-menu";
+import { useSessionColumnReposition } from "./use-session-column-reposition";
 
 // Extend the preview's 24px session targets to 56px, within the empty gutter.
 // The 32px column footprint and marker axis stay fixed; To do remains clickable.
@@ -33,6 +40,8 @@ const IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX = -5;
 const IN_FLOW_AGENT_SESSION_COLUMN_MAX_WIDTH_PX = 560;
 const IN_FLOW_AGENT_SESSION_COLUMN_WIDTH_TRANSITION =
 	"width var(--duration-normal) var(--ease-out-practical)";
+const IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_TRANSITION =
+	"transform var(--duration-normal) var(--ease-out-practical)";
 const IN_FLOW_AGENT_SESSION_COLUMN_EXPANSION_TRANSITION =
 	"width var(--duration-medium) var(--ease-in-out)";
 const IN_FLOW_AGENT_SESSION_COLUMN_RESIZE_HANDLE_CLASS_NAME = [
@@ -44,20 +53,6 @@ const IN_FLOW_AGENT_SESSION_COLUMN_RESIZE_HANDLE_CLASS_NAME = [
 	"data-[active]:[&>div]:scale-105 focus-visible:[&>div]:scale-105 focus-visible:[&>div]:bg-bg-selected-bold focus-visible:[&>div]:opacity-100",
 	"[&>div]:duration-medium [&>div]:ease-out-practical motion-reduce:transition-none motion-reduce:[&>div]:scale-100 motion-reduce:[&>div]:transition-none",
 ].join(" ");
-const IN_FLOW_AGENT_SESSION_COLUMN_VARIANTS: Variants = {
-	embedded: {
-		transform: `translateX(${IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX}px)`,
-		transition: { duration: 0.15, ease: [0.4, 1, 0.6, 1] },
-	},
-	gutter: {
-		transform: `translateX(${IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX}px)`,
-		transition: { duration: 0.1, ease: [0.6, 0, 0.8, 0.6] },
-	},
-};
-const IN_FLOW_AGENT_SESSION_COLUMN_REDUCED_MOTION_VARIANTS: Variants = {
-	embedded: { transform: `translateX(${IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX}px)` },
-	gutter: { transform: `translateX(${IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX}px)` },
-};
 
 export interface InFlowAgentSessionColumnProps {
 	agentSessionColumn: AgentSessionColumnProps;
@@ -73,13 +68,13 @@ function useInFlowAgentSessionColumnInteraction(
 	collapsed: AgentSessionColumnProps["collapsed"],
 	onCollapsedChange: AgentSessionColumnProps["onCollapsedChange"],
 ) {
+	const rest = resolveInFlowSessionColumnRest(collapsed);
 	const [isHovered, setIsHovered] = useState(false);
-	const [expansion, setExpansion] = useState<"gutter" | "pinned" | "expanded">("gutter");
-	const isCollapsedControlled = collapsed !== undefined;
-	const isPersistentExpanded = isCollapsedControlled
-		? !collapsed
-		: expansion === "expanded";
-	const isPinnedPreview = !isPersistentExpanded && expansion === "pinned";
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const [pinned, setPinned] = useState(rest.pinned);
+	const [expanded, setExpanded] = useState(rest.expanded);
+	const isEmbedded = isHovered || pinned || isMenuOpen;
+	const isFullWidth = expanded && isEmbedded;
 
 	const handlePointerEnter = (event: PointerEvent<HTMLDivElement>) => {
 		if (event.pointerType !== "touch") {
@@ -93,14 +88,37 @@ function useInFlowAgentSessionColumnInteraction(
 		}
 	};
 
-	const handleCollapsedChange = (collapsed: boolean) => {
-		if (!collapsed && !isPinnedPreview) {
-			setExpansion("pinned");
+	const handlePinnedChange = (nextPinned: boolean) => {
+		const next = reduceInFlowSessionColumnAxes({ expanded, pinned }, { type: "pin", pinned: nextPinned });
+		setExpanded(next.expanded);
+		setPinned(next.pinned);
+		if (next.pinned) {
+			setIsHovered(true);
+		} else {
+			setIsHovered(false);
+			setIsMenuOpen(false);
+		}
+	};
+
+	const handleExpand = () => {
+		const next = reduceInFlowSessionColumnAxes({ expanded, pinned }, { type: "expand" });
+		setExpanded(next.expanded);
+		setPinned(next.pinned);
+		setIsHovered(true);
+		onCollapsedChange?.(false);
+	};
+
+	const handleCollapsedChange = (nextCollapsed: boolean) => {
+		if (nextCollapsed) {
+			const next = reduceInFlowSessionColumnAxes({ expanded, pinned }, { type: "collapse" });
+			setExpanded(next.expanded);
+			setPinned(next.pinned);
+			setIsHovered(false);
+			setIsMenuOpen(false);
+			onCollapsedChange?.(true);
 			return;
 		}
-		setExpansion(collapsed ? "gutter" : "expanded");
-		if (collapsed) setIsHovered(false);
-		onCollapsedChange?.(collapsed);
+		handleExpand();
 	};
 
 	const handleGutterPointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -109,17 +127,29 @@ function useInFlowAgentSessionColumnInteraction(
 		}
 		event.preventDefault();
 		event.stopPropagation();
-		handleCollapsedChange(false);
+		handlePinnedChange(true);
+	};
+
+	const handleMenuOpenChange = (open: boolean) => {
+		setIsMenuOpen(open);
+		if (open) {
+			setIsHovered(true);
+		}
 	};
 
 	return {
+		expanded,
 		handleCollapsedChange,
+		handleExpand,
 		handleGutterPointerDown,
+		handleMenuOpenChange,
+		handlePinnedChange,
 		handlePointerEnter,
 		handlePointerLeave,
-		isEmbedded: isHovered || isPinnedPreview || isPersistentExpanded,
-		isPinnedPreview,
-		isPersistentExpanded,
+		isEmbedded,
+		isFullWidth,
+		isMenuOpen,
+		pinned,
 	};
 }
 
@@ -158,7 +188,7 @@ function InFlowAgentSessionColumnFootprint({
 				aria-hidden="true"
 				className="shrink-0"
 				style={{
-					transition: expansionTransition,
+					transition: columnWidthPx === AGENT_SESSION_COLUMN_COLLAPSED_WIDTH_PX ? transition : expansionTransition,
 					width: isEmbedded ? columnWidthPx : 0,
 				}}
 			/>
@@ -170,62 +200,79 @@ function InFlowAgentSessionColumnSurface({
 	agentSessionColumn,
 	className,
 	columnFrame,
+	expanded,
 	expandedWidthPx,
 	isEmbedded,
-	isPersistentExpanded,
-	isPinnedPreview,
+	isFullWidth,
+	pinned,
 	resize,
 	onCollapsedChange,
+	onExpand,
+	menuOpen,
 	onGutterIntroComplete,
+	onMenuOpenChange,
+	onPinnedChange,
 	paddingBottom,
 	paddingTop,
 	playGutterIntro,
 	shouldReduceMotion,
 	untrackedDropArmed,
 }: Readonly<InFlowAgentSessionColumnProps & {
+	expanded: boolean;
 	expandedWidthPx: number;
 	isEmbedded: boolean;
-	isPersistentExpanded: boolean;
-	isPinnedPreview: boolean;
+	isFullWidth: boolean;
+	pinned: boolean;
 	resize: ReturnType<typeof useSidebarResize>;
 	onCollapsedChange: (collapsed: boolean) => void;
+	onExpand: () => void;
+	menuOpen: boolean;
 	onGutterIntroComplete: () => void;
+	onMenuOpenChange: (open: boolean) => void;
+	onPinnedChange: (pinned: boolean) => void;
 	playGutterIntro: boolean;
 	shouldReduceMotion: boolean | null;
 }>) {
 	const title = agentSessionColumn.title ?? IN_FLOW_AGENT_SESSION_COLUMN_TITLE;
 
 	return (
-		<motion.div
-			animate={isEmbedded ? "embedded" : "gutter"}
+		<div
 			className={cn(
 				"group/in-flow-agent-session-column absolute inset-y-0 start-0 z-40 flex min-h-0 border-2 border-r-0",
 				isEmbedded
 					? "pointer-events-auto bg-surface"
 					: "pointer-events-none bg-transparent [&_[data-agent-session-notch]]:pointer-events-auto",
 				untrackedDropArmed ? "border-ring" : "border-transparent",
+				agentSessionColumn.isRepositioning && !isFullWidth ? "bg-transparent" : null,
 				className,
 			)}
 			data-board-agent-session-drop-zone="untracked"
 			data-board-agent-session-target={untrackedDropArmed ? "untracked" : undefined}
-			initial={false}
 			style={{
 				paddingTop,
 				paddingBottom,
 				willChange: shouldReduceMotion ? undefined : "transform",
+				transform: `translateX(${isEmbedded ? IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX : IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX}px)`,
+				transition: shouldReduceMotion ? "none" : IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_TRANSITION,
 			}}
-			variants={shouldReduceMotion
-				? IN_FLOW_AGENT_SESSION_COLUMN_REDUCED_MOTION_VARIANTS
-				: IN_FLOW_AGENT_SESSION_COLUMN_VARIANTS}
 		>
 			<AgentSessionColumn
 				{...agentSessionColumn}
-				collapsed={!isPersistentExpanded}
-				collapsedExpandAction={isPinnedPreview
-					? { label: "Expand more", icon: <ExpandMoreHorizontalIcon /> }
-					: undefined}
+				collapsed={!isFullWidth}
+				collapsedMenu={({ className: collapsedControlClassName, dragging }) => (
+					<InFlowAgentSessionColumnCollapsedMenu
+						className={collapsedControlClassName}
+						dragging={dragging}
+						open={menuOpen}
+						onExpand={onExpand}
+						onOpenChange={onMenuOpenChange}
+						onPinnedChange={onPinnedChange}
+						pinned={pinned}
+						title={title}
+					/>
+				)}
 				collapsedPresentation={isEmbedded ? "column" : "gutter"}
-				collapsedRailHitSlopPx={isEmbedded && !isPersistentExpanded
+				collapsedRailHitSlopPx={isEmbedded && !isFullWidth
 					? IN_FLOW_AGENT_SESSION_COLUMN_RAIL_HIT_SLOP_PX
 					: 0}
 				columnFrame={columnFrame}
@@ -233,9 +280,12 @@ function InFlowAgentSessionColumnSurface({
 				widthTransitionDisabled={resize.isResizing}
 				onCollapsedChange={onCollapsedChange}
 				onGutterIntroComplete={onGutterIntroComplete}
+				onPinnedChange={onPinnedChange}
+				pinned={pinned}
 				playGutterIntro={playGutterIntro}
+				toggleChangesWidth={expanded}
 			/>
-			{isPersistentExpanded ? (
+			{isFullWidth ? (
 				<SidebarResizeHandle
 					aria-label={`Resize ${title} column`}
 					aria-orientation="vertical"
@@ -257,19 +307,20 @@ function InFlowAgentSessionColumnSurface({
 					tabIndex={0}
 				/>
 			) : null}
-		</motion.div>
+		</div>
 	);
 }
 
 /**
  * The Untracked rail rests in the page's leading gutter. Hover temporarily
  * returns that same compact timeline to the board's original 24px column inset
- * and reveals the collapsed header chrome — the session total and the expand
- * control — without swapping dots for cards. The first expansion pins that
- * preview; the next opens the full column. Both deliberate states persist
- * after the pointer leaves. Collapsing the full column restores the gutter. The
- * full-height gutter target sits behind each session row so a row can own its
- * whole 24px band while empty gutter space still opens the column preview.
+ * and reveals the collapsed header chrome — the session total and a "…"
+ * options menu — without swapping dots for cards. Pin keeps that surface
+ * embedded after the pointer leaves. Expand from the gutter opens the
+ * full-width column and pins it. Collapsing the full column keeps the
+ * compact rail pinned in the board until the user unpins it. The full-height
+ * gutter target sits behind each session row so a row can own its whole
+ * 24px band while empty gutter space still opens the column preview.
  */
 export function InFlowAgentSessionColumn({
 	agentSessionColumn,
@@ -290,13 +341,18 @@ export function InFlowAgentSessionColumn({
 		}
 	}, [shouldReduceMotion]);
 	const {
+		expanded,
 		handleCollapsedChange,
+		handleExpand,
 		handleGutterPointerDown,
+		handleMenuOpenChange,
+		handlePinnedChange,
 		handlePointerEnter,
 		handlePointerLeave,
-		isEmbedded,
-		isPersistentExpanded,
-		isPinnedPreview,
+		isEmbedded: isInteractionEmbedded,
+		isFullWidth,
+		isMenuOpen,
+		pinned,
 	} = useInFlowAgentSessionColumnInteraction(
 		agentSessionColumn.collapsed,
 		agentSessionColumn.onCollapsedChange,
@@ -308,18 +364,56 @@ export function InFlowAgentSessionColumn({
 		minWidthResistance: true,
 	});
 	const expandedWidthPx = resize.sidebarWidth;
-	const columnWidthPx = isPersistentExpanded
+	const columnWidthPx = isFullWidth
 		? expandedWidthPx
 		: AGENT_SESSION_COLUMN_COLLAPSED_WIDTH_PX;
+	const reposition = useSessionColumnReposition({
+		hostRef,
+		width: columnWidthPx,
+		disabled: sessionFlyoutsSuspended || resize.isResizing,
+		onStart: () => {
+			handleMenuOpenChange(false);
+			if (!pinned && !isFullWidth) handlePinnedChange(true);
+		},
+	});
+	const handlePinnedPlacementChange = (nextPinned: boolean) => {
+		handlePinnedChange(nextPinned);
+		if (!nextPinned) reposition.moveToLeadingGutter();
+	};
+	const isEmbedded = isInteractionEmbedded || reposition.shifted || reposition.dragging;
+	const dragHandle = reposition.enabled ? (
+		<button
+			aria-label={`Move ${agentSessionColumn.title ?? IN_FLOW_AGENT_SESSION_COLUMN_TITLE} column`}
+			className="me-1 inline-flex size-3 shrink-0 cursor-grab touch-none items-center justify-center text-icon-disabled active:cursor-grabbing [&_svg]:text-icon-disabled"
+			data-session-column-move-handle=""
+			title={reposition.dragging ? undefined : "Drag to move column. Use arrow keys, Home or End to reposition."}
+			type="button"
+		>
+			<Icon className="size-3 text-icon-disabled" render={<DragHandleVerticalIcon color="currentColor" label="" size="small" />} />
+		</button>
+	) : undefined;
 
 	return (
 		<JiraSessionFlyoutSuspensionProvider
-			suspended={sessionFlyoutsSuspended || !isEmbedded}
+			suspended={sessionFlyoutsSuspended || reposition.dragging || !isEmbedded}
 		>
 			<div
 				ref={hostRef}
-				data-agent-session-column-expansion={isPersistentExpanded ? "expanded" : isPinnedPreview ? "pinned" : "gutter"}
-				className="relative z-30 flex min-h-0 shrink-0 self-stretch"
+				{...reposition.bindings}
+				data-agent-session-column-expansion={
+					!isEmbedded ? "gutter" : isFullWidth ? "expanded" : pinned ? "pinned" : "preview"
+				}
+				data-agent-session-column-pinned={pinned ? "" : undefined}
+				data-session-column-dragging={reposition.dragging || undefined}
+				className={cn(
+					"z-30 flex min-h-0 shrink-0 self-stretch",
+					reposition.shifted ? "pointer-events-none absolute inset-y-0 left-0" : "relative",
+					reposition.enabled
+						? "[&_[data-agent-session-column-options]]:cursor-grab [&_[data-agent-session-column-options]]:touch-pan-y"
+						: null,
+					reposition.dragging ? "z-50" : null,
+				)}
+				style={reposition.shifted ? { width: columnWidthPx + 42 } : undefined}
 				onPointerDown={isEmbedded ? undefined : handleGutterPointerDown}
 				onPointerEnter={handlePointerEnter}
 				onPointerLeave={handlePointerLeave}
@@ -346,24 +440,29 @@ export function InFlowAgentSessionColumn({
 						) : null}
 					</div>
 				)}
-				<InFlowAgentSessionColumnFootprint
+				{reposition.shifted ? null : <InFlowAgentSessionColumnFootprint
 					columnFrame={columnFrame}
 					columnWidthPx={columnWidthPx}
 					isEmbedded={isEmbedded}
 					isResizing={resize.isResizing}
 					shouldReduceMotion={shouldReduceMotion}
-				/>
+				/>}
 				<InFlowAgentSessionColumnSurface
-					agentSessionColumn={agentSessionColumn}
+					agentSessionColumn={{ ...agentSessionColumn, headerDragHandle: dragHandle, isRepositioning: reposition.dragging }}
 					className={className}
 					columnFrame={columnFrame}
+					expanded={expanded}
 					expandedWidthPx={expandedWidthPx}
 					isEmbedded={isEmbedded}
-					isPersistentExpanded={isPersistentExpanded}
-					isPinnedPreview={isPinnedPreview}
+					isFullWidth={isFullWidth}
+					menuOpen={isMenuOpen}
+					pinned={pinned}
 					resize={resize}
 					onCollapsedChange={handleCollapsedChange}
+					onExpand={handleExpand}
 					onGutterIntroComplete={() => setPlayGutterIntro(false)}
+					onMenuOpenChange={handleMenuOpenChange}
+					onPinnedChange={handlePinnedPlacementChange}
 					paddingBottom={paddingBottom}
 					paddingTop={paddingTop}
 					playGutterIntro={playGutterIntro}

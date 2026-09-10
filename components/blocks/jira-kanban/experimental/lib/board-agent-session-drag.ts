@@ -90,6 +90,8 @@ export function resolveBoardCreateDropzoneDrag(
 export type BoardAgentSessionDropZone =
 	| {
 		bounds: BoardAgentSessionDropBounds;
+		/** Retention must never reach beyond the visible card-list scrollport. */
+		clip?: BoardAgentSessionDropBounds;
 		insertion: BoardCardInsertion;
 		kind: "card-gap";
 	}
@@ -113,6 +115,13 @@ export type BoardAgentSessionDropZone =
 		 * bottom of the shell.
 		 */
 		landRect?: BoardAgentSessionDropBounds | null;
+		/**
+		 * The card's own visible surface, without the agent shell's activity rows
+		 * below it. Glow linking collapses its chip into the card body rather than
+		 * into a strip at the lip, so it lands here. Absent until the surface can
+		 * be measured, so consumers fall back to the shell.
+		 */
+		surfaceRect?: BoardAgentSessionDropBounds | null;
 		kind: "issue";
 	}
 	| {
@@ -277,8 +286,20 @@ function isCardOrdinal(raw: string | undefined): boolean {
 }
 
 /**
- * A card's rect with its attach chin subtracted, which is the only rect a gap
- * band may be measured against.
+ * Whether a gap index names a gutter *between* two cards.
+ *
+ * A column of `n` cards has `n + 1` slots, but only `1 … n - 1` sit between two
+ * cards. Slot `0` is the column's leading edge and slot `n` its trailing edge;
+ * neither is a gutter, so neither gets a seam.
+ */
+function isInteriorCardGap(insertAtIndex: number, cardCount: number): boolean {
+	return insertAtIndex > 0 && insertAtIndex < cardCount;
+}
+
+/**
+ * A card's rect with only newly added attach-preview growth subtracted.
+ * Occupied slots replace existing rows and must pass zero; an empty activity
+ * area contributes its entire new height, including vertical padding.
  *
  * The chin is the one part of a card whose presence depends on the drag itself:
  * it opens when attach proximity arms and closes when proximity reports
@@ -347,6 +368,13 @@ export function parseBoardEmptyColumnGapZone(
  * outward to cover the gutter the pointer actually aims at, and `bandPx` inward
  * so there is no dead pixel against the card itself.
  *
+ * Only *interior* seams are emitted. A column's leading and trailing edges are
+ * not gaps between two cards — they abut the column header and the create well,
+ * which already own "add at the top" and "add at the bottom" — so a band there
+ * would paint a rule against the column boundary rather than in a gutter. Gap
+ * `0` and gap `cardCount` are therefore dropped, which leaves a single-card
+ * column with no card seam at all.
+ *
  * The two bands are clamped apart at the card's midpoint. A card shorter than
  * `2 * bandPx` would otherwise overlap its own before- and after-bands, and the
  * two distinct insertions under one pointer would resolve as ambiguous.
@@ -384,7 +412,10 @@ export function parseBoardCardGapZones(
 
 	const midpoint = (bounds.top + bounds.bottom) / 2;
 
-	return [
+	// Annotated rather than returned inline: an array literal that is the receiver
+	// of `.filter` loses the contextual type the return annotation would give it,
+	// widening `position` and `kind` to `string`.
+	const seams: readonly Extract<BoardAgentSessionDropZone, { kind: "card-gap" }>[] = [
 		{
 			bounds: {
 				...bounds,
@@ -414,6 +445,8 @@ export function parseBoardCardGapZones(
 			kind: "card-gap",
 		},
 	];
+
+	return seams.filter((zone) => isInteriorCardGap(zone.insertion.insertAtIndex, cardCount));
 }
 
 export function toListSessionDropIntent(
@@ -512,6 +545,8 @@ export interface BoardAgentSessionAttachProximity {
 	dockRect: BoardAgentSessionDropBounds | null;
 	/** The attach chin or agent-activity row the session lands in. */
 	landRect: BoardAgentSessionDropBounds | null;
+	/** The card's visible surface, or null when it is not measured. */
+	surfaceRect: BoardAgentSessionDropBounds | null;
 	/** Smoothstep ramp: 1 at distance 0, 0 at or beyond the range. */
 	nearness: number;
 }
@@ -600,11 +635,44 @@ export function resolveBoardAgentSessionAttachProximity(
 				dockRect: zone.dockRect ?? null,
 				landRect: zone.landRect ?? null,
 				nearness: attachNearnessFromDistance(distance),
+				surfaceRect: zone.surfaceRect ?? null,
 			};
 		}
 	}
 
 	return winner;
+}
+
+/**
+ * One named card as a link target, with no pointer involved.
+ *
+ * Assigning an agent from the card's own menu links the same agent to the same
+ * card a drag would, but nothing travels the board, so there is no distance to
+ * resolve: the card is the winner by construction. Returning the same shape the
+ * pointer resolver does is what lets the acknowledgement reuse the drop path
+ * instead of growing a second one.
+ */
+export function toBoardAgentSessionCardProximity(
+	zones: readonly BoardAgentSessionDropZone[],
+	cardCode: string,
+): BoardAgentSessionAttachProximity | null {
+	for (const zone of zones) {
+		if (zone.kind !== "issue" || zone.cardCode !== cardCode) {
+			continue;
+		}
+
+		return {
+			bounds: zone.bounds,
+			cardCode: zone.cardCode,
+			distance: 0,
+			dockRect: zone.dockRect ?? null,
+			landRect: zone.landRect ?? null,
+			nearness: 1,
+			surfaceRect: zone.surfaceRect ?? null,
+		};
+	}
+
+	return null;
 }
 
 export function createBoardAgentSessionDragTransaction<
@@ -624,6 +692,8 @@ export function createBoardAgentSessionDragTransaction<
 	};
 }
 
+const BOARD_GAP_EXIT_TOLERANCE_PX = 6;
+
 export function updateBoardAgentSessionDragTransaction<
 	TSession extends Readonly<{ id: string }>,
 >(
@@ -631,11 +701,31 @@ export function updateBoardAgentSessionDragTransaction<
 	pointer: BoardAgentSessionDragPointer,
 	zones: readonly BoardAgentSessionDropZone[],
 ): BoardAgentSessionDragTransaction<TSession> {
+	let target = resolveBoardAgentSessionDropTarget(transaction.origin, pointer, zones);
+	const previous = transaction.target;
+	// Enter at the exact seam; leave only after moving clearly beyond it.
+	// Reuse live geometry so scrolling/removing a target cannot retain stale slots.
+	// Explicit create wells and other gaps still take precedence immediately.
+	if (
+		previous?.kind === "create-board-gap"
+		&& previous.insertion.relativeToCardCode !== null
+		&& (!target || target.kind === "attach")
+		&& !hasOutrankingDropZone(transaction.origin, pointer, zones)
+	) {
+		const retained = zones.some((zone) => zone.kind === "card-gap"
+			&& zone.insertion.columnTitle === previous.insertion.columnTitle
+			&& zone.insertion.insertAtIndex === previous.insertion.insertAtIndex
+			&& (!zone.clip || containsPointer(zone.clip, pointer))
+			&& distanceFromPointToRect(pointer, zone.bounds) <= BOARD_GAP_EXIT_TOLERANCE_PX);
+		if (retained) target = previous;
+	}
 	return {
 		...transaction,
 		pointer,
-		proximity: resolveBoardAgentSessionAttachProximity(transaction.origin, pointer, zones),
-		target: resolveBoardAgentSessionDropTarget(transaction.origin, pointer, zones),
+		proximity: target?.kind === "create-board-gap"
+			? null
+			: resolveBoardAgentSessionAttachProximity(transaction.origin, pointer, zones),
+		target,
 	};
 }
 

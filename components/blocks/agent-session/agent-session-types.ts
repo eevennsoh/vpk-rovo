@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import type { AgentListAgent, AgentListItem } from "@/components/blocks/agent-list";
+import type { JiraIssueAgentAssignment } from "@/components/blocks/jira-issue/agent-activity-row-presentation";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
 
 import type { ApproveTarget } from "./agent-session-approve";
@@ -40,6 +41,18 @@ export function toAgentSessionVisibleIdentity(item: AgentSessionItem): AgentList
 export type AgentSessionVariant = "large" | "medium-detached" | "medium-attached" | "small";
 
 /**
+ * Row shape for the large footprint.
+ *
+ * `short` leads with a 32px identity and says only who, where, and when — the
+ * form a narrow rail or sidebar can afford. `long` drops the leading avatar,
+ * gives the title the full width, and spends the reclaimed room on a fuller
+ * metadata line (agent mark, host, lifecycle status, artifact, time) plus a
+ * trailing lifecycle indicator. Same data either way; the difference is how
+ * much of it the surface has room to state.
+ */
+export type AgentSessionDensity = "short" | "long";
+
+/**
  * Finder-style modifiers for a selection gesture.
  *
  * `additive` is Command on macOS and Control elsewhere. `range` is Shift.
@@ -77,6 +90,11 @@ export interface AgentSessionProps {
 	style?: CSSProperties;
 	/** Card footprint. Defaults to the full large uncaptured-work card. */
 	variant?: AgentSessionVariant;
+	/**
+	 * Row shape for `variant="large"` — see {@link AgentSessionDensity}. Ignored
+	 * by the medium and small footprints, which have their own fixed geometry.
+	 */
+	density?: AgentSessionDensity;
 	/** Sessions to render; defaults to relationship-appropriate built-in sample data. */
 	items?: readonly AgentSessionItem[];
 	/** Ids whose card should read as captured (solid border, still hoverable). */
@@ -115,6 +133,8 @@ export interface AgentSessionProps {
 	 * first key; takes precedence over `getSuggestedWorkItemKey` when returned.
 	 */
 	getSuggestedWorkItemKeys?: (item: AgentSessionItem) => readonly string[] | undefined;
+	/** Shows the untracked-work flyout rationale and actions below the card body. Defaults to true. */
+	showUntrackedWorkFooter?: boolean;
 	/** Links a session to a suggested work item. Receives the flyout's offered key. */
 	onLinkWorkItem?: (item: AgentSessionItem, workItemKey?: string) => void;
 	/** Creates a work item from a session. Omit to expose an unavailable Create action. */
@@ -126,25 +146,40 @@ export interface AgentSessionProps {
 	onSubtasks?: (item: AgentSessionItem) => void;
 	/** Archives a session from the untracked-work flyout. Omit to expose the action as unavailable. */
 	onArchiveSession?: (item: AgentSessionItem) => void;
-	/** Overrides the shell command the hover Resume control copies. */
+	/** Overrides the shell command the menu's Terminal row copies. */
 	getResumeCommand?: (item: AgentSessionItem) => string | undefined;
 	/**
-	 * Whether a session can be resumed. Rows that answer `false` hide the Resume
-	 * control entirely instead of copying a command the host cannot honour.
+	 * Whether a session can be resumed. Rows that answer `false` disable the
+	 * menu's Terminal row instead of copying a command the host cannot honour.
 	 * Defaults to resumable.
 	 */
 	isResumable?: (item: AgentSessionItem) => boolean;
-	/** Called after the hover Resume control copies the resume command. */
+	/** Called after the menu's Terminal row copies the resume command. */
 	onCopyResume?: (item: AgentSessionItem) => void;
 	/**
-	 * Archive / Unarchive toggle behind the hover archive control. The button
-	 * always renders; omit this on a bare list to leave the control a no-op. The
-	 * column supplies it so Archive removes the card and Unarchive restores it.
+	 * Reopens a local session in its own agent, behind the menu's "Continue in"
+	 * group. Omit to render that row disabled.
+	 */
+	onContinueInAgent?: (item: AgentSessionItem) => void;
+	/**
+	 * Breaks a cloud session's link to its work item. Omit to render the menu's
+	 * Unlink row disabled. Local sessions never show it.
+	 */
+	onUnlinkSession?: (item: AgentSessionItem) => void;
+	/** Renames a cloud session. Omit to render the menu's Rename row disabled. */
+	onRenameSession?: (item: AgentSessionItem) => void;
+	/** Deletes a cloud session record. Omit to render the menu's Delete row disabled. */
+	onDeleteSession?: (item: AgentSessionItem) => void;
+	/**
+	 * Archive / Unarchive capability behind the menu's dismiss row. Omit to render
+	 * that row disabled. The column supplies it so Dismiss removes the card and
+	 * Unarchive restores it.
 	 */
 	onToggleVisibility?: (item: AgentSessionItem) => void;
 	/**
-	 * Tooltip and accessible name for the hover archive control. Defaults to
-	 * Archive. The column passes Unarchive when the list is the hidden-work view.
+	 * Copy for the menu's dismiss row. Defaults to Dismiss. The column passes
+	 * Unarchive when the list is the hidden-work view, where the same capability
+	 * restores rather than hides.
 	 */
 	visibilityLabel?: string;
 	/** Called when a card body is activated. */
@@ -166,6 +201,11 @@ export interface AgentSessionProps {
 	rowTriage?: ReadonlyMap<string, AgentSessionTriageRow>;
 	/** Called when the viewer selects or deselects a card. */
 	onSelectedItemIdChange?: (itemId: string | null) => void;
+	/**
+	 * Assignment menu for `medium-attached` rows. The Assign agent footer
+	 * renders only when `onAssignedAgentIdsChange` is supplied.
+	 */
+	assignment?: JiraIssueAgentAssignment;
 	/** Opt-in: makes large untracked and medium-detached sessions draggable onto work items. */
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
 	draggingIds?: ReadonlySet<string>;

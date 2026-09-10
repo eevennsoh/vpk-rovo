@@ -1,7 +1,53 @@
 import type { CSSProperties } from "react";
 import type { Transition } from "motion/react";
 
+import type { JiraIssueChrome, JiraIssueIconScale } from "@/components/blocks/jira-issue/types";
 import type { AvatarUnassignedKind } from "@/components/ui/avatar";
+
+export const JIRA_ISSUE_COMPACT_ISSUE_KEY_CLASS = "text-xs font-normal leading-4 text-text-subtlest";
+/** Matches the compact Subtasks row label: medium weight + subtle color. */
+export const JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS = "text-xs font-medium leading-4 text-text-subtle";
+/** Overrides `icon-compact` 12px glyphs so comfortable cards keep 16px icons. */
+export const JIRA_ISSUE_COMFORTABLE_COMPACT_ICON_CLASS =
+	"[&_[data-slot=icon]:not([class*='size-'])]:size-4! [&_[data-slot=icon]:not([class*='size-'])>span]:size-4! [&_svg:not([class*='size-'])]:size-4!";
+
+export interface JiraIssueIconMetrics {
+	readonly assigneeSize: "xs" | "sm";
+	readonly compactIconClassName: typeof JIRA_ISSUE_COMFORTABLE_COMPACT_ICON_CLASS | undefined;
+	readonly iconTileIconSize: "small" | "medium";
+	readonly iconTileSize: "xxsmall";
+	readonly issueKeyClassName: typeof JIRA_ISSUE_COMPACT_ISSUE_KEY_CLASS | typeof JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS;
+}
+
+export function resolveJiraIssueIconMetrics(
+	iconScale: JiraIssueIconScale = "compact",
+): JiraIssueIconMetrics {
+	if (iconScale === "comfortable") {
+		return {
+			assigneeSize: "sm",
+			compactIconClassName: JIRA_ISSUE_COMFORTABLE_COMPACT_ICON_CLASS,
+			iconTileIconSize: "medium",
+			iconTileSize: "xxsmall",
+			issueKeyClassName: JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS,
+		};
+	}
+
+	return {
+		assigneeSize: "xs",
+		compactIconClassName: undefined,
+		iconTileIconSize: "small",
+		iconTileSize: "xxsmall",
+		issueKeyClassName: JIRA_ISSUE_COMPACT_ISSUE_KEY_CLASS,
+	};
+}
+
+export function resolveJiraIssueSubtaskChrome(
+	chrome: JiraIssueChrome,
+	subtaskChrome?: JiraIssueChrome,
+	compact = false,
+): JiraIssueChrome {
+	return subtaskChrome ?? (compact ? "stroke" : chrome);
+}
 
 /**
  * Pure helpers and motion tokens shared by the Jira issue card and the subtask
@@ -66,6 +112,31 @@ export function getCompletedCount(completedCount: number | undefined, totalCount
 
 export function getJiraIssueLayoutTransition(shouldReduceMotion: boolean | null): Transition {
 	return shouldReduceMotion ? JIRA_ISSUE_MOTION_REDUCED : JIRA_ISSUE_MOTION_LAYOUT;
+}
+
+// Absolute offsets for the white card surface inside the agent shell, measured
+// from the card's padding box — which is why a resting card sits at -1 and covers
+// its own 1px border.
+//
+// Every edge the grey well shows through is inset by the same amount, so the well
+// is always *carved out of the card*, never appended to it: the shell's layout box
+// is byte-identical at rest and while a hovered agent session highlights the card,
+// and the cards below it never move. (The bottom band used to be a 4px spacer row
+// under the card, which grew the shell by 4px on hover.)
+//
+// The bottom edge is the one exception: a docked chin row already paints that band
+// below the card, so the surface stays flush against it instead of opening a second
+// gap.
+export function getJiraIssueAgentSurfaceOffsets(
+	surfacePosition: number,
+	insetsSurfaceBottom: boolean,
+): Readonly<{ bottom: number; left: number; right: number; top: number }> {
+	return {
+		bottom: insetsSurfaceBottom ? surfacePosition : -1,
+		left: surfacePosition,
+		right: surfacePosition,
+		top: surfacePosition,
+	};
 }
 
 export function getJiraIssuePresenceMotion(shouldReduceMotion: boolean | null) {
