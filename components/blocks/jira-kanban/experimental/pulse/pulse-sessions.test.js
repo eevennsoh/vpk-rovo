@@ -279,6 +279,48 @@ test("create, link, and subtask capture through the same host callback", async (
 	assert.deepEqual(captured, [session.id, session.id, session.id]);
 });
 
+/**
+ * A session's PR is a Smart Link, not a bare link: the flyout's Artifacts chip
+ * expands into a card with the repo tag, the `branch → main` path, the diff
+ * stats, and the summary. The mapper used to forward only number, title and
+ * URL, so every one of those cards opened nearly empty. Assert the whole
+ * payload survives the fixture → row → flyout hop for every authored PR.
+ */
+test("every session pull request maps to a complete Smart Link payload", async () => {
+	const { PULSE_SPACE_REPOSITORY, PULSE_TIMELINE, toPulseSessionItems } = await loadSessionsHarness();
+	const sessions = PULSE_TIMELINE.looseWork.filter(
+		(item) => item.kind === "agent-session" && item.pullRequest !== undefined,
+	);
+	const items = toPulseSessionItems(sessions, PULSE_TIMELINE.members, PULSE_TIMELINE.workItems);
+
+	assert.ok(sessions.length > 0, "no PR-bearing sessions left to check");
+	assert.equal(items.length, sessions.length);
+
+	items.forEach((item, index) => {
+		const { pullRequest } = sessions[index];
+		const details = item.sessionDetails;
+		const repository = pullRequest.repository ?? PULSE_SPACE_REPOSITORY;
+		const where = `${sessions[index].id}/#${pullRequest.number}`;
+
+		assert.equal(details.pullRequestNumber, pullRequest.number, where);
+		assert.equal(details.pullRequestTitle, pullRequest.title, where);
+		assert.equal(details.pullRequestDescription, pullRequest.description, where);
+		assert.equal(details.files, pullRequest.files, where);
+		assert.equal(details.additions, pullRequest.additions, where);
+		assert.equal(details.deletions, pullRequest.deletions, where);
+		assert.equal(details.branch, pullRequest.branch, where);
+		assert.equal(details.repository, repository, where);
+		// Every PR in the fixture merges into the space's trunk, and the URL is
+		// built from the resolved repo so an overridden one cannot link elsewhere.
+		assert.equal(details.targetBranch, "main", where);
+		assert.equal(
+			details.pullRequestUrl,
+			`https://github.com/${repository}/pull/${pullRequest.number}`,
+			where,
+		);
+	});
+});
+
 test("the uncaptured column renders sessions through the Agent Session block", () => {
 	assert.match(SOURCES.rail, /import \{ AgentSession \} from "@\/components\/blocks\/agent-session";/u);
 	assert.match(

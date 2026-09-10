@@ -8,7 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icon";
 import { BrandLogoMark } from "@/components/ui/logo-mark";
 import { Lozenge, type LozengeProps } from "@/components/ui/lozenge";
-import { Tag } from "@/components/ui/tag";
 import { cn } from "@/lib/utils";
 
 import type {
@@ -97,7 +96,7 @@ function PullRequestDiffStats({
 	);
 }
 
-/** Status lozenge. The spacious card leads with it, so it also carries a glyph. */
+/** Status lozenge. The spacious card trails the title with it, so it also carries a glyph. */
 function PullRequestStatusLozenge({
 	status,
 	withIcon = false,
@@ -148,23 +147,6 @@ function PullRequestMetaLeadingIcon() {
 	);
 }
 
-/** GitHub-marked repository pill. Dropdown card only. */
-function PullRequestRepositoryTag({
-	repository,
-}: Readonly<{ repository?: string }>) {
-	if (!repository) return null;
-
-	return (
-		<Tag
-			color="gray"
-			elemBefore={<PullRequestGitHubMark />}
-			maxWidth="9rem"
-		>
-			{repository}
-		</Tag>
-	);
-}
-
 function PullRequestBranchPath({
 	branch,
 	targetBranch,
@@ -195,16 +177,26 @@ function PullRequestBranchPath({
 	);
 }
 
+/**
+ * Compact body (Figma 3173:2734): leading author avatar, then two rows — `#N` +
+ * title with the status lozenge trailing, and a GitHub mark + `source → target`
+ * path followed by the files / diff metrics.
+ *
+ * The lozenge and the diff metrics swapped rows on purpose. Status is the fact
+ * a scanner wants next to the title, and it is a fixed-width chip, so it holds
+ * the trailing slot without shifting as titles change length; the metrics are
+ * three variable-width runs that belong with the rest of the metadata.
+ */
 function PullRequestDropdownBody({
 	number,
 	title,
 	status,
 	author,
-	repository,
 	branch,
 	targetBranch,
 	additions,
 	deletions,
+	filesChanged,
 }: Readonly<
 	Pick<
 		PullRequestProps,
@@ -212,13 +204,15 @@ function PullRequestDropdownBody({
 		| "title"
 		| "status"
 		| "author"
-		| "repository"
 		| "branch"
 		| "targetBranch"
 		| "additions"
 		| "deletions"
+		| "filesChanged"
 	>
 >) {
+	const hasBranchPath = Boolean(branch || targetBranch);
+
 	return (
 		<>
 			{author ? <PullRequestAuthorAvatar author={author} /> : null}
@@ -228,12 +222,29 @@ function PullRequestDropdownBody({
 						<span className="shrink-0 text-text-subtlest">#{number}</span>
 						<span className="min-w-0 truncate text-text">{title}</span>
 					</span>
-					<PullRequestDiffStats additions={additions} deletions={deletions} />
-				</div>
-				<div className="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden">
 					<PullRequestStatusLozenge status={status} />
-					<PullRequestRepositoryTag repository={repository} />
+				</div>
+				<div className="flex min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden">
+					<PullRequestGitHubMark />
 					<PullRequestBranchPath branch={branch} targetBranch={targetBranch} />
+					{/* The dot only earns its place between two groups. */}
+					{hasBranchPath ? (
+						<span aria-hidden="true" className="shrink-0 text-sm leading-4 text-text-subtlest">
+							·
+						</span>
+					) : null}
+					<span className="flex shrink-0 items-center gap-1">
+						{filesChanged != null ? (
+							<span className="text-xs leading-4 text-text-subtle tabular-nums">
+								{filesChanged} {filesChanged === 1 ? "file" : "files"}
+							</span>
+						) : null}
+						<PullRequestDiffStats
+							additions={additions}
+							deletions={deletions}
+							className="font-normal"
+						/>
+					</span>
 				</div>
 			</div>
 		</>
@@ -241,8 +252,9 @@ function PullRequestDropdownBody({
 }
 
 /**
- * Spacious body: status + `#N` + title on row one, GitHub mark + branch path on
- * row two, and an author / changed-files / diff footer on row three.
+ * Spacious body (Figma 3173:2888): `#N` + title with the status lozenge
+ * trailing on row one, GitHub mark + branch path on row two, and an author /
+ * changed-files / diff footer on row three.
  */
 function PullRequestSpaciousBody({
 	number,
@@ -270,13 +282,17 @@ function PullRequestSpaciousBody({
 >) {
 	return (
 		<>
+			{/* The title takes the row and the lozenge trails, right-aligned, the
+			    same anchoring the flyout card uses. `flex-1` on the title is what
+			    pushes the lozenge out; `Lozenge` is already `shrink-0`, so a long
+			    title wraps under itself rather than squeezing the status. */}
 			<div className="flex min-w-0 items-start gap-2">
-				<PullRequestStatusLozenge status={status} withIcon />
 				<PullRequestInlineTitle
 					className="flex-1 font-medium"
 					number={number}
 					title={title}
 				/>
+				<PullRequestStatusLozenge status={status} withIcon />
 			</div>
 			<div className="flex min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden">
 				<PullRequestGitHubMark />
@@ -388,11 +404,12 @@ function PullRequestFlyoutBody({
 /**
  * Pull-request summary card in three layouts.
  *
- * - `dropdown`: one row — author avatar, split `#N` + title, diff stats, then a
- *   metadata line of status lozenge, repo pill, and `source → target` path.
- * - `spacious`: three rows — status lozenge (with glyph) + wrapping `#N` +
- *   title, then GitHub mark + `source → target` path, then an author /
- *   changed-files / diff footer. Selectable dropdown-style chrome.
+ * - `dropdown`: compact two-row card — author avatar, then `#N` + title with a
+ *   trailing status lozenge, then GitHub mark + `source → target` path and the
+ *   files / diff metrics.
+ * - `spacious`: three rows — wrapping `#N` + title with a trailing status
+ *   lozenge (with glyph), then GitHub mark + `source → target` path, then an
+ *   author / changed-files / diff footer. Selectable dropdown-style chrome.
  * - `flyout`: overlay card — wrapping `#N` + title with a trailing status
  *   lozenge, author · time, then a divided GitHub mark + `source → target`
  *   path and files / diff footer.
@@ -403,7 +420,6 @@ export function PullRequest({
 	title,
 	status,
 	author,
-	repository,
 	branch,
 	targetBranch,
 	additions,
@@ -451,8 +467,8 @@ export function PullRequest({
 			author={author}
 			branch={branch}
 			deletions={deletions}
+			filesChanged={filesChanged}
 			number={number}
-			repository={repository}
 			status={status}
 			targetBranch={targetBranch}
 			title={title}
@@ -465,7 +481,12 @@ export function PullRequest({
 			? "flex-col items-stretch gap-3 rounded-lg bg-surface-raised pt-3 shadow-2xl"
 			: isSpacious
 				? "flex-col items-stretch gap-2 rounded-xl border border-border p-3"
-				: "items-center gap-2 rounded-lg border border-border px-3 py-1.5",
+				// The trailing inset is halved so the status lozenge sits the same
+				// 7px from the border on its top and right edges. `px-3` would
+				// hold it 13px off the right while the row padding holds it 7px
+				// off the top, and that corner reads as a drift. The leading
+				// inset stays 12px — the avatar needs the breathing room.
+				: "items-center gap-2 rounded-lg border border-border py-1.5 ps-3 pe-1.5",
 		onActivate
 			? "cursor-pointer text-left outline-none transition-[background-color,border-color] duration-normal ease-out-practical hover:bg-surface-hovered focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 			: null,

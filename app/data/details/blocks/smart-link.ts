@@ -82,7 +82,7 @@ const item: SmartLinkItem = {
 			{ title: "Project", description: "Project preview with avatar, status, update date, and project-specific action.", demoSlug: "smart-link-demo-project" },
 			{ title: "Loom", description: "Loom preview with media-style title, excerpt, and actions.", demoSlug: "smart-link-demo-loom" },
 			{ title: "Generic links", description: "File and message previews backed by existing third-party provider assets.", demoSlug: "smart-link-demo-generic" },
-			{ title: "Pull request", description: "GitHub pull request chip with status, diff stats, repository, and author in the flyout.", demoSlug: "smart-link-demo-pull-request" },
+			{ title: "Pull request", description: "GitHub pull request chip with status, diff stats, branch path, and author in the flyout.", demoSlug: "smart-link-demo-pull-request" },
 			{ title: "Card", description: "Bordered block cards for every smart-link variant — Jira, Confluence, article, team, goal, project, Loom, file, generic, and pull request.", demoSlug: "smart-link-demo-card" },
 			{ title: "Removable (overlay)", description: "Smart Links with an X revealed over the trailing edge on hover or keyboard focus.", demoSlug: "smart-link-demo-removable-overlay" },
 			{ title: "Inline status", description: "Work item status rendered as a lozenge at the end of the inline chip.", demoSlug: "smart-link-demo-status" },
