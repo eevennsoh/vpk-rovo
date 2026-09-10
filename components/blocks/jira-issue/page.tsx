@@ -14,6 +14,7 @@ import {
 	type JiraIssueChrome,
 	type JiraIssueCompletedAgentRun,
 	type JiraIssueGenerativeActionRequest,
+	type JiraIssueIconScale,
 	type JiraIssuePullRequestPreview,
 	type JiraIssuePullRequestStatus,
 } from "@/components/blocks/jira-issue";
@@ -401,7 +402,7 @@ function getExperimentalDemoPullRequest(
 }
 
 interface JiraIssuePageProps {
-	variant?: "default" | "experimental" | "uncaptured-work" | "subtasks-collapsed" | "subtasks-expanded" | "parent-epic" | "agent-activity-states" | "agent-activity-states-experimental";
+	variant?: "default" | "experimental" | "uncaptured-work" | "subtasks-collapsed" | "subtasks-expanded" | "parent-epic" | "agent-activity-states" | "agent-activity-states-experimental" | "agent-activity-states-experimental-v2";
 }
 
 function JiraIssueUncapturedWorkDemo() {
@@ -447,6 +448,10 @@ export default function JiraIssuePage({ variant = "default" }: Readonly<JiraIssu
 		: isSubtasksVariant
 			? "Venn's test"
 			: "Acmecorp: Prepare for bid recommendation for ESM RFP";
+
+	if (variant === "agent-activity-states-experimental-v2") {
+		return <JiraIssueExperimentalAgentActivityStatesPage iconScale="comfortable" />;
+	}
 
 	if (variant === "agent-activity-states-experimental") {
 		return <JiraIssueExperimentalAgentActivityStatesPage />;
@@ -524,12 +529,18 @@ interface JiraIssueAgentActivityStatesDemoProps {
 	chrome?: JiraIssueChrome;
 	/** Keeps experimental compact internals when chrome toggles to raised. */
 	compact?: boolean;
+	iconScale?: JiraIssueIconScale;
 	onChromeChange?: (chrome: JiraIssueChrome) => void;
+	subtaskChrome?: JiraIssueChrome;
 	/** Adds the Unlink / Move / Link session-transfer phases to the tab list. */
 	showSessionTransferStates?: boolean;
 }
 
-function JiraIssueExperimentalAgentActivityStatesPage(): React.ReactElement {
+function JiraIssueExperimentalAgentActivityStatesPage({
+	iconScale,
+}: Readonly<{
+	iconScale?: JiraIssueIconScale;
+}> = {}): React.ReactElement {
 	const [chrome, setChrome] = useState<JiraIssueChrome>("stroke");
 
 	return (
@@ -538,8 +549,10 @@ function JiraIssueExperimentalAgentActivityStatesPage(): React.ReactElement {
 				agentActivityLayout="merged"
 				chrome={chrome}
 				compact
+				iconScale={iconScale}
 				onChromeChange={setChrome}
-				showSessionTransferStates
+				showSessionTransferStates={iconScale !== "comfortable"}
+				subtaskChrome="stroke"
 			/>
 		</RovoChatProvider>
 	);
@@ -549,8 +562,10 @@ function JiraIssueAgentActivityStatesDemo({
 	agentActivityLayout = "merged",
 	chrome = "raised",
 	compact = false,
+	iconScale,
 	onChromeChange,
 	showSessionTransferStates = false,
+	subtaskChrome,
 }: Readonly<JiraIssueAgentActivityStatesDemoProps> = {}): React.ReactElement {
 	const [agentActivityState, setAgentActivityState] = useState<JiraIssueAgentActivityDemoState>("default");
 	// View chat / question submit / generative actions all drop into the shared
@@ -733,9 +748,12 @@ function JiraIssueAgentActivityStatesDemo({
 						chrome={chrome}
 						className="w-full"
 						compact={compact}
+						iconScale={iconScale}
+						subtaskChrome={subtaskChrome}
 						generativeAction={{
 							onSubmit: handleGenerativeActionSubmit,
 						}}
+						generativeActionPresentation={iconScale === "comfortable" ? "more-actions" : undefined}
 						issueKey="PD-40"
 						onAgentActivityViewChat={handleAgentActivityViewChat}
 						onAgentDoneRunSubmit={handleAgentDoneRunSubmit}

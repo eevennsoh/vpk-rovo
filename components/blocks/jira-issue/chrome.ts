@@ -4,22 +4,22 @@ import type { JiraIssueChrome } from "./types";
 
 export interface JiraIssueChromeStyles {
 	readonly restClassName: string; // idle border only, no fill
-	readonly hoverClassName: string; // :hover for root and subtask
-	readonly agentSurfaceHoverClassName: string; // group-hover/jira-issue-card
+	readonly hoverClassName: string; // :hover for root; skipped while a nested subtask is hovered
+	readonly agentSurfaceHoverClassName: string; // group hover on the agent surface; same nested skip
 	readonly boxShadow: string; // raised token, or "none"
 }
 
 const RAISED_JIRA_ISSUE_CHROME_STYLES: JiraIssueChromeStyles = Object.freeze({
 	restClassName: "border-transparent",
-	hoverClassName: "hover:bg-surface-hovered",
-	agentSurfaceHoverClassName: "group-hover/jira-issue-card:bg-surface-hovered",
+	hoverClassName: "hover:not-has-[[data-slot=jira-issue-subtask-card]:hover]:bg-surface-hovered",
+	agentSurfaceHoverClassName: "group-[&:hover:not(:has([data-slot=jira-issue-subtask-card]:hover))]/jira-issue-card:bg-surface-hovered",
 	boxShadow: token("elevation.shadow.raised"),
 });
 
 const STROKE_JIRA_ISSUE_CHROME_STYLES: JiraIssueChromeStyles = Object.freeze({
 	restClassName: "border-border-disabled",
-	hoverClassName: "hover:border-border",
-	agentSurfaceHoverClassName: "group-hover/jira-issue-card:border-border",
+	hoverClassName: "hover:not-has-[[data-slot=jira-issue-subtask-card]:hover]:border-border",
+	agentSurfaceHoverClassName: "group-[&:hover:not(:has([data-slot=jira-issue-subtask-card]:hover))]/jira-issue-card:border-border",
 	boxShadow: "none",
 });
 

@@ -122,7 +122,23 @@ test("the collapsed options menu uses Atlaskit show-more-horizontal, not a custo
 	assert.match(IN_FLOW_MENU_SOURCE, /import PinIcon from "@atlaskit\/icon\/core\/pin"/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /import PinFilledIcon from "@atlaskit\/icon\/core\/pin-filled"/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /import GrowHorizontalIcon from "@atlaskit\/icon\/core\/grow-horizontal"/u);
-	assert.match(IN_FLOW_MENU_SOURCE, /const TriggerGlyph = dragging \? DragHandleVerticalIcon : ShowMoreHorizontalIcon/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /const showDragHandle = dragging \|\| open \|\| hovered/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /onPointerEnter=\{handleTriggerPointerEnter\}/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /const TriggerGlyph = showDragHandle \? DragHandleVerticalIcon : ShowMoreHorizontalIcon/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /openOnHover/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /delay=\{0\}/u);
+	assert.match(
+		IN_FLOW_MENU_SOURCE,
+		/const HOVER_OPEN_TRIGGER_CLASS_NAME =\s*"aria-expanded:border-transparent aria-expanded:bg-bg-neutral-subtle-hovered aria-expanded:text-text-subtle aria-expanded:\[&_\[data-slot=icon\]\]:text-icon-subtle aria-expanded:\[&_svg\]:text-icon-subtle"/u,
+	);
+	assert.match(
+		IN_FLOW_MENU_SOURCE,
+		/className=\{cn\(className, HOVER_OPEN_TRIGGER_CLASS_NAME\)\}/u,
+	);
+	assert.match(
+		IN_FLOW_MENU_SOURCE,
+		/data-agent-session-column-options-glyph=\{showDragHandle \? "drag-handle" : "more"\}/u,
+	);
 	assert.match(IN_FLOW_MENU_SOURCE, /<TriggerGlyph color="currentColor" label="" size="small" \/>/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /<PinGlyph label="" size="small" \/>/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /<GrowHorizontalIcon label="" size="small" \/>/u);

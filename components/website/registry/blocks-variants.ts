@@ -124,6 +124,34 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
+	"agent-session-demo-local-short": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-demo").then((mod) => ({
+				default: mod.AgentSessionDemoLocalShort,
+			})),
+		{ ssr: false },
+	),
+	"agent-session-demo-local-long": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-demo").then((mod) => ({
+				default: mod.AgentSessionDemoLocalLong,
+			})),
+		{ ssr: false },
+	),
+	"agent-session-demo-cloud-short": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-demo").then((mod) => ({
+				default: mod.AgentSessionDemoCloudShort,
+			})),
+		{ ssr: false },
+	),
+	"agent-session-demo-cloud-long": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-demo").then((mod) => ({
+				default: mod.AgentSessionDemoCloudLong,
+			})),
+		{ ssr: false },
+	),
 	"agent-session-column-demo": dynamic(
 		() =>
 			import("../demos/blocks/agent-session-column-demo").then((mod) => ({
@@ -565,6 +593,9 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 	})), { ssr: false }),
 	"jira-issue-demo-agent-activity-states-experimental": dynamic(() => import("../demos/blocks/jira-issue-demo").then((mod) => ({
 		default: mod.JiraIssueDemoAgentActivityStatesExperimental,
+	})), { ssr: false }),
+	"jira-issue-demo-agent-activity-states-experimental-v2": dynamic(() => import("../demos/blocks/jira-issue-demo").then((mod) => ({
+		default: mod.JiraIssueDemoAgentActivityStatesExperimentalV2,
 	})), { ssr: false }),
 	"jira-create-demo-work-item": dynamic(() => import("../demos/blocks/jira-create-demo").then((mod) => ({
 		default: mod.JiraCreateDemoWorkItem,

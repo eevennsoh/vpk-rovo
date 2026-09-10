@@ -182,12 +182,13 @@ function ExperimentalJiraKanbanPageContent({
 	activeCardCode,
 	additionalAgentSessions,
 	agentActivityLayout,
-	cardGenerativeActionPresentation,
+	cardGenerativeActionPresentation, iconScale,
 	createWorkItemDropZoneLabel,
 	defaultAgentSessionColumnCollapsed = false,
 	defaultShowUntracked = true,
 	detachedAgentSessionsByCard,
 	agentSessionAssigneeIdAliases,
+	agentSessionLinkingVariant = "fuse",
 	agentSessionPresentation = "column",
 	agentSessionMultiSelect = true,
 	agents = BOARD_AGENTS,
@@ -213,7 +214,7 @@ function ExperimentalJiraKanbanPageContent({
 	onCardAgentSessionMove,
 	onCardAgentSessionUnlink,
 	onListAgentSessionCreate,
-	showAgentSessionUnlinkWell = true,
+	showAgentSessionUnlinkWell = true, subtaskChrome,
 	onInsightsWorkItemClick,
 	onModeChange,
 	onResumeLooseWork,
@@ -832,6 +833,7 @@ function ExperimentalJiraKanbanPageContent({
 	const boardSessionDrag = useBoardAgentSessionDrag({
 		boardColumns: filteredBoardColumns,
 		detachedSessionsByCard: proximityAgentSessionsByCard,
+		linkingVariant: agentSessionLinkingVariant,
 		onCreate: onBoardAgentSessionCreate ? handleBoardAgentSessionCreate : undefined,
 		// Same create path as the well, with a slot. Each cohort member advances
 		// the index, and the refs behind `handleBoardAgentSessionCreate` grow with
@@ -981,7 +983,7 @@ function ExperimentalJiraKanbanPageContent({
 								ariaLabel={ariaLabel}
 								assignedAgentIdsByColumn={columnAgentAssignments}
 								boardColumns={filteredBoardColumns}
-								cardGenerativeActionPresentation={cardGenerativeActionPresentation}
+								cardGenerativeActionPresentation={cardGenerativeActionPresentation} iconScale={iconScale}
 								collapsedColumns={displayedCollapsedColumns}
 								columnChrome={columnChrome}
 								createdCardArrival={createdCardArrival ?? undefined}
@@ -1006,7 +1008,7 @@ function ExperimentalJiraKanbanPageContent({
 								onCardAgentSessionUnlink={onCardAgentSessionUnlink
 									? handleCardAgentSessionUnlink
 									: undefined}
-								showAgentSessionUnlinkWell={showAgentSessionUnlinkWell}
+								showAgentSessionUnlinkWell={showAgentSessionUnlinkWell} subtaskChrome={subtaskChrome}
 								onCardSelect={handleCardSelect}
 								onCardDragStart={handleCardDragStart}
 								onCardDrop={handleCardDrop}

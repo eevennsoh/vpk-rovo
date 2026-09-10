@@ -365,7 +365,8 @@ test("the collapsed options menu offers Pin and Expand", async ({ page }) => {
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({ timeout: 15_000 });
 	await revealCollapsedAgentSessionColumn(page);
 	const options = page.getByRole("button", { name: "Unattached sessions column options" });
-	await options.click();
+	await options.hover();
+	await expect(options.locator('[data-agent-session-column-options-glyph="drag-handle"]')).toBeVisible();
 	await expect(page.getByRole("menuitem", { name: "Pin" })).toBeVisible();
 	await expect(page.getByRole("menuitem", { name: "Expand" })).toBeVisible();
 	await page.keyboard.press("Escape");

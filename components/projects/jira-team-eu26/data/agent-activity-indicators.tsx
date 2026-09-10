@@ -29,11 +29,11 @@ export const renderJiraTeamEu26AgentActivityIndicator: JiraIssueAgentActivityInd
 	state,
 ) => {
 	if (state === "finished") {
-		return <StatusSuccessIcon color={token("color.icon.success")} label="" size="small" />;
+		return <StatusSuccessIcon color={token("color.icon.success")} label="" size="medium" />;
 	}
 	return state === "awaiting-input" ? (
-		<QuestionCircleFilledIcon color={token("color.icon.information")} label="" size="small" />
+		<QuestionCircleFilledIcon color={token("color.icon.information")} label="" size="medium" />
 	) : (
-		<Spinner label="" pulse size="default" variant="experimental" />
+		<Spinner label="" pulse size="xl" variant="experimental" />
 	);
 };
