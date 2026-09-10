@@ -20,18 +20,19 @@ import {
 	type JiraListAssignedAgent,
 	type JiraListInsertion,
 } from "@/components/blocks/jira-list";
-import { useDesignVariants } from "@/components/hooks/use-design-variants";
 import { JgpRovoOverlay } from "@/components/projects/jira-golden-journeys-v1/components/jira-golden-journeys-v1-rovo-overlay";
 import { JGP_CHAT_AGENT_PROFILES } from "@/components/projects/jira-golden-journeys-v1/data/agent-chat-data";
 import { useJgpAgentChatDemo } from "@/components/projects/jira-golden-journeys-v1/hooks/use-jira-golden-journeys-v1-agent-chat-demo";
 import { JiraViewTabs } from "@/components/projects/jira/components/jira-header";
 import {
 	DEFAULT_JIRA_WORK_ITEM_VIEW,
-	DEFAULT_JIRA_WORK_ITEMS_TAB_LABEL,
+	getJiraTabs,
 	type JiraWorkItemView,
 } from "@/components/projects/jira/data/tabs";
-import { useJiraTabs } from "@/components/projects/jira/hooks/use-jira-tabs";
-import { resolveJiraTab } from "@/components/projects/jira/lib/jira-tab-model";
+import {
+	getJiraWorkItemsTabLabel,
+	resolveJiraTab,
+} from "@/components/projects/jira/lib/jira-tab-model";
 import AppLayout from "@/components/projects/page";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,8 @@ import { useJiraTeamEu26GenerativeActions } from "./hooks/use-jira-team-eu26-gen
 import { useJiraTeamEu26List } from "./hooks/use-jira-team-eu26-list";
 
 const JIRA_LIST_PANEL_END_GAP_PX = 24;
+const JIRA_TEAM_EU26_TABS = getJiraTabs(false);
+const JIRA_TEAM_EU26_DEFAULT_TAB_LABEL = getJiraWorkItemsTabLabel(JIRA_TEAM_EU26_TABS);
 
 export default function JiraTeamEu26Page(): React.ReactElement {
 	return (
@@ -82,19 +85,13 @@ function JiraTeamEu26App(): React.ReactElement {
 		Readonly<Record<string, readonly AgentSessionItem[]>>
 	>({});
 	const detachedActivitiesByIdRef = useRef<Record<string, JiraIssueAgentActivity>>({});
-	// Team EU without Simple views splits work items into Board and List tabs,
-	// so the tab bar owns the view and the board header's own switcher stands
-	// down. Simple views collapse them into one Work items tab and the switcher
-	// owns it instead. Both write the same state, so the choice survives
-	// flipping the property.
-	const tabs = useJiraTabs();
-	// The one place the global variant store meets the board. Panel is off by
-	// default, so untracked work starts as the in-flow column on both Board
-	// and List; on, it lifts into the floating side surface both views share.
-	const { designVariants } = useDesignVariants();
+	// Team EU 26 has a fixed presentation: Board and List remain sibling tabs,
+	// untracked work remains an in-flow column, and the standard kanban chrome
+	// is always used. It deliberately does not read the global variant store.
+	const tabs = JIRA_TEAM_EU26_TABS;
 	const createWorkItemDropZoneLabel = "Create new work item";
 	const [workItemView, setWorkItemView] = useState<JiraWorkItemView>(DEFAULT_JIRA_WORK_ITEM_VIEW);
-	const [selectedTabLabel, setSelectedTabLabel] = useState(DEFAULT_JIRA_WORK_ITEMS_TAB_LABEL);
+	const [selectedTabLabel, setSelectedTabLabel] = useState(JIRA_TEAM_EU26_DEFAULT_TAB_LABEL);
 	const activeTab = resolveJiraTab(tabs, selectedTabLabel, workItemView);
 	const tabOwnsView = activeTab?.view !== undefined;
 	const activeView = activeTab?.view ?? workItemView;
@@ -293,6 +290,7 @@ function JiraTeamEu26App(): React.ReactElement {
 				chatPanelFlush
 				defaultSidebarOpen={true}
 				hideFloatingRovo
+				hideSettings
 				product="jira"
 			>
 				<div className="h-full min-h-0 min-w-0 overflow-hidden bg-surface [&>div]:min-h-0">
@@ -304,8 +302,8 @@ function JiraTeamEu26App(): React.ReactElement {
 						cardGenerativeActionPresentation="more-actions"
 						createWorkItemDropZoneLabel={createWorkItemDropZoneLabel}
 						agentSessionAssigneeIdAliases={JIRA_TEAM_EU26_PAY_SESSION_MEMBER_ID_BY_ASSIGNEE_ID}
-						agentSessionPresentation={designVariants.panel ? "panel" : "column"}
-						columnChrome={designVariants.simpleKanban ? "simple" : "default"}
+						agentSessionPresentation="column"
+						columnChrome="default"
 						agents={JIRA_TEAM_EU26_PAY_BOARD_AGENTS}
 						ariaLabel="Track the Payments SDK v2 migration. Scroll horizontally to review all delivery statuses."
 						boardColumns={boardColumns}
@@ -368,14 +366,15 @@ function JiraTeamEu26App(): React.ReactElement {
 						showAgentSessionOverflow={false}
 						showBoardContent={showBoardContent}
 						moreControlsPlacement="end"
-						showMoreControls={!designVariants["simple-views"]}
-						showCustomizeControl={!designVariants["simple-views"]}
-						simpleViews={designVariants["simple-views"]}
+						showMoreControls
+						showCustomizeControl
+						simpleViews={false}
 						needsInputCount={needsInputCount}
 						viewTabs={(
 							<JiraViewTabs
 								selectedTabLabel={selectedTabLabel}
 								onTabChange={handleTabChange}
+								tabs={tabs}
 								workItemView={workItemView}
 							/>
 						)}

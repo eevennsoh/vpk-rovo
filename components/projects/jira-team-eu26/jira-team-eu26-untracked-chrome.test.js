@@ -114,19 +114,16 @@ test("the route hides untracked-work confidence chrome across column and card fl
 	);
 });
 
-test("the Panel design variant floats untracked work over the board and the list", () => {
-	// The route is the only place the global variant store meets the board, and
-	// it must reach the block as a presentation choice — the block itself stays
-	// variant-agnostic.
-	assert.match(PAGE_SOURCE, /import \{ useDesignVariants \} from "@\/components\/hooks\/use-design-variants";/u);
-	assert.match(PAGE_SOURCE, /const \{ designVariants \} = useDesignVariants\(\);/u);
+test("the route locks untracked work to the in-flow column", () => {
+	// Team EU 26 is fixed and does not inherit a persisted global Panel choice.
+	assert.doesNotMatch(PAGE_SOURCE, /useDesignVariants|designVariants/u);
 	assert.match(
 		PAGE_SOURCE,
-		/<ExperimentalJiraKanbanPage[\s\S]*agentSessionPresentation=\{designVariants\.panel \? "panel" : "column"\}/u,
+		/<ExperimentalJiraKanbanPage[\s\S]*agentSessionPresentation="column"/u,
 	);
 	assert.match(
 		PAGE_SOURCE,
-		/<ExperimentalJiraKanbanPage[\s\S]*columnChrome=\{designVariants\.simpleKanban \? "simple" : "default"\}/u,
+		/<ExperimentalJiraKanbanPage[\s\S]*columnChrome="default"/u,
 	);
 	assert.doesNotMatch(
 		EXPERIMENTAL_PAGE_SOURCE,
@@ -348,10 +345,10 @@ test("the untracked panel publishes its occupied width for the floating Rovo but
 	);
 });
 
-test("the Simple kanban design variant reaches the board as column chrome", () => {
+test("the route locks the board to default kanban chrome", () => {
 	assert.match(
 		PAGE_SOURCE,
-		/columnChrome=\{designVariants\.simpleKanban \? "simple" : "default"\}/u,
+		/columnChrome="default"/u,
 	);
 	assert.doesNotMatch(
 		EXPERIMENTAL_PAGE_SOURCE,
