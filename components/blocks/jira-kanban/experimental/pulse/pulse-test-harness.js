@@ -216,8 +216,10 @@ function loadSessionsHarness() {
 				toPulseSessionHandlers,
 				toPulseSessionIssueStatus,
 				toPulseSessionItems,
+				toPulseSessionPullRequestDetails,
 				toPulseSessionWorktree,
 			} from "./components/blocks/jira-kanban/experimental/pulse/lib/pulse-sessions";
+			export { PULSE_SPACE_REPOSITORY } from "./components/blocks/jira-kanban/experimental/pulse/data/pulse-loose-work";
 			export { PULSE_TIMELINE } from "./components/blocks/jira-kanban/experimental/pulse/data/pulse-timeline";
 		`,
 		sourcefile: "pulse-sessions-harness.ts",

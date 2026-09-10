@@ -192,10 +192,12 @@ test("pull-request cards keep their footer free of action buttons", () => {
 	assert.match(COMPONENT_SOURCE, /showActionButtons && item\.variant !== "pull-request"/u);
 });
 
-test("the pull-request metadata row is a single-line repo and branch context strip", () => {
+test("the pull-request metadata row is a single-line branch context strip", () => {
 	assert.match(TYPES_SOURCE, /export interface SmartLinkBranchPath \{\s*branch\?: string;\s*targetBranch\?: string;/u);
 	assert.match(TYPES_SOURCE, /branchPath\?: SmartLinkBranchPath;/u);
-	assert.match(TYPES_SOURCE, /repository\?: string;/u);
+	// The repo is not part of the card model: the provider mark and `#N` already
+	// say where the change lives, so the tag was dropped along with the field.
+	assert.doesNotMatch(TYPES_SOURCE, /repository\?: string;/u);
 	assert.match(COMPONENT_SOURCE, /import ArrowRightIcon from "@atlaskit\/icon\/core\/arrow-right";/u);
 	assert.match(COMPONENT_SOURCE, /function SmartLinkBranchPathLabel/u);
 	// Source branch truncates behind a subtle `prefix/`; the target stays whole.
@@ -204,11 +206,13 @@ test("the pull-request metadata row is a single-line repo and branch context str
 	assert.match(COMPONENT_SOURCE, /aria-label=\{branch && targetBranch \? `\$\{branch\} into \$\{targetBranch\}`/u);
 	assert.match(COMPONENT_SOURCE, /<SmartLinkBranchPathLabel branchPath=\{branchPath\} \/>/u);
 	assert.match(PULL_REQUEST_HELPER_SOURCE, /branchPath:\s*input\.branch \|\| input\.targetBranch/u);
-	assert.match(PULL_REQUEST_HELPER_SOURCE, /repository: input\.repository,/u);
+	// `repository` survives only as href input, never as a rendered field.
+	assert.doesNotMatch(PULL_REQUEST_HELPER_SOURCE, /repository: input\.repository,/u);
+	assert.match(PULL_REQUEST_HELPER_SOURCE, /https:\/\/github\.com\/\$\{input\.repository\}\/pull\/\$\{input\.number\}/u);
 	assert.match(DATA_SOURCE, /branch: "feature\/shop-4821-guest-checkout"/u);
 	assert.match(DATA_SOURCE, /targetBranch: "main"/u);
 
-	// Avatar + repo tag + branch path share one line; the branch truncates to fit.
+	// Avatar + branch path share one line; the branch truncates to fit.
 	assert.match(COMPONENT_SOURCE, /isBranchContext \? "flex-nowrap overflow-hidden" : "flex-wrap"/u);
 	// The author's name gives up its space — the avatar's `label` still names them.
 	assert.match(
@@ -216,9 +220,9 @@ test("the pull-request metadata row is a single-line repo and branch context str
 		/\{isBranchContext \? null : <span className="truncate">Created by \{item\.author\.name\}<\/span>\}/u,
 	);
 	assert.match(COMPONENT_SOURCE, /\{item\.author && item\.date && !isBranchContext \? <span aria-hidden>·<\/span> : null\}/u);
-	// The repo uses Tag with the provider logo; Tag's own `self-start` is overridden
-	// so it centers against the avatar and branch text on the same line.
-	assert.match(COMPONENT_SOURCE, /<Tag[\s\S]*?className="shrink-0 self-center"[\s\S]*?elemBefore=\{item\.provider\.logo \? renderVisual\(item\.provider\.logo, "trigger"\) : undefined\}[\s\S]*?\{item\.repository\}/u);
+	// No repo tag on the row, and no Tag import left behind to render one.
+	assert.doesNotMatch(COMPONENT_SOURCE, /item\.repository/u);
+	assert.doesNotMatch(COMPONENT_SOURCE, /from "@\/components\/ui\/tag"/u);
 });
 
 test("the pull-request status lozenge trails the title like every other card", () => {
