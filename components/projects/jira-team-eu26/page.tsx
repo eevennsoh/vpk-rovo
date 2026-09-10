@@ -370,6 +370,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						showAgentSessionColumn
 						showAgentSessionFlyoutFooter={false}
 						showAgentSessionFilter={false}
+						showAgentSessionLinkAction={false}
 						showAgentSessionOverflow={false}
 						showBoardContent={showBoardContent}
 						moreControlsPlacement="end"

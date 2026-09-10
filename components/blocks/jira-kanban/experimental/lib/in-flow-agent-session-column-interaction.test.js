@@ -5,6 +5,7 @@ const {
 	inFlowCollapsedMenuPinLabel,
 	reduceInFlowSessionColumnAxes,
 	resolveInFlowSessionColumnRest,
+	shouldRestoreInFlowCollapsedMenuFocus,
 } = require("./in-flow-agent-session-column-interaction.ts");
 
 test("a collapsed host mounts in the gutter, so the menu says Pin", () => {
@@ -46,4 +47,14 @@ test("collapse does not unpin a persistent compact rail", () => {
 	);
 	assert.deepEqual(collapsed, { expanded: false, pinned: true });
 	assert.equal(inFlowCollapsedMenuPinLabel(collapsed.pinned), "Unpin");
+});
+
+test("a pointer-driven menu close leaves no focus ring on the rail trigger", () => {
+	for (const closeType of ["mouse", "touch", "pen", ""]) {
+		assert.equal(shouldRestoreInFlowCollapsedMenuFocus(closeType), false);
+	}
+});
+
+test("a keyboard menu close returns focus to the rail trigger", () => {
+	assert.equal(shouldRestoreInFlowCollapsedMenuFocus("keyboard"), true);
 });

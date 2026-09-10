@@ -228,6 +228,10 @@ export function AgentSessionCard({
 		resumeCommand,
 	});
 	const role = getAgentSessionRole(item);
+	// Title-led long rows spend their reclaimed width on a trailing progression
+	// column. Short rows do not: `stateAwareTitle` already says "Needs input" on
+	// the title line, so a resting status glyph would only repeat it.
+	const isLongDensity = density === "long";
 	const trailingControl = (() => {
 		if (!showMoreMenu) {
 			return undefined;
@@ -235,7 +239,10 @@ export function AgentSessionCard({
 
 		switch (role) {
 			case "expired":
-				return undefined;
+				// Long rows keep the hint in the resting lifecycle slot it shares with
+				// the status glyph. A short row has no resting slot, so its one control
+				// moves into the hover-revealed column beside "…" and the viewer hint.
+				return isLongDensity ? undefined : <AgentSessionExpiredHint />;
 			case "viewer":
 				return <AgentSessionViewerHint />;
 			case "owner":
@@ -260,6 +267,13 @@ export function AgentSessionCard({
 			}
 		}
 	})();
+	// `null`, not `undefined`: the shared row treats `undefined` as "no opinion"
+	// and falls back to its own `STATE_META` indicator.
+	const lifecycleIndicator = !isLongDensity
+		? null
+		: role === "expired"
+			? <AgentSessionExpiredHint />
+			: <AgentSessionLifecycle state={item.state} />;
 	const hoverActions: AgentListRowHoverActions = {
 		// The reveal must outlive the pointer: a portalled popup and a post-click
 		// confirmation both take the cursor off the row.
@@ -278,7 +292,6 @@ export function AgentSessionCard({
 	// A triage mark lives on the leading avatar, so a markable row keeps its
 	// identity column even in the title-led density — losing multi-select would
 	// cost more than the horizontal space it buys back.
-	const isLongDensity = density === "long";
 	const hideIdentity = isLongDensity && mark == null;
 
 	// Arrival layout lives on the list item, not the flyout trigger. Base UI
@@ -376,11 +389,10 @@ export function AgentSessionCard({
 								isCompact={false}
 								isSelected={showSelectedFill}
 								item={item}
-								// The title-led row states its own lifecycle, including the
-								// success check Agent List has no slot for.
-								lifecycle={role === "expired"
-									? <AgentSessionExpiredHint />
-									: <AgentSessionLifecycle state={item.state} />}
+								// The title-led long row states its own lifecycle, including the
+								// success check Agent List has no slot for. A short row states
+								// it in the title and keeps the trailing column empty at rest.
+								lifecycle={lifecycleIndicator}
 								metadata={
 									isLongDensity
 										? <AgentSessionLongMetadata item={item} />

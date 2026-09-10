@@ -129,6 +129,13 @@ export interface AgentSessionColumnProps extends Omit<
 	 */
 	showOverflow?: boolean;
 	/**
+	 * Shows the per-row hover check that links a session to its suggested work
+	 * item. Defaults to `true`. Off omits that control on every row; drag-to-link
+	 * and the bulk selection actions are unaffected. A board whose product no
+	 * longer offers one-click linking passes `false`.
+	 */
+	showLinkAction?: boolean;
+	/**
 	 * Enables the bottom depth tail, scroll fade, and end summary on the
 	 * expanded list. Defaults to `false`.
 	 */
