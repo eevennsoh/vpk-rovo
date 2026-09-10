@@ -575,13 +575,19 @@ export function useBoardAgentSessionDrag({
 	 * very commit this acknowledges. Measuring first would aim the flight at the
 	 * vacated slot and, worse, hand Glow a stale anchor whose hit test finds
 	 * whichever card slid in behind — so the wrong card would glow.
+	 *
+	 * Glow only. Fuse acknowledges a link with a chin-row sweep keyed to the
+	 * activity id the host minted, and that id is the host's own convention —
+	 * `jira-golden-journeys-v4` builds `${card.code}:${selection.id}` from a
+	 * mention id this board never sees. A sweep the board cannot target would
+	 * silently never play, so fuse boards keep the assign menu they have today.
 	 */
 	const armAssignedAgentLink = useCallback((
 		cardCode: string,
 		request: Readonly<JiraIssueGenerativeActionRequest>,
 	) => {
 		const member = toAssignedAgentTransferMember(request);
-		if (!member || shouldReduceMotion) {
+		if (!member || shouldReduceMotion || linkingVariant !== "glow") {
 			return;
 		}
 		if (assignmentFrameRef.current !== null) {
@@ -614,13 +620,9 @@ export function useBoardAgentSessionDrag({
 				return;
 			}
 			armFusionRelease({
-				flash: toBoardAgentSessionLinkFlash({
-					members,
-					proximity,
-					targetCardCode: cardCode,
-					token: linkFlashTokenRef.current,
-					variant: linkingVariant,
-				}),
+				// Glow's halo and backdrop pulse are the whole acknowledgement, and
+				// they key off the card rather than the rows inside it.
+				flash: null,
 				members,
 				proximity,
 				release,

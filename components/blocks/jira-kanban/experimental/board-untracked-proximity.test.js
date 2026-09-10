@@ -433,6 +433,28 @@ test("a menu assignment measures the card after the link its own commit caused",
 	// assignment cannot draw a different effect than the drop it mirrors.
 	assert.equal(
 		DRAG_HOOK_SOURCE.match(/variant: linkingVariant,/gu)?.length,
-		4,
+		3,
+	);
+});
+
+test("the assign menu only acknowledges on glow, and never asks for a sweep", () => {
+	// Fuse keys its sweep to the activity id the host minted, and that id is the
+	// host's own convention — v4 builds `${card.code}:${selection.id}` out of a
+	// mention id this board never sees. Arming a sweep the board cannot target
+	// would silently never play, so fuse boards keep today's assign menu.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/if \(!member \|\| shouldReduceMotion \|\| linkingVariant !== "glow"\) \{\s*return;\s*\}/u,
+	);
+	// Glow's own halo and pulse are the acknowledgement, so the assignment must
+	// not hand the rows a flash at all.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/armFusionRelease\(\{[\s\S]{0,220}?flash: null,/u,
+	);
+	assert.doesNotMatch(
+		DRAG_HOOK_SOURCE,
+		/targetCardCode: cardCode,/u,
+		"a menu assignment must not build a chin-row flash it cannot key correctly",
 	);
 });
