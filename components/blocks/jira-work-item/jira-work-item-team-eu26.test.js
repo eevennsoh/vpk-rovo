@@ -186,9 +186,32 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	assert.match(activitySource, /meta\.initialPreset === "filled" \? "Activity" : "4 days ago"/u);
 	assert.match(layoutSource, /showInFlowComposer = initialPreset === "filled" && composerVisible/u);
 	assert.match(layoutSource, /data-team-eu26-comment-composer[\s\S]*\{composer\}/u);
-	assert.match(railOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceMetadataRail \/>/u);
+	assert.match(railOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceMetadataRail/u);
 	for (const copy of ["Needs input..", "Development", "Automation", "Apps"]) {
 		assert.match(railSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+	}
+	assert.match(railSource, /<TeamEuDevelopmentPanel \/>/u);
+	assert.match(railSource, /<TeamEuAutomationPanel[\s\S]*rules=\{automationRules\}/u);
+	assert.match(railSource, /<TeamEuAutomationPanel[\s\S]*onShowRecentRuns/u);
+	assert.match(railSource, /<TeamEuAppsPanel \/>/u);
+	assert.match(railSource, /aria-hidden=\{showRecentAutomationRuns \|\| undefined\}[\s\S]*inert=\{showRecentAutomationRuns \? true : undefined\}/u);
+	assert.match(readBlockFile("team-eu26/components/metadata-rail.tsx"), /<HighConfidenceMetadataRail automationRules=\{automationRules\} \/>/u);
+	const developmentPanelSource = readBlockFile("team-eu26/components/team-eu-development-panel.tsx");
+	for (const copy of ["1,000", "9,999+", "586", "23", "Needs attention", "Ongoing work", "Merge blocked by failing CI", "Unresolved comments need replies", "feat/dev-panel-empty-state-entry-points", "Annie"]) {
+		assert.match(developmentPanelSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+	}
+	const automationPanelSource = readBlockFile("team-eu26/components/team-eu-automation-panel.tsx");
+	const automationDataSource = readBlockFile("team-eu26/data/team-eu-automation-rules.ts");
+	for (const copy of ["Send reminder 24 hours before due date", "Notify team when status changes to Done", "Mark as complete when all subtasks done", "Recent run rules", "Create automation", "167 days ago"]) {
+		assert.match(`${automationPanelSource}\n${automationDataSource}`, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+	}
+	assert.match(automationPanelSource, /rules\.map[\s\S]*<SetToRecurRow \/>/u);
+	assert.match(automationPanelSource, /const runs = recentRules\(rules\)/u);
+	assert.match(readBlockFile("team-eu26/components/set-to-recur-popover.tsx"), /Set to recur/u);
+	assert.match(readBlockFile("team-eu26/team-eu26-jira-work-item.tsx"), /automationRules=\{props\.automationRules \?\? TEAM_EU_REFERENCE_AUTOMATION_RULES\}/u);
+	const appsPanelSource = readBlockFile("team-eu26/components/team-eu-apps-panel.tsx");
+	for (const copy of ["My Reminders", "Tempo", "PagerDuty", "Sentry", "Checklist", "Invision for Jira", "Trello Assistant"]) {
+		assert.match(appsPanelSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 	}
 	for (const editor of ["PersonRowField", "AgentsRowField", "PriorityRowField", "DateRowField"]) {
 		assert.match(railSource, new RegExp(`<${editor}`, "u"), `${editor} is not wired into the filled Details rail`);

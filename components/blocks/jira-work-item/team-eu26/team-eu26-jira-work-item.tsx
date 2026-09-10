@@ -70,6 +70,7 @@ import { FloatingSessionSurface } from "@/components/blocks/jira-work-item/team-
 import type { SessionReplyInterceptor } from "@/components/blocks/jira-work-item/team-eu26/components/floating-session-surface";
 import type { CodingAgentId } from "@/components/blocks/jira-work-item/team-eu26/components/context-title-actions";
 import type { WorkItemAutomationRule } from "@/components/blocks/jira-work-item/team-eu26/components/automation-tab";
+import { TEAM_EU_REFERENCE_AUTOMATION_RULES } from "@/components/blocks/jira-work-item/team-eu26/data/team-eu-automation-rules";
 import {
 	METADATA_PANEL_DEFAULT_WIDTH_PX,
 	METADATA_PANEL_FALLBACK_MAX_WIDTH_PX,
@@ -880,7 +881,7 @@ export function TeamEu26JiraWorkItem(props: Readonly<TeamEu26JiraWorkItemProps>)
 							<TeamEu26JiraWorkItemContent
 								activitySessionThread={props.activitySessionThread}
 								autoOpenPullRequestIdentity={props.autoOpenPullRequestIdentity}
-								automationRules={props.automationRules}
+								automationRules={props.automationRules ?? TEAM_EU_REFERENCE_AUTOMATION_RULES}
 								composerAgents={props.composerAgents}
 								composerContextBar={props.composerContextBar}
 								composerToolsAfterAdd={props.composerToolsAfterAdd}
