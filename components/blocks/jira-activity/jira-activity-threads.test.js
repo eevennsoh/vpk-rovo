@@ -405,7 +405,7 @@ test("the exported comment composer uses the shared floating Rovo prompt", () =>
 	assert.match(COMPOSER_SOURCE, /textareaRef\?: Ref<HTMLTextAreaElement>/u);
 	assert.match(COMPOSER_SOURCE, /inputContext\?: ReactNode/u);
 	assert.match(COMPOSER_SOURCE, /inputContextSubmitText\?: string/u);
-	assert.match(COMPOSER_SOURCE, /inputContext=\{inputContext\}/u);
+	assert.match(COMPOSER_SOURCE, /inputContext=\{expandedToolbar\}/u);
 	assert.match(COMPOSER_SOURCE, /const canSubmit = trimmed\.length > 0 \|\| hasInputContext/u);
 	assert.match(COMPOSER_SOURCE, /<FloatingComposer/u);
 	assert.match(COMPOSER_SOURCE, /<PromptInputTextarea/u);
@@ -474,9 +474,30 @@ test("the two floating surfaces are separated by variant, not by callsite classN
 		/aria-label="Add"\s*className=\{surface\.controlClassName\}\s*size="icon"/u,
 	);
 	assert.doesNotMatch(COMPOSER_SOURCE, /icon-xs|icon-sm/u);
-	assert.match(COMPOSER_SOURCE, /className=\{cn\("w-full", surface\.chrome, className\)\}/u);
+	assert.match(
+		COMPOSER_SOURCE,
+		/className=\{cn\([\s\S]*"w-full",[\s\S]*surface\.chrome,[\s\S]*className,[\s\S]*\)\}/u,
+	);
 	// The editor gutter is the floating shell's job, not this composer's.
 	assert.doesNotMatch(COMPOSER_SOURCE, /input-group-control-container|prompt-input-placeholder/u);
+});
+
+test("the comment composer expands into the shared rich editor toolbar", () => {
+	assert.match(
+		COMPOSER_SOURCE,
+		/import \{ EditorToolbar \} from "@\/components\/blocks\/editor-toolbar";/u,
+	);
+	assert.match(COMPOSER_SOURCE, /const isExpandableComment = variant === "comment";/u);
+	assert.match(
+		COMPOSER_SOURCE,
+		/<EditorToolbar[\s\S]*leadingSlot=\{<JiraCommentEditorToolbarLeading editor=\{editor\} \/>\}/u,
+	);
+	assert.match(COMPOSER_SOURCE, /onFocusCapture=\{\(\) => \{[\s\S]*setIsExpanded\(true\)/u);
+	assert.match(COMPOSER_SOURCE, /layout=\{isExpandableComment && isExpanded \? "stacked" : "auto"\}/u);
+	assert.match(COMPOSER_SOURCE, /Type \/ai to ask Rovo or @ to mention someone…/u);
+	assert.match(COMPOSER_SOURCE, /isExpandableComment && isExpanded && "min-h-36 py-3"/u);
+	assert.match(COMPOSER_SOURCE, /insertEditorCommand\(editor, "\/Improve description "\)/u);
+	assert.match(COMPOSER_SOURCE, /isExpandableComment && isExpanded \? null : \(/u);
 });
 
 test("disclosing Reply focuses the composer through the editor's own autofocus", () => {
