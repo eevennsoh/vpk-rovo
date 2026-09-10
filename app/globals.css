@@ -940,3 +940,26 @@ html[data-embedded] [data-shell-chrome] {
 		opacity: 1;
 	}
 }
+
+/* scroll-fade (shadcn/tailwind.css) drives its edge masks off a scroll progress
+   timeline and ships no reduced-motion branch. Drop the mask outright rather
+   than pinning each edge open: pinning also fades containers that cannot
+   scroll at all (a chip row that fits, a list sitting at the top), so a
+   reduced-motion user would see content permanently dimmed that everyone else
+   sees in full. Targeting mask-image rather than `animation: none` also avoids
+   cancelling unrelated animations on the same element. Unlayered and after the
+   import so it wins on both layer order and source order. */
+@media (prefers-reduced-motion: reduce) {
+	.scroll-fade,
+	.scroll-fade-y,
+	.scroll-fade-x,
+	.scroll-fade-t,
+	.scroll-fade-b,
+	.scroll-fade-l,
+	.scroll-fade-r,
+	.scroll-fade-s,
+	.scroll-fade-e {
+		mask-image: none;
+		-webkit-mask-image: none;
+	}
+}
