@@ -370,7 +370,7 @@ export function AgentSessionCard({
 								isSelected={showSelectedFill}
 								item={item}
 								metadata={<AgentSessionPullRequestMetadata item={item} />}
-								onView={mark == null ? onView : undefined}
+								onView={mark == null && bind === undefined ? onView : undefined}
 								renderIdentity={() => {
 									const sessionIdentity = (
 										<AgentListIdentity
