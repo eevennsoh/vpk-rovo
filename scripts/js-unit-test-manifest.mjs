@@ -274,6 +274,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/agent-assignment/agent-assignment.test.js",
 		"components/blocks/agent-list/agent-list.test.js",
 		"components/blocks/agent-selector/agent-selector.test.js",
+		"components/blocks/agent-session/agent-session-attached.test.js",
 		"components/blocks/agent-session/agent-session.test.js",
 		"components/blocks/agent-session-flyout/agent-session-flyout.test.js",
 		"components/blocks/agent-session-column/agent-session-column-capabilities.test.js",

@@ -57,9 +57,10 @@ const INDICATORS_SOURCE = readProjectFile(
 const COMPLETED_RUNS_SOURCE = readProjectFile(
 	"components/blocks/jira-issue/completed-agent-runs.tsx",
 );
-const AGENT_ACTIVITY_SOURCE = readProjectFile(
-	"components/blocks/jira-issue/agent-activity.tsx",
-);
+const AGENT_ACTIVITY_SOURCE = [
+	readProjectFile("components/blocks/jira-issue/agent-activity.tsx"),
+	readProjectFile("components/blocks/jira-issue/agent-activity-row-presentation.tsx"),
+].join("\n");
 const TRANSFER_SOURCE = readProjectFile(
 	"components/blocks/jira-issue/agent-session-transfer.tsx",
 );
@@ -170,7 +171,7 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 		/const rowSessionDrag = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionDrag : undefined;/u,
 	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /sessionDrag=\{rowSessionDrag\}/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = showAssignmentFlyout && !isCompletedRow \? \(\s*<div className="flex h-full min-w-0 flex-1 items-center">\s*<AgentAssignment/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<JiraIssueAgentAssignmentHandle/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout|JiraSessionFlyoutTrigger/u);
 });

@@ -4,7 +4,10 @@ const { join } = require("node:path");
 const { test } = require("node:test");
 
 const SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
-const AGENT_ACTIVITY_SOURCE = readFileSync(join(__dirname, "agent-activity.tsx"), "utf8");
+const AGENT_ACTIVITY_SOURCE = [
+	readFileSync(join(__dirname, "agent-activity.tsx"), "utf8"),
+	readFileSync(join(__dirname, "agent-activity-row-presentation.tsx"), "utf8"),
+].join("\n");
 // The summary cluster and the standalone card types were split out of index.tsx
 // to keep it under the 1000-line budget; these assertions follow them.
 const SUMMARY_SOURCE = readFileSync(join(__dirname, "summary.tsx"), "utf8");
@@ -365,7 +368,7 @@ test("Jira issue keeps activity rows composer-free and uses one shared assignmen
 	// The open-chat handler is hoisted so the drag hook can own `bind.onClick`
 	// and swallow the click that ends a transfer gesture; without a session-drag
 	// binding the row falls back to a plain `onClick`.
-	assert.match(AGENT_ACTIVITY_SOURCE, /const handleOpenChat = canOpenChat \? \(\) => onViewChat\?\.\(activities\[0\]\) : undefined;/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /return canOpenChat \? \(\) => onViewChat\?\.\(activities\[0\]\) : undefined;/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /\{\.\.\.\(sessionDragBind \?\? \{ onClick: handleOpenChat \}\)\}/u);
 	// A click on a linked session is activation, not the start of a transfer.
 	// Publishing on pointerdown reveals and can arm the adjacent unlink well,
@@ -381,7 +384,7 @@ test("Jira issue keeps activity rows composer-free and uses one shared assignmen
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
 	// The drag wrapper is applied around the row shell. AgentAssignment still
 	// clones only the drag handle so the hover card keeps `aria-expanded`.
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = showAssignmentFlyout && !isCompletedRow \? \(\s*<div className="flex h-full min-w-0 flex-1 items-center">\s*<AgentAssignment/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /if \(!showAssignmentFlyout \|\| isCompletedRow\) \{\s*return rowHandle;[\s\S]*<AgentAssignment/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /onAssignedAgentIdsChange=\{assignment\?\.onAssignedAgentIdsChange\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /assignedAgents = assignment\?\.assignedAgents \?\? activities\.map\(toAgentAssignmentAgent\)/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /statusKind: toAssignedAgentStatusKind\(activity\.state\)/u);
@@ -389,7 +392,7 @@ test("Jira issue keeps activity rows composer-free and uses one shared assignmen
 	assert.doesNotMatch(SOURCE, /onAssignedAgentIdsChange=/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /assignedIdDraft|toActivityFromAssignedAgent/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /trigger=\{rowHandle\}/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /return withSessionDrag\(/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /<JiraIssueAgentDragWrapper/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-list"/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-states"/u);
 	// Every attached-session chin opens the same assignment flyout, whether the
@@ -682,7 +685,7 @@ test("Jira issue renders one aggregate Figma-sized agent row and always exposes 
 	assert.match(AGENT_ACTIVITY_SOURCE, /iconScale === "comfortable" \? \(\s*<Spinner label="" pulse size="xl" variant="experimental" \/>\s*\) : \(\s*<Spinner label="" \/>\s*\)/u);
 	assert.match(SOURCE, /<JiraIssueAgentActivityRows[\s\S]*iconScale=\{iconScale\}/);
 	assert.match(SOURCE, /<JiraIssueAgentActivityRows[\s\S]*inheritChinSurface/);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = showAssignmentFlyout && !isCompletedRow \? \(\s*<div className="flex h-full min-w-0 flex-1 items-center">\s*<AgentAssignment[\s\S]*openMode="hover"[\s\S]*trigger=\{rowHandle\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /if \(!showAssignmentFlyout \|\| isCompletedRow\) \{\s*return rowHandle;[\s\S]*<AgentAssignment[\s\S]*openMode="hover"[\s\S]*trigger=\{rowHandle\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /inheritChinSurface \? "bg-transparent" : "bg-bg-neutral"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /renderAgentActivityIndicator\?: JiraIssueAgentActivityIndicatorRenderer;/u);
 	assert.match(SOURCE, /renderAgentActivityIndicator\?: JiraIssueAgentActivityIndicatorRenderer;/u);

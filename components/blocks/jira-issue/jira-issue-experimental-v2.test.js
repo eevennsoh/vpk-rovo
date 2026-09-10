@@ -4,7 +4,10 @@ const { join } = require("node:path");
 const { test } = require("node:test");
 
 const SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
-const AGENT_ACTIVITY_SOURCE = readFileSync(join(__dirname, "agent-activity.tsx"), "utf8");
+const AGENT_ACTIVITY_SOURCE = [
+	readFileSync(join(__dirname, "agent-activity.tsx"), "utf8"),
+	readFileSync(join(__dirname, "agent-activity-row-presentation.tsx"), "utf8"),
+].join("\n");
 const SUMMARY_SOURCE = readFileSync(join(__dirname, "summary.tsx"), "utf8");
 const TYPES_SOURCE = readFileSync(join(__dirname, "types.ts"), "utf8");
 const COMPLETED_RUNS_SOURCE = readFileSync(join(__dirname, "completed-agent-runs.tsx"), "utf8");
@@ -85,7 +88,7 @@ test("Jira issue agent activity experimental v2 duplicates the playground with l
 	assert.match(SOURCE, /iconScale === "comfortable" && resolvedAgentActivityMode === "completed"/u);
 	assert.match(SOURCE, /const hasAgentDoneNotification = iconScale !== "comfortable" && hasCompletedAgentChin/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const isCompletedRow = activities\.length > 0\s*&& activities\.every\(\(activity\) => activity\.state === "completed"\)/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = showAssignmentFlyout && !isCompletedRow \? \(/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /if \(!showAssignmentFlyout \|\| isCompletedRow\) \{\s*return rowHandle;/u);
 	assert.doesNotMatch(SOURCE, /iconScale === "comfortable"[\s\S]*<JiraIssueAgentDoneMerged/u);
 	assert.match(SOURCE, /from "@\/components\/blocks\/jira-issue\/completed-agent-runs-model"/u);
 	assert.doesNotMatch(COMPLETED_RUNS_SOURCE, /export function toJiraIssueAgentActivityFromCompletedRun/u);
