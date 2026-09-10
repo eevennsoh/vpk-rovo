@@ -80,6 +80,8 @@ export interface JiraSessionFlyoutSurfaceProps {
 	/** Lets dense trigger groups defer a switch while the pointer travels into the popup. */
 	onOpenChange?: HoverCardProps<JiraSidebarSessionItem>["onOpenChange"];
 	popupRef?: ComponentProps<typeof HoverCardContent>["ref"];
+	anchor?: ComponentProps<typeof HoverCardContent>["anchor"];
+	positionMethod?: ComponentProps<typeof HoverCardContent>["positionMethod"];
 	/** Snaps between detached triggers: no position, enter/exit, or content-switch motion. */
 	instantPosition?: boolean;
 	/**
@@ -87,6 +89,8 @@ export interface JiraSessionFlyoutSurfaceProps {
 	 * is the Agent States card, and `untracked-work` suggests a related Jira item.
 	 */
 	content?: JiraSessionFlyoutContent;
+	/** Shows the untracked-work rationale and actions below the card body. Defaults to true. */
+	showUntrackedWorkFooter?: boolean;
 	/** Captured sessions hide Link / Create / subtask so capture cannot run twice. Archive stays available. */
 	capturedSessionIds?: ReadonlySet<string>;
 	/** Archives the session from the untracked-work flyout. Omit to expose the action as unavailable. */
@@ -580,6 +584,7 @@ type JiraSessionFlyoutPayloadProps = Readonly<
 		| "onCreateWorkItem"
 		| "onLinkWorkItem"
 		| "onSubmitPrompt"
+		| "showUntrackedWorkFooter"
 	> & {
 		animateAvatars: boolean;
 		content: JiraSessionFlyoutContent;
@@ -653,6 +658,7 @@ function JiraSessionUntrackedWorkFlyout(props: Omit<JiraSessionFlyoutPayloadProp
 			{...resolveJiraSessionUntrackedWorkActions(props)}
 			animateAvatars={props.animateAvatars}
 			session={props.session}
+			showFooter={props.showUntrackedWorkFooter}
 		/>
 	);
 }
@@ -689,6 +695,8 @@ function JiraSessionFlyoutPayload({ content, ...props }: JiraSessionFlyoutPayloa
  * content-switch motion.
  */
 export function JiraSessionFlyoutSurface({
+	anchor,
+	positionMethod,
 	archiveActionLabel,
 	capturedSessionIds,
 	content = "details",
@@ -701,6 +709,7 @@ export function JiraSessionFlyoutSurface({
 	onCreateWorkItem,
 	onLinkWorkItem,
 	onSubmitPrompt,
+	showUntrackedWorkFooter = true,
 }: Readonly<JiraSessionFlyoutSurfaceProps>) {
 	const suspensionHandle = use(JiraSessionFlyoutSuspensionContext);
 	const suspended = suspensionHandle !== null;
@@ -715,6 +724,8 @@ export function JiraSessionFlyoutSurface({
 		<HoverCard<JiraSidebarSessionItem> handle={handle} onOpenChange={onOpenChange}>
 			{({ payload }) => (
 				<HoverCardContent
+					anchor={anchor}
+					positionMethod={positionMethod}
 					ref={popupRef}
 					align="start"
 					alignOffset={0}
@@ -753,6 +764,7 @@ export function JiraSessionFlyoutSurface({
 								onLinkWorkItem={onLinkWorkItem}
 								onSubmitPrompt={onSubmitPrompt}
 								session={payload}
+								showUntrackedWorkFooter={showUntrackedWorkFooter}
 							/>
 						) : null}
 					</HoverCardViewport>

@@ -4,7 +4,11 @@ import { ExperimentalJiraKanbanBoardHeader } from "@/components/blocks/jira-kanb
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { token } from "@/lib/tokens";
 
-import { DEFAULT_JIRA_WORK_ITEM_VIEW, type JiraWorkItemView } from "../data/tabs";
+import {
+	DEFAULT_JIRA_WORK_ITEM_VIEW,
+	type JiraWorkItemView,
+	type TabDefinition,
+} from "../data/tabs";
 import { useJiraTabs } from "../hooks/use-jira-tabs";
 import { resolveJiraTab } from "../lib/jira-tab-model";
 
@@ -27,15 +31,20 @@ interface JiraViewTabsProps {
 	 * `List` tab it cannot fill.
 	 */
 	supportedWorkItemViews?: readonly JiraWorkItemView[];
+	/** Fixed tab catalog for routes that do not expose global design variants. */
+	tabs?: readonly TabDefinition[];
 }
 
-export function JiraViewTabs({
+type JiraViewTabsContentProps = Omit<JiraViewTabsProps, "supportedWorkItemViews" | "tabs"> & {
+	tabs: readonly TabDefinition[];
+};
+
+function JiraViewTabsContent({
 	selectedTabLabel,
 	onTabChange,
 	workItemView = DEFAULT_JIRA_WORK_ITEM_VIEW,
-	supportedWorkItemViews,
-}: Readonly<JiraViewTabsProps>) {
-	const tabs = useJiraTabs(supportedWorkItemViews);
+	tabs,
+}: Readonly<JiraViewTabsContentProps>) {
 	const activeTab = resolveJiraTab(tabs, selectedTabLabel, workItemView);
 
 	return (
@@ -79,6 +88,22 @@ export function JiraViewTabs({
 				</TabsContent>
 			))}
 		</Tabs>
+	);
+}
+
+function DesignVariantJiraViewTabs({
+	supportedWorkItemViews,
+	...props
+}: Readonly<Omit<JiraViewTabsProps, "tabs">>) {
+	const tabs = useJiraTabs(supportedWorkItemViews);
+	return <JiraViewTabsContent {...props} tabs={tabs} />;
+}
+
+export function JiraViewTabs({ tabs, ...props }: Readonly<JiraViewTabsProps>) {
+	return tabs ? (
+		<JiraViewTabsContent {...props} tabs={tabs} />
+	) : (
+		<DesignVariantJiraViewTabs {...props} />
 	);
 }
 

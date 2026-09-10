@@ -24,6 +24,7 @@ import type { CollapsedBoardColumns } from "../lib/board-column-collapse";
 export function useAgentFilterDisplay({
 	agentFilterId,
 	boardColumns,
+	focusedCollapsedColumns,
 	selectedAssigneeIds,
 	viewerAgentSessionColumnCollapsed,
 	viewerCollapsedColumns,
@@ -32,6 +33,7 @@ export function useAgentFilterDisplay({
 }: {
 	agentFilterId: BoardAgentFilterId | null;
 	boardColumns: readonly JiraKanbanColumnData[];
+	focusedCollapsedColumns: CollapsedBoardColumns | null;
 	selectedAssigneeIds: ReadonlySet<string>;
 	viewerAgentSessionColumnCollapsed: boolean;
 	viewerCollapsedColumns: CollapsedBoardColumns;
@@ -46,9 +48,10 @@ export function useAgentFilterDisplay({
 		() => displayedCollapsedColumnsForAgentFilter({
 			columns: assigneeScopedColumns,
 			filterId: agentFilterId,
+			focusedOverride: focusedCollapsedColumns,
 			viewerCollapsed: viewerCollapsedColumns,
 		}),
-		[agentFilterId, assigneeScopedColumns, viewerCollapsedColumns],
+		[agentFilterId, assigneeScopedColumns, focusedCollapsedColumns, viewerCollapsedColumns],
 	);
 	const displayedShownSessionStateIds = useMemo(
 		() => agentFilterId === null

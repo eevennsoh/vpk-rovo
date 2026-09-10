@@ -32,6 +32,12 @@ const EXPERIMENTAL_CARD_SOURCE = readProjectFile(
 const PANEL_SOURCE = readProjectFile(
 	"components/blocks/jira-kanban/experimental/components/agent-session-panel.tsx",
 );
+const AGENT_SESSION_COLUMN_SOURCE = readProjectFile(
+	"components/blocks/agent-session-column/index.tsx",
+);
+const AGENT_SESSION_COLUMN_RAIL_SOURCE = readProjectFile(
+	"components/blocks/agent-session-column/agent-session-column-rail.tsx",
+);
 const PANEL_RESIZE_HOOK_SOURCE = readProjectFile(
 	"components/blocks/jira-kanban/experimental/hooks/use-agent-session-panel-resize.ts",
 );
@@ -41,6 +47,7 @@ const FAB_GEOMETRY_SOURCE = readProjectFile(
 
 test("the route pins the shared Agent Session column beside Jira statuses", () => {
 	assert.match(PAGE_SOURCE, /showAgentSessionColumn/u);
+	assert.match(PAGE_SOURCE, /agentSessionMultiSelect=\{false\}/u);
 	assert.match(PAGE_SOURCE, /showAgentSessionFilter=\{false\}/u);
 	assert.match(PAGE_SOURCE, /showAgentSessionOverflow=\{false\}/u);
 	assert.match(PAGE_SOURCE, /defaultAgentSessionColumnCollapsed/u);
@@ -75,19 +82,48 @@ test("the route pins the shared Agent Session column beside Jira statuses", () =
 	assert.doesNotMatch(EXPERIMENTAL_PAGE_SOURCE, /inFlowAgentSessionColumn/u);
 });
 
-test("the Panel design variant floats untracked work over the board and the list", () => {
-	// The route is the only place the global variant store meets the board, and
-	// it must reach the block as a presentation choice — the block itself stays
-	// variant-agnostic.
-	assert.match(PAGE_SOURCE, /import \{ useDesignVariants \} from "@\/components\/hooks\/use-design-variants";/u);
-	assert.match(PAGE_SOURCE, /const \{ designVariants \} = useDesignVariants\(\);/u);
+test("the route hides untracked-work confidence chrome across column and card flyouts", () => {
+	assert.match(PAGE_SOURCE, /showAgentSessionFlyoutFooter=\{false\}/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showAgentSessionFlyoutFooter\?: boolean;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showAgentSessionFlyoutFooter = true,/u);
+	assert.match(
+		EXPERIMENTAL_PAGE_SOURCE,
+		/showUntrackedWorkFooter: showAgentSessionFlyoutFooter,/u,
+	);
+	assert.match(
+		EXPERIMENTAL_PAGE_SOURCE,
+		/proximityAgentSession=\{\{[\s\S]*showUntrackedWorkFooter: showAgentSessionFlyoutFooter,/u,
+	);
+	assert.match(EXPERIMENTAL_BOARD_SOURCE, /showUntrackedWorkFooter\?: AgentSessionColumnProps\["showUntrackedWorkFooter"\];/u);
+	assert.match(
+		EXPERIMENTAL_BOARD_SOURCE,
+		/showUntrackedWorkFooter=\{proximityAgentSession\?\.showUntrackedWorkFooter\}/u,
+	);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /showUntrackedWorkFooter\?: boolean;/u);
+	assert.match(
+		EXPERIMENTAL_CARD_SOURCE,
+		/<AgentSession[\s\S]*showUntrackedWorkFooter=\{showUntrackedWorkFooter\}/u,
+	);
+	assert.match(
+		AGENT_SESSION_COLUMN_SOURCE,
+		/<AgentSessionColumnRail[\s\S]*showUntrackedWorkFooter=\{sessionProps\.showUntrackedWorkFooter\}/u,
+	);
+	assert.match(
+		AGENT_SESSION_COLUMN_RAIL_SOURCE,
+		/<JiraSessionFlyoutSurface[\s\S]*showUntrackedWorkFooter=\{showUntrackedWorkFooter\}/u,
+	);
+});
+
+test("the route locks untracked work to the in-flow column", () => {
+	// Team EU 26 is fixed and does not inherit a persisted global Panel choice.
+	assert.doesNotMatch(PAGE_SOURCE, /useDesignVariants|designVariants/u);
 	assert.match(
 		PAGE_SOURCE,
-		/<ExperimentalJiraKanbanPage[\s\S]*agentSessionPresentation=\{designVariants\.panel \? "panel" : "column"\}/u,
+		/<ExperimentalJiraKanbanPage[\s\S]*agentSessionPresentation="column"/u,
 	);
 	assert.match(
 		PAGE_SOURCE,
-		/<ExperimentalJiraKanbanPage[\s\S]*columnChrome=\{designVariants\.simpleKanban \? "simple" : "default"\}/u,
+		/<ExperimentalJiraKanbanPage[\s\S]*columnChrome="default"/u,
 	);
 	assert.doesNotMatch(
 		EXPERIMENTAL_PAGE_SOURCE,
@@ -309,10 +345,10 @@ test("the untracked panel publishes its occupied width for the floating Rovo but
 	);
 });
 
-test("the Simple kanban design variant reaches the board as column chrome", () => {
+test("the route locks the board to default kanban chrome", () => {
 	assert.match(
 		PAGE_SOURCE,
-		/columnChrome=\{designVariants\.simpleKanban \? "simple" : "default"\}/u,
+		/columnChrome="default"/u,
 	);
 	assert.doesNotMatch(
 		EXPERIMENTAL_PAGE_SOURCE,

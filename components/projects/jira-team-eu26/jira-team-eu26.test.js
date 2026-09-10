@@ -66,7 +66,7 @@ const TRANSFER_SOURCE = readProjectFile(
 
 test("the route renders the Payments board directly inside Jira app chrome", () => {
 	assert.match(PAGE_SOURCE, /import AppLayout from "@\/components\/projects\/page"/u);
-	assert.match(PAGE_SOURCE, /<AppLayout[\s\S]*defaultSidebarOpen=\{true\}[\s\S]*product="jira"/u);
+	assert.match(PAGE_SOURCE, /<AppLayout[\s\S]*defaultSidebarOpen=\{true\}[\s\S]*product="jira"[\s\S]*settingsIconOnly/u);
 	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage/u);
 	assert.match(PAGE_SOURCE, /createJiraTeamEu26PayBoardColumns/u);
 	assert.match(PAGE_SOURCE, /JIRA_TEAM_EU26_PAY_BOARD_AGENTS/u);
@@ -128,8 +128,8 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 		EXPERIMENTAL_PAGE_SOURCE,
 		/<ExperimentalJiraKanban[\s\S]*agentActivityLayout=\{agentActivityLayout\}/u,
 	);
-	// Grouped chins must not steal hover for a single-session flyout. Dropping
-	// sessionFlyout on multi-agent rows is what lets AgentAssignment open.
+	// Every merged chin opens AgentAssignment, including the one-session case,
+	// so the interaction does not change when a second session attaches.
 	// Attach copy occupying the last chin also suppresses flyout and drag so
 	// the slot stays a drop target instead of a session handle.
 	assert.match(
@@ -138,16 +138,12 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 	);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const rowSessionFlyout = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionFlyout : undefined;/u,
-	);
-	assert.match(
-		AGENT_ACTIVITY_SOURCE,
 		/const rowSessionDrag = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionDrag : undefined;/u,
 	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /sessionDrag=\{rowSessionDrag\}/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = isSingleAgent \|\| sessionFlyout \? rowHandle : \(/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<AgentAssignment/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout \? \(\s*<JiraSessionFlyoutTrigger/u);
+	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout|JiraSessionFlyoutTrigger/u);
 });
 
 test("chin-row agent activity indicators use the Team EU renderer", () => {
@@ -492,6 +488,8 @@ test("the Jira tab bar splits or collapses work items per Simple views", () => {
 	assert.match(JIRA_HEADER_SOURCE, /className=\{isFirst \? "ml-4 flex-none" : "flex-none"\}/u);
 	assert.match(JIRA_HEADER_SOURCE, /<IconComponent[\s\S]*label=""/u);
 	assert.match(JIRA_HEADER_SOURCE, /const tabs = useJiraTabs\(supportedWorkItemViews\)/u);
+	assert.match(JIRA_HEADER_SOURCE, /tabs\?: readonly TabDefinition\[\];/u);
+	assert.match(JIRA_HEADER_SOURCE, /return tabs \? \(/u);
 	assert.match(JIRA_HEADER_SOURCE, /const activeTab = resolveJiraTab\(tabs, selectedTabLabel, workItemView\)/u);
 	assert.match(JIRA_HEADER_SOURCE, /<JiraViewTabs\s+selectedTabLabel=\{selectedTabLabel\}/u);
 	// Team EU without Simple views restores Board and List as sibling
@@ -514,9 +512,15 @@ test("the Jira tab bar splits or collapses work items per Simple views", () => {
 	assert.doesNotMatch(JIRA_TABS_SOURCE, /2000-years-later|DesignVariationId/u);
 	assert.doesNotMatch(USE_JIRA_TABS_SOURCE, /useDesignVariation|design-variation/u);
 	assert.match(PAGE_SOURCE, /import \{ JiraViewTabs \} from "@\/components\/projects\/jira\/components\/jira-header"/u);
+	assert.match(PAGE_SOURCE, /const JIRA_TEAM_EU26_TABS = getJiraTabs\(false\);/u);
 	assert.match(
 		PAGE_SOURCE,
-		/viewTabs=\{\(\s*<JiraViewTabs\s+selectedTabLabel=\{selectedTabLabel\}\s+onTabChange=\{handleTabChange\}\s+workItemView=\{workItemView\}\s*\/>\s*\)\}/u,
+		/const JIRA_TEAM_EU26_DEFAULT_TAB_LABEL = getJiraWorkItemsTabLabel\(JIRA_TEAM_EU26_TABS\);/u,
+	);
+	assert.match(PAGE_SOURCE, /const tabs = JIRA_TEAM_EU26_TABS;/u);
+	assert.match(
+		PAGE_SOURCE,
+		/viewTabs=\{\(\s*<JiraViewTabs\s+selectedTabLabel=\{selectedTabLabel\}\s+onTabChange=\{handleTabChange\}\s+tabs=\{tabs\}\s+workItemView=\{workItemView\}\s*\/>\s*\)\}/u,
 	);
 	assert.match(PAGE_SOURCE, /const showBoardContent = activeTab\?\.hasContent === true;/u);
 	assert.match(PAGE_SOURCE, /showBoardContent=\{showBoardContent\}/u);
@@ -602,12 +606,10 @@ test("the Work items header switches between Board and List views with their ico
 	);
 	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /<TabsList[^>]*className=|<TabsTrigger[^>]*className=/u);
 	assert.match(PAGE_SOURCE, /moreControlsPlacement="end"/u);
-	assert.match(PAGE_SOURCE, /showMoreControls=\{!designVariants\["simple-views"\]\}/u);
-	assert.match(PAGE_SOURCE, /simpleViews=\{designVariants\["simple-views"\]\}/u);
-	assert.match(
-		PAGE_SOURCE,
-		/showCustomizeControl=\{!designVariants\["simple-views"\]\}/u,
-	);
+	assert.match(PAGE_SOURCE, /showMoreControls/u);
+	assert.match(PAGE_SOURCE, /simpleViews=\{false\}/u);
+	assert.match(PAGE_SOURCE, /showCustomizeControl/u);
+	assert.doesNotMatch(PAGE_SOURCE, /useDesignVariants|designVariants/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /moreControlsPlacement\?: "inline" \| "end";/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showMoreControls\?: boolean;/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /simpleViews\?: boolean;/u);
@@ -713,6 +715,14 @@ test("Team EU26 replaces View with Needs input and a dedicated Group by control"
 	);
 	assert.match(BOARD_VIEW_MENU_SOURCE, /export function BoardNeedsInputButton/u);
 	assert.match(BOARD_VIEW_MENU_SOURCE, /Needs input/u);
+	assert.match(
+		BOARD_VIEW_MENU_SOURCE,
+		/import QuestionCircleIcon from "@atlaskit\/icon\/core\/question-circle";/u,
+	);
+	assert.match(
+		BOARD_VIEW_MENU_SOURCE,
+		/<Icon data-icon="inline-start" render=\{<QuestionCircleIcon label="" \/>\} \/>[\s\S]*Needs input[\s\S]*<Badge max=\{false\} variant="information">\{count\}<\/Badge>/u,
+	);
 	assert.doesNotMatch(BOARD_VIEW_MENU_SOURCE, /StatusInformationIcon/u);
 	assert.match(BOARD_VIEW_MENU_SOURCE, /export function BoardGroupByMenu/u);
 	assert.match(
