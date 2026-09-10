@@ -66,6 +66,7 @@ interface TopNavigationProps {
 	/** Preserve the legacy leading inset used by sidebar-owned product shells. */
 	searchAlignment?: "responsive" | "sidebar";
 	hideRovoAction?: boolean;
+	hideSettings?: boolean;
 	/**
 	 * Forces the "Ask Rovo" pill to render even for products that normally
 	 * suppress it (Rovo/Studio). The Figma global top navigation always shows
@@ -155,6 +156,7 @@ export default function TopNavigation({
 	shellHeight = "viewport",
 	searchAlignment = "responsive",
 	hideRovoAction = false,
+	hideSettings = false,
 	forceShowRovoAction = false,
 	variant = "shell",
 	sidebar,
@@ -350,6 +352,7 @@ export default function TopNavigation({
 			product={product}
 			windowWidth={responsiveWidth}
 			hideRovoAction={hideRovoAction}
+			hideSettings={hideSettings}
 			forceShowRovoAction={forceShowRovoAction}
 			isChatOpen={nav.isSidebarChatOpen}
 			onToggleChat={nav.toggleChat}

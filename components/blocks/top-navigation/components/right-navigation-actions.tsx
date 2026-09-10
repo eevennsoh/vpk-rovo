@@ -36,6 +36,7 @@ interface RightNavigationActionsProps {
 	showRovoAction: boolean;
 	isChatOpen: boolean;
 	onToggleChat: () => void;
+	hideSettings?: boolean;
 	settingsMenuItems?: ReadonlyArray<RightNavigationSettingsMenuItem>;
 }
 
@@ -46,6 +47,7 @@ export function RightNavigationActions({
 	showRovoAction,
 	isChatOpen,
 	onToggleChat,
+	hideSettings = false,
 	settingsMenuItems,
 }: Readonly<RightNavigationActionsProps>) {
 	const hasSettingsMenu = Boolean(settingsMenuItems && settingsMenuItems.length > 0);
@@ -76,60 +78,63 @@ export function RightNavigationActions({
 				<QuestionCircleIcon label="" color={token("color.icon.subtle")} />
 			</Button>
 
-			{/* Settings — always a menu: it owns the global design-variant
-			    toggles, plus whatever surface-specific items the caller passes. */}
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					render={(
-						<Button
-							aria-label="Settings"
-							className="[&_svg]:text-icon-subtle aria-expanded:[&_svg]:text-icon-selected"
-							size="icon"
-							type="button"
-							variant="ghost"
-						/>
-					)}
-				>
-					<SettingsIcon label="" color="currentColor" />
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end" className="w-64">
-					<DropdownMenuGroup>
-						{/* Base UI requires group parts (the label) to live inside the
-						    group that owns them, so the label is nested here. */}
-						<DropdownMenuLabel>Properties</DropdownMenuLabel>
-						{DESIGN_VARIANTS.map((variant) => (
-							<DropdownMenuCheckboxItem
-								checked={designVariants[variant.id]}
-								key={variant.id}
-								onCheckedChange={(checked) => {
-									setDesignVariant(variant.id, checked);
-								}}
-							>
-								{variant.label}
-							</DropdownMenuCheckboxItem>
-						))}
-					</DropdownMenuGroup>
-					{hasSettingsMenu ? (
-						<>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								{settingsMenuItems?.map((item) => (
-									<DropdownMenuItem
-										description={item.description}
-										disabled={item.disabled}
-										elemBefore={item.elemBefore}
-										key={item.id}
-										onSelect={item.onSelect}
-										variant={item.variant}
-									>
-										{item.label}
-									</DropdownMenuItem>
-								))}
-							</DropdownMenuGroup>
-						</>
-					) : null}
-				</DropdownMenuContent>
-			</DropdownMenu>
+			{/* Settings owns the global design-variant toggles, plus whatever
+			    surface-specific items the caller passes. Routes with a fixed
+			    presentation can omit the capability entirely. */}
+			{hideSettings ? null : (
+				<DropdownMenu>
+					<DropdownMenuTrigger
+						render={(
+							<Button
+								aria-label="Settings"
+								className="[&_svg]:text-icon-subtle aria-expanded:[&_svg]:text-icon-selected"
+								size="icon"
+								type="button"
+								variant="ghost"
+							/>
+						)}
+					>
+						<SettingsIcon label="" color="currentColor" />
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-64">
+						<DropdownMenuGroup>
+							{/* Base UI requires group parts (the label) to live inside the
+							    group that owns them, so the label is nested here. */}
+							<DropdownMenuLabel>Properties</DropdownMenuLabel>
+							{DESIGN_VARIANTS.map((variant) => (
+								<DropdownMenuCheckboxItem
+									checked={designVariants[variant.id]}
+									key={variant.id}
+									onCheckedChange={(checked) => {
+										setDesignVariant(variant.id, checked);
+									}}
+								>
+									{variant.label}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						{hasSettingsMenu ? (
+							<>
+								<DropdownMenuSeparator />
+								<DropdownMenuGroup>
+									{settingsMenuItems?.map((item) => (
+										<DropdownMenuItem
+											description={item.description}
+											disabled={item.disabled}
+											elemBefore={item.elemBefore}
+											key={item.id}
+											onSelect={item.onSelect}
+											variant={item.variant}
+										>
+											{item.label}
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuGroup>
+							</>
+						) : null}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			)}
 
 			{/* Theme toggle */}
 			<ThemeToggle />

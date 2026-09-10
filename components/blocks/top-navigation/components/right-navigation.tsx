@@ -18,6 +18,7 @@ interface RightNavigationProps {
 	product: Product;
 	windowWidth: number;
 	hideRovoAction?: boolean;
+	hideSettings?: boolean;
 	forceShowRovoAction?: boolean;
 	isChatOpen?: boolean;
 	onToggleChat: () => void;
@@ -34,6 +35,7 @@ export function RightNavigation({
 	product,
 	windowWidth,
 	hideRovoAction = false,
+	hideSettings = false,
 	forceShowRovoAction = false,
 	isChatOpen = false,
 	onToggleChat,
@@ -69,6 +71,7 @@ export function RightNavigation({
 
 	const actions = (
 		<RightNavigationActions
+			hideSettings={hideSettings}
 			showRovoAction={showRovoAction}
 			isChatOpen={isChatOpen}
 			onToggleChat={onToggleChat}
