@@ -487,11 +487,13 @@ test("the comment composer expands into the shared rich editor toolbar", () => {
 		COMPOSER_SOURCE,
 		/import \{ EditorToolbar \} from "@\/components\/blocks\/editor-toolbar";/u,
 	);
-	assert.match(COMPOSER_SOURCE, /const isExpandableComment = variant === "comment";/u);
+	assert.match(COMPOSER_SOURCE, /expandOnFocus\?: boolean;/u);
+	assert.match(COMPOSER_SOURCE, /const isExpandableComment = variant === "comment" && expandOnFocus;/u);
 	assert.match(
 		COMPOSER_SOURCE,
 		/<EditorToolbar[\s\S]*leadingSlot=\{<JiraCommentEditorToolbarLeading editor=\{editor\} \/>\}/u,
 	);
+	assert.match(COMPOSER_SOURCE, /showFormattingControls=\{false\}/u);
 	assert.match(COMPOSER_SOURCE, /onFocusCapture=\{\(\) => \{[\s\S]*setIsExpanded\(true\)/u);
 	assert.match(COMPOSER_SOURCE, /layout=\{isExpandableComment && isExpanded \? "stacked" : "auto"\}/u);
 	assert.match(COMPOSER_SOURCE, /Type \/ai to ask Rovo or @ to mention someone…/u);

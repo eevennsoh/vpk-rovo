@@ -120,6 +120,8 @@ export interface JiraActivityComposerProps {
 	onValueChange?: (value: string) => void;
 	/** Ref to the shared prompt editor used by the comment variant. */
 	textareaRef?: Ref<HTMLTextAreaElement>;
+	/** Expand the comment surface and expose its composer-safe toolbar on focus. */
+	expandOnFocus?: boolean;
 	/**
 	 * Focus the editor on mount. The comment variant is a contentEditable tiptap
 	 * editor that initialises asynchronously, so its own `autofocus` config is the
@@ -158,6 +160,7 @@ export function JiraActivityComposer({
 	defaultValue = "",
 	onValueChange,
 	textareaRef,
+	expandOnFocus = false,
 	autoFocus = false,
 	prefillMentionRequest,
 	mentionSources,
@@ -169,7 +172,7 @@ export function JiraActivityComposer({
 	className,
 }: Readonly<JiraActivityComposerProps>) {
 	const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
-	const isExpandableComment = variant === "comment";
+	const isExpandableComment = variant === "comment" && expandOnFocus;
 	const [isExpanded, setIsExpanded] = useState(isExpandableComment && autoFocus);
 	const [editor, setEditor] = useState<Editor | null>(null);
 	const value = controlledValue ?? uncontrolledValue;
@@ -270,6 +273,7 @@ export function JiraActivityComposer({
 				controlsOverflow="responsive"
 				editor={editor}
 				leadingSlot={<JiraCommentEditorToolbarLeading editor={editor} />}
+				showFormattingControls={false}
 			/>
 			{inputContext}
 		</div>
