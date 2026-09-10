@@ -138,6 +138,7 @@ test("the resize button swaps its icon without using selected button state", () 
 	);
 	assert.doesNotMatch(resizeButtonSource, /"Expand column"|"Collapse column"/u);
 	assert.doesNotMatch(resizeButtonSource, /aria-(?:expanded|pressed)=/u);
+	assert.doesNotMatch(resizeButtonSource, /pt-\d|pb-\d/u);
 });
 
 test("the pinned session column shares the status columns' box model", () => {
