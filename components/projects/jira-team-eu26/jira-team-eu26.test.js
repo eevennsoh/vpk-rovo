@@ -713,7 +713,7 @@ test("Team EU26 replaces View with Needs input and a dedicated Group by control"
 	);
 	assert.match(BOARD_VIEW_MENU_SOURCE, /export function BoardNeedsInputButton/u);
 	assert.match(BOARD_VIEW_MENU_SOURCE, /Needs input/u);
-	assert.match(BOARD_VIEW_MENU_SOURCE, /StatusInformationIcon/u);
+	assert.doesNotMatch(BOARD_VIEW_MENU_SOURCE, /StatusInformationIcon/u);
 	assert.match(BOARD_VIEW_MENU_SOURCE, /export function BoardGroupByMenu/u);
 	assert.match(
 		BOARD_VIEW_MENU_SOURCE,
