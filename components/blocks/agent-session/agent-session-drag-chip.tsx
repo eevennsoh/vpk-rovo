@@ -39,8 +39,10 @@ const DECK_VISIBLE_MAX = 3;
  * the effect off the chip it is supposed to sit under.
  *
  * Sheets paint the same solid fill as the lead. Fading them let the page show
- * through, which read as a smudge under the stack rather than as cards; depth
- * comes from the offset, the border edge, and the overlay shadow instead.
+ * through, which read as a smudge under the stack rather than as cards. Elevated
+ * copies get their edge from overlay shadow; a border on top of that shadow
+ * reads as a thick outline. Resting in-flow copies have no shadow, so they keep
+ * a border so the sheets still read as separate cards.
  */
 const DECK_LAYERS = [
 	{ rotateDeg: 2.4, xPx: 4, yPx: 3 },
@@ -164,12 +166,15 @@ export function AgentSessionDragChip({
 					// entirely occluded by the lead, and laying it out in flow would
 					// inflate the `w-fit` box every flight path centres on. Each sheet
 					// paints the lead's own opaque fill so the stack reads as cards
-					// rather than as a translucent shadow; the border gives the edge.
+					// rather than as a translucent shadow. Overlay elevation is the
+					// edge on travelling copies — a border on the same surface
+					// doubles it into a thick outline. Resting copies have no
+					// shadow, so they keep the border.
 					<span
 						aria-hidden="true"
 						className={cn(
-							"pointer-events-none absolute inset-0 -z-10 rounded-lg border border-border",
-							elevated ? "bg-surface" : "bg-bg-neutral",
+							"pointer-events-none absolute inset-0 -z-10 rounded-lg",
+							elevated ? "bg-surface" : "border border-border bg-bg-neutral",
 						)}
 						data-session-deck-layer={index + 1}
 						key={member.id}
