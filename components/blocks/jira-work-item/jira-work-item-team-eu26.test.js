@@ -106,6 +106,24 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 		assert.match(bodySource, new RegExp(copy, "u"));
 	}
 	assert.match(bodySource, /<Table[\s\S]*<TableHeader[\s\S]*<TableBody/u);
+	assert.match(bodySource, /import \{ Tabs, TabsContent, TabsList, TabsTrigger \} from "@\/components\/ui\/tabs"/u);
+	assert.doesNotMatch(bodySource, /ButtonGroup/u);
+	assert.match(bodySource, /const \[attachmentsExpanded, setAttachmentsExpanded\] = useState\(true\)/u);
+	assert.match(bodySource, /aria-label="Attachments"[\s\S]*aria-controls="team-eu26-attachments-content"[\s\S]*aria-expanded=\{attachmentsExpanded\}/u);
+	assert.match(bodySource, /<h2 className="pointer-events-none absolute inset-0 z-10 flex[\s\S]*id="team-eu26-attachments-heading"/u);
+	assert.match(bodySource, /<button[\s\S]*aria-label="Attachments"[\s\S]*aria-controls="team-eu26-attachments-content"[\s\S]*type="button"/u);
+	assert.doesNotMatch(bodySource, /role="button"[\s\S]*tabIndex=\{0\}/u);
+	assert.match(bodySource, /className="inline-flex items-center justify-center opacity-0 transition-opacity/u);
+	assert.match(bodySource, /className="group\/attachments relative flex min-h-9[\s\S]*className="absolute inset-0 z-0/u);
+	assert.doesNotMatch(bodySource, /<Button\s+aria-controls="team-eu26-attachments-content"/u);
+	assert.match(bodySource, /className="group\/attachments relative flex min-h-9[\s\S]*transition-none/u);
+	assert.match(bodySource, /className=\{cn\("relative z-10 ml-auto flex shrink-0/u);
+	assert.match(bodySource, /aria-hidden=\{!attachmentsExpanded\}[\s\S]*inert=\{!attachmentsExpanded \? true : undefined\}/u);
+	assert.match(bodySource, /<Tabs[\s\S]*onValueChange=\{\(value\) => value \? setAttachmentFilter\(value as AttachmentFilter\) : undefined\}[\s\S]*value=\{attachmentFilter\}/u);
+	assert.match(bodySource, /<TabsList aria-label="Filter attachments" size="default" variant="default">[\s\S]*<TabsTrigger/u);
+	assert.match(bodySource, /<TabsContent[\s\S]*value=\{filter\.value\}/u);
+	assert.match(bodySource, /aria-label="More attachment actions"[\s\S]*size="icon"/u);
+	assert.match(bodySource, /<div className="space-y-1">[\s\S]*<span className="text-sm text-text-subtle">0% Done<\/span>[\s\S]*className="flex h-2 overflow-hidden rounded-full bg-bg-neutral-bold"[\s\S]*<span aria-hidden className="w-1\/3 bg-bg-selected-bold" \/>/u);
 	assert.match(bodySource, /0% complete; 1 of 3 subitems in progress/u);
 	assert.match(bodySource, /const \[statuses, setStatuses\] = useState<Record<string/u);
 	assert.doesNotMatch(bodySource, /useState\(initialStatus\)/u);
