@@ -115,6 +115,13 @@ export type BoardAgentSessionDropZone =
 		 * bottom of the shell.
 		 */
 		landRect?: BoardAgentSessionDropBounds | null;
+		/**
+		 * The card's own visible surface, without the agent shell's activity rows
+		 * below it. Glow linking collapses its chip into the card body rather than
+		 * into a strip at the lip, so it lands here. Absent until the surface can
+		 * be measured, so consumers fall back to the shell.
+		 */
+		surfaceRect?: BoardAgentSessionDropBounds | null;
 		kind: "issue";
 	}
 	| {
@@ -538,6 +545,8 @@ export interface BoardAgentSessionAttachProximity {
 	dockRect: BoardAgentSessionDropBounds | null;
 	/** The attach chin or agent-activity row the session lands in. */
 	landRect: BoardAgentSessionDropBounds | null;
+	/** The card's visible surface, or null when it is not measured. */
+	surfaceRect: BoardAgentSessionDropBounds | null;
 	/** Smoothstep ramp: 1 at distance 0, 0 at or beyond the range. */
 	nearness: number;
 }
@@ -626,11 +635,44 @@ export function resolveBoardAgentSessionAttachProximity(
 				dockRect: zone.dockRect ?? null,
 				landRect: zone.landRect ?? null,
 				nearness: attachNearnessFromDistance(distance),
+				surfaceRect: zone.surfaceRect ?? null,
 			};
 		}
 	}
 
 	return winner;
+}
+
+/**
+ * One named card as a link target, with no pointer involved.
+ *
+ * Assigning an agent from the card's own menu links the same agent to the same
+ * card a drag would, but nothing travels the board, so there is no distance to
+ * resolve: the card is the winner by construction. Returning the same shape the
+ * pointer resolver does is what lets the acknowledgement reuse the drop path
+ * instead of growing a second one.
+ */
+export function toBoardAgentSessionCardProximity(
+	zones: readonly BoardAgentSessionDropZone[],
+	cardCode: string,
+): BoardAgentSessionAttachProximity | null {
+	for (const zone of zones) {
+		if (zone.kind !== "issue" || zone.cardCode !== cardCode) {
+			continue;
+		}
+
+		return {
+			bounds: zone.bounds,
+			cardCode: zone.cardCode,
+			distance: 0,
+			dockRect: zone.dockRect ?? null,
+			landRect: zone.landRect ?? null,
+			nearness: 1,
+			surfaceRect: zone.surfaceRect ?? null,
+		};
+	}
+
+	return null;
 }
 
 export function createBoardAgentSessionDragTransaction<

@@ -194,10 +194,17 @@ test("the link sweep survives an overlay that never reports its flights landed",
 	// The chip flights are decoration: a portal behind a lazy chunk, gated on
 	// reduced motion. Holding the acknowledgement for a committed link on their
 	// callback is what makes the sweep look intermittent, so the drop arms its
-	// own deadline off the flights' published budget and flushes either way.
+	// own deadline off the effect's published budget and flushes either way.
+	// Both linking variants publish one, so neither can hardcode a duration.
 	assert.match(
 		DRAG_HOOK_SOURCE,
-		/settleDeadlineRef\.current = setTimeout\(\s*flushPendingAttach,\s*resolveJiraLinkingReleaseSettleMs\(release, JIRA_LINKING_FULL_DROP_PROFILE\)\s*\+ SESSION_FUSION_SETTLE_GRACE_MS,/u,
+		/settleDeadlineRef\.current = setTimeout\(\s*flushPendingAttach,\s*\(linkingVariant === "glow"\s*\? resolveJiraLinkingGlowSettleMs\(shouldReduceMotion\)\s*: resolveJiraLinkingReleaseSettleMs\(input\.release, JIRA_LINKING_FULL_DROP_PROFILE\)\)\s*\+ SESSION_FUSION_SETTLE_GRACE_MS,/u,
+	);
+	// One arming path, so a drop and a menu assignment cannot drift into two
+	// different clocks for the same acknowledgement.
+	assert.equal(
+		DRAG_HOOK_SOURCE.match(/settleDeadlineRef\.current = setTimeout\(/gu)?.length,
+		1,
 	);
 	// Whoever gets there first wins; the deadline must not leave a timer armed
 	// after the overlay settles, or outlive the board.
@@ -403,5 +410,29 @@ test("column presentation pins Untracked beside the list as well as the board", 
 		PAGE_SOURCE,
 		/agentSessionColumn=\{agentSessionPresentation === "panel"/u,
 		"the page-owned column must not also mount inside ExperimentalJiraKanban",
+	);
+});
+
+test("a menu assignment measures the card after the link its own commit caused", () => {
+	// A drop hit-tests a board the pointer was already over. An assignment can
+	// move the card it targets — a host that advances the work item on start
+	// re-columns it in the same commit — so measuring before that commit lands
+	// the flight on the vacated slot and hands Glow a stale anchor whose hit
+	// test finds whichever card slid in behind. The wrong card then glows.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/assignmentFrameRef\.current = requestAnimationFrame\(\(\) => \{\s*assignmentFrameRef\.current = null;\s*const proximity = toBoardAgentSessionCardProximity\(/u,
+	);
+	// The deferred frame must not outlive the board, or it arms against a tree
+	// that is already gone.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/clearTimeout\(flashRetireRef\.current\);\s*\}\s*if \(assignmentFrameRef\.current !== null\) \{\s*cancelAnimationFrame\(assignmentFrameRef\.current\);\s*\}\s*\}, \[\]\);/u,
+	);
+	// Both link paths hand the same builder the same variant, so a menu
+	// assignment cannot draw a different effect than the drop it mirrors.
+	assert.equal(
+		DRAG_HOOK_SOURCE.match(/variant: linkingVariant,/gu)?.length,
+		4,
 	);
 });
