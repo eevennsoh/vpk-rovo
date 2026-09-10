@@ -89,6 +89,19 @@ test("Team EU26 owns the Team EU VITA-1 reference content and geometry", () => {
 	assert.doesNotMatch(composerSource, /Needs input|AiAgentIcon/u);
 });
 
+test("Team EU26 status control uses the project workflow phases", () => {
+	const editorDataSource = readBlockFile("team-eu26/components/detail-field-editor-data.ts");
+
+	assert.doesNotMatch(editorDataSource, /BOARD_COLUMNS/u);
+	assert.match(
+		editorDataSource,
+		/export const STATUS_PHASES = \["To do", "In progress", "In review", "Done"\] as const;/u,
+	);
+	// The restored `In review` phase has to read the same on the details rail as
+	// it does on the board and list, which name it `warning`.
+	assert.match(editorDataSource, /"In review": "warning"/u);
+});
+
 test("Team EU26 does not expand the comment composer into an Improve-description prompt", () => {
 	const composerSource = readBlockFile("team-eu26/components/activity-composer.tsx");
 	const bodyOwner = readBlockFile("team-eu26/components/work-item-body.tsx");

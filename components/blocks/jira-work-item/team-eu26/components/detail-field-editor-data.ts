@@ -1,12 +1,11 @@
 import type { WorkItemData } from "@/app/contexts/context-work-item-modal";
-import { BOARD_COLUMNS } from "@/components/projects/jira/data/board-data";
 import type { LozengeProps } from "@/components/ui/lozenge";
 import type { RichTextSuggestionMenuItem } from "@/components/ui-custom/rich-text-editor";
 
 export type PriorityValue = NonNullable<WorkItemData["priority"]>;
 type LozengeVariant = NonNullable<LozengeProps["variant"]>;
 
-export const STATUS_PHASES: readonly string[] = BOARD_COLUMNS.map((column) => column.title);
+export const STATUS_PHASES = ["To do", "In progress", "In review", "Done"] as const;
 export const PRIORITY_OPTIONS: readonly PriorityValue[] = ["Highest", "High", "Medium", "Low", "Lowest"];
 
 /** Named tones so trigger + menu lozenges stay matched across board workflows. */
@@ -15,7 +14,7 @@ const NAMED_STATUS_VARIANTS: Readonly<Record<string, LozengeVariant>> = {
 	"RFP Intake": "neutral",
 	"In progress": "information",
 	Drafting: "information",
-	"In review": "information",
+	"In review": "warning",
 	Review: "information",
 	Done: "success",
 	Submitted: "success",
