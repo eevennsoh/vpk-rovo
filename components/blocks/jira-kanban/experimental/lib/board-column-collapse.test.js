@@ -131,8 +131,8 @@ test("the resize button swaps its icon without using selected button state", () 
 	const resizeButtonEnd = COLLAPSED_COLUMN_SOURCE.indexOf("/**", resizeButtonStart);
 	const resizeButtonSource = COLLAPSED_COLUMN_SOURCE.slice(resizeButtonStart, resizeButtonEnd);
 
-	assert.match(resizeButtonSource, /collapsed\s*\?\s*<GrowHorizontalIcon/u);
-	assert.match(resizeButtonSource, /:\s*<ShrinkHorizontalIcon/u);
+	assert.match(resizeButtonSource, /collapsed\s*\?\s*<GrowHorizontalIcon label="" size="small"/u);
+	assert.match(resizeButtonSource, /:\s*<ShrinkHorizontalIcon label="" size="small"/u);
 	assert.match(
 		resizeButtonSource,
 		/aria-label=\{collapsed \? `Expand \$\{title\} column` : `Collapse \$\{title\} column`\}/u,
