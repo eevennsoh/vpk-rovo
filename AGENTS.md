@@ -29,6 +29,7 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel), A
 | Deployment guide                       | `.agents/skills/vpk-deploy/references/guide-deployment.md`  |
 | Setup walkthrough                      | `.agents/skills/vpk-setup/references/guide-setup.md`        |
 | Local skills catalog (generated)       | `.agents/skills/INDEX.md`                                   |
+| Endpoint tables (generated)            | `.agents/knowledge/api-surfaces.md`                         |
 | AI SDK chat integration                | `rovo/config.js`, `app/contexts/context-rovo-chat.tsx`      |
 | AI Gateway helpers                     | `backend/lib/ai-gateway-helpers.js`                         |
 | Rovo Serve gateway (agent loop)        | `backend/lib/rovo-gateway.js`, `backend/lib/rovo-client.js` |
@@ -240,11 +241,17 @@ New behavior gets a clear owner instead of expanding an already-busy file. Befor
 
 ## Contextual Rules
 
-Rules live in `.agents/rules/` (canonical; provider dirs `.cursor/`, `.claude/`, `.codex/`, `.rovo/` symlink to it). They do not auto-load: before editing files matching a rule's scope, read that rule first. Only `.mdc` files auto-attach, and only in Cursor.
+Rules live in `.agents/rules/` (canonical; provider dirs `.cursor/`, `.claude/`, `.codex/`, `.rovo/` symlink to it). Loading is per-provider, and it is not lazy everywhere:
+
+- Claude Code: reads through the `.claude/rules` symlink and injects every `.md` in that directory into the system prompt at session start. Nothing narrows this — every `.md` rule loads on every session regardless of the scope table below — and `.mdc` files are not injected. Every byte of `.agents/rules/*.md` is a standing context cost on top of this file — run `wc -c .agents/rules/*.md` to size it, and keep added rule content proportionate.
+- Cursor: auto-attaches `.mdc` files only (currently just `browser-screenshots.mdc`), scoped by that file's `globs:` frontmatter. The `.md` rules carry no frontmatter scope and are not auto-attached — reach them through the table below.
+- Codex and Rovo: no auto-load. Before editing files matching a rule's scope, read that rule first.
+
+The table below stays the scope reference for every provider — it says which rule governs which files, whether or not your provider preloaded it.
 
 | Rule file | Read before editing |
 | --- | --- |
-| `token-priority.md` | `components/**/*.tsx`, `app/**/*.tsx`, `*.css` |
+| `token-priority.md` | `*` (always) — most often `components/**/*.tsx`, `app/**/*.tsx`, `*.css` |
 | `component-architecture.md` | `components/**/*.tsx`, `app/contexts/**/*.tsx` |
 | `chat-architecture.md` | `context-rovo-chat.tsx`, `backend/chat/**`, `backend/routes/chat-*.js`, `backend/routes/rovo-*.js`, `backend/lib/rovo-*.js`, `rovo/**` |
 | `api-surfaces.md` | `backend/routes/**/*.js`, `backend/app.js`, `backend/server.js`, `app/api/**/*.ts`, `backend/lib/*.js` |
