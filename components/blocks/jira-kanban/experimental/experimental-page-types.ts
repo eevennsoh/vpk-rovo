@@ -51,6 +51,14 @@ export interface ExperimentalJiraKanbanPageProps {
 	detachedAgentSessionsByCard?: ExperimentalJiraKanbanProps["detachedAgentSessionsByCard"];
 	agentSessionAssigneeIdAliases?: Readonly<Record<string, string>>;
 	/**
+	 * Which decoration plays when an agent session is dragged from the sessions
+	 * column onto a board card. Defaults to the metaball `fuse` so other boards
+	 * keep the effect they have; jira-team-eu26 passes `glow`, which collapses
+	 * one cohort chip into the card and acknowledges it with the card's own
+	 * halo and backdrop pulse instead of the chin-row sweep.
+	 */
+	agentSessionLinkingVariant?: ExperimentalJiraKanbanProps["agentSessionLinkingVariant"];
+	/**
 	 * Where untracked work lives on this board.
 	 *
 	 * `"column"` keeps it in flow, as a 280px column left of the status
