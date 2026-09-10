@@ -172,6 +172,88 @@ export const AGENT_SESSION_ITEMS: readonly AgentSessionItem[] = [
 	},
 ];
 
+/**
+ * Cloud sessions for the catalog demo.
+ *
+ * Deliberately a separate list from {@link AGENT_SESSION_ITEMS}, which the Agent
+ * Session Column and the Pulse rail also render: those surfaces are about local
+ * work the viewer can resume, and flipping their fixtures to cloud would change
+ * what those demos are demonstrating. These exercise the other menu — Unlink,
+ * Rename, Delete — plus the lifecycle states the long density can show.
+ */
+export const AGENT_SESSION_CLOUD_ITEMS: readonly AgentSessionItem[] = [
+	{
+		agent: CLAUDE_AGENT,
+		host: "cloud",
+		id: "cloud-suspension-refactor",
+		prStatus: "created",
+		sessionDetails: {
+			additions: 132,
+			branch: "feature/pay-204-off-road-damping",
+			deletions: 24,
+			files: 7,
+			host: "cloud",
+			issueKey: "PAY-204",
+			issueStatus: "In progress",
+			issueSummary: "Refactor active air suspension dampening logic for off-road mode",
+			pullRequestAuthor: GITHUB_PR_AUTHOR,
+			pullRequestNumber: 124,
+			pullRequestTitle: "Cargo retract",
+			pullRequestUrl: "https://github.com/eevensoh/vpk-rovo/pull/124",
+			repository: GITHUB_REPOSITORY,
+			targetBranch: GITHUB_TARGET_BRANCH,
+		},
+		shortTitle: "Off-road damping",
+		state: "running",
+		timeLabel: "2m",
+		title: "Refactor active air suspension dampening logic for off-road mode",
+	},
+	{
+		agent: {
+			brandName: "canva",
+			id: "canva",
+			kind: "agent",
+			name: "Canva",
+		},
+		host: "cloud",
+		id: "cloud-suspension-roadmap",
+		sessionDetails: {
+			host: "cloud",
+			issueKey: "PAY-206",
+			issueStatus: "In progress",
+			issueSummary: "Active air suspension roadmap",
+		},
+		shortTitle: "Suspension roadmap",
+		state: "needs-input",
+		timeLabel: "2m",
+		title: "Active air suspension roadmap",
+	},
+	{
+		agent: {
+			brandName: "figma",
+			id: "figma",
+			kind: "agent",
+			name: "Figma",
+		},
+		host: "cloud",
+		id: "cloud-figma-with-austin",
+		invokedBy: {
+			avatarSrc: "/avatar-user/issac-varghese/color/asow-dev-lime.png",
+			name: "Austin Lee",
+		},
+		sessionDetails: {
+			host: "cloud",
+			issueKey: "PAY-209",
+			issueStatus: "Done",
+			issueSummary: "Figma with Austin",
+		},
+		shortTitle: "Figma with Austin",
+		state: "complete",
+		timeLabel: "29d",
+		title: "Figma with Austin",
+	},
+];
+
 /** Attached session used to demonstrate the Jira issue activity-row footprint. */
 export const AGENT_SESSION_ATTACHED_ITEMS: readonly AgentSessionItem[] = [
 	{
