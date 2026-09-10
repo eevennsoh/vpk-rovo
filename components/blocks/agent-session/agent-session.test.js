@@ -29,6 +29,10 @@ const MEDIUM_DRAG_SOURCE = readFileSync(
 	join(__dirname, "agent-session-medium-drag.tsx"),
 	"utf8",
 );
+const DRAG_OVERLAY_SOURCE = readFileSync(
+	join(__dirname, "agent-session-drag-overlay.tsx"),
+	"utf8",
+);
 const COHORT_CHIP_SOURCE = readFileSync(
 	join(__dirname, "agent-session-cohort-chip.tsx"),
 	"utf8",
@@ -240,33 +244,37 @@ test("medium matches the 276 by 33 Figma row and reuses shared identity primitiv
 	assert.doesNotMatch(dashSource, /@utility dash-4-4/u);
 });
 
-test("medium drag chip is the shared agent mention tag with overlay elevation", () => {
-	assert.match(MEDIUM_DRAG_SOURCE, /import \{ createPortal \} from "react-dom";/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /AgentSessionCohortChip/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /<AgentSessionCohortChip[\s\S]*elevated/u);
+test("the drag overlay portals the shared cohort chip with overlay elevation", () => {
+	// The host owns the pointer gesture and mounts the overlay; the overlay owns
+	// the portal and the chip. Keeping the portal out of the host is what stops
+	// the gesture component from growing a second concern.
 	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /isDragging \? createPortal\([\s\S]*\{chip\}/u);
+	assert.match(MEDIUM_DRAG_SOURCE, /isDragging \? \(\s*\n\s*<AgentSessionDragOverlay/u);
+	assert.match(MEDIUM_DRAG_SOURCE, /useSessionDragChipPointer/u);
+	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /createPortal/u);
+
+	assert.match(DRAG_OVERLAY_SOURCE, /import \{ createPortal \} from "react-dom";/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /<AgentSessionCohortChip[\s\S]*elevated/u);
 	assert.match(
-		MEDIUM_DRAG_SOURCE,
+		DRAG_OVERLAY_SOURCE,
 		/className="pointer-events-none flex w-fit max-w-full -translate-x-1\/2 -translate-y-1\/2 items-center justify-start"/u,
 	);
-	assert.match(MEDIUM_DRAG_SOURCE, /useSessionDragChipPointer/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /sessionDragChipViewportStyle\(true\)/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /sessionDragChipViewportStyle\(true\)/u);
 	assert.match(
-		MEDIUM_DRAG_SOURCE,
+		DRAG_OVERLAY_SOURCE,
 		/createPortal\([\s\S]*data-session-drag-overlay=""[\s\S]*document\.body/u,
 	);
 	assert.match(MEDIUM_DRAG_SOURCE, /chipPointer\.snapToPointer\(\s*\{ x: event\.clientX, y: event\.clientY \},?\s*\);/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /chipPointer\.(?:snapToPointer|followPointer)\([\s\S]{0,100}event\.currentTarget/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /-translate-x-1\/2 -translate-y-1\/2/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /data-session-chip-centered=""/u);
-	// The goo measures the drawn lead pill, so this host marks it through
+	assert.match(DRAG_OVERLAY_SOURCE, /-translate-x-1\/2 -translate-y-1\/2/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /data-session-chip-centered=""/u);
+	// The goo measures the drawn lead pill, so the overlay marks it through
 	// `isFusionSource` and never stamps the attribute on the centring wrapper —
 	// `document.querySelector` would take the wrapper by document order and the
 	// source rect would sit still through the chip's entrance FLIP.
-	assert.match(MEDIUM_DRAG_SOURCE, /<AgentSessionCohortChip[\s\S]*isFusionSource/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /data-session-fusion-chip=/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /bg-surface-raised/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /<AgentSessionCohortChip[\s\S]*isFusionSource/u);
+	assert.doesNotMatch(DRAG_OVERLAY_SOURCE, /data-session-fusion-chip=/u);
+	assert.doesNotMatch(DRAG_OVERLAY_SOURCE, /bg-surface-raised/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /h-\[33px\] w-fit/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /from "@\/components\/visual\/gooey"/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /<Gooey/u);
@@ -459,7 +467,7 @@ test("the row reveals Resume plus Archive / Unarchive where Agent List puts Arch
 	assert.doesNotMatch(CARD_SOURCE, /EyeOpenIcon|EyeOpenStrikethroughIcon|visibilityLabel = "Hide"|visibilityLabel === "Show"/u);
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text/u);
 	assert.match(CARD_SOURCE, /aria-roledescription=\{bind \? "Draggable agent session" : undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /z-\[400\]/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /z-\[400\]/u);
 	assert.doesNotMatch(CARD_SOURCE, /hover:border-border(?!-disabled)/u);
 	assert.doesNotMatch(CARD_SOURCE, /focus-within:border-border(?!-disabled)/u);
 	assert.match(CARD_SOURCE, /hover:bg-surface-hovered/u);
