@@ -1,5 +1,7 @@
 "use client";
 
+// oxlint-disable react-doctor/prefer-tag-over-role -- Segmented child-item progress cannot use a native progress element without losing the done / in-progress / to-do colors.
+
 import { token } from "@/lib/tokens";
 import type { WorkItemChildItem } from "@/app/contexts/context-work-item-modal";
 
@@ -18,6 +20,11 @@ export function ChildItemsProgressBar({ items }: Readonly<ChildItemsProgressBarP
 
 	return (
 		<div
+			aria-label={`${donePercent}% complete; ${inProgressCount} of ${total} subitems in progress`}
+			aria-valuemax={100}
+			aria-valuemin={0}
+			aria-valuenow={donePercent}
+			role="progressbar"
 			style={{
 				display: "flex",
 				alignItems: "center",

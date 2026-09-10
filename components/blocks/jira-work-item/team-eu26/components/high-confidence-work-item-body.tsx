@@ -25,6 +25,8 @@ import {
 	type TeamEu26AttachmentKind,
 	type TeamEu26TableWorkItem,
 } from "@/components/blocks/jira-work-item/team-eu26/data/high-confidence-work-item";
+import { toWorkItemChildItems } from "@/components/blocks/jira-work-item/team-eu26/lib/child-items-progress";
+import { ChildItemsProgressBar } from "@/components/projects/jira/components/work-item-modal/child-items-progress-bar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ConfluenceIcon, LoomIcon } from "@/components/ui/logo";
@@ -218,6 +220,7 @@ export function HighConfidenceWorkItemBody() {
 			[...TEAM_EU26_SUBITEMS, ...TEAM_EU26_LINKED_ITEMS].map((item) => [item.key, item.status]),
 		),
 	);
+	const childItems = toWorkItemChildItems(TEAM_EU26_SUBITEMS, statuses);
 	const visibleLinkedItems = showAllLinkedItems ? TEAM_EU26_LINKED_ITEMS : TEAM_EU26_LINKED_ITEMS.slice(0, 1);
 
 	return (
@@ -290,12 +293,7 @@ export function HighConfidenceWorkItemBody() {
 
 			<section aria-labelledby="team-eu26-subitems-heading" className="space-y-2">
 				<SectionHeading actionLabel="Show subitem actions" id="team-eu26-subitems-heading" onMore={() => setAnnouncement("Subitem actions opened")}>Subitems</SectionHeading>
-				<div className="space-y-1">
-					<span className="text-sm text-text-subtle">0% Done</span>
-					<div aria-label="0% complete; 1 of 3 subitems in progress" aria-valuemax={100} aria-valuemin={0} aria-valuenow={0} className="flex h-2 overflow-hidden rounded-full bg-bg-neutral-bold" role="progressbar">
-						<span aria-hidden className="w-1/3 bg-bg-selected-bold" />
-					</div>
-				</div>
+				<ChildItemsProgressBar items={childItems} />
 				<WorkItemsTable items={TEAM_EU26_SUBITEMS} onStatusChange={(key, status) => setStatuses((current) => ({ ...current, [key]: status }))} statuses={statuses} />
 			</section>
 
