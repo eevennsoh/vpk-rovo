@@ -79,6 +79,9 @@ export const UI_PRIMARY_DEMOS: Record<string, ComponentType> = {
 	"scroll-area": dynamic(() => import("../../demos/ui/scroll-area-demo"), {
 		ssr: false,
 	}),
+	"scroll-fade": dynamic(() => import("../../demos/ui/scroll-fade-demo"), {
+		ssr: false,
+	}),
 	select: dynamic(() => import("../../demos/ui/select-demo"), { ssr: false }),
 	separator: dynamic(() => import("../../demos/ui/separator-demo"), { ssr: false }),
 	sheet: dynamic(() => import("../../demos/ui/sheet-demo"), { ssr: false }),

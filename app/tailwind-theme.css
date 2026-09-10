@@ -849,30 +849,6 @@
 		var(--scroll-mask-scrollbar-width) 100%;
 }
 
-@utility scroll-fade-x {
-	--scroll-fade-size: var(--ds-space-400);
-	mask-image: linear-gradient(
-		to right,
-		transparent 0,
-		black var(--scroll-fade-size),
-		black calc(100% - var(--scroll-fade-size)),
-		transparent 100%
-	);
-	-webkit-mask-image: linear-gradient(
-		to right,
-		transparent 0,
-		black var(--scroll-fade-size),
-		black calc(100% - var(--scroll-fade-size)),
-		transparent 100%
-	);
-}
-
-@utility scroll-fade-b {
-	--scroll-fade-size: var(--ds-space-400);
-	mask-image: linear-gradient(to bottom, black 0, black calc(100% - var(--scroll-fade-size)), transparent 100%);
-	-webkit-mask-image: linear-gradient(to bottom, black 0, black calc(100% - var(--scroll-fade-size)), transparent 100%);
-}
-
 @utility scrollbar-thin {
 	scrollbar-width: thin;
 

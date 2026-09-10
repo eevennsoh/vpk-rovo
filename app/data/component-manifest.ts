@@ -336,6 +336,7 @@ export const UI_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	uiComponent("radio-group", "Radio Group"),
 	uiComponent("resizable"),
 	uiComponent("scroll-area", "Scroll Area"),
+	uiComponent("scroll-fade", "Scroll Fade"),
 	uiComponent("select"),
 	uiComponent("separator"),
 	uiComponent("sheet"),
