@@ -40,6 +40,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/jira-linking/uniforms.test.js",
 		"components/blocks/jira-linking/lifecycle.test.js",
 		"components/blocks/jira-linking/drop.test.js",
+		"components/blocks/jira-linking/glow-motion.test.js",
 		"components/blocks/jira-kanban/experimental/lib/session-fusion-overlay-state.test.js",
 		"components/blocks/jira-kanban/experimental/lib/session-transfer-plan.test.js",
 		"components/blocks/jira-kanban/experimental/lib/session-drop-receipt.test.js",
