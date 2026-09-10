@@ -512,7 +512,6 @@ export function ActivityComposer({
 								<JiraActivityComposer
 									autoFocus={autoFocus}
 									author={JIRA_WORK_ITEM_CURRENT_USER}
-									expandOnFocus
 									className="min-h-13 rounded-xl"
 									inputContext={composerInputContext}
 									inputContextSubmitText={composerInputContextSubmitText}

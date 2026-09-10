@@ -1,21 +1,16 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import ChildWorkItemsIcon from "@atlaskit/icon/core/child-work-items";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import FilesIcon from "@atlaskit/icon/core/files";
 import ImageIcon from "@atlaskit/icon/core/image";
 import LinkIcon from "@atlaskit/icon/core/link";
 import PageIcon from "@atlaskit/icon/core/page";
-import PriorityHighIcon from "@atlaskit/icon/core/priority-high";
-import PriorityLowIcon from "@atlaskit/icon/core/priority-low";
-import PriorityMediumIcon from "@atlaskit/icon/core/priority-medium";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
-import TaskInProgressIcon from "@atlaskit/icon/core/task-in-progress";
-import TaskToDoIcon from "@atlaskit/icon/core/task-to-do";
 import VideoIcon from "@atlaskit/icon/core/video";
 
+import { WorkItemsTable } from "@/components/blocks/jira-work-item/team-eu26/components/work-items-table";
 import {
 	TEAM_EU26_ATTACHMENTS,
 	TEAM_EU26_DESCRIPTION,
@@ -38,7 +33,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Columns3Icon } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
 
 type AttachmentFilter = "all" | "file" | "image" | "link" | "video";
@@ -130,63 +124,6 @@ function AttachmentPanel({
 				</Button>
 			) : null}
 		</>
-	);
-}
-
-function Priority({ priority }: Readonly<Pick<TeamEu26TableWorkItem, "priority">>) {
-	const Icon = priority === "High" ? PriorityHighIcon : priority === "Low" ? PriorityLowIcon : PriorityMediumIcon;
-	return (
-		<span className="inline-flex items-center gap-1.5">
-			<span className={cn(
-					priority === "High" ? "text-icon-danger" : null,
-					priority === "Medium" ? "text-icon-warning" : null,
-					priority === "Low" ? "text-icon-information" : null,
-				)}>
-				<Icon color="currentColor" label="" size="small" />
-			</span>
-			{priority}
-		</span>
-	);
-}
-
-function Assignee({ name }: Readonly<{ name: string }>) {
-	return (
-		<span className="inline-flex min-w-0 items-center gap-2">
-			<Avatar animate={false} aria-hidden size="sm">
-				<AvatarFallback>{initials(name)}</AvatarFallback>
-			</Avatar>
-			<span className="truncate">{name === "Automatic" ? "Unassigned" : name}</span>
-		</span>
-	);
-}
-
-function StatusSelect({
-	itemKey,
-	onChange,
-	status,
-}: Readonly<{
-	itemKey: string;
-	onChange: (status: TeamEu26TableWorkItem["status"]) => void;
-	status: TeamEu26TableWorkItem["status"];
-}>) {
-	const StatusIcon = status === "In progress" ? TaskInProgressIcon : TaskToDoIcon;
-	return (
-		<label className={cn(
-			"inline-flex h-7 items-center gap-1 rounded-md border px-2 text-sm focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
-			status === "In progress" ? "border-border-selected bg-bg-selected text-text-selected" : "border-border bg-bg-neutral text-text",
-		)}>
-			<StatusIcon color="currentColor" label="" size="small" />
-			<span className="sr-only">Change status for {itemKey}</span>
-			<select
-				aria-label={`Change status for ${itemKey}`}
-				className="appearance-none bg-transparent pr-3 outline-none"
-				onChange={(event) => onChange(event.target.value as TeamEu26TableWorkItem["status"])}
-				value={status}
-			>
-				<option>In progress</option>
-				<option>To do</option>
-			</select>
-		</label>
 	);
 }
 
@@ -296,7 +233,7 @@ export function HighConfidenceWorkItemBody() {
 						<span aria-hidden className="w-1/3 bg-bg-selected-bold" />
 					</div>
 				</div>
-				<WorkItemsTable items={TEAM_EU26_SUBITEMS} onStatusChange={(key, status) => setStatuses((current) => ({ ...current, [key]: status }))} statuses={statuses} />
+				<WorkItemsTable aria-label="Subitems" items={TEAM_EU26_SUBITEMS} onStatusChange={(key, status) => setStatuses((current) => ({ ...current, [key]: status }))} statuses={statuses} />
 			</section>
 
 			<section aria-labelledby="team-eu26-linked-heading" className="space-y-2">
@@ -308,55 +245,8 @@ export function HighConfidenceWorkItemBody() {
 				>
 					Linked work items
 				</SectionHeading>
-				<WorkItemsTable items={visibleLinkedItems} onStatusChange={(key, status) => setStatuses((current) => ({ ...current, [key]: status }))} relationship statuses={statuses} />
+				<WorkItemsTable aria-label="Linked work items" items={visibleLinkedItems} onStatusChange={(key, status) => setStatuses((current) => ({ ...current, [key]: status }))} relationship statuses={statuses} />
 			</section>
 		</article>
-	);
-}
-
-function WorkItemsTable({
-	items,
-	onStatusChange,
-	relationship = false,
-	statuses,
-}: Readonly<{
-	items: readonly (TeamEu26TableWorkItem & { relationship?: string })[];
-	onStatusChange: (key: string, status: TeamEu26TableWorkItem["status"]) => void;
-	relationship?: boolean;
-	statuses: Readonly<Record<string, TeamEu26TableWorkItem["status"]>>;
-}>) {
-	return (
-		<div className="overflow-hidden rounded-lg border border-border">
-			<Table className="min-w-[46rem] table-fixed">
-				<TableHeader className="bg-bg-neutral-subtle [&_tr]:border-b [&_tr]:border-border">
-					<TableRow className="h-10 hover:bg-bg-neutral-subtle">
-						{relationship ? <TableHead className="w-36">Relationship</TableHead> : null}
-						<TableHead className="w-auto">Work</TableHead>
-						<TableHead className="w-36">Priority</TableHead>
-						<TableHead className="w-48">Assignee</TableHead>
-						<TableHead className="w-44">Status</TableHead>
-						<TableHead className="w-10"><span className="sr-only">Configure columns</span><Columns3Icon aria-hidden size="small" /></TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{items.map((item) => (
-						<TableRow className="h-10" key={item.key}>
-							{relationship ? <TableCell>{item.relationship}</TableCell> : null}
-							<TableCell className="overflow-hidden">
-								<a className="flex min-w-0 items-center gap-1 text-text-brand underline" href={`#${item.key.toLowerCase()}`}>
-									<ChildWorkItemsIcon label="" size="small" />
-									<span>{item.key}</span>
-									<span className="truncate text-text no-underline">{item.summary}</span>
-								</a>
-							</TableCell>
-							<TableCell><Priority priority={item.priority} /></TableCell>
-							<TableCell><Assignee name={item.assignee} /></TableCell>
-							<TableCell><StatusSelect itemKey={item.key} onChange={(status) => onStatusChange(item.key, status)} status={statuses[item.key] ?? item.status} /></TableCell>
-							<TableCell />
-						</TableRow>
-					))}
-				</TableBody>
-			</Table>
-		</div>
 	);
 }
