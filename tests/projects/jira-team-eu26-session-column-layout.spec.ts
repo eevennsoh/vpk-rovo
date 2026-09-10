@@ -158,6 +158,51 @@ test("session column slots between statuses and supports cancellation and keyboa
 	await expect(page.locator("[data-session-column-drop-marker]")).toHaveCount(0);
 });
 
+test("the collapsed options button still moves the column and opens its menu", async ({ page }) => {
+	await openCollapsedBoard(page);
+	await revealCollapsedAgentSessionColumn(page);
+	const options = page.getByRole("button", { name: "Unattached sessions column options" });
+	const start = (await options.boundingBox())!;
+	const todo = (await page.locator('[data-jira-kanban-column="To do"]').boundingBox())!;
+	await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(todo.x + todo.width - 8, start.y + start.height / 2, { steps: 12 });
+	await expect(page.locator("[data-session-column-drag-chip]")).toHaveCount(1);
+	await expect(page.locator("[data-session-drag-overlay]")).toHaveCount(0);
+	await page.mouse.up();
+	const placement = page.locator("[data-session-column-placement]");
+	await expect(placement).toHaveAttribute("data-session-column-placement", "1");
+	await expect(page.locator("[data-session-column-drag-chip]")).toHaveCount(0);
+	await options.click();
+	await expect(page.getByRole("menuitem", { name: "Expand" })).toBeVisible();
+	await page.keyboard.press("Escape");
+	await options.focus();
+	await page.keyboard.press("Alt+ArrowRight");
+	await expect(placement).toHaveAttribute("data-session-column-placement", "2");
+});
+
+test("dragging a session notch never starts a column drag", async ({ page }) => {
+	await openCollapsedBoard(page);
+	await revealCollapsedAgentSessionColumn(page);
+	const source = page.locator("[data-agent-session-column] [data-agent-session-notch]").first();
+	await source.hover();
+	const box = (await source.boundingBox())!;
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width / 2 + 4, box.y + box.height / 2 + 4);
+	await expect(page.locator("[data-session-drag-overlay]")).toHaveCount(1);
+	// Cross the separate 6px column threshold after the session drag starts.
+	await page.mouse.move(box.x + 200, box.y + box.height / 2, { steps: 8 });
+	await expect(page.locator("[data-session-column-drag-chip]")).toHaveCount(0);
+	await expect(page.locator("[data-session-column-drag-source]")).toHaveCount(0);
+	await expect(page.locator("[data-session-column-drop-marker]")).toHaveCount(0);
+	await expect(page.locator("[data-session-column-placement]")).toHaveAttribute("data-session-column-placement", "0");
+	await page.screenshot({ path: "output/agent-browser/session-drag-without-column.png" });
+	await page.keyboard.press("Escape");
+	await page.mouse.up();
+	await expect(page.locator("[data-session-drag-overlay]")).toHaveCount(0);
+	await expect(page.locator("[data-session-column-placement]")).toHaveAttribute("data-session-column-placement", "0");
+});
+
 test("compact session header drags without expanding and keeps its wider target", async ({ page }) => {
 	await openCollapsedBoard(page);
 	await revealCollapsedAgentSessionColumn(page);
