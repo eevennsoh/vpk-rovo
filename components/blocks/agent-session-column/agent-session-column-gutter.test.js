@@ -129,6 +129,14 @@ test("the collapsed options menu uses Atlaskit show-more-horizontal, not a custo
 	assert.match(IN_FLOW_MENU_SOURCE, /delay=\{0\}/u);
 	assert.match(
 		IN_FLOW_MENU_SOURCE,
+		/const HOVER_OPEN_TRIGGER_CLASS_NAME =\s*"aria-expanded:border-transparent aria-expanded:bg-bg-neutral-subtle-hovered aria-expanded:text-text-subtle aria-expanded:\[&_\[data-slot=icon\]\]:text-icon-subtle aria-expanded:\[&_svg\]:text-icon-subtle"/u,
+	);
+	assert.match(
+		IN_FLOW_MENU_SOURCE,
+		/className=\{cn\(className, HOVER_OPEN_TRIGGER_CLASS_NAME\)\}/u,
+	);
+	assert.match(
+		IN_FLOW_MENU_SOURCE,
 		/data-agent-session-column-options-glyph=\{showDragHandle \? "drag-handle" : "more"\}/u,
 	);
 	assert.match(IN_FLOW_MENU_SOURCE, /<TriggerGlyph color="currentColor" label="" size="small" \/>/u);
