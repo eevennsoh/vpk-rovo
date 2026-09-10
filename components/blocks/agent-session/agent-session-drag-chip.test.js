@@ -207,6 +207,19 @@ test("two sessions stack a single layer behind the lead", async () => {
 	assert.match(markup, /data-slot="badge"[^>]*>2<\/span>/u);
 });
 
+test("a resting stack keeps a border because it has no overlay shadow", async () => {
+	const harness = await loadDragChipHarness();
+	const markup = harness.renderChip({
+		cohort: cohort(session("lw-a", ANNIE), session("lw-b", ANNIE), session("lw-c", ANNIE)),
+	});
+
+	const sheet = openTag(markup, "data-session-deck-layer");
+	assert.match(sheet, /border border-border/u);
+	assert.match(sheet, /bg-bg-neutral/u);
+	assert.doesNotMatch(sheet, /box-shadow:/u);
+	assert.doesNotMatch(sheet, /bg-surface/u);
+});
+
 test("deck sheets paint a solid fill instead of fading into the page", async () => {
 	const harness = await loadDragChipHarness();
 	const markup = harness.renderChip({
