@@ -102,11 +102,13 @@ export function AgentSessionMediumCard({
 								<span aria-hidden="true" className="absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-icon-information" />
 							</>
 						) : null}
-						<AgentListIdentity
-							agent={item.agent}
-							attributedBy={item.invokedBy}
-							sizePx={24}
-						/>
+						<span className="block" data-session-drag-identity="">
+							<AgentListIdentity
+								agent={item.agent}
+								attributedBy={item.invokedBy}
+								sizePx={24}
+							/>
+						</span>
 						<span className="min-w-0 truncate text-sm font-medium leading-5 text-text">
 							{item.title}
 						</span>
