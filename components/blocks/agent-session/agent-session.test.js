@@ -253,26 +253,27 @@ test("medium detached is a 276px stroked white chip with a combo identity and up
 });
 
 test("medium drag chip is the shared agent mention tag with overlay elevation", () => {
-	assert.match(MEDIUM_DRAG_SOURCE, /import \{ createPortal \} from "react-dom";/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /AgentSessionCohortChip/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /<AgentSessionCohortChip[\s\S]*elevated/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /isDragging \? createPortal\([\s\S]*\{chip\}/u);
+	assert.match(MEDIUM_DRAG_SOURCE, /isDragging \? \(\s*\n\s*<AgentSessionDragOverlay/u);
+	assert.match(MEDIUM_DRAG_SOURCE, /useSessionDragChipPointer/u);
+	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /createPortal/u);
+
+	assert.match(DRAG_OVERLAY_SOURCE, /import \{ createPortal \} from "react-dom";/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /<AgentSessionCohortChip[\s\S]*elevated/u);
 	assert.match(
-		MEDIUM_DRAG_SOURCE,
+		DRAG_OVERLAY_SOURCE,
 		/className="pointer-events-none flex w-fit max-w-full -translate-x-1\/2 -translate-y-1\/2 items-center justify-start"/u,
 	);
-	assert.match(MEDIUM_DRAG_SOURCE, /useSessionDragChipPointer/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /sessionDragChipViewportStyle\(true\)/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /sessionDragChipViewportStyle\(true\)/u);
 	assert.match(
-		MEDIUM_DRAG_SOURCE,
+		DRAG_OVERLAY_SOURCE,
 		/createPortal\([\s\S]*data-session-drag-overlay=""[\s\S]*document\.body/u,
 	);
 	assert.match(MEDIUM_DRAG_SOURCE, /chipPointer\.snapToPointer\(\s*\{ x: event\.clientX, y: event\.clientY \},?\s*\);/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /chipPointer\.(?:snapToPointer|followPointer)\([\s\S]{0,100}event\.currentTarget/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /-translate-x-1\/2 -translate-y-1\/2/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /data-session-chip-centered=""/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /bg-surface-raised/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /-translate-x-1\/2 -translate-y-1\/2/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /data-session-chip-centered=""/u);
+	assert.doesNotMatch(DRAG_OVERLAY_SOURCE, /bg-surface-raised/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /h-\[33px\] w-fit/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /from "@\/components\/visual\/gooey"/u);
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /<Gooey/u);
@@ -284,22 +285,9 @@ test("medium drag keeps pointer capture on the motion host instead of swapping a
 	// so the card stuck on an empty grey attach chin.
 	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /isDragging \? chip : children\(sessionDragBind\)/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isDragging && preserveSourceFootprint && "pointer-events-none absolute inset-x-0 top-0 opacity-\(--opacity-disabled\)"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isFollower && preserveSourceFootprint && "pointer-events-none opacity-\(--opacity-disabled\)"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isFollower && !preserveSourceFootprint && "h-0 overflow-hidden"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/\(isFollower && !preserveSourceFootprint \|\| \(isDragging && !preserveSourceFootprint\)\) && "pointer-events-none absolute inset-x-0 top-0 opacity-0"/u,
-	);
+	assert.match(MEDIUM_DRAG_SOURCE, /cn\(sessionDragPlaceholderClasses\(layoutState\)\)/u);
+	assert.match(MEDIUM_DRAG_SOURCE, /cn\(sessionDragSourceClasses\(layoutState\)\)/u);
+	assert.match(MEDIUM_DRAG_SOURCE, /from "\.\/agent-session-drag-layout"/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /aria-hidden=\{isDragging \|\| isFollower \|\| undefined\}/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /inert=\{isDragging \|\| isFollower \|\| undefined\}/u);
 	assert.match(MEDIUM_DRAG_SOURCE, /window\.addEventListener\("pointerup", onPointerUp\)/u);
@@ -307,7 +295,10 @@ test("medium drag keeps pointer capture on the motion host instead of swapping a
 });
 
 test("multi-session drag chips use the concise sessions count", () => {
-	assert.match(COHORT_CHIP_SOURCE, /const label = `\$\{cohort\.members\.length\} sessions`;/u);
+	const dragChipSource = readFileSync(join(__dirname, "agent-session-drag-chip.tsx"), "utf8");
+	assert.match(dragChipSource, /return `\$\{total\} sessions`;/u);
+	assert.doesNotMatch(dragChipSource, /agent sessions/u);
+	assert.doesNotMatch(COHORT_CHIP_SOURCE, /sessions`/u);
 	assert.doesNotMatch(COHORT_CHIP_SOURCE, /agent sessions/u);
 });
 
