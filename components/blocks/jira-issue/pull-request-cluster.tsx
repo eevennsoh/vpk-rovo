@@ -5,12 +5,14 @@ import MergeFailureIcon from "@atlaskit/icon/core/merge-failure";
 import MergeSuccessIcon from "@atlaskit/icon/core/merge-success";
 import PullRequestIcon from "@atlaskit/icon/core/pull-request";
 
-import { PullRequest } from "@/components/blocks/pull-request/components/pull-request";
-import type { PullRequestStatus } from "@/components/blocks/pull-request/components/pull-request-types";
+import { resolveJiraIssueIconMetrics } from "@/components/blocks/jira-issue/lib";
 import type {
+	JiraIssueIconScale,
 	JiraIssuePullRequestPreview,
 	JiraIssuePullRequestStatus,
 } from "@/components/blocks/jira-issue/types";
+import { PullRequest } from "@/components/blocks/pull-request/components/pull-request";
+import type { PullRequestStatus } from "@/components/blocks/pull-request/components/pull-request-types";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Icon } from "@/components/ui/icon";
@@ -69,12 +71,14 @@ function stopNestedActivation(event: MouseEvent<HTMLElement> | PointerEvent<HTML
 }
 
 export function JiraIssuePullRequestCluster({
+	iconScale = "compact",
 	pullRequestNumber,
 	pullRequestPreview,
 	pullRequestStatus,
 	pullRequestTitle,
 	usesStrokeChrome,
 }: Readonly<{
+	iconScale?: JiraIssueIconScale;
 	pullRequestNumber: number;
 	pullRequestPreview?: JiraIssuePullRequestPreview;
 	pullRequestStatus?: JiraIssuePullRequestStatus;
@@ -84,6 +88,7 @@ export function JiraIssuePullRequestCluster({
 	const { StatusIcon, colorClass, label } = getJiraIssuePullRequestPresentation(pullRequestStatus);
 	const overlayTitle = pullRequestPreview?.title ?? pullRequestTitle;
 	const accessibleName = `${label} #${pullRequestNumber}: ${overlayTitle}`;
+	const iconMetrics = resolveJiraIssueIconMetrics(iconScale);
 
 	if (!usesStrokeChrome) {
 		return (
@@ -106,7 +111,7 @@ export function JiraIssuePullRequestCluster({
 				render={(
 					<Button
 						aria-label={accessibleName}
-						className={cn(colorClass, "[&_svg]:text-current")}
+						className={cn(colorClass, "[&_svg]:text-current", iconMetrics.compactIconClassName)}
 						onClick={stopNestedActivation}
 						onPointerDown={stopNestedActivation}
 						size="icon-compact"

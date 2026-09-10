@@ -225,11 +225,35 @@ test("applyAssignedAgentIdsToColumns archives and assigns against board columns"
 		.find((column) => column.title === "In progress")
 		?.cards.find((card) => card.code === "PAY-118");
 
+	const assignedFromSessionId = applyAssignedAgentIdsToColumns(
+		COLUMNS,
+		"PAY-118",
+		["PAY-118:test-agent"],
+		PAY_BOARD_CATALOG,
+	);
+	const assignedFromSessionIdCard = assignedFromSessionId
+		.find((column) => column.title === "In progress")
+		?.cards.find((card) => card.code === "PAY-118");
+	assert.equal(assignedFromSessionIdCard?.agentActivities?.[0]?.id, "PAY-118:test-agent");
+	assert.equal(assignedFromSessionIdCard?.agentActivities?.[0]?.name, "Cursor");
+
 	assert.equal(assignedCard?.agentActivities?.[0]?.id, "PAY-118:test-agent");
 	assert.equal(assignedCard?.agentActivities?.[0]?.name, "Cursor");
 	assert.equal(assignedCard?.agentActivities?.[0]?.state, "working");
 	assert.equal(assignedCard?.agentActivities?.[0]?.startupSequence, "jira-work-item-start");
 	assert.equal(typeof assignedCard?.agentActivities?.[0]?.startedAtMs, "number");
+
+	const keptFromSessionIds = applyAssignedAgentIdsToColumns(
+		COLUMNS,
+		"PAY-101",
+		["PAY-101:claude-code", "review-agent"],
+		PAY_BOARD_CATALOG,
+	);
+	const keptFromSessionIdsCard = keptFromSessionIds
+		.find((column) => column.title === "In progress")
+		?.cards.find((card) => card.code === "PAY-101");
+	assert.equal(keptFromSessionIdsCard?.agentActivities?.[0]?.name, "Claude Code");
+	assert.equal(keptFromSessionIdsCard?.agentDoneRuns?.[0]?.agentName, "Codex");
 
 	const unchanged = applyAssignedAgentIdsToColumns(
 		COLUMNS,
