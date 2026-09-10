@@ -56,6 +56,7 @@ interface JiraLinkingGlowSnapshot {
 	backdropRoot: Element | null;
 	glowColor: string;
 	haloRoot: Element | null;
+	portalRoot: HTMLElement;
 	release: JiraLinkingRelease;
 }
 
@@ -83,6 +84,7 @@ export function JiraLinkingGlow({ identities, release, onFuseSettled, zIndex = 2
 				glowColor: leadIdentity
 					? resolveJiraLinkingGlowColor(resolveJiraLinkingIdentityTint(leadIdentity))
 					: JIRA_LINKING_GLOW_DEFAULT_COLOR,
+				portalRoot: document.body,
 				release,
 			});
 		}
@@ -104,6 +106,7 @@ export function JiraLinkingGlow({ identities, release, onFuseSettled, zIndex = 2
 			key={snapshot.release.id}
 			onComplete={complete}
 			onSettled={settle}
+			portalRoot={snapshot.portalRoot}
 			release={snapshot.release}
 			shouldReduceMotion={shouldReduceMotion}
 			zIndex={zIndex}
@@ -111,10 +114,11 @@ export function JiraLinkingGlow({ identities, release, onFuseSettled, zIndex = 2
 	) : null;
 }
 
-function GlowRelease({ backdropRoot, glowColor, haloRoot, release, shouldReduceMotion, onSettled, onComplete, zIndex }: Readonly<{
+function GlowRelease({ backdropRoot, glowColor, haloRoot, portalRoot, release, shouldReduceMotion, onSettled, onComplete, zIndex }: Readonly<{
 	backdropRoot: Element | null;
 	glowColor: string;
 	haloRoot: Element | null;
+	portalRoot: HTMLElement;
 	release: JiraLinkingRelease;
 	shouldReduceMotion: boolean;
 	onSettled: (id: number) => void;
@@ -192,7 +196,7 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, release, shouldReduceM
 		};
 	}, [backdrop, drop, landing, onComplete, onSettled, release.id, shouldReduceMotion]);
 
-	if (shouldReduceMotion || !drop || !backdrop || !landing || typeof document === "undefined") return null;
+	if (shouldReduceMotion || !drop || !backdrop || !landing) return null;
 	const haloStyle = {
 		left: landing.anchor.x - landing.width / 2,
 		top: landing.anchor.y - landing.height / 2,
@@ -220,7 +224,7 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, release, shouldReduceM
 						</div>
 					</div>
 				</div>,
-				document.body,
+				portalRoot,
 			)}
 			{haloRoot ? createPortal(
 				<div
