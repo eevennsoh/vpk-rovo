@@ -29,6 +29,8 @@ interface ExperimentalWorkItemDialogProps {
 	children: ReactNode;
 	/** Work-item control row, rendered under the title inside the header band. */
 	controlRow?: (compact: boolean) => ReactNode;
+	/** Status control, rendered alongside the header action buttons. */
+	statusControl?: ReactNode;
 	navigation?: ReactNode;
 	blanketContent?: ReactNode;
 	sidebar: ReactNode;
@@ -55,6 +57,7 @@ export function ExperimentalWorkItemDialog({
 	sidebarResizeHandle,
 	sidebarResizing,
 	sidebarWidth,
+	statusControl,
 	onBodyWidthChange,
 }: Readonly<ExperimentalWorkItemDialogProps>) {
 	const dialogBodyRef = useRef<HTMLDivElement | null>(null);
@@ -154,6 +157,7 @@ export function ExperimentalWorkItemDialog({
 								<RovoColorIcon aria-hidden size="xxsmall" />
 							</Button>
 							<Button aria-label="Open in code" onClick={() => setActionAnnouncement("Code options opened")} size="icon" type="button" variant="outline"><AngleBracketsIcon label="" size="small" /></Button>
+							{statusControl ? <div className="ml-2 flex shrink-0 items-center">{statusControl}</div> : null}
 							{presentation === "modal" ? (
 								<Button aria-label="Close work item" onClick={onClose} size="icon" type="button" variant="ghost">
 									<CloseIcon label="" />

@@ -2,13 +2,12 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-	SESSION_FUSION_ASSIGNMENT_RISE_PX,
 	SESSION_FUSION_ROW_RADIUS_PX,
 	SESSION_FUSION_SHELL_RADIUS_PX,
 	SESSION_FUSION_SURFACE_RADIUS_PX,
 	toAssignedAgentTransferMember,
 	toBoardAgentSessionLinkFlash,
-	toSessionFusionAssignmentOrigin,
+	toSessionFusionAssignmentRelease,
 	toSessionFusionDrop,
 	toSessionFusionGlowLandTarget,
 	toSessionFusionLandTarget,
@@ -305,47 +304,16 @@ test("only an agent submit names a subject the acknowledgement can point at", ()
 	);
 });
 
-test("an assignment's chip starts over its landing shape, not off to one side", () => {
-	// Glow holds x fixed at the origin for the whole flight, so an origin that
-	// is not on the landing axis drops the chip in a column beside the card.
-	const proximity = proximityOf({ dockRect: SHELL_RECT, surfaceRect: SURFACE_RECT });
-	const glowOrigin = toSessionFusionAssignmentOrigin(proximity, "glow");
-	const glowTarget = toSessionFusionGlowLandTarget(proximity);
-	assert.equal(glowOrigin.x, glowTarget.anchor.x);
-	assert.equal(glowOrigin.y, glowTarget.anchor.y - SESSION_FUSION_ASSIGNMENT_RISE_PX);
-
-	// Fuse aims at its own landing shape, so the origin follows that one instead.
-	const fuseOrigin = toSessionFusionAssignmentOrigin(proximity, "fuse");
-	const fuseTarget = toSessionFusionLandTarget(proximity);
-	assert.equal(fuseOrigin.x, fuseTarget.anchor.x);
-	assert.equal(fuseOrigin.y, fuseTarget.anchor.y - SESSION_FUSION_ASSIGNMENT_RISE_PX);
-	assert.notDeepEqual(glowOrigin, fuseOrigin);
-
-	assert.equal(toSessionFusionAssignmentOrigin(null, "glow"), null);
-});
-
-test("an assignment release is the same shape a drop arms", () => {
+test("an assignment release glows the card without a travelling chip", () => {
 	const proximity = proximityOf({
 		dockRect: SHELL_RECT,
 		landRect: { bottom: 444, left: 108, right: 372, top: 420 },
 		surfaceRect: SURFACE_RECT,
 	});
-	const member = toAssignedAgentTransferMember({
-		issue: { issueKey: "PAY-121", summary: "Carry card-artwork metadata" },
-		kind: "agent",
-		prompt: "Ask \"Claude\" to help",
-		selectedItem: { id: "subagent:claude", label: "Claude" },
-	});
-	const release = toSessionFusionDrop({
-		from: toSessionFusionAssignmentOrigin(proximity, "glow"),
-		id: 12,
-		members: [member],
-		proximity,
-		variant: "glow",
-	});
+	const release = toSessionFusionAssignmentRelease({ id: 12, proximity });
 	assert.deepEqual(release.target, toSessionFusionGlowLandTarget(proximity));
 	assert.deepEqual(release.fromTarget, toSessionFusionTarget(proximity));
-	assert.deepEqual(release.drop.members.map((m) => m.name), ["Claude"]);
-	assert.equal(release.drop.from.x, release.target.anchor.x);
+	assert.equal(release.drop, undefined);
 	assert.equal(release.id, 12);
+	assert.equal(toSessionFusionAssignmentRelease({ id: 13, proximity: null }), null);
 });

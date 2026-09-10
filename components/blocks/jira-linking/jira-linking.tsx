@@ -62,7 +62,9 @@ export interface JiraLinkingProps {
 
 /**
  * Fuse connects a travelling element with a metaball field. Glow collapses a
- * release chip and acknowledges its landing with the reference card backdrop.
+ * release chip when `drop` is set, then acknowledges the card with a halo and
+ * backdrop pulse; a click-to-assign release omits `drop` and plays only that
+ * acknowledgement.
  *
  * The effect is purely decorative: it draws behind the real drag element and
  * never intercepts a pointer, so the host's drop path commits whether or not

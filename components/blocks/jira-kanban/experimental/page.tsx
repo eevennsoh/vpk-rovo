@@ -182,13 +182,14 @@ function ExperimentalJiraKanbanPageContent({
 	activeCardCode,
 	additionalAgentSessions,
 	agentActivityLayout,
-	cardGenerativeActionPresentation,
+	cardGenerativeActionPresentation, iconScale,
 	createWorkItemDropZoneLabel,
 	defaultAgentSessionColumnCollapsed = false,
 	defaultShowUntracked = true,
 	detachedAgentSessionsByCard,
 	agentSessionAssigneeIdAliases,
 	agentSessionLinkingVariant = "fuse",
+	suggestSessionBoardLinkOnHover = true,
 	agentSessionPresentation = "column",
 	agentSessionMultiSelect = true,
 	agents = BOARD_AGENTS,
@@ -208,13 +209,14 @@ function ExperimentalJiraKanbanPageContent({
 	onBoardColumnsChange,
 	onCardClick,
 	onCardAgentActivityViewChat,
+	onCardAssignedAgentIdsChange,
 	onCardAgentDoneRunView,
 	onCardGenerativeActionSubmit,
 	onCardAgentSessionLink,
 	onCardAgentSessionMove,
 	onCardAgentSessionUnlink,
 	onListAgentSessionCreate,
-	showAgentSessionUnlinkWell = true,
+	showAgentSessionUnlinkWell = true, subtaskChrome,
 	onInsightsWorkItemClick,
 	onModeChange,
 	onResumeLooseWork,
@@ -945,7 +947,9 @@ function ExperimentalJiraKanbanPageContent({
 								agentSessionColumn={{
 									...agentSessionColumnConfig,
 									draggingIds: boardSessionDrag.draggingIds,
-									highlightedItemId: untrackedHoveredSessionId,
+									highlightedItemId: suggestSessionBoardLinkOnHover
+										? untrackedHoveredSessionId
+										: undefined,
 									sessionDrag: boardSessionDrag.untrackedBinding,
 								}}
 								className="pb-4 md:pb-5"
@@ -968,8 +972,13 @@ function ExperimentalJiraKanbanPageContent({
 								agentActivityLayout={agentActivityLayout}
 								boardAgentSessionDrag={boardSessionDrag}
 								untrackedSessions={agentSessionColumnConfig?.items}
-								proximityHighlightedSessionId={untrackedHoveredSessionId}
-								proximityHighlightedWorkItemKey={untrackedHoveredWorkItemKey}
+								proximityHighlightedSessionId={suggestSessionBoardLinkOnHover
+									? untrackedHoveredSessionId
+									: null}
+								proximityHighlightedWorkItemKey={suggestSessionBoardLinkOnHover
+									? untrackedHoveredWorkItemKey
+									: null}
+								suggestSessionBoardLinkOnHover={suggestSessionBoardLinkOnHover}
 								scrollEndInset={boardScrollEndInset}
 								proximityAgentSession={{
 									actionableSessionIds: proximityActionableSessionIds,
@@ -983,7 +992,7 @@ function ExperimentalJiraKanbanPageContent({
 								ariaLabel={ariaLabel}
 								assignedAgentIdsByColumn={columnAgentAssignments}
 								boardColumns={filteredBoardColumns}
-								cardGenerativeActionPresentation={cardGenerativeActionPresentation}
+								cardGenerativeActionPresentation={cardGenerativeActionPresentation} iconScale={iconScale}
 								collapsedColumns={displayedCollapsedColumns}
 								columnChrome={columnChrome}
 								createdCardArrival={createdCardArrival ?? undefined}
@@ -997,6 +1006,7 @@ function ExperimentalJiraKanbanPageContent({
 								selectedCardCodes={selection.selectedCardCodes}
 								onCardClick={handleCardClick}
 								onCardAgentActivityViewChat={onCardAgentActivityViewChat}
+								onCardAssignedAgentIdsChange={onCardAssignedAgentIdsChange}
 								onCardAgentDoneRunView={onCardAgentDoneRunView}
 								onCardGenerativeActionSubmit={onCardGenerativeActionSubmit}
 								onCardAgentSessionLink={onCardAgentSessionLink
@@ -1008,7 +1018,7 @@ function ExperimentalJiraKanbanPageContent({
 								onCardAgentSessionUnlink={onCardAgentSessionUnlink
 									? handleCardAgentSessionUnlink
 									: undefined}
-								showAgentSessionUnlinkWell={showAgentSessionUnlinkWell}
+								showAgentSessionUnlinkWell={showAgentSessionUnlinkWell} subtaskChrome={subtaskChrome}
 								onCardSelect={handleCardSelect}
 								onCardDragStart={handleCardDragStart}
 								onCardDrop={handleCardDrop}

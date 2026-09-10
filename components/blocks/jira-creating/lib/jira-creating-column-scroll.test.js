@@ -6,10 +6,10 @@ const { test } = require("node:test");
 const {
 	getCreatedCardRevealScrollTop,
 	shouldReleaseCreatedCardFollow,
-} = require("./jira-create-column-scroll.ts");
+} = require("./jira-creating-column-scroll.ts");
 
 const HELPER_SOURCE = readFileSync(
-	path.join(process.cwd(), "components/blocks/jira-create/lib/jira-create-column-scroll.ts"),
+	path.join(process.cwd(), "components/blocks/jira-creating/lib/jira-creating-column-scroll.ts"),
 	"utf8",
 );
 
@@ -21,11 +21,15 @@ const ARRIVAL_HOOK_SOURCE = readFileSync(
 	"utf8",
 );
 const CREATE_BOARD_SOURCE = readFileSync(
-	path.join(process.cwd(), "components/blocks/jira-create/components/jira-create-board.tsx"),
+	path.join(process.cwd(), "components/blocks/jira-creating/components/jira-creating-board.tsx"),
 	"utf8",
 );
 const CREATE_DEMO_SOURCE = readFileSync(
-	path.join(process.cwd(), "components/blocks/jira-create/hooks/use-jira-create-demo.ts"),
+	path.join(process.cwd(), "components/blocks/jira-creating/hooks/use-jira-creating-demo.ts"),
+	"utf8",
+);
+const CREATE_DEMO_STATE_SOURCE = readFileSync(
+	path.join(process.cwd(), "components/blocks/jira-creating/lib/jira-creating-demo-state.ts"),
 	"utf8",
 );
 
@@ -122,19 +126,19 @@ test("create-well arrivals follow the last arriving card; gap drops do not subsc
 	);
 });
 
-test("the jira-create demo only follows Bottom inserts in its own column overflow", () => {
-	assert.match(CREATE_DEMO_SOURCE, /position === "bottom"/u);
+test("the jira-creating demo only follows Bottom inserts in its own column overflow", () => {
+	assert.match(CREATE_DEMO_STATE_SOURCE, /position === "bottom"/u);
 	assert.match(CREATE_DEMO_SOURCE, /revealItemIds/u);
 	assert.match(CREATE_BOARD_SOURCE, /subscribeCreatedCardBottomReveal/u);
 	assert.match(CREATE_BOARD_SOURCE, /overflow-y-auto/u);
 	assert.match(
 		readFileSync(
-			path.join(process.cwd(), "components/blocks/jira-create/components/jira-create-entrance.tsx"),
+			path.join(process.cwd(), "components/blocks/jira-creating/components/jira-creating-entrance.tsx"),
 			"utf8",
 		),
 		/shrink-0/u,
 	);
-	assert.match(CREATE_BOARD_SOURCE, /data-jira-create-column-list=""/u);
+	assert.match(CREATE_BOARD_SOURCE, /data-jira-creating-column-list=""/u);
 	assert.match(CREATE_BOARD_SOURCE, /itemId=\{item\.id\}/u);
-	assert.match(CREATE_BOARD_SOURCE, /data-jira-create-item-id=\{item\.id\}/u);
+	assert.match(CREATE_BOARD_SOURCE, /data-jira-creating-item-id=\{item\.id\}/u);
 });

@@ -8,7 +8,10 @@ const { test } = require("node:test");
 // Split out of jira-issue.test.js to keep both files under the 1000-line budget.
 const SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
 const ATTACH_CHIN_SOURCE = readFileSync(join(__dirname, "attach-chin.tsx"), "utf8");
-const AGENT_ACTIVITY_SOURCE = readFileSync(join(__dirname, "agent-activity.tsx"), "utf8");
+const AGENT_ACTIVITY_SOURCE = [
+	readFileSync(join(__dirname, "agent-activity.tsx"), "utf8"),
+	readFileSync(join(__dirname, "agent-activity-row-presentation.tsx"), "utf8"),
+].join("\n");
 const COMPLETED_RUNS_SOURCE = readFileSync(join(__dirname, "completed-agent-runs.tsx"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
 // The drag state/binding types and the idle constant live outside the component
@@ -59,7 +62,7 @@ test("Jira issue agent session transfer adds demo phases gated to the experiment
 	);
 	assert.match(
 		PAGE_SOURCE,
-		/<JiraIssueAgentActivityStatesDemo[\s\S]*showSessionTransferStates\s*\n\s*\/>/u,
+		/<JiraIssueAgentActivityStatesDemo[\s\S]*showSessionTransferStates=\{iconScale !== "comfortable"\}[\s\S]*\/>/u,
 	);
 	assert.match(
 		PAGE_SOURCE,
@@ -114,7 +117,7 @@ test("Jira issue unlink detaches under the work item; Link remounts the chin", (
 	);
 	assert.match(
 		SOURCE,
-		/const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"[\s\S]*\|\| resolvedAgentActivityMode === "awaiting-input"[\s\S]*\|\| hasAgentDoneNotification;/u,
+		/const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"[\s\S]*\|\| resolvedAgentActivityMode === "awaiting-input"[\s\S]*\|\| hasCompletedAgentChin;/u,
 	);
 	assert.match(
 		SOURCE,
@@ -306,7 +309,7 @@ test("Jira issue session transfer motion honours reduced motion at every layer",
 	// A pointer drag must not fight Motion's layout projection.
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const rowLayout = shouldReduceMotion \|\| sessionDragging \? false : "position";/u,
+		/const rowLayout = shouldReduceMotion \|\| sessionDragging \|\| assignmentHoverOpen\s*\n\s*\? false\s*\n\s*: "position";/u,
 	);
 });
 
@@ -360,13 +363,13 @@ test("Jira issue agentSessionTransfer is opt-in so existing consumers are unaffe
 	assert.match(AGENT_ACTIVITY_SOURCE, /sessionDrag\?: JiraIssueAgentSessionDragBinding;/u);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/function withSessionDrag\(node: ReactElement\) \{\s*\n\s*if \(!sessionDrag\) \{\s*\n\s*return node;\s*\n\s*\}/u,
+		/function JiraIssueAgentDragWrapper\([\s\S]*if \(!sessionDragEnabled\) \{\s*return children;/u,
 	);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/visual\/gooey"/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /<Gooey/u);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const sessionDragBind = sessionDrag\s*\n\s*\? \{[\s\S]*onPointerUp: endSessionDrag,\s*\n\s*\}\s*\n\s*: undefined;/u,
+		/function createJiraIssueSessionDragBind\([\s\S]*if \(!sessionDrag\) \{\s*return undefined;[\s\S]*onPointerUp:/u,
 	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /\{\.\.\.\(sessionDragBind \?\? \{ onClick: handleOpenChat \}\)\}/u);
 	// The demo only opts in for the experimental variant's transfer phases.
@@ -534,27 +537,35 @@ test("Jira issue at-mention chip hugs its own width once it leaves the chin", ()
 test("Jira issue dragged session does not paint a liquid silhouette", () => {
 	assert.doesNotMatch(SOURCE, /AGENT_SESSION_TRANSFER_GOO/u);
 	assert.doesNotMatch(SOURCE, /from "@\/components\/visual\/gooey"/u);
-	// Out of the chin the row renders the shared at-mention chip, not a bespoke pill.
+	// Out of the chin the row renders the shared drag pill, not a bespoke pill.
 	assert.match(AGENT_ACTIVITY_SOURCE, /const isDragging = Boolean\(sessionDrag\) && drag\.dragging;/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /sessionDragChipViewportStyle\(true\)/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /data-session-chip-centered=""/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /<AgentSessionMentionChip[\s\S]*elevated[\s\S]*name=\{featuredActivity\?\.name \?\? "Agent"\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /<AgentSessionDragPill[\s\S]*name: featuredActivity\?\.name \?\? "Agent",[\s\S]*elevated/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /data-session-drag-overlay=""/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /bg-surface-raised/u);
 });
 
-test("Jira issue travelling mention chip uses an opaque surface fill", () => {
-	const mentionChipSource = readFileSync(join(__dirname, "agent-session-mention-chip.tsx"), "utf8");
-	// Editor tags use alpha `bg-bg-neutral`; the dragged chip must cover the well.
-	assert.match(mentionChipSource, /className=\{elevated \? "bg-surface" : undefined\}/u);
-	assert.match(mentionChipSource, /backgroundColor: "var\(--color-surface\)",/u);
-	assert.match(mentionChipSource, /variant="editor"/u);
+test("Jira issue travelling drag pill uses an opaque surface fill", () => {
+	const dragChipSource = readFileSync(
+		join(__dirname, "../agent-session/agent-session-drag-chip.tsx"),
+		"utf8",
+	);
+	// Resting copies use alpha `bg-bg-neutral`; the dragged chip must cover the well.
+	// The fill is the semantic class per `.agents/rules/token-priority.md`; only
+	// the shadow, which has no Tailwind mapping, stays inline.
+	assert.match(dragChipSource, /elevated \? "bg-surface" : "bg-bg-neutral"/u);
+	assert.doesNotMatch(dragChipSource, /backgroundColor:/u);
+	assert.match(dragChipSource, /style=\{elevated \? DRAG_CHIP_ELEVATION : undefined\}/u);
 });
 
 test("Jira issue chin unlink unlinks without nesting a button in the drag handle", () => {
 	assert.match(DRAG_SOURCE, /onUnlink\?: \(session\?: \{ id: string; name: string \}\) => void;/u);
 	assert.match(SOURCE, /onUnlink: agentSessionTransfer\.onUnlink,/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const showUnlinkControl = Boolean\(sessionDrag\?\.onUnlink\) && !isDraggedOut;/u);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/const showUnlinkControl = iconScale !== "comfortable"\s*\n\s*&& Boolean\(sessionDrag\?\.onUnlink\)\s*\n\s*&& !isDraggedOut;/u,
+	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /data-slot="jira-issue-agent-row"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /<JiraIssueAgentSessionUnlinkButton/u);
 	assert.match(
@@ -595,18 +606,22 @@ test("Jira issue chin unlink unlinks without nesting a button in the drag handle
 	);
 });
 
-test("Jira issue at-mention chip floats on overlay elevation, not a dead utility", () => {
+test("Jira issue drag pill floats on overlay elevation, not a dead utility", () => {
 	// `shadow-overlay` is not a utility in this theme — `--ds-shadow-overlay` is
 	// only mapped onto `--shadow-2xl` — so the class silently rendered no shadow
-	// and the chip read as flat against the card. Elevation belongs on the Tag.
-	const mentionChipSource = readFileSync(join(__dirname, "agent-session-mention-chip.tsx"), "utf8");
+	// and the chip read as flat against the card. Elevation belongs on the pill.
+	const dragChipSource = readFileSync(
+		join(__dirname, "../agent-session/agent-session-drag-chip.tsx"),
+		"utf8",
+	);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /[\s"']shadow-overlay[\s"']/u);
 	assert.match(
-		mentionChipSource,
+		dragChipSource,
 		/boxShadow: token\("elevation\.shadow\.overlay"\),/u,
 	);
-	assert.match(mentionChipSource, /type="agent"/u);
-	assert.match(mentionChipSource, /variant="editor"/u);
+	// The Figma pill is the agent hexagon with the human tucked in its corner.
+	assert.match(dragChipSource, /<AgentListIdentity agent=\{agent\} attributedBy=\{attributedBy\} sizePx=\{32\} \/>/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /attributedBy=\{featuredActivity\?\.invokedBy\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /elevated/u);
 });
 
@@ -661,10 +676,9 @@ test("Jira issue pointer cancellation aborts the drag instead of committing the 
 	assert.match(DRAG_SOURCE, /source: "chin",/u);
 	assert.match(DRAG_SOURCE, /export const JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /^export const /mu);
-	assert.match(AGENT_ACTIVITY_SOURCE, /function endSessionDrag\([\s\S]*drag\.bind\.onPointerUp\(event\);[\s\S]*publishSessionDrag\(false, event\);/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /function cancelSessionDrag\([\s\S]*drag\.bind\.onPointerCancel\(event\);[\s\S]*publishSessionDrag\(false, undefined, true\);/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /onPointerCancel: cancelSessionDrag,/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /onPointerCancel: endSessionDrag,/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /onPointerUp: \(event:[\s\S]*drag\.bind\.onPointerUp\(event\);[\s\S]*publishSessionDrag\(false, event\);/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /onPointerCancel: \(event:[\s\S]*drag\.bind\.onPointerCancel\(event\);[\s\S]*publishSessionDrag\(false, undefined, true\);/u);
+	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /onPointerCancel:[\s\S]{0,80}drag\.bind\.onPointerUp/u);
 	// The commit gate itself must exclude a cancelled gesture.
 	assert.match(TRANSFER_SOURCE, /nextJiraIssueSessionTransferArmed\(\{\s*\n\s*dragging,\s*\n\s*overTarget: overWell \|\| overCard,\s*\n\s*pointerMoved,\s*\n\s*previousArmed: armedRef\.current,\s*\n\s*\}\)/u);
 	assert.match(TRANSFER_SOURCE, /shouldCommitJiraIssueSessionTransferDrop\(\{\s*\n\s*armed: armedRef\.current,\s*\n\s*cancelled,\s*\n\s*dragging,\s*\n\s*\}\)/u);

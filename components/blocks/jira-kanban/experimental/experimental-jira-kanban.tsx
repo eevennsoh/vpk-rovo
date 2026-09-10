@@ -6,15 +6,15 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { SessionColumnSlot, SessionColumnDropMarker } from "./components/session-column-placement";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
-import AiAgentAddIcon from "@atlaskit/icon-lab/core/ai-agent-add";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import { type AgentSessionColumnProps } from "@/components/blocks/agent-session-column";
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import { resolveAgentSessionWorkItemKey } from "@/components/blocks/agent-session/agent-session-work-item";
 import {
 	type JiraIssueAgentActivityLayout,
 	type JiraIssueAgentActivityIndicatorRenderer,
+	type JiraIssueChrome,
 	type JiraIssueGenerativeActionPresentation,
+	type JiraIssueIconScale,
 } from "@/components/blocks/jira-issue";
 import type { JiraIssueAgentSessionRef } from "@/components/blocks/jira-issue/agent-session-transfer";
 import type { JiraLinkingVariant } from "@/components/blocks/jira-linking";
@@ -23,28 +23,12 @@ import {
 	mapAgentToMentionItem,
 	mapSkillToMentionItem,
 } from "@/components/blocks/editor-palette/data/mention-sources";
-import { WorkItemAgentSelector } from "@/components/blocks/jira-work-item/experimental-v3/components/work-item-agent-selector";
-import { DEFAULT_PINNED_SPACE_AGENT_IDS } from "@/components/blocks/jira-work-item/experimental-v3/lib/work-item-picker-options";
 import { JiraToolbar } from "@/components/blocks/jira-toolbar";
-import { LogoThirdParty } from "@/components/ui/logo-third-party";
-import {
-	Avatar,
-	AvatarFallback,
-	AvatarGroup,
-	AvatarImage,
-} from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Icon } from "@/components/ui/icon";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getMentionChildItems } from "@/components/ui-custom/rich-text-editor";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
+import { BoardColumnAgentAssignment } from "./components/board-column-agent-assignment";
 import {
 	BoardColumnResizeButton,
 	CollapsedBoardColumn,
@@ -75,7 +59,7 @@ import { SessionFusionOverlay } from "./components/session-fusion-overlay";
 import {
 	bindBoardProximitySessionActions,
 	resolveBoardUntrackedIssueKey,
-	resolveHoveredBoardIssueKey,
+	resolveSessionBoardLinkHoverPreview,
 	resolveVisibleFocusedIssueKey,
 	scrollBoardIssueIntoView,
 } from "./lib/board-untracked-sessions";
@@ -160,10 +144,15 @@ export interface ExperimentalJiraKanbanProps extends JiraKanbanProps {
 		card: JiraKanbanCardData,
 		columnTitle: string,
 	) => void;
+	onCardAssignedAgentIdsChange?: (issueKey: string, agentIds: readonly string[]) => void;
 	onCardAgentSessionMove?: (session: JiraIssueAgentSessionRef, sourceCard: JiraKanbanCardData, targetCard: JiraKanbanCardData, sourceColumnTitle: string, targetColumnTitle: string) => void;
 	/** Chooses where card agent and skill actions are presented. */
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
+	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
+	iconScale?: JiraIssueIconScale;
 	renderAgentActivityIndicator?: JiraIssueAgentActivityIndicatorRenderer;
+	/** Nested subtask cards inherit the parent chrome unless set. */
+	subtaskChrome?: JiraIssueChrome;
 	/**
 	 * Sessions that never became work items, pinned as a column to the
 	 * left of the board. Omit to render only Jira status columns.
@@ -182,6 +171,12 @@ export interface ExperimentalJiraKanbanProps extends JiraKanbanProps {
 	proximityHighlightedSessionId?: string | null;
 	/** Resolved suggested Jira key from a host-owned Agent Session column. */
 	proximityHighlightedWorkItemKey?: string | null;
+	/**
+	 * Whether hovering a session previews a suggested Jira card (and the
+	 * reverse). Defaults on. A host can omit the preview without deleting
+	 * the shared hover wiring other playgrounds still use.
+	 */
+	suggestSessionBoardLinkOnHover?: boolean;
 	/**
 	 * Injected board-session drag API. The page supplies this when the
 	 * floating panel also needs `untrackedBinding`; omit to let the board
@@ -236,159 +231,6 @@ function orderPickerItems<T extends Readonly<{ id: string }>>(
 		...items.filter((item) => pinnedIdSet.has(item.id)),
 		...items.filter((item) => !pinnedIdSet.has(item.id)),
 	];
-}
-function getAgentInitials(name: string): string {
-	return name
-		.split(/\s+/u)
-		.filter(Boolean)
-		.slice(0, 2)
-		.map((part) => part[0]?.toUpperCase() ?? "")
-		.join("");
-}
-function AgentAvatar({ agent, className }: Readonly<{ agent: JiraKanbanAgentData; className?: string }>) {
-	if (agent.brandName) {
-		return (
-			<Avatar className={className} label={agent.name} shape="hexagon" size="sm">
-				<LogoThirdParty borderless label="" name={agent.brandName} size="xxsmall" />
-			</Avatar>
-		);
-	}
-	return (
-		<Avatar className={className} label={agent.name} shape="hexagon" size="sm">
-			<AvatarImage alt="" src={agent.avatarSrc} />
-			<AvatarFallback>{getAgentInitials(agent.name)}</AvatarFallback>
-		</Avatar>
-	);
-}
-
-function AgentStack({ agents }: Readonly<{ agents: readonly JiraKanbanAgentData[] }>) {
-	const visibleAgents = agents.slice(0, 2);
-	const overflowCount = Math.max(0, agents.length - visibleAgents.length);
-	const label = agents.map((agent) => agent.name).join(", ");
-
-	if (agents.length === 0) {
-		return null;
-	}
-
-	return (
-		<AvatarGroup className="-space-x-1.5 *:data-[slot=avatar]:ring-0!" label={`Assigned agents: ${label}`}>
-			{visibleAgents.map((agent) => (
-				<AgentAvatar agent={agent} key={agent.id} />
-			))}
-			{overflowCount > 0 ? (
-				<Avatar aria-label={`${overflowCount} more assigned agents`} shape="hexagon" size="sm">
-					<AvatarFallback className="bg-bg-neutral-bold text-[10px] font-semibold text-text-inverse">
-						+{overflowCount}
-					</AvatarFallback>
-				</Avatar>
-			) : null}
-		</AvatarGroup>
-	);
-}
-
-function ColumnAgentAssignment({
-	agents,
-	assignedAgentIds,
-	columnTitle,
-	onCreateAgent,
-	onToggleAgent,
-}: Readonly<{
-	agents: readonly JiraKanbanAgentData[];
-	assignedAgentIds: readonly string[];
-	columnTitle: string;
-	onCreateAgent: (columnTitle: string) => void;
-	onToggleAgent: (agentId: string) => void;
-}>) {
-	const [open, setOpen] = useState(false);
-	const [pinnedAgentIds, setPinnedAgentIds] = useState<readonly string[]>(DEFAULT_PINNED_SPACE_AGENT_IDS);
-	const [query, setQuery] = useState("");
-	const assignedAgents = useMemo(
-		() => assignedAgentIds.map((id) => agents.find((agent) => agent.id === id)).filter((agent): agent is JiraKanbanAgentData => Boolean(agent)),
-		[agents, assignedAgentIds],
-	);
-	const hasAssignedAgents = assignedAgents.length > 0;
-	const triggerLabel = hasAssignedAgents
-		? `Manage agents for ${columnTitle}`
-		: `Add agent to ${columnTitle}`;
-
-	const handleCreateAgent = () => {
-		setOpen(false);
-		setQuery("");
-		onCreateAgent(columnTitle);
-	};
-
-	const handleBrowseAgents = () => {
-		setOpen(false);
-		setQuery("");
-	};
-
-	const handleOpenChange = (nextOpen: boolean) => {
-		setOpen(nextOpen);
-		if (!nextOpen) {
-			setQuery("");
-		}
-	};
-
-	return (
-		<div className="flex min-w-0 shrink-0 items-center">
-			<DropdownMenu open={open} onOpenChange={handleOpenChange}>
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger render={<span className="inline-flex" />}>
-							<DropdownMenuTrigger
-								render={
-									<Button
-										aria-label={triggerLabel}
-										className={cn(
-											"opacity-0 transition-opacity group-hover/board-column:opacity-100 group-focus-within/board-column:opacity-100",
-											hasAssignedAgents && "h-8 min-w-0 gap-1 px-1.5",
-											(hasAssignedAgents || open) && "opacity-100",
-										)}
-										data-assigned={hasAssignedAgents || undefined}
-										data-open={open || undefined}
-										size={hasAssignedAgents ? "default" : "icon-compact"}
-										variant="ghost"
-									/>
-								}
-							>
-								{hasAssignedAgents ? (
-									<>
-										<AgentStack agents={assignedAgents} />
-										<Icon className="ml-0.5 text-icon-subtle group-aria-expanded/button:text-icon-selected" render={<ChevronDownIcon label="" size="small" />} />
-									</>
-								) : (
-									<Icon
-										className="text-icon-subtle group-aria-expanded/button:text-icon-selected"
-										label="Add agent"
-										render={<AiAgentAddIcon label="" />}
-									/>
-								)}
-							</DropdownMenuTrigger>
-						</TooltipTrigger>
-						<TooltipContent>{hasAssignedAgents ? "Manage agents" : "Add agent"}</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
-				<DropdownMenuContent
-					align="end"
-					className="max-h-none w-[360px] overflow-hidden p-0"
-					positionerClassName="z-[502]"
-					sideOffset={8}
-				>
-					<WorkItemAgentSelector
-						agents={agents}
-						onAgentToggle={onToggleAgent}
-						onBrowseAgents={handleBrowseAgents}
-						onCreateAgent={handleCreateAgent}
-						onPinnedAgentIdsChange={setPinnedAgentIds}
-						onQueryChange={setQuery}
-						pinnedAgentIds={pinnedAgentIds}
-						query={query}
-						selectedAgentIds={assignedAgentIds}
-					/>
-				</DropdownMenuContent>
-			</DropdownMenu>
-		</div>
-	);
 }
 
 function BoardColumn({
@@ -461,7 +303,7 @@ function BoardColumn({
 				</div>
 				<div className="flex shrink-0 items-center gap-0.5">
 					{showAgentAssignment && agents && onCreateAgent && onToggleAgent ? (
-						<ColumnAgentAssignment
+						<BoardColumnAgentAssignment
 							agents={agents}
 							assignedAgentIds={assignedAgentIds}
 							columnTitle={title}
@@ -592,6 +434,7 @@ function ExperimentalJiraKanbanView({
 	boardColumns,
 	cardGenerativeActionPresentation = "sparkle",
 	cardMoveAnimation,
+	iconScale = "compact",
 	collapsedColumns: controlledCollapsedColumns,
 	columnChrome = DEFAULT_KANBAN_COLUMN_CHROME,
 	createdCardArrival,
@@ -607,6 +450,7 @@ function ExperimentalJiraKanbanView({
 	onCardGenerativeActionSubmit,
 	onCardAgentActivityOpenChange,
 	onCardAgentActivityViewChat,
+	onCardAssignedAgentIdsChange,
 	onCardAgentSessionLink,
 	onCardAgentSessionMove,
 	onCardAgentSessionUnlink,
@@ -621,11 +465,13 @@ function ExperimentalJiraKanbanView({
 	proximityAgentSession,
 	proximityHighlightedSessionId = null,
 	proximityHighlightedWorkItemKey,
+	suggestSessionBoardLinkOnHover = true,
 	renderAgentActivityIndicator,
 	paddingBottom = token("space.150"),
 	paddingTop = token("space.150"),
 	selectionToolbar,
 	captureBoardSessionDragRoot = true,
+	subtaskChrome,
 	untrackedSessions,
 }: Readonly<ExperimentalJiraKanbanProps> & {
 	boardSessionDrag: BoardAgentSessionDrag;
@@ -644,7 +490,6 @@ function ExperimentalJiraKanbanView({
 	const dragImageRef = useRef<HTMLDivElement | null>(null);
 	const handleCreatedCardArrivalComplete = useCreatedCardArrivalCompletion(
 		onCreatedCardArrivalComplete,
-		createdCardArrival?.appended ? 0 : undefined,
 	);
 	const [uncontrolledCollapsedColumns, setUncontrolledCollapsedColumns] = useState(
 		EMPTY_COLLAPSED_BOARD_COLUMNS,
@@ -652,28 +497,23 @@ function ExperimentalJiraKanbanView({
 	const [focusedIssueKey, setFocusedIssueKey] = useState<string | null>(null);
 	const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
 	const [hoveredColumnSessionId, setHoveredColumnSessionId] = useState<string | null>(null);
-	const highlightedSessionId = hoveredSessionId
-		?? hoveredColumnSessionId
-		?? proximityHighlightedSessionId;
-	const hostHoveredIssueKey = proximityHighlightedWorkItemKey === undefined
-		? resolveHoveredBoardIssueKey(
-			proximityHighlightedSessionId,
-			untrackedSessions,
-			boardColumns,
-		)
-		: resolveVisibleFocusedIssueKey(proximityHighlightedWorkItemKey, boardColumns);
-	const hoveredIssueKey = hoveredColumnSessionId === null
-		? hostHoveredIssueKey
-		: resolveHoveredBoardIssueKey(
-			hoveredColumnSessionId,
-			agentSessionColumn?.items,
-			boardColumns,
-			(item) => resolveAgentSessionWorkItemKey(
+	const { highlightedSessionId, hoveredIssueKey } = resolveSessionBoardLinkHoverPreview({
+		boardColumns,
+		columnSessions: agentSessionColumn?.items,
+		enabled: suggestSessionBoardLinkOnHover,
+		hoveredColumnSessionId,
+		hoveredSessionId,
+		proximityHighlightedSessionId,
+		proximityHighlightedWorkItemKey,
+		resolveColumnWorkItemKey: agentSessionColumn
+			? (item) => resolveAgentSessionWorkItemKey(
 				item,
-				agentSessionColumn?.getSuggestedWorkItemKey,
-				agentSessionColumn?.getSuggestedWorkItemKeys,
-			),
-		);
+				agentSessionColumn.getSuggestedWorkItemKey,
+				agentSessionColumn.getSuggestedWorkItemKeys,
+			)
+			: undefined,
+		untrackedSessions,
+	});
 	const spotlightIssueKey = resolveVisibleFocusedIssueKey(focusedIssueKey, boardColumns);
 	const collapsedColumns = controlledCollapsedColumns ?? uncontrolledCollapsedColumns;
 	const resolvedColumnRowPaddingInlineStart = resolveBoardColumnRowPaddingInlineStart(columnRowPaddingInlineStart, boardColumns[0]?.title, Boolean(chrome.dropContentPadding), collapsedColumns);
@@ -789,8 +629,8 @@ function ExperimentalJiraKanbanView({
 		onCardDragEnd?.();
 	};
 
-	// Assigning an agent from a card's own menu links it to that card exactly as
-	// a session drop does, so it earns the same acknowledgement.
+	// Assigning an agent from a card's own menu still earns Glow's halo, but
+	// skips the travelling-chip collapse a session drop uses.
 	const handleCardGenerativeActionSubmit = boardSessionDrag
 		.withAssignedAgentLink(onCardGenerativeActionSubmit);
 
@@ -813,11 +653,15 @@ function ExperimentalJiraKanbanView({
 	// relationship simply has no row to light. Preview only: the click spotlight
 	// above still owns focus, scroll, and dimming.
 	const handleSessionHover = (item: AgentSessionItem | null) => {
-		setHoveredSessionId(item?.id ?? null);
+		if (suggestSessionBoardLinkOnHover) {
+			setHoveredSessionId(item?.id ?? null);
+		}
 		agentSessionColumn?.onItemHover?.(item);
 	};
 	const handleColumnSessionHover = (item: AgentSessionItem | null) => {
-		setHoveredColumnSessionId(item?.id ?? null);
+		if (suggestSessionBoardLinkOnHover) {
+			setHoveredColumnSessionId(item?.id ?? null);
+		}
 		agentSessionColumn?.onItemHover?.(item);
 	};
 
@@ -995,6 +839,7 @@ function ExperimentalJiraKanbanView({
 											>
 												<ExperimentalJiraKanbanCard
 												active={isActive}
+													agents={agents}
 													agentActivityLayout={agentActivityLayout}
 													agentLinkFlash={boardSessionDrag.linkFlash?.cardCode === card.code
 														? boardSessionDrag.linkFlash.flash
@@ -1012,8 +857,10 @@ function ExperimentalJiraKanbanView({
 												generativeActionPresentation={cardGenerativeActionPresentation}
 												generativeActionSkills={generativeActionSkills}
 												highlightedSessionId={highlightedSessionId}
+												iconScale={iconScale}
 												onAgentActivityOpenChange={onCardAgentActivityOpenChange}
 												onAgentActivityViewChat={onCardAgentActivityViewChat}
+												onAssignedAgentIdsChange={onCardAssignedAgentIdsChange}
 												onAgentDoneRunReview={onCardAgentDoneRunReview}
 												onAgentDoneRunView={onCardAgentDoneRunView}
 												onClick={handleClick}
@@ -1030,6 +877,7 @@ function ExperimentalJiraKanbanView({
 												showUntrackedWorkFooter={proximityAgentSession?.showUntrackedWorkFooter}
 												showUnlinkWell={showAgentSessionUnlinkWell}
 												selected={isSelected}
+												subtaskChrome={subtaskChrome}
 											/>
 											</CreatedCardArrivalMotion>
 										</motion.div>

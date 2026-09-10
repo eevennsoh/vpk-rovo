@@ -18,15 +18,21 @@ export interface ShimmerProps
 	 * default (`3ch + 40px`).
 	 */
 	spread?: number;
+	/**
+	 * Resting text colour. The utility derives both the gradient base and its
+	 * highlight from `currentColor`, so this sets `color` rather than a bespoke
+	 * variable. Defaults to `text-muted-foreground`.
+	 */
+	baseColor?: string;
 }
 
 /**
  * Gradient sweep across text, for loading and in-progress states.
  *
  * Rendering is the `shimmer` utility from `shadcn/tailwind.css` — pure CSS, no
- * Motion. `duration` and `spread` are overrides: pass neither and the utility's
- * own defaults apply, which also leaves the class modifiers free. Anything the
- * utility exposes can be layered through `className`:
+ * Motion. `duration`, `spread`, and `baseColor` are overrides: pass none and the
+ * utility's own defaults apply, which also leaves the class modifiers free.
+ * Anything the utility exposes can be layered through `className`:
  *
  * ```tsx
  * <Shimmer className="shimmer-color-blue-500/60">Generating…</Shimmer>
@@ -46,6 +52,7 @@ const ShimmerComponent = ({
 	className,
 	duration,
 	spread,
+	baseColor,
 	style: styleProp,
 	...props
 }: ShimmerProps) => {
@@ -58,6 +65,10 @@ const ShimmerComponent = ({
 	if (spread !== undefined) {
 		(style as Record<string, string>)["--shimmer-spread"] =
 			`${children.length * spread}px`;
+	}
+
+	if (baseColor !== undefined) {
+		style.color = baseColor;
 	}
 
 	const PolymorphicShimmer = Component as ElementType<

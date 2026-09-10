@@ -15,9 +15,10 @@ import type { BoardAgentSessionAttachProximity } from "../lib/board-agent-sessio
 import { toSessionFusionTarget } from "../lib/session-fusion-overlay-state";
 
 /**
- * Both drag sources put this attribute on the centred inner chip node. The
- * outer portal wrapper's border box ignores that child's transform, so
- * measuring the wrapper instead would be off by half the chip in both axes.
+ * Both drag sources mark the drawn lead pill — `AgentSessionDragPill` with
+ * `isFusionSource`, never the centring wrapper around it. The wrapper's border
+ * box ignores the chip's own transform, so measuring it would be off by half
+ * the chip in both axes and would sit still through the chip's entrance FLIP.
  */
 const CHIP_SELECTOR = "[data-session-drag-overlay] [data-session-fusion-chip]";
 
@@ -69,10 +70,10 @@ export interface SessionFusionOverlayProps {
  * the create well, and the chin-row sweep waits until those flights have
  * landed.
  *
- * Glow draws nothing on approach: it arms on release only, collapsing one
- * cohort chip into the card surface and acknowledging it with the card's own
- * halo and backdrop pulse. It stays mounted after the host clears `release` so
- * that backdrop can finish.
+ * Glow draws nothing on approach: it arms on release only. A drop collapses
+ * one cohort chip into the card; a click-to-assign release omits that chip
+ * and goes straight to the halo and backdrop pulse. It stays mounted after
+ * the host clears `release` so that backdrop can finish.
  */
 export function SessionFusionOverlay({
 	members,

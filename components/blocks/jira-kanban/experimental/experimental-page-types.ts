@@ -7,7 +7,9 @@ import type {
 } from "@/components/blocks/jira-list";
 import type {
 	JiraIssueAgentActivityLayout,
+	JiraIssueChrome,
 	JiraIssueGenerativeActionPresentation,
+	JiraIssueIconScale,
 } from "@/components/blocks/jira-issue";
 import type {
 	JiraKanbanAgentData,
@@ -47,6 +49,8 @@ export interface ExperimentalJiraKanbanPageProps {
 	additionalAgentSessions?: readonly PulseAgentSession[];
 	agentActivityLayout?: JiraIssueAgentActivityLayout;
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
+	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
+	iconScale?: JiraIssueIconScale;
 	createWorkItemDropZoneLabel?: ExperimentalJiraKanbanProps["createWorkItemDropZoneLabel"];
 	detachedAgentSessionsByCard?: ExperimentalJiraKanbanProps["detachedAgentSessionsByCard"];
 	agentSessionAssigneeIdAliases?: Readonly<Record<string, string>>;
@@ -58,6 +62,13 @@ export interface ExperimentalJiraKanbanPageProps {
 	 * halo and backdrop pulse instead of the chin-row sweep.
 	 */
 	agentSessionLinkingVariant?: ExperimentalJiraKanbanProps["agentSessionLinkingVariant"];
+	/**
+	 * Whether hovering an unattached session previews a suggested Jira card
+	 * (and the reverse twin highlight). Defaults on so other boards keep the
+	 * relationship preview. jira-team-eu26 passes false: sessions stay
+	 * independently inspectable without lighting a board card.
+	 */
+	suggestSessionBoardLinkOnHover?: boolean;
 	/**
 	 * Where untracked work lives on this board.
 	 *
@@ -113,6 +124,7 @@ export interface ExperimentalJiraKanbanPageProps {
 	) => string | undefined;
 	onCardClick?: (card: JiraKanbanCardData, columnTitle: string) => void;
 	onCardAgentActivityViewChat?: JiraKanbanProps["onCardAgentActivityViewChat"];
+	onCardAssignedAgentIdsChange?: (issueKey: string, agentIds: readonly string[]) => void;
 	onCardAgentDoneRunView?: JiraKanbanProps["onCardAgentDoneRunView"];
 	onCardGenerativeActionSubmit?: JiraKanbanProps["onCardGenerativeActionSubmit"];
 	onCardAgentSessionLink?: ExperimentalJiraKanbanProps["onCardAgentSessionLink"];
@@ -132,6 +144,8 @@ export interface ExperimentalJiraKanbanPageProps {
 		insertion: JiraListInsertion,
 	) => void;
 	showAgentSessionUnlinkWell?: ExperimentalJiraKanbanProps["showAgentSessionUnlinkWell"];
+	/** Nested subtask cards inherit the parent chrome unless set. */
+	subtaskChrome?: JiraIssueChrome;
 	onInsightsWorkItemClick?: (workItem: PulseWorkItem) => void;
 	onModeChange?: (mode: ExperimentalJiraKanbanMode) => void;
 	onResumeLooseWork?: (item: PulseLooseWork) => void;

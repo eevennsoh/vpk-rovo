@@ -357,16 +357,23 @@ export function AgentSessionCard({
 										/>
 									);
 
-									return mark === undefined || mark === null
-										? sessionIdentity
-										: (
-											<AgentSessionSelectMark
-												identity={sessionIdentity}
-												isMarked={mark.isMarked}
-												label={`Select "${item.title}"`}
-												onActivate={activateCard ?? mark.onActivate}
-											/>
-										);
+									// The travelling drag chip measures this box on
+									// pointerdown and flies out of it. Marked outside the
+									// select-mark branch so the origin exists in both.
+									return (
+										<span className="block" data-session-drag-identity="">
+											{mark === undefined || mark === null
+												? sessionIdentity
+												: (
+													<AgentSessionSelectMark
+														identity={sessionIdentity}
+														isMarked={mark.isMarked}
+														label={`Select "${item.title}"`}
+														onActivate={activateCard ?? mark.onActivate}
+													/>
+												)}
+										</span>
+									);
 								}}
 								showHoverActionsWhenSelected
 								// The long metadata line already says "Needs input", so letting

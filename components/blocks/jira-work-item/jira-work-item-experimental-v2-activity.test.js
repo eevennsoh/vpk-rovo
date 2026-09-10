@@ -97,6 +97,12 @@ test("experimental v2 shows Submit review in the PR sticky header on guided PR r
 		contextPillsSource,
 		/\{workingSessions\.length > 0 && onOpenAgentChat \? \([\s\S]*summaryLabel[\s\S]*<ActivityComposerAgentContextPill[\s\S]*<ActivityComposerSkillContextPill/u,
 	);
+	// The catalog/default surface keeps the v5-style masked composer clean: no
+	// context-pill row unless a host supplies context or an agent-chat capability.
+	assert.match(
+		composerSource,
+		/composerContextBar !== undefined \? composerContextBar : onOpenAgentChat \? \([\s\S]*<ActivityComposerContextPills[\s\S]*\) : null/u,
+	);
 	// Opening guided PR review must not drop the working-agents summary pill.
 	assert.match(
 		composerSource,

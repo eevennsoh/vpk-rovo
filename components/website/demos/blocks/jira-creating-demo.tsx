@@ -1,6 +1,6 @@
 "use client";
 
-import JiraCreatePage from "@/components/blocks/jira-create/page";
+import JiraCreatePage from "@/components/blocks/jira-creating/page";
 
 export default function JiraCreateDemo() {
 	return <JiraCreatePage example="work-item" />;

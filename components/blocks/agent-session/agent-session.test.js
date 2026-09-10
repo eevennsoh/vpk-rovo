@@ -25,12 +25,12 @@ const MEDIUM_CARD_SOURCE = readFileSync(
 	join(__dirname, "agent-session-medium-card.tsx"),
 	"utf8",
 );
-const MEDIUM_DRAG_SOURCE = readFileSync(
-	join(__dirname, "agent-session-medium-drag.tsx"),
+const DRAG_OVERLAY_SOURCE = readFileSync(
+	join(__dirname, "agent-session-drag-overlay.tsx"),
 	"utf8",
 );
-const COHORT_CHIP_SOURCE = readFileSync(
-	join(__dirname, "agent-session-cohort-chip.tsx"),
+const DRAG_LAYOUT_SOURCE = readFileSync(
+	join(__dirname, "agent-session-drag-layout.ts"),
 	"utf8",
 );
 const MORE_MENU_SOURCE = readFileSync(
@@ -55,6 +55,10 @@ const INDEX_SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
 const TYPES_SOURCE = readFileSync(join(__dirname, "agent-session-types.ts"), "utf8");
 const WORK_ITEM_SOURCE = readFileSync(join(__dirname, "agent-session-work-item.ts"), "utf8");
+const IDENTITY_LABEL_SOURCE = readFileSync(
+	join(__dirname, "agent-session-identity-label.ts"),
+	"utf8",
+);
 const FLYOUT_SOURCE = readFileSync(
 	join(__dirname, "../product-sidebar/variants/jira-session-flyout.tsx"),
 	"utf8",
@@ -198,6 +202,7 @@ test("large remains the default while every card receives the selected size vari
 	assert.match(INDEX_SOURCE, /<AgentSessionCompactCard/u);
 	assert.match(INDEX_SOURCE, /captured=\{capturedItemIds\?\.has\(item\.id\) \?\? false\}/u);
 	assert.match(TYPES_SOURCE, /issueKey\?: string;/u);
+	assert.match(TYPES_SOURCE, /assignment\?: JiraIssueAgentAssignment;/u);
 	assert.match(INDEX_SOURCE, /issueKey=\{issueKey\}/u);
 	assert.match(INDEX_SOURCE, /render=\{<li data-testid=\{"agent-session-row-" \+ item\.id\} \/>\}/u);
 });
@@ -244,113 +249,24 @@ test("medium matches the 276 by 33 Figma row and reuses shared identity primitiv
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /className="[^"]*\bhidden\b/u);
 	assert.match(MEDIUM_CARD_SOURCE, /<Avatar.*size="xs"/su);
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /\?\? \{ name: "person A" \}/u);
+	// "Claude with Annie" now lives in one place: the card spends it on
+	// accessible names, the drag chip prints it, and both must read alike.
+	assert.match(MEDIUM_CARD_SOURCE, /const identityLabel = agentSessionIdentityLabel\(item\);/u);
 	assert.match(
 		MEDIUM_CARD_SOURCE,
-		/const identityLabel = invoker === undefined[\s\S]*\? item\.agent\.name[\s\S]*: `\$\{item\.agent\.name\} with \$\{invoker\.name\}`;/u,
+		/import \{ agentSessionIdentityLabel \} from "\.\/agent-session-identity-label";/u,
+	);
+	assert.match(
+		IDENTITY_LABEL_SOURCE,
+		/return attributedBy === undefined[\s\S]*\? agent\.name[\s\S]*: `\$\{agent\.name\} with \$\{attributedBy\.name\}`;/u,
+	);
+	assert.match(
+		IDENTITY_LABEL_SOURCE,
+		/export function agentSessionIdentityLabel\(item: AgentSessionItem\): string \{\s*return agentIdentityLabel\(item\.agent, item\.invokedBy\);/u,
 	);
 	assert.match(MEDIUM_CARD_SOURCE, /invoker === undefined \? null : \(/u);
 	const dashSource = readFileSync(join(__dirname, "../../../app/dash-4-2.css"), "utf8");
 	assert.doesNotMatch(dashSource, /@utility dash-4-4/u);
-});
-
-test("medium drag chip is the shared agent mention tag with overlay elevation", () => {
-	assert.match(MEDIUM_DRAG_SOURCE, /import \{ createPortal \} from "react-dom";/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /AgentSessionCohortChip/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /<AgentSessionCohortChip[\s\S]*elevated/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /isDragging \? createPortal\([\s\S]*\{chip\}/u);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/className="pointer-events-none flex w-fit max-w-full -translate-x-1\/2 -translate-y-1\/2 items-center justify-start"/u,
-	);
-	assert.match(MEDIUM_DRAG_SOURCE, /useSessionDragChipPointer/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /sessionDragChipViewportStyle\(true\)/u);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/createPortal\([\s\S]*data-session-drag-overlay=""[\s\S]*document\.body/u,
-	);
-	assert.match(MEDIUM_DRAG_SOURCE, /chipPointer\.snapToPointer\(\s*\{ x: event\.clientX, y: event\.clientY \},?\s*\);/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /chipPointer\.(?:snapToPointer|followPointer)\([\s\S]{0,100}event\.currentTarget/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /-translate-x-1\/2 -translate-y-1\/2/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /data-session-chip-centered=""/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /bg-surface-raised/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /h-\[33px\] w-fit/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /from "@\/components\/visual\/gooey"/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /<Gooey/u);
-});
-
-test("medium drag keeps pointer capture on the motion host instead of swapping a chip button", () => {
-	// Replacing `children(sessionDragBind)` with a new chip button on drag-start
-	// unmounted the node that called setPointerCapture. pointerup never fired,
-	// so the card stuck on an empty grey attach chin.
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /isDragging \? chip : children\(sessionDragBind\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /\{children\(sessionDragBind\)\}/u);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isDragging && preserveSourceFootprint && "pointer-events-none absolute inset-x-0 top-0 opacity-\(--opacity-disabled\)"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isFollower && preserveSourceFootprint && "pointer-events-none opacity-\(--opacity-disabled\)"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/isFollower && !preserveSourceFootprint && "h-0 overflow-hidden"/u,
-	);
-	assert.match(
-		MEDIUM_DRAG_SOURCE,
-		/\(isFollower && !preserveSourceFootprint \|\| \(isDragging && !preserveSourceFootprint\)\) && "pointer-events-none absolute inset-x-0 top-0 opacity-0"/u,
-	);
-	assert.match(MEDIUM_DRAG_SOURCE, /aria-hidden=\{isDragging \|\| isFollower \|\| undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /inert=\{isDragging \|\| isFollower \|\| undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /window\.addEventListener\("pointerup", onPointerUp\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /window\.addEventListener\("pointercancel", onPointerCancel\)/u);
-});
-
-test("multi-session drag chips use the concise sessions count", () => {
-	assert.match(COHORT_CHIP_SOURCE, /const label = `\$\{cohort\.members\.length\} sessions`;/u);
-	assert.doesNotMatch(COHORT_CHIP_SOURCE, /agent sessions/u);
-});
-
-test("drag-source ghosts leave the grid accessibility tree while inert", () => {
-	assert.match(CARD_SOURCE, /const isTransferSource = Boolean\(draggingIds\?\.has\(item\.id\)\);/u);
-	assert.match(CARD_SOURCE, /aria-hidden=\{isTransferSource \|\| undefined\}/u);
-	assert.match(CARD_SOURCE, /inert=\{isTransferSource \|\| undefined\}/u);
-});
-
-test("medium drag publishes the attach transfer only after the pointer moves", () => {
-	// Publishing on pointerdown grows the card chin under the pill and arms
-	// onLink, so a click without movement reattaches the session.
-	assert.match(MEDIUM_DRAG_SOURCE, /SESSION_DRAG_PUBLISH_THRESHOLD_PX = 2/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /pointerOriginRef\.current = \{ x: event\.clientX, y: event\.clientY \}/u);
-	assert.doesNotMatch(
-		MEDIUM_DRAG_SOURCE,
-		/onPointerDown: \(event: ReactPointerEvent<HTMLElement>\) => \{\s*\n\s*drag\.bind\.onPointerDown\(event\);\s*\n\s*publishSessionDrag\(true, event\);/u,
-	);
-	assert.match(MEDIUM_DRAG_SOURCE, /if \(moved\) \{[\s\S]*publishSessionDrag\(true, event\);/u);
-});
-
-test("large untracked-work cards opt into the shared session drag without collapsing their row", () => {
-	assert.match(CARD_SOURCE, /sessionDrag\?: JiraIssueAgentSessionDragBinding;/u);
-	assert.match(CARD_SOURCE, /<AgentSessionMediumDrag[\s\S]*preserveSourceFootprint[\s\S]*source="untracked"/u);
-	assert.match(CARD_SOURCE, /\{\(bind\) => \([\s\S]*<article[\s\S]*\{\.\.\.bind\}/u);
-	assert.match(INDEX_SOURCE, /<AgentSessionCard[\s\S]*sessionDrag=\{sessionDrag\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /preserveSourceFootprint \? sourceHeight : undefined/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /source: source/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /data-session-drag-placeholder=\{preserveSourceFootprint \|\| undefined\}/u);
-});
-
-test("session drag ignores nested controls and suppresses the click after a real pointer drag", () => {
-	assert.match(CARD_SOURCE, /from "\.\/agent-session-drag-interactive"/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /from "\.\/agent-session-drag-interactive"/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /export const SESSION_DRAG_INTERACTIVE_SELECTOR/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /SESSION_DRAG_INTERACTIVE_SELECTOR/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /event\.target\.closest\(SESSION_DRAG_INTERACTIVE_SELECTOR\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /interactiveTarget !== null && interactiveTarget !== event\.currentTarget/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /didPublishDragRef\.current = true/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /onClickCapture: \(event: ReactMouseEvent<HTMLElement>\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /event\.preventDefault\(\);\s*event\.stopPropagation\(\)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /onPointerCancel: cancelSessionDrag/u);
 });
 
 test("medium more menu collapses until hover so the label can use the slot", () => {
@@ -374,33 +290,6 @@ test("medium more menu collapses until hover so the label can use the slot", () 
 	assert.match(MORE_MENU_SOURCE, /<DropdownMenuItem disabled=\{!hasCreateWorkItem\} onSelect=\{\(\) => onCreateWorkItem\?\.\(\)\}>\s*\n\s*Create new/u);
 	assert.match(INDEX_SOURCE, /onCreateWorkItem=\{onCreateWorkItem\}/u);
 	assert.match(INDEX_SOURCE, /onSubtasks=\{onSubtasks\}/u);
-});
-
-test("medium attached reuses the Jira issue agent activity row", () => {
-	assert.match(
-		COMPACT_CARD_SOURCE,
-		/import \{ JiraIssueAgentActivityRows \} from "@\/components\/blocks\/jira-issue\/agent-activity";/u,
-	);
-	assert.match(COMPACT_CARD_SOURCE, /variant === "medium-attached"/u);
-	assert.match(COMPACT_CARD_SOURCE, /<JiraIssueAgentActivityRows/u);
-	assert.match(COMPACT_CARD_SOURCE, /usesStrokeChrome/u);
-	assert.match(WORK_ITEM_SOURCE, /item\.state === "needs-input" \|\| item\.state === "attention"/u);
-	assert.match(COMPACT_CARD_SOURCE, /toJiraIssueAgentActivityFromSession\(item\)/u);
-	assert.match(COMPACT_CARD_SOURCE, /const shouldPlayArrival = isArriving && !shouldReduceMotion;/u);
-	assert.match(COMPACT_CARD_SOURCE, /data-new=\{isNew \|\| undefined\}/u);
-	assert.match(COMPACT_CARD_SOURCE, /isNew \? "ring-1 ring-border-discovery" : null/u);
-	assert.match(COMPACT_CARD_SOURCE, /relative w-\[276px\] rounded-\[10px\] bg-bg-neutral/u);
-	assert.doesNotMatch(
-		COMPACT_CARD_SOURCE,
-		/relative w-\[276px\][^"]*bg-bg-neutral-subtle/u,
-	);
-	assert.doesNotMatch(COMPACT_CARD_SOURCE, /bg-bg-accent-gray-subtlest/u);
-	assert.match(COMPACT_CARD_SOURCE, /Newly synced, not yet reviewed/u);
-	assert.match(COMPACT_CARD_SOURCE, /absolute left-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-icon-information/u);
-	assert.doesNotMatch(COMPACT_CARD_SOURCE, /absolute left-1 top-1 /u);
-	assert.match(COMPACT_CARD_SOURCE, /initial=\{shouldPlayArrival \? \{ opacity: 0, y: AGENT_SESSION_ARRIVAL_OFFSET_PX \} : false\}/u);
-	assert.match(INDEX_SOURCE, /const isAttached = variant === "medium-attached";/u);
-	assert.match(INDEX_SOURCE, /content=\{isAttached \? "details" : "untracked-work"\}/u);
 });
 
 test("medium preserves newly synced state and its one-shot arrival beat", () => {
@@ -466,7 +355,7 @@ test("the row reveals one … menu where Agent List puts its hover pair", () => 
 	assert.doesNotMatch(CARD_SOURCE, /EyeOpenIcon|EyeOpenStrikethroughIcon|visibilityLabel = "Hide"|visibilityLabel === "Show"/u);
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text/u);
 	assert.match(CARD_SOURCE, /aria-roledescription=\{bind \? "Draggable agent session" : undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /z-\[400\]/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /z-\[400\]/u);
 	assert.doesNotMatch(CARD_SOURCE, /hover:border-border(?!-disabled)/u);
 	assert.doesNotMatch(CARD_SOURCE, /focus-within:border-border(?!-disabled)/u);
 	assert.match(CARD_SOURCE, /hover:bg-surface-hovered/u);
@@ -515,9 +404,10 @@ test("agent session hover keeps the default cursor instead of a drag-handle curs
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text/u);
 	assert.doesNotMatch(CARD_SOURCE, /cursor-grab(?!bing)/u);
 	assert.doesNotMatch(CARD_SOURCE, /cursor-pointer/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /sessionDragBind && "touch-none select-none"/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /cursor-grab(?!bing)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
+	// The grab cursor and touch-action suppression live in the layout module.
+	assert.match(DRAG_LAYOUT_SOURCE, /hasDragBind && "touch-none select-none"/u);
+	assert.doesNotMatch(DRAG_LAYOUT_SOURCE, /cursor-grab(?!bing)/u);
+	assert.match(DRAG_LAYOUT_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
 });
 
 test("the hover checkbox replaces the avatar instantly, with no opacity transition", () => {
@@ -547,7 +437,7 @@ test("the untracked-work flyout owns capture, so the card has no footer chin", (
 	);
 	assert.match(INDEX_SOURCE, /<JiraSessionFlyoutSurface/u);
 	assert.match(INDEX_SOURCE, /capturedSessionIds=\{capturedItemIds\}/u);
-	assert.match(INDEX_SOURCE, /content=\{isAttached \? "details" : "untracked-work"\}/u);
+	assert.match(INDEX_SOURCE, /content="untracked-work"/u);
 	assert.match(INDEX_SOURCE, /const \[flyoutHandle\] = useState\(createJiraSessionFlyoutHandle\);/u);
 	assert.match(INDEX_SOURCE, /bindAgentSessionFlyoutActions/u);
 	assert.match(INDEX_SOURCE, /capturedItemIds\?\.has\(item\.id\)/u);
@@ -592,10 +482,10 @@ test("sessions share one moving untracked-work flyout instead of a popup per row
 	assert.match(INDEX_SOURCE, /onLinkWorkItem=\{flyoutActions\.onLinkWorkItem\}/u);
 });
 
-test("every size variant opens the shared agent-session flyout", () => {
-	// Large connects inside AgentSessionCard; attached compact variants connect
-	// at the list-item boundary so Medium attached, Medium detached, and Small
-	// keep their geometry while every session still opens the shared surface.
+test("detached and large variants open the shared agent-session flyout; medium attached does not", () => {
+	// Large connects inside AgentSessionCard; detached compact variants connect
+	// at the list-item boundary. Medium attached is already on its work item, so
+	// it renders a plain list row and skips the shared session-details surface.
 	assert.match(CARD_SOURCE, /<JiraSessionFlyoutTrigger/u);
 	assert.match(
 		INDEX_SOURCE,
@@ -608,6 +498,10 @@ test("every size variant opens the shared agent-session flyout", () => {
 	);
 	assert.match(
 		INDEX_SOURCE,
+		/if \(isAttached\) \{\s*return \(\s*<li data-testid=\{"agent-session-row-" \+ item\.id\} key=\{item\.id\}>\s*\{compactCard\}/u,
+	);
+	assert.match(
+		INDEX_SOURCE,
 		/<JiraSessionFlyoutTrigger[\s\S]*render=\{<li data-testid=\{"agent-session-row-" \+ item\.id\} \/>\}[\s\S]*\{compactCard\}[\s\S]*<\/JiraSessionFlyoutTrigger>/u,
 	);
 	assert.doesNotMatch(INDEX_SOURCE, /renderMore=/u);
@@ -615,7 +509,7 @@ test("every size variant opens the shared agent-session flyout", () => {
 	assert.match(MEDIUM_CARD_SOURCE, /onView === undefined && !flyout/u);
 	assert.match(
 		INDEX_SOURCE,
-		/<JiraSessionFlyoutSurface[\s\S]*content=\{isAttached \? "details" : "untracked-work"\}[\s\S]*handle=\{flyoutHandle\}/u,
+		/\{isAttached \? null : \(\s*<JiraSessionFlyoutSurface[\s\S]*content="untracked-work"[\s\S]*handle=\{flyoutHandle\}/u,
 	);
 	// The list and the collapsed rail are the same hover surface at two widths,
 	// so both snap. Dropping `instantPosition` here would animate the shell on
@@ -861,6 +755,7 @@ test("ships demo data and catalog entries for every attachment and size variant"
 	assert.match(DATA_SOURCE, /timeLabel: "18m ago"/u);
 	assert.match(DATA_SOURCE, /issueKey: "PAY-101"/u);
 	assert.match(PAGE_SOURCE, /<AgentSession/u);
+	assert.match(PAGE_SOURCE, /onAssignedAgentIdsChange: setAssignedAgentIds/u);
 	assert.doesNotMatch(PAGE_SOURCE, /data-slot="agent-session-attached-backdrop"/u);
 	assert.doesNotMatch(PAGE_SOURCE, /rounded-lg bg-bg-neutral p-1/u);
 	assert.match(DEMO_SOURCE, /@\/components\/blocks\/agent-session\/page/u);
@@ -870,12 +765,15 @@ test("ships demo data and catalog entries for every attachment and size variant"
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoMediumDetached\(\)/u);
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoMediumAttached\(\)/u);
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoSmall\(\)/u);
+	assert.match(DEMO_SOURCE, /export function AgentSessionDemoDrag\(\)/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-medium-detached": dynamic\(/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-medium-attached": dynamic\(/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-small": dynamic\(/u);
+	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-drag": dynamic\(/u);
 	assert.match(DETAIL_SOURCE, /title: "Medium detached"/u);
 	assert.match(DETAIL_SOURCE, /title: "Medium attached"/u);
 	assert.match(DETAIL_SOURCE, /title: "Small"/u);
+	assert.match(DETAIL_SOURCE, /title: "Drag"/u);
 	assert.match(DETAIL_SOURCE, /name: "variant"/u);
 	assert.match(DETAIL_SOURCE, /type: '"large" \| "medium-detached" \| "medium-attached" \| "small"'/u);
 	// Local and cloud each ship both densities, so the two menus and the two row

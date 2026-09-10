@@ -51,6 +51,13 @@ export const SHIMMER_DETAIL: ComponentDetail = {
 			description:
 				"Highlight band width as a multiplier of text length (resolves to children.length * spread pixels). Overrides the utility default (3ch + 40px). Omit to leave shimmer-spread-* free to control it.",
 		},
+		{
+			name: "baseColor",
+			type: "string",
+			default: "text-muted-foreground",
+			description:
+				"Resting text color. The utility derives both the gradient base and its highlight from currentColor, so this sets color rather than a bespoke variable.",
+		},
 	],
 	subComponents: [
 		{

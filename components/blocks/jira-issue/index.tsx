@@ -10,7 +10,7 @@ import {
 	type JiraIssueAgentActivity,
 	type JiraIssueAgentActivityIndicatorRenderer,
 	type JiraIssueAgentActivityLayout,
-	type JiraIssueAgentActivityMode,
+	type JiraIssueAgentActivityMode, type JiraIssueAgentAssignment,
 	type JiraIssueAgentSessionDragBinding,
 	type JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue/agent-activity";
@@ -35,6 +35,7 @@ import {
 	JiraIssueAgentDone,
 	type JiraIssueCompletedAgentRun,
 } from "@/components/blocks/jira-issue/completed-agent-runs";
+import { resolveComfortableCompletedRunViewChat, toJiraIssueAgentActivityFromCompletedRun } from "@/components/blocks/jira-issue/completed-agent-runs-model";
 import {
 	getCompletedCount,
 	getJiraIssueAgentSurfaceOffsets,
@@ -52,6 +53,7 @@ import { JiraIssueUncapturedWork } from "@/components/blocks/jira-issue/uncaptur
 import { JiraIssueSummary } from "@/components/blocks/jira-issue/summary";
 import type {
 	JiraIssueChrome,
+	JiraIssueIconScale,
 	JiraIssuePriority,
 	JiraIssuePullRequestPreview,
 	JiraIssuePullRequestStatus,
@@ -85,6 +87,7 @@ const AGENT_ACTIVITY_SURFACE_STYLE: CSSProperties = {
 
 export type {
 	JiraIssueChrome,
+	JiraIssueIconScale,
 	JiraIssuePriority,
 	JiraIssuePullRequestPreview,
 	JiraIssuePullRequestStatus,
@@ -97,7 +100,7 @@ export type {
 	JiraIssueAgentActivityIndicatorState,
 	JiraIssueAgentActivityLayout,
 	JiraIssueAgentActivityMode,
-	JiraIssueAgentActivityState,
+	JiraIssueAgentActivityState, JiraIssueAgentAssignment,
 	JiraIssueAgentSessionDragBinding,
 	JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue/agent-activity";
@@ -203,6 +206,10 @@ export interface JiraIssueDefaultProps extends Omit<ComponentProps<"button">, "c
 	chrome?: JiraIssueChrome;
 	/** Compact experimental internals. Implied by stroke chrome; pair with raised chrome to change only elevation. */
 	compact?: boolean;
+	/** Compact keeps 12px icons and 16px avatars. Comfortable uses 16px icons and 24px avatars. */
+	iconScale?: JiraIssueIconScale;
+	/** Nested subtask cards inherit the parent chrome unless set. Compact cards default to stroke so Raised/Stroke only changes the parent. */
+	subtaskChrome?: JiraIssueChrome;
 	selected?: boolean;
 	dragging?: boolean;
 	showPriorityIndicator?: boolean;
@@ -217,6 +224,7 @@ export interface JiraIssueDefaultProps extends Omit<ComponentProps<"button">, "c
 	agentActivities?: readonly JiraIssueAgentActivity[];
 	agentDoneRuns?: readonly JiraIssueCompletedAgentRun[];
 	agentActivityMode?: JiraIssueAgentActivityMode;
+	assignment?: JiraIssueAgentAssignment;
 	/** Stable preview capability for Agent Session column targeting. Keep present while highlighted changes. */
 	agentSessionTargetPreview?: Readonly<{ highlighted: boolean }>;
 	/** Merged collapses active agents into one prioritized chin row; split gives each agent its own row. */
@@ -265,7 +273,7 @@ function JiraIssueDefault({
 	active = false,
 	agentActivities,
 	agentActivityMode,
-	agentActivityLayout = "merged",
+	agentActivityLayout = "merged", assignment,
 	agentSessionDragControl,
 	agentSessionTargetPreview,
 	agentDoneRuns = [],
@@ -278,6 +286,7 @@ function JiraIssueDefault({
 	assigneeUnassignedKind,
 	chrome = "raised",
 	compact = false,
+	iconScale = "compact",
 	className,
 	defaultSubtasksExpanded = false,
 	dragging = false,
@@ -306,6 +315,7 @@ function JiraIssueDefault({
 	showMoreAction = true,
 	showPriorityIndicator = true,
 	style,
+	subtaskChrome,
 	subtasks,
 	subtasksCompleted,
 	subtasksExpanded,
@@ -379,10 +389,21 @@ function JiraIssueDefault({
 				? "completed"
 				: "none";
 	const resolvedAgentActivityMode = agentActivityMode ?? inferredAgentActivityMode;
-	const activeAgentActivities = resolvedAgentActivityMode === "none" || resolvedAgentActivityMode === "completed"
+	// Comfortable (experimental v2) paints finished agents as normal session
+	// rows. The compact merged "N Finished" chip is original-experimental only.
+	const finishedAgentActivities = iconScale === "comfortable" && resolvedAgentActivityMode === "completed"
+		? agentDoneRuns.map(toJiraIssueAgentActivityFromCompletedRun)
+		: [];
+	const activeAgentActivities = resolvedAgentActivityMode === "none"
 		? []
-		: nonCompletedAgentActivities;
-	const hasAgentDoneNotification = resolvedAgentActivityMode === "completed" && agentDoneRuns.length > 0;
+		: resolvedAgentActivityMode === "completed"
+			? finishedAgentActivities
+			: nonCompletedAgentActivities;
+	const hasCompletedAgentChin = resolvedAgentActivityMode === "completed" && agentDoneRuns.length > 0;
+	const hasAgentDoneNotification = iconScale !== "comfortable" && hasCompletedAgentChin;
+	const handleAgentActivityViewChat = resolveComfortableCompletedRunViewChat(
+		onAgentActivityViewChat, onAgentDoneRunView, agentDoneRuns, iconScale,
+	);
 	const agentSessionTargetHighlighted = agentSessionTargetPreview?.highlighted ?? false;
 	const inferredPullRequestNumber = agentDoneRuns.find((run) => run.pullRequestNumber)?.pullRequestNumber;
 	const resolvedPullRequestNumber = pullRequestNumber ?? inferredPullRequestNumber;
@@ -416,14 +437,14 @@ function JiraIssueDefault({
 	// around the issue. The shell keys off mode, not a mounted row.
 	const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"
 		|| resolvedAgentActivityMode === "awaiting-input"
-		|| hasAgentDoneNotification
+		|| hasCompletedAgentChin
 		|| isAttachingSession
 		|| agentSessionTargetHighlighted;
 	const hasAgentActivityChin = activeAgentActivities.length > 0
-		|| hasAgentDoneNotification
+		|| hasCompletedAgentChin
 		|| isAttachingSession;
 	const hasIssueRows = hasSubtasks;
-	const hasAgentActivityPresentation = agentActivityMode !== undefined || Boolean(agentActivities?.length) || hasAgentDoneNotification;
+	const hasAgentActivityPresentation = agentActivityMode !== undefined || Boolean(agentActivities?.length) || hasCompletedAgentChin;
 	// Agent chrome also leaves for reasons that have nothing to do with this card:
 	// a board filter such as View → Agents strips every row off the cards it is
 	// not focusing, and the shell it hosts is the element-type switch described
@@ -664,6 +685,7 @@ function JiraIssueDefault({
 			assigneeAvatarSrc={assigneeAvatarSrc}
 			assigneePulse={assigneePulse}
 			assigneeUnassignedKind={assigneeUnassignedKind}
+			iconScale={iconScale}
 			issueKey={issueKey}
 			issueTypeLabel={issueTypeLabel}
 			isMounted={isMounted}
@@ -749,9 +771,11 @@ function JiraIssueDefault({
 								controlId={subtasksPanelId}
 								expanded={resolvedSubtasksExpanded}
 								hasInsetSurface={hasActiveAgentActivityShell && !insetsAgentActivitySurfaceBottom}
+								iconScale={iconScale}
 								label={subtasksLabel}
 								onToggle={handleSubtasksToggle}
 								shouldReduceMotion={shouldReduceMotion}
+								subtaskChrome={subtaskChrome}
 								subtasks={subtasks}
 							/>
 						</div>
@@ -781,7 +805,7 @@ function JiraIssueDefault({
 			className={agentActivityShellClassName}
 			data-slot="jira-issue-agent-shell"
 			initial={false}
-			layout={shouldReduceMotion ? false : "size"}
+			layout={shouldReduceMotion || agentActivityHoverOpen ? false : "size"}
 			style={AGENT_ACTIVITY_SHELL_STYLE}
 			transition={layoutTransition}
 		>
@@ -801,7 +825,7 @@ function JiraIssueDefault({
 				<motion.div
 					className={rootClassName}
 					data-slot="jira-issue-card"
-					layout={shouldReduceMotion ? false : "position"}
+					layout={shouldReduceMotion || agentActivityHoverOpen ? false : "position"}
 					style={AGENT_ACTIVITY_INNER_STYLE}
 					transition={layoutTransition}
 				>
@@ -822,13 +846,15 @@ function JiraIssueDefault({
 				    row instead of stacking. Split layouts keep the other rows so the
 				    card height — and drop-zone geometry — stays put. */}
 				<JiraIssueAgentActivityRows
-					activities={activeAgentActivities}
+					activities={activeAgentActivities} assignment={assignment}
 					attachPreviewCopy={replaceDetachedTransfer ? undefined : attachChinCopy}
+					iconScale={iconScale}
+					inheritChinSurface
 					linkFlash={agentLinkFlash}
 					instantSessionTransfer={agentSessionDragControl !== undefined}
 					layout={agentActivityLayout}
 					onOpenChange={handleAgentActivityOpenChange}
-					onViewChat={onAgentActivityViewChat}
+					onViewChat={handleAgentActivityViewChat}
 					renderAgentActivityIndicator={renderAgentActivityIndicator}
 					sessionDrag={agentSessionDragBinding}
 					shouldReduceMotion={shouldReduceMotion}

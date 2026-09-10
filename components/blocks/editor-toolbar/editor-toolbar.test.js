@@ -45,6 +45,7 @@ test("Editor toolbar block exports the public component and props", () => {
 	assert.doesNotMatch(componentSource, /TabsList|TabsTrigger|<Tabs[\s>]/u);
 	assert.match(componentSource, /endSlot\?: ReactNode;/u);
 	assert.match(componentSource, /controlsOverflow\?: "responsive" \| "fixed";/u);
+	assert.match(componentSource, /showFormattingControls\?: boolean;/u);
 	assert.match(componentSource, /onMarkdownFormat\?: \(kind: MarkdownFormatKind\) => void;/u);
 });
 
@@ -209,7 +210,9 @@ test("Editor toolbar exposes block inserts and an Add content reference dropdown
 	// overflow hook; the anchored "+" group carries the marker attribute.
 	assert.match(componentSource, /useToolbarOverflow/u);
 	assert.match(componentSource, /const foldsControls = controlsOverflow === "responsive";/u);
-	assert.match(componentSource, /const visibleCount = foldsControls \? measuredVisibleCount : FOLDABLE_GROUP_COUNT;/u);
+	assert.match(componentSource, /const toolbarGroupCount = showFormattingControls \? FOLDABLE_GROUP_COUNT : 0;/u);
+	assert.match(componentSource, /const visibleCount = foldsControls \? measuredVisibleCount : toolbarGroupCount;/u);
+	assert.match(componentSource, /\{showFormattingControls \? \([\s\S]*data-toolbar-group[\s\S]*\) : null\}[\s\S]*data-toolbar-anchor/u);
 	assert.match(componentSource, /data-toolbar-group/u);
 	assert.match(componentSource, /data-toolbar-anchor/u);
 	assert.match(componentSource, /function handleInsertReference\(/u);

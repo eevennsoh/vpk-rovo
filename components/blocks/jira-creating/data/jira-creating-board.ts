@@ -26,7 +26,6 @@ export interface JiraCreateBoardColumn {
 export interface JiraCreateColumnItem {
 	card: JiraCreateBoardCard;
 	enterDelayS: number;
-	generation: number;
 	id: string;
 	kind: "created" | "resting";
 }

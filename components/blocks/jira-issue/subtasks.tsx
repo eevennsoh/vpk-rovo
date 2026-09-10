@@ -12,48 +12,84 @@ import {
 	getIssueInitial,
 	getJiraIssueLayoutTransition,
 	getJiraIssuePresenceMotion,
+	resolveJiraIssueIconMetrics,
+	resolveJiraIssueSubtaskChrome,
 	JIRA_ISSUE_MOTION_STYLE,
 } from "@/components/blocks/jira-issue/lib";
 import { Avatar, AvatarFallback, AvatarImage, AvatarUnassigned } from "@/components/ui/avatar";
 import { IconTile } from "@/components/ui/icon-tile";
-import { Lozenge } from "@/components/ui/lozenge";
+import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Tag } from "@/components/ui/tag";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
 import { resolveJiraIssueChrome, type JiraIssueChromeStyles } from "./chrome";
-import type { JiraIssueChrome } from "./types";
+import type { JiraIssueChrome, JiraIssueIconScale } from "./types";
 
 function JiraIssueSubtaskCard({
 	chromeStyles,
+	iconScale,
 	subtask,
-}: Readonly<{ chromeStyles: JiraIssueChromeStyles; subtask: JiraIssueSubtask }>) {
+	usesStrokeChrome,
+}: Readonly<{
+	chromeStyles: JiraIssueChromeStyles;
+	iconScale: JiraIssueIconScale;
+	subtask: JiraIssueSubtask;
+	usesStrokeChrome: boolean;
+}>) {
+	const iconMetrics = resolveJiraIssueIconMetrics(iconScale);
+
 	return (
 		<div
-			className={cn("border bg-surface p-3", chromeStyles.restClassName, chromeStyles.hoverClassName)}
+			className={cn(
+				"border bg-surface p-3",
+				usesStrokeChrome ? undefined : "hover:bg-surface-hovered",
+				chromeStyles.restClassName,
+				chromeStyles.hoverClassName,
+			)}
+			data-slot="jira-issue-subtask-card"
 			style={{
 				borderRadius: token("radius.large"),
 				boxShadow: chromeStyles.boxShadow,
 			}}
 		>
-			<div className="flex flex-col gap-4">
+			<div className="flex min-w-0 flex-col gap-2">
 				<p className="text-sm leading-5 text-text">{subtask.summary}</p>
-				<div className="flex items-center justify-between gap-3">
-					<div className="flex min-w-0 items-center gap-2">
-						<TaskIcon label={subtask.issueTypeLabel ?? "Sub-task"} color={token("color.icon.information")} />
-						<span className="truncate text-xs font-semibold text-text-subtlest">{subtask.issueKey}</span>
-					</div>
-					<div className="flex shrink-0 items-center gap-2">
-						<Lozenge>{subtask.status ?? "To Do"}</Lozenge>
-						{subtask.assigneeUnassignedKind ? (
-							<AvatarUnassigned kind={subtask.assigneeUnassignedKind} size="sm" />
-						) : (
-							<Avatar label={subtask.assigneeAvatarLabel ?? subtask.issueKey} size="sm">
-								{subtask.assigneeAvatarSrc ? <AvatarImage alt="" src={subtask.assigneeAvatarSrc} /> : null}
-								<AvatarFallback>{getIssueInitial(subtask.issueKey)}</AvatarFallback>
-							</Avatar>
-						)}
+				<div className="pt-0.5">
+					<div className="flex min-w-0 items-center justify-between">
+						<div className="flex min-w-0 items-center">
+							<div className="flex shrink-0 items-center gap-1.5">
+								<IconTile
+									as="span"
+									icon={<TaskIcon label="" color={token("color.icon.brand")} size="small" />}
+									iconSize={iconMetrics.iconTileIconSize}
+									label={subtask.issueTypeLabel ?? "Sub-task"}
+									size={iconMetrics.iconTileSize}
+									variant="transparent"
+								/>
+								<span className={iconMetrics.issueKeyClassName}>
+									{subtask.issueKey}
+								</span>
+							</div>
+						</div>
+						<div className="flex shrink-0 items-center gap-1">
+							<Tag>{subtask.status ?? "To Do"}</Tag>
+							<span
+								className="flex size-6 shrink-0 items-center justify-center"
+								data-slot="jira-issue-assignee-slot"
+							>
+								{subtask.assigneeUnassignedKind ? (
+									<AvatarUnassigned kind={subtask.assigneeUnassignedKind} size={iconMetrics.assigneeSize} />
+								) : (
+									<Avatar label={subtask.assigneeAvatarLabel ?? subtask.issueKey} size={iconMetrics.assigneeSize}>
+										{subtask.assigneeAvatarSrc ? <AvatarImage alt="" src={subtask.assigneeAvatarSrc} /> : null}
+										<AvatarFallback>{getIssueInitial(subtask.issueKey)}</AvatarFallback>
+									</Avatar>
+								)}
+							</span>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -70,7 +106,7 @@ export function JiraIssueSeparator({
 			className={cn(
 				"h-px motion-reduce:transition-none",
 				usesStrokeChrome
-					? "bg-border-disabled transition-[margin,width,background-color] duration-normal ease-out group-hover/jira-issue:bg-border group-hover/jira-issue-card:bg-border"
+					? "bg-border-disabled transition-[margin,width,background-color] duration-normal ease-out group-[&:hover:not(:has([data-slot=jira-issue-subtask-card]:hover))]/jira-issue:bg-border group-[&:hover:not(:has([data-slot=jira-issue-subtask-card]:hover))]/jira-issue-card:bg-border"
 					: "transition-[margin,width] duration-medium ease-in-out",
 			)}
 			style={{
@@ -89,9 +125,11 @@ export function JiraIssueSubtasks({
 	controlId,
 	expanded,
 	hasInsetSurface,
+	iconScale = "compact",
 	label,
 	onToggle,
 	shouldReduceMotion,
+	subtaskChrome,
 	subtasks,
 }: Readonly<{
 	chrome: JiraIssueChrome;
@@ -100,60 +138,69 @@ export function JiraIssueSubtasks({
 	controlId: string;
 	expanded: boolean;
 	hasInsetSurface: boolean;
+	iconScale?: JiraIssueIconScale;
 	label: string;
 	onToggle: () => void;
 	shouldReduceMotion: boolean | null;
+	subtaskChrome?: JiraIssueChrome;
 	subtasks: readonly JiraIssueSubtask[];
 }>) {
-	const chromeStyles = resolveJiraIssueChrome(chrome);
+	const iconMetrics = resolveJiraIssueIconMetrics(iconScale);
+	const comfortableIcons = iconScale === "comfortable";
+	const nestedSubtaskChrome = resolveJiraIssueSubtaskChrome(chrome, subtaskChrome, compact);
+	const chromeStyles = resolveJiraIssueChrome(nestedSubtaskChrome);
 	const usesStrokeChrome = compact || chrome === "stroke";
 	const totalCount = subtasks.length;
+	const completedPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+	const showSubtaskProgress = totalCount > 0;
 	const subtasksToggleLabel = `${expanded ? "Hide" : "Show"} ${label.toLowerCase()}`;
 	const layoutTransition = getJiraIssueLayoutTransition(shouldReduceMotion);
 	const presenceMotion = getJiraIssuePresenceMotion(shouldReduceMotion);
+	const headerRowClassName = cn(
+		"flex h-8 w-full items-center justify-between px-3 py-2",
+		usesStrokeChrome && "-mx-px w-[calc(100%+2px)]",
+	);
+	const subtasksHeading = (
+		<div
+			className={
+				usesStrokeChrome
+					? "flex items-center gap-1.5 text-xs font-medium leading-4 text-text-subtle"
+					: "flex items-center gap-2 text-sm font-medium leading-5 text-text-subtle"
+			}
+		>
+			{usesStrokeChrome ? (
+				<IconTile
+					aria-hidden
+					as="span"
+					className="text-icon-subtle"
+					icon={<SubtasksIcon label="" size="small" spacing="none" color="currentColor" />}
+					iconSize={iconMetrics.iconTileIconSize}
+					label=""
+					size={iconMetrics.iconTileSize}
+					variant="transparent"
+				/>
+			) : (
+				<span
+					className="grid size-4 shrink-0 place-items-center text-icon-subtle"
+					aria-hidden="true"
+				>
+					<SubtasksIcon
+						label=""
+						size="medium"
+						spacing="none"
+						color="currentColor"
+					/>
+				</span>
+			)}
+			<span>{label}</span>
+			<JiraIssueCountBadge compact={usesStrokeChrome}>{completedCount}/{totalCount}</JiraIssueCountBadge>
+		</div>
+	);
 
 	return (
 		<section aria-label={label}>
-			<div
-				className={cn(
-					"flex h-8 w-full items-center justify-between px-3 py-2",
-					usesStrokeChrome && "-mx-px w-[calc(100%+2px)]",
-				)}
-			>
-				<div
-					className={
-						usesStrokeChrome
-							? "flex items-center gap-1.5 text-xs font-medium leading-4 text-text-subtle"
-							: "flex items-center gap-2 text-sm font-medium leading-5 text-text-subtle"
-					}
-				>
-					{usesStrokeChrome ? (
-						<IconTile
-							aria-hidden
-							as="span"
-							className="text-icon-subtle"
-							icon={<SubtasksIcon label="" size="small" spacing="none" color="currentColor" />}
-							iconSize="small"
-							label=""
-							size="xxsmall"
-							variant="transparent"
-						/>
-					) : (
-						<span
-							className="grid size-4 shrink-0 place-items-center text-icon-subtle"
-							aria-hidden="true"
-						>
-							<SubtasksIcon
-								label=""
-								size="medium"
-								spacing="none"
-								color="currentColor"
-							/>
-						</span>
-					)}
-					<span>{label}</span>
-					<JiraIssueCountBadge compact={usesStrokeChrome}>{completedCount}/{totalCount}</JiraIssueCountBadge>
-				</div>
+			<div className={headerRowClassName}>
+				{subtasksHeading}
 				<Tooltip>
 					<TooltipTrigger
 						render={
@@ -164,7 +211,7 @@ export function JiraIssueSubtasks({
 								aria-label={subtasksToggleLabel}
 								className={cn(
 									"inline-flex items-center justify-center rounded-sm text-icon-subtle outline-none transition-colors duration-normal ease-out hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-									usesStrokeChrome ? "size-4" : "size-6",
+									usesStrokeChrome && !comfortableIcons ? "size-4" : "size-6",
 								)}
 								onClick={onToggle}
 							>
@@ -192,8 +239,23 @@ export function JiraIssueSubtasks({
 						style={shouldReduceMotion ? undefined : JIRA_ISSUE_MOTION_STYLE}
 						transition={layoutTransition}
 					>
+						{showSubtaskProgress ? (
+							<Progress
+								aria-label={`${completedCount} of ${totalCount} ${label.toLowerCase()} done`}
+								className="w-full"
+								data-slot="jira-issue-subtask-progress"
+								value={completedPercent}
+								variant="success"
+							/>
+						) : null}
 						{subtasks.map((subtask) => (
-							<JiraIssueSubtaskCard chromeStyles={chromeStyles} key={subtask.issueKey} subtask={subtask} />
+							<JiraIssueSubtaskCard
+								chromeStyles={chromeStyles}
+								iconScale={iconScale}
+								key={subtask.issueKey}
+								subtask={subtask}
+								usesStrokeChrome={nestedSubtaskChrome === "stroke"}
+							/>
 						))}
 					</motion.div>
 				) : null}

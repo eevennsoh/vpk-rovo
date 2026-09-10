@@ -133,15 +133,15 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, portalRoot, release, s
 	const drop = release.drop;
 
 	useLayoutEffect(() => {
-		if (shouldReduceMotion || !drop || !landing || !backdrop) {
+		if (shouldReduceMotion || !landing || !backdrop) {
 			onSettled(release.id);
 			onComplete(release.id);
 			return;
 		}
-		const flight = flightRef.current;
+		const flight = drop ? flightRef.current : null;
 		const halo = haloRef.current;
 		const pulse = pulseRef.current;
-		if (!flight || !halo || typeof flight.animate !== "function") {
+		if (!halo || typeof halo.animate !== "function" || (drop && (!flight || typeof flight.animate !== "function"))) {
 			onSettled(release.id);
 			onComplete(release.id);
 			return;
@@ -153,9 +153,11 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, portalRoot, release, s
 		const finish = () => {
 			if (!cancelled) onComplete(release.id);
 		};
-		const landed = () => {
+		const playGlow = () => {
 			if (cancelled) return;
-			flight.style.visibility = "hidden";
+			if (flight) {
+				flight.style.visibility = "hidden";
+			}
 			haloAnimation = halo.animate([{ opacity: 1 }, { opacity: 0 }], {
 				duration: JIRA_LINKING_GLOW_FADE_DURATION_MS,
 				easing: "ease-out",
@@ -185,17 +187,28 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, portalRoot, release, s
 			onSettled(release.id);
 			finish();
 		};
+		if (!drop || !flight) {
+			playGlow();
+			return () => {
+				cancelled = true;
+				haloAnimation?.removeEventListener("finish", finish);
+				haloAnimation?.removeEventListener("cancel", finish);
+				pulseAnimation?.removeEventListener("finish", finish);
+				pulseAnimation?.removeEventListener("cancel", finish);
+				for (const running of animations) running.cancel();
+			};
+		}
 		const animation = flight.animate(createJiraLinkingGlowDropKeyframes(drop.from, landing.anchor), {
 			duration: JIRA_LINKING_GLOW_DROP_DURATION_MS,
 			easing: "linear",
 			fill: "forwards",
 		});
 		animations.push(animation);
-		animation.addEventListener("finish", landed, { once: true });
+		animation.addEventListener("finish", playGlow, { once: true });
 		animation.addEventListener("cancel", cancelFlight, { once: true });
 		return () => {
 			cancelled = true;
-			animation.removeEventListener("finish", landed);
+			animation.removeEventListener("finish", playGlow);
 			animation.removeEventListener("cancel", cancelFlight);
 			haloAnimation?.removeEventListener("finish", finish);
 			haloAnimation?.removeEventListener("cancel", finish);
@@ -205,7 +218,7 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, portalRoot, release, s
 		};
 	}, [backdrop, drop, landing, onComplete, onSettled, release.id, shouldReduceMotion]);
 
-	if (shouldReduceMotion || !drop || !backdrop || !landing) return null;
+	if (shouldReduceMotion || !backdrop || !landing) return null;
 	const haloStyle = {
 		left: landing.anchor.x - landing.width / 2,
 		top: landing.anchor.y - landing.height / 2,
@@ -214,13 +227,16 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, portalRoot, release, s
 		borderRadius: landing.radius ?? 8,
 		zIndex,
 	};
+	const showFlight = Boolean(drop);
+	const showFallbackHalo = !haloRoot;
 	return (
 		<>
-			{createPortal(
+			{showFlight || showFallbackHalo ? createPortal(
 				<div aria-hidden="true" data-slot="jira-linking" data-jira-linking-variant="glow" className="pointer-events-none">
-					{haloRoot ? null : (
+					{showFallbackHalo ? (
 							<div ref={haloRef} data-jira-linking-glow-halo="" className="fixed" style={{ ...haloStyle, opacity: 0, boxShadow: resolveJiraLinkingGlowShadow(glowColor) }} />
-					)}
+					) : null}
+					{drop ? (
 					<div
 						ref={flightRef}
 						data-jira-linking-flight=""
@@ -232,9 +248,10 @@ function GlowRelease({ backdropRoot, glowColor, haloRoot, portalRoot, release, s
 							<AgentSessionCohortChip cohort={toJiraLinkingCohort(drop.members)} elevated />
 						</div>
 					</div>
+					) : null}
 				</div>,
 				portalRoot,
-			)}
+			) : null}
 			{haloRoot ? createPortal(
 				<div
 					aria-hidden="true"

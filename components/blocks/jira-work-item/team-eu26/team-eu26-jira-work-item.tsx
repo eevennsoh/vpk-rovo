@@ -51,6 +51,7 @@ import { ContextPanel } from "@/components/blocks/jira-work-item/team-eu26/compo
 import { ContextResources } from "@/components/blocks/jira-work-item/team-eu26/components/context-resources";
 import { PullRequestsSelect } from "@/components/blocks/jira-work-item/team-eu26/components/pull-requests-select";
 import { WorkItemSectionNav } from "@/components/blocks/jira-work-item/team-eu26/components/work-item-section-nav";
+import { WorkItemHeaderStatus } from "@/components/blocks/jira-work-item/team-eu26/components/work-item-header-status";
 import { WorkItemSidePanelResizeHandle } from "@/components/blocks/jira-work-item/team-eu26/components/work-item-side-panel-resize-handle";
 import { ActivityPanel } from "@/components/blocks/jira-work-item/team-eu26/components/activity-panel";
 import {
@@ -729,6 +730,7 @@ function TeamEu26JiraWorkItemContent({
 						)}
 						sidebarResizing={metadataPanelResize.isResizing}
 						sidebarWidth={metadataPanelResize.sidebarWidth}
+						statusControl={initialPreset === "filled" ? <WorkItemHeaderStatus /> : undefined}
 						workItemCode={workItem.code}
 						workItemTitle={workItem.title}
 					>
