@@ -33,6 +33,14 @@ const COHORT_CHIP_SOURCE = readFileSync(
 	join(__dirname, "agent-session-cohort-chip.tsx"),
 	"utf8",
 );
+const DRAG_OVERLAY_SOURCE = readFileSync(
+	join(__dirname, "agent-session-drag-overlay.tsx"),
+	"utf8",
+);
+const DRAG_LAYOUT_SOURCE = readFileSync(
+	join(__dirname, "agent-session-drag-layout.ts"),
+	"utf8",
+);
 const MORE_MENU_SOURCE = readFileSync(
 	join(__dirname, "agent-session-medium-more-menu.tsx"),
 	"utf8",
@@ -56,6 +64,10 @@ const INDEX_SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
 const TYPES_SOURCE = readFileSync(join(__dirname, "agent-session-types.ts"), "utf8");
 const WORK_ITEM_SOURCE = readFileSync(join(__dirname, "agent-session-work-item.ts"), "utf8");
+const IDENTITY_LABEL_SOURCE = readFileSync(
+	join(__dirname, "agent-session-identity-label.ts"),
+	"utf8",
+);
 const FLYOUT_SOURCE = readFileSync(
 	join(__dirname, "../product-sidebar/variants/jira-session-flyout.tsx"),
 	"utf8",
@@ -199,6 +211,7 @@ test("large remains the default while every card receives the selected size vari
 	assert.match(INDEX_SOURCE, /<AgentSessionCompactCard/u);
 	assert.match(INDEX_SOURCE, /captured=\{capturedItemIds\?\.has\(item\.id\) \?\? false\}/u);
 	assert.match(TYPES_SOURCE, /issueKey\?: string;/u);
+	assert.match(TYPES_SOURCE, /assignment\?: JiraIssueAgentAssignment;/u);
 	assert.match(INDEX_SOURCE, /issueKey=\{issueKey\}/u);
 	assert.match(INDEX_SOURCE, /render=\{<li data-testid=\{"agent-session-row-" \+ item\.id\} \/>\}/u);
 });
@@ -227,6 +240,14 @@ test("medium detached is a 276px stroked white chip with a combo identity and up
 	assert.doesNotMatch(MEDIUM_CARD_SOURCE, /bg-bg-accent-gray-subtlest/u);
 	assert.match(COMPACT_CARD_SOURCE, /captured=\{captured\}/u);
 	assert.match(MEDIUM_CARD_SOURCE, /data-captured=\{captured \|\| undefined\}/u);
+	assert.match(
+		IDENTITY_LABEL_SOURCE,
+		/return attributedBy === undefined[\s\S]*\? agent\.name[\s\S]*: `\$\{agent\.name\} with \$\{attributedBy\.name\}`;/u,
+	);
+	assert.match(
+		IDENTITY_LABEL_SOURCE,
+		/export function agentSessionIdentityLabel\(item: AgentSessionItem\): string \{\s*return agentIdentityLabel\(item\.agent, item\.invokedBy\);/u,
+	);
 	const dashSource = readFileSync(join(__dirname, "../../../app/dash-4-2.css"), "utf8");
 	assert.doesNotMatch(dashSource, /@utility dash-4-4/u);
 });
@@ -420,7 +441,7 @@ test("the row reveals one … menu where Agent List puts its hover pair", () => 
 	assert.doesNotMatch(CARD_SOURCE, /EyeOpenIcon|EyeOpenStrikethroughIcon|visibilityLabel = "Hide"|visibilityLabel === "Show"/u);
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg text-left text-text/u);
 	assert.match(CARD_SOURCE, /aria-roledescription=\{bind \? "Draggable agent session" : undefined\}/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /z-\[400\]/u);
+	assert.match(DRAG_OVERLAY_SOURCE, /z-\[400\]/u);
 	assert.doesNotMatch(CARD_SOURCE, /hover:border-border(?!-disabled)/u);
 	assert.doesNotMatch(CARD_SOURCE, /focus-within:border-border(?!-disabled)/u);
 	assert.match(CARD_SOURCE, /hover:bg-surface-hovered/u);
@@ -469,9 +490,10 @@ test("agent session hover keeps the default cursor instead of a drag-handle curs
 	assert.match(CARD_SOURCE, /group\/agent-row relative flex w-full cursor-default rounded-lg text-left text-text/u);
 	assert.doesNotMatch(CARD_SOURCE, /cursor-grab(?!bing)/u);
 	assert.doesNotMatch(CARD_SOURCE, /cursor-pointer/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /sessionDragBind && "touch-none select-none"/u);
-	assert.doesNotMatch(MEDIUM_DRAG_SOURCE, /cursor-grab(?!bing)/u);
-	assert.match(MEDIUM_DRAG_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
+	// The grab cursor and touch-action suppression live in the layout module.
+	assert.match(DRAG_LAYOUT_SOURCE, /hasDragBind && "touch-none select-none"/u);
+	assert.doesNotMatch(DRAG_LAYOUT_SOURCE, /cursor-grab(?!bing)/u);
+	assert.match(DRAG_LAYOUT_SOURCE, /isDragging && "cursor-grabbing \[&_article\]:cursor-grabbing"/u);
 });
 
 test("the hover checkbox replaces the avatar instantly, with no opacity transition", () => {
@@ -914,6 +936,7 @@ test("ships demo data and catalog entries for every attachment and size variant"
 	assert.match(PAGE_SOURCE, /host === "cloud" && isLong/u);
 	assert.match(PAGE_SOURCE, /withSessionRole\(items\.slice\(-1\), "expired"\)/u);
 	assert.match(PAGE_SOURCE, /label: "Needs input"/u);
+	assert.match(PAGE_SOURCE, /onAssignedAgentIdsChange: setAssignedAgentIds/u);
 	assert.doesNotMatch(PAGE_SOURCE, /data-slot="agent-session-attached-backdrop"/u);
 	assert.doesNotMatch(PAGE_SOURCE, /rounded-lg bg-bg-neutral p-1/u);
 	assert.match(DEMO_SOURCE, /@\/components\/blocks\/agent-session\/page/u);
@@ -923,12 +946,15 @@ test("ships demo data and catalog entries for every attachment and size variant"
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoMediumDetached\(\)/u);
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoMediumAttached\(\)/u);
 	assert.match(DEMO_SOURCE, /export function AgentSessionDemoSmall\(\)/u);
+	assert.match(DEMO_SOURCE, /export function AgentSessionDemoDrag\(\)/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-medium-detached": dynamic\(/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-medium-attached": dynamic\(/u);
 	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-small": dynamic\(/u);
+	assert.match(VARIANT_REGISTRY_SOURCE, /"agent-session-demo-drag": dynamic\(/u);
 	assert.match(DETAIL_SOURCE, /title: "Medium detached"/u);
 	assert.match(DETAIL_SOURCE, /title: "Medium attached"/u);
 	assert.match(DETAIL_SOURCE, /title: "Small"/u);
+	assert.match(DETAIL_SOURCE, /title: "Drag"/u);
 	assert.match(DETAIL_SOURCE, /name: "variant"/u);
 	assert.match(DETAIL_SOURCE, /type: '"large" \| "medium-detached" \| "medium-attached" \| "small"'/u);
 	// Local and cloud each ship both densities, so the two menus and the two row

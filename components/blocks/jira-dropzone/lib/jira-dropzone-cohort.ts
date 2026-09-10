@@ -18,6 +18,7 @@ export function toJiraDropzoneCohort(
 			vpkLogo: member.vpkLogo,
 		},
 		id: member.id,
+		invokedBy: member.invoker,
 		state: "complete",
 		title: member.name,
 	})) as [AgentSessionItem, ...AgentSessionItem[]];

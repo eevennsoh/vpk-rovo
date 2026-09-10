@@ -18,12 +18,13 @@ const ACTIVITY_PRESENTATION_SOURCE = readFileSync(
 const DATA_SOURCE = readFileSync(join(__dirname, "data.ts"), "utf8");
 const INDEX_SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
+const TYPES_SOURCE = readFileSync(join(__dirname, "agent-session-types.ts"), "utf8");
 const WORK_ITEM_SOURCE = readFileSync(join(__dirname, "agent-session-work-item.ts"), "utf8");
 
 test("medium attached reuses the Jira issue agent activity row", () => {
 	assert.match(
 		COMPACT_CARD_SOURCE,
-		/import \{ JiraIssueAgentActivityRows \} from "@\/components\/blocks\/jira-issue\/agent-activity";/u,
+		/import \{ JiraIssueAgentActivityRows, type JiraIssueAgentAssignment \} from "@\/components\/blocks\/jira-issue\/agent-activity";/u,
 	);
 	assert.match(COMPACT_CARD_SOURCE, /variant === "medium-attached"/u);
 	assert.match(COMPACT_CARD_SOURCE, /<JiraIssueAgentActivityRows/u);
@@ -49,6 +50,24 @@ test("medium attached reuses the Jira issue agent activity row", () => {
 	assert.doesNotMatch(INDEX_SOURCE, /content=\{isAttached \? "details" : "untracked-work"\}/u);
 	assert.match(COMPACT_CARD_SOURCE, /inheritChinSurface/u);
 	assert.doesNotMatch(COMPACT_CARD_SOURCE, /showAssignmentFlyout=\{false\}/u);
+	assert.match(TYPES_SOURCE, /assignment\?: JiraIssueAgentAssignment;/u);
+	assert.match(INDEX_SOURCE, /assignment=\{isAttached \? assignment : undefined\}/u);
+	assert.match(COMPACT_CARD_SOURCE, /assignment=\{\{/u);
+	assert.match(COMPACT_CARD_SOURCE, /\.\.\.assignment,/u);
+	// Footer lives on AssignedAgentsMenu via AgentAssignment — attached chrome
+	// must not invent a parallel Assign agent control.
+	assert.doesNotMatch(COMPACT_CARD_SOURCE, /AssignedAgentsMenu/u);
+	assert.doesNotMatch(INDEX_SOURCE, /AssignedAgentsMenu/u);
+	assert.match(
+		PAGE_SOURCE,
+		/onAssignedAgentIdsChange: setAssignedAgentIds/u,
+	);
+	assert.match(
+		PAGE_SOURCE,
+		/from "@\/components\/blocks\/agent-assignment\/demo-assigned-agents"/u,
+	);
+	assert.match(PAGE_SOURCE, /getAgentAssignmentDemoAssignedAgents/u);
+	assert.match(PAGE_SOURCE, /variant === "medium-attached"/u);
 	assert.doesNotMatch(
 		COMPACT_CARD_SOURCE,
 		/from "@\/components\/blocks\/agent-assignment\/demo-assigned-agents"/u,

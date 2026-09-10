@@ -86,7 +86,7 @@ test("Team EU26 owns the Team EU VITA-1 reference content and geometry", () => {
 
 	const composerSource = readBlockFile("team-eu26/components/activity-composer.tsx");
 	assert.match(composerSource, /Add a comment, @mention or \/ for actions/u);
-	assert.match(composerSource, /Needs input/u);
+	assert.doesNotMatch(composerSource, /Needs input|AiAgentIcon/u);
 });
 
 test("Team EU26 filled preset renders the high-confidence sections and details rail", () => {
@@ -94,6 +94,7 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	const bodySource = readBlockFile("team-eu26/components/high-confidence-work-item-body.tsx");
 	const agentSessionsSource = readBlockFile("team-eu26/components/high-confidence-agent-sessions.tsx");
 	const highConfidenceDataSource = readBlockFile("team-eu26/data/high-confidence-work-item.ts");
+	const workItemStateSource = readBlockFile("team-eu26/data/team-eu26-vita-one.ts");
 	const activitySource = readBlockFile("team-eu26/components/activity-panel.tsx");
 	const layoutSource = readBlockFile("team-eu26/components/experimental-work-item-layout.tsx");
 	const railOwner = readBlockFile("team-eu26/components/metadata-rail.tsx");
@@ -105,7 +106,40 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 		assert.match(bodySource, new RegExp(copy, "u"));
 	}
 	assert.match(bodySource, /<Table[\s\S]*<TableHeader[\s\S]*<TableBody/u);
-	assert.match(bodySource, /0% complete; 1 of 3 subitems in progress/u);
+	assert.match(bodySource, /import \{ Tabs, TabsContent, TabsList, TabsTrigger \} from "@\/components\/ui\/tabs"/u);
+	assert.doesNotMatch(bodySource, /ButtonGroup/u);
+	assert.match(bodySource, /const \[attachmentsExpanded, setAttachmentsExpanded\] = useState\(true\)/u);
+	assert.match(bodySource, /aria-label="Attachments"[\s\S]*aria-controls="team-eu26-attachments-content"[\s\S]*aria-expanded=\{attachmentsExpanded\}/u);
+	assert.match(bodySource, /<h2 className="pointer-events-none absolute inset-0 z-10 flex[\s\S]*id="team-eu26-attachments-heading"/u);
+	assert.match(bodySource, /<button[\s\S]*aria-label="Attachments"[\s\S]*aria-controls="team-eu26-attachments-content"[\s\S]*type="button"/u);
+	assert.doesNotMatch(bodySource, /role="button"[\s\S]*tabIndex=\{0\}/u);
+	assert.match(bodySource, /className="inline-flex items-center justify-center opacity-0 transition-opacity/u);
+	assert.match(bodySource, /className="group\/attachments relative flex min-h-9[\s\S]*className="absolute inset-0 z-0/u);
+	assert.doesNotMatch(bodySource, /<Button\s+aria-controls="team-eu26-attachments-content"/u);
+	assert.match(bodySource, /className="group\/attachments relative flex min-h-9[\s\S]*transition-none/u);
+	assert.match(bodySource, /className=\{cn\("relative z-10 ml-auto flex shrink-0/u);
+	assert.match(bodySource, /aria-hidden=\{!attachmentsExpanded\}[\s\S]*inert=\{!attachmentsExpanded \? true : undefined\}/u);
+	assert.match(bodySource, /<Tabs[\s\S]*onValueChange=\{\(value\) => value \? setAttachmentFilter\(value as AttachmentFilter\) : undefined\}[\s\S]*value=\{attachmentFilter\}/u);
+	assert.match(bodySource, /<TabsList aria-label="Filter attachments" size="default" variant="default">[\s\S]*<TabsTrigger/u);
+	assert.match(bodySource, /<TabsContent[\s\S]*value=\{filter\.value\}/u);
+	assert.match(bodySource, /aria-label="More attachment actions"[\s\S]*size="icon"/u);
+	assert.match(
+		bodySource,
+		/import \{ toWorkItemChildItems \} from "@\/components\/blocks\/jira-work-item\/team-eu26\/lib\/child-items-progress"/u,
+	);
+	assert.match(
+		bodySource,
+		/import \{ ChildItemsProgressBar \} from "@\/components\/projects\/jira\/components\/work-item-modal\/child-items-progress-bar"/u,
+	);
+	assert.match(bodySource, /const childItems = toWorkItemChildItems\(TEAM_EU26_SUBITEMS, statuses\)/u);
+	assert.match(bodySource, /<ChildItemsProgressBar items=\{childItems\} \/>/u);
+	assert.match(
+		fs.readFileSync(
+			path.join(process.cwd(), "components/projects/jira/components/work-item-modal/child-items-progress-bar.tsx"),
+			"utf8",
+		),
+		/aria-valuemax=\{100\}[\s\S]*aria-valuemin=\{0\}[\s\S]*aria-valuenow=\{donePercent\}[\s\S]*role="progressbar"/u,
+	);
 	assert.match(bodySource, /const \[statuses, setStatuses\] = useState<Record<string/u);
 	assert.doesNotMatch(bodySource, /useState\(initialStatus\)/u);
 	assert.match(bodyOwner, /<HighConfidenceAgentSessions \/>[\s\S]*\{activity\}/u);
@@ -121,9 +155,17 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 	assert.match(layoutSource, /showInFlowComposer = initialPreset === "filled" && composerVisible/u);
 	assert.match(layoutSource, /data-team-eu26-comment-composer[\s\S]*\{composer\}/u);
 	assert.match(railOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceMetadataRail \/>/u);
-	for (const copy of ["Automatic", "Needs input..", "May 25, 2026", "Development", "Automation", "Apps"]) {
+	for (const copy of ["Needs input..", "Development", "Automation", "Apps"]) {
 		assert.match(railSource, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 	}
+	for (const editor of ["PersonRowField", "AgentsRowField", "PriorityRowField", "DateRowField"]) {
+		assert.match(railSource, new RegExp(`<${editor}`, "u"), `${editor} is not wired into the filled Details rail`);
+	}
+	assert.match(railSource, /actions\.updateMetadata/u);
+	assert.match(railSource, /dateValueMode="utc-date"/u);
+	assert.match(readBlockFile("team-eu26/components/detail-field-editors.tsx"), /allowArchive=\{false\}/u);
+	assert.match(workItemStateSource, /name: "Automatic"/u);
+	assert.match(workItemStateSource, /preset === "filled" \? TEAM_EU26_PEOPLE\.automatic/u);
 	assert.match(dialogSource, /aria-label="Breadcrumb"[\s\S]*Vitafleet[\s\S]*VITA-22[\s\S]*<WorkItemKeyCopy \/>/u);
 	assert.match(dialogSource, /aria-label="Open Rovo"[\s\S]*openChat\("floating"\)/u);
 	assert.match(readBlockFile("team-eu26/data/team-eu26-vita-one.ts"), /Due date changed to May 25, 2026 by/u);

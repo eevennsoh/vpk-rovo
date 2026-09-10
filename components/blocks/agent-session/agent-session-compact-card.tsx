@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 
-import { JiraIssueAgentActivityRows } from "@/components/blocks/jira-issue/agent-activity";
+import { JiraIssueAgentActivityRows, type JiraIssueAgentAssignment } from "@/components/blocks/jira-issue/agent-activity";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
 import {
 	DEFAULT_PINNED_SPACE_AGENT_IDS,
@@ -21,11 +21,13 @@ import type { AgentSessionItem, AgentSessionVariant } from "./agent-session-type
 import { toJiraIssueAgentActivityFromSession } from "./agent-session-work-item";
 
 export function AgentSessionAttachedCard({
+	assignment,
 	isArriving,
 	isNew,
 	items,
 	onView,
 }: Readonly<{
+	assignment?: JiraIssueAgentAssignment;
 	isArriving: boolean;
 	isNew: boolean;
 	items: readonly AgentSessionItem[];
@@ -58,6 +60,7 @@ export function AgentSessionAttachedCard({
 				assignment={{
 					defaultPinnedAgentIds: DEFAULT_PINNED_SPACE_AGENT_IDS,
 					pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL,
+					...assignment,
 				}}
 				avatarLayout="animated"
 				inheritChinSurface
@@ -115,6 +118,7 @@ function SmallAgentSession({
 }
 
 export function AgentSessionCompactCard({
+	assignment,
 	captured = false,
 	flyout = false,
 	isArriving = false,
@@ -130,6 +134,7 @@ export function AgentSessionCompactCard({
 	sessionDrag,
 	variant,
 }: Readonly<{
+	assignment?: JiraIssueAgentAssignment;
 	captured?: boolean;
 	isArriving?: boolean;
 	/**
@@ -160,6 +165,7 @@ export function AgentSessionCompactCard({
 		/>
 	) : variant === "medium-attached" ? (
 		<AgentSessionAttachedCard
+			assignment={assignment}
 			isArriving={isArriving}
 			isNew={isNew}
 			items={[item]}

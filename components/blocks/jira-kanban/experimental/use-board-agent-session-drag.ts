@@ -58,7 +58,7 @@ import {
 import {
 	toBoardAgentSessionLinkFlash,
 	toAssignedAgentTransferMember,
-	toSessionFusionAssignmentOrigin,
+	toSessionFusionAssignmentRelease,
 	toSessionFusionDrop,
 	type BoardAgentSessionLinkFlash,
 	type PendingSessionLinkFlash,
@@ -549,7 +549,7 @@ export function useBoardAgentSessionDrag({
 		settleDeadlineRef.current = setTimeout(
 			flushPendingAttach,
 			(linkingVariant === "glow"
-				? resolveJiraLinkingGlowSettleMs(shouldReduceMotion)
+				? resolveJiraLinkingGlowSettleMs(shouldReduceMotion, input.release)
 				: resolveJiraLinkingReleaseSettleMs(input.release, JIRA_LINKING_FULL_DROP_PROFILE))
 				+ SESSION_FUSION_SETTLE_GRACE_MS,
 		);
@@ -563,18 +563,20 @@ export function useBoardAgentSessionDrag({
 	/**
 	 * Acknowledge an agent the card's own assign menu just linked.
 	 *
-	 * The menu commits the link itself; this only draws the same effect the
-	 * drop draws, against the card named by `cardCode`. Silent when the card is
-	 * not on the board, when reduced motion is on, or when the submit put no
-	 * agent row on the card — the link still stands in every one of those
-	 * cases, because the decoration was never what committed it.
+	 * The menu commits the link itself; this only draws Glow's halo and
+	 * backdrop pulse against the card named by `cardCode`. It does not replay
+	 * the travelling-chip collapse a session drop uses — there is no dragged
+	 * card. Silent when the card is not on the board, when reduced motion is
+	 * on, or when the submit put no agent row on the card — the link still
+	 * stands in every one of those cases, because the decoration was never
+	 * what committed it.
 	 *
 	 * Measured a frame late, on purpose. A drop hit-tests a board the pointer
 	 * was already over, but an assignment's own link can move the card it
 	 * targets: a host that advances the work item on start re-columns it in the
-	 * very commit this acknowledges. Measuring first would aim the flight at the
-	 * vacated slot and, worse, hand Glow a stale anchor whose hit test finds
-	 * whichever card slid in behind — so the wrong card would glow.
+	 * very commit this acknowledges. Measuring first would hand Glow a stale
+	 * anchor whose hit test finds whichever card slid in behind — so the wrong
+	 * card would glow.
 	 *
 	 * Glow only. Fuse acknowledges a link with a chin-row sweep keyed to the
 	 * activity id the host minted, and that id is the host's own convention —
@@ -599,8 +601,7 @@ export function useBoardAgentSessionDrag({
 				collectDropZones(boardRootRef.current),
 				cardCode,
 			);
-			const from = toSessionFusionAssignmentOrigin(proximity, linkingVariant);
-			if (!proximity || !from) {
+			if (!proximity) {
 				return;
 			}
 			// Whatever the previous link still owed is settled first. A card wears
@@ -608,13 +609,9 @@ export function useBoardAgentSessionDrag({
 			// what keeps the two paths from arming two flushes against one drop.
 			flushPendingAttach();
 			linkFlashTokenRef.current += 1;
-			const members = [member];
-			const release = toSessionFusionDrop({
-				from,
+			const release = toSessionFusionAssignmentRelease({
 				id: linkFlashTokenRef.current,
-				members,
 				proximity,
-				variant: linkingVariant,
 			});
 			if (!release) {
 				return;
@@ -623,7 +620,7 @@ export function useBoardAgentSessionDrag({
 				// Glow's halo and backdrop pulse are the whole acknowledgement, and
 				// they key off the card rather than the rows inside it.
 				flash: null,
-				members,
+				members: [member],
 				proximity,
 				release,
 			});
@@ -754,8 +751,12 @@ export function useBoardAgentSessionDrag({
 			&& origin.sourceCardCode === card.code,
 		);
 		const target = transaction?.target;
-		const isFusionTarget = fusionDrop?.proximity.cardCode === card.code;
-		const dropTarget = isFusionTarget
+		// Click-assign arms Glow without a travelling chip, so it must not open
+		// the attach chin or count as a drop the way a session flight does.
+		const isFusionDropFlight = Boolean(
+			fusionDrop?.release.drop && fusionDrop.proximity.cardCode === card.code,
+		);
+		const dropTarget = isFusionDropFlight
 			? "attach"
 			: target
 				&& (target.kind === "attach" || target.kind === "unlink")
@@ -763,7 +764,7 @@ export function useBoardAgentSessionDrag({
 				? target.kind
 				: null;
 		const proximity = transaction?.proximity;
-		const attachNearness = isFusionTarget
+		const attachNearness = isFusionDropFlight
 			? 1
 			: proximity?.cardCode === card.code ? proximity.nearness : 0;
 		const attachedBinding = createBinding(
@@ -774,7 +775,7 @@ export function useBoardAgentSessionDrag({
 		);
 		const dragCount = dragState.dragging
 			? dragState.transfer.members.length
-			: fusionDrop
+			: fusionDrop?.release.drop
 				? fusionDrop.members.length
 				: 0;
 		const control: JiraIssueAgentSessionDragControl | undefined = enablement.attached
@@ -802,7 +803,7 @@ export function useBoardAgentSessionDrag({
 		if (dragState.dragging) {
 			return new Set(dragState.transfer.members.map((member) => member.id));
 		}
-		if (fusionDrop) {
+		if (fusionDrop?.release.drop) {
 			return new Set(fusionDrop.members.map((member) => member.id));
 		}
 		return new Set<string>();
@@ -810,8 +811,9 @@ export function useBoardAgentSessionDrag({
 
 	return {
 		/**
-		 * Acknowledge an agent the card's own assign menu linked, with the same
-		 * effect a drop draws. The menu owns the link; this only draws it.
+		 * Acknowledge an agent the card's own assign menu linked, with Glow's
+		 * halo and pulse — not the travelling-chip collapse a drop draws.
+		 * The menu owns the link; this only draws it.
 		 */
 		withAssignedAgentLink,
 		boardRootRef,

@@ -71,18 +71,19 @@ function buildArrivalDelays(
  * shared untracked-work session flyout, the same surface
  * `components/blocks/agent-session-flyout` uses, so hovering a short card offers
  * Link / Create / Add as a subtask without a footer chin. Long density has no
- * flyout — hover only highlights the row and reveals trailing controls. Medium detached keeps
- * that uncaptured relationship as a 276px stroked white chip: 24px agent+human
- * identity, the session title, and a trailing up-arrow key, with the
- * untracked-work flyout. Medium attached reuses the Jira Issue activity row
- * without a session-details flyout (assignment hover stays) — the work
- * relationship already exists on the card.
- * Small is the collapsed-column identity notch.
+ * flyout — hover only highlights the row and reveals trailing controls. Medium
+ * detached keeps that uncaptured relationship as a 276px stroked white chip:
+ * 24px agent+human identity, the session title, and a trailing up-arrow key,
+ * with the untracked-work flyout. Medium attached reuses the Jira Issue
+ * activity row and its assignment hover — the Assign agent footer appears when
+ * the host supplies `assignment.onAssignedAgentIdsChange`. Work-item capture
+ * is already the card. Small is the collapsed-column identity notch.
  */
 export function AgentSession({
 	className,
 	items: itemsProp,
 	arrivingItemIds,
+	assignment,
 	canViewItem,
 	capturedItemIds,
 	density = "short",
@@ -201,6 +202,7 @@ export function AgentSession({
 				{isAttached ? (
 					<li data-testid="agent-session-attached-group">
 						<AgentSessionAttachedCard
+							assignment={assignment}
 							isArriving={items.some((item) => beatItemIds?.has(item.id) ?? false)}
 							isNew={items.some((item) => newItemIds?.has(item.id) ?? false)}
 							items={items}
@@ -262,6 +264,7 @@ export function AgentSession({
 
 					const compactCard = (
 						<AgentSessionCompactCard
+							assignment={isAttached ? assignment : undefined}
 							captured={capturedItemIds?.has(item.id) ?? false}
 							flyout={!isAttached}
 							isArriving={beatItemIds?.has(item.id) ?? false}

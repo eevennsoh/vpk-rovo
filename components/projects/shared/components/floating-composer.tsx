@@ -255,7 +255,7 @@ export function FloatingComposer({
 		};
 	}, [layout]);
 
-	const addButtonNode = addButton ?? (
+	const addButtonNode = addButton === undefined ? (
 		<PromptInputButton
 			size="icon-sm"
 			variant="ghost"
@@ -264,7 +264,7 @@ export function FloatingComposer({
 		>
 			<AddIcon label="" />
 		</PromptInputButton>
-	);
+	) : addButton;
 
 	return (
 		<PromptInput

@@ -69,6 +69,9 @@ export interface AgentAssignmentAgent extends AgentSelectorAgent {
 export interface AgentAssignmentProps {
 	agents: readonly AgentSelectorAgent[];
 	assignedAgents: readonly AgentAssignmentAgent[];
+	/** Whether assigned rows expose Archive. Disable when the owning state model
+	 * cannot remove a session-backed assignment without immediately restoring it. */
+	allowArchive?: boolean;
 	className?: string;
 	defaultPinnedAgentIds?: readonly string[];
 	maxVisibleAgents?: number;
@@ -119,6 +122,7 @@ function runAssignedSessionAction(
 export function AgentAssignment({
 	agents,
 	assignedAgents,
+	allowArchive = true,
 	className,
 	defaultPinnedAgentIds = [],
 	maxVisibleAgents = 4,
@@ -325,7 +329,7 @@ export function AgentAssignment({
 	const assignedMenu = variant === "simple" ? (
 		<AssignedAgentsMenu
 			onAddAgent={onAssignedAgentIdsChange ? handleShowSelector : undefined}
-			onArchiveAgent={onAssignedAgentIdsChange ? handleArchiveAgent : undefined}
+			onArchiveAgent={allowArchive && onAssignedAgentIdsChange ? handleArchiveAgent : undefined}
 			onSelectAgent={handleAssignedAgentSelect}
 			rows={assignedAgents}
 		/>

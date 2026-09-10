@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
-import { getJiraIssueAgentSurfaceOffsets, JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS, JIRA_ISSUE_COMPACT_ISSUE_KEY_CLASS, resolveIssueAssigneeUnassignedKind, resolveJiraIssueIconMetrics, resolveJiraIssueSubtaskChrome } from "./lib.ts";
+import { getJiraIssueAgentSurfaceOffsets, JIRA_ISSUE_COMFORTABLE_COMPACT_ICON_CLASS, JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS, JIRA_ISSUE_COMPACT_ISSUE_KEY_CLASS, resolveIssueAssigneeUnassignedKind, resolveJiraIssueIconMetrics, resolveJiraIssueSubtaskChrome } from "./lib.ts";
 
 test("missing assignee photos resolve to the unassigned person placeholder", () => {
 	assert.equal(resolveIssueAssigneeUnassignedKind(undefined), "person");
@@ -35,12 +35,14 @@ test("a chinless agent well insets every surface edge so the shell keeps its hei
 test("compact icon metrics keep 12px glyphs and 16px avatars", () => {
 	assert.deepEqual(resolveJiraIssueIconMetrics(), {
 		assigneeSize: "xs",
+		compactIconClassName: undefined,
 		iconTileIconSize: "small",
 		iconTileSize: "xxsmall",
 		issueKeyClassName: JIRA_ISSUE_COMPACT_ISSUE_KEY_CLASS,
 	});
 	assert.deepEqual(resolveJiraIssueIconMetrics("compact"), {
 		assigneeSize: "xs",
+		compactIconClassName: undefined,
 		iconTileIconSize: "small",
 		iconTileSize: "xxsmall",
 		issueKeyClassName: JIRA_ISSUE_COMPACT_ISSUE_KEY_CLASS,
@@ -51,10 +53,12 @@ test("compact icon metrics keep 12px glyphs and 16px avatars", () => {
 test("comfortable icon metrics use 16px glyphs, 24px avatars, and the Subtasks label type", () => {
 	assert.deepEqual(resolveJiraIssueIconMetrics("comfortable"), {
 		assigneeSize: "sm",
+		compactIconClassName: JIRA_ISSUE_COMFORTABLE_COMPACT_ICON_CLASS,
 		iconTileIconSize: "medium",
 		iconTileSize: "xxsmall",
 		issueKeyClassName: JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS,
 	});
+	assert.match(JIRA_ISSUE_COMFORTABLE_COMPACT_ICON_CLASS, /size-4!/u);
 	assert.equal(JIRA_ISSUE_COMFORTABLE_ISSUE_KEY_CLASS, "text-xs font-medium leading-4 text-text-subtle");
 });
 

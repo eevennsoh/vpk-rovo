@@ -1,3 +1,4 @@
+import type { AgentListInvoker } from "@/components/blocks/agent-list";
 import type { ThirdPartyLogoName } from "@/components/ui/data/logo-third-party-data";
 
 export interface ViewportPoint {
@@ -9,6 +10,8 @@ export interface JiraDropzoneMember {
 	readonly avatarSrc?: string;
 	readonly brandName?: ThirdPartyLogoName;
 	readonly id: string;
+	/** Human who invoked the session, so the flight chip keeps the face. */
+	readonly invoker?: AgentListInvoker;
 	readonly name: string;
 	readonly vpkLogo?: "rovo";
 }

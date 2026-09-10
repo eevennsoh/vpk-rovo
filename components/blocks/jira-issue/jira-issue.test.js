@@ -9,6 +9,8 @@ const AGENT_ACTIVITY_SOURCE = [
 	readFileSync(join(__dirname, "agent-activity-row-presentation.tsx"), "utf8"),
 ].join("\n");
 const STARTUP_SOURCE = readFileSync(join(__dirname, "agent-activity-startup.tsx"), "utf8");
+// The row's "no agent-list / agent-states components" import contract lives in
+// agent-activity-imports.test.js, which keeps this file inside its line budget.
 // The summary cluster and the standalone card types were split out of index.tsx
 // to keep it under the 1000-line budget; these assertions follow them.
 const SUMMARY_SOURCE = readFileSync(join(__dirname, "summary.tsx"), "utf8");
@@ -390,12 +392,12 @@ test("Jira issue keeps activity rows composer-free and uses one shared assignmen
 	assert.match(AGENT_ACTIVITY_SOURCE, /assignedAgents = assignment\?\.assignedAgents \?\? activities\.map\(toAgentAssignmentAgent\)/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /statusKind: toAssignedAgentStatusKind\(activity\.state\)/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /case "awaiting-input":\s*return "needs-input";/u);
+	assert.match(SOURCE, /assignment\?: JiraIssueAgentAssignment;/u);
+	assert.match(SOURCE, /assignment=\{assignment\}/u);
 	assert.doesNotMatch(SOURCE, /onAssignedAgentIdsChange=/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /assignedIdDraft|toActivityFromAssignedAgent/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /trigger=\{rowHandle\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /<JiraIssueAgentDragWrapper/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-list"/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-states"/u);
 	// Every attached-session chin opens the same assignment flyout, whether the
 	// merged group contains one agent or many.
 	assert.match(
@@ -430,7 +432,8 @@ test("Jira issue shows PR metadata with the specified summary-row spacing", () =
 	assert.match(SOURCE, /const inferredPullRequestNumber = agentDoneRuns\.find\(\(run\) => run\.pullRequestNumber\)\?\.pullRequestNumber;/u);
 	assert.match(SOURCE, /const resolvedPullRequestNumber = pullRequestNumber \?\? inferredPullRequestNumber;/u);
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /export function JiraIssuePullRequestCluster\(/u);
-	assert.match(SUMMARY_SOURCE, /const pullRequestCluster = pullRequestNumber \? \([\s\S]*<JiraIssuePullRequestCluster[\s\S]*pullRequestPreview=\{pullRequestPreview\}[\s\S]*pullRequestTitle=\{pullRequestTitle \?\? summary\}[\s\S]*usesStrokeChrome=\{usesStrokeChrome\}/u);
+	assert.match(SUMMARY_SOURCE, /const compactIconClassName = iconMetrics\.compactIconClassName;/u);
+	assert.match(SUMMARY_SOURCE, /const pullRequestCluster = pullRequestNumber \? \([\s\S]*<JiraIssuePullRequestCluster[\s\S]*iconScale=\{iconScale\}[\s\S]*pullRequestPreview=\{pullRequestPreview\}[\s\S]*pullRequestTitle=\{pullRequestTitle \?\? summary\}[\s\S]*usesStrokeChrome=\{usesStrokeChrome\}/u);
 	// Default chrome keeps the PR cluster beside the issue key; stroke chrome
 	// moves it next to the priority/assignee (metadata) cluster instead.
 	assert.match(SUMMARY_BLOCK, /\{usesStrokeChrome \? null : pullRequestCluster\}/u);
@@ -449,6 +452,9 @@ test("Jira issue shows PR metadata with the specified summary-row spacing", () =
 	// Raised chrome still shows the PR number beside the icon. Stroke chrome
 	// drops the visible #N label and reveals the flyout Pull Request card.
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /if \(!usesStrokeChrome\) \{[\s\S]*#\{pullRequestNumber\}/u);
+	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /iconScale = "compact",/u);
+	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /const iconMetrics = resolveJiraIssueIconMetrics\(iconScale\);/u);
+	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /className=\{cn\(colorClass, "\[&_svg\]:text-current", iconMetrics\.compactIconClassName\)\}/u);
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /<HoverCard>[\s\S]*render=\{\(\s*<Button[\s\S]*aria-label=\{accessibleName\}[\s\S]*onClick=\{stopNestedActivation\}[\s\S]*onPointerDown=\{stopNestedActivation\}[\s\S]*size="icon-compact"[\s\S]*type="button"[\s\S]*variant="ghost"/u);
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /<Button[\s\S]*size="icon-compact"[\s\S]*variant="ghost"/u);
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /<PullRequest[\s\S]*relativeTime=\{pullRequestPreview\?\.relativeTime\}[\s\S]*variant="flyout"/u);
@@ -658,8 +664,6 @@ test("Jira issue stroke chrome uses compact inline subtask counts", () => {
 });
 
 test("Jira issue renders one aggregate Figma-sized agent row and always exposes the shared flyout", () => {
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-list"/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /from "@\/components\/blocks\/agent-states"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /import \{ AgentAvatarVisual \} from "@\/components\/ui-custom\/agent-avatar-visual";/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /import \{ Avatar, AvatarFallback \} from "@\/components\/ui\/avatar";/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const summary = summarizeJiraIssueAgentActivities\(activities\);/u);
@@ -687,7 +691,8 @@ test("Jira issue renders one aggregate Figma-sized agent row and always exposes 
 		AGENT_ACTIVITY_SOURCE,
 		/if \(isAwaitingInput\) \{[\s\S]*?<span className="block min-w-0 truncate text-sm leading-5">\{rowLabel\}<\/span>[\s\S]*?<AnimatedDots \/>/u,
 	);
-	assert.match(STARTUP_SOURCE, /className=\{\s*cn\(\s*"block min-w-0 truncate text-text"/u);
+	assert.match(STARTUP_SOURCE, /baseColor="var\(--color-text\)"/u);
+	assert.match(STARTUP_SOURCE, /className="block min-w-0 truncate text-sm leading-5"/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /PixelLoader/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /className="flex min-w-0 flex-1 items-center gap-2"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /className="grid size-6 shrink-0 place-items-center text-icon"/u);

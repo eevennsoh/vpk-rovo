@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement, type ReactNode } from "react";
 
 import PersonIcon from "@atlaskit/icon/core/person";
 import PriorityHighIcon from "@atlaskit/icon/core/priority-high";
@@ -267,12 +267,14 @@ export function PersonRowField({
 	ariaLabel,
 	people,
 	placeholder,
+	renderValue,
 	value,
 	onChange,
 }: Readonly<{
 	ariaLabel: string;
 	people: readonly WorkItemPerson[];
 	placeholder: string;
+	renderValue?: (person: AgentPlannerAssignee) => ReactNode;
 	value: AgentPlannerAssignee | null;
 	onChange: (person: AgentPlannerAssignee) => void;
 }>) {
@@ -292,7 +294,9 @@ export function PersonRowField({
 	return (
 		<Popover onOpenChange={handleOpenChange} open={open}>
 			<PopoverTrigger render={<DetailValueTrigger aria-label={ariaLabel} />}>
-				{value ? <PersonLabel person={value} /> : <span className="text-sm text-text-subtlest">{placeholder}</span>}
+				{value
+					? renderValue?.(value) ?? <PersonLabel person={value} />
+					: <span className="text-sm text-text-subtlest">{placeholder}</span>}
 			</PopoverTrigger>
 			<PopoverContent
 				align="start"
@@ -320,12 +324,16 @@ export function PersonRowField({
 
 export function DateRowField({
 	ariaLabel,
+	dateValueMode = "instant",
+	leadingVisual,
 	placeholder,
 	value,
 	onChange,
 	CalendarComponent,
 }: Readonly<{
 	ariaLabel: string;
+	dateValueMode?: "instant" | "utc-date";
+	leadingVisual?: ReactNode;
 	placeholder: string;
 	value?: Date;
 	onChange: (next: Date | undefined) => void;
@@ -335,16 +343,23 @@ export function DateRowField({
 }>) {
 	const [open, setOpen] = useState(false);
 	const [label, setLabel] = useState(placeholder);
+	const calendarValue = dateValueMode === "utc-date" && value
+		? new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate())
+		: value;
 
 	useEffect(() => {
 		setLabel(value
-			? new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(value)
+			? new Intl.DateTimeFormat("en-US", {
+				dateStyle: "medium",
+				...(dateValueMode === "utc-date" ? { timeZone: "UTC" } : {}),
+			}).format(value)
 			: placeholder);
-	}, [placeholder, value]);
+	}, [dateValueMode, placeholder, value]);
 
 	return (
 		<Popover onOpenChange={setOpen} open={open}>
 			<PopoverTrigger render={<DetailValueTrigger aria-label={ariaLabel} />}>
+				{leadingVisual}
 				<span className={cn("text-sm", value ? "text-text" : "text-text-subtlest")}>{label}</span>
 			</PopoverTrigger>
 			<PopoverContent
@@ -356,10 +371,12 @@ export function DateRowField({
 				<CalendarComponent
 					mode="single"
 					onSelect={(next) => {
-						onChange(next);
+						onChange(next && dateValueMode === "utc-date"
+							? new Date(Date.UTC(next.getFullYear(), next.getMonth(), next.getDate()))
+							: next);
 						setOpen(false);
 					}}
-					selected={value}
+					selected={calendarValue}
 				/>
 			</PopoverContent>
 		</Popover>
@@ -386,7 +403,15 @@ function toSelectorAgent(member: CrewMember): AgentSelectorAgent {
 	};
 }
 
-export function AgentsRowField({ value, onChange }: Readonly<{ value: readonly CrewMember[]; onChange: (next: CrewMember[]) => void }>) {
+export function AgentsRowField({
+	trigger,
+	value,
+	onChange,
+}: Readonly<{
+	trigger?: ReactElement<{ "aria-expanded"?: boolean }>;
+	value: readonly CrewMember[];
+	onChange: (next: CrewMember[]) => void;
+}>) {
 	const actions = useJiraWorkItemActions();
 	const { sessions, staticEvents } = useJiraWorkItemState();
 	const selectedAgents = value.filter((member) => member.kind === "agent");
@@ -450,6 +475,7 @@ export function AgentsRowField({ value, onChange }: Readonly<{ value: readonly C
 	return (
 		<AgentAssignment
 			agents={agents}
+			allowArchive={false}
 			assignedAgents={assignedAgents}
 			defaultPinnedAgentIds={DEFAULT_PINNED_SPACE_AGENT_IDS}
 			maxVisibleAgents={3}
@@ -461,6 +487,7 @@ export function AgentsRowField({ value, onChange }: Readonly<{ value: readonly C
 			pinnedItemsLabel={WORK_ITEM_PINNED_ITEMS_LABEL}
 			usedAgentIds={resolveUsedAgentIds(sessions)}
 			positionerClassName="z-[502]"
+			trigger={trigger}
 		/>
 	);
 }

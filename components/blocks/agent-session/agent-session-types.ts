@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import type { AgentListAgent, AgentListItem } from "@/components/blocks/agent-list";
+import type { JiraIssueAgentAssignment } from "@/components/blocks/jira-issue/agent-activity-row-presentation";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
 
 import type { ApproveTarget } from "./agent-session-approve";
@@ -218,6 +219,11 @@ export interface AgentSessionProps {
 	rowTriage?: ReadonlyMap<string, AgentSessionTriageRow>;
 	/** Called when the viewer selects or deselects a card. */
 	onSelectedItemIdChange?: (itemId: string | null) => void;
+	/**
+	 * Assignment menu for `medium-attached` rows. The Assign agent footer
+	 * renders only when `onAssignedAgentIdsChange` is supplied.
+	 */
+	assignment?: JiraIssueAgentAssignment;
 	/** Opt-in: makes large untracked and medium-detached sessions draggable onto work items. */
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
 	draggingIds?: ReadonlySet<string>;
