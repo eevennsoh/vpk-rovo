@@ -125,6 +125,7 @@ function JiraIssueCompletedAgentStatusIcon({
 }
 
 function JiraIssueActiveAgentStatusIcon({
+	iconScale,
 	isAwaitingInput,
 	renderAgentActivityIndicator,
 }: Readonly<{
@@ -154,7 +155,11 @@ function JiraIssueActiveAgentStatusIcon({
 			aria-hidden="true"
 			className="grid size-6 shrink-0 place-items-center text-icon"
 		>
-			<Spinner label="" pulse size="xl" variant="experimental" />
+			{iconScale === "comfortable" ? (
+				<Spinner label="" pulse size="xl" variant="experimental" />
+			) : (
+				<Spinner label="" />
+			)}
 		</span>
 	);
 }

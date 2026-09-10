@@ -78,7 +78,11 @@ export function AgentSessionMediumCard({
 							"relative flex h-10 w-[276px] max-w-full items-center gap-2 rounded-[10px] border border-solid bg-surface px-2 text-left",
 							"transition-[background-color,border-color] duration-xxshort ease-out-practical motion-reduce:transition-none",
 							"hover:border-border focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-							isHighlighted ? "bg-surface-hovered" : "hover:bg-surface-hovered",
+							// Lit from the column, the pointer is nowhere near this row, so it
+							// borrows the row's own hover rung. The resting fill is restated
+							// here beside the lit one so the pair cannot drift apart; the
+							// later `cn` argument still wins over the base when highlighted.
+							isHighlighted ? "bg-surface-hovered" : "bg-surface hover:bg-surface-hovered",
 							!captured && isNew ? "border-border-discovery" : "border-border-disabled",
 							isNew ? "ring-1 ring-border-discovery" : null,
 						)}
