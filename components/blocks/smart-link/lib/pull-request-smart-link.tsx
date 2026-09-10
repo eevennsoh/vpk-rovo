@@ -21,7 +21,11 @@ export interface PullRequestSmartLinkInput {
 	deletions: number;
 	/** Number of files touched by the diff, rendered alongside the +/- counts. */
 	files?: number;
-	/** Owner/name path (e.g. `eevensoh/vpk-rovo`). */
+	/**
+	 * Owner/name path (e.g. `eevensoh/vpk-rovo`). Builds the GitHub URL; it is
+	 * not shown on the card — the provider mark and `#N` already say where the
+	 * change lives.
+	 */
 	repository?: string;
 	/** Source branch the PR merges from (e.g. `feature/shop-4821-guest-checkout`). */
 	branch?: string;
@@ -101,9 +105,6 @@ export function toPullRequestSmartLink(
 			input.branch || input.targetBranch
 				? { branch: input.branch, targetBranch: input.targetBranch }
 				: undefined,
-		// The repo renders as a provider-logo tag on the metadata row, beside the
-		// author avatar and the branch path.
-		repository: input.repository,
 		description: input.description,
 		actions: SMART_LINK_MODAL_ACTIONS,
 	};

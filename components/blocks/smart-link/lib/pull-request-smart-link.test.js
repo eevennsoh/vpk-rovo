@@ -63,8 +63,9 @@ test("toPullRequestSmartLink builds the pull-request SmartLink model", async () 
 		branch: "feature/shop-4821-guest-checkout",
 		targetBranch: "main",
 	});
-	// The repo renders as its own provider-logo tag, not a generic metadata pill.
-	assert.equal(item.repository, "eevensoh/vpk-rovo");
+	// The repo builds the href but never reaches the card.
+	assert.equal(item.href, "https://github.com/eevensoh/vpk-rovo/pull/1847");
+	assert.equal(item.repository, undefined);
 	assert.equal(item.metadata, undefined);
 	assert.deepEqual(item.author, { name: "Venn", src: "/avatar-user/venn/venn.png" });
 	assert.ok(item.actions?.some((action) => action.id === "copy-link"));
@@ -143,6 +144,7 @@ test("toPullRequestSmartLink falls back to a hash href without repository", asyn
 	// The number already prefixes the title, so a repo-less PR has no context row.
 	assert.equal(item.metadata, undefined);
 	assert.equal(item.repository, undefined);
+	assert.equal(item.branchPath, undefined);
 	assert.equal(item.branchPath, undefined);
 	assert.equal(item.title, "#3: Draft");
 	assert.equal(item.codeStats.files, undefined);

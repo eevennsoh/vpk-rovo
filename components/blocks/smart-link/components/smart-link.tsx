@@ -31,7 +31,6 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Icon } from "@/components/ui/icon";
 import { IconTile } from "@/components/ui/icon-tile";
 import { Lozenge, LozengeDropdownTrigger, type LozengeProps } from "@/components/ui/lozenge";
-import { Tag } from "@/components/ui/tag";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
@@ -513,15 +512,16 @@ function SmartLinkMetadataRow({ item }: Readonly<{ item: SmartLinkItem }>) {
 		!hasIssueDetails &&
 		!hasAuthorDetails &&
 		!hasBranchPath &&
-		!item.repository &&
 		!item.dueDate
 	) {
 		return null;
 	}
 
 	// Pull requests use this row as a single-line context strip — author avatar,
-	// repo tag, then `source → target`. The author's name and the `·` separators
-	// give up their space so the branch path can truncate instead of wrapping.
+	// then `source → target`. The repo is not repeated here: the provider mark
+	// and the PR number already say where the change lives. The author's name and
+	// the `·` separators give up their space so the branch path can truncate
+	// instead of wrapping.
 	const isBranchContext = hasBranchPath;
 
 	return (
@@ -550,17 +550,6 @@ function SmartLinkMetadataRow({ item }: Readonly<{ item: SmartLinkItem }>) {
 					<MetadataPill metadata={metadata} />
 				</span>
 			))}
-			{item.repository ? (
-				<Tag
-					// Tag defaults to `self-start`, which fights the row's `items-center`.
-					className="shrink-0 self-center"
-					color="gray"
-					elemBefore={item.provider.logo ? renderVisual(item.provider.logo, "trigger") : undefined}
-					maxWidth="9rem"
-				>
-					{item.repository}
-				</Tag>
-			) : null}
 			{hasBranchPath && branchPath ? <SmartLinkBranchPathLabel branchPath={branchPath} /> : null}
 			{item.priority ? <SmartLinkPriorityIndicator priority={item.priority} /> : null}
 			{item.dueDate ? (
@@ -735,6 +724,11 @@ export function SmartLinkCard({
 			aria-labelledby={titleId}
 			className={cn(
 				"w-full max-w-[32rem] overflow-hidden rounded-lg bg-surface text-text",
+				// A pull request fills the card with a context strip, a summary, and
+				// a diff row, so it gets a fixed 400px rather than shrink-to-fit:
+				// otherwise the same card is a different width on every PR, and the
+				// branch path and stats rewrap as the hover moves down a list.
+				item.variant === "pull-request" ? "w-[25rem] max-w-full" : null,
 				isFlyout ? "bg-surface-overlay shadow-2xl" : "border border-border",
 				onActivate &&
 					selected &&

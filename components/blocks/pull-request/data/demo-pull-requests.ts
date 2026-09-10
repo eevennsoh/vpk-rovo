@@ -1,7 +1,14 @@
 import type { PullRequestProps } from "@/components/blocks/pull-request/components/pull-request-types";
 
-/** Catalog fixtures for the Pull Request block. */
-export const DEMO_PULL_REQUESTS: readonly PullRequestProps[] = [
+/**
+ * Catalog fixtures for the Pull Request block.
+ *
+ * `repository` is not a `PullRequestProps` field — the card does not print the
+ * repo, because the provider mark and `#N` already say where the change lives.
+ * It stays on the fixture for consumers that show a repo of their own, such as
+ * the context bar's `showRepository` slot.
+ */
+export const DEMO_PULL_REQUESTS: readonly (PullRequestProps & { repository: string })[] = [
 	{
 		number: 1306,
 		title: "Add guest checkout to the storefront",
