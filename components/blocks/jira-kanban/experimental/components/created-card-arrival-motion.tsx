@@ -3,8 +3,8 @@
 import { use, type ReactNode } from "react";
 import { motion, type MotionProps } from "motion/react";
 
-import { JiraCreateEntrance } from "@/components/blocks/jira-create/components/jira-create-entrance";
-import { getJiraCreateArrivalDelayS } from "@/components/blocks/jira-create/lib/jira-create-motion";
+import { JiraCreateEntrance } from "@/components/blocks/jira-creating/components/jira-creating-entrance";
+import { getJiraCreateArrivalDelayS } from "@/components/blocks/jira-creating/lib/jira-creating-motion";
 import type { JiraKanbanCardMoveAnimation } from "@/components/blocks/jira-kanban";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +62,7 @@ function getArrivalCompletionHandler(
 
 /**
  * The wrapper only ever drives column reshuffles now — an arriving card's
- * `will-change` and transition belong to the jira-create entrance inside it.
+ * `will-change` and transition belong to the jira-creating entrance inside it.
  */
 function getCardMoveStyle(
 	cardMovePhase: JiraKanbanCardMoveAnimation["phase"] | undefined,
@@ -118,9 +118,6 @@ export function CreatedCardArrivalMotion({
 			className={cn(
 				"flex w-full min-w-0 max-w-[280px] flex-col gap-2 rounded-lg",
 				"transition-[background-color,opacity] duration-normal ease-out-practical motion-reduce:transition-none",
-				"[&_[data-slot=jira-issue-agent-backdrop]]:transition-colors [&_[data-slot=jira-issue-agent-backdrop]]:duration-normal [&_[data-slot=jira-issue-agent-backdrop]]:ease-out-practical",
-				"motion-reduce:[&_[data-slot=jira-issue-agent-backdrop]]:transition-none",
-				cardArrival.highlighted && "[&_[data-slot=jira-issue-agent-backdrop]]:bg-bg-accent-blue-subtlest",
 				getBoardCardInsertionAnchorClassName(insertionPosition),
 				className,
 			)}
@@ -129,10 +126,9 @@ export function CreatedCardArrivalMotion({
 			data-board-card-count={cardCount}
 			data-board-card-index={cardIndex}
 			data-board-column-title={columnTitle}
-			data-created-card-backdrop={cardArrival.highlighted || undefined}
 			data-created-card-arrival-id={cardArrival.arrivalId}
 			data-created-card-arrival-last={cardArrival.final || undefined}
-			data-jira-create-arrival={cardArrival.entering || undefined}
+			data-jira-creating-arrival={cardArrival.entering || undefined}
 			data-issue-key={cardCode}
 			initial={false}
 			style={getCardMoveStyle(cardMovePhase)}
@@ -143,7 +139,7 @@ export function CreatedCardArrivalMotion({
 			 * for a fragment when the arrival clears. Changing the child's element
 			 * type would unmount and remount the card, discarding any menu,
 			 * expansion, drag, or focus state the user opened on the brand-new card
-			 * during the backdrop hold.
+			 * during its entrance.
 			 */}
 			<JiraCreateEntrance
 				active={cardArrival.entering}

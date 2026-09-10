@@ -5729,9 +5729,9 @@
 					},
 					{
 						"category": "blocks",
-						"slug": "jira-create",
+						"slug": "jira-creating",
 						"name": "Jira Creating",
-						"importPath": "@/components/blocks/jira-create"
+						"importPath": "@/components/blocks/jira-creating"
 					},
 					{
 						"category": "blocks",
