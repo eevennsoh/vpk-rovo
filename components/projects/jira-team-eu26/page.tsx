@@ -300,6 +300,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						agentActivityLayout="merged"
 						agentSessionMultiSelect={false}
 						cardGenerativeActionPresentation="more-actions"
+						iconScale="comfortable"
 						createWorkItemDropZoneLabel={createWorkItemDropZoneLabel}
 						agentSessionAssigneeIdAliases={JIRA_TEAM_EU26_PAY_SESSION_MEMBER_ID_BY_ASSIGNEE_ID}
 						agentSessionLinkingVariant="glow"
@@ -327,6 +328,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						onCardAgentSessionUnlink={handleAgentSessionUnlink}
 						onListAgentSessionCreate={handleListAgentSessionCreate}
 						showAgentSessionUnlinkWell={false}
+						subtaskChrome="stroke"
 						onResumeLooseWork={handleResumeLooseWork}
 						onViewChange={tabOwnsView ? undefined : setWorkItemView}
 						renderListContent={(

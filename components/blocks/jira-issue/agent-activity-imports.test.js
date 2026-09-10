@@ -18,7 +18,15 @@ const { join } = require("node:path");
 const { test } = require("node:test");
 
 const AGENT_ACTIVITY_SOURCE = readFileSync(join(__dirname, "agent-activity.tsx"), "utf8");
-const VALUE_IMPORTS = AGENT_ACTIVITY_SOURCE.replace(/^import type [\s\S]*?;$/gmu, "");
+// The row is split across the container and its presentation half, so the
+// guard has to read both — otherwise moving a component import one file over
+// would satisfy it while the bundle is unchanged.
+const ROW_PRESENTATION_SOURCE = readFileSync(
+	join(__dirname, "agent-activity-row-presentation.tsx"),
+	"utf8",
+);
+const ROW_SOURCE = [AGENT_ACTIVITY_SOURCE, ROW_PRESENTATION_SOURCE].join("\n");
+const VALUE_IMPORTS = ROW_SOURCE.replace(/^import type [\s\S]*?;$/gmu, "");
 
 test("the aggregate agent row pulls no agent-list or agent-states components", () => {
 	assert.doesNotMatch(VALUE_IMPORTS, /from "@\/components\/blocks\/agent-list/u);
@@ -27,7 +35,7 @@ test("the aggregate agent row pulls no agent-list or agent-states components", (
 
 test("the row still draws its own avatars through AgentAvatarVisual", () => {
 	assert.match(
-		AGENT_ACTIVITY_SOURCE,
+		ROW_SOURCE,
 		/import \{ AgentAvatarVisual \} from "@\/components\/ui-custom\/agent-avatar-visual";/u,
 	);
 });

@@ -54,9 +54,10 @@ const INDICATORS_SOURCE = readProjectFile(
 const COMPLETED_RUNS_SOURCE = readProjectFile(
 	"components/blocks/jira-issue/completed-agent-runs.tsx",
 );
-const AGENT_ACTIVITY_SOURCE = readProjectFile(
-	"components/blocks/jira-issue/agent-activity.tsx",
-);
+const AGENT_ACTIVITY_SOURCE = [
+	readProjectFile("components/blocks/jira-issue/agent-activity.tsx"),
+	readProjectFile("components/blocks/jira-issue/agent-activity-row-presentation.tsx"),
+].join("\n");
 const TRANSFER_SOURCE = readProjectFile(
 	"components/blocks/jira-issue/agent-session-transfer.tsx",
 );
@@ -138,7 +139,7 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 		/const rowSessionDrag = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionDrag : undefined;/u,
 	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /sessionDrag=\{rowSessionDrag\}/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<AgentAssignment/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<JiraIssueAgentAssignmentHandle/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout|JiraSessionFlyoutTrigger/u);
 });
@@ -408,7 +409,7 @@ test("Team EU returns unlinked sessions to Untracked without parking them on sta
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /showUnlinkWell = true,/u);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const showUnlinkControl = Boolean\(sessionDrag\?\.onUnlink\) && !isDraggedOut;/u,
+		/const showUnlinkControl = iconScale !== "comfortable"\s*\n\s*&& Boolean\(sessionDrag\?\.onUnlink\)\s*\n\s*&& !isDraggedOut;/u,
 	);
 	assert.match(
 		TRANSFER_SOURCE,

@@ -4,7 +4,10 @@ const { join } = require("node:path");
 const { test } = require("node:test");
 
 const SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
-const AGENT_ACTIVITY_SOURCE = readFileSync(join(__dirname, "agent-activity.tsx"), "utf8");
+const AGENT_ACTIVITY_SOURCE = [
+	readFileSync(join(__dirname, "agent-activity.tsx"), "utf8"),
+	readFileSync(join(__dirname, "agent-activity-row-presentation.tsx"), "utf8"),
+].join("\n");
 // The row's "no agent-list / agent-states components" import contract lives in
 // agent-activity-imports.test.js, which keeps this file inside its line budget.
 // The summary cluster and the standalone card types were split out of index.tsx
@@ -268,7 +271,12 @@ test("Jira issue reserves a stable title action slot and opens the built-in acti
 	assert.match(MORE_MENU_SOURCE, /import ShowMoreHorizontalIcon from "@atlaskit\/icon\/core\/show-more-horizontal";/u);
 	assert.match(MORE_MENU_SOURCE, /<DropdownMenu open=\{open\} onOpenChange=\{handleOpenChange\}>/u);
 	assert.match(MORE_MENU_SOURCE, /aria-label=\{`More actions for \$\{issueKey\}`\}/u);
-	assert.match(MORE_MENU_SOURCE, /pointer-events-none size-6 opacity-0[^"]*group-hover\/jira-issue:pointer-events-auto group-hover\/jira-issue:opacity-100[^"]*group-has-\[:focus-visible\]\/jira-issue:pointer-events-auto group-has-\[:focus-visible\]\/jira-issue:opacity-100[^"]*data-popup-open:pointer-events-auto data-popup-open:opacity-100/u);
+	assert.match(
+		MORE_MENU_SOURCE,
+		/group-\[&:hover:not\(:has\(\[data-slot=jira-issue-subtask-card\]:hover\)\)\]\/jira-issue:pointer-events-auto group-\[&:hover:not\(:has\(\[data-slot=jira-issue-subtask-card\]:hover\)\)\]\/jira-issue:opacity-100/u,
+	);
+	assert.match(MORE_MENU_SOURCE, /group-has-\[:focus-visible\]\/jira-issue:pointer-events-auto group-has-\[:focus-visible\]\/jira-issue:opacity-100/u);
+	assert.match(MORE_MENU_SOURCE, /data-popup-open:pointer-events-auto data-popup-open:opacity-100/u);
 	assert.match(MORE_MENU_SOURCE, /motion-reduce:transition-none/u);
 	assert.match(MORE_MENU_SOURCE, /<DropdownMenuContent align="start" className="max-h-none w-\[280px\]" side="right" sideOffset=\{8\}>/u);
 	for (const label of ["Move work item", "Change status", "Copy link", "Copy key", "Add agent", "Link Confluence item", "Link work item", "Change parent", "Select cover", "Edit labels", "Add flag"]) {
@@ -354,13 +362,15 @@ test("Jira issue keeps activity rows composer-free and uses one shared assignmen
 	// `relative` is load-bearing: the link-flash overlay is absolutely positioned
 	// against this row, and without it the sweep escapes to a further ancestor.
 	assert.match(AGENT_ACTIVITY_SOURCE, /"group\/agent-chin-row relative flex min-w-0 items-center"/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /: "h-10 w-full justify-between rounded-md px-2 py-2 hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed"/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /"h-10 w-full justify-between rounded-md py-2 hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed"/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /iconScale === "comfortable" \? "pr-2 pl-1" : "px-2"/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /inheritChinSurface \? "bg-transparent" : "bg-bg-neutral"/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /className="flex h-6 w-full[^"]*rounded-b-\[6px\] rounded-t-sm[^"]*"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const isSingleAgent = summary\.activityCount === 1;/u);
 	// The open-chat handler is hoisted so the drag hook can own `bind.onClick`
 	// and swallow the click that ends a transfer gesture; without a session-drag
 	// binding the row falls back to a plain `onClick`.
-	assert.match(AGENT_ACTIVITY_SOURCE, /const handleOpenChat = canOpenChat \? \(\) => onViewChat\?\.\(activities\[0\]\) : undefined;/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /return canOpenChat \? \(\) => onViewChat\?\.\(activities\[0\]\) : undefined;/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /\{\.\.\.\(sessionDragBind \?\? \{ onClick: handleOpenChat \}\)\}/u);
 	// A click on a linked session is activation, not the start of a transfer.
 	// Publishing on pointerdown reveals and can arm the adjacent unlink well,
@@ -376,11 +386,15 @@ test("Jira issue keeps activity rows composer-free and uses one shared assignmen
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
 	// The drag wrapper is applied around the row shell. AgentAssignment still
 	// clones only the drag handle so the hover card keeps `aria-expanded`.
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<AgentAssignment/u);
-	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /onAssignedAgentIdsChange=/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /if \(!showAssignmentFlyout \|\| isCompletedRow\) \{\s*return rowHandle;[\s\S]*<AgentAssignment/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /onAssignedAgentIdsChange=\{assignment\?\.onAssignedAgentIdsChange\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /assignedAgents = assignment\?\.assignedAgents \?\? activities\.map\(toAgentAssignmentAgent\)/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /statusKind: toAssignedAgentStatusKind\(activity\.state\)/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /case "awaiting-input":\s*return "needs-input";/u);
+	assert.doesNotMatch(SOURCE, /onAssignedAgentIdsChange=/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /assignedIdDraft|toActivityFromAssignedAgent/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /trigger=\{rowHandle\}/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /return withSessionDrag\(/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /<JiraIssueAgentDragWrapper/u);
 	// Every attached-session chin opens the same assignment flyout, whether the
 	// merged group contains one agent or many.
 	assert.match(
@@ -420,7 +434,8 @@ test("Jira issue shows PR metadata with the specified summary-row spacing", () =
 	// moves it next to the priority/assignee (metadata) cluster instead.
 	assert.match(SUMMARY_BLOCK, /\{usesStrokeChrome \? null : pullRequestCluster\}/u);
 	assert.match(SUMMARY_BLOCK, /\{usesStrokeChrome && pullRequestCluster \? \([\s\S]*<div className="flex shrink-0 items-center gap-0">[\s\S]*\{pullRequestCluster\}[\s\S]*\{metadataCluster\}/u);
-	assert.match(SUMMARY_SOURCE, /usesStrokeChrome \? "gap-0" : "gap-1\.5"/u);
+	assert.match(SUMMARY_SOURCE, /usesStrokeChrome \? \(comfortableIcons \? "gap-1" : "gap-0"\) : "gap-1\.5"/u);
+	assert.doesNotMatch(SUMMARY_SOURCE, /comfortableIcons && "size-4!"/u);
 	assert.match(TYPES_SOURCE, /export type JiraIssuePullRequestStatus = "open" \| "failed" \| "merged";/u);
 	assert.match(TYPES_SOURCE, /export interface JiraIssuePullRequestPreview \{[\s\S]*additions: number;[\s\S]*deletions: number;[\s\S]*filesChanged\?: number;[\s\S]*relativeTime\?: string;/u);
 	assert.match(PULL_REQUEST_CLUSTER_SOURCE, /function getJiraIssuePullRequestPresentation\(/u);
@@ -446,8 +461,8 @@ test("Jira issue shows PR metadata with the specified summary-row spacing", () =
 test("Jira issue stroke chrome matches the work-item key type on the issue-key cluster", () => {
 	assert.match(SUMMARY_SOURCE, /import \{ IconTile \} from "@\/components\/ui\/icon-tile";/);
 	assert.match(SUMMARY_BLOCK, /usesStrokeChrome\s*\n\s*\? "flex shrink-0 items-center gap-1\.5"\s*\n\s*: "flex shrink-0 items-center gap-1"/);
-	assert.match(SUMMARY_BLOCK, /usesStrokeChrome\s*\n\s*\? "text-xs font-normal leading-4 text-text-subtlest"\s*\n\s*: "text-xs font-semibold text-text-subtlest"/);
-	assert.match(SUMMARY_BLOCK, /usesStrokeChrome \? \(\s*<IconTile[\s\S]*icon=\{<TaskIcon label="" color=\{token\("color\.icon\.brand"\)\} size="small" \/>\}[\s\S]*iconSize="small"[\s\S]*label=\{issueTypeLabel\}[\s\S]*size="xxsmall"[\s\S]*variant="transparent"/);
+	assert.match(SUMMARY_BLOCK, /usesStrokeChrome\s*\n\s*\? iconMetrics\.issueKeyClassName\s*\n\s*: "text-xs font-semibold text-text-subtlest"/);
+	assert.match(SUMMARY_BLOCK, /usesStrokeChrome \? \(\s*<IconTile[\s\S]*icon=\{<TaskIcon label="" color=\{token\("color\.icon\.brand"\)\} size="small" \/>\}[\s\S]*iconSize=\{iconMetrics\.iconTileIconSize\}[\s\S]*label=\{issueTypeLabel\}[\s\S]*size=\{iconMetrics\.iconTileSize\}[\s\S]*variant="transparent"/);
 	assert.match(SUMMARY_BLOCK, /<TaskIcon[\s\S]*label=\{issueTypeLabel\}[\s\S]*color=\{token\("color\.icon\.brand"\)\}/);
 	assert.match(SUBTASKS_BLOCK, /usesStrokeChrome\s*\n\s*\? "flex items-center gap-1\.5 text-xs font-medium leading-4 text-text-subtle"/);
 });
@@ -458,7 +473,7 @@ test("Jira issue uses the 8px large radius token", () => {
 });
 
 test("Jira issue switches rich variants to an article with internal controls", () => {
-	assert.match(SOURCE, /const hasAgentActivityPresentation = agentActivityMode !== undefined \|\| Boolean\(agentActivities\?\.length\) \|\| hasAgentDoneNotification;/);
+	assert.match(SOURCE, /const hasAgentActivityPresentation = agentActivityMode !== undefined \|\| Boolean\(agentActivities\?\.length\) \|\| hasCompletedAgentChin;/);
 	assert.match(SOURCE, /const hasInteractiveContent = showMoreAction \|\| hasSubtasks \|\| Boolean\(parentEpicControl\) \|\| hasAgentActivityPresentation \|\| agentActivityShellMounted \|\| Boolean\(generativeAction\) \|\| Boolean\(agentSessionTransfer\) \|\| usesCompactVisual \|\| Boolean\(agentSessionTargetPreview\);/);
 	assert.match(SOURCE, /const shouldRenderIssueClickButton = Boolean\(props\.onClick && !parentEpicControl\);/);
 	assert.match(SOURCE, /<article[\s\S]*data-selected=\{selected \|\| undefined\}/);
@@ -647,25 +662,36 @@ test("Jira issue renders one aggregate Figma-sized agent row and always exposes 
 	assert.match(AGENT_ACTIVITY_SOURCE, /const summary = summarizeJiraIssueAgentActivities\(activities\);/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const isSingleAgent = summary\.activityCount === 1;/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const featuredActivity = summary\.featuredActivityIndex !== null[\s\S]*\? activities\[summary\.featuredActivityIndex\][\s\S]*: undefined;/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /featuredActivity \? \([\s\S]*<AgentAvatarVisual[\s\S]*avatarClassName="shrink-0"[\s\S]*avatarSrc=\{featuredActivity\.avatarSrc\}[\s\S]*label=\{featuredActivity\.name\}[\s\S]*sizePx=\{24\}[\s\S]*: \(\s*<AgentLoading[\s\S]*agents=\{activities\.map\(toAgentLoadingAgent\)\}[\s\S]*className="shrink-0"/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const isAwaitingInput = summary\.priorityState === "awaiting-input";/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /featuredActivity \? \([\s\S]*<span className="grid size-6 shrink-0 place-items-center">[\s\S]*<AgentAvatarVisual[\s\S]*animate=\{false\}[\s\S]*avatarClassName="shrink-0"[\s\S]*avatarSrc=\{featuredActivity\.avatarSrc\}[\s\S]*label=\{featuredActivity\.name\}[\s\S]*sizePx=\{24\}[\s\S]*: \(\s*<span className="grid size-6 shrink-0 place-items-center">[\s\S]*<AgentLoading[\s\S]*agents=\{activities\.map\(toAgentLoadingAgent\)\}[\s\S]*className="shrink-0"/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /const isAwaitingInput = !isCompletedRow && summary\.priorityState === "awaiting-input";/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /shouldCycleSingleAgentLabel|JiraIssueCyclingAgentLabel/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /status: activity\.label,[\s\S]*statusSequence: activity\.state === "working" \? getJiraIssueAgentWorkingLabels\(activity\) : undefined,[\s\S]*statusCycleIntervalMs: activity\.cycleIntervalMs[\s\S]*statusCycleJitterMs: activity\.cycleIntervalJitterMs/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /\{summary\.label\}[\s\S]*<AnimatedDots/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"[\s\S]*\{summary\.label\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /\{rowLabel\}[\s\S]*<AnimatedDots/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"[\s\S]*\{rowLabel\}/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /PixelLoader/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /className="flex min-w-0 flex-1 items-center gap-2"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /className="grid size-6 shrink-0 place-items-center text-icon"/u);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/className="grid size-6 shrink-0 place-items-center text-icon-information"[\s\S]*<StatusInformationIcon label="" size="medium" color="currentColor" \/>/u,
+	);
+	assert.doesNotMatch(
+		AGENT_ACTIVITY_SOURCE,
+		/<StatusInformationIcon label="" size="small"/u,
+	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /import \{ Spinner \} from "@\/components\/ui\/spinner";/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /<Spinner label="" \/>/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<AgentAssignment[\s\S]*openMode="hover"[\s\S]*trigger=\{rowHandle\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /iconScale === "comfortable" \? \(\s*<Spinner label="" pulse size="xl" variant="experimental" \/>\s*\) : \(\s*<Spinner label="" \/>\s*\)/u);
+	assert.match(SOURCE, /<JiraIssueAgentActivityRows[\s\S]*iconScale=\{iconScale\}/);
+	assert.match(SOURCE, /<JiraIssueAgentActivityRows[\s\S]*inheritChinSurface/);
+	assert.match(AGENT_ACTIVITY_SOURCE, /if \(!showAssignmentFlyout \|\| isCompletedRow\) \{\s*return rowHandle;[\s\S]*<AgentAssignment[\s\S]*openMode="hover"[\s\S]*trigger=\{rowHandle\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /inheritChinSurface \? "bg-transparent" : "bg-bg-neutral"/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /renderAgentActivityIndicator\?: JiraIssueAgentActivityIndicatorRenderer;/u);
 	assert.match(SOURCE, /renderAgentActivityIndicator\?: JiraIssueAgentActivityIndicatorRenderer;/u);
 	assert.match(SOURCE, /<JiraIssueAgentActivityRows[\s\S]*renderAgentActivityIndicator=\{renderAgentActivityIndicator\}/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /<HoverCard/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /<AgentList/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /<AgentStates/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /<JiraIssueAgentActivityRow[\s\S]*onOpenChange=\{onOpenChange\}[\s\S]*onViewChat=\{onViewChat\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /<JiraIssueAgentActivityRow[\s\S]*onOpenChange=\{\(open\) => \{[\s\S]*setAssignmentHoverOpen\(open\);[\s\S]*onOpenChange\?\.\(open\);[\s\S]*onViewChat=\{onViewChat\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /usesStrokeChrome: boolean;/u);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
@@ -673,12 +699,13 @@ test("Jira issue renders one aggregate Figma-sized agent row and always exposes 
 	);
 	assert.match(SOURCE, /"relative w-full min-w-0 overflow-visible rounded-\[10px\] outline-none"/);
 	assert.match(SOURCE, /"group\/jira-issue relative w-full min-w-0 overflow-visible outline-none"/);
-	assert.match(SOURCE, /const hasAgentDoneNotification = resolvedAgentActivityMode === "completed" && agentDoneRuns\.length > 0;/);
-	assert.match(SOURCE, /const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"[\s\S]*\|\| resolvedAgentActivityMode === "awaiting-input"[\s\S]*\|\| hasAgentDoneNotification;/);
+	assert.match(SOURCE, /const hasCompletedAgentChin = resolvedAgentActivityMode === "completed" && agentDoneRuns\.length > 0;/);
+	assert.match(SOURCE, /const hasAgentDoneNotification = iconScale !== "comfortable" && hasCompletedAgentChin;/);
+	assert.match(SOURCE, /const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"[\s\S]*\|\| resolvedAgentActivityMode === "awaiting-input"[\s\S]*\|\| hasCompletedAgentChin;/);
 	assert.match(SOURCE, /const agentActivitySurfaceInset = hasActiveAgentActivityShell \? 4 : 0;/);
 	assert.match(
 		SOURCE,
-		/const hasAgentActivityChin = activeAgentActivities.length > 0\s*\n\s*\|\| hasAgentDoneNotification\s*\n\s*\|\| isAttachingSession;/u,
+		/const hasAgentActivityChin = activeAgentActivities.length > 0\s*\n\s*\|\| hasCompletedAgentChin\s*\n\s*\|\| isAttachingSession;/u,
 	);
 	assert.match(
 		SOURCE,
@@ -778,7 +805,7 @@ test("Jira issue animates agent state transitions with Motion", () => {
 		/const agentActivitySurfaceAnimation = getJiraIssueAgentSurfaceOffsets\(\s*\n\s*agentActivitySurfacePosition,\s*\n\s*insetsAgentActivitySurfaceBottom,\s*\n\s*\);/u,
 	);
 	assert.match(SOURCE, /<article[\s\S]*className=\{agentActivityArticleClassName\}[\s\S]*data-agent-activity-mode=\{resolvedAgentActivityMode\}/);
-	assert.match(SOURCE, /<motion\.div[\s\S]*className=\{agentActivityShellClassName\}[\s\S]*initial=\{false\}[\s\S]*layout=\{shouldReduceMotion \? false : "size"\}/);
+	assert.match(SOURCE, /<motion\.div[\s\S]*className=\{agentActivityShellClassName\}[\s\S]*initial=\{false\}[\s\S]*layout=\{shouldReduceMotion \|\| agentActivityHoverOpen \? false : "size"\}/);
 	assert.match(
 		SOURCE,
 		/className=\{cn\(\s*"pointer-events-none absolute transition-colors duration-xxshort ease-out-practical motion-reduce:transition-none",\s*agentSessionTargetHighlighted \? "bg-bg-neutral-hovered" : "bg-bg-neutral",\s*\)\}/u,
@@ -790,12 +817,16 @@ test("Jira issue animates agent state transitions with Motion", () => {
 	assert.match(SOURCE, /const AGENT_ACTIVITY_INNER_STYLE: CSSProperties = \{[\s\S]*transformOrigin: "top center"/);
 	assert.doesNotMatch(SOURCE, /layout=\{!shouldReduceMotion\}/);
 	assert.match(SOURCE, /layout=\{shouldReduceMotion \? false : "position"\}/);
+	assert.match(SOURCE, /layout=\{shouldReduceMotion \|\| agentActivityHoverOpen \? false : "position"\}/);
+	assert.match(AGENT_ACTIVITY_SOURCE, /const rowLayout = shouldReduceMotion \|\| sessionDragging \|\| assignmentHoverOpen\s*\n\s*\? false\s*\n\s*: "position";/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /<AgentAvatarVisual[\s\S]*animate=\{false\}/u);
 	assert.match(SUBTASKS_SOURCE, /style=\{shouldReduceMotion \? undefined : JIRA_ISSUE_MOTION_STYLE\}/);
 });
 
 test("Jira issue compensates expanded subtask spacing for the active surface inset", () => {
 	assert.match(SUBTASKS_SOURCE, /hasInsetSurface: boolean;/);
 	assert.match(SUBTASKS_SOURCE, /className=\{cn\("flex flex-col gap-2 px-3 pt-1", hasInsetSurface \? "pb-2" : "pb-3"\)\}/);
+	assert.match(SUBTASKS_SOURCE, /const showSubtaskProgress = totalCount > 0;/);
 	// Content-side compensation only applies when the surface bottom is flush with
 	// the card. Once the well insets that edge itself, trimming the padding too
 	// would double-count and leave the last subtask 4px from the white edge.
@@ -817,7 +848,7 @@ test("Jira issue parent epic demo includes issue context and a collapsed subtask
 });
 
 test("Jira issue agent activity demo is registered in docs and variant registry", () => {
-	assert.match(PAGE_SOURCE, /variant\?: "default" \| "experimental" \| "uncaptured-work" \| "subtasks-collapsed" \| "subtasks-expanded" \| "parent-epic" \| "agent-activity-states" \| "agent-activity-states-experimental";/);
+	assert.match(PAGE_SOURCE, /variant\?: "default" \| "experimental" \| "uncaptured-work" \| "subtasks-collapsed" \| "subtasks-expanded" \| "parent-epic" \| "agent-activity-states" \| "agent-activity-states-experimental" \| "agent-activity-states-experimental-v2";/);
 	assert.match(PAGE_SOURCE, /const JIRA_ISSUE_AGENT_ACTIVITY_DEMO_STATES = \[/);
 	assert.match(PAGE_SOURCE, /const SERVICE_IMPACT_AGENT_LABELS = \[[\s\S]*"Reading linked design notes"[\s\S]*"Mapping customer-facing impact"/);
 	assert.match(PAGE_SOURCE, /const DEPENDENCY_MAPPER_LABELS = \[[\s\S]*"Following linked work items"[\s\S]*"Finding blocked handoffs"/);
@@ -903,7 +934,8 @@ test("Jira issue agent activity demo has an experimental stroke-chrome duplicate
 	// raised with no toggle.
 	assert.match(PAGE_SOURCE, /variant === "agent-activity-states-experimental"/);
 	assert.match(PAGE_SOURCE, /variant === "agent-activity-states"/);
-	assert.match(PAGE_SOURCE, /function JiraIssueExperimentalAgentActivityStatesPage\(\): React\.ReactElement \{/);
+	assert.match(PAGE_SOURCE, /function JiraIssueExperimentalAgentActivityStatesPage\(\{[\s\S]*iconScale,[\s\S]*\}: Readonly<\{[\s\S]*iconScale\?: JiraIssueIconScale;[\s\S]*\}> = \{\}\): React\.ReactElement \{/);
+	assert.match(PAGE_SOURCE, /subtaskChrome="stroke"/);
 	assert.match(PAGE_SOURCE, /const \[chrome, setChrome\] = useState<JiraIssueChrome>\("stroke"\);/);
 	assert.match(PAGE_SOURCE, /interface JiraIssueAgentActivityStatesDemoProps \{[\s\S]*agentActivityLayout\?: JiraIssueAgentActivityLayout;[\s\S]*chrome\?: JiraIssueChrome;[\s\S]*onChromeChange\?: \(chrome: JiraIssueChrome\) => void;[\s\S]*\}/);
 	assert.match(PAGE_SOURCE, /function JiraIssueAgentActivityStatesDemo\(\{[\s\S]*agentActivityLayout = "merged",[\s\S]*chrome = "raised",[\s\S]*onChromeChange,[\s\S]*\}: Readonly<JiraIssueAgentActivityStatesDemoProps> = \{\}\): React\.ReactElement \{/);
@@ -936,43 +968,6 @@ test("Jira issue agent activity chin splits into one row per agent only when ask
 	assert.match(MODEL_SOURCE, /if \(layout === "split"\) \{[\s\S]*activeActivities\.map\(\(activity\) => \(\{ activities: \[activity\], key: activity\.id \}\)\)/u);
 });
 
-test("Jira issue renders expandable subtasks with nested subtask cards", () => {
-	assert.match(SOURCE, /subtasks\?: readonly JiraIssueSubtask\[\];/);
-	assert.match(SUBTASKS_SOURCE, /aria-expanded=\{expanded\}/);
-	assert.match(SUBTASKS_SOURCE, /const subtasksToggleLabel = `\$\{expanded \? "Hide" : "Show"\} \$\{label\.toLowerCase\(\)\}`;/);
-	assert.match(SUBTASKS_BLOCK, /<Tooltip>/);
-	assert.match(SUBTASKS_BLOCK, /aria-label=\{subtasksToggleLabel\}/);
-	assert.match(SUBTASKS_BLOCK, /<TooltipContent>\{subtasksToggleLabel\}<\/TooltipContent>/);
-	assert.match(SUBTASKS_SOURCE, /export function JiraIssueSeparator\(\{[\s\S]*inset = 0,[\s\S]*usesStrokeChrome,[\s\S]*\}: Readonly<\{ inset\?: number; usesStrokeChrome: boolean \}>\) \{[\s\S]*marginLeft: `\$\{inset - 1\}px`,[\s\S]*marginRight: `\$\{inset - 1\}px`,[\s\S]*width: `calc\(100% \+ \$\{2 - inset \* 2\}px\)`,/);
-	assert.match(
-		SUBTASKS_SOURCE,
-		/usesStrokeChrome\s*\n\s*\? "bg-border-disabled transition-\[margin,width,background-color\] duration-normal ease-out group-hover\/jira-issue:bg-border group-hover\/jira-issue-card:bg-border"\s*\n\s*: "transition-\[margin,width\] duration-medium ease-in-out"/,
-	);
-	assert.doesNotMatch(SUBTASKS_BLOCK, /<JiraIssueSeparator \/>/);
-	assert.match(SOURCE, /<JiraIssueSeparator[\s\S]*inset=\{usesAgentActivityShell \? agentActivitySurfaceInset : 0\}[\s\S]*usesStrokeChrome=\{usesCompactVisual\}[\s\S]*\/>[\s\S]*<div className=\{issueRowsClassName\}>/);
-	assert.match(SUBTASKS_BLOCK, /className=\{cn\(\s*"flex h-8 w-full items-center justify-between px-3 py-2",\s*usesStrokeChrome && "-mx-px w-\[calc\(100%\+2px\)\]",\s*\)\}/);
-	assert.match(SUBTASKS_BLOCK, /"flex items-center gap-2 text-sm font-medium leading-5 text-text-subtle"/);
-	assert.match(SUBTASKS_BLOCK, /usesStrokeChrome \? \(\s*<IconTile[\s\S]*icon=\{<SubtasksIcon label="" size="small" spacing="none" color="currentColor" \/>\}[\s\S]*iconSize="small"[\s\S]*size="xxsmall"[\s\S]*variant="transparent"/);
-	assert.match(SUBTASKS_BLOCK, /className="grid size-4 shrink-0 place-items-center text-icon-subtle"/);
-	assert.match(SUBTASKS_BLOCK, /<SubtasksIcon[\s\S]*label=""[\s\S]*size="medium"[\s\S]*spacing="none"[\s\S]*color="currentColor"/);
-	assert.match(SUBTASKS_BLOCK, /usesStrokeChrome \? "size-4" : "size-6"/);
-	assert.match(SUBTASKS_BLOCK, /<ChevronRightIcon label="" size="small" color="currentColor" \/>/);
-	assert.doesNotMatch(SUBTASKS_BLOCK, /className="flex h-12 w-full items-center justify-between px-4"/);
-	assert.doesNotMatch(SUBTASKS_BLOCK, /inline-flex size-8 items-center/);
-	assert.doesNotMatch(SUBTASKS_BLOCK, /hover:bg-bg-neutral-subtle-hovered focus-visible:border-ring[\s\S]*onClick=\{onToggle\}/);
-	assert.doesNotMatch(SOURCE, /role="progressbar"/);
-	assert.doesNotMatch(SOURCE, /progressPercent/);
-	assert.match(SUBTASKS_SOURCE, /<JiraIssueSubtaskCard chromeStyles=\{chromeStyles\} key=\{subtask\.issueKey\} subtask=\{subtask\} \/>/);
-	assert.match(SUBTASKS_SOURCE, /className=\{cn\("border bg-surface p-3", chromeStyles\.restClassName, chromeStyles\.hoverClassName\)\}/);
-	assert.match(SUBTASKS_SOURCE, /boxShadow: chromeStyles\.boxShadow/);
-	assert.doesNotMatch(
-		SUBTASKS_SOURCE.slice(0, SUBTASKS_SOURCE.indexOf("export function JiraIssueSeparator")),
-		/group-hover\/jira-issue/,
-	);
-	assert.doesNotMatch(SUBTASKS_SOURCE, /className="border border-transparent bg-surface px-4 py-3"/);
-	assert.doesNotMatch(SUBTASKS_SOURCE, /rounded-lg border border-border bg-surface px-3 py-3 shadow-sm/);
-});
-
 test("Jira issue renders explicit unassigned avatars with the shared placeholder", () => {
 	assert.match(SUMMARY_SOURCE, /AvatarUnassigned,/);
 	assert.match(SOURCE, /assigneeUnassignedKind\?: AvatarUnassignedKind;/);
@@ -981,7 +976,7 @@ test("Jira issue renders explicit unassigned avatars with the shared placeholder
 		SUMMARY_SOURCE,
 		/function JiraIssueAssignee[\s\S]*size = "sm"[\s\S]*const unassignedKind = resolveIssueAssigneeUnassignedKind\([\s\S]*assigneeAvatarSrc[\s\S]*assigneeUnassignedKind[\s\S]*if \(unassignedKind\) \{[\s\S]*<AvatarUnassigned[\s\S]*kind=\{unassignedKind\}[\s\S]*size=\{size\}/,
 	);
-	assert.match(SUMMARY_SOURCE, /usesStrokeChrome \? \([\s\S]*className="flex size-6 shrink-0 items-center justify-center -mr-1"[\s\S]*data-slot="jira-issue-assignee-slot"[\s\S]*size="xs"/);
+	assert.match(SUMMARY_SOURCE, /usesStrokeChrome \? \([\s\S]*"flex size-6 shrink-0 items-center justify-center"[\s\S]*comfortableIcons \? undefined : "-mr-1"[\s\S]*data-slot="jira-issue-assignee-slot"[\s\S]*size=\{iconMetrics\.assigneeSize\}/);
 	assert.match(SUMMARY_SOURCE, /size="sm"/);
 });
 

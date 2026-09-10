@@ -36,8 +36,11 @@ test("raised names idle transparent border, hover fill, and the raised shadow", 
 	const chrome = harness.resolveJiraIssueChrome("raised");
 
 	assert.equal(chrome.restClassName, "border-transparent");
-	assert.equal(chrome.hoverClassName, "hover:bg-surface-hovered");
-	assert.equal(chrome.agentSurfaceHoverClassName, "group-hover/jira-issue-card:bg-surface-hovered");
+	assert.equal(chrome.hoverClassName, "hover:not-has-[[data-slot=jira-issue-subtask-card]:hover]:bg-surface-hovered");
+	assert.equal(
+		chrome.agentSurfaceHoverClassName,
+		"group-[&:hover:not(:has([data-slot=jira-issue-subtask-card]:hover))]/jira-issue-card:bg-surface-hovered",
+	);
 	assert.equal(chrome.boxShadow, harness.token("elevation.shadow.raised"));
 	assert.doesNotMatch(chrome.restClassName, /bg-surface/u);
 	assert.doesNotMatch(chrome.restClassName, /border-border/u);
@@ -50,8 +53,11 @@ test("stroke names the disabled rest hairline, hover border, and no shadow", asy
 	const chrome = harness.resolveJiraIssueChrome("stroke");
 
 	assert.equal(chrome.restClassName, "border-border-disabled");
-	assert.equal(chrome.hoverClassName, "hover:border-border");
-	assert.equal(chrome.agentSurfaceHoverClassName, "group-hover/jira-issue-card:border-border");
+	assert.equal(chrome.hoverClassName, "hover:not-has-[[data-slot=jira-issue-subtask-card]:hover]:border-border");
+	assert.equal(
+		chrome.agentSurfaceHoverClassName,
+		"group-[&:hover:not(:has([data-slot=jira-issue-subtask-card]:hover))]/jira-issue-card:border-border",
+	);
 	assert.equal(chrome.boxShadow, "none");
 	assert.doesNotMatch(chrome.restClassName, /bg-surface/u);
 });

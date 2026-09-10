@@ -61,7 +61,7 @@ function JiraIssueMoreMenu({ generativeAction, generativeActionIssue, issueKey, 
 				render={
 					<Button
 						aria-label={`More actions for ${issueKey}`}
-						className="pointer-events-none size-6 opacity-0 transition-opacity duration-fast ease-out-practical motion-reduce:transition-none group-hover/jira-issue:pointer-events-auto group-hover/jira-issue:opacity-100 group-has-[:focus-visible]/jira-issue:pointer-events-auto group-has-[:focus-visible]/jira-issue:opacity-100 data-popup-open:pointer-events-auto data-popup-open:opacity-100"
+						className="pointer-events-none size-6 opacity-0 transition-opacity duration-fast ease-out-practical motion-reduce:transition-none group-[&:hover:not(:has([data-slot=jira-issue-subtask-card]:hover))]/jira-issue:pointer-events-auto group-[&:hover:not(:has([data-slot=jira-issue-subtask-card]:hover))]/jira-issue:opacity-100 group-has-[:focus-visible]/jira-issue:pointer-events-auto group-has-[:focus-visible]/jira-issue:opacity-100 data-popup-open:pointer-events-auto data-popup-open:opacity-100"
 						onClick={(event) => event.stopPropagation()}
 						size="icon-compact"
 						type="button"

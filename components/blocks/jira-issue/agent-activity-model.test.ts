@@ -106,7 +106,7 @@ test("split layout gives every active agent its own row keyed by agent id", () =
 	);
 });
 
-test("completed agents never take a chin row in either layout", () => {
+test("completed agents never join an active chin row", () => {
 	const activities = [
 		{ id: "service-impact-agent", state: "completed" },
 		{ id: "dependency-mapper", state: "working" },
@@ -120,7 +120,38 @@ test("completed agents never take a chin row in either layout", () => {
 		groupJiraIssueAgentActivityRows(activities, "merged"),
 		[{ activities: [{ id: "dependency-mapper", state: "working" }], key: "working-1" }],
 	);
-	assert.deepEqual(groupJiraIssueAgentActivityRows([{ id: "only", state: "completed" }], "split"), []);
+});
+
+test("completed-only activities render one session row per agent in either layout", () => {
+	const activities = [
+		{ id: "service-impact-agent", state: "completed" },
+		{ id: "dependency-mapper", state: "completed" },
+	] as const;
+
+	assert.deepEqual(
+		groupJiraIssueAgentActivityRows(activities, "merged"),
+		[
+			{ activities: [{ id: "service-impact-agent", state: "completed" }], key: "service-impact-agent" },
+			{ activities: [{ id: "dependency-mapper", state: "completed" }], key: "dependency-mapper" },
+		],
+	);
+	assert.deepEqual(
+		groupJiraIssueAgentActivityRows(activities, "split"),
+		[
+			{ activities: [{ id: "service-impact-agent", state: "completed" }], key: "service-impact-agent" },
+			{ activities: [{ id: "dependency-mapper", state: "completed" }], key: "dependency-mapper" },
+		],
+	);
+	assert.deepEqual(
+		summarizeJiraIssueAgentActivities([{ state: "completed" }]),
+		{
+			activityCount: 1,
+			featuredActivityIndex: 0,
+			label: "Finished",
+			priorityCount: 1,
+			priorityState: "working",
+		},
+	);
 });
 
 test("related detached sessions keep working mode so the grey backdrop stays", () => {
