@@ -39,6 +39,12 @@ export function useAgentSessionScrollPreview(handle: JiraSessionFlyoutHandle) {
 			if (!active || (!active.scrolled && active.port.scrollTop === active.scrollTop)) return;
 			const target = event.target;
 			if (!(target instanceof Element) || popupRef.current?.contains(target)) return;
+			// Nested menus live in body portals. Follow their trigger's explicit
+			// ownership instead of treating movement into an action as an exit.
+			const ownsTarget = Array.from(popupRef.current?.querySelectorAll("[aria-controls]") ?? [])
+				.some((control) => control.getAttribute("aria-controls")?.split(/\s+/u)
+					.some((id) => document.getElementById(id)?.contains(target)));
+			if (ownsTarget) return;
 			const trigger = target.closest<HTMLElement>('[data-slot="hover-card-trigger"]');
 			if (trigger && active.port.contains(trigger)) {
 				anchorToTrigger(trigger);
