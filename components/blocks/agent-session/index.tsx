@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 import { AGENT_SESSION_ATTACHED_ITEMS, AGENT_SESSION_ITEMS } from "./data";
 import { AgentSessionCard } from "./agent-session-card";
+import { useAgentSessionScrollPreview } from "./use-agent-session-scroll-preview";
 import { AgentSessionCompactCard } from "./agent-session-compact-card";
 import {
 	bindAgentSessionFlyoutActions,
@@ -139,6 +140,7 @@ export function AgentSession({
 	// Agent Session flyout block do: the popup stays mounted and follows the
 	// hovered card, so sliding down the list crossfades instead of remounting.
 	const [flyoutHandle] = useState(createJiraSessionFlyoutHandle);
+	const scrollPreview = useAgentSessionScrollPreview(flyoutHandle);
 	const flyoutActions = useMemo(
 		() => bindAgentSessionFlyoutActions(items, {
 			capturedItemIds,
@@ -289,6 +291,7 @@ export function AgentSession({
 				the column would otherwise swap motion profiles mid-hover.
 			*/}
 			<JiraSessionFlyoutSurface
+				{...scrollPreview}
 				archiveActionLabel={visibilityLabel}
 				capturedSessionIds={capturedItemIds}
 				content={isAttached ? "details" : "untracked-work"}
