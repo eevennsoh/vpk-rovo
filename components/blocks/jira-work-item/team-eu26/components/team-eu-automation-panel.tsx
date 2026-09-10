@@ -5,75 +5,130 @@ import ArrowLeftIcon from "@atlaskit/icon/core/arrow-left";
 import AutomationIcon from "@atlaskit/icon/core/automation";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
-import RepeatIcon from "@atlaskit/icon-lab/core/repeat";
 
+import type { WorkItemAutomationRule } from "@/components/blocks/jira-work-item/team-eu26/components/automation-tab";
+import { SetToRecurRow } from "@/components/blocks/jira-work-item/team-eu26/components/set-to-recur-popover";
 import { TeamEuRailPanel } from "@/components/blocks/jira-work-item/team-eu26/components/team-eu-rail-panel";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { IconTile } from "@/components/ui/icon-tile";
 
-const AUTOMATIONS = [
-	"Send reminder 24 hours before due date",
-	"Notify team when status changes to Done",
-	"Mark as complete when all subtasks done",
-	"Update sprint board when task moves to In Progress",
-	"Escalate to manager if overdue by 3 days",
-	"Send daily digest of open tasks to team",
-	"Log time automatically when status changes",
-	"Create Slack notification for high priority items",
-] as const;
+export const TEAM_EU_REFERENCE_AUTOMATION_RULES: readonly WorkItemAutomationRule[] =
+	[
+		{
+			id: "reminder",
+			title: "Send reminder 24 hours before due date",
+			iconVariant: "green",
+			lastRunAt: "167 days ago",
+		},
+		{
+			id: "status-done",
+			title: "Notify team when status changes to Done",
+			iconVariant: "green",
+		},
+		{
+			id: "subtasks-done",
+			title: "Mark as complete when all subtasks done",
+			iconVariant: "green",
+		},
+		{
+			id: "sprint-board",
+			title: "Update sprint board when task moves to In Progress",
+			iconVariant: "green",
+			lastRunAt: "167 days ago",
+		},
+		{
+			id: "overdue",
+			title: "Escalate to manager if overdue by 3 days",
+			iconVariant: "green",
+		},
+		{
+			id: "daily-digest",
+			title: "Send daily digest of open tasks to team",
+			iconVariant: "green",
+			lastRunAt: "167 days ago",
+		},
+		{
+			id: "log-time",
+			title: "Log time automatically when status changes",
+			iconVariant: "green",
+		},
+		{
+			id: "slack",
+			title: "Create Slack notification for high priority items",
+			iconVariant: "green",
+			lastRunAt: "167 days ago",
+		},
+	] as const;
 
-const RECENT_RUNS = [
-	AUTOMATIONS[3],
-	AUTOMATIONS[7],
-	AUTOMATIONS[0],
-	AUTOMATIONS[5],
+const REFERENCE_RECENT_ORDER = [
+	"sprint-board",
+	"slack",
+	"reminder",
+	"daily-digest",
 ] as const;
 const ACTION_ROW_CLASS =
-	"flex min-h-10 w-full min-w-0 items-center gap-2 px-4 text-left text-sm text-text outline-none transition-colors duration-xxshort ease-out-practical hover:bg-bg-neutral-subtle-hovered focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none";
+	"flex min-h-10 w-full min-w-0 items-center gap-2 px-4 text-left text-sm text-text";
+
+function recentRules(rules: readonly WorkItemAutomationRule[]) {
+	const order = new Map<string, number>(REFERENCE_RECENT_ORDER.map((id, index) => [id, index]));
+	return rules
+		.filter((rule) => rule.lastRunAt)
+		.toSorted(
+			(left, right) =>
+				(order.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+				(order.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+		);
+}
 
 export function TeamEuAutomationPanel({
 	onShowRecentRuns,
-}: Readonly<{ onShowRecentRuns: () => void }>) {
+	rules,
+}: Readonly<{
+	onShowRecentRuns: () => void;
+	rules: readonly WorkItemAutomationRule[];
+}>) {
 	return (
 		<TeamEuRailPanel title="Automation">
 			<div className="pb-3">
-				<ul aria-label="Available automations" className="px-2 pb-2">
-					{AUTOMATIONS.map((automation) => (
-						<li key={automation}>
-							<button
-								className="flex h-10 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-sm text-text outline-none transition-colors duration-xxshort ease-out-practical hover:bg-bg-neutral-subtle-hovered focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-								type="button"
-							>
-								<IconTile
-									aria-hidden
-									as="span"
-									icon={<AutomationIcon label="" size="small" />}
-									label=""
-									size="small"
-									variant="green"
-								/>
-								<span className="truncate">{automation}</span>
-							</button>
-						</li>
-					))}
-				</ul>
+				{rules.length > 0 ? (
+					<ul aria-label="Available automations" className="px-2 pb-2">
+						{rules.map((rule) => (
+							<li key={rule.id}>
+								<div className="flex h-10 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-text">
+									<IconTile
+										aria-hidden
+										as="span"
+										icon={<AutomationIcon label="" size="small" />}
+										label=""
+										size="small"
+										variant={rule.iconVariant}
+									/>
+									<span className="truncate">{rule.title}</span>
+								</div>
+							</li>
+						))}
+					</ul>
+				) : (
+					<p className="px-4 pb-3 text-sm text-text-subtle">
+						No automation rules have run for this work item.
+					</p>
+				)}
 				<button
-					className={`${ACTION_ROW_CLASS} border-y border-border`}
+					className={`${ACTION_ROW_CLASS} border-y border-border outline-none transition-colors duration-xxshort ease-out-practical hover:bg-bg-neutral-subtle-hovered focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none`}
 					onClick={onShowRecentRuns}
 					type="button"
 				>
 					<span className="min-w-0 flex-1 font-medium">Recent run rules</span>
 					<ChevronRightIcon label="" size="small" />
 				</button>
-				<button className={ACTION_ROW_CLASS} type="button">
-					<RepeatIcon label="" size="small" />
-					<span>Set to recur</span>
-				</button>
-				<button className={ACTION_ROW_CLASS} type="button">
+				<div className="px-4">
+					<SetToRecurRow />
+				</div>
+				<div className={ACTION_ROW_CLASS}>
 					<AddIcon label="" size="small" />
 					<span>Create automation</span>
-				</button>
+				</div>
 			</div>
 		</TeamEuRailPanel>
 	);
@@ -81,7 +136,9 @@ export function TeamEuAutomationPanel({
 
 export function TeamEuRecentAutomationRuns({
 	onBack,
-}: Readonly<{ onBack: () => void }>) {
+	rules,
+}: Readonly<{ onBack: () => void; rules: readonly WorkItemAutomationRule[] }>) {
+	const runs = recentRules(rules);
 	return (
 		<section aria-labelledby="team-eu-recent-runs-heading" className="pt-1">
 			<div className="flex min-h-10 items-center gap-1 px-3">
@@ -101,22 +158,30 @@ export function TeamEuRecentAutomationRuns({
 					Recent run rules
 				</h2>
 			</div>
-			<ul className="px-2" aria-label="Recent automation runs">
-				{RECENT_RUNS.map((automation) => (
-					<li
-						className="flex h-10 min-w-0 items-center gap-2 px-2 text-sm"
-						key={automation}
-					>
-						<Icon
-							aria-hidden
-							className="shrink-0 text-icon-success"
-							render={<StatusSuccessIcon label="" size="small" />}
-						/>
-						<span className="min-w-0 flex-1 truncate">{automation}</span>
-						<time className="shrink-0 text-text-subtlest">167 days ago</time>
-					</li>
-				))}
-			</ul>
+			{runs.length > 0 ? (
+				<ul aria-label="Recent automation runs" className="px-2">
+					{runs.map((rule) => (
+						<li
+							className="flex h-10 min-w-0 items-center gap-2 px-2 text-sm"
+							key={rule.id}
+						>
+							<Icon
+								aria-hidden
+								className="shrink-0 text-icon-success"
+								render={<StatusSuccessIcon label="" size="small" />}
+							/>
+							<span className="min-w-0 flex-1 truncate">{rule.title}</span>
+							<time className="shrink-0 text-text-subtlest">
+								{rule.lastRunAt}
+							</time>
+						</li>
+					))}
+				</ul>
+			) : (
+				<p className="px-4 py-2 text-sm text-text-subtle">
+					No recent rule runs.
+				</p>
+			)}
 		</section>
 	);
 }

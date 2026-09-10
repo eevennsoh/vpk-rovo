@@ -210,7 +210,7 @@ function mergePeople(...seed: readonly (WorkItemPerson | null | undefined)[]): W
  * Activity section, reachable from the shared section nav.
  */
 export function MetadataRail({
-	automationRules = [],
+	automationRules,
 	borderless = false,
 	currentReviewerStatus,
 	onPullRequestFix,
@@ -300,7 +300,7 @@ export function MetadataRail({
 		[showBottomScrollMask],
 	);
 	if (initialPreset === "filled" && !pullRequestSelected && !insightsSelected) {
-		return <HighConfidenceMetadataRail />;
+		return <HighConfidenceMetadataRail automationRules={automationRules} />;
 	}
 
 	return (
@@ -368,8 +368,8 @@ export function MetadataRail({
 								},
 								...resourceSections,
 								{
-									content: <AutomationTab rules={automationRules} />,
-									count: automationRules.length || undefined,
+									content: <AutomationTab rules={automationRules ?? []} />,
+									count: automationRules?.length || undefined,
 									headerAction: { label: "Manage automations" },
 									id: "automation",
 									title: "Automation",

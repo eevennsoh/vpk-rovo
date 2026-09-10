@@ -17,7 +17,9 @@ import { TeamEuAppsPanel } from "@/components/blocks/jira-work-item/team-eu26/co
 import {
 	TeamEuAutomationPanel,
 	TeamEuRecentAutomationRuns,
+	TEAM_EU_REFERENCE_AUTOMATION_RULES,
 } from "@/components/blocks/jira-work-item/team-eu26/components/team-eu-automation-panel";
+import type { WorkItemAutomationRule } from "@/components/blocks/jira-work-item/team-eu26/components/automation-tab";
 import { TeamEuDevelopmentPanel } from "@/components/blocks/jira-work-item/team-eu26/components/team-eu-development-panel";
 import {
 	useJiraWorkItemActions,
@@ -37,7 +39,9 @@ function FieldValue({ children, icon }: Readonly<{ children: ReactNode; icon: Re
 	);
 }
 
-export function HighConfidenceMetadataRail() {
+export function HighConfidenceMetadataRail({
+	automationRules = TEAM_EU_REFERENCE_AUTOMATION_RULES,
+}: Readonly<{ automationRules?: readonly WorkItemAutomationRule[] }>) {
 	const { metadata } = useJiraWorkItemState();
 	const { workItem } = useJiraWorkItemMeta();
 	const actions = useJiraWorkItemActions();
@@ -54,9 +58,13 @@ export function HighConfidenceMetadataRail() {
 	return (
 		<aside aria-label="Work item details" className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto" data-team-eu26-high-confidence-rail>
 			{showRecentAutomationRuns ? (
-				<TeamEuRecentAutomationRuns onBack={() => setShowRecentAutomationRuns(false)} />
-			) : (
-				<div className="flex flex-col gap-4">
+				<TeamEuRecentAutomationRuns onBack={() => setShowRecentAutomationRuns(false)} rules={automationRules} />
+			) : null}
+			<div
+				aria-hidden={showRecentAutomationRuns || undefined}
+				className={showRecentAutomationRuns ? "hidden" : "flex flex-col gap-4"}
+				inert={showRecentAutomationRuns ? true : undefined}
+			>
 			<section aria-labelledby="team-eu26-details-heading" className="rounded-lg border border-border bg-surface p-4">
 				<h2 className="mb-4 text-sm font-semibold text-text" id="team-eu26-details-heading">Details</h2>
 				<div className="space-y-4">
@@ -120,10 +128,9 @@ export function HighConfidenceMetadataRail() {
 				</div>
 			</section>
 			<TeamEuDevelopmentPanel />
-			<TeamEuAutomationPanel onShowRecentRuns={() => setShowRecentAutomationRuns(true)} />
+			<TeamEuAutomationPanel onShowRecentRuns={() => setShowRecentAutomationRuns(true)} rules={automationRules} />
 			<TeamEuAppsPanel />
 				</div>
-			)}
 		</aside>
 	);
 }

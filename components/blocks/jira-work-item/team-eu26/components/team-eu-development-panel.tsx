@@ -96,6 +96,7 @@ function PullRequestHoverContent() {
 			</div>
 			<Button
 				className="self-center"
+				disabled
 				size="compact"
 				type="button"
 				variant="ghost"
@@ -103,13 +104,13 @@ function PullRequestHoverContent() {
 				Show more
 			</Button>
 			<div className="flex items-center gap-1 px-2">
-				<Button size="compact" type="button" variant="outline">
+				<Button disabled size="compact" type="button" variant="outline">
 					Fix build
 				</Button>
-				<Button size="compact" type="button" variant="ghost">
+				<Button disabled size="compact" type="button" variant="ghost">
 					Open build
 				</Button>
-				<Button size="compact" type="button" variant="ghost">
+				<Button disabled size="compact" type="button" variant="ghost">
 					View pull request
 				</Button>
 			</div>
@@ -126,8 +127,8 @@ function PullRequestRow({
 	tone: "danger" | "success" | "neutral" | "information" | "discovery";
 	hoverCard?: boolean;
 }>) {
-	const row = (
-		<button className={PR_ROW_CLASS} type="button">
+	const content = (
+		<>
 			<Icon
 				aria-hidden
 				className={cn(
@@ -150,11 +151,17 @@ function PullRequestRow({
 					</span>
 				) : null}
 			</span>
-		</button>
+		</>
 	);
 	return hoverCard ? (
 		<HoverCard closeDelay={120} openDelay={0}>
-			<HoverCardTrigger render={row} />
+			<HoverCardTrigger
+				render={
+					<button className={PR_ROW_CLASS} type="button">
+						{content}
+					</button>
+				}
+			/>
 			<HoverCardContent
 				align="start"
 				className="w-auto p-2 shadow-overlay"
@@ -166,7 +173,7 @@ function PullRequestRow({
 			</HoverCardContent>
 		</HoverCard>
 	) : (
-		row
+		<div className={PR_ROW_CLASS}>{content}</div>
 	);
 }
 
@@ -174,6 +181,7 @@ const DEVELOPMENT_HEADER_ACTIONS = (
 	<>
 		<Button
 			aria-label="Add development item"
+			disabled
 			size="icon-compact"
 			type="button"
 			variant="ghost"
@@ -182,6 +190,7 @@ const DEVELOPMENT_HEADER_ACTIONS = (
 		</Button>
 		<Button
 			aria-label="Development settings"
+			disabled
 			size="icon-compact"
 			type="button"
 			variant="ghost"
