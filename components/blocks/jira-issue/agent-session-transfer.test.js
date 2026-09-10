@@ -435,8 +435,9 @@ test("Jira issue splits the finished review chin into one row per completed run"
 	// Split rows reuse the working-row chrome so Review reads like 1-n agents.
 	assert.match(COMPLETED_RUNS_SOURCE, /function JiraIssueCompletedRunRow\(/u);
 	assert.match(COMPLETED_RUNS_SOURCE, /<JiraIssueCompletedRunRow[\s\S]*key=\{run\.id\}/u);
-	assert.match(COMPLETED_RUNS_SOURCE, /className="flex h-6 w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-1[^"]*hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed[^"]*"/u);
-	assert.match(COMPLETED_RUNS_SOURCE, /<AgentAvatarVisual[\s\S]*avatarSrc=\{run\.agentAvatarSrc\}[\s\S]*label=\{run\.agentName\}[\s\S]*sizePx=\{16\}/u);
+	assert.match(COMPLETED_RUNS_SOURCE, /className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-2[^"]*hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed[^"]*"/u);
+	assert.match(COMPLETED_RUNS_SOURCE, /<AgentAvatarVisual[\s\S]*avatarSrc=\{run\.agentAvatarSrc\}[\s\S]*label=\{run\.agentName\}[\s\S]*sizePx=\{24\}/u);
+	assert.match(COMPLETED_RUNS_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"/u);
 	// Per-run outcome icon replaces the aggregate's failure-only indicator.
 	// Failed stays the filled error status — never a host renderer's call — and
 	// an unhandled finished run falls back to the filled ADS success status.
