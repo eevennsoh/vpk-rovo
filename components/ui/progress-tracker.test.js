@@ -13,7 +13,8 @@ const BOARD_VIEW_MENU_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../blocks/jira-kanban/experimental/components/board-view-menu.tsx"),
 	"utf8",
 );
-const TAILWIND_THEME_SOURCE = fs.readFileSync(path.join(__dirname, "../../app/tailwind-theme.css"), "utf8");
+const SHIMMER_SOURCE = fs.readFileSync(path.join(__dirname, "../ui-custom/shimmer.tsx"), "utf8");
+const SHIMMER_WAVE_SOURCE = fs.readFileSync(path.join(__dirname, "../ui-custom/shimmer-wave.tsx"), "utf8");
 
 test("ProgressTracker supports optional bylines and warning steps without replacing default labels", () => {
 	assert.match(PROGRESS_TRACKER_SOURCE, /export type ProgressTrackerStepState = "todo" \| "current" \| "done" \| "warning"/u);
@@ -124,7 +125,14 @@ test("Spinner exposes the Jira prototype iconic orb only as an experimental vari
 	assert.doesNotMatch(BOARD_VIEW_MENU_SOURCE, /pulse/u);
 });
 
-test("Shimmer keeps its token-backed CSS sweep animation", () => {
-	assert.match(TAILWIND_THEME_SOURCE, /@keyframes text-shimmer-motion[\s\S]*background-position: var\(--text-shimmer-start-position\), 0% center;[\s\S]*background-position: 0% center, 0% center;/u);
-	assert.match(TAILWIND_THEME_SOURCE, /@utility shimmer-sweep-motion[\s\S]*animation: text-shimmer-motion var\(--text-shimmer-duration\) var\(--ease-linear\) infinite;/u);
+test("Shimmer sweeps through the shadcn utility, and the wave stays a separate component", () => {
+	// The sweep is the vendored `shimmer` utility from shadcn/tailwind.css, not a
+	// local keyframe. Shimmer must stay pure CSS: pulling Motion back in would put
+	// a JS animation runtime on all of its callers.
+	assert.match(SHIMMER_SOURCE, /cn\(\s*"shimmer /u);
+	assert.doesNotMatch(SHIMMER_SOURCE, /motion\/react/u);
+	// The per-character wave is a sibling component, not a `wave` prop on Shimmer.
+	assert.doesNotMatch(SHIMMER_SOURCE, /\bwave\??:/u);
+	assert.match(SHIMMER_WAVE_SOURCE, /export const ShimmerWave = memo\(/u);
+	assert.match(SHIMMER_WAVE_SOURCE, /useReducedMotion/u);
 });
