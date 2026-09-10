@@ -34,7 +34,7 @@ test("create button and dropzone share dashed well chrome", () => {
 	);
 	assert.match(
 		DROPZONE,
-		/className=\{cn\([\s\S]*JIRA_DROPZONE_WELL_CHROME_CLASS[\s\S]*selected[\s\S]*\? "border-border-selected bg-bg-selected text-text-selected"[\s\S]*: "border-border bg-surface text-text-subtlest"/u,
+		/className=\{cn\([\s\S]*JIRA_DROPZONE_WELL_CHROME_CLASS[\s\S]*selected\s*\n\t\t\t\t\t\? "border-border-selected bg-bg-selected text-text-selected"\n\t\t\t\t\t: "border-border bg-surface text-text-subtlest"[\s\S]*marching \? JIRA_DROPZONE_ANTS_CLASS/u,
 	);
 });
 

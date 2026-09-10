@@ -10,12 +10,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { GUI } from "@/components/utils/gui";
 
 import { JiraDropzoneDemoArcPanel } from "./jira-dropzone-demo-arc-panel";
 import {
 	JIRA_DROPZONE_DEMO_ARC_DEFAULTS,
+	JIRA_DROPZONE_DEMO_TRAVEL_DEFAULT,
+	JIRA_DROPZONE_DEMO_TRAVEL_OPTIONS,
 	toFlightProfileOverride,
 	type JiraDropzoneDemoArc,
+	type JiraDropzoneDemoTravel,
 } from "./lib/jira-dropzone-demo-arc";
 import { JiraDropzoneDemoChip } from "./jira-dropzone-demo-chip";
 import {
@@ -40,28 +44,57 @@ const DEMO_COLUMNS = ["To Do", "In Progress"] as const;
 
 export default function JiraDropzonePage() {
 	const [arc, setArc] = useState<JiraDropzoneDemoArc>(JIRA_DROPZONE_DEMO_ARC_DEFAULTS);
-	const profile = useMemo(() => toFlightProfileOverride(arc), [arc]);
+	const [ants, setAnts] = useState(true);
+	const [bounce, setBounce] = useState(true);
+	const [travel, setTravel] = useState<JiraDropzoneDemoTravel>(
+		JIRA_DROPZONE_DEMO_TRAVEL_DEFAULT,
+	);
+	const profile = useMemo(
+		() => toFlightProfileOverride(arc, { bounce, travel }),
+		[arc, bounce, travel],
+	);
 
 	return (
 		<JiraDropzoneField profile={profile}>
-			<JiraDropzoneDemoStage arc={arc} onArcChange={setArc} />
+			<JiraDropzoneDemoStage
+				ants={ants}
+				arc={arc}
+				bounce={bounce}
+				onAntsChange={setAnts}
+				onArcChange={setArc}
+				onBounceChange={setBounce}
+				onTravelChange={setTravel}
+				travel={travel}
+			/>
 		</JiraDropzoneField>
 	);
 }
 
 function JiraDropzoneDemoStage({
+	ants,
 	arc,
+	bounce,
+	onAntsChange,
 	onArcChange,
+	onBounceChange,
+	onTravelChange,
+	travel,
 }: Readonly<{
+	ants: boolean;
 	arc: JiraDropzoneDemoArc;
+	bounce: boolean;
+	onAntsChange: (next: boolean) => void;
 	onArcChange: (next: JiraDropzoneDemoArc) => void;
+	onBounceChange: (next: boolean) => void;
+	onTravelChange: (next: JiraDropzoneDemoTravel) => void;
+	travel: JiraDropzoneDemoTravel;
 }>) {
 	const receive = useJiraDropzoneReceive();
 	const launchRef = useRef<HTMLDivElement>(null);
 	const stageRef = useRef<HTMLDivElement>(null);
 	const generationRef = useRef(0);
 	const [staggeredDrop, setStaggeredDrop] = useState(true);
-	const [staggeredBounce, setStaggeredBounce] = useState(false);
+	const bouncePlayback = bounce ? "once" : "off";
 
 	const commitReceive = useCallback((
 		title: string,
@@ -75,7 +108,7 @@ function JiraDropzoneDemoStage({
 			id: `${member.id}-${generation}`,
 		})) as [JiraDropzoneMember, ...JiraDropzoneMember[]];
 		receive({
-			bounce: staggeredBounce ? "each" : "once",
+			bounce: bouncePlayback,
 			drop: staggeredDrop ? "stagger" : "cohort",
 			from,
 			id: sessionReceiptId({
@@ -86,7 +119,7 @@ function JiraDropzoneDemoStage({
 			members,
 			title,
 		});
-	}, [receive, staggeredBounce, staggeredDrop]);
+	}, [bouncePlayback, receive, staggeredDrop]);
 
 	const demoDrag = useJiraDropzoneDemoDrag(stageRef, commitReceive);
 
@@ -104,14 +137,16 @@ function JiraDropzoneDemoStage({
 	return (
 		<div
 			className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 rounded-lg bg-surface p-6"
+			data-jira-dropzone-ants={ants ? "on" : "off"}
 			data-jira-dropzone-arc-direction={arc.direction}
 			data-jira-dropzone-arc-duration={arc.duration}
 			data-jira-dropzone-arc-peak={String(arc.peak)}
 			data-jira-dropzone-arc-rotate={String(arc.rotate)}
 			data-jira-dropzone-arc-strength={String(arc.strength)}
-			data-jira-dropzone-bounce={staggeredBounce ? "each" : "once"}
+			data-jira-dropzone-bounce={bouncePlayback}
 			data-jira-dropzone-demo-dragging={demoDrag.dragging || undefined}
 			data-jira-dropzone-drop={staggeredDrop ? "stagger" : "cohort"}
+			data-jira-dropzone-travel={travel}
 			ref={stageRef}
 		>
 			<div className="flex flex-wrap items-center justify-center gap-2" ref={launchRef}>
@@ -125,7 +160,16 @@ function JiraDropzoneDemoStage({
 					Drop into In Progress
 				</Button>
 			</div>
-			<div className="flex flex-wrap items-center justify-center gap-2">
+			<div className="flex flex-wrap items-center justify-center gap-6">
+				<GUI.SegmentedControl
+					description="Direct is the Team EU26 board drop: a straight tween into the well. Arc is the Motion path override."
+					id="jira-dropzone-travel"
+					label="Drop path"
+					onChange={onTravelChange}
+					options={JIRA_DROPZONE_DEMO_TRAVEL_OPTIONS}
+					value={travel}
+					valueKeys="travel"
+				/>
 				<DemoFlagSwitch
 					checked={staggeredDrop}
 					id="jira-dropzone-staggered-drop"
@@ -133,17 +177,25 @@ function JiraDropzoneDemoStage({
 					onCheckedChange={setStaggeredDrop}
 				/>
 				<DemoFlagSwitch
-					checked={staggeredBounce}
-					id="jira-dropzone-staggered-bounce"
-					label="Staggered bounce"
-					onCheckedChange={setStaggeredBounce}
+					checked={bounce}
+					id="jira-dropzone-bounce"
+					label="Bounce"
+					onCheckedChange={onBounceChange}
+				/>
+				<DemoFlagSwitch
+					checked={ants}
+					id="jira-dropzone-ants"
+					label="Marching ants"
+					onCheckedChange={onAntsChange}
 				/>
 			</div>
-			<JiraDropzoneDemoArcPanel
-				arc={arc}
-				onArcChange={onArcChange}
-				onPlay={() => fire(1, "To Do")}
-			/>
+			{travel === "arc" ? (
+				<JiraDropzoneDemoArcPanel
+					arc={arc}
+					onArcChange={onArcChange}
+					onPlay={() => fire(1, "To Do")}
+				/>
+			) : null}
 			<div className="flex flex-wrap items-center justify-center gap-2">
 				{DEMO_MEMBERS.map((member) => (
 					<JiraDropzoneDemoChip
@@ -167,6 +219,7 @@ function JiraDropzoneDemoStage({
 				<div className="grid w-full grid-cols-2 gap-4">
 					{DEMO_COLUMNS.map((title) => (
 						<DemoColumn
+							ants={ants}
 							drag={demoDrag.dragFor(title)}
 							key={title}
 							title={title}
@@ -204,9 +257,11 @@ function DemoFlagSwitch({
 }
 
 function DemoColumn({
+	ants,
 	drag,
 	title,
 }: Readonly<{
+	ants: boolean;
 	drag: JiraDropzoneDragState;
 	title: string;
 }>) {
@@ -217,6 +272,7 @@ function DemoColumn({
 		<div className="flex flex-col gap-2">
 			<p className="text-sm text-text-subtle">{title}</p>
 			<JiraDropzone
+				ants={ants}
 				drag={drag}
 				exclusiveWinner={isExclusiveWinner}
 				label="Create new work item"

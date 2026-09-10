@@ -1,5 +1,6 @@
 import type {
 	FlightProfile,
+	FlightTravel,
 	JiraDropzoneArcOptions,
 	ViewportPoint,
 } from "./jira-dropzone-types";
@@ -29,11 +30,15 @@ export const JIRA_DROPZONE_WELL_ENTER_SCALE = 0.95;
 /**
  * Shared flight recipe for create-well and card-link drops.
  *
- * `durationMs` is duration-slower so the arc can be tracked. `staggerMs` is
- * duration-normal so each chip is visibly queued before the next leaves —
- * 70ms read as one pile on short board drops (pointer already on the well or
- * chin). `launchSpreadPx` is space.600 so ~80px mention chips fan into a pack
- * instead of overlapping at 14px.
+ * Default travel is a straight tween — the Team EU26 board drop. `durationMs`
+ * is duration-slower so a button-launched catalog drop can still be tracked;
+ * on the board the pointer is already on the well, so the same budget is a
+ * short slide to centre. Arc path, peak, rotate, and strength stay on the
+ * profile so a catalog or host override can opt back into Motion `arc()`
+ * without re-seeding the rest of the recipe. `staggerMs` is duration-normal
+ * so each chip is visibly queued before the next leaves. `launchSpreadPx` is
+ * space.600 so ~80px mention chips fan into a pack instead of overlapping at
+ * 14px.
  */
 export const JIRA_DROPZONE_FULL_MOTION_PROFILE: FlightProfile = {
 	arcDirection: "automatic",
@@ -51,7 +56,7 @@ export const JIRA_DROPZONE_FULL_MOTION_PROFILE: FlightProfile = {
 	launchSpreadPx: 48,
 	settleHoldMs: 250,
 	staggerMs: 150,
-	travel: "arc",
+	travel: "linear",
 };
 
 export const JIRA_DROPZONE_REDUCED_MOTION_PROFILE: FlightProfile = {
@@ -103,6 +108,28 @@ export function resolveJiraDropzoneArcOptions(
 			return { ...options, direction: profile.arcDirection };
 		default: {
 			const exhaustive: never = profile.arcDirection;
+			return exhaustive;
+		}
+	}
+}
+
+export function resolveFlightTravelTransition<TPath>(
+	travel: FlightTravel,
+	base: {
+		readonly delay: number;
+		readonly duration: number;
+		readonly ease: FlightProfile["ease"];
+	},
+	path: TPath,
+): typeof base | (typeof base & { readonly path: TPath }) {
+	switch (travel) {
+		case "arc":
+			return { ...base, path };
+		case "linear":
+		case "none":
+			return base;
+		default: {
+			const exhaustive: never = travel;
 			return exhaustive;
 		}
 	}

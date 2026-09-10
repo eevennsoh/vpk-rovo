@@ -370,6 +370,7 @@ test("matrix: stagger drop + bounce once is N flights and one first-land impact"
 	assert.equal(afterFirst.channels.get("To Do").impacts, 1);
 	assert.equal(
 		shouldImpulseDropzoneChrome({
+			bounce: "once",
 			impacts: afterFirst.channels.get("To Do").impacts,
 			receiving: isReceiving(afterFirst.channels.get("To Do")),
 		}),
@@ -454,10 +455,56 @@ test("queued second receipt still works for stagger drop + bounce each", () => {
 	assert.equal(afterSecond.channels.get("To Do").impacts, 5);
 });
 
+test("matrix: bounce off lands without an impact and settles immediately", () => {
+	const started = receiveFour({ bounce: "off", drop: "stagger" });
+	assert.equal(started.channels.get("To Do").flights.length, 4);
+	const after = landAll(started);
+	assert.equal(after.channels.get("To Do").impacts, 0);
+	assert.equal(after.channels.get("To Do").settling, false);
+	assert.deepEqual(settlingChannelTitles(after), []);
+	assert.equal(isReceiving(after.channels.get("To Do")), false);
+});
+
+test("bounce off dequeues the next receipt immediately instead of holding", () => {
+	const first = receipt({
+		bounce: "off",
+		drop: "cohort",
+		members: [member("a")],
+	});
+	const second = receipt({
+		bounce: "off",
+		drop: "cohort",
+		from: { x: 11, y: 20 },
+		members: [member("e")],
+	});
+	const started = reduce([
+		{ kind: "register", title: "To Do" },
+		{ kind: "receive", profile: JIRA_DROPZONE_FULL_MOTION_PROFILE, receipt: first },
+		{ kind: "receive", profile: JIRA_DROPZONE_FULL_MOTION_PROFILE, receipt: second },
+	]);
+	const afterFirst = landAll(started);
+	assert.equal(afterFirst.channels.get("To Do").settling, false);
+	assert.equal(afterFirst.channels.get("To Do").flights[0].members[0].id, "e");
+	assert.deepEqual(afterFirst.channels.get("To Do").queued, []);
+});
+
 test("chrome impulse is receiving-gated so idle remounts do not bounce", () => {
-	assert.equal(shouldImpulseDropzoneChrome({ impacts: 0, receiving: true }), false);
-	assert.equal(shouldImpulseDropzoneChrome({ impacts: 1, receiving: false }), false);
-	assert.equal(shouldImpulseDropzoneChrome({ impacts: 1, receiving: true }), true);
+	assert.equal(
+		shouldImpulseDropzoneChrome({ bounce: "once", impacts: 0, receiving: true }),
+		false,
+	);
+	assert.equal(
+		shouldImpulseDropzoneChrome({ bounce: "once", impacts: 1, receiving: false }),
+		false,
+	);
+	assert.equal(
+		shouldImpulseDropzoneChrome({ bounce: "once", impacts: 1, receiving: true }),
+		true,
+	);
+	assert.equal(
+		shouldImpulseDropzoneChrome({ bounce: "off", impacts: 1, receiving: true }),
+		false,
+	);
 });
 
 test("reduced stagger profile keeps member flights without delay or spread", () => {

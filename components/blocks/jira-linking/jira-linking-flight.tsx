@@ -2,9 +2,10 @@
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
-import { arc, motion, type Transition } from "motion/react";
+import { arc, motion } from "motion/react";
 
 import { AgentSessionCohortChip } from "@/components/blocks/agent-session/agent-session-cohort-chip";
+import { resolveFlightTravelTransition } from "@/components/blocks/jira-dropzone/lib/jira-dropzone-motion";
 import { sessionDragChipViewportStyle } from "@/components/blocks/jira-issue/agent-session-drag";
 
 import { toJiraLinkingCohort } from "./drop-cohort";
@@ -134,20 +135,15 @@ function JiraLinkingFlight({
 		return null;
 	}
 
-	const delay = flight.delayMs / 1000;
-	const duration = profile.durationMs / 1000;
-	const transition: Transition = profile.travel === "arc"
-		? {
-			delay,
-			duration,
+	const transition = resolveFlightTravelTransition(
+		profile.travel,
+		{
+			delay: flight.delayMs / 1000,
+			duration: profile.durationMs / 1000,
 			ease: profile.ease,
-			path: flyPath,
-		}
-		: {
-			delay,
-			duration,
-			ease: profile.ease,
-		};
+		},
+		flyPath,
+	);
 
 	return createPortal(
 		<motion.div
