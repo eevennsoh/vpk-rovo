@@ -76,7 +76,7 @@ test("default names bg-surface-sunken and the well tokens", async () => {
 	assert.equal(chrome.dropIdleClassName, harness.DEFAULT_KANBAN_DROP_IDLE_CLASS_NAME);
 	assert.equal(chrome.dropRingClipGutter, "");
 	assert.equal(chrome.dropContentPadding, undefined);
-	assert.equal(chrome.resizeButtonClassName, "pt-2 pb-1");
+	assert.equal("resizeButtonClassName" in chrome, false);
 	assert.equal(chrome.headerFrame, "enclosed");
 	assert.equal(
 		chrome.collapsed.pillClassName,
@@ -87,6 +87,13 @@ test("default names bg-surface-sunken and the well tokens", async () => {
 	assert.equal(chrome.collapsed.pillRadius, harness.token("radius.large"));
 	assert.equal(chrome.collapsed.pillPaddingBlock, harness.token("space.150"));
 	assert.equal("headerFrame" in chrome.collapsed, false);
+});
+
+test("column chrome does not pad the collapse control", () => {
+	// icon-compact is a 24px box. Asymmetric padding (pt-2/pb-1) shrinks the
+	// content box and drops the glyph off vertical center.
+	assert.doesNotMatch(COLUMN_CHROME_SOURCE, /resizeButtonClassName/u);
+	assert.doesNotMatch(COLUMN_CHROME_SOURCE, /pt-2 pb-1/u);
 });
 
 test("default well and Untracked enclosed well share a 1px border box", () => {
@@ -131,7 +138,7 @@ test("simple has an empty class and undefined insets", async () => {
 	assert.equal(chrome.dropContentPadding?.paddingBottom, harness.SIMPLE_KANBAN_DROP_CONTENT_INSET);
 	assert.equal(chrome.dropContentPadding?.paddingTop, harness.token("space.050"));
 	assert.equal(chrome.dropContentPadding?.paddingInline, harness.token("space.050"));
-	assert.equal(chrome.resizeButtonClassName, "");
+	assert.equal("resizeButtonClassName" in chrome, false);
 	assert.equal(Object.hasOwn(chrome.header, "paddingTop"), true);
 	assert.notEqual(chrome.header.paddingTop, 0);
 	assert.notEqual(chrome.cardList.paddingInline, 0);

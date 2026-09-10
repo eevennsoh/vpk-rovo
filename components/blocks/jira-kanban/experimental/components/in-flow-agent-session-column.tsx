@@ -94,6 +94,9 @@ function useInFlowAgentSessionColumnInteraction(
 		setPinned(next.pinned);
 		if (next.pinned) {
 			setIsHovered(true);
+		} else {
+			setIsHovered(false);
+			setIsMenuOpen(false);
 		}
 	};
 
@@ -373,6 +376,10 @@ export function InFlowAgentSessionColumn({
 			if (!pinned && !isFullWidth) handlePinnedChange(true);
 		},
 	});
+	const handlePinnedPlacementChange = (nextPinned: boolean) => {
+		handlePinnedChange(nextPinned);
+		if (!nextPinned) reposition.moveToLeadingGutter();
+	};
 	const isEmbedded = isInteractionEmbedded || reposition.shifted || reposition.dragging;
 	const dragHandle = reposition.enabled ? (
 		<button
@@ -455,7 +462,7 @@ export function InFlowAgentSessionColumn({
 					onExpand={handleExpand}
 					onGutterIntroComplete={() => setPlayGutterIntro(false)}
 					onMenuOpenChange={handleMenuOpenChange}
-					onPinnedChange={handlePinnedChange}
+					onPinnedChange={handlePinnedPlacementChange}
 					paddingBottom={paddingBottom}
 					paddingTop={paddingTop}
 					playGutterIntro={playGutterIntro}

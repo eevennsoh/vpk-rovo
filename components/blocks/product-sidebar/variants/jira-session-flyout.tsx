@@ -80,6 +80,8 @@ export interface JiraSessionFlyoutSurfaceProps {
 	/** Lets dense trigger groups defer a switch while the pointer travels into the popup. */
 	onOpenChange?: HoverCardProps<JiraSidebarSessionItem>["onOpenChange"];
 	popupRef?: ComponentProps<typeof HoverCardContent>["ref"];
+	anchor?: ComponentProps<typeof HoverCardContent>["anchor"];
+	positionMethod?: ComponentProps<typeof HoverCardContent>["positionMethod"];
 	/** Snaps between detached triggers: no position, enter/exit, or content-switch motion. */
 	instantPosition?: boolean;
 	/**
@@ -693,6 +695,8 @@ function JiraSessionFlyoutPayload({ content, ...props }: JiraSessionFlyoutPayloa
  * content-switch motion.
  */
 export function JiraSessionFlyoutSurface({
+	anchor,
+	positionMethod,
 	archiveActionLabel,
 	capturedSessionIds,
 	content = "details",
@@ -720,6 +724,8 @@ export function JiraSessionFlyoutSurface({
 		<HoverCard<JiraSidebarSessionItem> handle={handle} onOpenChange={onOpenChange}>
 			{({ payload }) => (
 				<HoverCardContent
+					anchor={anchor}
+					positionMethod={positionMethod}
 					ref={popupRef}
 					align="start"
 					alignOffset={0}

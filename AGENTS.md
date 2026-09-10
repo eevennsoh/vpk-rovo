@@ -211,7 +211,7 @@ Two runtime modes: **dev** (Next.js proxy + Express, with optional Rovo Serve fo
 
 ### Architecture Quality Bar
 
-Recurring thermo-nuclear reviews have shown that VPK stays healthiest when new behavior creates clear owners instead of expanding already-busy files. Before implementing a non-trivial feature or refactor, check these constraints:
+New behavior gets a clear owner instead of expanding an already-busy file. Before implementing a non-trivial feature or refactor, check these constraints:
 
 - Keep route/shell/top-level files shallow and put behavior in its canonical layer; shared primitives stay generic, while domain behavior belongs behind adapters, hooks, strategies, or render callbacks.
 - Normalize data at boundaries with typed models/resolvers/reducers/dispatchers; repeated conditionals, nullable modes, booleans, casts, and fallbacks signal a weak state model.

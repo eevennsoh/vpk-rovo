@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { KanbanColumnChrome } from "@/components/blocks/jira-kanban/column-chrome";
+import type { JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
 import Page from "@/components/blocks/jira-kanban/page";
 import ExperimentalPage from "@/components/blocks/jira-kanban/experimental/page";
 import ExperimentalV2Page from "@/components/blocks/jira-kanban/experimental-v2/page";
@@ -29,6 +30,14 @@ function readKanbanColumnChrome(
 	return undefined;
 }
 
+function createEmptyColumnExample(): JiraKanbanColumnData[] {
+	return createJiraGoldenJourneysV4PayBoardColumns().map((column) => (
+		column.title === "In review"
+			? column
+			: { ...column, cards: [], count: 0 }
+	));
+}
+
 export default function JiraKanbanDemo() {
 	return <Page />;
 }
@@ -43,9 +52,15 @@ export function JiraKanbanDemoExperimental() {
 
 function JiraKanbanDemoExperimentalV2Body({
 	columnChrome: columnChromeProp,
-}: Readonly<{ columnChrome: KanbanColumnChrome }>) {
+	emptyColumns = false,
+}: Readonly<{
+	columnChrome: KanbanColumnChrome;
+	emptyColumns?: boolean;
+}>) {
 	const [activeView, setActiveView] = useState<"board" | "list">("board");
-	const [boardColumns, setBoardColumns] = useState(createJiraGoldenJourneysV4PayBoardColumns);
+	const [boardColumns, setBoardColumns] = useState(
+		emptyColumns ? createEmptyColumnExample : createJiraGoldenJourneysV4PayBoardColumns,
+	);
 	const [columnChrome, setColumnChrome] = useState(columnChromeProp);
 
 	return (
@@ -114,4 +129,8 @@ export function JiraKanbanDemoExperimentalV2() {
 
 export function JiraKanbanDemoExperimentalV2Simple() {
 	return <JiraKanbanDemoExperimentalV2Body columnChrome="simple" />;
+}
+
+export function JiraKanbanDemoEmptyColumns() {
+	return <JiraKanbanDemoExperimentalV2Body columnChrome="default" emptyColumns />;
 }

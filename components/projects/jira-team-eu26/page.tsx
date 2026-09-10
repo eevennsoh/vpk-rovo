@@ -300,6 +300,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						activeView={activeView}
 						additionalAgentSessions={syncedAgentSessions}
 						agentActivityLayout="merged"
+						agentSessionMultiSelect={false}
 						cardGenerativeActionPresentation="more-actions"
 						createWorkItemDropZoneLabel={createWorkItemDropZoneLabel}
 						agentSessionAssigneeIdAliases={JIRA_TEAM_EU26_PAY_SESSION_MEMBER_ID_BY_ASSIGNEE_ID}

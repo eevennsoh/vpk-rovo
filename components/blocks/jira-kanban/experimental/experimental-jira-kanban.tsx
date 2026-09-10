@@ -461,7 +461,6 @@ function BoardColumn({
 					<BoardColumnResizeButton
 						className={cn(
 							BOARD_COLUMN_ACTION_REVEAL,
-							chrome.resizeButtonClassName,
 							"group-hover/board-column:pointer-events-auto group-hover/board-column:opacity-100",
 							"group-has-[:focus-visible]/board-column:pointer-events-auto group-has-[:focus-visible]/board-column:opacity-100",
 						)}
