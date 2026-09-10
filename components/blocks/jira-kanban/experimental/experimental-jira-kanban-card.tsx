@@ -11,6 +11,7 @@ import {
 	type JiraIssueAgentActivity,
 	type JiraIssueAgentActivityIndicatorRenderer,
 	type JiraIssueAgentActivityLayout,
+	type JiraIssueAgentAssignment,
 	type JiraIssueAgentSessionDragControl,
 	type JiraIssueAgentLinkFlash,
 	type JiraIssueChrome,
@@ -87,6 +88,47 @@ function toAssignedAgentFromDoneRun(
 		status: run.summary,
 		statusKind: "finished",
 		statusLabel: run.summary,
+	};
+}
+
+function resolveKanbanCardAssignment(
+	card: JiraKanbanCardData,
+	catalog: readonly JiraKanbanAgentData[] | undefined,
+	onAssignedAgentIdsChange?: (issueKey: string, agentIds: readonly string[]) => void,
+): JiraIssueAgentAssignment | undefined {
+	if (!onAssignedAgentIdsChange) {
+		return undefined;
+	}
+
+	const assignedAgents = assignedAgentsFromKanbanCard(card);
+	const catalogAgents = (catalog ?? []).map(toSelectorAgentFromCatalog);
+	const extraAssignedAgents = assignedAgents
+		.filter((assigned) => !catalogAgents.some((agent) => agent.id === assigned.id))
+		.map((assigned) => ({
+			id: assigned.id,
+			name: assigned.name,
+			byline: assigned.byline,
+			...(assigned.avatarSrc ? { avatarSrc: assigned.avatarSrc } : {}),
+			...(assigned.brandName ? { brandName: assigned.brandName } : {}),
+		}));
+	const assignmentAgents = extraAssignedAgents.length > 0
+		? [...extraAssignedAgents, ...catalogAgents]
+		: catalogAgents;
+	const pinnedAgentIds = catalogAgents.length > 0
+		? DEFAULT_PINNED_SPACE_AGENT_IDS.filter((agentId) => (
+			catalogAgents.some((agent) => agent.id === agentId)
+		))
+		: DEFAULT_PINNED_SPACE_AGENT_IDS;
+
+	return {
+		...(assignmentAgents.length > 0 ? { agents: assignmentAgents } : {}),
+		assignedAgents,
+		defaultPinnedAgentIds: pinnedAgentIds,
+		onAssignedAgentIdsChange: (agentIds) => onAssignedAgentIdsChange(
+			card.code,
+			agentIds.map((agentId) => canonicalizeAssignedAgentId(card.code, agentId)),
+		),
+		pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL,
 	};
 }
 
@@ -247,43 +289,12 @@ export function ExperimentalJiraKanbanCard({
 		onLinkWorkItem?.(item, workItemKey);
 	}
 
-	const assignedAgents = assignedAgentsFromKanbanCard(card);
-	const catalogAgents = (agents ?? []).map(toSelectorAgentFromCatalog);
-	const extraAssignedAgents = assignedAgents
-		.filter((assigned) => !catalogAgents.some((agent) => agent.id === assigned.id))
-		.map((assigned) => ({
-			id: assigned.id,
-			name: assigned.name,
-			byline: assigned.byline,
-			...(assigned.avatarSrc ? { avatarSrc: assigned.avatarSrc } : {}),
-			...(assigned.brandName ? { brandName: assigned.brandName } : {}),
-		}));
-	const assignmentAgents = extraAssignedAgents.length > 0
-		? [...extraAssignedAgents, ...catalogAgents]
-		: catalogAgents;
-	const pinnedAgentIds = catalogAgents.length > 0
-		? DEFAULT_PINNED_SPACE_AGENT_IDS.filter((agentId) => (
-			catalogAgents.some((agent) => agent.id === agentId)
-		))
-		: DEFAULT_PINNED_SPACE_AGENT_IDS;
-
 	return (
 		<JiraIssue
 			active={active}
 			agentActivities={card.agentActivities}
 			agentActivityLayout={agentActivityLayout}
-			assignment={onAssignedAgentIdsChange
-				? {
-					...(assignmentAgents.length > 0 ? { agents: assignmentAgents } : {}),
-					assignedAgents,
-					defaultPinnedAgentIds: pinnedAgentIds,
-					onAssignedAgentIdsChange: (agentIds) => onAssignedAgentIdsChange(
-						card.code,
-						agentIds.map((agentId) => canonicalizeAssignedAgentId(card.code, agentId)),
-					),
-					pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL,
-				}
-				: undefined}
+			assignment={resolveKanbanCardAssignment(card, agents, onAssignedAgentIdsChange)}
 			agentLinkFlash={agentLinkFlash}
 			agentActivityMode={agentActivityMode}
 			agentSessionDragControl={agentSessionDragControl}
