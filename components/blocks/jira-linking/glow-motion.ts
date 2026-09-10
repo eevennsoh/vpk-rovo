@@ -8,8 +8,21 @@ export const JIRA_LINKING_GLOW_DEFAULT_COLOR = "var(--ds-border-focused)";
 const DROP_APEX_FRACTION = 0.4;
 const DROP_KEYFRAME_STEPS = 60;
 
-export function resolveJiraLinkingGlowSettleMs(shouldReduceMotion: boolean | null): number {
-	return shouldReduceMotion ? 0 : JIRA_LINKING_GLOW_DROP_DURATION_MS;
+/**
+ * How long Glow waits before reporting settled.
+ *
+ * A drop waits for the travelling chip to land. A glow-only release — a click
+ * assignment that omitted `drop` — has no chip, so it settles immediately and
+ * the halo/pulse can start without that delay.
+ */
+export function resolveJiraLinkingGlowSettleMs(
+	shouldReduceMotion: boolean | null,
+	release?: Readonly<{ drop?: unknown }> | null,
+): number {
+	if (shouldReduceMotion || (release != null && release.drop == null)) {
+		return 0;
+	}
+	return JIRA_LINKING_GLOW_DROP_DURATION_MS;
 }
 
 /** Centers are viewport coordinates. X stays at release, matching the source. */

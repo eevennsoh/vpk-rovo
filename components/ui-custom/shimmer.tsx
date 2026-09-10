@@ -199,7 +199,8 @@ const ShimmerComponent = ({
 	if (shouldReduceMotion) {
 		return (
 			<MotionComponent
-				className={cn("relative inline-block [color:var(--color-muted-foreground)]", className)}
+				className={cn("relative inline-block", className)}
+				style={{ color: resolvedBaseColor }}
 			>
 				{children}
 			</MotionComponent>
@@ -219,7 +220,7 @@ const ShimmerComponent = ({
 					"--text-shimmer-duration": `${resolvedDuration}s`,
 					"--text-shimmer-start-position": resolvedInitialBackgroundPosition,
 					backgroundImage:
-						"var(--bg), linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground))",
+						`var(--bg), linear-gradient(${resolvedBaseColor}, ${resolvedBaseColor})`,
 				} as CSSProperties
 			}
 		>
