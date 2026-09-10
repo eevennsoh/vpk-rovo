@@ -54,8 +54,23 @@ test("the focus row control is wired to that handler, not the raw setter", () =>
 test("the assignee filter still clears the same state, so both paths agree", () => {
 	const body = handlerBody(PAGE_SOURCE, "handleAssigneeFilterChange");
 
-	assert.match(body, /setSelection\(createJiraKanbanSelectionState\(\)\)/u);
-	assert.match(body, /setDraggedCard\(null\)/u);
+	assert.match(body, /setAssigneeIdsWithScopeReset\(assigneeIds\)/u);
+});
+
+test("every board-filter assignee mutation clears focused collapse and card state", () => {
+	const filterActionsStart = PAGE_SOURCE.indexOf("const filterActions = useMemo");
+	const filterActionsEnd = PAGE_SOURCE.indexOf("// Insights reads", filterActionsStart);
+	const filterActionsSource = PAGE_SOURCE.slice(filterActionsStart, filterActionsEnd);
+
+	assert.match(
+		PAGE_SOURCE,
+		/const resetAssigneeScopedBoardState = useCallback\(\(\) => \{[\s\S]*?setSelection\(createJiraKanbanSelectionState\(\)\)[\s\S]*?setDraggedCard\(null\)[\s\S]*?setFocusedCollapsedColumns\(null\)[\s\S]*?\}, \[\]\);/u,
+	);
+	assert.match(filterActionsSource, /clearAll: \(\) => \{[\s\S]*?resetAssigneeScopedBoardState\(\)[\s\S]*?boardFilter\.actions\.clearAll\(\)/u);
+	assert.match(filterActionsSource, /clearField: \(fieldId\) => \{[\s\S]*?fieldId === "assignee"[\s\S]*?resetAssigneeScopedBoardState\(\)/u);
+	assert.match(filterActionsSource, /setAssigneeIds: setAssigneeIdsWithScopeReset/u);
+	assert.match(filterActionsSource, /toggleValue: \(fieldId, valueId\) => \{[\s\S]*?fieldId === "assignee"[\s\S]*?resetAssigneeScopedBoardState\(\)/u);
+	assert.match(PAGE_SOURCE, /setAssigneeIdsWithScopeReset\(nextAssigneeIds\)/u);
 });
 
 test("bulk actions read the raw selection, which is why the reset is required", () => {

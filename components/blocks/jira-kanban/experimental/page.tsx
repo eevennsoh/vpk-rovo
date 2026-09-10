@@ -320,6 +320,15 @@ function ExperimentalJiraKanbanPageContent({
 	const [assignedAgentIdsByCard, setAssignedAgentIdsByCard] = useState<Record<string, string[]>>({});
 	const boardFilter = useBoardFilter();
 	const selectedAssigneeIds = boardFilter.selectedAssigneeIds;
+	const resetAssigneeScopedBoardState = useCallback(() => {
+		setSelection(createJiraKanbanSelectionState());
+		setDraggedCard(null);
+		setFocusedCollapsedColumns(null);
+	}, []);
+	const setAssigneeIdsWithScopeReset = useCallback((assigneeIds: Set<string>) => {
+		resetAssigneeScopedBoardState();
+		boardFilter.actions.setAssigneeIds(assigneeIds);
+	}, [boardFilter.actions, resetAssigneeScopedBoardState]);
 	const [localTimelineLastViewedAt, setLocalTimelineLastViewedAt] = useState<string | null>(() => (
 		insightsEnabled && controlledMode === "pulse"
 			? markTimelineViewed(PULSE_TIMELINE)
@@ -353,11 +362,9 @@ function ExperimentalJiraKanbanPageContent({
 		const nextAssigneeIds = insightsDefaultAssigneeIds === undefined
 			? toInsightsAssigneeIds(selectedAssigneeIds, PULSE_MEMBER_IDS)
 			: new Set(insightsDefaultAssigneeIds);
-		setSelection(createJiraKanbanSelectionState());
-		setDraggedCard(null);
-		boardFilter.actions.setAssigneeIds(nextAssigneeIds);
+		setAssigneeIdsWithScopeReset(nextAssigneeIds);
 		updateMode("pulse");
-	}, [boardFilter.actions, insightsDefaultAssigneeIds, insightsEnabled, markTimelineAsViewed, selectedAssigneeIds, updateMode]);
+	}, [insightsDefaultAssigneeIds, insightsEnabled, markTimelineAsViewed, selectedAssigneeIds, setAssigneeIdsWithScopeReset, updateMode]);
 	useImperativeHandle(ref, () => ({
 		openTimeline: (snapshotId: string | null = null) => handleOpenTimeline(snapshotId),
 	}), [handleOpenTimeline]);
@@ -373,13 +380,27 @@ function ExperimentalJiraKanbanPageContent({
 	// same Venn default as the Insights toggle.
 	const filterActions = useMemo((): BoardFilterActions => ({
 		...boardFilter.actions,
+		clearAll: () => {
+			resetAssigneeScopedBoardState();
+			boardFilter.actions.clearAll();
+		},
+		clearField: (fieldId) => {
+			if (fieldId === "assignee") {
+				resetAssigneeScopedBoardState();
+			}
+			boardFilter.actions.clearField(fieldId);
+		},
+		setAssigneeIds: setAssigneeIdsWithScopeReset,
 		toggleValue: (fieldId, valueId) => {
+			if (fieldId === "assignee") {
+				resetAssigneeScopedBoardState();
+			}
 			boardFilter.actions.toggleValue(fieldId, valueId);
 			if (insightsEnabled && (fieldId === "parent" || fieldId === "sprint")) {
 				handleOpenTimeline();
 			}
 		},
-	}), [boardFilter.actions, handleOpenTimeline, insightsEnabled]);
+	}), [boardFilter.actions, handleOpenTimeline, insightsEnabled, resetAssigneeScopedBoardState, setAssigneeIdsWithScopeReset]);
 	// Insights reads Parent and Sprint off the same filter the board reads its
 	// own fields off. One control, one selection model — the scope is derived
 	// here rather than owned separately, so the popover and the article cannot
@@ -752,10 +773,7 @@ function ExperimentalJiraKanbanPageContent({
 	};
 
 	const handleAssigneeFilterChange = (assigneeIds: Set<string>) => {
-		setSelection(createJiraKanbanSelectionState());
-		setDraggedCard(null);
-		setFocusedCollapsedColumns(null);
-		boardFilter.actions.setAssigneeIds(assigneeIds);
+		setAssigneeIdsWithScopeReset(assigneeIds);
 	};
 
 	// Same contract as the assignee filter: the focus row takes cards off the
