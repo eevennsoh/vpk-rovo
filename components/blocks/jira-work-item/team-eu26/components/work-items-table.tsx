@@ -8,6 +8,15 @@ import PriorityMediumIcon from "@atlaskit/icon/core/priority-medium";
 import SubtasksIcon from "@atlaskit/icon/core/subtasks";
 
 import type { TeamEu26TableWorkItem } from "@/components/blocks/jira-work-item/team-eu26/data/high-confidence-work-item";
+import {
+	WORK_ITEM_TABLE_BODY_ROW_CLASS,
+	WORK_ITEM_TABLE_CELL_CLASS,
+	WORK_ITEM_TABLE_CLASS,
+	WORK_ITEM_TABLE_CONTAINER_CLASS,
+	WORK_ITEM_TABLE_HEADER_CLASS,
+	WORK_ITEM_TABLE_HEADER_ROW_CLASS,
+	WORK_ITEM_TABLE_HEAD_CLASS,
+} from "@/components/blocks/jira-work-item/team-eu26/components/work-item-table-styles";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -30,10 +39,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-
-const TABLE_HEAD_CLASS =
-	"h-10 px-2 py-0 text-sm font-semibold text-text-subtle first:px-4 not-first:border-l not-first:border-border";
-const TABLE_CELL_CLASS = "h-10 px-2 py-0 first:px-4";
 
 interface StatusOption {
 	label: string;
@@ -173,22 +178,22 @@ export function WorkItemsTable({
 }>) {
 	const WorkIcon = relationship ? ChildWorkItemsIcon : SubtasksIcon;
 	return (
-		<div className="overflow-hidden rounded-md border border-border">
-			<Table aria-label={ariaLabel} className="w-full table-fixed">
-				<TableHeader className="bg-surface-sunken [&_tr]:border-0">
-					<TableRow className="h-10 hover:bg-surface-sunken">
-						{relationship ? <TableHead className={cn(TABLE_HEAD_CLASS, "w-[6.5rem]")}>Relationship</TableHead> : null}
-						<TableHead className={cn(TABLE_HEAD_CLASS, "w-auto")}>Work</TableHead>
-						<TableHead className={cn(TABLE_HEAD_CLASS, "w-[76px]")}>Priority</TableHead>
-						<TableHead className={cn(TABLE_HEAD_CLASS, "w-[88px]")}>Assignee</TableHead>
-						<TableHead className={cn(TABLE_HEAD_CLASS, "w-[148px]")}>Status</TableHead>
+		<div className={WORK_ITEM_TABLE_CONTAINER_CLASS}>
+			<Table aria-label={ariaLabel} className={WORK_ITEM_TABLE_CLASS}>
+				<TableHeader className={WORK_ITEM_TABLE_HEADER_CLASS}>
+					<TableRow className={WORK_ITEM_TABLE_HEADER_ROW_CLASS}>
+						{relationship ? <TableHead className={cn(WORK_ITEM_TABLE_HEAD_CLASS, "w-[6.5rem]")}>Relationship</TableHead> : null}
+						<TableHead className={cn(WORK_ITEM_TABLE_HEAD_CLASS, "w-auto")}>Work</TableHead>
+						<TableHead className={cn(WORK_ITEM_TABLE_HEAD_CLASS, "w-[76px]")}>Priority</TableHead>
+						<TableHead className={cn(WORK_ITEM_TABLE_HEAD_CLASS, "w-[88px]")}>Assignee</TableHead>
+						<TableHead className={cn(WORK_ITEM_TABLE_HEAD_CLASS, "w-[148px]")}>Status</TableHead>
 					</TableRow>
 				</TableHeader>
 				<TableBody>
 					{items.map((item) => (
-						<TableRow className="h-10 border-b-0 border-t border-border hover:bg-transparent" key={item.key}>
-							{relationship ? <TableCell className={TABLE_CELL_CLASS}>{item.relationship}</TableCell> : null}
-							<TableCell className={cn(TABLE_CELL_CLASS, "overflow-hidden")}>
+						<TableRow className={WORK_ITEM_TABLE_BODY_ROW_CLASS} key={item.key}>
+							{relationship ? <TableCell className={WORK_ITEM_TABLE_CELL_CLASS}>{item.relationship}</TableCell> : null}
+							<TableCell className={cn(WORK_ITEM_TABLE_CELL_CLASS, "overflow-hidden")}>
 								<div className="flex min-w-0 items-center gap-2">
 									<span className="shrink-0 text-icon-information">
 										<WorkIcon color="currentColor" label="" size="small" />
@@ -199,9 +204,9 @@ export function WorkItemsTable({
 									<span className="min-w-0 truncate text-sm text-text">{item.summary}</span>
 								</div>
 							</TableCell>
-							<TableCell className={TABLE_CELL_CLASS}><Priority priority={item.priority} /></TableCell>
-							<TableCell className={TABLE_CELL_CLASS}><Assignee name={item.assignee} /></TableCell>
-							<TableCell className={TABLE_CELL_CLASS}>
+							<TableCell className={WORK_ITEM_TABLE_CELL_CLASS}><Priority priority={item.priority} /></TableCell>
+							<TableCell className={WORK_ITEM_TABLE_CELL_CLASS}><Assignee name={item.assignee} /></TableCell>
+							<TableCell className={WORK_ITEM_TABLE_CELL_CLASS}>
 								<StatusSelect itemKey={item.key} onChange={(status) => onStatusChange(item.key, status)} status={statuses[item.key] ?? item.status} />
 							</TableCell>
 						</TableRow>

@@ -29,6 +29,7 @@ import {
 } from "@/components/blocks/jira-work-item/team-eu26/components/automation-tab";
 import { DevelopmentSectionContent } from "@/components/blocks/jira-work-item/team-eu26/components/details-sections";
 import { DetailsTab } from "@/components/blocks/jira-work-item/team-eu26/components/details-tab";
+import { EmptyMetadataRail } from "@/components/blocks/jira-work-item/team-eu26/components/empty-metadata-rail";
 import { HighConfidenceMetadataRail } from "@/components/blocks/jira-work-item/team-eu26/components/high-confidence-metadata-rail";
 import {
 	useJiraWorkItemActions,
@@ -45,9 +46,7 @@ import type {
 import { SmartLink, type SmartLinkItem } from "@/components/blocks/smart-link";
 import { SMART_LINK_MODAL_ACTIONS } from "@/components/blocks/smart-link/data/smart-link-actions";
 import { ProgressCircle } from "@/components/ui-custom/progress-circle";
-import { FOCUS_RING_TOP_CLIP_GUTTER } from "@/components/ui/focus-ring";
 import { StickyRowScrollFade } from "@/components/visual/scroll-mask";
-import { cn } from "@/lib/utils";
 
 const PullRequestContextRail = dynamic(
 	() => import("@/components/blocks/jira-work-item/team-eu26/components/pull-request-detail/pull-request-context-rail")
@@ -299,8 +298,10 @@ export function MetadataRail({
 		}),
 		[showBottomScrollMask],
 	);
-	if (initialPreset === "filled" && !pullRequestSelected && !insightsSelected) {
-		return <HighConfidenceMetadataRail automationRules={automationRules} />;
+	if ((initialPreset === "filled" || initialPreset === "empty") && !pullRequestSelected && !insightsSelected) {
+		return initialPreset === "empty"
+			? <EmptyMetadataRail />
+			: <HighConfidenceMetadataRail automationRules={automationRules} />;
 	}
 
 	return (
@@ -323,10 +324,7 @@ export function MetadataRail({
 				ref={metadataBodyScrollRef}
 				// overflow-x-hidden: body owns vertical scroll only; long lines must
 				// wrap/truncate via min-w-0 rather than grow a cross-axis bar.
-				className={cn(
-					"relative min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-none @[860px]/agentlayout:pb-8",
-					FOCUS_RING_TOP_CLIP_GUTTER,
-				)}
+				className="relative min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-none @[860px]/agentlayout:pt-6 @[860px]/agentlayout:pb-8"
 				data-jira-work-item-scroll-region
 				style={metadataBodyScrollMaskStyle}
 			>

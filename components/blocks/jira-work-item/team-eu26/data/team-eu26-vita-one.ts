@@ -1,4 +1,5 @@
 import type { WorkItemData } from "@/app/contexts/context-work-item-modal";
+import { createAgentPlannerState } from "@/components/blocks/jira-work-item/data/planner-state";
 import {
 	hydratePreset,
 	type AgentSessionComment,
@@ -6,6 +7,7 @@ import {
 	type JiraWorkItemState,
 	type StaticTimelineEvent,
 } from "@/components/blocks/jira-work-item/data/session-state";
+import { TEAM_EU26_EMPTY_ACTIVITY_EVENTS } from "@/components/blocks/jira-work-item/team-eu26/data/empty-work-item";
 import { SESSION_EPOCH_MS } from "@/components/blocks/jira-work-item/data/session-fixtures";
 import { TEAM_EU26_DESCRIPTION } from "@/components/blocks/jira-work-item/team-eu26/data/high-confidence-work-item";
 
@@ -157,8 +159,35 @@ export function createTeamEu26VitaOneState(
 	workItem: Readonly<WorkItemData>,
 ): JiraWorkItemState {
 	const base = hydratePreset(preset, workItem);
-	if (preset === "blank" || preset === "empty") {
+	if (preset === "blank") {
 		return base;
+	}
+	if (preset === "empty") {
+		return {
+			...base,
+			contextResources: {
+				...base.contextResources,
+				attachments: [],
+				description: "",
+				linkedItems: [],
+				nextSteps: [],
+				subtasks: [],
+				title: workItem.title,
+				tldr: [],
+			},
+			metadata: {
+				...base.metadata,
+				assignee: TEAM_EU26_PEOPLE.automatic,
+				atlassianProject: null,
+				crew: [],
+				dueDate: undefined,
+				priority: "Medium",
+				reporter: TEAM_EU26_PEOPLE.elena,
+				status: "To do",
+			},
+			planner: createAgentPlannerState("filled", workItem),
+			staticEvents: TEAM_EU26_EMPTY_ACTIVITY_EVENTS.map((event) => ({ ...event })),
+		};
 	}
 
 	return {

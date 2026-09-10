@@ -14,7 +14,7 @@ import { AnimatePresence, motion, useReducedMotion, type Transition, type Varian
 import AddIcon from "@atlaskit/icon/core/add";
 import AiChatIcon from "@atlaskit/icon/core/ai-chat";
 
-import { ROVO_AGENT_SELECTOR_AGENTS, type SkillsDirectorySkill } from "@/app/data/directory";
+import { ROVO_AGENT_SELECTOR_AGENTS } from "@/app/data/directory";
 import {
 	EDITOR_PALETTE_MENTION_SOURCES,
 	mapAgentToMentionItem,
@@ -36,7 +36,6 @@ import { useActivityChatComments } from "@/components/blocks/jira-work-item/team
 import { useFailingChecksComposer } from "@/components/blocks/jira-work-item/team-eu26/context-failing-checks-composer";
 import { useJiraWorkItem } from "@/components/blocks/jira-work-item/team-eu26/context-jira-work-item";
 import { useMetadataRail } from "@/components/blocks/jira-work-item/team-eu26/context-metadata-rail";
-import { ActivityComposerContextPills } from "@/components/blocks/jira-work-item/team-eu26/components/activity-composer-context-pills";
 import { JiraWorkItemComposerMotion } from "@/components/blocks/jira-work-item/team-eu26/components/jira-work-item-composer-motion";
 import { JIRA_WORK_ITEM_CURRENT_USER } from "@/components/blocks/jira-work-item/team-eu26/lib/jira-activity-adapter";
 import {
@@ -163,17 +162,13 @@ function ComposerTransitionItem({
 export function ActivityComposer({
 	agents,
 	autoFocus = false,
-	composerContextBar,
 	onAgentPromptSubmit,
 	onFailingChecksSubmit,
-	onOpenAgentChat,
 	pullRequestFix,
 	pullRequestReview,
-	onSkillInvoke,
 }: Readonly<{
 	agents?: readonly AgentSelectorAgent[];
 	autoFocus?: boolean;
-	composerContextBar?: ReactNode;
 	onAgentPromptSubmit?: (agentIds: readonly string[], prompt: string) => void;
 	/** Advances Fix-chapter storytelling when a failing-checks chip is submitted. */
 	onFailingChecksSubmit?: () => void;
@@ -181,7 +176,6 @@ export function ActivityComposer({
 	/** Expanded PullRequestFix card (Fix / Fix all); replaces the activity prompt. */
 	pullRequestFix?: ActivityComposerPullRequestFix;
 	pullRequestReview?: ActivityComposerPullRequestReview;
-	onSkillInvoke?: (skill: SkillsDirectorySkill) => boolean | void;
 }>) {
 	const { state, actions, meta } = useJiraWorkItem();
 	const { requestRevealLatestActivity } = useMetadataRail();
@@ -312,8 +306,6 @@ export function ActivityComposer({
 		&& sessionTargetSelection?.sessionId === mentionedWorkingAgentSession.id
 		&& sessionTargetSelection.choice === "new",
 	);
-	const workingSessions = state.sessions.filter((session) => session.status !== "completed");
-
 	const handlePromptChange = (next: string) => {
 		setDraft(next);
 		const nextMentionedSessions = findMentionedWorkingAgentSessions(state.sessions, next);
@@ -331,24 +323,6 @@ export function ActivityComposer({
 			return;
 		}
 		setSessionTargetSelection({ sessionId: mentionedWorkingAgentSession.id, choice });
-	};
-
-	const handleInvokeAgent = (agent: Pick<AgentSelectorAgent, "id" | "name" | "avatarSrc" | "brandName">) => {
-		actions.invokeAgent(agent, "context-pill", `@${agent.name}`);
-	};
-
-	const handleInvokeSkill = (skill: SkillsDirectorySkill) => {
-		if (onSkillInvoke?.(skill) === true) return;
-		actions.launchSession(
-			{ id: `skill:${skill.id}`, name: "Rovo" },
-			`/${skill.name}`,
-			skill.name,
-		);
-	};
-
-	const handleOpenWorkingSession = (agentId: string, sessionId: string) => {
-		actions.openSession(sessionId);
-		onOpenAgentChat?.(agentId);
 	};
 
 	const handleSubmit = (body: string) => {
@@ -460,15 +434,6 @@ export function ActivityComposer({
 
 	return (
 		<div onKeyDownCapture={handleKeyDownCapture} ref={composerRootRef}>
-			{hasExpandedPullRequestComposer || composerContextBar == null ? null : (
-				<ActivityComposerContextPills
-					contextBar={composerContextBar}
-					onInvokeAgent={handleInvokeAgent}
-					onInvokeSkill={handleInvokeSkill}
-					onOpenAgentChat={onOpenAgentChat ? handleOpenWorkingSession : undefined}
-					workingSessions={workingSessions}
-				/>
-			)}
 			<div className="relative" data-jira-work-item-composer-state="sticky">
 				<JiraWorkItemComposerMotion
 					layout
@@ -512,14 +477,14 @@ export function ActivityComposer({
 								<JiraActivityComposer
 									autoFocus={autoFocus}
 									author={JIRA_WORK_ITEM_CURRENT_USER}
-									className="min-h-13 rounded-xl"
+									expandOnFocus
 									inputContext={composerInputContext}
 									inputContextSubmitText={composerInputContextSubmitText}
 									mentionSources={mentionSources}
 									mentionSectionLabels={JIRA_WORK_ITEM_MENTION_LABELS}
 									onSubmit={handleSubmit}
 									onValueChange={handlePromptChange}
-									placeholder="Add a comment, @mention or / for actions"
+									placeholder="Comment, @mention an agent, or / for skills"
 									submitAccessory={startsNewSession ? (
 										<Tag
 											className="self-center"

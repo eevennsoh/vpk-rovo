@@ -413,7 +413,7 @@ export function ActivityPanel({
 			)}
 			headingVisible
 			id={surface === "insights" ? "insights" : "activity"}
-			label={surface === "insights" ? "Insights" : meta.initialPreset === "filled" ? "Activity" : "4 days ago"}
+			label={surface === "insights" ? "Insights" : meta.initialPreset === "filled" || meta.initialPreset === "empty" ? "Activity" : "4 days ago"}
 		>
 			<div ref={activityRootRef} className="min-w-0 max-w-full" data-jira-work-item-activity>
 				<JiraActivity

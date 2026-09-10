@@ -4,7 +4,6 @@ import { LayoutGroup } from "motion/react";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 
 import { useRovoChat } from "@/app/contexts";
-import type { SkillsDirectorySkill } from "@/app/data/directory";
 import { WorkItemModalProvider } from "@/app/contexts/context-work-item-modal";
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
 import type { JiraActivityEventEntry } from "@/components/blocks/jira-activity";
@@ -114,7 +113,6 @@ interface TeamEu26JiraWorkItemBaseProps {
 	 */
 	autoOpenPullRequestIdentity?: string | null;
 	composerAgents?: readonly AgentSelectorAgent[];
-	composerContextBar?: ReactNode;
 	/** Optional host-owned controls rendered immediately after the side-chat Add button. */
 	composerToolsAfterAdd?: ReactNode;
 	initialPreset: JiraWorkItemPreset;
@@ -132,7 +130,6 @@ interface TeamEu26JiraWorkItemBaseProps {
 	 */
 	onPullRequestFix?: (identity: string, agentId: PullRequestFixAgentId) => void;
 	onSessionReply?: SessionReplyInterceptor;
-	onSkillInvoke?: (skill: SkillsDirectorySkill) => boolean | void;
 	outputs?: readonly string[];
 	primaryCodingAgentId?: CodingAgentId;
 	pullRequestApprovalStates?: Readonly<Record<string, "available" | "approved">>;
@@ -171,7 +168,6 @@ interface TeamEu26JiraWorkItemContentProps {
 	autoOpenPullRequestIdentity?: string | null;
 	automationRules?: readonly WorkItemAutomationRule[];
 	composerAgents?: readonly AgentSelectorAgent[];
-	composerContextBar?: ReactNode;
 	composerToolsAfterAdd?: ReactNode;
 	hasInsights: boolean;
 	insightsSnapshot: JiraInsightsSnapshot;
@@ -182,7 +178,6 @@ interface TeamEu26JiraWorkItemContentProps {
 	onPullRequestApprove?: (identity: string) => void;
 	onPullRequestFix?: (identity: string, agentId: PullRequestFixAgentId) => void;
 	onSessionReply?: SessionReplyInterceptor;
-	onSkillInvoke?: (skill: SkillsDirectorySkill) => boolean | void;
 	open: boolean;
 	outputs?: readonly string[];
 	presentation: "modal" | "inline";
@@ -301,7 +296,6 @@ function TeamEu26JiraWorkItemContent({
 	autoOpenPullRequestIdentity = null,
 	automationRules,
 	composerAgents,
-	composerContextBar,
 	composerToolsAfterAdd,
 	hasInsights,
 	insightsSnapshot,
@@ -312,7 +306,6 @@ function TeamEu26JiraWorkItemContent({
 	onPullRequestApprove,
 	onPullRequestFix,
 	onSessionReply,
-	onSkillInvoke,
 	open,
 	outputs,
 	presentation,
@@ -695,14 +688,14 @@ function TeamEu26JiraWorkItemContent({
 					<Toaster id={PULL_REQUEST_REVIEW_TOASTER_ID} position="bottom-left" />
 					<LayoutGroup id={composerLayoutGroupId}>
 						<ExperimentalWorkItemDialog
-					controlRow={initialPreset === "filled" ? undefined : (compact) => (
+					controlRow={initialPreset === "filled" || initialPreset === "empty" ? undefined : (compact) => (
 						<ContextResources
 							compact={compact}
 							outputs={outputs}
 							primaryCodingAgentId={primaryCodingAgentId}
 						/>
 						)}
-						navigation={initialPreset === "filled" ? undefined : (
+						navigation={initialPreset === "filled" || initialPreset === "empty" ? undefined : (
 							<WorkItemSectionNav
 								endControl={(
 									<PullRequestsSelect
@@ -731,7 +724,7 @@ function TeamEu26JiraWorkItemContent({
 						)}
 						sidebarResizing={metadataPanelResize.isResizing}
 						sidebarWidth={metadataPanelResize.sidebarWidth}
-						statusControl={initialPreset === "filled" ? <WorkItemHeaderStatus /> : undefined}
+						statusControl={initialPreset === "filled" || initialPreset === "empty" ? <WorkItemHeaderStatus showMore={presentation === "inline"} /> : undefined}
 						workItemCode={workItem.code}
 						workItemTitle={workItem.title}
 					>
@@ -769,20 +762,18 @@ function TeamEu26JiraWorkItemContent({
 								<InsightsAwareComposer
 									agents={composerAgents}
 									autoFocus={restoreActivityComposerFocus}
-									composerContextBar={composerContextBar}
 									hasInsights={hasInsights}
 									onAgentPromptSubmit={onAgentPromptSubmit}
 									onOpenAgentChat={onOpenAgentChat}
 									pullRequestFix={activePullRequestFix}
 									pullRequestReview={activePullRequestReview}
-									onSkillInvoke={onSkillInvoke}
 								/>
 							)}
 							fillContainer={inlineSurface !== "card"}
 							metadata={(
 								<div
 									aria-hidden={agentChatOpen}
-									className="group/metadata-resize relative flex min-h-0 w-full min-w-0 flex-none self-stretch flex-col overflow-hidden bg-surface"
+									className="group/metadata-resize relative flex min-h-0 w-full min-w-0 flex-1 self-stretch flex-col overflow-hidden bg-surface"
 									inert={agentChatOpen ? true : undefined}
 								>
 									<MetadataRail
@@ -815,7 +806,7 @@ function TeamEu26JiraWorkItemContent({
 }
 
 /**
- * Composition root for the experimental v6 Jira Work Item surface.
+ * Composition root for the Team EU26 Jira Work Item surface.
  *
  * Forked from the v4 tree so v5 can diverge freely without changing v4.
  * It owns its entire component tree; the session/planner model under `data/` is
@@ -883,7 +874,6 @@ export function TeamEu26JiraWorkItem(props: Readonly<TeamEu26JiraWorkItemProps>)
 								autoOpenPullRequestIdentity={props.autoOpenPullRequestIdentity}
 								automationRules={props.automationRules ?? TEAM_EU_REFERENCE_AUTOMATION_RULES}
 								composerAgents={props.composerAgents}
-								composerContextBar={props.composerContextBar}
 								composerToolsAfterAdd={props.composerToolsAfterAdd}
 								hasInsights={props.insightsSnapshot != null}
 								insightsSnapshot={insightsSnapshot}
@@ -894,7 +884,6 @@ export function TeamEu26JiraWorkItem(props: Readonly<TeamEu26JiraWorkItemProps>)
 								onPullRequestApprove={props.onPullRequestApprove}
 								onPullRequestFix={props.onPullRequestFix}
 								onSessionReply={props.onSessionReply}
-								onSkillInvoke={props.onSkillInvoke}
 								open={open}
 								outputs={props.outputs}
 								presentation={presentation}

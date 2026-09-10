@@ -11,10 +11,7 @@ import {
 } from "react";
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion/react";
 
-import {
-	useJiraWorkItemMeta,
-	useJiraWorkItemState,
-} from "@/components/blocks/jira-work-item/team-eu26/context-jira-work-item";
+import { useJiraWorkItemState } from "@/components/blocks/jira-work-item/team-eu26/context-jira-work-item";
 import { useSectionNavigation } from "@/components/blocks/jira-work-item/team-eu26/context-section-navigation";
 import {
 	METADATA_CONTENT_COLLAPSE_TRANSITION,
@@ -96,7 +93,7 @@ function DescriptionColumnShell({
 			data-jira-work-item-column-shell
 		>
 			<div
-				className="group order-1 contents @[860px]/agentlayout:relative @[860px]/agentlayout:block @[860px]/agentlayout:shrink-0 @[860px]/agentlayout:pl-10 @[860px]/agentlayout:pr-6"
+				className="group order-1 contents @[860px]/agentlayout:relative @[860px]/agentlayout:block @[860px]/agentlayout:shrink-0 @[860px]/agentlayout:px-6"
 				data-jira-work-item-column-chrome
 				data-scroll-fade-visible={showTopScrollMask ? "" : undefined}
 			>
@@ -110,7 +107,7 @@ function DescriptionColumnShell({
 			</div>
 			<div
 				ref={scrollRef}
-				className="order-2 contents has-[[data-jira-work-item-pull-request-detail-header]]:[overflow-anchor:none] @[860px]/agentlayout:relative @[860px]/agentlayout:block @[860px]/agentlayout:min-h-0 @[860px]/agentlayout:min-w-0 @[860px]/agentlayout:flex-1 @[860px]/agentlayout:overflow-y-auto @[860px]/agentlayout:overscroll-y-none @[860px]/agentlayout:pl-10 @[860px]/agentlayout:pr-6 @[860px]/agentlayout:pt-6 @[860px]/agentlayout:pb-24 @[860px]/agentlayout:has-[[data-insights-work-item-split]]:flex @[860px]/agentlayout:has-[[data-insights-work-item-split]]:flex-col @[860px]/agentlayout:has-[[data-insights-work-item-split]]:overflow-hidden"
+				className="order-2 contents has-[[data-jira-work-item-pull-request-detail-header]]:[overflow-anchor:none] @[860px]/agentlayout:relative @[860px]/agentlayout:block @[860px]/agentlayout:min-h-0 @[860px]/agentlayout:min-w-0 @[860px]/agentlayout:flex-1 @[860px]/agentlayout:overflow-y-auto @[860px]/agentlayout:overscroll-y-none @[860px]/agentlayout:px-6 @[860px]/agentlayout:pt-6 @[860px]/agentlayout:pb-6 @[860px]/agentlayout:has-[[data-insights-work-item-split]]:flex @[860px]/agentlayout:has-[[data-insights-work-item-split]]:flex-col @[860px]/agentlayout:has-[[data-insights-work-item-split]]:overflow-hidden"
 				data-jira-work-item-scroll-region
 				style={style}
 			>
@@ -135,13 +132,10 @@ export function ExperimentalWorkItemLayout({
 	fillContainer = false,
 }: Readonly<ExperimentalWorkItemLayoutProps>) {
 	const { planner } = useJiraWorkItemState();
-	const { initialPreset } = useJiraWorkItemMeta();
 	const { metadataCollapsed } = usePanelLayout();
 	const { insightsSelected, setNarrowScrollContainer, setWideScrollContainer } = useSectionNavigation();
 	const shouldReduceMotion = useReducedMotion() ?? false;
-	const composerVisible = planner.status === "inactive" || planner.status === "applied";
-	const showInFlowComposer = initialPreset === "filled" && composerVisible;
-	const showStickyComposer = initialPreset !== "filled" && composerVisible;
+	const showStickyComposer = planner.status === "inactive" || planner.status === "applied";
 	const {
 		ref: narrowOverflowRef,
 		showBottomScrollMask: showNarrowBottomScrollMask,
@@ -191,7 +185,7 @@ export function ExperimentalWorkItemLayout({
 		<div className="@container/agentlayout group/metadata-rail mx-auto h-full min-h-0 w-full max-w-[1920px] min-w-0 bg-surface">
 			<div
 				ref={setNarrowScrollRef}
-				className="flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overscroll-y-none p-4 data-[fill-container]:pb-0 @[860px]/agentlayout:relative @[860px]/agentlayout:grid @[860px]/agentlayout:grid-cols-1 @[860px]/agentlayout:grid-rows-[minmax(0,1fr)] @[860px]/agentlayout:gap-0 @[860px]/agentlayout:overflow-hidden @[860px]/agentlayout:p-0"
+				className="flex h-full min-h-0 min-w-0 flex-col gap-6 overflow-y-auto overscroll-y-none p-6 data-[fill-container]:pb-0 @[860px]/agentlayout:relative @[860px]/agentlayout:grid @[860px]/agentlayout:grid-cols-1 @[860px]/agentlayout:grid-rows-[minmax(0,1fr)] @[860px]/agentlayout:gap-0 @[860px]/agentlayout:overflow-hidden @[860px]/agentlayout:p-0"
 				data-fill-container={fillContainer ? "" : undefined}
 			>
 				{/* Description-scope hover group: left column only (not metadata). */}
@@ -216,15 +210,10 @@ export function ExperimentalWorkItemLayout({
 								bodyStyle={innerColumnStyle}
 							>
 								{context(leftScrollContainerRef)}
-								{showInFlowComposer ? (
-									<div className="sticky bottom-0 z-20 min-w-0 bg-surface py-2" data-team-eu26-comment-composer>
-										{composer}
-									</div>
-								) : null}
 							</DescriptionColumnShell>
 							{showStickyComposer ? (
 								<div
-									className="order-5 min-w-0 sticky bottom-0 z-10 bg-surface-overlay px-4 pt-3 pb-4 @[860px]/agentlayout:absolute @[860px]/agentlayout:left-10 @[860px]/agentlayout:right-[calc(var(--metadata-panel-offset)+2.5rem)] @[860px]/agentlayout:bottom-5 @[860px]/agentlayout:bg-transparent @[860px]/agentlayout:p-0"
+									className="order-5 min-w-0 sticky bottom-0 z-10 bg-surface-overlay px-4 pt-3 pb-4 @[860px]/agentlayout:static @[860px]/agentlayout:shrink-0 @[860px]/agentlayout:bg-transparent @[860px]/agentlayout:px-0 @[860px]/agentlayout:pt-4 @[860px]/agentlayout:pb-6"
 									data-jira-work-item-composer-dock
 								>
 									{showNarrowBottomScrollMask ? (
@@ -241,7 +230,7 @@ export function ExperimentalWorkItemLayout({
 										</div>
 									) : null}
 									<div
-										className="contents @[860px]/agentlayout:mx-auto @[860px]/agentlayout:block @[860px]/agentlayout:w-full @[860px]/agentlayout:max-w-3xl"
+										className="contents @[860px]/agentlayout:mx-auto @[860px]/agentlayout:block @[860px]/agentlayout:w-full @[860px]/agentlayout:px-6"
 										style={innerColumnStyle}
 									>
 										{composer}
@@ -261,7 +250,8 @@ export function ExperimentalWorkItemLayout({
 								// MetadataRail owns the sticky chrome + body scroll chain.
 								// Stays a real box in narrow (not `contents`) so order-3 keeps
 								// Resources → Context → Metadata → Composer.
-								"@[860px]/agentlayout:z-20 @[860px]/agentlayout:flex @[860px]/agentlayout:w-[var(--metadata-panel-width)] @[860px]/agentlayout:min-h-0 @[860px]/agentlayout:flex-col @[860px]/agentlayout:justify-self-end @[860px]/agentlayout:self-stretch @[860px]/agentlayout:overflow-visible @[860px]/agentlayout:pr-4 @[860px]/agentlayout:pt-6 @[860px]/agentlayout:pb-6 @[860px]/agentlayout:[grid-area:1/1]",
+								"@[860px]/agentlayout:z-20 @[860px]/agentlayout:flex @[860px]/agentlayout:w-[var(--metadata-panel-width)] @[860px]/agentlayout:min-h-0 @[860px]/agentlayout:flex-col @[860px]/agentlayout:justify-self-end @[860px]/agentlayout:self-stretch @[860px]/agentlayout:overflow-visible @[860px]/agentlayout:pl-4 @[860px]/agentlayout:pr-6 @[860px]/agentlayout:[grid-area:1/1]",
+								"@[860px]/agentlayout:z-20 @[860px]/agentlayout:flex @[860px]/agentlayout:w-[var(--metadata-panel-width)] @[860px]/agentlayout:min-h-0 @[860px]/agentlayout:flex-col @[860px]/agentlayout:justify-self-end @[860px]/agentlayout:self-stretch @[860px]/agentlayout:overflow-visible @[860px]/agentlayout:pl-4 @[860px]/agentlayout:pr-6 @[860px]/agentlayout:[grid-area:1/1]",
 							)}
 							exit="closed"
 							id="experimental-work-item-metadata-panel"
@@ -270,7 +260,7 @@ export function ExperimentalWorkItemLayout({
 							variants={shouldReduceMotion ? REDUCED_MOTION_METADATA_PANEL_VARIANTS : METADATA_PANEL_VARIANTS}
 						>
 							{/* min-h-0 flex-1: keep the chrome→scrollport height chain intact. */}
-							<div className="flex min-h-0 min-w-0 flex-1 flex-col" data-jira-work-item-metadata-slot>
+							<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" data-jira-work-item-metadata-slot>
 								{metadata}
 							</div>
 						</motion.div>
