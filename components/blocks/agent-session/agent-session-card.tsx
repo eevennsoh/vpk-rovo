@@ -350,7 +350,7 @@ export function AgentSessionCard({
 							onClick={handleArticleClick}
 							onKeyDown={handleArticleKeyDown}
 							role={articleRole}
-							tabIndex={articleTabIndex}
+							tabIndex={articleTabIndex ?? (bind !== undefined && activateCard !== undefined ? 0 : undefined)}
 						>
 							{isNew ? (
 						<>

@@ -680,6 +680,10 @@ test("a card body click toggles a single selected session on the selected token"
 	assert.match(CARD_SOURCE, /selectionGestureFromModifierKeys\(event\)/u);
 	assert.match(CARD_SOURCE, /const articleRole = mark == null \? undefined : "gridcell";/u);
 	assert.match(CARD_SOURCE, /role=\{articleRole\}/u);
+	assert.match(
+		CARD_SOURCE,
+		/tabIndex=\{articleTabIndex \?\? \(bind !== undefined && activateCard !== undefined \? 0 : undefined\)\}/u,
+	);
 	assert.doesNotMatch(CARD_SOURCE, /articleRole === "button"|\? "button"/u);
 	assert.match(CARD_SOURCE, /aria-selected=\{mark == null \? undefined : isMarked\}/u);
 	assert.match(CARD_SOURCE, /role=\{mark == null \? undefined : "row"\}/u);
