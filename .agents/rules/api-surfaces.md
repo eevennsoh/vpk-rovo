@@ -14,9 +14,10 @@ description: API endpoint reference — backend routes, orchestrator, and dev pr
 
 ## Endpoint Tables (not inlined here)
 
-The full backend/Next-proxy endpoint tables are **not** in this file. Everything under
-`.agents/rules/` is eagerly loaded into every agent session, and the generated tables are
-~300 rows of lookup data that an agent can grep on demand.
+The full backend/Next-proxy endpoint tables are **not** in this file. Claude Code eagerly loads
+every `.md` under `.agents/rules/` into its session context (see the Contextual Rules section of
+`AGENTS.md` for the per-provider contract), and the generated tables are ~300 rows of lookup data
+that an agent can grep on demand.
 
 - Source of truth: `backend/routes/route-manifest.json`
 - Generated markdown tables: `.agents/knowledge/api-surfaces.md` (committed, drift-checked, not auto-loaded)

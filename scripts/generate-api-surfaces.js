@@ -18,9 +18,9 @@ const DOC_PREAMBLE = [
 	"",
 	"Generated file. Do not edit by hand — run `node scripts/generate-api-surfaces.js`.",
 	"",
-	`Judgment guidance lives in \`${GUIDANCE_DOC_PATH}\`; the tables live here because everything`,
-	"under `.agents/rules/` is eagerly loaded into every agent session. Source of truth is",
-	`\`${ROUTE_MANIFEST_PATH}\`.`,
+	`Judgment guidance lives in \`${GUIDANCE_DOC_PATH}\`; the tables live here because Claude Code`,
+	"eagerly loads every `.md` under `.agents/rules/` into its session context (see the Contextual",
+	`Rules section of \`AGENTS.md\`). Source of truth is \`${ROUTE_MANIFEST_PATH}\`.`,
 	"",
 ].join("\n");
 
