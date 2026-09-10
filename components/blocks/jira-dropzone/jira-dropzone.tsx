@@ -9,8 +9,10 @@ import { useMagneticProximity } from "@/components/ui-custom/hooks/use-magnetic-
 import type { MagneticPointerRelation } from "@/components/ui-custom/hooks/magnetic-proximity-model";
 import { cn } from "@/lib/utils";
 
-import { JiraDropzoneFlight } from "./jira-dropzone-flight";
+import { JiraDropzoneAntsStroke } from "./jira-dropzone-ants-stroke";
 import { useJiraDropzoneChannel } from "./jira-dropzone-field";
+import { JiraDropzoneFlight } from "./jira-dropzone-flight";
+import { JIRA_DROPZONE_ANTS_CLASS } from "./lib/jira-dropzone-ants";
 import {
 	JIRA_DROPZONE_HOVER_AREA_PX,
 	JIRA_DROPZONE_WELL_ENTER,
@@ -39,6 +41,7 @@ import { useJiraDropzoneCollapseHold } from "./use-jira-dropzone-collapse-hold";
 export const JIRA_DROPZONE_WELL_CHROME_CLASS = "rounded-lg border border-dashed";
 
 export function JiraDropzone({
+	ants = true,
 	drag,
 	exclusiveWinner = true,
 	label,
@@ -46,6 +49,7 @@ export function JiraDropzone({
 	renderResting,
 	title,
 }: Readonly<{
+	ants?: boolean;
 	drag: JiraDropzoneDragState;
 	exclusiveWinner?: boolean;
 	label: string;
@@ -89,18 +93,21 @@ export function JiraDropzone({
 
 	const expanded = receiving || proximity !== "outside";
 	const selected = phase === "armed" || phase === "receiving";
-	const pinMagnet = receiving || !exclusiveWinner;
-	const impact = profile.impact;
-	const impacts = channel?.impacts ?? 0;
 	const drop = resolveJiraDropzoneDrop(channel?.lastReceipt);
 	const bouncePlayback = resolveJiraDropzoneBounce(channel?.lastReceipt);
-	const bounce = impact && shouldImpulseDropzoneChrome({
-		impacts,
+	const collapsingWithoutBounce = phase === "resting" && bouncePlayback === "off";
+	const pinMagnet = receiving || !exclusiveWinner || collapsingWithoutBounce;
+	const bounce = shouldImpulseDropzoneChrome({
+		bounce: bouncePlayback,
+		impacts: channel?.impacts ?? 0,
 		receiving,
-	}) ? impact : null;
+	})
+		? profile.impact
+		: null;
 
 	return (
 		<JiraDropzoneOpenSurface
+			ants={ants}
 			bounce={bounce}
 			bouncePlayback={bouncePlayback}
 			channel={channel}
@@ -126,6 +133,7 @@ export function JiraDropzone({
 }
 
 type JiraDropzoneOpenSurfaceProps = Readonly<{
+	ants: boolean;
 	bounce: FlightProfile["impact"];
 	bouncePlayback: ReturnType<typeof resolveJiraDropzoneBounce>;
 	channel: JiraDropzoneChannel | undefined;
@@ -149,6 +157,7 @@ type JiraDropzoneOpenSurfaceProps = Readonly<{
 }>;
 
 function JiraDropzoneOpenSurface({
+	ants,
 	bounce,
 	bouncePlayback,
 	channel,
@@ -175,6 +184,7 @@ function JiraDropzoneOpenSurface({
 	return (
 		<>
 			<JiraDropzoneWell
+				ants={ants}
 				bounce={bounce}
 				bouncePlayback={bouncePlayback}
 				copy={copy}
@@ -208,6 +218,7 @@ function JiraDropzoneOpenSurface({
 
 type JiraDropzoneWellProps = Pick<
 	JiraDropzoneOpenSurfaceProps,
+	| "ants"
 	| "bouncePlayback"
 	| "copy"
 	| "drop"
@@ -228,6 +239,7 @@ type JiraDropzoneWellProps = Pick<
 };
 
 function JiraDropzoneWell({
+	ants,
 	bounce,
 	bouncePlayback,
 	copy,
@@ -246,6 +258,7 @@ function JiraDropzoneWell({
 	title,
 }: JiraDropzoneWellProps): ReactElement {
 	const shouldReduceMotion = useReducedMotion();
+	const marching = ants && !shouldReduceMotion;
 	// Exit is the existing collapse-hold height shrink; this pop-in only runs when
 	// the open well mounts at drag start.
 	return (
@@ -271,6 +284,7 @@ function JiraDropzoneWell({
 				data-board-agent-session-create-work-item-drop-zone={title}
 				data-board-agent-session-drop-zone="create"
 				data-exclusive-winner={exclusiveWinner || undefined}
+				data-jira-dropzone-ants={ants ? "on" : "off"}
 				data-jira-dropzone-collapsing={phase === "resting" || undefined}
 				data-jira-dropzone-copy={copy}
 				data-jira-dropzone-bounce={bouncePlayback}
@@ -288,6 +302,7 @@ function JiraDropzoneWell({
 					impacts={impacts}
 					label={label}
 					magnet={magnet}
+					marching={marching}
 					phase={phase}
 					pinMagnet={pinMagnet}
 					selected={selected}
@@ -308,7 +323,9 @@ type JiraDropzoneWellChromeProps = Pick<
 	| "phase"
 	| "pinMagnet"
 	| "selected"
->;
+> & {
+	marching: boolean;
+};
 
 function JiraDropzoneWellChrome({
 	bounce,
@@ -317,6 +334,7 @@ function JiraDropzoneWellChrome({
 	impacts,
 	label,
 	magnet,
+	marching,
 	phase,
 	pinMagnet,
 	selected,
@@ -333,6 +351,7 @@ function JiraDropzoneWellChrome({
 				selected
 					? "border-border-selected bg-bg-selected text-text-selected"
 					: "border-border bg-surface text-text-subtlest",
+				marching ? JIRA_DROPZONE_ANTS_CLASS : null,
 			)}
 			initial={bounce
 				? { x: bounce.impulseXPx, y: bounce.impulseYPx }
@@ -342,6 +361,7 @@ function JiraDropzoneWellChrome({
 				? { damping: bounce.damping, stiffness: bounce.stiffness, type: "spring" }
 				: { duration: 0 }}
 		>
+			{marching ? <JiraDropzoneAntsStroke selected={selected} /> : null}
 			<JiraDropzoneWellCopy
 				copy={copy}
 				label={label}

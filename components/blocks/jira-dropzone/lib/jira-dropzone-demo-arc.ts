@@ -2,9 +2,11 @@ import {
 	JIRA_DROPZONE_DURATION_TOKEN_MS,
 	JIRA_DROPZONE_FULL_MOTION_PROFILE,
 	type JiraDropzoneDurationToken,
-} from "./jira-dropzone-motion";
+	// @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
+} from "./jira-dropzone-motion.ts";
 import type {
 	FlightProfile,
+	FlightTravel,
 	JiraDropzoneArcDirection,
 } from "./jira-dropzone-types";
 
@@ -19,6 +21,18 @@ export const JIRA_DROPZONE_DEMO_DURATION_OPTIONS = [
 	value: JiraDropzoneDurationToken;
 	label: string;
 }[];
+
+export type JiraDropzoneDemoTravel = Extract<FlightTravel, "arc" | "linear">;
+
+export const JIRA_DROPZONE_DEMO_TRAVEL_OPTIONS = [
+	{ value: "linear", label: "Direct" },
+	{ value: "arc", label: "Arc" },
+] as const satisfies readonly {
+	value: JiraDropzoneDemoTravel;
+	label: string;
+}[];
+
+export const JIRA_DROPZONE_DEMO_TRAVEL_DEFAULT: JiraDropzoneDemoTravel = "linear";
 
 export interface JiraDropzoneDemoArc {
 	readonly direction: JiraDropzoneArcDirection;
@@ -38,15 +52,37 @@ export const JIRA_DROPZONE_DEMO_ARC_DEFAULTS: JiraDropzoneDemoArc = {
 
 export function toFlightProfileOverride(
 	arc: JiraDropzoneDemoArc,
-): Pick<
-	FlightProfile,
-	"arcDirection" | "arcPeak" | "arcRotate" | "arcStrength" | "durationMs"
-> {
-	return {
-		arcDirection: arc.direction,
-		arcPeak: arc.peak,
-		arcRotate: arc.rotate,
-		arcStrength: arc.strength,
-		durationMs: JIRA_DROPZONE_DURATION_TOKEN_MS[arc.duration],
-	};
+	options: Readonly<{
+		bounce: boolean;
+		travel: JiraDropzoneDemoTravel;
+	}>,
+): Partial<FlightProfile> {
+	const override = demoTravelOverride(arc, options.travel);
+	return options.bounce ? override : { ...override, impact: null };
+}
+
+function demoTravelOverride(
+	arc: JiraDropzoneDemoArc,
+	travel: JiraDropzoneDemoTravel,
+): Partial<FlightProfile> {
+	switch (travel) {
+		case "linear":
+			return {
+				durationMs: JIRA_DROPZONE_FULL_MOTION_PROFILE.durationMs,
+				travel: "linear",
+			};
+		case "arc":
+			return {
+				arcDirection: arc.direction,
+				arcPeak: arc.peak,
+				arcRotate: arc.rotate,
+				arcStrength: arc.strength,
+				durationMs: JIRA_DROPZONE_DURATION_TOKEN_MS[arc.duration],
+				travel: "arc",
+			};
+		default: {
+			const exhaustive: never = travel;
+			return exhaustive;
+		}
+	}
 }

@@ -3,7 +3,6 @@
 import { useMemo, useState, type ReactElement, type ReactNode } from "react";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import CalendarIcon from "@atlaskit/icon/core/calendar";
-import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import PersonIcon from "@atlaskit/icon/core/person";
 
 import { METADATA_PEOPLE } from "@/components/blocks/jira-work-item/data/metadata-people";
@@ -14,6 +13,13 @@ import {
 	PriorityRowField,
 } from "@/components/blocks/jira-work-item/team-eu26/components/detail-field-editors";
 import { DetailFieldRow, DetailValueTrigger } from "@/components/blocks/jira-work-item/team-eu26/components/detail-field-row";
+import { TeamEuAppsPanel } from "@/components/blocks/jira-work-item/team-eu26/components/team-eu-apps-panel";
+import {
+	TeamEuAutomationPanel,
+	TeamEuRecentAutomationRuns,
+} from "@/components/blocks/jira-work-item/team-eu26/components/team-eu-automation-panel";
+import type { WorkItemAutomationRule } from "@/components/blocks/jira-work-item/team-eu26/components/automation-tab";
+import { TeamEuDevelopmentPanel } from "@/components/blocks/jira-work-item/team-eu26/components/team-eu-development-panel";
 import {
 	useJiraWorkItemActions,
 	useJiraWorkItemMeta,
@@ -32,32 +38,14 @@ function FieldValue({ children, icon }: Readonly<{ children: ReactNode; icon: Re
 	);
 }
 
-function DisclosureCard({ children, title }: Readonly<{ children: ReactNode; title: string }>) {
-	const [open, setOpen] = useState(false);
-	return (
-		<section className="overflow-hidden rounded-lg border border-border bg-surface" aria-labelledby={`team-eu26-${title.toLowerCase()}-heading`}>
-			<Button
-				aria-expanded={open}
-				className="h-14 w-full justify-between rounded-none px-4 font-semibold"
-				onClick={() => setOpen((current) => !current)}
-				type="button"
-				variant="ghost"
-			>
-				<span id={`team-eu26-${title.toLowerCase()}-heading`}>{title}</span>
-				<span className={open ? "rotate-90 motion-reduce:transform-none" : undefined}>
-					<ChevronRightIcon label="" size="small" />
-				</span>
-			</Button>
-			{open ? <div className="border-t border-border px-4 py-3 text-sm text-text-subtle">{children}</div> : null}
-		</section>
-	);
-}
-
-export function HighConfidenceMetadataRail() {
+export function HighConfidenceMetadataRail({
+	automationRules,
+}: Readonly<{ automationRules: readonly WorkItemAutomationRule[] }>) {
 	const { metadata } = useJiraWorkItemState();
 	const { workItem } = useJiraWorkItemMeta();
 	const actions = useJiraWorkItemActions();
 	const [showMoreDetails, setShowMoreDetails] = useState(false);
+	const [showRecentAutomationRuns, setShowRecentAutomationRuns] = useState(false);
 	const people = useMemo(() => {
 		const byName = new Map(METADATA_PEOPLE.map((person) => [person.name, person]));
 		for (const person of [workItem.assignee, workItem.reporter, metadata.assignee]) {
@@ -68,6 +56,14 @@ export function HighConfidenceMetadataRail() {
 
 	return (
 		<aside aria-label="Work item details" className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto" data-team-eu26-high-confidence-rail>
+			{showRecentAutomationRuns ? (
+				<TeamEuRecentAutomationRuns onBack={() => setShowRecentAutomationRuns(false)} rules={automationRules} />
+			) : null}
+			<div
+				aria-hidden={showRecentAutomationRuns || undefined}
+				className={showRecentAutomationRuns ? "hidden" : "flex flex-col gap-4"}
+				inert={showRecentAutomationRuns ? true : undefined}
+			>
 			<section aria-labelledby="team-eu26-details-heading" className="rounded-lg border border-border bg-surface p-4">
 				<h2 className="mb-4 text-sm font-semibold text-text" id="team-eu26-details-heading">Details</h2>
 				<div className="space-y-4">
@@ -130,11 +126,10 @@ export function HighConfidenceMetadataRail() {
 					</Button>
 				</div>
 			</section>
-			<DisclosureCard title="Development">
-				<a className="text-text-brand underline" href="#development">aclare/MOB-142-rate-limiting</a>
-			</DisclosureCard>
-			<DisclosureCard title="Automation">No automation rules have run for this work item.</DisclosureCard>
-			<DisclosureCard title="Apps">No connected apps are showing content.</DisclosureCard>
+			<TeamEuDevelopmentPanel />
+			<TeamEuAutomationPanel onShowRecentRuns={() => setShowRecentAutomationRuns(true)} rules={automationRules} />
+			<TeamEuAppsPanel />
+				</div>
 		</aside>
 	);
 }

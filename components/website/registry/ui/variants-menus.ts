@@ -752,6 +752,49 @@ export const UI_MENU_VARIANT_DEMOS: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
+	// Scroll Fade
+	"scroll-fade-demo-default": dynamic(
+		() =>
+			import("../../demos/ui/scroll-fade-demo").then((mod) => ({
+				default: mod.ScrollFadeDemoDefault,
+			})),
+		{ ssr: false },
+	),
+	"scroll-fade-demo-horizontal": dynamic(
+		() =>
+			import("../../demos/ui/scroll-fade-demo").then((mod) => ({
+				default: mod.ScrollFadeDemoHorizontal,
+			})),
+		{ ssr: false },
+	),
+	"scroll-fade-demo-single-edge": dynamic(
+		() =>
+			import("../../demos/ui/scroll-fade-demo").then((mod) => ({
+				default: mod.ScrollFadeDemoSingleEdge,
+			})),
+		{ ssr: false },
+	),
+	"scroll-fade-demo-size": dynamic(
+		() =>
+			import("../../demos/ui/scroll-fade-demo").then((mod) => ({
+				default: mod.ScrollFadeDemoSize,
+			})),
+		{ ssr: false },
+	),
+	"scroll-fade-demo-reveal": dynamic(
+		() =>
+			import("../../demos/ui/scroll-fade-demo").then((mod) => ({
+				default: mod.ScrollFadeDemoReveal,
+			})),
+		{ ssr: false },
+	),
+	"scroll-fade-demo-render": dynamic(
+		() =>
+			import("../../demos/ui/scroll-fade-demo").then((mod) => ({
+				default: mod.ScrollFadeDemoRender,
+			})),
+		{ ssr: false },
+	),
 	// Resizable
 	"resizable-demo-default": dynamic(
 		() =>

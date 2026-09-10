@@ -142,7 +142,12 @@ test("the collapsed options menu uses Atlaskit show-more-horizontal, not a custo
 	assert.match(IN_FLOW_MENU_SOURCE, /<TriggerGlyph color="currentColor" label="" size="small" \/>/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /<PinGlyph label="" size="small" \/>/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /<GrowHorizontalIcon label="" size="small" \/>/u);
-	assert.match(IN_FLOW_MENU_SOURCE, /className="min-w-0 w-max"/u);
+	assert.match(
+		IN_FLOW_MENU_SOURCE,
+		/<DropdownMenuContent align="start" className="min-w-0 w-max" side="right">/u,
+	);
+	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /align="center"/u);
+	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /side="bottom"/u);
 	assert.match(
 		IN_FLOW_MENU_SOURCE,
 		/const itemClassName = "gap-2 \[&>span:first-child\]:size-3 \[&_svg\]:size-3"/u,
