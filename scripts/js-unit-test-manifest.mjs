@@ -416,6 +416,8 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/ui-custom/rich-text-editor/suggestion-menu-empty-popup.test.js",
 		"components/ui-custom/rich-text-editor/suggestion-menu-positioning.test.js",
 		"components/ui-custom/rich-text-editor/task-item-node.test.js",
+		"components/ui/progress-tracker.test.js",
+		"scripts/css-utility-collisions.test.js",
 	],
 	"legacy-drift": [
 		"backend/lib/deferred-clarification-replay.test.js",

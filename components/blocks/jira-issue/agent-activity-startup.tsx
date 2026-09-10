@@ -106,7 +106,6 @@ export function JiraIssueShimmeringAgentLabel({
 			)}
 			duration={SHIMMER_DURATION}
 			spread={SHIMMER_SPREAD}
-			wave={false}
 		>
 			{label}
 		</Shimmer>
