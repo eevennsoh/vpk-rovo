@@ -269,6 +269,27 @@ export const UI_FOUNDATION_VARIANT_DEMOS: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
+	"questionnaire-demo-default": dynamic(
+		() =>
+			import("../../demos/ui/questionnaire-demo").then((mod) => ({
+				default: mod.QuestionnaireDemoDefault,
+			})),
+		{ ssr: false },
+	),
+	"questionnaire-demo-shortcuts": dynamic(
+		() =>
+			import("../../demos/ui/questionnaire-demo").then((mod) => ({
+				default: mod.QuestionnaireDemoShortcuts,
+			})),
+		{ ssr: false },
+	),
+	"questionnaire-demo-multiple": dynamic(
+		() =>
+			import("../../demos/ui/questionnaire-demo").then((mod) => ({
+				default: mod.QuestionnaireDemoMultiple,
+			})),
+		{ ssr: false },
+	),
 
 	// Button
 	"button-demo-default": dynamic(

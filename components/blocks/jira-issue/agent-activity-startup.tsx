@@ -96,7 +96,6 @@ export function JiraIssueShimmeringAgentLabel({
 			className="block min-w-0 truncate text-sm leading-5"
 			duration={SHIMMER_DURATION}
 			spread={SHIMMER_SPREAD}
-			wave={false}
 		>
 			{label}
 		</Shimmer>
