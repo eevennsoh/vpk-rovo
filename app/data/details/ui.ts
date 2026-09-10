@@ -47,6 +47,7 @@ import { COMBOBOX_DETAIL } from "./ui/combobox";
 import { INPUT_GROUP_DETAIL } from "./ui/input-group";
 import { ASPECT_RATIO_DETAIL } from "./ui/aspect-ratio";
 import { SCROLL_AREA_DETAIL } from "./ui/scroll-area";
+import { SCROLL_FADE_DETAIL } from "./ui/scroll-fade";
 import { ATTACHMENT_DETAIL } from "./ui/attachment";
 import { BUBBLE_DETAIL } from "./ui/bubble";
 import { MARKER_DETAIL } from "./ui/marker";
@@ -130,6 +131,7 @@ export const UI_DETAILS: Record<string, ComponentDetail> = {
 	"input-group": INPUT_GROUP_DETAIL,
 	"aspect-ratio": ASPECT_RATIO_DETAIL,
 	"scroll-area": SCROLL_AREA_DETAIL,
+	"scroll-fade": SCROLL_FADE_DETAIL,
 	attachment: ATTACHMENT_DETAIL,
 	bubble: BUBBLE_DETAIL,
 	marker: MARKER_DETAIL,
