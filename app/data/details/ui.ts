@@ -53,6 +53,7 @@ import { BUBBLE_DETAIL } from "./ui/bubble";
 import { MARKER_DETAIL } from "./ui/marker";
 import { MESSAGE_DETAIL } from "./ui/message";
 import { MESSAGE_SCROLLER_DETAIL } from "./ui/message-scroller";
+import { QUESTIONNAIRE_DETAIL } from "./ui/questionnaire";
 import { RESIZABLE_DETAIL } from "./ui/resizable";
 import { DIRECTION_DETAIL } from "./ui/direction";
 import { BUTTON_GROUP_DETAIL } from "./ui/button-group";
@@ -136,6 +137,7 @@ export const UI_DETAILS: Record<string, ComponentDetail> = {
 	marker: MARKER_DETAIL,
 	message: MESSAGE_DETAIL,
 	"message-scroller": MESSAGE_SCROLLER_DETAIL,
+	questionnaire: QUESTIONNAIRE_DETAIL,
 	resizable: RESIZABLE_DETAIL,
 	direction: DIRECTION_DETAIL,
 	"button-group": BUTTON_GROUP_DETAIL,

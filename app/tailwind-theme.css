@@ -849,6 +849,16 @@
 		var(--scroll-mask-scrollbar-width) 100%;
 }
 
+/* `scroll-fade-*` is NOT defined here: it comes from `shadcn/tailwind.css`
+   (imported by globals.css), which ships a scroll-aware version driven by
+   `animation-timeline: scroll()` — the fade sharpens at whichever edge you
+   have reached instead of masking both edges unconditionally. Do not add a
+   local `@utility scroll-fade-x` / `-b` back: Tailwind v4 emits BOTH rules for
+   a duplicated `@utility` name rather than replacing, so a redefinition
+   half-applies and nothing in lint or typecheck reports it.
+   Use `scroll-mask-top` / `scroll-mask-bottom` above when the scrollport has a
+   visible scrollbar — those carve the gutter out of the mask, shadcn's do not. */
+
 @utility scrollbar-thin {
 	scrollbar-width: thin;
 
@@ -871,27 +881,17 @@
 	scrollbar-gutter: stable;
 }
 
-@keyframes text-shimmer-motion {
-	from {
-		background-position: var(--text-shimmer-start-position), 0% center;
-	}
-	to {
-		background-position: 0% center, 0% center;
-	}
-}
-
-@utility shimmer-sweep-motion {
-	animation: text-shimmer-motion var(--text-shimmer-duration) var(--ease-linear) infinite;
-}
-
-@utility shimmer {
-	background-image: linear-gradient(90deg, currentColor 0%, color-mix(in oklab, currentColor 40%, transparent) 45%, currentColor 100%);
-	background-size: 200% 100%;
-	background-clip: text;
-	-webkit-background-clip: text;
-	color: transparent;
-	animation: var(--animate-expect-text-shimmer);
-}
+/* `shimmer` is NOT defined here: it comes from `shadcn/tailwind.css` (imported
+   by globals.css). The local version built its gradient from `currentColor`
+   while setting `color: transparent` on the same element, so `currentColor`
+   resolved to transparent and the text rendered invisible; shadcn's paints the
+   base from `currentColor` and blanks only `-webkit-text-fill-color`, and it
+   ships its own `prefers-reduced-motion` guard plus `shimmer-duration-*`,
+   `shimmer-color-*`, `shimmer-spread-*`, `shimmer-angle-*`, `shimmer-once`,
+   and `shimmer-reverse` modifiers. Do not redefine it locally — see the
+   duplicate-`@utility` note beside `scrollbar-thin` above.
+   `--animate-expect-text-shimmer` below stays: `animate-expect-text-shimmer`
+   is used directly by browser-preview-overlay.tsx. */
 
 /* Pixel Loader cell pulse. Stops trace `0.15 + 0.85 * sin(easeInOut(t) * pi)`
    so the pulse can run on `--ease-linear` (the continuous-motion token) rather

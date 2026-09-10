@@ -5419,7 +5419,7 @@
 	},
 	"components": {
 		"summary": {
-			"manifestEntryCount": 441,
+			"manifestEntryCount": 443,
 			"categoryCount": 9
 		},
 		"categories": [
@@ -6259,7 +6259,7 @@
 			},
 			{
 				"category": "ui",
-				"entryCount": 81,
+				"entryCount": 82,
 				"entries": [
 					{
 						"category": "ui",
@@ -6620,6 +6620,12 @@
 						"slug": "progress-tracker",
 						"name": "Progress Tracker",
 						"importPath": "@/components/ui/progress-tracker"
+					},
+					{
+						"category": "ui",
+						"slug": "questionnaire",
+						"name": "Questionnaire",
+						"importPath": "@/components/ui/questionnaire"
 					},
 					{
 						"category": "ui",
@@ -6985,7 +6991,7 @@
 			},
 			{
 				"category": "ui-custom",
-				"entryCount": 73,
+				"entryCount": 74,
 				"entries": [
 					{
 						"category": "ui-custom",
@@ -7316,6 +7322,12 @@
 						"slug": "shimmer",
 						"name": "Shimmer",
 						"importPath": "@/components/ui-custom/shimmer"
+					},
+					{
+						"category": "ui-custom",
+						"slug": "shimmer-wave",
+						"name": "Shimmer Wave",
+						"importPath": "@/components/ui-custom/shimmer-wave"
 					},
 					{
 						"category": "ui-custom",

@@ -72,6 +72,9 @@ export const UI_PRIMARY_DEMOS: Record<string, ComponentType> = {
 	}),
 	popover: dynamic(() => import("../../demos/ui/popover-demo"), { ssr: false }),
 	progress: dynamic(() => import("../../demos/ui/progress-demo"), { ssr: false }),
+	questionnaire: dynamic(() => import("../../demos/ui/questionnaire-demo"), {
+		ssr: false,
+	}),
 	"radio-group": dynamic(() => import("../../demos/ui/radio-group-demo"), {
 		ssr: false,
 	}),
