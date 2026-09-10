@@ -1,29 +1,35 @@
 "use client";
 
-import { useState, type ReactElement, type ReactNode } from "react";
+import { useMemo, useState, type ReactElement, type ReactNode } from "react";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import CalendarIcon from "@atlaskit/icon/core/calendar";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import PersonIcon from "@atlaskit/icon/core/person";
-import PriorityHighIcon from "@atlaskit/icon/core/priority-high";
 
-import { StatusPill } from "@/components/blocks/jira-work-item/team-eu26/components/detail-field-editors";
+import { METADATA_PEOPLE } from "@/components/blocks/jira-work-item/data/metadata-people";
+import {
+	AgentsRowField,
+	DateRowField,
+	PersonRowField,
+	PriorityRowField,
+	StatusPill,
+} from "@/components/blocks/jira-work-item/team-eu26/components/detail-field-editors";
+import { DetailFieldRow, DetailValueTrigger } from "@/components/blocks/jira-work-item/team-eu26/components/detail-field-row";
 import {
 	useJiraWorkItemActions,
+	useJiraWorkItemMeta,
 	useJiraWorkItemState,
 } from "@/components/blocks/jira-work-item/team-eu26/context-jira-work-item";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Icon } from "@/components/ui/icon";
 
-function DetailRow({ children, icon, label }: Readonly<{ children: ReactNode; icon?: ReactElement; label: string }>) {
+function FieldValue({ children, icon }: Readonly<{ children: ReactNode; icon: ReactElement }>) {
 	return (
-		<div className="space-y-1">
-			<div className="text-xs text-text-subtlest">{label}</div>
-			<div className="flex min-h-6 items-center gap-2 text-sm text-text">
-				{icon ? <Icon aria-hidden className="shrink-0 text-icon-subtle" render={icon} /> : null}
-				{children}
-			</div>
-		</div>
+		<span className="flex min-w-0 items-center gap-2 text-sm text-text">
+			<Icon aria-hidden className="shrink-0 text-icon-subtle" render={icon} />
+			<span className="truncate">{children}</span>
+		</span>
 	);
 }
 
@@ -50,8 +56,16 @@ function DisclosureCard({ children, title }: Readonly<{ children: ReactNode; tit
 
 export function HighConfidenceMetadataRail() {
 	const { metadata } = useJiraWorkItemState();
+	const { workItem } = useJiraWorkItemMeta();
 	const actions = useJiraWorkItemActions();
 	const [showMoreDetails, setShowMoreDetails] = useState(false);
+	const people = useMemo(() => {
+		const byName = new Map(METADATA_PEOPLE.map((person) => [person.name, person]));
+		for (const person of [workItem.assignee, workItem.reporter, metadata.assignee]) {
+			if (person) byName.set(person.name, person);
+		}
+		return [...byName.values()];
+	}, [metadata.assignee, workItem.assignee, workItem.reporter]);
 
 	return (
 		<aside aria-label="Work item details" className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto" data-team-eu26-high-confidence-rail>
@@ -61,15 +75,57 @@ export function HighConfidenceMetadataRail() {
 			<section aria-labelledby="team-eu26-details-heading" className="rounded-lg border border-border bg-surface p-4">
 				<h2 className="mb-4 text-sm font-semibold text-text" id="team-eu26-details-heading">Details</h2>
 				<div className="space-y-4">
-					<DetailRow icon={<PersonIcon label="" size="small" />} label="Assignee">Automatic</DetailRow>
-					<DetailRow icon={<AiAgentIcon label="" size="small" />} label="Agent sessions">Needs input..</DetailRow>
-					<DetailRow icon={<PriorityHighIcon label="" size="small" />} label="Priority">High</DetailRow>
-					<DetailRow icon={<CalendarIcon label="" size="small" />} label="Due date">May 25, 2026</DetailRow>
+					<DetailFieldRow
+						label="Assignee"
+						value={(
+							<PersonRowField
+								ariaLabel="Change assignee"
+								onChange={(assignee) => actions.updateMetadata({ assignee })}
+								people={people}
+								placeholder="Unassigned"
+								renderValue={(assignee) => <FieldValue icon={<PersonIcon label="" size="small" />}>{assignee.name}</FieldValue>}
+								value={metadata.assignee}
+							/>
+						)}
+					/>
+					<DetailFieldRow
+						label="Agent sessions"
+						value={(
+							<AgentsRowField
+								onChange={(crew) => actions.updateMetadata({ crew })}
+								trigger={(
+									<DetailValueTrigger aria-label="Edit agent sessions">
+										<FieldValue icon={<AiAgentIcon label="" size="small" />}>
+											{metadata.crew.length > 0 ? `${metadata.crew.length} assigned` : "Needs input.."}
+										</FieldValue>
+									</DetailValueTrigger>
+								)}
+								value={metadata.crew}
+							/>
+						)}
+					/>
+					<DetailFieldRow
+						label="Priority"
+						value={<PriorityRowField onChange={(priority) => actions.updateMetadata({ priority })} value={metadata.priority} />}
+					/>
+					<DetailFieldRow
+						label="Due date"
+						value={(
+							<DateRowField
+								ariaLabel="Change due date"
+								CalendarComponent={Calendar}
+								leadingVisual={<Icon aria-hidden className="shrink-0 text-icon-subtle" render={<CalendarIcon label="" size="small" />} />}
+								onChange={(dueDate) => actions.updateMetadata({ dueDate })}
+								placeholder="Add due date"
+								value={metadata.dueDate}
+							/>
+						)}
+					/>
 					{showMoreDetails ? (
 						<>
-							<DetailRow label="Start date">May 12, 2026</DetailRow>
-							<DetailRow label="Parent"><a className="text-text-brand underline" href="#vita-22">VITA-22</a></DetailRow>
-							<DetailRow label="Labels">onboarding, design-system</DetailRow>
+							<DetailFieldRow label="Start date" value="May 12, 2026" />
+							<DetailFieldRow label="Parent" value={<a className="text-text-brand underline" href="#vita-22">VITA-22</a>} />
+							<DetailFieldRow label="Labels" value="onboarding, design-system" />
 						</>
 					) : null}
 					<Button className="h-auto px-0 text-text-subtle" onClick={() => setShowMoreDetails((current) => !current)} size="compact" type="button" variant="link">
