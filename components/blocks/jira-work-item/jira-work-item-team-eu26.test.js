@@ -129,6 +129,8 @@ test("Team EU26 filled preset renders the high-confidence sections and details r
 		assert.match(railSource, new RegExp(`<${editor}`, "u"), `${editor} is not wired into the filled Details rail`);
 	}
 	assert.match(railSource, /actions\.updateMetadata/u);
+	assert.match(railSource, /dateValueMode="utc-date"/u);
+	assert.match(readBlockFile("team-eu26/components/detail-field-editors.tsx"), /allowArchive=\{false\}/u);
 	assert.match(workItemStateSource, /name: "Automatic"/u);
 	assert.match(workItemStateSource, /preset === "filled" \? TEAM_EU26_PEOPLE\.automatic/u);
 	assert.match(dialogSource, /aria-label="Breadcrumb"[\s\S]*Vitafleet[\s\S]*VITA-22[\s\S]*<WorkItemKeyCopy \/>/u);

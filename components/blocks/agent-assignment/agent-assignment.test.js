@@ -121,7 +121,7 @@ test("Agent Assignment preserves the work-item trigger and two-stage menu behavi
 		source,
 		/const showSessionView = view === "session" && pendingSessionAgent !== null;[\s\S]*const effectiveView = showSessionView[\s\S]*assignedAgents\.length === 0 \|\| view === "session"[\s\S]*"selector"/u,
 	);
-	assert.match(source, /<AssignedAgentsMenu[\s\S]*onAddAgent=\{onAssignedAgentIdsChange \? handleShowSelector : undefined\}[\s\S]*onArchiveAgent=\{onAssignedAgentIdsChange \? handleArchiveAgent : undefined\}/u);
+	assert.match(source, /<AssignedAgentsMenu[\s\S]*onAddAgent=\{onAssignedAgentIdsChange \? handleShowSelector : undefined\}[\s\S]*onArchiveAgent=\{allowArchive && onAssignedAgentIdsChange \? handleArchiveAgent : undefined\}/u);
 	assert.match(menu, /onAddAgent\?: \(\) => void;[\s\S]*onArchiveAgent\?: \(agent: AgentAssignmentAgent\) => void;/u);
 	assert.match(menu, /hoverActions: onArchiveAgent \? \{[\s\S]*secondaryLabel: "Archive",[\s\S]*\} : undefined,/u);
 	assert.match(menu, /\{onAddAgent \? \([\s\S]*Assign agent[\s\S]*\) : null\}/u);

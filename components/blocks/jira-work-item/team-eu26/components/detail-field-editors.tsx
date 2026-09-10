@@ -324,6 +324,7 @@ export function PersonRowField({
 
 export function DateRowField({
 	ariaLabel,
+	dateValueMode = "instant",
 	leadingVisual,
 	placeholder,
 	value,
@@ -331,6 +332,7 @@ export function DateRowField({
 	CalendarComponent,
 }: Readonly<{
 	ariaLabel: string;
+	dateValueMode?: "instant" | "utc-date";
 	leadingVisual?: ReactNode;
 	placeholder: string;
 	value?: Date;
@@ -341,12 +343,18 @@ export function DateRowField({
 }>) {
 	const [open, setOpen] = useState(false);
 	const [label, setLabel] = useState(placeholder);
+	const calendarValue = dateValueMode === "utc-date" && value
+		? new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate())
+		: value;
 
 	useEffect(() => {
 		setLabel(value
-			? new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(value)
+			? new Intl.DateTimeFormat("en-US", {
+				dateStyle: "medium",
+				...(dateValueMode === "utc-date" ? { timeZone: "UTC" } : {}),
+			}).format(value)
 			: placeholder);
-	}, [placeholder, value]);
+	}, [dateValueMode, placeholder, value]);
 
 	return (
 		<Popover onOpenChange={setOpen} open={open}>
@@ -363,10 +371,12 @@ export function DateRowField({
 				<CalendarComponent
 					mode="single"
 					onSelect={(next) => {
-						onChange(next);
+						onChange(next && dateValueMode === "utc-date"
+							? new Date(Date.UTC(next.getFullYear(), next.getMonth(), next.getDate()))
+							: next);
 						setOpen(false);
 					}}
-					selected={value}
+					selected={calendarValue}
 				/>
 			</PopoverContent>
 		</Popover>
@@ -465,6 +475,7 @@ export function AgentsRowField({
 	return (
 		<AgentAssignment
 			agents={agents}
+			allowArchive={false}
 			assignedAgents={assignedAgents}
 			defaultPinnedAgentIds={DEFAULT_PINNED_SPACE_AGENT_IDS}
 			maxVisibleAgents={3}

@@ -114,6 +114,7 @@ export function HighConfidenceMetadataRail() {
 							<DateRowField
 								ariaLabel="Change due date"
 								CalendarComponent={Calendar}
+								dateValueMode="utc-date"
 								leadingVisual={<Icon aria-hidden className="shrink-0 text-icon-subtle" render={<CalendarIcon label="" size="small" />} />}
 								onChange={(dueDate) => actions.updateMetadata({ dueDate })}
 								placeholder="Add due date"
