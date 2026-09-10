@@ -147,7 +147,8 @@ export function JiraIssueSubtasks({
 }>) {
 	const iconMetrics = resolveJiraIssueIconMetrics(iconScale);
 	const comfortableIcons = iconScale === "comfortable";
-	const chromeStyles = resolveJiraIssueChrome(resolveJiraIssueSubtaskChrome(chrome, subtaskChrome, compact));
+	const nestedSubtaskChrome = resolveJiraIssueSubtaskChrome(chrome, subtaskChrome, compact);
+	const chromeStyles = resolveJiraIssueChrome(nestedSubtaskChrome);
 	const usesStrokeChrome = compact || chrome === "stroke";
 	const totalCount = subtasks.length;
 	const completedPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -253,7 +254,7 @@ export function JiraIssueSubtasks({
 								iconScale={iconScale}
 								key={subtask.issueKey}
 								subtask={subtask}
-								usesStrokeChrome={chrome === "stroke"}
+								usesStrokeChrome={nestedSubtaskChrome === "stroke"}
 							/>
 						))}
 					</motion.div>

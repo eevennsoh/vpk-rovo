@@ -62,7 +62,8 @@ test("Jira issue agent activity experimental v2 duplicates the playground with l
 	assert.match(SUBTASKS_SOURCE, /<AvatarUnassigned kind=\{subtask\.assigneeUnassignedKind\} size=\{iconMetrics\.assigneeSize\} \/>/u);
 	assert.match(SUBTASKS_SOURCE, /<Avatar label=\{subtask\.assigneeAvatarLabel \?\? subtask\.issueKey\} size=\{iconMetrics\.assigneeSize\}>/u);
 	assert.doesNotMatch(SUBTASKS_SOURCE.slice(0, SUBTASKS_SOURCE.indexOf("export function JiraIssueSeparator")), /size="sm"/u);
-	assert.match(SUBTASKS_SOURCE, /const chromeStyles = resolveJiraIssueChrome\(resolveJiraIssueSubtaskChrome\(chrome, subtaskChrome, compact\)\);/u);
+	assert.match(SUBTASKS_SOURCE, /const nestedSubtaskChrome = resolveJiraIssueSubtaskChrome\(chrome, subtaskChrome, compact\);/u);
+	assert.match(SUBTASKS_SOURCE, /const chromeStyles = resolveJiraIssueChrome\(nestedSubtaskChrome\);/u);
 	assert.match(PAGE_SOURCE, /variant === "agent-activity-states-experimental-v2"/);
 	assert.match(PAGE_SOURCE, /<JiraIssueExperimentalAgentActivityStatesPage iconScale="comfortable" \/>/);
 	assert.match(PAGE_SOURCE, /generativeActionPresentation=\{iconScale === "comfortable" \? "more-actions" : undefined\}/);
@@ -79,6 +80,8 @@ test("Jira issue agent activity experimental v2 duplicates the playground with l
 	assert.match(VARIANT_REGISTRY_SOURCE, /default: mod\.JiraIssueDemoAgentActivityStatesExperimentalV2/);
 	assert.match(PAGE_SOURCE, /if \(variant === "agent-activity-states-experimental"\) \{\s*return <JiraIssueExperimentalAgentActivityStatesPage \/>;/);
 	assert.match(SOURCE, /toJiraIssueAgentActivityFromCompletedRun/u);
+	assert.match(SOURCE, /resolveComfortableCompletedRunViewChat/u);
+	assert.match(SOURCE, /onViewChat=\{handleAgentActivityViewChat\}/u);
 	assert.match(SOURCE, /iconScale === "comfortable" && resolvedAgentActivityMode === "completed"/u);
 	assert.match(SOURCE, /const hasAgentDoneNotification = iconScale !== "comfortable" && hasCompletedAgentChin/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /const isCompletedRow = activities\.length > 0\s*&& activities\.every\(\(activity\) => activity\.state === "completed"\)/u);
@@ -88,6 +91,8 @@ test("Jira issue agent activity experimental v2 duplicates the playground with l
 	assert.doesNotMatch(COMPLETED_RUNS_SOURCE, /export function toJiraIssueAgentActivityFromCompletedRun/u);
 	assert.match(COMPLETED_RUNS_MODEL_SOURCE, /export function toJiraIssueAgentActivityFromCompletedRun/u);
 	assert.match(COMPLETED_RUNS_MODEL_SOURCE, /label: run\.state === "failed" \? "Failed" : "Finished"/u);
+	assert.match(COMPLETED_RUNS_MODEL_SOURCE, /export function resolveComfortableCompletedRunViewChat/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /Open \$\{activities\[0\]\?\.name \?\? "agent"\} in Rovo chat: \$\{rowLabel\}/u);
 });
 
 test("Jira issue renders expandable subtasks with nested subtask cards", () => {
@@ -121,7 +126,7 @@ test("Jira issue renders expandable subtasks with nested subtask cards", () => {
 	assert.doesNotMatch(SUBTASKS_BLOCK, /hover:bg-bg-neutral-subtle-hovered focus-visible:border-ring[\s\S]*onClick=\{onToggle\}/);
 	assert.doesNotMatch(SOURCE, /role="progressbar"/);
 	assert.doesNotMatch(SOURCE, /progressPercent/);
-	assert.match(SUBTASKS_SOURCE, /<JiraIssueSubtaskCard[\s\S]*chromeStyles=\{chromeStyles\}[\s\S]*iconScale=\{iconScale\}[\s\S]*key=\{subtask\.issueKey\}[\s\S]*subtask=\{subtask\}[\s\S]*usesStrokeChrome=\{chrome === "stroke"\}/);
+	assert.match(SUBTASKS_SOURCE, /<JiraIssueSubtaskCard[\s\S]*chromeStyles=\{chromeStyles\}[\s\S]*iconScale=\{iconScale\}[\s\S]*key=\{subtask\.issueKey\}[\s\S]*subtask=\{subtask\}[\s\S]*usesStrokeChrome=\{nestedSubtaskChrome === "stroke"\}/);
 	assert.match(SUBTASKS_SOURCE, /className=\{cn\(\s*"border bg-surface p-3",\s*usesStrokeChrome \? undefined : "hover:bg-surface-hovered",\s*chromeStyles\.restClassName,\s*chromeStyles\.hoverClassName,\s*\)\}/);
 	assert.match(SUBTASKS_SOURCE, /<div className="flex min-w-0 flex-col gap-2">/);
 	assert.match(SUBTASKS_SOURCE, /<p className="text-sm leading-5 text-text">\{subtask\.summary\}<\/p>/);

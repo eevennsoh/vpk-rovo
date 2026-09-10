@@ -307,6 +307,11 @@ function JiraIssueAgentActivityRow({
 	const assignedAgents = assignment?.assignedAgents ?? activities.map(toAgentAssignmentAgent);
 
 	const handleOpenChat = canOpenChat ? () => onViewChat?.(activities[0]) : undefined;
+	const openChatAriaLabel = canOpenChat
+		? `Open ${activities[0]?.name ?? "agent"} in Rovo chat: ${rowLabel}`
+		: isSingleAgent
+			? `${activities[0]?.name ?? "Agent"}: ${rowLabel}`
+			: `${summary.activityCount} agents: ${rowLabel}`;
 	const [dragOffset, setDragOffset] = useState<PointerDragPosition>(JIRA_ISSUE_SESSION_DRAG_ORIGIN);
 	// `onActivate` (not a sibling `onClick`) is how the row keeps its open-chat
 	// behaviour: the hook owns `bind.onClick` and swallows exactly one click
@@ -550,13 +555,7 @@ function JiraIssueAgentActivityRow({
 	const rowHandle = (
 		<button
 			type="button"
-			aria-label={
-				canOpenChat
-					? `Open ${activities[0]?.name ?? "agent"} in Rovo chat: ${summary.label}`
-					: isSingleAgent
-						? `${activities[0]?.name ?? "Agent"}: ${rowLabel}`
-						: `${summary.activityCount} agents: ${rowLabel}`
-			}
+			aria-label={openChatAriaLabel}
 			{...(sessionDragBind ?? { onClick: handleOpenChat })}
 			{...(sessionDragBind
 				? {

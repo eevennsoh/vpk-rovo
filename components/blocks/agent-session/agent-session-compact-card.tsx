@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
 import { JiraIssueAgentActivityRows } from "@/components/blocks/jira-issue/agent-activity";
@@ -34,7 +33,6 @@ function AttachedAgentSession({
 }>) {
 	const shouldReduceMotion = useReducedMotion();
 	const shouldPlayArrival = isArriving && !shouldReduceMotion;
-	const [, setAssignedAgentIds] = useState<readonly string[]>([item.id]);
 
 	return (
 		<motion.div
@@ -58,7 +56,6 @@ function AttachedAgentSession({
 				activities={[toJiraIssueAgentActivityFromSession(item)]}
 				assignment={{
 					defaultPinnedAgentIds: DEFAULT_PINNED_SPACE_AGENT_IDS,
-					onAssignedAgentIdsChange: setAssignedAgentIds,
 					pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL,
 				}}
 				inheritChinSurface

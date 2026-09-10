@@ -411,8 +411,8 @@ test("medium attached reuses the Jira issue agent activity row", () => {
 		/from "@\/components\/blocks\/agent-assignment\/demo-assigned-agents"/u,
 	);
 	assert.doesNotMatch(COMPACT_CARD_SOURCE, /getAgentAssignmentDemoAssignedAgents|INITIAL_ASSIGNED_AGENT_IDS|DEMO_USED_AGENT_IDS/u);
-	assert.match(COMPACT_CARD_SOURCE, /onAssignedAgentIdsChange: setAssignedAgentIds/u);
-	assert.match(COMPACT_CARD_SOURCE, /useState<readonly string\[\]>\(\[item\.id\]\)/u);
+	assert.doesNotMatch(COMPACT_CARD_SOURCE, /onAssignedAgentIdsChange/u);
+	assert.doesNotMatch(COMPACT_CARD_SOURCE, /useState<readonly string\[\]>\(\[item\.id\]\)/u);
 	assert.doesNotMatch(COMPACT_CARD_SOURCE, /assignedAgents,/u);
 });
 

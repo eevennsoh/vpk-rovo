@@ -35,7 +35,7 @@ import {
 	JiraIssueAgentDone,
 	type JiraIssueCompletedAgentRun,
 } from "@/components/blocks/jira-issue/completed-agent-runs";
-import { toJiraIssueAgentActivityFromCompletedRun } from "@/components/blocks/jira-issue/completed-agent-runs-model";
+import { resolveComfortableCompletedRunViewChat, toJiraIssueAgentActivityFromCompletedRun } from "@/components/blocks/jira-issue/completed-agent-runs-model";
 import {
 	getCompletedCount,
 	getJiraIssueAgentSurfaceOffsets,
@@ -400,6 +400,9 @@ function JiraIssueDefault({
 			: nonCompletedAgentActivities;
 	const hasCompletedAgentChin = resolvedAgentActivityMode === "completed" && agentDoneRuns.length > 0;
 	const hasAgentDoneNotification = iconScale !== "comfortable" && hasCompletedAgentChin;
+	const handleAgentActivityViewChat = resolveComfortableCompletedRunViewChat(
+		onAgentActivityViewChat, onAgentDoneRunView, agentDoneRuns, iconScale,
+	);
 	const agentSessionTargetHighlighted = agentSessionTargetPreview?.highlighted ?? false;
 	const inferredPullRequestNumber = agentDoneRuns.find((run) => run.pullRequestNumber)?.pullRequestNumber;
 	const resolvedPullRequestNumber = pullRequestNumber ?? inferredPullRequestNumber;
@@ -850,7 +853,7 @@ function JiraIssueDefault({
 					instantSessionTransfer={agentSessionDragControl !== undefined}
 					layout={agentActivityLayout}
 					onOpenChange={handleAgentActivityOpenChange}
-					onViewChat={onAgentActivityViewChat}
+					onViewChat={handleAgentActivityViewChat}
 					renderAgentActivityIndicator={renderAgentActivityIndicator}
 					sessionDrag={agentSessionDragBinding}
 					shouldReduceMotion={shouldReduceMotion}
