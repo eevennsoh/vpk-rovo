@@ -435,6 +435,7 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 	};
 
 	return {
+		available: placement !== null,
 		enabled: placement !== null && !disabled,
 		shifted,
 		dragging: placement?.preview !== null && placement?.preview !== undefined,

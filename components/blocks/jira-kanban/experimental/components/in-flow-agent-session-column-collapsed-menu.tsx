@@ -22,7 +22,7 @@ import {
 } from "../lib/in-flow-agent-session-column-interaction";
 
 const HOVER_OPEN_TRIGGER_CLASS_NAME =
-	"aria-expanded:border-transparent aria-expanded:bg-bg-neutral-subtle-hovered aria-expanded:text-text-subtle aria-expanded:[&_[data-slot=icon]]:text-icon-subtle aria-expanded:[&_svg]:text-icon-subtle";
+	"aria-expanded:border-transparent aria-expanded:bg-bg-neutral-subtle-hovered aria-expanded:hover:bg-bg-neutral-subtle-hovered! aria-expanded:active:bg-bg-neutral-subtle-pressed! aria-expanded:text-text-subtle aria-expanded:[&_[data-slot=icon]]:text-icon-subtle aria-expanded:[&_svg]:text-icon-subtle";
 
 export function InFlowAgentSessionColumnCollapsedMenu({
 	className,

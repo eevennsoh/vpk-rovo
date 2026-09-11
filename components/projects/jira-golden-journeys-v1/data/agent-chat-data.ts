@@ -96,6 +96,16 @@ const JGP_AGENT_PROFILES = [
 		starters: [],
 		contextDescription: "Answer as Unit Test Creator for the selected JGP Jira issue.",
 	},
+	{
+		id: "review-agent",
+		name: "Codex",
+		byline: "Reviews every pull request",
+		avatarSrc: "/avatar-agent/teamwork-agents/decision-director.svg",
+		brandName: "openai-codex",
+		description: "Confirms sandbox key retention and replay risk before the PAY-112 replay work continues.",
+		starters: [],
+		contextDescription: "Answer as Codex for the selected Payments SDK work item.",
+	},
 ] as const satisfies readonly RovoAgentProfile[];
 
 export const JGP_CLAUDE_CODE_AGENT_PROFILE: RovoAgentProfile = JGP_AGENT_PROFILES[0];
