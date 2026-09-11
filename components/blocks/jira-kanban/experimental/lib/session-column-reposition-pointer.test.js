@@ -16,12 +16,16 @@ const COLUMN_SOURCE = readFileSync(
 	join(__dirname, "../components/in-flow-agent-session-column.tsx"),
 	"utf8",
 );
+const HEADER_SOURCE = readFileSync(
+	join(__dirname, "../../../agent-session-column/agent-session-column-header.tsx"),
+	"utf8",
+);
 const RAIL_SOURCE = readFileSync(
 	join(__dirname, "../../../agent-session-column/agent-session-column-rail.tsx"),
 	"utf8",
 );
 
-test("only the collapsed options button and expanded move handle start a column move", () => {
+test("the collapsed options button and entire expanded header start a column move", () => {
 	assert.equal(
 		canStartSessionColumnReposition({
 			inHeader: true,
@@ -54,28 +58,28 @@ test("only the collapsed options button and expanded move handle start a column 
 			inHeader: true,
 			inNotch: false,
 			inRail: false,
-			interactiveKind: "move-handle",
+			interactiveKind: "none",
 		}),
 		true,
 	);
 });
 
-test("empty column header space does not start a move", () => {
+test("expanded header controls remain valid drag origins", () => {
 	assert.equal(
 		canStartSessionColumnReposition({
 			inHeader: true,
 			inNotch: false,
 			inRail: false,
-			interactiveKind: "none",
+			interactiveKind: "other",
 		}),
-		false,
+		true,
 	);
 });
 
-test("expanded header actions do not start a move", () => {
+test("header content is draggable only inside the explicit move surface", () => {
 	assert.equal(
 		canStartSessionColumnReposition({
-			inHeader: true,
+			inHeader: false,
 			inNotch: false,
 			inRail: false,
 			interactiveKind: "other",
@@ -91,6 +95,11 @@ test("expanded header actions do not start a move", () => {
 		}),
 		false,
 	);
+});
+
+test("the expanded header advertises its full drag surface", () => {
+	assert.match(COLUMN_SOURCE, /headerDragHandle: dragHandle/u);
+	assert.match(HEADER_SOURCE, /data-session-column-move-surface/u);
 });
 
 test("the hook no longer special-cases an Expand aria-label", () => {
