@@ -646,6 +646,7 @@ export const UTILITY_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 		category: "utility",
 	},
 	utilityComponent("gui", "GUI"),
+	{ name: "Cone safezone", slug: "cone-safezone", importPath: "@/components/utils/cone-safezone", category: "utility" },
 	utilityComponent("image-generation", "Image Generation"),
 	utilityComponent("multiports", "Multiports"),
 	utilityComponent("sound-generation", "Sound Generation"),

@@ -2,6 +2,7 @@ import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
 
 export const UTILITY_DEMOS: Record<string, ComponentType> = {
+	"cone-safezone": dynamic(() => import("../demos/utils/cone-safezone-demo"), { ssr: false }),
 	"agent-browser": dynamic(() => import("../demos/utils/agent-browser"), {
 		ssr: false,
 	}),
@@ -33,6 +34,8 @@ export const UTILITY_DEMOS: Record<string, ComponentType> = {
 };
 
 export const UTILITY_VARIANT_DEMOS: Record<string, ComponentType> = {
+	"cone-safezone-placement": dynamic(() => import("../demos/utils/cone-safezone-demo").then((mod) => mod.ConeSafezoneDemoPlacement), { ssr: false }),
+	"cone-safezone-controlled": dynamic(() => import("../demos/utils/cone-safezone-demo").then((mod) => mod.ConeSafezoneDemoControlled), { ssr: false }),
 	"gui-demo-full-config": dynamic(
 		() =>
 			import("../demos/utils/gui-demo").then((mod) => ({
