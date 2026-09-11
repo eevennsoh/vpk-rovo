@@ -34,10 +34,8 @@ import { cn } from "@/lib/utils";
 
 import { AgentListIdentity } from "./agent-list-identity";
 import { InvokerBy } from "./agent-list-invoker";
-import {
-	AgentListRowActionButton,
-	type AgentListRowAction,
-} from "./agent-list-row-action";
+import { AgentListCardActions } from "./agent-list-card-actions";
+import type { AgentListRowAction } from "./agent-list-row-action";
 import { isLocalAgentListItem, toAgentSessionFlyoutItem } from "./agent-list-session";
 import type {
 	AgentListCustomFlyoutActions,
@@ -555,80 +553,6 @@ export type AgentListRowHoverActions = Readonly<{
 	pinned?: boolean;
 }>;
 
-/**
- * The hover/focus-revealed actions. Kept in the tab order rather than
- * `display: none`-hidden, because a hidden wrapper could never satisfy its own
- * `:focus-visible` reveal condition. Width collapses via `0fr`/`1fr` so the
- * lifecycle indicator sits flush right at rest.
- */
-function CardActions({
-	menu,
-	overlay = false,
-	pinned = false,
-	primary,
-	secondary,
-}: Readonly<{
-	menu?: ReactNode;
-	/** Stack the menu on the reserved lifecycle slot instead of expanding a sibling. */
-	overlay?: boolean;
-	pinned?: boolean;
-	primary?: AgentListRowAction;
-	secondary?: AgentListRowAction;
-}>) {
-	if (overlay) {
-		return (
-			<div
-				className={cn(
-					"pointer-events-none absolute inset-0 flex items-center justify-center opacity-0",
-					"group-hover/agent-row:pointer-events-auto group-hover/agent-row:opacity-100",
-					"group-has-[:focus-visible]/agent-row:pointer-events-auto group-has-[:focus-visible]/agent-row:opacity-100",
-					"group-has-[[aria-expanded=true]]/agent-row:pointer-events-auto group-has-[[aria-expanded=true]]/agent-row:opacity-100",
-					pinned && "pointer-events-auto opacity-100",
-				)}
-				data-session-drag-ignore=""
-			>
-				{menu}
-			</div>
-		);
-	}
-
-	return (
-		<div
-			className={cn(
-				"grid shrink-0 grid-cols-[0fr] transition-[grid-template-columns] duration-normal ease-out-practical",
-				"group-hover/agent-row:grid-cols-[1fr] group-has-[:focus-visible]/agent-row:grid-cols-[1fr]",
-				"motion-reduce:transition-none",
-				// Uncaptured-work rows reveal the eye instantly; Agent List keeps the fade.
-				"group-data-[variant=uncaptured-work]/agent-row:transition-none",
-				pinned && "grid-cols-[1fr]",
-			)}
-		>
-			<div
-				className={cn(
-					"min-w-0 overflow-hidden has-[:focus-visible]:overflow-visible",
-					pinned && "overflow-visible",
-				)}
-			>
-				<div
-					className={cn(
-						"pointer-events-none flex shrink-0 items-center gap-1 pl-3 opacity-0 transition-opacity duration-normal ease-out-practical",
-						"group-hover/agent-row:pointer-events-auto group-hover/agent-row:opacity-100",
-						"group-has-[:focus-visible]/agent-row:pointer-events-auto group-has-[:focus-visible]/agent-row:opacity-100",
-						"motion-reduce:transition-none",
-						"group-data-[variant=uncaptured-work]/agent-row:transition-none",
-						pinned && "pointer-events-auto opacity-100",
-					)}
-					data-session-drag-ignore=""
-				>
-					{primary ? <AgentListRowActionButton action={primary} /> : null}
-					{secondary ? <AgentListRowActionButton action={secondary} /> : null}
-					{menu}
-				</div>
-			</div>
-		</div>
-	);
-}
-
 /** Class list for the `<li>` each flyout variant renders through its trigger. */
 function rowClassName(isCompact: boolean, isSelected: boolean): string {
 	return cn(
@@ -850,7 +774,7 @@ export function AgentListRow({
 								</div>
 							) : null}
 							{overlayHoverActions ? (
-								<CardActions
+								<AgentListCardActions
 									menu={hoverActions?.menu}
 									overlay
 									pinned={hoverActions?.pinned}
@@ -859,7 +783,7 @@ export function AgentListRow({
 						</div>
 					) : null}
 					{showHoverActions && !overlayHoverActions ? (
-						<CardActions
+						<AgentListCardActions
 							menu={hoverActions?.menu}
 							pinned={hoverActions?.pinned}
 							primary={hoverActions?.primary}

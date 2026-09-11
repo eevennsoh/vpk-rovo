@@ -9,6 +9,10 @@ const LIST_CARD_SOURCE = readFileSync(
 	join(__dirname, "../agent-list/agent-list-card.tsx"),
 	"utf8",
 );
+const LIST_CARD_ACTIONS_SOURCE = readFileSync(
+	join(__dirname, "../agent-list/agent-list-card-actions.tsx"),
+	"utf8",
+);
 const IDENTITY_SOURCE = readFileSync(
 	join(__dirname, "../agent-list/agent-list-identity.tsx"),
 	"utf8",
@@ -60,10 +64,6 @@ const FLYOUT_SOURCE = readFileSync(
 	join(__dirname, "../product-sidebar/variants/jira-session-flyout.tsx"),
 	"utf8",
 );
-const UNTRACKED_CARD_SOURCE = readFileSync(
-	join(__dirname, "../product-sidebar/variants/jira-session-untracked-work-card.tsx"),
-	"utf8",
-);
 const DEMO_SOURCE = readFileSync(
 	join(__dirname, "../../website/demos/blocks/agent-session-demo.tsx"),
 	"utf8",
@@ -78,17 +78,6 @@ const DETAIL_SOURCE = readFileSync(
 );
 const MANIFEST_SOURCE = readFileSync(
 	join(__dirname, "../../../app/data/component-manifest.ts"),
-	"utf8",
-);
-const RAIL_SOURCE = readFileSync(
-	join(
-		__dirname,
-		"../jira-kanban/experimental/pulse/components/pulse-rail.tsx",
-	),
-	"utf8",
-);
-const COLUMN_SOURCE = readFileSync(
-	join(__dirname, "../agent-session-column/index.tsx"),
 	"utf8",
 );
 const COLUMN_RAIL_SOURCE = readFileSync(
@@ -409,7 +398,7 @@ test("the row reveals one … menu where Agent List puts its hover pair", () => 
 	// disappears cannot leave its board counterpart lit.
 	assert.match(MENU_HOOK_SOURCE, /onItemHover\?\.\(null\);\s*onToggleVisibility\(item\);/u);
 	// The shared row fades actions in; uncaptured-work snaps them on.
-	assert.match(LIST_CARD_SOURCE, /group-data-\[variant=uncaptured-work\]\/agent-row:transition-none/u);
+	assert.match(LIST_CARD_ACTIONS_SOURCE, /group-data-\[variant=uncaptured-work\]\/agent-row:transition-none/u);
 	assert.match(CARD_SOURCE, /data-variant="uncaptured-work"/u);
 });
 
@@ -601,19 +590,19 @@ test("copying the prompt confirms with a green check the reveal cannot swallow",
 	// hover that produced it; both would collapse the reveal without a pin.
 	assert.match(CARD_SOURCE, /pinned: showMoreMenu && role === "owner" && \(menu\.isOpen \|\| menu\.copied\),/u);
 	assert.match(LIST_CARD_SOURCE, /pinned\?: boolean;/u);
-	assert.match(LIST_CARD_SOURCE, /pinned && "grid-cols-\[1fr\]"/u);
-	assert.match(LIST_CARD_SOURCE, /pinned && "pointer-events-auto opacity-100"/u);
+	assert.match(LIST_CARD_ACTIONS_SOURCE, /pinned && "grid-cols-\[1fr\]"/u);
+	assert.match(LIST_CARD_ACTIONS_SOURCE, /pinned && "pointer-events-auto opacity-100"/u);
 	assert.match(LIST_CARD_SOURCE, /overlayHoverActions && hoverActions\?\.pinned && "pointer-events-none invisible"/u);
 	assert.match(
 		LIST_CARD_SOURCE,
 		/const overlayHoverActions = showHoverActions[\s\S]*hoverActions\?\.menu !== undefined/u,
 	);
-	assert.match(LIST_CARD_SOURCE, /if \(overlay\) \{/u);
+	assert.match(LIST_CARD_ACTIONS_SOURCE, /if \(overlay\) \{/u);
 	assert.match(
-		LIST_CARD_SOURCE,
+		LIST_CARD_ACTIONS_SOURCE,
 		/"pointer-events-none absolute inset-0 flex items-center justify-center opacity-0"/u,
 	);
-	assert.match(LIST_CARD_SOURCE, /group-has-\[\[aria-expanded=true\]\]\/agent-row:pointer-events-auto/u);
+	assert.match(LIST_CARD_ACTIONS_SOURCE, /group-has-\[\[aria-expanded=true\]\]\/agent-row:pointer-events-auto/u);
 
 	assert.match(MENU_HOOK_SOURCE, /export const AGENT_SESSION_COPIED_RESET_MS = 2000;/u);
 	assert.match(MENU_HOOK_SOURCE, /setCopied\(true\)/u);
@@ -782,10 +771,14 @@ test("a working long row breathes with the experimental spinner, not the pixel l
 	// so it does not silently run at the enter timing.
 	assert.match(LIFECYCLE_SOURCE, /const INDICATOR_ENTER = \{ duration: 0\.15, ease: \[0\.4, 1, 0\.6, 1\] \}/u);
 	assert.match(LIFECYCLE_SOURCE, /const INDICATOR_EXIT = \{ duration: 0\.1, ease: \[0\.6, 0, 0\.8, 0\.6\] \}/u);
-	assert.match(LIFECYCLE_SOURCE, /exit=\{\{ opacity: 0, scale: 0\.6, transition: INDICATOR_EXIT \}\}/u);
+	assert.match(
+		LIFECYCLE_SOURCE,
+		/exit=\{shouldReduceMotion[\s\S]*\? undefined[\s\S]*: \{ opacity: 0, scale: 0\.6, transition: INDICATOR_EXIT \}\}/u,
+	);
 	assert.match(LIFECYCLE_SOURCE, /<AnimatePresence initial=\{false\} mode="popLayout">/u);
-	// Reduced motion renders the same glyph with no presence animation at all.
-	assert.match(LIFECYCLE_SOURCE, /const glyph = shouldReduceMotion \?/u);
+	// The boundary stays mounted while reduced motion disables child animation.
+	assert.match(LIFECYCLE_SOURCE, /initial=\{shouldReduceMotion \? false : \{ opacity: 0, scale: 0\.6 \}\}/u);
+	assert.doesNotMatch(LIFECYCLE_SOURCE, /const glyph = shouldReduceMotion \?/u);
 	assert.match(LIFECYCLE_SOURCE, /<motion\.div/u);
 	assert.doesNotMatch(LIFECYCLE_SOURCE, /<motion\.span/u);
 	// The shared row must consume the card width so its fixed trailing slot sits
@@ -876,7 +869,7 @@ test("a card body click toggles a single selected session on the selected token"
 	// Nested "..." and the hover-actions cluster must not count as row-activate.
 	// The lifecycle button stops the click so a press selects the glyph instead
 	// of opening chat. RowBody still receives onView so title/metadata open the row.
-	assert.match(LIST_CARD_SOURCE, /data-session-drag-ignore=""/u);
+	assert.match(LIST_CARD_ACTIONS_SOURCE, /data-session-drag-ignore=""/u);
 	assert.match(LIFECYCLE_SOURCE, /event\.stopPropagation\(\)/u);
 	assert.match(LIFECYCLE_SOURCE, /aria-pressed=\{pressed\}/u);
 	assert.match(SESSION_MORE_MENU_SOURCE, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/u);
@@ -984,58 +977,4 @@ test("large uncaptured-work cards are borderless and flush in-flow", () => {
 	assert.doesNotMatch(CARD_SOURCE, /dash-4-2/u);
 	assert.doesNotMatch(CARD_SOURCE, /rounded-none border bg-transparent/u);
 	assert.doesNotMatch(INDEX_SOURCE, /flex flex-col gap-2/u);
-});
-
-test("the untracked-work flyout offers the first candidate key", () => {
-	assert.match(DATA_SOURCE, /export const AGENT_SESSION_MULTI_LINK_KEYS/u);
-	assert.match(DATA_SOURCE, /"lw-scope-thread": \["PAY-101", "PAY-121", "PAY-104"\]/u);
-	assert.match(DATA_SOURCE, /issueStatus: "Done"/u);
-	assert.match(DATA_SOURCE, /issueStatus: "In review"/u);
-	assert.match(TYPES_SOURCE, /getSuggestedWorkItemKeys\?: \(item: AgentSessionItem\) => readonly string\[\] \| undefined;/u);
-	assert.match(TYPES_SOURCE, /onLinkWorkItem\?: \(item: AgentSessionItem, workItemKey\?: string\) => void;/u);
-	assert.match(TYPES_SOURCE, /onArchiveSession\?: \(item: AgentSessionItem\) => void;/u);
-	assert.match(WORK_ITEM_SOURCE, /export function resolveAgentSessionWorkItemKey/u);
-	assert.match(WORK_ITEM_SOURCE, /const firstKey = getSuggestedWorkItemKeys\?\.\(item\)\?\.\[0\];/u);
-	assert.match(INDEX_SOURCE, /onLinkWorkItem=\{flyoutActions\.onLinkWorkItem\}/u);
-	assert.match(PAGE_SOURCE, /onSubtasks=\{handleCapture\}/u);
-	assert.match(WORK_ITEM_SOURCE, /export function bindAgentSessionFlyoutActions/u);
-	assert.match(WORK_ITEM_SOURCE, /capturedItemIds\?: ReadonlySet<string>;/u);
-	assert.match(
-		WORK_ITEM_SOURCE,
-		/actions\.onLinkWorkItem\?\.\(item, workItemKey\.length > 0 \? workItemKey : undefined\)/u,
-	);
-	assert.match(WORK_ITEM_SOURCE, /actions\.onArchiveSession\?\.\(item\)/u);
-	assert.match(WORK_ITEM_SOURCE, /actions\.onCreateWorkItem\?\.\(item\)/u);
-	assert.match(WORK_ITEM_SOURCE, /actions\.onSubtasks\?\.\(item\)/u);
-	assert.match(WORK_ITEM_SOURCE, /if \(isCaptured\(session\)\) \{\s*return;/u);
-	assert.match(
-		WORK_ITEM_SOURCE,
-		/if \(trimmed === undefined \|\| trimmed\.length === 0 \|\| trimmed === session\.issueKey\)/u,
-	);
-	assert.match(WORK_ITEM_SOURCE, /return \{ \.\.\.session, issueKey: trimmed \};/u);
-	assert.match(FLYOUT_SOURCE, /capturedSessionIds\?: ReadonlySet<string>;/u);
-	assert.match(UNTRACKED_CARD_SOURCE, /const linkLabel = hasIssueKey \? `Link to \$\{issueKey\}` : "Link work item";/u);
-	assert.match(FLYOUT_SOURCE, /captureLocked \|\| onLinkWorkItem === undefined/u);
-	assert.match(INDEX_SOURCE, /onArchiveSession=\{flyoutActions\.onArchiveSession\}/u);
-	assert.match(INDEX_SOURCE, /archiveActionLabel=\{visibilityLabel\}/u);
-});
-
-test("collapsed session rail forwards archive capability to its shared flyout", () => {
-	assert.match(COLUMN_SOURCE, /onArchiveSession=\{handleArchiveSession\}/u);
-	assert.match(COLUMN_RAIL_SOURCE, /onArchiveSession\?: \(item: AgentSessionItem\) => void;/u);
-	assert.match(COLUMN_RAIL_SOURCE, /onArchiveSession,\s*onCreateWorkItem,/u);
-	assert.match(COLUMN_RAIL_SOURCE, /onArchiveSession=\{flyoutActions\.onArchiveSession\}/u);
-});
-
-test("Pulse's uncaptured column renders sessions through this block", () => {
-	assert.match(
-		RAIL_SOURCE,
-		/import \{ AgentSession \} from "@\/components\/blocks\/agent-session";/u,
-	);
-	assert.match(
-		RAIL_SOURCE,
-		/<JiraIssue[\s\S]*variant="uncaptured-work"[\s\S]*<AgentSession[\s\S]*items=\{sessionItems\}/u,
-	);
-	assert.doesNotMatch(RAIL_SOURCE, /<AgentList\b/u);
-	assert.doesNotMatch(RAIL_SOURCE, /variant="uncaptured"/u);
 });

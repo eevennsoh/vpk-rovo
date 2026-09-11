@@ -311,6 +311,123 @@ function InFlowAgentSessionColumnSurface({
 	);
 }
 
+function resolveSessionColumnExpansion(
+	isEmbedded: boolean,
+	isFullWidth: boolean,
+	pinned: boolean,
+): "expanded" | "gutter" | "pinned" | "preview" {
+	if (!isEmbedded) return "gutter";
+	if (isFullWidth) return "expanded";
+	return pinned ? "pinned" : "preview";
+}
+
+function InFlowAgentSessionColumnGutter({
+	handleGutterPointerDown,
+	handlePointerEnter,
+	isEmbedded,
+	showGutterScrollMask,
+}: Readonly<{
+	handleGutterPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+	handlePointerEnter: (event: PointerEvent<HTMLDivElement>) => void;
+	isEmbedded: boolean;
+	showGutterScrollMask: boolean;
+}>) {
+	if (isEmbedded) return null;
+
+	return (
+		<div
+			aria-hidden="true"
+			className="absolute inset-y-0 start-0 z-30"
+			data-agent-session-column-hit-area=""
+			onPointerEnter={handlePointerEnter}
+			onPointerDown={handleGutterPointerDown}
+			style={{
+				width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX
+					+ IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_LEADING_BORDER_PX,
+			}}
+		>
+			{showGutterScrollMask ? (
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute inset-y-0 start-0 z-40 bg-surface"
+					data-agent-session-column-gutter-fill=""
+					style={{ width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX }}
+				/>
+			) : null}
+		</div>
+	);
+}
+
+function useInFlowAgentSessionColumnModel({
+	agentSessionColumn,
+	sessionFlyoutsSuspended,
+}: Readonly<Pick<InFlowAgentSessionColumnProps, "agentSessionColumn" | "sessionFlyoutsSuspended">>) {
+	const shouldReduceMotion = useReducedMotion();
+	const hostRef = useRef<HTMLDivElement>(null);
+	const showGutterScrollMask = useInFlowGutterScrollMask(hostRef);
+	const [playGutterIntro, setPlayGutterIntro] = useState(true);
+	useEffect(() => {
+		if (shouldReduceMotion) {
+			setPlayGutterIntro(false);
+		}
+	}, [shouldReduceMotion]);
+	const interaction = useInFlowAgentSessionColumnInteraction(
+		agentSessionColumn.collapsed,
+		agentSessionColumn.onCollapsedChange,
+	);
+	const resize = useSidebarResize({
+		defaultWidth: agentSessionColumn.expandedWidthPx ?? AGENT_SESSION_COLUMN_WIDTH_PX,
+		maxWidth: IN_FLOW_AGENT_SESSION_COLUMN_MAX_WIDTH_PX,
+		minWidth: AGENT_SESSION_COLUMN_WIDTH_PX,
+		minWidthResistance: true,
+	});
+	const expandedWidthPx = resize.sidebarWidth;
+	const columnWidthPx = interaction.isFullWidth
+		? expandedWidthPx
+		: AGENT_SESSION_COLUMN_COLLAPSED_WIDTH_PX;
+	const reposition = useSessionColumnReposition({
+		hostRef,
+		width: columnWidthPx,
+		disabled: sessionFlyoutsSuspended || resize.isResizing,
+		onStart: () => {
+			interaction.handleMenuOpenChange(false);
+			if (!interaction.pinned && !interaction.isFullWidth) interaction.handlePinnedChange(true);
+		},
+	});
+	const handlePinnedPlacementChange = (nextPinned: boolean) => {
+		interaction.handlePinnedChange(nextPinned);
+		if (!nextPinned) reposition.moveToLeadingGutter();
+	};
+	const isEmbedded = interaction.isEmbedded || reposition.shifted || reposition.dragging;
+	const dragHandle = reposition.available ? (
+		<button
+			aria-label={`Move ${agentSessionColumn.title ?? IN_FLOW_AGENT_SESSION_COLUMN_TITLE} column`}
+			className="me-1 inline-flex size-3 shrink-0 cursor-grab touch-none items-center justify-center text-icon-disabled active:cursor-grabbing [&_svg]:text-icon-disabled"
+			data-session-column-move-handle=""
+			title={reposition.dragging ? undefined : "Drag to move column. Use arrow keys, Home or End to reposition."}
+			type="button"
+		>
+			<Icon className="size-3 text-icon-disabled" render={<DragHandleVerticalIcon color="currentColor" label="" size="small" />} />
+		</button>
+	) : undefined;
+
+	return {
+		columnWidthPx,
+		dragHandle,
+		expandedWidthPx,
+		handlePinnedPlacementChange,
+		hostRef,
+		interaction,
+		isEmbedded,
+		playGutterIntro,
+		reposition,
+		resize,
+		setPlayGutterIntro,
+		shouldReduceMotion,
+		showGutterScrollMask,
+	};
+}
+
 /**
  * The Untracked rail starts pinned in the board as a compact timeline.
  * Unpin tucks it into the page's leading gutter. Hover from the gutter
@@ -332,67 +449,32 @@ export function InFlowAgentSessionColumn({
 	sessionFlyoutsSuspended,
 	untrackedDropArmed,
 }: Readonly<InFlowAgentSessionColumnProps>): ReactNode {
-	const shouldReduceMotion = useReducedMotion();
-	const hostRef = useRef<HTMLDivElement>(null);
-	const showGutterScrollMask = useInFlowGutterScrollMask(hostRef);
-	const [playGutterIntro, setPlayGutterIntro] = useState(true);
-	useEffect(() => {
-		if (shouldReduceMotion) {
-			setPlayGutterIntro(false);
-		}
-	}, [shouldReduceMotion]);
 	const {
-		expanded,
-		handleCollapsedChange,
-		handleExpand,
-		handleGutterPointerDown,
-		handleMenuOpenChange,
-		handlePinnedChange,
-		handlePointerEnter,
-		handlePointerLeave,
-		isEmbedded: isInteractionEmbedded,
-		isFullWidth,
-		isMenuOpen,
-		pinned,
-	} = useInFlowAgentSessionColumnInteraction(
-		agentSessionColumn.collapsed,
-		agentSessionColumn.onCollapsedChange,
-	);
-	const resize = useSidebarResize({
-		defaultWidth: agentSessionColumn.expandedWidthPx ?? AGENT_SESSION_COLUMN_WIDTH_PX,
-		maxWidth: IN_FLOW_AGENT_SESSION_COLUMN_MAX_WIDTH_PX,
-		minWidth: AGENT_SESSION_COLUMN_WIDTH_PX,
-		minWidthResistance: true,
-	});
-	const expandedWidthPx = resize.sidebarWidth;
-	const columnWidthPx = isFullWidth
-		? expandedWidthPx
-		: AGENT_SESSION_COLUMN_COLLAPSED_WIDTH_PX;
-	const reposition = useSessionColumnReposition({
+		columnWidthPx,
+		dragHandle,
+		expandedWidthPx,
+		handlePinnedPlacementChange,
 		hostRef,
-		width: columnWidthPx,
-		disabled: sessionFlyoutsSuspended || resize.isResizing,
-		onStart: () => {
-			handleMenuOpenChange(false);
-			if (!pinned && !isFullWidth) handlePinnedChange(true);
+		interaction: {
+			expanded,
+			handleCollapsedChange,
+			handleExpand,
+			handleGutterPointerDown,
+			handleMenuOpenChange,
+			handlePointerEnter,
+			handlePointerLeave,
+			isFullWidth,
+			isMenuOpen,
+			pinned,
 		},
-	});
-	const handlePinnedPlacementChange = (nextPinned: boolean) => {
-		handlePinnedChange(nextPinned);
-		if (!nextPinned) reposition.moveToLeadingGutter();
-	};
-	const isEmbedded = isInteractionEmbedded || reposition.shifted || reposition.dragging;
-	const dragHandle = reposition.available ? (
-		<button
-			aria-label={`Move ${agentSessionColumn.title ?? IN_FLOW_AGENT_SESSION_COLUMN_TITLE} column`}
-			className="me-1 inline-flex size-3 shrink-0 cursor-grab touch-none items-center justify-center text-icon-disabled active:cursor-grabbing [&_svg]:text-icon-disabled"
-			data-session-column-move-handle=""
-			title={reposition.dragging ? undefined : "Drag to move column. Use arrow keys, Home or End to reposition."}
-			type="button"
-		>
-			<Icon className="size-3 text-icon-disabled" render={<DragHandleVerticalIcon color="currentColor" label="" size="small" />} />
-		</button>
-	) : undefined;
+		isEmbedded,
+		playGutterIntro,
+		reposition,
+		resize,
+		setPlayGutterIntro,
+		shouldReduceMotion,
+		showGutterScrollMask,
+	} = useInFlowAgentSessionColumnModel({ agentSessionColumn, sessionFlyoutsSuspended });
 
 	return (
 		<JiraSessionFlyoutSuspensionProvider
@@ -401,9 +483,7 @@ export function InFlowAgentSessionColumn({
 			<div
 				ref={hostRef}
 				{...reposition.bindings}
-				data-agent-session-column-expansion={
-					!isEmbedded ? "gutter" : isFullWidth ? "expanded" : pinned ? "pinned" : "preview"
-				}
+				data-agent-session-column-expansion={resolveSessionColumnExpansion(isEmbedded, isFullWidth, pinned)}
 				data-agent-session-column-pinned={pinned ? "" : undefined}
 				data-session-column-dragging={reposition.dragging || undefined}
 				className={cn(
@@ -419,28 +499,12 @@ export function InFlowAgentSessionColumn({
 				onPointerEnter={handlePointerEnter}
 				onPointerLeave={handlePointerLeave}
 			>
-				{isEmbedded ? null : (
-					<div
-						aria-hidden="true"
-						className="absolute inset-y-0 start-0 z-30"
-						data-agent-session-column-hit-area=""
-						onPointerEnter={handlePointerEnter}
-						onPointerDown={handleGutterPointerDown}
-						style={{
-							width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX
-								+ IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_LEADING_BORDER_PX,
-						}}
-					>
-						{showGutterScrollMask ? (
-							<div
-								aria-hidden="true"
-								className="pointer-events-none absolute inset-y-0 start-0 z-40 bg-surface"
-								data-agent-session-column-gutter-fill=""
-								style={{ width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX }}
-							/>
-						) : null}
-					</div>
-				)}
+				<InFlowAgentSessionColumnGutter
+					handleGutterPointerDown={handleGutterPointerDown}
+					handlePointerEnter={handlePointerEnter}
+					isEmbedded={isEmbedded}
+					showGutterScrollMask={showGutterScrollMask}
+				/>
 				{reposition.shifted ? null : <InFlowAgentSessionColumnFootprint
 					columnFrame={columnFrame}
 					columnWidthPx={columnWidthPx}

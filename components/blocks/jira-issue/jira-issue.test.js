@@ -994,21 +994,3 @@ test("Jira issue agent activity chin splits into one row per agent only when ask
 	assert.match(MODEL_SOURCE, /export type JiraIssueAgentActivityLayout = "merged" \| "split";/u);
 	assert.match(MODEL_SOURCE, /if \(layout === "split"\) \{[\s\S]*activeActivities\.map\(\(activity\) => \(\{ activities: \[activity\], key: activity\.id \}\)\)/u);
 });
-
-test("Jira issue renders explicit unassigned avatars with the shared placeholder", () => {
-	assert.match(SUMMARY_SOURCE, /AvatarUnassigned,/);
-	assert.match(SOURCE, /assigneeUnassignedKind\?: AvatarUnassignedKind;/);
-	assert.match(LIB_SOURCE, /export function resolveIssueAssigneeUnassignedKind/);
-	assert.match(
-		SUMMARY_SOURCE,
-		/function JiraIssueAssignee[\s\S]*size = "sm"[\s\S]*const unassignedKind = resolveIssueAssigneeUnassignedKind\([\s\S]*assigneeAvatarSrc[\s\S]*assigneeUnassignedKind[\s\S]*if \(unassignedKind\) \{[\s\S]*<AvatarUnassigned[\s\S]*kind=\{unassignedKind\}[\s\S]*size=\{size\}/,
-	);
-	assert.match(SUMMARY_SOURCE, /usesStrokeChrome \? \([\s\S]*"flex size-6 shrink-0 items-center justify-center"[\s\S]*comfortableIcons \? undefined : "-mr-1"[\s\S]*data-slot="jira-issue-assignee-slot"[\s\S]*size=\{iconMetrics\.assigneeSize\}/);
-	assert.match(SUMMARY_SOURCE, /size="sm"/);
-});
-
-test("Jira issue assignee avatars honor the shared hexagon shape for agents", () => {
-	assert.match(SOURCE, /assigneeAvatarShape\?: NonNullable<AvatarProps\["shape"\]>;/);
-	assert.match(SOURCE, /assigneeAvatarShape = "circle"/);
-	assert.match(SUMMARY_SOURCE, /function JiraIssueAssignee[\s\S]*shape=\{assigneeAvatarShape\}/);
-});

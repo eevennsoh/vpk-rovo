@@ -106,7 +106,7 @@ test("gutter Expand expands and pins; the menu then says Unpin", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /isFullWidth = expanded && isEmbedded/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/data-agent-session-column-expansion=\{\s*!isEmbedded \? "gutter" : isFullWidth \? "expanded" : pinned \? "pinned" : "preview"\s*\}/u,
+		/data-agent-session-column-expansion=\{resolveSessionColumnExpansion\(isEmbedded, isFullWidth, pinned\)\}/u,
 	);
 });
 

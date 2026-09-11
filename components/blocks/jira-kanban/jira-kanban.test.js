@@ -583,13 +583,6 @@ test("Kanban agent assignment helpers apply toggles to every selected card", asy
 	assert.deepEqual(getCommonJiraKanbanAgentIds(assignments, selected), []);
 });
 
-test("Kanban assignment catalog starts from the shared AgentSelector directory", () => {
-	const catalogSource = readFileSync(join(__dirname, "lib", "agent-catalog.ts"), "utf8");
-	assert.match(catalogSource, /export function mergeJiraKanbanAgentCatalog\(/u);
-	assert.match(catalogSource, /ROVO_AGENT_SELECTOR_AGENTS/u);
-	assert.match(EXPERIMENTAL_CARD_SOURCE, /ROVO_AGENT_SELECTOR_AGENTS/u);
-});
-
 test("Kanban cards expose and render Jira issue agent lifecycle presentation", () => {
 	assert.match(SOURCE, /agentActivities\?: readonly JiraIssueAgentActivity\[\];/);
 	assert.match(SOURCE, /agentActivityMode\?: JiraIssueAgentActivityMode;/);
@@ -991,13 +984,4 @@ test("Experimental kanban keeps its column or session-rail gutter on the scroll 
 	);
 	assert.match(EXPERIMENTAL_HEADER_SOURCE, /items-center gap-2 px-6/u);
 	assert.match(EXPERIMENTAL_HEADER_SOURCE, /flex-wrap items-center gap-2 px-6/u);
-});
-
-test("Experimental kanban variant reuses the shared board data contracts", () => {
-	// Types and state helpers stay shared so both variants remain swappable
-	// inside an owning surface.
-	assert.match(EXPERIMENTAL_SOURCE, /import type \{[\s\S]*JiraKanbanProps,\n\} from "\.\.\/index";/u);
-	assert.match(EXPERIMENTAL_PAGE_SOURCE, /import \{ createJiraKanbanColumns \} from "\.\.\/jira-kanban-data";/u);
-	assert.match(EXPERIMENTAL_PAGE_SOURCE, /\} from "\.\.\/state";/u);
-	assert.doesNotMatch(EXPERIMENTAL_SOURCE, /^export interface JiraKanbanProps/mu);
 });

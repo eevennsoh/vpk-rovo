@@ -113,23 +113,6 @@ export function AgentSessionLifecycle({ state }: Readonly<{ state: AgentSessionI
 	const shouldReduceMotion = useReducedMotion();
 	const [pressed, setPressed] = useState(false);
 	const label = lifecycleLabel(state);
-	const glyph = shouldReduceMotion ? (
-		<IndicatorGlyph state={state} />
-	) : (
-		<AnimatePresence initial={false} mode="popLayout">
-			<motion.div
-				animate={{ opacity: 1, scale: 1 }}
-				className="grid place-items-center"
-				exit={{ opacity: 0, scale: 0.6, transition: INDICATOR_EXIT }}
-				initial={{ opacity: 0, scale: 0.6 }}
-				key={state}
-				style={{ willChange: "opacity, transform" }}
-				transition={INDICATOR_ENTER}
-			>
-				<IndicatorGlyph state={state} />
-			</motion.div>
-		</AnimatePresence>
-	);
 
 	return (
 		<Button
@@ -145,7 +128,21 @@ export function AgentSessionLifecycle({ state }: Readonly<{ state: AgentSessionI
 			type="button"
 			variant="ghost"
 		>
-			{glyph}
+			<AnimatePresence initial={false} mode="popLayout">
+				<motion.div
+					animate={shouldReduceMotion ? undefined : { opacity: 1, scale: 1 }}
+					className="grid place-items-center"
+					exit={shouldReduceMotion
+						? undefined
+						: { opacity: 0, scale: 0.6, transition: INDICATOR_EXIT }}
+					initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.6 }}
+					key={state}
+					style={shouldReduceMotion ? undefined : { willChange: "opacity, transform" }}
+					transition={shouldReduceMotion ? { duration: 0 } : INDICATOR_ENTER}
+				>
+					<IndicatorGlyph state={state} />
+				</motion.div>
+			</AnimatePresence>
 		</Button>
 	);
 }
