@@ -22,7 +22,7 @@ export function AgentSessionViewerHint() {
 				render={
 					<Button
 						aria-label={AGENT_SESSION_VIEWER_HINT}
-						className="[&_svg:not([class*='size-'])]:size-4!"
+						className="[&_svg:not([class*='size-'])]:size-4! [&_svg]:text-icon-subtlest"
 						onClick={(event) => event.stopPropagation()}
 						onPointerDown={(event) => event.stopPropagation()}
 						size="icon-compact"
@@ -34,7 +34,7 @@ export function AgentSessionViewerHint() {
 				<IconTile
 					aria-hidden
 					as="span"
-					className="text-icon-subtle"
+					className="text-icon-subtlest"
 					icon={<InformationCircleIcon color="currentColor" label="" size="medium" />}
 					iconSize="medium"
 					label=""

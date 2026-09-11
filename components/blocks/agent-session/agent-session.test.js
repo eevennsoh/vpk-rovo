@@ -702,8 +702,13 @@ test("viewer rows use the outline information circle, not the filled status icon
 		/import InformationCircleIcon from "@atlaskit\/icon\/core\/information-circle";/u,
 	);
 	assert.doesNotMatch(VIEWER_HINT_SOURCE, /status-information|StatusInformationIcon/u);
-	assert.match(VIEWER_HINT_SOURCE, /className="text-icon-subtle"/u);
-	assert.match(VIEWER_HINT_SOURCE, /className="\[&_svg:not\(\[class\*='size-'\]\)\]:size-4!"/u);
+	assert.match(VIEWER_HINT_SOURCE, /className="text-icon-subtlest"/u);
+	assert.match(
+		VIEWER_HINT_SOURCE,
+		/className="\[&_svg:not\(\[class\*='size-'\]\)\]:size-4! \[&_svg\]:text-icon-subtlest"/u,
+	);
+	assert.match(VIEWER_HINT_SOURCE, /variant="ghost"/u);
+	assert.doesNotMatch(VIEWER_HINT_SOURCE, /aria-expanded|onOpenChange|useState/u);
 	assert.match(
 		VIEWER_HINT_SOURCE,
 		/icon=\{<InformationCircleIcon color="currentColor" label="" size="medium" \/>\}/u,
