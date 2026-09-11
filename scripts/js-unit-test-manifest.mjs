@@ -317,6 +317,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/projects/jira-golden-journeys-v4/jira-golden-journeys-v4.test.js",
 		"components/projects/jira-team-eu26/jira-team-eu26.test.js",
 		"components/ui/icon-tile.test.js",
+		"components/ui/text-field-retirement.test.js",
 		"components/projects/jira-for-you/jira-for-you.test.js",
 		"components/blocks/jira-activity/jira-activity-alignment.test.js",
 		"components/blocks/jira-activity/jira-activity-event-row.test.js",
