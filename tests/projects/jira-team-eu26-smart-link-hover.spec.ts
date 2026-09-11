@@ -10,7 +10,7 @@ test("nested Smart Link tolerates a diagonal pause and keeps its session flyout 
 	if (await railHitArea.isVisible()) {
 		await railHitArea.hover();
 		await expect(railHitArea).toHaveCount(0);
-		await page.getByRole("button", { name: "Unattached sessions column options" }).click();
+		await page.getByRole("button", { name: "Unlink sessions column options" }).click();
 		await page.getByRole("menuitem", { name: "Pin", exact: true }).click();
 		await expect(page.locator("[data-agent-session-column-expansion]")).toHaveAttribute("data-agent-session-column-expansion", "pinned");
 	}

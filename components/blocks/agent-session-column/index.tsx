@@ -326,7 +326,7 @@ export function AgentSessionColumn({
 	collapsedRailHitSlopPx = 0,
 	count,
 	defaultCollapsed = false,
-	emptyLabel = "No unattached sessions",
+	emptyLabel = "No sessions to unlink",
 	expandedWidthPx = AGENT_SESSION_COLUMN_WIDTH_PX,
 	hasScrollingEffect = false,
 	widthTransitionDisabled = false,
@@ -347,7 +347,7 @@ export function AgentSessionColumn({
 	showFilter = true,
 	showLinkAction = true,
 	showOverflow = true,
-	title = "Unattached sessions",
+	title = "Unlink sessions",
 	triage,
 	toggleChangesWidth = true,
 	...sessionProps
