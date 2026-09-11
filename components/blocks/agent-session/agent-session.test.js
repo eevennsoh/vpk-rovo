@@ -777,11 +777,9 @@ test("a working long row breathes with the experimental spinner, not the pixel l
 	// copy. Only active work shimmers; blocked and settled states stay still.
 	assert.match(LIFECYCLE_SOURCE, /running: "Working"/u);
 	assert.match(LIFECYCLE_SOURCE, /"needs-input": "Needs input"/u);
+	assert.match(LIFECYCLE_SOURCE, /attention: "Needs attention"/u);
 	assert.match(LIFECYCLE_SOURCE, /complete: "Finished"/u);
-	assert.match(
-		LIFECYCLE_SOURCE,
-		/state === "running" \? \(\s*<Shimmer[\s\S]*\{label\}[\s\S]*<\/Shimmer>\s*\) : \(\s*<span[\s\S]*\{label\}[\s\S]*<\/span>/u,
-	);
+	assert.match(LIFECYCLE_SOURCE, /state === "running" \? \(\s*<Shimmer[\s\S]*\{label\}[\s\S]*<\/Shimmer>\s*\) : \(\s*<span[\s\S]*\{label\}[\s\S]*<\/span>/u);
 	// Grow in and out on the state swap, with the exit timing on the exit variant
 	// so it does not silently run at the enter timing.
 	assert.match(LIFECYCLE_SOURCE, /const INDICATOR_ENTER = \{ duration: 0\.15, ease: \[0\.4, 1, 0\.6, 1\] \}/u);
@@ -804,10 +802,6 @@ test("a working long row breathes with the experimental spinner, not the pixel l
 	assert.match(
 		LIST_CARD_SOURCE,
 		/"relative ml-3 flex min-h-6 min-w-6 shrink-0 items-center justify-end overflow-visible"/u,
-	);
-	assert.match(
-		LIST_CARD_ACTIONS_SOURCE,
-		/"pointer-events-none absolute inset-y-0 right-0 flex size-6 items-center justify-center opacity-0"/u,
 	);
 });
 

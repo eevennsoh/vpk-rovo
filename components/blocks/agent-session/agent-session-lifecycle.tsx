@@ -27,7 +27,7 @@ const INDICATOR_EXIT = { duration: 0.1, ease: [0.6, 0, 0.8, 0.6] } as const;
 const LIFECYCLE_LABELS = {
 	running: "Working",
 	"needs-input": "Needs input",
-	attention: "Needs input",
+	attention: "Needs attention",
 	complete: "Finished",
 } as const satisfies Record<AgentSessionItem["state"], string>;
 
