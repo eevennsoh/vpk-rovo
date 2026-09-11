@@ -238,6 +238,7 @@ export function AgentSession({
 								flyoutSession={flyoutSession}
 								getResumeCommand={getResumeCommand}
 								isArriving={beatItemIds?.has(item.id) ?? false}
+								isFlyoutActive={item.id === scrollPreview.activeItemId}
 								isHighlighted={item.id === highlightedItemId}
 								isNew={newItemIds?.has(item.id) ?? false}
 								isResumable={isResumable}

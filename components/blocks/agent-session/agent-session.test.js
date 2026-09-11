@@ -588,7 +588,10 @@ test("the menu offers host-appropriate actions, disabled without the capability"
 test("copying the prompt confirms with a green check the reveal cannot swallow", () => {
 	// The popup takes the pointer off the row and the confirmation outlives the
 	// hover that produced it; both would collapse the reveal without a pin.
-	assert.match(CARD_SOURCE, /pinned: showMoreMenu && role === "owner" && \(menu\.isOpen \|\| menu\.copied\),/u);
+	assert.match(
+		CARD_SOURCE,
+		/pinned: isFlyoutActive \|\| \(showMoreMenu && role === "owner" && \(menu\.isOpen \|\| menu\.copied\)\),/u,
+	);
 	assert.match(LIST_CARD_SOURCE, /pinned\?: boolean;/u);
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /pinned && "grid-cols-\[1fr\]"/u);
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /pinned && "pointer-events-auto opacity-100"/u);
@@ -854,7 +857,10 @@ test("a card body click toggles a single selected session on the selected token"
 		CARD_SOURCE,
 		/const showSelectedFill = isMarked \|\| \(isSelected && mark == null\);/u,
 	);
-	assert.match(CARD_SOURCE, /!showSelectedFill && !isHighlighted && "bg-transparent hover:bg-surface-hovered"/u);
+	assert.match(
+		CARD_SOURCE,
+		/!showSelectedFill && !isHighlighted && !isFlyoutActive && "bg-transparent hover:bg-surface-hovered"/u,
+	);
 	assert.match(CARD_SOURCE, /data-selected=\{isSelected \|\| undefined\}/u);
 	assert.match(CARD_SOURCE, /aria-current=\{isSelected \? "true" : undefined\}/u);
 	assert.match(CARD_SOURCE, /isSelected=\{showSelectedFill\}/u);
