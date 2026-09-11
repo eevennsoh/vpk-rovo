@@ -3,8 +3,11 @@ import {
 	resolveAssignedAgentStatusKind,
 	type AgentAssignmentStatusKind,
 } from "@/components/blocks/agent-assignment/components/assigned-agent-status";
+import { assignmentSessionRole } from "@/components/blocks/agent-assignment/components/assignment-session-role";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue/agent-activity";
 import type { AgentSessionItem } from "@/components/blocks/agent-session/agent-session-types";
+
+export { assignmentSessionRole } from "@/components/blocks/agent-assignment/components/assignment-session-role";
 
 export type AgentAssignmentVariant = "default" | "simple";
 
@@ -64,6 +67,7 @@ function assignmentActivityLabel(kind: AgentAssignmentStatusKind, agent: AgentAs
 /** Maps an assigned agent onto the Agent Session long-row model. */
 export function toAssignmentSessionItem(agent: AgentAssignmentAgent): AgentSessionItem {
 	const statusKind = resolveAssignedAgentStatusKind(agent);
+	const role = assignmentSessionRole(statusKind, agent.role);
 
 	return {
 		agent: {
@@ -78,13 +82,15 @@ export function toAssignmentSessionItem(agent: AgentAssignmentAgent): AgentSessi
 		state: assignmentSessionState(statusKind),
 		title: agent.name,
 		...(agent.host !== undefined ? { host: agent.host } : {}),
-		...(agent.role !== undefined ? { role: agent.role } : {}),
+		...(role !== undefined ? { role } : {}),
+		...(agent.timeLabel ? { timeLabel: agent.timeLabel } : {}),
 	};
 }
 
 /** Maps an assigned agent onto the Jira issue activity-row model. */
 export function toAssignmentActivity(agent: AgentAssignmentAgent): JiraIssueAgentActivity {
 	const statusKind = resolveAssignedAgentStatusKind(agent);
+	const role = assignmentSessionRole(statusKind, agent.role);
 
 	return {
 		id: agent.id,
@@ -96,5 +102,8 @@ export function toAssignmentActivity(agent: AgentAssignmentAgent): JiraIssueAgen
 		...(statusKind === "working" && agent.statusSequence
 			? { labels: agent.statusSequence }
 			: {}),
+		...(agent.invokedBy ? { invokedBy: agent.invokedBy } : {}),
+		...(agent.host !== undefined ? { host: agent.host } : {}),
+		...(role !== undefined ? { role } : {}),
 	};
 }

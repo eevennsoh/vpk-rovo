@@ -1,7 +1,7 @@
 "use client";
 
 import CloudIcon from "@atlaskit/icon-lab/core/cloud";
-import DevicesIcon from "@atlaskit/icon/core/devices";
+import ScreenIcon from "@atlaskit/icon/core/screen";
 
 import {
 	AgentListPrStatusIcon,
@@ -33,7 +33,7 @@ function MetadataDot() {
  * "Local".
  *
  * `cloud` comes from icon-lab because `@atlaskit/icon/core` only ships
- * `cloud-arrow-up` (an upload action, not a location); `devices` is core. Same
+ * `cloud-arrow-up` (an upload action, not a location); `screen` is core. Same
  * pairing the Jira session flyout's Session row uses, so the glyph means the
  * same thing wherever it appears.
  */
@@ -53,7 +53,7 @@ export function AgentSessionHostSegment({ isLocal }: Readonly<{ isLocal: boolean
 				}
 			>
 				{isLocal ? (
-					<DevicesIcon color="currentColor" label="" size="small" />
+					<ScreenIcon color="currentColor" label="" size="small" />
 				) : (
 					<CloudIcon color="currentColor" label="" size="small" />
 				)}
@@ -115,9 +115,9 @@ function LongMetadataSegment({
 	switch (segment.kind) {
 		case "agent":
 			return (
-				<span className="flex shrink-0 items-center gap-1">
+				<span className="flex min-w-0 items-center gap-1">
 					<LongMetadataIdentity item={item} />
-					<span className="text-text-subtle" title={segment.label}>
+					<span className="min-w-0 truncate text-text-subtle" title={segment.label}>
 						{segment.label}
 					</span>
 				</span>
@@ -172,13 +172,14 @@ export function AgentSessionLongMetadata({ item }: Readonly<{ item: AgentSession
 	return (
 		<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
 			{segments.map((segment, index) => (
-				// Only the artifact chunk may shrink. Everything else is short and
-				// load-bearing — a shrinkable wrapper around unshrinkable content
-				// collapses the `·` separators and clips the agent name to "Cla…".
+				// Artifact and agent names yield width so the trailing lifecycle
+				// icon stays clear. Time and host stay shrink-0 so separators hold.
 				<span
 					className={cn(
 						"flex items-center gap-1",
-						segment.kind === "artifact" ? "min-w-0 shrink" : "shrink-0",
+						segment.kind === "artifact" || segment.kind === "agent"
+							? "min-w-0 shrink"
+							: "shrink-0",
 					)}
 					key={segment.kind}
 				>
@@ -203,7 +204,7 @@ export function AgentSessionShortMetadata({ item }: Readonly<{ item: AgentSessio
 
 	return (
 		<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
-			<span className="shrink-0 text-text-subtle" title={item.agent.name}>
+			<span className="min-w-0 truncate text-text-subtle" title={item.agent.name}>
 				{item.agent.name}
 			</span>
 			<MetadataDot />

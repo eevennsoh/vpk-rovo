@@ -218,6 +218,7 @@ test("session activation is omitted when the host cannot resume it", async () =>
 
 	assert.equal(handlers.onView, undefined);
 	assert.equal(handlers.onCopyResume, undefined);
+	assert.equal(handlers.onContinueInAgent, undefined);
 	assert.equal(handlers.isResumable(item), false);
 	assert.equal(typeof handlers.onCreateWorkItem, "function");
 	assert.equal(typeof handlers.onLinkWorkItem, "function");
@@ -249,6 +250,7 @@ test("session callbacks ignore stale rows and host-denied resume requests", asyn
 	handlers.onSubtasks(staleItem);
 	handlers.onCopyResume(staleItem);
 	handlers.onView(staleItem);
+	handlers.onContinueInAgent?.(staleItem);
 	assert.deepEqual(calls, []);
 
 	// The host decision gates both resume entry points. Capture remains available
@@ -277,6 +279,35 @@ test("create, link, and subtask capture through the same host callback", async (
 	handlers.onLinkWorkItem(item);
 	handlers.onSubtasks(item);
 	assert.deepEqual(captured, [session.id, session.id, session.id]);
+});
+
+test("continue-in is omitted until the host supplies it, then ignores stale rows", async () => {
+	const { PULSE_TIMELINE, toPulseSessionHandlers, toPulseSessionItems } = await loadSessionsHarness();
+	const session = PULSE_TIMELINE.looseWork.find((item) => item.kind === "agent-session");
+	assert.ok(session !== undefined, "fixture should include a local agent session");
+	const [item] = toPulseSessionItems([session], PULSE_TIMELINE.members);
+	const withoutContinue = toPulseSessionHandlers({
+		looseWork: [session],
+		onCapture() {},
+		onResume() {},
+	});
+	assert.equal(withoutContinue.onContinueInAgent, undefined);
+
+	const continued = [];
+	const handlers = toPulseSessionHandlers({
+		looseWork: [session],
+		onCapture() {},
+		onContinue(looseWork) {
+			continued.push(looseWork.id);
+		},
+	});
+	const staleItem = { ...item, id: "lw-session-no-longer-on-this-board" };
+
+	assert.equal(typeof handlers.onContinueInAgent, "function");
+	handlers.onContinueInAgent(staleItem);
+	assert.deepEqual(continued, []);
+	handlers.onContinueInAgent(item);
+	assert.deepEqual(continued, [session.id]);
 });
 
 /**
@@ -336,6 +367,7 @@ test("the uncaptured column renders sessions through the Agent Session block", (
 	// The row -> loose work callbacks live in the shared adapter, so the rail and
 	// the v2 board's untracked-work column apply one set of rules.
 	assert.match(SOURCES.rail, /\{\.\.\.sessionHandlers\}/u);
+	assert.match(SOURCES.sessions, /onContinueInAgent: continueSession,/u);
 	assert.match(SOURCES.sessions, /onCopyResume: onResume === undefined \? undefined : \(item: AgentSessionItem\) => \{/u);
 	assert.match(SOURCES.sessions, /onCreateWorkItem: captureSession,/u);
 	assert.match(SOURCES.sessions, /onLinkWorkItem: captureSession,/u);

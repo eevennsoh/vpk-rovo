@@ -106,7 +106,7 @@ test("gutter Expand expands and pins; the menu then says Unpin", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /isFullWidth = expanded && isEmbedded/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/data-agent-session-column-expansion=\{\s*!isEmbedded \? "gutter" : isFullWidth \? "expanded" : pinned \? "pinned" : "preview"\s*\}/u,
+		/data-agent-session-column-expansion=\{resolveSessionColumnExpansion\(isEmbedded, isFullWidth, pinned\)\}/u,
 	);
 });
 
@@ -129,7 +129,7 @@ test("the collapsed options menu uses Atlaskit show-more-horizontal, not a custo
 	assert.match(IN_FLOW_MENU_SOURCE, /delay=\{0\}/u);
 	assert.match(
 		IN_FLOW_MENU_SOURCE,
-		/const HOVER_OPEN_TRIGGER_CLASS_NAME =\s*"aria-expanded:border-transparent aria-expanded:bg-bg-neutral-subtle-hovered aria-expanded:text-text-subtle aria-expanded:\[&_\[data-slot=icon\]\]:text-icon-subtle aria-expanded:\[&_svg\]:text-icon-subtle"/u,
+		/const HOVER_OPEN_TRIGGER_CLASS_NAME =\s*"aria-expanded:border-transparent aria-expanded:bg-bg-neutral-subtle-hovered aria-expanded:hover:bg-bg-neutral-subtle-hovered! aria-expanded:active:bg-bg-neutral-subtle-pressed! aria-expanded:text-text-subtle aria-expanded:\[&_\[data-slot=icon\]\]:text-icon-subtle aria-expanded:\[&_svg\]:text-icon-subtle"/u,
 	);
 	assert.match(
 		IN_FLOW_MENU_SOURCE,

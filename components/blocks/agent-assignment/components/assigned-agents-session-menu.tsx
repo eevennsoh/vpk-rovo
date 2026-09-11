@@ -16,6 +16,7 @@ export function AssignedAgentsSessionMenu({
 	onAddAgent,
 	onContinueInAgent,
 	onDeleteSession,
+	onMoreMenuOpenChange,
 	onRenameSession,
 	onSelectAgent,
 	onToggleVisibility,
@@ -24,6 +25,7 @@ export function AssignedAgentsSessionMenu({
 	onAddAgent?: () => void;
 	onContinueInAgent?: (item: AgentSessionItem) => void;
 	onDeleteSession?: (item: AgentSessionItem) => void;
+	onMoreMenuOpenChange?: (open: boolean) => void;
 	onRenameSession?: (item: AgentSessionItem) => void;
 	onSelectAgent: (agent: AgentAssignmentAgent) => void;
 	onToggleVisibility?: (item: AgentSessionItem) => void;
@@ -39,20 +41,21 @@ export function AssignedAgentsSessionMenu({
 	}, []);
 
 	return (
-		<div className="w-full outline-none" ref={containerRef} tabIndex={-1}>
+		<div className="flex w-full flex-col gap-1 p-1 outline-none" ref={containerRef} tabIndex={-1}>
 			{rows.length === 0 ? (
 				<p className="px-3 py-2 text-sm text-text-subtle">No agents assigned</p>
 			) : (
-				<ul className="flex w-full flex-col gap-0 p-1">
+				<ul className="flex w-full flex-col gap-0">
 					{rows.map((row) => (
 						<AgentSessionCard
 							density="long"
 							item={toAssignmentSessionItem(row)}
 							key={row.id}
-							moreMenuPortalled={false}
+							moreMenuPortalled={true}
 							moreMenuPositionerClassName="z-[600]"
 							onContinueInAgent={onContinueInAgent}
 							onDeleteSession={onDeleteSession}
+							onMoreMenuOpenChange={onMoreMenuOpenChange}
 							onRenameSession={onRenameSession}
 							onToggleVisibility={onToggleVisibility}
 							onView={() => onSelectAgent(row)}
@@ -62,7 +65,7 @@ export function AssignedAgentsSessionMenu({
 				</ul>
 			)}
 			{onAddAgent ? (
-				<div className="sticky bottom-0 z-10 mx-1 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-1 pb-1">
+				<div className="sticky bottom-0 z-10 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-1">
 					<Button
 						className="h-8 min-h-8 w-full justify-start gap-3 pl-2 pr-3 py-0 text-left text-sm font-normal"
 						onClick={onAddAgent}

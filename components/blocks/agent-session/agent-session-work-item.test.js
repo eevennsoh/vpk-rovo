@@ -66,6 +66,7 @@ test("the chin-row activity carries the human who invoked the session", async ()
 	assert.deepEqual(toJiraIssueAgentActivityFromSession(session({ invokedBy: ANNIE })), {
 		agentBrandName: "claude",
 		avatarSrc: undefined,
+		host: "local",
 		id: "lw-a",
 		invokedBy: ANNIE,
 		label: "Investigate webhook retries",
@@ -87,6 +88,8 @@ test("a session with no invoker degrades to an agent-only activity", async () =>
 
 	assert.equal(activity.invokedBy, undefined);
 	assert.equal(activity.name, "Claude");
+	assert.equal(activity.host, "local");
+	assert.ok(!("invokedBy" in activity));
 });
 
 test("session states collapse onto the three chin-row states", async () => {

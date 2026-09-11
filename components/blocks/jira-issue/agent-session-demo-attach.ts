@@ -22,6 +22,8 @@ export interface JiraIssueDemoAttachableSession {
 	 * later unlink hands the card assignee back as the invoker.
 	 */
 	invokedBy?: AgentListInvoker;
+	host?: JiraIssueAgentActivity["host"];
+	role?: JiraIssueAgentActivity["role"];
 }
 
 /**
@@ -41,6 +43,8 @@ export function toJiraIssueDemoAttachedActivity(
 		...(session.agent.avatarSrc ? { avatarSrc: session.agent.avatarSrc } : {}),
 		...(session.agent.brandName ? { agentBrandName: session.agent.brandName } : {}),
 		...(session.invokedBy ? { invokedBy: session.invokedBy } : {}),
+		...(session.host !== undefined ? { host: session.host } : {}),
+		...(session.role !== undefined ? { role: session.role } : {}),
 	};
 }
 

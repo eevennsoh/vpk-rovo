@@ -91,7 +91,8 @@ export interface ExperimentalJiraKanbanPageProps {
 	agentSessionPresentation?: "column" | "panel";
 	/**
 	 * Whether the unattached sessions column supports additive/range selection
-	 * and multi-session drag cohorts. Defaults to true.
+	 * and multi-session drag cohorts. Defaults to true. `false` also disables
+	 * single-select row chrome on that column.
 	 */
 	agentSessionMultiSelect?: boolean;
 	agents?: readonly JiraKanbanAgentData[];
@@ -154,6 +155,12 @@ export interface ExperimentalJiraKanbanPageProps {
 	subtaskChrome?: JiraIssueChrome;
 	onInsightsWorkItemClick?: (workItem: PulseWorkItem) => void;
 	onModeChange?: (mode: ExperimentalJiraKanbanMode) => void;
+	/**
+	 * Reopen an unattached local session in its own agent. Omit it and the
+	 * row's Continue-in action stays disabled — an enabled control with no
+	 * host action would be a lie.
+	 */
+	onContinueLooseWork?: (item: PulseLooseWork) => void;
 	onResumeLooseWork?: (item: PulseLooseWork) => void;
 	onViewChange?: (view: ExperimentalJiraKanbanView) => void;
 	renderListContent?: (

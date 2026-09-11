@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import { LogoThirdParty } from "@/components/ui/logo-third-party";
-import { cn } from "@/lib/utils";
 
 import type { AgentSessionItem } from "./agent-session-types";
 
@@ -96,8 +95,8 @@ export function AgentSessionMoreMenu({
 	 */
 	positionerClassName?: string;
 	/**
-	 * Keep the menu inside its trigger overlay. Assignment's picker is a
-	 * popover, so a portalled menu looks like an outside press and closes it.
+	 * Portal the menu to the document. Nested clipped overlays can pass
+	 * `false`; assignment uses the default portal and keeps the picker open.
 	 */
 	portalled?: boolean;
 }>) {
@@ -107,8 +106,11 @@ export function AgentSessionMoreMenu({
 				render={(
 					<Button
 						aria-label={`More actions for ${item.title}`}
-						className={cn(open && "bg-surface-hovered")}
-						// The card owns pointerdown for drag; the trigger is not a drag handle.
+						className="size-6 shadow-none focus-visible:ring-0"
+						data-session-drag-ignore=""
+						// Nested in the row article: stop click so "..." opens the menu
+						// without activating onView, and pointerdown so it is not a drag handle.
+						onClick={(event) => event.stopPropagation()}
 						onPointerDown={(event) => event.stopPropagation()}
 						size="icon-compact"
 						type="button"
@@ -117,7 +119,6 @@ export function AgentSessionMoreMenu({
 				)}
 			>
 				<Icon
-					className="text-icon-subtle"
 					render={<ShowMoreHorizontalIcon color="currentColor" label="" size="small" />}
 				/>
 			</DropdownMenuTrigger>
