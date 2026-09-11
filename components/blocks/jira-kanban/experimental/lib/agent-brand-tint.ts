@@ -35,6 +35,8 @@ const BRAND_TINT_HEX: Readonly<Record<string, string>> = {
 const THEMEABLE_BRAND_TINT_VARIABLES: Readonly<Record<string, string>> = {
 	cursor: "--color-icon",
 	github: "--color-icon",
+	"github copilot": "--color-icon",
+	"github-copilot": "--color-icon",
 };
 
 /** Neutral stand-in when a brand has no mapped mark colour. */

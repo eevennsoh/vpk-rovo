@@ -108,6 +108,8 @@ test("the flash names the rows that were added and wears the lead agent's mark",
 test("near-black agent tints follow the active theme", () => {
 	assert.equal(resolveAgentBrandTintVariable("cursor"), "--color-icon");
 	assert.equal(resolveAgentBrandTintVariable("github"), "--color-icon");
+	assert.equal(resolveAgentBrandTintVariable("github-copilot"), "--color-icon");
+	assert.equal(resolveAgentBrandTintVariable("github copilot"), "--color-icon");
 	assert.equal(resolveAgentBrandTintVariable("claude"), undefined);
 	assert.equal(resolveAgentBrandTintColor("cursor"), "var(--color-icon)");
 	assert.equal(resolveAgentBrandTintColor("claude"), "#d97757");
