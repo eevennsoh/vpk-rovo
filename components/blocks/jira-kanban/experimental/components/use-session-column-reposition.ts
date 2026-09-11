@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
 	isSessionColumnRepositionPointerTarget,
+	resolveSessionColumnRepositionCaptureElement,
 	resolveSessionColumnPreviewIndex,
 } from "../lib/session-column-reposition-pointer";
 import { useSessionColumnPlacement } from "./session-column-placement";
@@ -313,15 +314,17 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 		if (!placement || disabled || event.button !== 0 || !event.isPrimary) return;
 		const target = event.target as HTMLElement;
 		if (!isSessionColumnRepositionPointerTarget(target)) return;
+		const captureElement = resolveSessionColumnRepositionCaptureElement(target);
+		if (!captureElement) return;
 		const root = placement.rootRef.current;
 		const scrollport = root?.querySelector<HTMLElement>("[data-jira-kanban-scrollport]");
 		if (!root || !scrollport) return;
 		const element = event.currentTarget;
 		const elementBox = element.getBoundingClientRect();
 		const rootBox = root.getBoundingClientRect();
-		// Capture on the host so restyling the collapsed chip (ghost "…" →
-		// outlined drag button) cannot drop the gesture via lostpointercapture.
-		element.setPointerCapture(event.pointerId);
+		// Keep short presses targeted at their original header control. The
+		// pointer events still bubble to the host once the drag threshold wins.
+		captureElement.setPointerCapture(event.pointerId);
 		suppressClick.current = false;
 		drag.current = {
 			pointerId: event.pointerId,
@@ -337,7 +340,7 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 			element,
 			source: null,
 			chip: null,
-			captureElement: element,
+			captureElement,
 			centers: [...scrollport.querySelectorAll<HTMLElement>("[data-jira-kanban-column]")].map((column) => {
 				const box = column.getBoundingClientRect();
 				return box.left + box.width / 2;

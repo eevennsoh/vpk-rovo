@@ -104,7 +104,6 @@ test("the expanded header advertises its full drag surface", () => {
 
 test("the hook no longer special-cases an Expand aria-label", () => {
 	assert.match(HOOK_SOURCE, /isSessionColumnRepositionPointerTarget/u);
-	assert.match(HOOK_SOURCE, /element.setPointerCapture\(event.pointerId\)/u);
 	assert.match(HOOK_SOURCE, /resolveSessionColumnPreviewIndex/u);
 	assert.doesNotMatch(HOOK_SOURCE, /startsWith\("Expand"\)/u);
 	assert.doesNotMatch(HOOK_SOURCE, /The expand button doubles as a compact drag handle/u);
@@ -171,6 +170,11 @@ test("drag moves only the outlined chip; both sources share opacity-disabled", (
 });
 
 test("a short click stays a click; only a 6px move claims the gesture", () => {
+	assert.match(HOOK_SOURCE, /resolveSessionColumnRepositionCaptureElement/u);
+	assert.match(HOOK_SOURCE, /const captureElement = resolveSessionColumnRepositionCaptureElement\(target\)/u);
+	assert.match(HOOK_SOURCE, /captureElement\.setPointerCapture\(event.pointerId\)/u);
+	assert.match(HOOK_SOURCE, /captureElement,/u);
+	assert.doesNotMatch(HOOK_SOURCE, /element\.setPointerCapture\(event.pointerId\)/u);
 	assert.match(HOOK_SOURCE, /if \(!current.active && Math.abs\(current.x - current.startX\) < 6\) return/u);
 	assert.match(HOOK_SOURCE, /suppressClick.current = true/u);
 	assert.match(HOOK_SOURCE, /onClickCapture: \(event: React.MouseEvent<HTMLDivElement>\) => \{/u);
