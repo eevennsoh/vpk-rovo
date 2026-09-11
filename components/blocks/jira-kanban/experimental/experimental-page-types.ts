@@ -50,6 +50,8 @@ export interface ExperimentalJiraKanbanPageProps {
 	additionalAgentSessions?: readonly PulseAgentSession[];
 	agentActivityLayout?: JiraIssueAgentActivityLayout;
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
+	/** Shows the Browse/Create footer rows in card agent and skill pickers. */
+	showCardGenerativeActionFooterActions?: boolean;
 	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
 	iconScale?: JiraIssueIconScale;
 	createWorkItemDropZoneLabel?: ExperimentalJiraKanbanProps["createWorkItemDropZoneLabel"];

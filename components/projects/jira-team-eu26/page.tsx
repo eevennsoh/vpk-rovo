@@ -301,6 +301,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						agentActivityLayout="merged"
 						agentSessionMultiSelect={false}
 						cardGenerativeActionPresentation="more-actions"
+						showCardGenerativeActionFooterActions
 						iconScale="comfortable"
 						createWellBounce="off"
 						createWorkItemDropZoneLabel={createWorkItemDropZoneLabel}

@@ -171,6 +171,7 @@ interface ExperimentalJiraKanbanCardProps {
 	generativeActionAgents: JiraIssueGenerativeActionConfig["agents"];
 	generativeActionPresentation: JiraIssueGenerativeActionPresentation;
 	generativeActionSkills: JiraIssueGenerativeActionConfig["skills"];
+	showGenerativeActionFooterActions?: boolean;
 	iconScale?: JiraIssueIconScale;
 	/** Session hovered in the Untracked work column; lights its row here. */
 	highlightedSessionId?: string | null;
@@ -234,6 +235,7 @@ export function ExperimentalJiraKanbanCard({
 	generativeActionAgents,
 	generativeActionPresentation,
 	generativeActionSkills,
+	showGenerativeActionFooterActions = false,
 	highlightedSessionId,
 	iconScale = "compact",
 	onAgentActivityOpenChange,
@@ -325,6 +327,12 @@ export function ExperimentalJiraKanbanCard({
 			iconScale={iconScale}
 			generativeAction={{
 				agents: generativeActionAgents,
+				...(showGenerativeActionFooterActions ? {
+					onBrowseAgents: () => undefined,
+					onBrowseSkills: () => undefined,
+					onCreateAgent: () => undefined,
+					onCreateSkill: () => undefined,
+				} : {}),
 				onSubmit: (request) => {
 					void onGenerativeActionSubmit?.(request, card, columnTitle);
 				},

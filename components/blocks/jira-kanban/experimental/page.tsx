@@ -201,6 +201,7 @@ function ExperimentalJiraKanbanPageContent({
 	additionalAgentSessions,
 	agentActivityLayout,
 	cardGenerativeActionPresentation, iconScale,
+	showCardGenerativeActionFooterActions = false,
 	createWellBounce = "once",
 	createWorkItemDropZoneLabel,
 	defaultAgentSessionColumnCollapsed = false,
@@ -1017,6 +1018,7 @@ function ExperimentalJiraKanbanPageContent({
 								assignedAgentIdsByColumn={columnAgentAssignments}
 								boardColumns={filteredBoardColumns}
 								cardGenerativeActionPresentation={cardGenerativeActionPresentation} iconScale={iconScale}
+								showCardGenerativeActionFooterActions={showCardGenerativeActionFooterActions}
 								collapsedColumns={displayedCollapsedColumns}
 								columnChrome={columnChrome}
 								createdCardArrival={createdCardArrival ?? undefined}

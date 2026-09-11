@@ -148,6 +148,8 @@ export interface ExperimentalJiraKanbanProps extends JiraKanbanProps {
 	onCardAgentSessionMove?: (session: JiraIssueAgentSessionRef, sourceCard: JiraKanbanCardData, targetCard: JiraKanbanCardData, sourceColumnTitle: string, targetColumnTitle: string) => void;
 	/** Chooses where card agent and skill actions are presented. */
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
+	/** Shows the Browse/Create footer rows in card agent and skill pickers. */
+	showCardGenerativeActionFooterActions?: boolean;
 	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
 	iconScale?: JiraIssueIconScale;
 	renderAgentActivityIndicator?: JiraIssueAgentActivityIndicatorRenderer;
@@ -433,6 +435,7 @@ function ExperimentalJiraKanbanView({
 	scrollEndInset = 0,
 	boardColumns,
 	cardGenerativeActionPresentation = "sparkle",
+	showCardGenerativeActionFooterActions = false,
 	cardMoveAnimation,
 	iconScale = "compact",
 	collapsedColumns: controlledCollapsedColumns,
@@ -856,6 +859,7 @@ function ExperimentalJiraKanbanView({
 												generativeActionAgents={generativeActionAgents}
 												generativeActionPresentation={cardGenerativeActionPresentation}
 												generativeActionSkills={generativeActionSkills}
+												showGenerativeActionFooterActions={showCardGenerativeActionFooterActions}
 												highlightedSessionId={highlightedSessionId}
 												iconScale={iconScale}
 												onAgentActivityOpenChange={onCardAgentActivityOpenChange}
