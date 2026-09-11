@@ -7,6 +7,10 @@ const CARD_SOURCE = readFileSync(
 	join(__dirname, "agent-list-card.tsx"),
 	"utf8",
 );
+const CARD_ACTIONS_SOURCE = readFileSync(
+	join(__dirname, "agent-list-card-actions.tsx"),
+	"utf8",
+);
 const IDENTITY_SOURCE = readFileSync(
 	join(__dirname, "agent-list-identity.tsx"),
 	"utf8",
@@ -233,7 +237,7 @@ test("rows carry an optional summary below metadata, leading metadata, and a sta
 	assert.match(CARD_SOURCE, /hasSummary \? "items-start" : "items-center"/u);
 	assert.match(
 		CARD_SOURCE,
-		/<div className="flex min-w-0 flex-1 flex-col">[\s\S]*<CardActions[\s\S]*?<\/div>[\s\S]*?\{item\.summary \?/u,
+		/<div className="flex min-w-0 flex-1 flex-col">[\s\S]*<AgentListCardActions[\s\S]*?<\/div>[\s\S]*?\{item\.summary \?/u,
 	);
 	assert.match(
 		CARD_SOURCE,
@@ -489,8 +493,9 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		CARD_SOURCE,
 		/const showHoverActions = \(!isSelected \|\| showHoverActionsWhenSelected\) &&\s*\(hoverActions\?\.primary !== undefined\s*\|\| hoverActions\?\.secondary !== undefined\s*\|\| hoverActions\?\.menu !== undefined\);/u,
 	);
-	assert.match(CARD_SOURCE, /\{showHoverActions \? \(\s*<CardActions/u);
-	assert.match(CARD_SOURCE, /<AgentListRowActionButton action=\{primary\}/u);
+	assert.match(CARD_SOURCE, /\{showHoverActions && !overlayHoverActions \? \(\s*<AgentListCardActions/u);
+	assert.match(CARD_SOURCE, /\{overlayHoverActions \? \(\s*<AgentListCardActions/u);
+	assert.match(CARD_ACTIONS_SOURCE, /<AgentListRowActionButton action=\{primary\}/u);
 	assert.match(ROW_ACTION_SOURCE, /event\.stopPropagation\(\);\s*\n\s*action\.onClick\(\)/u);
 	assert.match(
 		CARD_SOURCE,
@@ -503,16 +508,16 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 	assert.match(CARD_SOURCE, /<span className=\{cn\(titleClassName, "text-text"\)\}>/u);
 	assert.match(CARD_SOURCE, /className="min-w-0 truncate">\{item\.agent\.name\}<\/span>/u);
 	assert.match(
-		CARD_SOURCE,
+		CARD_ACTIONS_SOURCE,
 		/grid-cols-\[0fr\][\s\S]*group-hover\/agent-row:grid-cols-\[1fr\][\s\S]*group-has-\[:focus-visible\]\/agent-row:grid-cols-\[1fr\]/u,
 	);
 	assert.match(
-		CARD_SOURCE,
+		CARD_ACTIONS_SOURCE,
 		/"pointer-events-none flex shrink-0 items-center gap-1 pl-3 opacity-0/u,
 	);
-	assert.match(CARD_SOURCE, /transition-opacity duration-normal ease-out-practical/u);
+	assert.match(CARD_ACTIONS_SOURCE, /transition-opacity duration-normal ease-out-practical/u);
 	assert.match(
-		CARD_SOURCE,
+		CARD_ACTIONS_SOURCE,
 		/group-data-\[variant=uncaptured-work\]\/agent-row:transition-none/u,
 	);
 	assert.doesNotMatch(CARD_SOURCE, /className="ml-3 hidden shrink-0 items-center gap-1/u);

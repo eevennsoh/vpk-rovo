@@ -13,6 +13,13 @@ import type {
 	JiraListStatusOption,
 } from "@/components/blocks/jira-list";
 
+/** Same person as TopNavigation / `JIRA_GOLDEN_JOURNEYS_V4_PAY_CURRENT_USER`. */
+const CURRENT_USER_ASSIGNEE = {
+	id: "venn",
+	name: "Venn",
+	avatarSrc: "/avatar-user/venn/venn.png",
+} as const;
+
 export const JIRA_GOLDEN_JOURNEYS_V4_LIST_STATUS_OPTIONS: readonly JiraListStatusOption[] = [
 	{ status: "To do", statusVariant: "neutral" },
 	{ status: "In progress", statusVariant: "information" },
@@ -540,6 +547,7 @@ export function createBoardWorkItemFromSession(
 
 	const issueKey = getNextPayIssueKey(input.columns);
 	const card = toKanbanCardFromDraft({
+		assignee: CURRENT_USER_ASSIGNEE,
 		issueKey,
 		issueType: "task",
 		summary: input.session.title,

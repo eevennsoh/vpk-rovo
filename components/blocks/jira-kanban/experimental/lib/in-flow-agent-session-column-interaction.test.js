@@ -8,10 +8,10 @@ const {
 	shouldRestoreInFlowCollapsedMenuFocus,
 } = require("./in-flow-agent-session-column-interaction.ts");
 
-test("a collapsed host mounts in the gutter, so the menu says Pin", () => {
+test("a collapsed host mounts a pinned compact rail, so the menu says Unpin", () => {
 	const rest = resolveInFlowSessionColumnRest(true);
-	assert.deepEqual(rest, { expanded: false, pinned: false });
-	assert.equal(inFlowCollapsedMenuPinLabel(rest.pinned), "Pin");
+	assert.deepEqual(rest, { expanded: false, pinned: true });
+	assert.equal(inFlowCollapsedMenuPinLabel(rest.pinned), "Unpin");
 });
 
 test("an expanded host mounts a persistent full column", () => {
@@ -19,14 +19,17 @@ test("an expanded host mounts a persistent full column", () => {
 });
 
 test("unpin clears persistence; pin from the gutter restores it", () => {
-	const gutter = resolveInFlowSessionColumnRest(true);
-	const pinned = reduceInFlowSessionColumnAxes(gutter, { type: "pin", pinned: true });
-	assert.deepEqual(pinned, { expanded: false, pinned: true });
-	assert.equal(inFlowCollapsedMenuPinLabel(pinned.pinned), "Unpin");
+	const rest = resolveInFlowSessionColumnRest(true);
+	assert.deepEqual(rest, { expanded: false, pinned: true });
+	assert.equal(inFlowCollapsedMenuPinLabel(rest.pinned), "Unpin");
 
-	const unpinned = reduceInFlowSessionColumnAxes(pinned, { type: "pin", pinned: false });
+	const unpinned = reduceInFlowSessionColumnAxes(rest, { type: "pin", pinned: false });
 	assert.deepEqual(unpinned, { expanded: false, pinned: false });
 	assert.equal(inFlowCollapsedMenuPinLabel(unpinned.pinned), "Pin");
+
+	const pinned = reduceInFlowSessionColumnAxes(unpinned, { type: "pin", pinned: true });
+	assert.deepEqual(pinned, { expanded: false, pinned: true });
+	assert.equal(inFlowCollapsedMenuPinLabel(pinned.pinned), "Unpin");
 });
 
 test("gutter Expand expands and pins; the menu then says Unpin", () => {

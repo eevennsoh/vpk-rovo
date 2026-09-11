@@ -28,8 +28,9 @@ import {
 	type AgentAssignmentAgent,
 	type AgentAssignmentStatusKind,
 } from "@/components/blocks/agent-assignment";
-import type { AgentListInvoker } from "@/components/blocks/agent-list";
+import type { AgentListHost, AgentListInvoker } from "@/components/blocks/agent-list";
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
+import type { AgentSessionRole } from "@/components/blocks/agent-session/agent-session-types";
 import { AgentSessionDragPill } from "@/components/blocks/agent-session/agent-session-drag-chip";
 import {
 	groupJiraIssueAgentActivityRows,
@@ -106,6 +107,18 @@ export interface JiraIssueAgentActivity {
 	 * keeps the face beside the agent mark instead of degrading mid-flight.
 	 */
 	invokedBy?: AgentListInvoker;
+	/** Where the session runs. Drives the assignment flyout host glyph and more-menu. */
+	host?: AgentListHost;
+	/**
+	 * Stable elapsed stamp for assignment flyout rows. Omit only for a session
+	 * that just started; demo placeholders must set this so the clock is not 0s.
+	 */
+	timeLabel?: string;
+	/**
+	 * Owner sees the session more-menu; viewer sees the information hint.
+	 * Omit to keep the owner menu.
+	 */
+	role?: AgentSessionRole;
 	cycleIntervalJitterMs?: number;
 	cycleIntervalMs?: number;
 	startupSequence?: "jira-work-item-start";
@@ -194,12 +207,21 @@ function toAgentAssignmentAgent(activity: JiraIssueAgentActivity): AgentAssignme
 		...(activity.cycleIntervalMs !== undefined ? { statusCycleIntervalMs: activity.cycleIntervalMs } : {}),
 		...(activity.cycleIntervalJitterMs !== undefined ? { statusCycleJitterMs: activity.cycleIntervalJitterMs } : {}),
 		statusLabel: activity.label,
+		...(activity.invokedBy ? { invokedBy: activity.invokedBy } : {}),
+		...(activity.host !== undefined ? { host: activity.host } : {}),
+		...(activity.role !== undefined ? { role: activity.role } : {}),
+		...(activity.timeLabel ? { timeLabel: activity.timeLabel } : {}),
 	};
+}
+
+function canonicalizeJiraIssueAgentId(agentId: string): string {
+	const separatorIndex = agentId.lastIndexOf(":");
+	return separatorIndex === -1 ? agentId : agentId.slice(separatorIndex + 1);
 }
 
 function toSelectorAgent(activity: JiraIssueAgentActivity): AgentSelectorAgent {
 	return {
-		id: activity.id,
+		id: canonicalizeJiraIssueAgentId(activity.id),
 		name: activity.name,
 		byline: "",
 		...(activity.avatarSrc ? { avatarSrc: activity.avatarSrc } : {}),
@@ -211,11 +233,44 @@ function getJiraIssueAgentCatalog(
 	activities: readonly JiraIssueAgentActivity[],
 ): readonly AgentSelectorAgent[] {
 	const extras = activities
-		.filter((activity) => !ROVO_AGENT_SELECTOR_AGENTS.some((agent) => agent.id === activity.id))
+		.filter((activity) => {
+			const agentId = canonicalizeJiraIssueAgentId(activity.id);
+			return !ROVO_AGENT_SELECTOR_AGENTS.some((agent) => (
+				agent.id === activity.id || agent.id === agentId
+			));
+		})
 		.map(toSelectorAgent);
-	return extras.length > 0
-		? [...extras, ...ROVO_AGENT_SELECTOR_AGENTS]
+	const seen = new Set<string>();
+	const uniqueExtras = extras.filter((agent) => {
+		if (seen.has(agent.id)) {
+			return false;
+		}
+		seen.add(agent.id);
+		return true;
+	});
+	return uniqueExtras.length > 0
+		? [...ROVO_AGENT_SELECTOR_AGENTS, ...uniqueExtras]
 		: ROVO_AGENT_SELECTOR_AGENTS;
+}
+
+function mergeJiraIssueAgentCatalog(
+	activities: readonly JiraIssueAgentActivity[],
+	providedAgents?: readonly AgentSelectorAgent[],
+): readonly AgentSelectorAgent[] {
+	const directory = getJiraIssueAgentCatalog(activities);
+	if (!providedAgents?.length) {
+		return directory;
+	}
+
+	const seen = new Set(directory.map((agent) => agent.id));
+	const extras = providedAgents.filter((agent) => {
+		if (seen.has(agent.id)) {
+			return false;
+		}
+		seen.add(agent.id);
+		return true;
+	});
+	return extras.length > 0 ? [...directory, ...extras] : directory;
 }
 
 function resolveJiraIssueAgentRowPresentation(
@@ -400,7 +455,7 @@ function JiraIssueAgentDragWrapper({
 			className={cn(
 				"min-w-0",
 				isDragging && "relative w-full",
-				isDragging && (isDraggedOut ? "h-0" : "h-10"),
+				isDragging && (isDraggedOut ? "h-0" : "h-8"),
 			)}
 			data-session-chip-out={isDraggedOut || undefined}
 			data-slot="jira-issue-agent-row-wrap"
@@ -498,7 +553,7 @@ function JiraIssueAgentActivityRow({
 		featuredActivity?.startedAtMs,
 	);
 	const catalogAgents = useMemo(
-		() => assignment?.agents ?? getJiraIssueAgentCatalog(activities),
+		() => mergeJiraIssueAgentCatalog(activities, assignment?.agents),
 		[activities, assignment?.agents],
 	);
 	const assignedAgents = assignment?.assignedAgents ?? activities.map(toAgentAssignmentAgent);
@@ -706,7 +761,7 @@ export function JiraIssueAgentActivityRows({
 		: "animated";
 	// A pointer drag re-renders the row on every move. Hovering the assignment
 	// flyout also remounts trigger attrs. Freezing `layout` keeps Motion from
-	// re-measuring the LayoutGroup and fighting the reserved h-10 chin.
+	// re-measuring the LayoutGroup and fighting the reserved h-8 chin.
 	const rowLayout = shouldReduceMotion || sessionDragging || assignmentHoverOpen
 		? false
 		: "position";
