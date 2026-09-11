@@ -56,6 +56,14 @@ const ISSUE_TYPE_ICONS = {
 	bug: BugIcon,
 } as const;
 
+const ISSUE_TYPE_ICON_CLASS_NAMES = {
+	epic: "text-icon-accent-purple [&_svg]:text-icon-accent-purple!",
+	task: "text-icon-accent-blue [&_svg]:text-icon-accent-blue!",
+	story: "text-icon-accent-green [&_svg]:text-icon-accent-green!",
+	subtask: "text-icon-accent-blue [&_svg]:text-icon-accent-blue!",
+	bug: "text-icon-accent-red [&_svg]:text-icon-accent-red!",
+} as const;
+
 export function HierarchyConnector({
 	indentLevel,
 }: Readonly<{
@@ -107,9 +115,9 @@ export function IssueTypeGlyph({ issueType }: Readonly<{ issueType: JiraListIssu
 	const IssueTypeIcon = ISSUE_TYPE_ICONS[issueType];
 	return (
 		<Icon
-			className="text-icon-brand"
+			className={ISSUE_TYPE_ICON_CLASS_NAMES[issueType]}
 			label={issueType}
-			render={<IssueTypeIcon label="" size="small" />}
+			render={<IssueTypeIcon color="currentColor" label="" size="small" />}
 		/>
 	);
 }
