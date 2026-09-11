@@ -6,6 +6,14 @@ test("nested Smart Link tolerates a diagonal pause and keeps its session flyout 
 	await page.goto(`${process.env.PLAYWRIGHT_BASE_URL ?? "https://vpk-rovo.localhost"}/jira-team-eu26`, { waitUntil: "domcontentloaded" });
 	const notch = page.locator('[data-session-id="lw-sync-webhook-gap"]');
 	await expect(notch).toBeVisible({ timeout: 15_000 });
+	const railHitArea = page.locator("[data-agent-session-column-hit-area]");
+	if (await railHitArea.isVisible()) {
+		await railHitArea.hover();
+		await expect(railHitArea).toHaveCount(0);
+		await page.getByRole("button", { name: "Unattached sessions column options" }).click();
+		await page.getByRole("menuitem", { name: "Pin", exact: true }).click();
+		await expect(page.locator("[data-agent-session-column-expansion]")).toHaveAttribute("data-agent-session-column-expansion", "pinned");
+	}
 	await notch.hover();
 	const parent = page.locator('[data-slot="hover-card-content"]').filter({
 		has: page.getByRole("heading", { name: "Challenge webhook gap notes just landed from a local Cursor session" }),

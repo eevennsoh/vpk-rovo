@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { DirectionProvider } from "@base-ui/react/direction-provider";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -54,10 +55,17 @@ export default function ConeSafezoneDemo() {
 }
 
 export function ConeSafezoneDemoPlacement() {
+	const [rtl, setRtl] = useState(false);
+	const directionId = useId();
 	return (
-		<div className="flex min-h-80 w-full flex-wrap items-center justify-center gap-3 bg-surface p-6 text-text">
-			{(["top", "right", "bottom", "left"] as const).map((side) => (
-				<ConeSafezone key={side} debug openDelay={120} closeDelay={80}>
+		<DirectionProvider direction={rtl ? "rtl" : "ltr"}>
+		<div className="flex min-h-80 w-full flex-wrap items-center justify-center gap-3 bg-surface p-6 text-text" dir={rtl ? "rtl" : "ltr"}>
+			<div className="flex w-full items-center justify-center gap-2">
+				<Switch id={directionId} checked={rtl} onCheckedChange={setRtl} />
+				<Label htmlFor={directionId}>Right-to-left</Label>
+			</div>
+			{(["top", "right", "bottom", "left", "inline-start", "inline-end"] as const).map((side) => (
+				<ConeSafezone key={side} defaultOpen={side === "left"} debug openDelay={120} closeDelay={80}>
 					<ConeSafezoneTrigger render={<Button variant="outline" />}>{side[0].toUpperCase() + side.slice(1)}</ConeSafezoneTrigger>
 					<ConeSafezoneContent side={side} sideOffset={16} className="w-64 max-w-[calc(100vw-32px)] p-4">
 						<PreviewDetails />
@@ -65,11 +73,12 @@ export function ConeSafezoneDemoPlacement() {
 				</ConeSafezone>
 			))}
 		</div>
+		</DirectionProvider>
 	);
 }
 
 export function ConeSafezoneDemoControlled() {
-	const [open, setOpen] = useState(false);
+	const [open, setOpen] = useState(true);
 	return (
 		<div className="flex min-h-80 w-full flex-col items-start gap-4 bg-surface p-6 text-text">
 			<div className="flex items-center gap-3">

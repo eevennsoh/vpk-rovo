@@ -7,6 +7,7 @@ import type { HoverCardProps } from "@/components/ui/hover-card";
 export function useConeFamily(
 	handle: { close: () => void },
 	onOpenChange: HoverCardProps["onOpenChange"],
+	getActiveTrigger: () => Element | null,
 ) {
 	const previews = useRef(new Set<string>());
 	const popupRef = useRef<HTMLDivElement | null>(null);
@@ -21,10 +22,10 @@ export function useConeFamily(
 		// event. Reconcile against actual DOM hover (React portals bubble enter/leave).
 		if (previews.current.size === 0
 			&& !popupRef.current?.matches(":hover, :focus-within")
-			&& !triggerRef.current?.matches(":hover, :focus-within")) {
+			&& !(getActiveTrigger() ?? triggerRef.current)?.matches(":hover, :focus-within")) {
 			handle.close();
 		}
-	}, [handle]);
+	}, [handle, getActiveTrigger]);
 	const handleOpenChange: NonNullable<HoverCardProps["onOpenChange"]> = (open, details) => {
 		if (!open && details.reason === "trigger-hover" && previews.current.size > 0) {
 			details.cancel();

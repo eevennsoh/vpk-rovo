@@ -26,8 +26,8 @@ import { Button } from "@/components/ui/button";
 	</ConeSafezoneContent>
 </ConeSafezone>`,
 		examples: [
-			{ title: "Placement", description: "Try all four sides. The cone uses the final popup position after collision handling, and protects the return journey too.", demoSlug: "cone-safezone-placement" },
-			{ title: "Controlled state", description: "Own the open state, dismiss explicitly, and allow a longer pause. Keyboard focus and Escape continue to work.", demoSlug: "cone-safezone-controlled" },
+			{ title: "Placement", description: "Try physical and logical sides in either reading direction. Left starts open. The cone follows the final popup position after collision handling and protects the return journey too.", demoSlug: "cone-safezone-placement" },
+			{ title: "Controlled state", description: "Starts open with externally controlled state. Dismiss explicitly and allow a longer pause. Keyboard focus and Escape continue to work.", demoSlug: "cone-safezone-controlled" },
 		],
 		props: [
 			{ name: "graceMs", type: "number", default: "300", description: "Pause allowance inside the cone, renewed by pointer movement. Moving out of the cone uses normal dismissal." },

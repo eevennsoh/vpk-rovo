@@ -3,9 +3,19 @@ const test = require("node:test");
 
 const {
 	isHeadingIntoPopup,
+	resolveConeSide,
 } = require("../../utils/cone-safezone/geometry.ts");
 
 const RIGHT_POPUP = { bottom: 160, left: 200, right: 320, top: 40 };
+
+test("logical cone sides follow Base UI reading direction", () => {
+	assert.equal(resolveConeSide("inline-start", "ltr"), "left");
+	assert.equal(resolveConeSide("inline-end", "ltr"), "right");
+	assert.equal(resolveConeSide("inline-start", "rtl"), "right");
+	assert.equal(resolveConeSide("inline-end", "rtl"), "left");
+	assert.equal(resolveConeSide("bottom", "rtl"), "bottom");
+	assert.equal(resolveConeSide(undefined, "ltr"), null);
+});
 
 test("rail hover intent preserves a flyout while the pointer travels diagonally toward its right-side popup", () => {
 	assert.equal(

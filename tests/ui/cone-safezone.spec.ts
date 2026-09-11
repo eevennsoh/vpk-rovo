@@ -10,16 +10,48 @@ test("Cone safezone catalog exposes placement and controlled examples with keybo
 	await expect(page.getByRole("heading", { name: "ConeSafezone", exact: true })).toBeVisible();
 	await expect(page.getByText("@/components/utils/cone-safezone", { exact: true }).first()).toBeVisible();
 	await expect(page.getByRole("heading", { name: "Placement", exact: true })).toBeVisible();
-	await page.getByRole("button", { name: "Toggle preview", exact: true }).click();
+	for (const name of ["Left", "Hover or focus for details"]) {
+		const trigger = page.getByRole("button", { name, exact: true });
+		await trigger.scrollIntoViewIfNeeded();
+		await expect(trigger).toHaveAttribute("data-popup-open", "");
+		const box = (await trigger.boundingBox())!;
+		await expect.poll(() => page.locator("[data-cone-safezone-debug] polygon").evaluateAll((polygons, center) => polygons.some((polygon) => {
+			const [x, y] = (polygon.getAttribute("points") ?? "").split(" ")[0].split(",").map(Number);
+			return Math.abs(x - center.x) < 1 && Math.abs(y - center.y) < 1;
+		}), { x: box.x + box.width / 2, y: box.y + box.height / 2 })).toBe(true);
+	}
 	await expect(page.getByText("Preview open", { exact: true })).toBeVisible();
 	await page.getByRole("button", { name: "Close preview", exact: true }).click();
 	await expect(page.getByText("Preview closed", { exact: true })).toBeVisible();
+	await page.getByRole("button", { name: "Toggle preview", exact: true }).click();
+	await expect(page.getByText("Preview open", { exact: true })).toBeVisible();
+	await expect(page.locator("[data-cone-safezone-debug]").last()).toBeVisible();
+	await page.getByRole("button", { name: "Close preview", exact: true }).click();
 	await page.getByRole("button", { name: "Toggle preview", exact: true }).focus();
 	await page.keyboard.press("Tab");
 	await expect(page.getByRole("button", { name: "Hover or focus for details", exact: true })).toBeFocused();
 	await expect(page.getByRole("heading", { name: "A little more time" })).toBeVisible();
 	await page.keyboard.press("Escape");
 	await expect(page.getByText("Preview closed", { exact: true })).toBeVisible();
+});
+
+test("logical placements draw cones in both reading directions", async ({ page }) => {
+	await page.goto(`${baseURL}/components/utility/cone-safezone`, { waitUntil: "domcontentloaded" });
+	for (const rtl of [false, true]) {
+		const toggle = page.getByRole("switch", { name: "Right-to-left" });
+		if (rtl) await toggle.click();
+		for (const name of ["Inline-start", "Inline-end"]) {
+			const trigger = page.getByRole("button", { name, exact: true });
+			await trigger.hover();
+			await expect(trigger).toHaveAttribute("data-popup-open", "");
+			const box = (await trigger.boundingBox())!;
+			await expect.poll(() => page.locator("[data-cone-safezone-debug] polygon").evaluateAll((polygons, center) => polygons.some((polygon) => {
+				const [x, y] = (polygon.getAttribute("points") ?? "").split(" ")[0].split(",").map(Number);
+				return Math.abs(x - center.x) < 1 && Math.abs(y - center.y) < 1;
+			}), { x: box.x + box.width / 2, y: box.y + box.height / 2 })).toBe(true);
+			await page.keyboard.press("Escape");
+		}
+	}
 });
 
 test("nested demo shows the live cone and keeps both cards open through diagonal travel", async ({ page }) => {

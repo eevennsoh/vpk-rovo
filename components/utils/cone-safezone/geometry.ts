@@ -3,6 +3,12 @@ export type HoverRect = Pick<DOMRect, "left" | "right" | "top" | "bottom">;
 export type HoverSide = "left" | "right" | "top" | "bottom";
 export type ConePolygon = readonly [HoverPoint, HoverPoint, HoverPoint];
 
+export function resolveConeSide(side: string | undefined, direction: "ltr" | "rtl"): HoverSide | null {
+	if (side === "inline-start") return direction === "rtl" ? "right" : "left";
+	if (side === "inline-end") return direction === "rtl" ? "left" : "right";
+	return side === "left" || side === "right" || side === "top" || side === "bottom" ? side : null;
+}
+
 export function getConePolygon(origin: HoverPoint, popup: HoverRect, side: HoverSide): ConePolygon {
 	if (side === "left" || side === "right") {
 		const x = side === "right" ? popup.left : popup.right;
