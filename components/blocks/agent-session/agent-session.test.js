@@ -776,8 +776,7 @@ test("a working long row breathes with the experimental spinner, not the pixel l
 		LIFECYCLE_SOURCE,
 		/case "running":[\s\S]*<IconTile[\s\S]*variant="experimental"/u,
 	);
-	// Every long-form lifecycle pairs its far-right icon with full visible state
-	// copy. Only active work shimmers; blocked and settled states stay still.
+	// Long-form states pair full copy with the icon; only active work shimmers.
 	assert.match(LIFECYCLE_SOURCE, /running: "Working"/u);
 	assert.match(LIFECYCLE_SOURCE, /"needs-input": "Needs input"/u);
 	assert.match(LIFECYCLE_SOURCE, /attention: "Needs attention"/u);
@@ -792,8 +791,7 @@ test("a working long row breathes with the experimental spinner, not the pixel l
 		/exit=\{shouldReduceMotion[\s\S]*\? undefined[\s\S]*: \{ opacity: 0, scale: 0\.6, transition: INDICATOR_EXIT \}\}/u,
 	);
 	assert.match(LIFECYCLE_SOURCE, /<AnimatePresence initial=\{false\} mode="popLayout">/u);
-	// The button and visible label stay mounted while reduced motion disables the
-	// presence transition; Shimmer owns its own static reduced-motion treatment.
+	// Shimmer and the presence transition both retain reduced-motion treatments.
 	assert.match(LIFECYCLE_SOURCE, /initial=\{shouldReduceMotion \? false : \{ opacity: 0, scale: 0\.6 \}\}/u);
 	assert.doesNotMatch(LIFECYCLE_SOURCE, /const glyph = shouldReduceMotion \?/u);
 	assert.match(LIFECYCLE_SOURCE, /<div className="flex shrink-0 items-center gap-1 text-xs text-text-subtle">/u);
@@ -802,10 +800,7 @@ test("a working long row breathes with the experimental spinner, not the pixel l
 	// The shared row consumes the card width while its trailing slot reserves the
 	// full label-and-icon width at the far edge.
 	assert.match(LIST_CARD_SOURCE, /"flex w-full min-w-0 gap-0"/u);
-	assert.match(
-		LIST_CARD_SOURCE,
-		/"relative ml-3 flex min-h-6 min-w-6 shrink-0 items-center justify-end overflow-visible"/u,
-	);
+	assert.match(LIST_CARD_SOURCE, /"relative ml-3 flex min-h-6 min-w-6 shrink-0 items-center justify-end overflow-visible"/u);
 });
 
 test("a caller-authored dismiss label survives the Archive-to-Dismiss rename", () => {
