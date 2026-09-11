@@ -44,7 +44,6 @@ test("the session column is labelled Unlink sessions", async ({ page }) => {
 	await expect(page.getByText("Unattached sessions", { exact: true })).toHaveCount(0);
 });
 
-
 test("Untracked pins and expands as separate axes", async ({ page }) => {
 	await openCollapsedBoard(page);
 	const host = page.locator("[data-agent-session-column-expansion]");
