@@ -21,7 +21,15 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { LogoThirdParty } from "@/components/ui/logo-third-party";
 
-import type { AgentSessionItem } from "./agent-session-types";
+import {
+	AGENT_SESSION_LINK_WORK_ITEM_LABEL,
+	AgentSessionLinkWorkItemSubmenu,
+} from "./agent-session-link-work-item-submenu";
+import type {
+	AgentSessionItem,
+	AgentSessionWorkItemDraft,
+	AgentSessionWorkItemOption,
+} from "./agent-session-types";
 
 /**
  * The one action a session row offers, by host.
@@ -29,21 +37,27 @@ import type { AgentSessionItem } from "./agent-session-types";
  * A local session lives on the viewer's machine, so its actions are about
  * getting back into it — reopen the agent, or take the prompt to a terminal. A
  * cloud session lives on the server, where the row is a handle on a remote
- * record, so its actions are about the record: rename it, delete it. Only
- * Dismiss is common to both, which is why it sits below a
+ * record, so its actions are about the record: rename it, delete it. Link work
+ * item and Dismiss are common to both, which is why they sit below a
  * separator in each menu.
  *
  * An item whose capability the host did not supply renders disabled rather than
  * enabled-and-inert — an enabled control backed by nothing is a lie about what
- * this surface can do.
+ * this surface can do. Link work item follows the same rule at submenu scale:
+ * with neither link nor create wired it collapses to a disabled row instead of
+ * opening onto an empty panel.
  */
 export interface AgentSessionMoreMenuActions {
 	/** Reopen the session in its own agent. Labeled with the agent's name. */
 	onContinueInAgent?: () => void;
 	/** Copy the resume prompt for a terminal. Local only. */
 	onCopyPrompt?: () => void;
+	/** Create a work item from the submenu's Create new tab, titled by the viewer. */
+	onCreateWorkItem?: (draft: AgentSessionWorkItemDraft) => void;
 	/** Remove the row from this list. Wired to the host's archive/hide capability. */
 	onDismiss?: () => void;
+	/** Attach the session to an existing work item chosen in the submenu. */
+	onLinkWorkItem?: (workItemKey: string) => void;
 	/** Rename the session. Cloud only. */
 	onRename?: () => void;
 	/** Delete the session record. Cloud only. */
@@ -69,6 +83,7 @@ export function AgentSessionMoreMenu({
 	open,
 	positionerClassName,
 	portalled,
+	workItemOptions = [],
 }: Readonly<{
 	actions: AgentSessionMoreMenuActions;
 	/**
@@ -99,7 +114,12 @@ export function AgentSessionMoreMenu({
 	 * `false`; assignment uses the default portal and keeps the picker open.
 	 */
 	portalled?: boolean;
+	/** Work items the Link work item submenu offers on its Link to existing tab. */
+	workItemOptions?: readonly AgentSessionWorkItemOption[];
 }>) {
+	const canPickWorkItem = actions.onLinkWorkItem !== undefined
+		|| actions.onCreateWorkItem !== undefined;
+
 	return (
 		<DropdownMenu onOpenChange={onOpenChange} open={open}>
 			<DropdownMenuTrigger
@@ -174,6 +194,16 @@ export function AgentSessionMoreMenu({
 					</DropdownMenuGroup>
 				)}
 				<DropdownMenuSeparator />
+				{canPickWorkItem ? (
+					<AgentSessionLinkWorkItemSubmenu
+						onCreateWorkItem={actions.onCreateWorkItem}
+						onLinkWorkItem={actions.onLinkWorkItem}
+						onRequestClose={() => onOpenChange(false)}
+						workItemOptions={workItemOptions}
+					/>
+				) : (
+					<DropdownMenuItem disabled>{AGENT_SESSION_LINK_WORK_ITEM_LABEL}</DropdownMenuItem>
+				)}
 				<DropdownMenuItem
 					disabled={actions.onDismiss === undefined}
 					onSelect={() => actions.onDismiss?.()}

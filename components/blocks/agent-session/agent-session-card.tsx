@@ -46,6 +46,8 @@ import {
 	type AgentSessionSelectionGesture,
 	getAgentSessionRole,
 	type AgentSessionTriageRow,
+	type AgentSessionWorkItemDraft,
+	type AgentSessionWorkItemOption,
 } from "./agent-session-types";
 import { useAgentSessionMenu } from "./use-agent-session-menu";
 
@@ -68,8 +70,10 @@ export function AgentSessionCard({
 	onArrivalComplete,
 	onContinueInAgent,
 	onCopyResume,
+	onCreateWorkItemFromDraft,
 	onDeleteSession,
 	onItemHover,
+	onLinkWorkItem,
 	onMoreMenuOpenChange,
 	onRenameSession,
 	onToggleVisibility,
@@ -80,6 +84,7 @@ export function AgentSessionCard({
 	triageRow,
 	draggingIds,
 	visibilityLabel = "Archive",
+	workItemOptions,
 }: Readonly<{
 	arrivalDelaySeconds?: number;
 	captured?: boolean;
@@ -105,9 +110,13 @@ export function AgentSessionCard({
 	/** Reopen a local session in its own agent. Omit to disable the menu row. */
 	onContinueInAgent?: (item: AgentSessionItem) => void;
 	onCopyResume?: (item: AgentSessionItem) => void;
+	/** Create a work item named in the menu's Create new tab. Omit to disable that tab. */
+	onCreateWorkItemFromDraft?: (item: AgentSessionItem, draft: AgentSessionWorkItemDraft) => void;
 	/** Delete a cloud session record. Omit to disable the menu row. */
 	onDeleteSession?: (item: AgentSessionItem) => void;
 	onItemHover?: (item: AgentSessionItem | null) => void;
+	/** Link the session to a work item picked in the menu. Omit to disable that tab. */
+	onLinkWorkItem?: (item: AgentSessionItem, workItemKey?: string) => void;
 	/** Rename a cloud session. Omit to disable the menu row. */
 	onRenameSession?: (item: AgentSessionItem) => void;
 	onToggleVisibility?: (item: AgentSessionItem) => void;
@@ -136,6 +145,8 @@ export function AgentSessionCard({
 	draggingIds?: ReadonlySet<string>;
 	/** Accessible name for the menu's dismiss row. Archive in the active list, Unarchive in the archived view. */
 	visibilityLabel?: string;
+	/** Work items the menu's Link work item submenu offers. */
+	workItemOptions?: readonly AgentSessionWorkItemOption[];
 }>) {
 	const shouldReduceMotion = useReducedMotion();
 	const onItemHoverRef = useRef(onItemHover);
@@ -230,8 +241,10 @@ export function AgentSessionCard({
 		item,
 		onContinueInAgent,
 		onCopyResume,
+		onCreateWorkItemFromDraft,
 		onDeleteSession,
 		onItemHover,
+		onLinkWorkItem,
 		onMoreMenuOpenChange,
 		onRenameSession,
 		onToggleVisibility,
@@ -269,6 +282,7 @@ export function AgentSessionCard({
 						open={menu.isOpen}
 						portalled={moreMenuPortalled}
 						positionerClassName={moreMenuPositionerClassName}
+						workItemOptions={workItemOptions}
 					/>
 				);
 			default: {
