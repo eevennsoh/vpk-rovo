@@ -27,12 +27,33 @@ const BRAND_TINT_HEX: Readonly<Record<string, string>> = {
 	rovo: "#1868db",
 };
 
+/**
+ * Near-black marks need the same contrast swap as their rendered glyphs.
+ * `--color-icon` resolves to near-black in light mode and light grey in dark
+ * mode, so the linking field and release flash stay visible in either theme.
+ */
+const THEMEABLE_BRAND_TINT_VARIABLES: Readonly<Record<string, string>> = {
+	cursor: "--color-icon",
+	github: "--color-icon",
+};
+
 /** Neutral stand-in when a brand has no mapped mark colour. */
 export const AGENT_BRAND_TINT_FALLBACK = "var(--color-bg-accent-gray-bolder)";
 
 /** The brand's mark colour as a CSS string, or `undefined` when unmapped. */
 export function resolveAgentBrandTintHex(tintSeed: string | undefined): string | undefined {
 	return tintSeed ? BRAND_TINT_HEX[tintSeed] : undefined;
+}
+
+/** The semantic theme variable used by near-black brand marks, when needed. */
+export function resolveAgentBrandTintVariable(tintSeed: string | undefined): string | undefined {
+	return tintSeed ? THEMEABLE_BRAND_TINT_VARIABLES[tintSeed] : undefined;
+}
+
+/** Brand tint suitable for CSS effects in both light and dark themes. */
+export function resolveAgentBrandTintColor(tintSeed: string | undefined): string | undefined {
+	const variable = resolveAgentBrandTintVariable(tintSeed);
+	return variable ? `var(${variable})` : resolveAgentBrandTintHex(tintSeed);
 }
 
 /** The same colour as a 0-1 sRGB triple, for the shader's tint uniform. */
