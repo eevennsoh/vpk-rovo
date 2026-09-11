@@ -38,7 +38,7 @@ export function AgentSessionSelectMark({
 					"pointer-events-none col-start-1 row-start-1 transition-none",
 					isMarked
 						? "opacity-0"
-						: "opacity-100 group-hover/agent-row:opacity-0 group-has-[:focus-visible]/agent-row:opacity-0",
+						: "opacity-100 group-hover/agent-row:opacity-0 group-has-[:focus-visible]/agent-row:opacity-0 group-data-[hovered]/agent-row:opacity-0",
 				)}
 			>
 				{identity}
@@ -54,6 +54,7 @@ export function AgentSessionSelectMark({
 							"pointer-events-none text-icon-subtle opacity-0",
 							"group-hover/agent-row:pointer-events-auto group-hover/agent-row:opacity-100",
 							"group-has-[:focus-visible]/agent-row:pointer-events-auto group-has-[:focus-visible]/agent-row:opacity-100",
+							"group-data-[hovered]/agent-row:pointer-events-auto group-data-[hovered]/agent-row:opacity-100",
 						),
 				)}
 				data-session-drag-ignore=""
