@@ -588,7 +588,10 @@ test("the menu offers host-appropriate actions, disabled without the capability"
 test("copying the prompt confirms with a green check the reveal cannot swallow", () => {
 	// The popup takes the pointer off the row and the confirmation outlives the
 	// hover that produced it; both would collapse the reveal without a pin.
-	assert.match(CARD_SOURCE, /pinned: showMoreMenu && role === "owner" && \(menu\.isOpen \|\| menu\.copied\),/u);
+	assert.match(
+		CARD_SOURCE,
+		/pinned: isFlyoutActive \|\| \(showMoreMenu && role === "owner" && \(menu\.isOpen \|\| menu\.copied\)\),/u,
+	);
 	assert.match(LIST_CARD_SOURCE, /pinned\?: boolean;/u);
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /pinned && "grid-cols-\[1fr\]"/u);
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /pinned && "pointer-events-auto opacity-100"/u);
@@ -600,7 +603,7 @@ test("copying the prompt confirms with a green check the reveal cannot swallow",
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /if \(overlay\) \{/u);
 	assert.match(
 		LIST_CARD_ACTIONS_SOURCE,
-		/"pointer-events-none absolute inset-0 flex items-center justify-center opacity-0"/u,
+		/"pointer-events-none absolute inset-y-0 right-0 flex size-6 items-center justify-center opacity-0"/u,
 	);
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /group-has-\[\[aria-expanded=true\]\]\/agent-row:pointer-events-auto/u);
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /data-agent-list-card-actions=""/u);
@@ -779,6 +782,12 @@ test("a working long row breathes with the experimental spinner, not the pixel l
 		LIFECYCLE_SOURCE,
 		/case "running":[\s\S]*<IconTile[\s\S]*variant="experimental"/u,
 	);
+	// Long-form states pair full copy with the icon; only active work shimmers.
+	assert.match(LIFECYCLE_SOURCE, /running: "Working"/u);
+	assert.match(LIFECYCLE_SOURCE, /"needs-input": "Needs input"/u);
+	assert.match(LIFECYCLE_SOURCE, /attention: "Needs attention"/u);
+	assert.match(LIFECYCLE_SOURCE, /complete: "Finished"/u);
+	assert.match(LIFECYCLE_SOURCE, /state === "running" \? \(\s*<Shimmer[\s\S]*\{label\}[\s\S]*<\/Shimmer>\s*\) : \(\s*<span[\s\S]*\{label\}[\s\S]*<\/span>/u);
 	// Grow in and out on the state swap, with the exit timing on the exit variant
 	// so it does not silently run at the enter timing.
 	assert.match(LIFECYCLE_SOURCE, /const INDICATOR_ENTER = \{ duration: 0\.15, ease: \[0\.4, 1, 0\.6, 1\] \}/u);
@@ -788,15 +797,16 @@ test("a working long row breathes with the experimental spinner, not the pixel l
 		/exit=\{shouldReduceMotion[\s\S]*\? undefined[\s\S]*: \{ opacity: 0, scale: 0\.6, transition: INDICATOR_EXIT \}\}/u,
 	);
 	assert.match(LIFECYCLE_SOURCE, /<AnimatePresence initial=\{false\} mode="popLayout">/u);
-	// The boundary stays mounted while reduced motion disables child animation.
+	// Shimmer and the presence transition both retain reduced-motion treatments.
 	assert.match(LIFECYCLE_SOURCE, /initial=\{shouldReduceMotion \? false : \{ opacity: 0, scale: 0\.6 \}\}/u);
 	assert.doesNotMatch(LIFECYCLE_SOURCE, /const glyph = shouldReduceMotion \?/u);
+	assert.match(LIFECYCLE_SOURCE, /<div className="flex shrink-0 items-center gap-1 text-xs text-text-subtle">/u);
 	assert.match(LIFECYCLE_SOURCE, /<motion\.div/u);
 	assert.doesNotMatch(LIFECYCLE_SOURCE, /<motion\.span/u);
-	// The shared row must consume the card width so its fixed trailing slot sits
-	// at the far edge instead of immediately after each metadata line.
+	// The shared row consumes the card width while its trailing slot reserves the
+	// full label-and-icon width at the far edge.
 	assert.match(LIST_CARD_SOURCE, /"flex w-full min-w-0 gap-0"/u);
-	assert.match(LIST_CARD_SOURCE, /"relative ml-3 flex size-6 shrink-0 items-center justify-center overflow-visible"/u);
+	assert.match(LIST_CARD_SOURCE, /"relative ml-3 flex min-h-6 min-w-6 shrink-0 items-center justify-end overflow-visible"/u);
 });
 
 test("a caller-authored dismiss label survives the Archive-to-Dismiss rename", () => {
@@ -848,7 +858,10 @@ test("a card body click toggles a single selected session on the selected token"
 		CARD_SOURCE,
 		/const showSelectedFill = isMarked \|\| \(isSelected && mark == null\);/u,
 	);
-	assert.match(CARD_SOURCE, /!showSelectedFill && !isHighlighted && "bg-transparent hover:bg-surface-hovered"/u);
+	assert.match(
+		CARD_SOURCE,
+		/!showSelectedFill && !isHighlighted && !isFlyoutActive && "bg-transparent hover:bg-surface-hovered"/u,
+	);
 	assert.match(CARD_SOURCE, /data-selected=\{isSelected \|\| undefined\}/u);
 	assert.match(CARD_SOURCE, /aria-current=\{isSelected \? "true" : undefined\}/u);
 	assert.match(CARD_SOURCE, /isSelected=\{showSelectedFill\}/u);
