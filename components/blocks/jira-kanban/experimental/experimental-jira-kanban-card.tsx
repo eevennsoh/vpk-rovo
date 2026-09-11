@@ -144,8 +144,6 @@ function resolveKanbanCardAssignment(
 			card.code,
 			agentIds.map((agentId) => canonicalizeAssignedAgentId(card.code, agentId)),
 		),
-		onContinueExistingSession: () => undefined,
-		onRenameAssignedAgent: () => undefined,
 		pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL,
 	};
 }

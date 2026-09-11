@@ -603,6 +603,12 @@ test("copying the prompt confirms with a green check the reveal cannot swallow",
 		/"pointer-events-none absolute inset-0 flex items-center justify-center opacity-0"/u,
 	);
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /group-has-\[\[aria-expanded=true\]\]\/agent-row:pointer-events-auto/u);
+	assert.match(LIST_CARD_ACTIONS_SOURCE, /data-agent-list-card-actions=""/u);
+	assert.match(LIST_CARD_ACTIONS_SOURCE, /has-\[:focus-visible\]:pointer-events-auto has-\[:focus-visible\]:opacity-100/u);
+	assert.match(
+		LIST_CARD_SOURCE,
+		/group-has-\[\[data-agent-list-card-actions\]:focus-within\]\/agent-row:pointer-events-none/u,
+	);
 
 	assert.match(MENU_HOOK_SOURCE, /export const AGENT_SESSION_COPIED_RESET_MS = 2000;/u);
 	assert.match(MENU_HOOK_SOURCE, /setCopied\(true\)/u);

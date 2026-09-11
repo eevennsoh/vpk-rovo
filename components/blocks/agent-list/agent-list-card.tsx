@@ -763,9 +763,9 @@ export function AgentListRow({
 						>
 							{lifecycleNode ? (
 								<div
-									className={cn(
-										overlayHoverActions
-											? "group-hover/agent-row:pointer-events-none group-hover/agent-row:invisible group-has-[:focus-visible]/agent-row:pointer-events-none group-has-[:focus-visible]/agent-row:invisible group-has-[[aria-expanded=true]]/agent-row:pointer-events-none group-has-[[aria-expanded=true]]/agent-row:invisible"
+								className={cn(
+									overlayHoverActions
+											? "group-hover/agent-row:pointer-events-none group-hover/agent-row:invisible group-has-[[data-agent-list-card-actions]:focus-within]/agent-row:pointer-events-none group-has-[[data-agent-list-card-actions]:focus-within]/agent-row:invisible group-has-[[aria-expanded=true]]/agent-row:pointer-events-none group-has-[[aria-expanded=true]]/agent-row:invisible"
 											: "pointer-events-none",
 										overlayHoverActions && hoverActions?.pinned && "pointer-events-none invisible",
 									)}

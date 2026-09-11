@@ -27,10 +27,11 @@ export function AgentListCardActions({
 				className={cn(
 					"pointer-events-none absolute inset-0 flex items-center justify-center opacity-0",
 					"group-hover/agent-row:pointer-events-auto group-hover/agent-row:opacity-100",
-					"group-has-[:focus-visible]/agent-row:pointer-events-auto group-has-[:focus-visible]/agent-row:opacity-100",
+					"has-[:focus-visible]:pointer-events-auto has-[:focus-visible]:opacity-100",
 					"group-has-[[aria-expanded=true]]/agent-row:pointer-events-auto group-has-[[aria-expanded=true]]/agent-row:opacity-100",
 					pinned && "pointer-events-auto opacity-100",
 				)}
+				data-agent-list-card-actions=""
 				data-session-drag-ignore=""
 			>
 				{menu}

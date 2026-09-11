@@ -203,8 +203,8 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 		EXPERIMENTAL_CARD_SOURCE,
 		/\.\.\.\(activity\.role !== undefined \? \{ role: activity\.role \} : \{\}\)/u,
 	);
-	assert.match(EXPERIMENTAL_CARD_SOURCE, /onContinueExistingSession: \(\) => undefined/u);
-	assert.match(EXPERIMENTAL_CARD_SOURCE, /onRenameAssignedAgent: \(\) => undefined/u);
+	assert.doesNotMatch(EXPERIMENTAL_CARD_SOURCE, /onContinueExistingSession: \(\) => undefined/u);
+	assert.doesNotMatch(EXPERIMENTAL_CARD_SOURCE, /onRenameAssignedAgent: \(\) => undefined/u);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /function resolveKanbanCardAssignment\(/u);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /assignedAgentsFromKanbanCard\(card\)/u);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /ROVO_AGENT_SELECTOR_AGENTS/u);
@@ -683,12 +683,13 @@ test("the Work items header switches between Board and List views with their ico
 	assert.match(LIST_HOOK_SOURCE, /onAssignedAgentIdsChange: handleAssignedAgentIdsChange/u);
 	assert.match(
 		LIST_HOOK_SOURCE,
-		/mergeJiraKanbanAgentCatalog\(JIRA_TEAM_EU26_PAY_BOARD_AGENTS\)/u,
+		/const JIRA_TEAM_EU26_AGENT_CATALOG = mergeJiraKanbanAgentCatalog\(\s*JIRA_TEAM_EU26_PAY_BOARD_AGENTS,\s*\);/u,
 	);
 	assert.match(LIST_HOOK_SOURCE, /issueType: draftWorkItem.issueType/u);
 	assert.match(LIST_HOOK_SOURCE, /dueDate: draftWorkItem.dueDate/u);
 	assert.match(LIST_HOOK_SOURCE, /currentOrder.length === 0 \? allKeys : currentOrder/u);
-	assert.match(LIST_HOOK_SOURCE, /agentCatalog: JIRA_TEAM_EU26_PAY_BOARD_AGENTS/u);
+	assert.match(LIST_HOOK_SOURCE, /agentCatalog: JIRA_TEAM_EU26_AGENT_CATALOG/u);
+	assert.match(LIST_HOOK_SOURCE, /createListRows\(columns, JIRA_TEAM_EU26_AGENT_CATALOG\)/u);
 	assert.match(LIST_HOOK_SOURCE, /statusOptions: JIRA_TEAM_EU26_LIST_STATUS_OPTIONS/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /activeView\?: ExperimentalJiraKanbanView;/u);
 	assert.match(

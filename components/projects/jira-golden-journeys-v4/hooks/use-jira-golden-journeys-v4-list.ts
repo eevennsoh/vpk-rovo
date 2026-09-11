@@ -34,6 +34,10 @@ import {
 	toKanbanCardFromDraft,
 } from "../lib/list-rows";
 
+const JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG = mergeJiraKanbanAgentCatalog(
+	JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,
+);
+
 interface ListDraftWorkItem {
 	anchorIssueKey: string | null;
 	assignee?: JiraListPerson;
@@ -122,7 +126,7 @@ export function useJiraGoldenJourneysV4List({
 		setListOrder((currentOrder) => {
 			const allKeys = createListRows(
 				boardColumns,
-				JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,
+				JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG,
 			).map((row) => row.issueKey);
 			return moveListOrder(
 				currentOrder.length === 0 ? allKeys : currentOrder,
@@ -206,7 +210,7 @@ export function useJiraGoldenJourneysV4List({
 			columns,
 			issueKey,
 			agentIds,
-			mergeJiraKanbanAgentCatalog(JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS),
+			JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG,
 		));
 	}, [setBoardColumns]);
 
@@ -272,7 +276,7 @@ export function useJiraGoldenJourneysV4List({
 
 	const getProps = useCallback((columns: readonly JiraKanbanColumnData[]): JiraListProps => {
 		const rows = applyListOrder(
-			createListRows(columns, JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS),
+			createListRows(columns, JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG),
 			listOrder,
 		);
 		// Event handlers need the keys last shown (assignee filter may hide rows).
@@ -281,7 +285,7 @@ export function useJiraGoldenJourneysV4List({
 		const nextIssueKey = getNextPayIssueKey(boardColumns);
 
 		return {
-			agentCatalog: JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,
+			agentCatalog: JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG,
 			ariaLabel: "Payments SDK v2 migration work items list",
 			className: "max-h-full",
 			copiedIssueKey,

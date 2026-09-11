@@ -593,12 +593,13 @@ test("the Work items header switches between Board and List views with their ico
 	);
 	assert.match(
 		LIST_HOOK_SOURCE,
-		/mergeJiraKanbanAgentCatalog\(JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS\)/u,
+		/const JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG = mergeJiraKanbanAgentCatalog\(\s*JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,\s*\);/u,
 	);
 	assert.match(LIST_HOOK_SOURCE, /issueType: draftWorkItem.issueType/u);
 	assert.match(LIST_HOOK_SOURCE, /dueDate: draftWorkItem.dueDate/u);
 	assert.match(LIST_HOOK_SOURCE, /currentOrder.length === 0 \? allKeys : currentOrder/u);
-	assert.match(LIST_HOOK_SOURCE, /agentCatalog: JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS/u);
+	assert.match(LIST_HOOK_SOURCE, /agentCatalog: JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG/u);
+	assert.match(LIST_HOOK_SOURCE, /createListRows\(columns, JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG\)/u);
 	assert.match(LIST_HOOK_SOURCE, /statusOptions: JIRA_GOLDEN_JOURNEYS_V4_LIST_STATUS_OPTIONS/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /activeView\?: ExperimentalJiraKanbanView;/u);
 	assert.match(
