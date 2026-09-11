@@ -47,6 +47,10 @@ const LIFECYCLE_SOURCE = readFileSync(join(__dirname, "agent-session-lifecycle.t
 const VIEWER_HINT_SOURCE = readFileSync(join(__dirname, "agent-session-viewer-hint.tsx"), "utf8");
 const METADATA_SOURCE = readFileSync(join(__dirname, "agent-session-metadata.tsx"), "utf8");
 const MENU_HOOK_SOURCE = readFileSync(join(__dirname, "use-agent-session-menu.ts"), "utf8");
+const SCROLL_PREVIEW_SOURCE = readFileSync(
+	join(__dirname, "use-agent-session-scroll-preview.ts"),
+	"utf8",
+);
 const SESSION_MORE_MENU_SOURCE = readFileSync(join(__dirname, "agent-session-more-menu.tsx"), "utf8");
 const INDEX_SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
@@ -491,6 +495,31 @@ test("sessions share one moving untracked-work flyout instead of a popup per row
 	assert.match(INDEX_SOURCE, /onLinkWorkItem=\{flyoutActions\.onLinkWorkItem\}/u);
 });
 
+test("an open session flyout keeps its source row in the complete hover state", () => {
+	// The session flyout and its nested Smart Link preview are portalled, so CSS
+	// `:hover` cannot keep the source article lit while the pointer crosses them.
+	// The shared flyout identity must pin every visual part of the row hover until
+	// that payload closes or changes.
+	assert.match(SCROLL_PREVIEW_SOURCE, /const \[activeItemId, setActiveItemId\] = useState<string \| null>\(null\);/u);
+	assert.match(
+		SCROLL_PREVIEW_SOURCE,
+		/setActiveItemId\(open \? details\.trigger\?\.getAttribute\("data-session-id"\) \?\? null : null\);/u,
+	);
+	assert.match(SCROLL_PREVIEW_SOURCE, /return \{ activeItemId, anchor, onOpenChange, popupRef,/u);
+	assert.match(CARD_SOURCE, /isFlyoutActive = false,/u);
+	assert.match(CARD_SOURCE, /data-hovered=\{isFlyoutActive \|\| undefined\}/u);
+	assert.match(CARD_SOURCE, /isHighlighted \|\| isFlyoutActive/u);
+	assert.match(
+		CARD_SOURCE,
+		/pinned: isFlyoutActive \|\| \(showMoreMenu && role === "owner" && \(menu\.isOpen \|\| menu\.copied\)\),/u,
+	);
+	assert.match(CARD_SOURCE, /data-session-id=\{item\.id\}/u);
+	assert.match(INDEX_SOURCE, /isFlyoutActive=\{item\.id === scrollPreview\.activeItemId\}/u);
+	assert.match(SELECT_MARK_SOURCE, /group-data-\[hovered\]\/agent-row:opacity-0/u);
+	assert.match(SELECT_MARK_SOURCE, /group-data-\[hovered\]\/agent-row:pointer-events-auto/u);
+	assert.match(SELECT_MARK_SOURCE, /group-data-\[hovered\]\/agent-row:opacity-100/u);
+});
+
 test("detached and large variants open the shared agent-session flyout; medium attached does not", () => {
 	// Large connects inside AgentSessionCard; detached compact variants connect
 	// at the list-item boundary. Medium attached is already on its work item, so
@@ -587,7 +616,10 @@ test("the menu offers host-appropriate actions, disabled without the capability"
 test("copying the prompt confirms with a green check the reveal cannot swallow", () => {
 	// The popup takes the pointer off the row and the confirmation outlives the
 	// hover that produced it; both would collapse the reveal without a pin.
-	assert.match(CARD_SOURCE, /pinned: showMoreMenu && role === "owner" && \(menu\.isOpen \|\| menu\.copied\),/u);
+	assert.match(
+		CARD_SOURCE,
+		/pinned: isFlyoutActive \|\| \(showMoreMenu && role === "owner" && \(menu\.isOpen \|\| menu\.copied\)\),/u,
+	);
 	assert.match(LIST_CARD_SOURCE, /pinned\?: boolean;/u);
 	assert.match(LIST_CARD_SOURCE, /pinned && "grid-cols-\[1fr\]"/u);
 	assert.match(LIST_CARD_SOURCE, /pinned && "pointer-events-auto opacity-100"/u);
@@ -807,7 +839,10 @@ test("a card body click toggles a single selected session on the selected token"
 		CARD_SOURCE,
 		/const showSelectedFill = isMarked \|\| \(isSelected && mark == null\);/u,
 	);
-	assert.match(CARD_SOURCE, /!showSelectedFill && !isHighlighted && "bg-transparent hover:bg-surface-hovered"/u);
+	assert.match(
+		CARD_SOURCE,
+		/!showSelectedFill && !isHighlighted && !isFlyoutActive && "bg-transparent hover:bg-surface-hovered"/u,
+	);
 	assert.match(CARD_SOURCE, /data-selected=\{isSelected \|\| undefined\}/u);
 	assert.match(CARD_SOURCE, /aria-current=\{isSelected \? "true" : undefined\}/u);
 	assert.match(CARD_SOURCE, /isSelected=\{showSelectedFill\}/u);

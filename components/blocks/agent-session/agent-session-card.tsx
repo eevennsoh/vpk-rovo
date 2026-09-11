@@ -57,6 +57,7 @@ export function AgentSessionCard({
 	flyoutSession,
 	getResumeCommand,
 	isArriving = false,
+	isFlyoutActive = false,
 	isHighlighted = false,
 	isNew = false,
 	isResumable,
@@ -89,6 +90,8 @@ export function AgentSessionCard({
 	getResumeCommand?: (item: AgentSessionItem) => string | undefined;
 	/** Play the one-shot arrival beat. A remounted card must not re-arm it. */
 	isArriving?: boolean;
+	/** Keep the row's hover treatment while its portalled flyout chain is active. */
+	isFlyoutActive?: boolean;
 	/** Light this row for a pointer hovering its matching board session. */
 	isHighlighted?: boolean;
 	/** Carry the persistent unreviewed mark. Outlives the beat. */
@@ -277,7 +280,7 @@ export function AgentSessionCard({
 	const hoverActions: AgentListRowHoverActions = {
 		// The reveal must outlive the pointer: a portalled popup and a post-click
 		// confirmation both take the cursor off the row.
-		pinned: showMoreMenu && role === "owner" && (menu.isOpen || menu.copied),
+		pinned: isFlyoutActive || (showMoreMenu && role === "owner" && (menu.isOpen || menu.copied)),
 		primary: approve
 			? {
 				disabled: approve.target.kind === "unavailable",
@@ -354,13 +357,14 @@ export function AgentSessionCard({
 						"transition-[background-color,border-radius] duration-xxshort ease-out-practical",
 						"motion-reduce:transition-none",
 						showSelectedFill && "bg-bg-selected",
-						!showSelectedFill && isHighlighted && "bg-surface-hovered",
-						!showSelectedFill && !isHighlighted && "bg-transparent hover:bg-surface-hovered",
+						!showSelectedFill && (isHighlighted || isFlyoutActive) && "bg-surface-hovered",
+						!showSelectedFill && !isHighlighted && !isFlyoutActive && "bg-transparent hover:bg-surface-hovered",
 						activateCard === undefined
 							? null
 							: "outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
 							)}
 							data-captured={captured || undefined}
+							data-hovered={isFlyoutActive || undefined}
 							data-highlighted={isHighlighted || undefined}
 							data-marked={isMarked || undefined}
 							data-new={isNew || undefined}
@@ -441,6 +445,7 @@ export function AgentSessionCard({
 					return (
 						<JiraSessionFlyoutTrigger
 							closeDelay={160}
+							data-session-id={item.id}
 							handle={flyoutHandle}
 							render={<div className="w-full" />}
 							session={flyoutSession}
