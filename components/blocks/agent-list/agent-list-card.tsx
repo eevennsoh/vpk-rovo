@@ -754,7 +754,7 @@ export function AgentListRow({
 						// hydration recovery on server-rendered session lists.
 						<div
 							className={cn(
-								"relative ml-3 flex size-6 shrink-0 items-center justify-center overflow-visible",
+								"relative ml-3 flex min-h-6 min-w-6 shrink-0 items-center justify-end overflow-visible",
 								!overlayHoverActions && "pointer-events-none",
 								!overlayHoverActions && showHoverActions &&
 									"group-hover/agent-row:hidden group-has-[:focus-visible]/agent-row:hidden",

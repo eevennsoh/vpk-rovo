@@ -64,8 +64,8 @@ export type AgentSessionVariant = "large" | "medium-detached" | "medium-attached
  * `short` leads with a 32px identity and an agent · host · time byline. `long`
  * drops the leading avatar, gives the title the full width, and spends the
  * reclaimed room on a fuller metadata line (agent mark, host, artifact, time)
- * plus a trailing lifecycle indicator. Progression is the far-right icon, not a
- * byline clause. Long rows have no hover flyout — highlight and trailing
+ * plus a trailing lifecycle label and icon. Progression stays at the far right,
+ * not in the byline. Long rows have no hover flyout — highlight and trailing
  * controls only. Same data either way; the difference is how much of it the
  * surface has room to state.
  */
