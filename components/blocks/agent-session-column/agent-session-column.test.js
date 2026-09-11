@@ -177,6 +177,7 @@ test("card rendering is delegated to the Agent Session block, never re-implement
 });
 
 test("the header count defaults to the visible sessions and can be overridden", () => {
+	assert.match(INDEX_SOURCE, /title = "Unlink sessions"/u);
 	assert.match(INDEX_SOURCE, /untrackedCount = count \?\? visibleItems\.length/u);
 	assert.match(INDEX_SOURCE, /hasActiveFilters/u);
 	assert.match(INDEX_SOURCE, /displayedItems\.length/u);
@@ -213,7 +214,7 @@ test("edge fades sit on the column plane so they span the full backdrop width", 
 
 test("an empty column says so rather than rendering an empty list", () => {
 	assert.match(INDEX_SOURCE, /displayedItems\.length === 0/u);
-	assert.match(INDEX_SOURCE, /emptyLabel = "No unattached sessions"/u);
+	assert.match(INDEX_SOURCE, /emptyLabel = "No sessions to unlink"/u);
 	assert.match(INDEX_SOURCE, /from "@\/components\/ui\/empty"/u);
 	assert.match(INDEX_SOURCE, /<Empty width="narrow">/u);
 	assert.match(INDEX_SOURCE, /<EmptyTitle headingSize="xsmall">No matching sessions<\/EmptyTitle>/u);
@@ -850,7 +851,7 @@ test("the archived view keeps Archived in the header and a back footer", () => {
 	assert.doesNotMatch(INDEX_SOURCE, /aria-label=\{`Back to \$\{title\}`\}[\s\S]*size="icon-compact"/u);
 	assert.match(INDEX_SOURCE, /displayTitle = view === "hidden" \? "Archived" : title/u);
 	assert.match(INDEX_SOURCE, /size="icon-compact"/u);
-	assert.match(FOOTER_SOURCE, /Back to unattached sessions/u);
+	assert.match(FOOTER_SOURCE, /title = "Unlink sessions"/u);
 	assert.match(FOOTER_SOURCE, /import ChevronLeftIcon from "@atlaskit\/icon\/core\/chevron-left"/u);
 	assert.match(FOOTER_SOURCE, /<ChevronLeftIcon label="" size="small" \/>/u);
 	assert.match(FOOTER_SOURCE, /Back to \$\{title\}/u);

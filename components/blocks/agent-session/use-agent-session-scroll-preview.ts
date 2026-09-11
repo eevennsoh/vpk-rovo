@@ -17,6 +17,7 @@ interface ScrollPreview {
 export function useAgentSessionScrollPreview(handle: JiraSessionFlyoutHandle) {
 	const popupRef = useRef<HTMLDivElement>(null);
 	const preview = useRef<ScrollPreview | null>(null);
+	const [activeItemId, setActiveItemId] = useState<string | null>(null);
 	const [anchor, setAnchor] = useState<JiraSessionFlyoutSurfaceProps["anchor"]>();
 
 	const anchorToTrigger = useCallback((trigger: Element | undefined) => {
@@ -77,7 +78,8 @@ export function useAgentSessionScrollPreview(handle: JiraSessionFlyoutHandle) {
 			return;
 		}
 		anchorToTrigger(open ? details.trigger : undefined);
+		setActiveItemId(open ? details.trigger?.getAttribute("data-session-id") ?? null : null);
 	};
 
-	return { anchor, onOpenChange, popupRef, positionMethod: anchor ? "fixed" as const : undefined };
+	return { activeItemId, anchor, onOpenChange, popupRef, positionMethod: anchor ? "fixed" as const : undefined };
 }

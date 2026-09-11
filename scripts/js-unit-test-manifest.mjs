@@ -271,6 +271,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/blocks/agent-session/agent-session-attached.test.js",
 		"components/blocks/agent-session/agent-session-linking.test.js",
 		"components/blocks/agent-session/agent-session.test.js",
+		"components/blocks/agent-session/agent-session-flyout-hover.test.js",
 		"components/blocks/agent-session/agent-session-drag-host.test.js",
 		"components/blocks/agent-session-flyout/agent-session-flyout.test.js",
 		"components/blocks/agent-session-column/agent-session-column-capabilities.test.js",

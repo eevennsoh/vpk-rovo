@@ -314,12 +314,12 @@ export function useSessionColumnReposition({ hostRef, width, onStart, disabled }
 		if (!placement || disabled || event.button !== 0 || !event.isPrimary) return;
 		const target = event.target as HTMLElement;
 		if (!isSessionColumnRepositionPointerTarget(target)) return;
-		const captureElement = resolveSessionColumnRepositionCaptureElement(target);
-		if (!captureElement) return;
 		const root = placement.rootRef.current;
 		const scrollport = root?.querySelector<HTMLElement>("[data-jira-kanban-scrollport]");
 		if (!root || !scrollport) return;
 		const element = event.currentTarget;
+		const captureElement = resolveSessionColumnRepositionCaptureElement(target, element);
+		if (!captureElement) return;
 		const elementBox = element.getBoundingClientRect();
 		const rootBox = root.getBoundingClientRect();
 		// Keep short presses targeted at their original header control. The

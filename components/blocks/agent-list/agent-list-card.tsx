@@ -623,17 +623,7 @@ export function AgentListRow({
 	const stateMeta = STATE_META[item.state];
 	const prMeta = item.prStatus ? PR_STATUS_META[item.prStatus] : null;
 	const PrIcon = prMeta?.Icon ?? null;
-	// A session row is one line tall by contract, so its title truncates. A row
-	// with body copy is already a paragraph — truncating its title there hides the
-	// one line that says what happened.
 	const hasSummary = Boolean(item.summary);
-	const titleClassName = cn(
-		"min-w-0 font-medium",
-		hasSummary ? "text-pretty" : "truncate",
-		isCompact ? "text-xs" : "text-sm",
-	);
-
-	const viewItem = onView === undefined ? undefined : () => onView(item);
 	// A selected Agent List row is already the destination, so it keeps its
 	// lifecycle indicator. Session cards opt back in because Archive / Resume
 	// still apply after the article is highlighted.
@@ -641,6 +631,31 @@ export function AgentListRow({
 		(hoverActions?.primary !== undefined
 			|| hoverActions?.secondary !== undefined
 			|| hoverActions?.menu !== undefined);
+	// A long resting title can be several lines tall. Keep that wrapped copy in
+	// layout while a one-line visual copy takes over during reveal, otherwise the
+	// row can collapse out from under a pointer entering one of its lower lines.
+	const stabilizeHoverTitle = !hasSummary
+		&& showHoverActions
+		&& !(stateAwareTitle && stateMeta.shimmerTitle);
+	const resolvedTitle = stateAwareTitle ? getSessionTitle(item) : item.title;
+	const titleClassName = cn(
+		"min-w-0 font-medium",
+		hasSummary ? "text-pretty" : stabilizeHoverTitle
+			? [
+				"group-hover/agent-row:opacity-0 group-has-[:focus-visible]/agent-row:opacity-0",
+				hoverActions?.pinned ? "opacity-0" : null,
+			]
+			: "truncate",
+		isCompact ? "text-xs" : "text-sm",
+	);
+	const hoverTitleClassName = cn(
+		"col-start-1 row-start-1 min-w-0 truncate font-medium text-text opacity-0",
+		"group-hover/agent-row:opacity-100 group-has-[:focus-visible]/agent-row:opacity-100",
+		hoverActions?.pinned ? "opacity-100" : null,
+		isCompact ? "text-xs" : "text-sm",
+	);
+
+	const viewItem = onView === undefined ? undefined : () => onView(item);
 	// A menu-only reveal (session "..." / viewer hint) must occupy the same
 	// 24px trailing slot as the lifecycle glyph. Expanding a sibling `0fr`
 	// column would move the trigger when hover, focus, or open swaps them.
@@ -706,11 +721,27 @@ export function AgentListRow({
 									duration={1.4}
 									spread={2}
 								>
-									{getSessionTitle(item)}
+									{resolvedTitle}
 								</Shimmer>
+							) : stabilizeHoverTitle ? (
+								<span className="grid w-full min-w-0">
+									<span
+										className={cn(titleClassName, "col-start-1 row-start-1 text-text")}
+										data-agent-list-title-layout=""
+									>
+										{resolvedTitle}
+									</span>
+									<span
+										aria-hidden="true"
+										className={hoverTitleClassName}
+										data-agent-list-title-hover=""
+									>
+										{resolvedTitle}
+									</span>
+								</span>
 							) : (
 								<span className={cn(titleClassName, "text-text")}>
-									{stateAwareTitle ? getSessionTitle(item) : item.title}
+									{resolvedTitle}
 								</span>
 							)}
 							{stateAwareTitle && stateMeta.showDots ? <AnimatedDots /> : null}
@@ -754,7 +785,7 @@ export function AgentListRow({
 						// hydration recovery on server-rendered session lists.
 						<div
 							className={cn(
-								"relative ml-3 flex size-6 shrink-0 items-center justify-center overflow-visible",
+								"relative ml-3 flex min-h-6 min-w-6 shrink-0 items-center justify-end overflow-visible",
 								!overlayHoverActions && "pointer-events-none",
 								!overlayHoverActions && showHoverActions &&
 									"group-hover/agent-row:hidden group-has-[:focus-visible]/agent-row:hidden",

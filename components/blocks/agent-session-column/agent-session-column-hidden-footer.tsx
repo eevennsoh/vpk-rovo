@@ -13,14 +13,14 @@ export type AgentSessionColumnWellFooterMode = "hidden" | "back";
  * row under the scrollport, square corners, hover fill, 12px chevron — so the
  * well can own the outer stroke and bottom radius.
  *
- * `hidden` is Archived N and opens the archived list. `back` is Back to
- * unattached sessions N (the active/unattached count) and returns to that list.
+ * `hidden` is Archived N and opens the archived list. `back` is Back to the
+ * active session-list title plus N, and returns to that list.
  */
 export function AgentSessionColumnHiddenFooter({
 	count,
 	mode,
 	onClick,
-	title = "Unattached sessions",
+	title = "Unlink sessions",
 }: Readonly<{
 	count: number;
 	mode: AgentSessionColumnWellFooterMode;
@@ -45,7 +45,7 @@ export function AgentSessionColumnHiddenFooter({
 		>
 			<span className="flex min-w-0 items-center gap-1.5">
 				<span className="truncate text-xs font-medium leading-4 text-text-subtle">
-					{isBack ? "Back to unattached sessions" : "Archived"}
+					{isBack ? `Back to ${title}` : "Archived"}
 				</span>
 				<span className="shrink-0 text-xs font-normal text-text-subtlest">
 					{count}
