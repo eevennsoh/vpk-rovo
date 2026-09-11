@@ -105,15 +105,16 @@ test("Team EU26 status control uses the project workflow phases", () => {
 	assert.match(editorDataSource, /"In review": "warning"/u);
 });
 
-test("Team EU26 uses the v5 comment composer without an Improve-description prompt", () => {
+test("Team EU26 uses the stable-height v5 comment composer without an Improve-description prompt", () => {
 	const composerSource = readBlockFile("team-eu26/components/activity-composer.tsx");
 	const bodyOwner = readBlockFile("team-eu26/components/work-item-body.tsx");
 	const bodySource = readBlockFile("team-eu26/components/high-confidence-work-item-body.tsx");
 
 	assert.match(
 		composerSource,
-		/<JiraActivityComposer[\s\S]*expandOnFocus[\s\S]*placeholder="Comment, @mention an agent, or \/ for skills"/u,
+		/<JiraActivityComposer[\s\S]*placeholder="Comment, @mention an agent, or \/ for skills"/u,
 	);
+	assert.doesNotMatch(composerSource, /<JiraActivityComposer[\s\S]*\bexpandOnFocus\b/u);
 	assert.doesNotMatch(composerSource, /Type \/ai to ask Rovo|Improve description/u);
 
 	assert.match(bodyOwner, /initialPreset === "filled"[\s\S]*<HighConfidenceWorkItemBody \/>/u);

@@ -224,16 +224,23 @@ export function filterPulseLooseWorkByMember(
  * Create, link, and add-as-subtask all capture: the prototype has one capture
  * path, the same one uncaptured GitHub cards already use. Omitting create or
  * subtask is what greyed those flyout actions out.
+ *
+ * Continue-in is a separate host capability from resume. Resume copies a
+ * terminal prompt and is gated on the viewer's machine. Continue-in reopens
+ * the session in its agent. The menu already hides that row for cloud hosts;
+ * this adapter only omits the callback when the host did not supply one.
  */
 export function toPulseSessionHandlers({
 	isLooseWorkResumable,
 	looseWork,
 	onCapture,
+	onContinue,
 	onResume,
 }: Readonly<{
 	isLooseWorkResumable?: (item: PulseLooseWork) => boolean;
 	looseWork: readonly PulseLooseWork[];
 	onCapture: (item: PulseLooseWork) => void;
+	onContinue?: (item: PulseLooseWork) => void;
 	onResume?: (item: PulseLooseWork) => void;
 }>) {
 	const sessionById = new Map(
@@ -250,9 +257,17 @@ export function toPulseSessionHandlers({
 		if (session === undefined) return undefined;
 		return (isLooseWorkResumable?.(session) ?? true) ? session : undefined;
 	};
+	const continueSession = onContinue === undefined
+		? undefined
+		: (item: AgentSessionItem) => {
+			const session = sessionById.get(item.id);
+			if (session === undefined) return;
+			onContinue(session);
+		};
 
 	return {
 		isResumable: (item: AgentSessionItem) => resolveResumable(item) !== undefined,
+		onContinueInAgent: continueSession,
 		onCopyResume: onResume === undefined ? undefined : (item: AgentSessionItem) => {
 			const session = resolveResumable(item);
 			if (session === undefined) return;

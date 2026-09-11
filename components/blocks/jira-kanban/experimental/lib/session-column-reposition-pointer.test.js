@@ -181,6 +181,14 @@ test("a short click stays a click; only a 6px move claims the gesture", () => {
 	assert.match(HOOK_SOURCE, /if \(!suppressClick.current\) return/u);
 });
 
+test("the expanded header move handle stays mounted while a width resize is live", () => {
+	assert.match(HOOK_SOURCE, /available: placement !== null,/u);
+	assert.match(HOOK_SOURCE, /enabled: placement !== null && !disabled,/u);
+	assert.match(COLUMN_SOURCE, /disabled: sessionFlyoutsSuspended \|\| resize\.isResizing,/u);
+	assert.match(COLUMN_SOURCE, /const dragHandle = reposition\.available \? \(/u);
+	assert.doesNotMatch(COLUMN_SOURCE, /const dragHandle = reposition\.enabled \? \(/u);
+});
+
 test("unpinning a shifted session column returns it to the leading gutter", () => {
 	assert.match(
 		COLUMN_SOURCE,

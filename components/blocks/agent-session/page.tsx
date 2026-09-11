@@ -131,6 +131,10 @@ function toDemoAssignedAgentFromSession(item: AgentSessionItem): AgentAssignment
 		status: item.title,
 		statusKind,
 		statusLabel: item.title,
+		...(item.invokedBy ? { invokedBy: item.invokedBy } : {}),
+		...(item.host !== undefined ? { host: item.host } : {}),
+		...(item.role !== undefined ? { role: item.role } : {}),
+		...(item.timeLabel ? { timeLabel: item.timeLabel } : {}),
 	};
 }
 

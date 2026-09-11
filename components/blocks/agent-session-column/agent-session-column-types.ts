@@ -95,7 +95,9 @@ export interface AgentSessionColumnProps extends Omit<
 	/**
 	 * Enables additive/range selection, selection keyboard shortcuts, bulk header
 	 * actions, and multi-session drag cohorts. Defaults to `true`. Set to `false`
-	 * when every drag must carry only the session it started from.
+	 * when every drag must carry only the session it started from. `false` also
+	 * disables single-select row chrome: article click does not toggle
+	 * `selectedItemId`.
 	 */
 	multiSelect?: boolean;
 	/**
