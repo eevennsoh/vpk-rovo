@@ -38,7 +38,6 @@ async function openCollapsedBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("button", { name: "Unattached sessions column options" })).toBeVisible();
 }
 
-
 test("Untracked pins and expands as separate axes", async ({ page }) => {
 	await openCollapsedBoard(page);
 	const host = page.locator("[data-agent-session-column-expansion]");
