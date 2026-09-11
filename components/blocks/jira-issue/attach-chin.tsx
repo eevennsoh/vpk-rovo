@@ -3,8 +3,8 @@ import { type ReactNode } from "react";
 import { token } from "@/lib/tokens";
 
 /**
- * Occupied-slot attach placeholder. Same `h-6` as an activity row so replacing
- * the last chin row does not change card height.
+ * Occupied-slot link placeholder. Its 32px height matches the incoming agent
+ * session row so the card keeps the same chin geometry through the drop.
  */
 export function JiraIssueAttachChinSlot({
 	copy,
@@ -12,7 +12,7 @@ export function JiraIssueAttachChinSlot({
 	return (
 		<div
 			aria-hidden
-			className="pointer-events-none flex h-6 w-full items-center justify-center rounded-md"
+			className="pointer-events-none flex h-8 w-full items-center justify-center rounded-md"
 			data-slot="jira-issue-attach-chin-slot"
 		>
 			<span className="text-sm font-normal text-text-subtlest">
@@ -24,8 +24,8 @@ export function JiraIssueAttachChinSlot({
 
 /**
  * Same footprint as a `medium-detached` AgentSession row (`h-[33px]` plus the
- * 2px gap those pills use under the shell) so attach copy can take that slot
- * without growing a second chin.
+ * 2px gap those pills use under the shell) so link copy can take that slot
+ * without growing a second chin. The nested link chin remains exactly 32px.
  */
 export function JiraIssueDetachedAttachChinSlot({
 	copy,
