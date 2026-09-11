@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import InformationCircleIcon from "@atlaskit/icon/core/information-circle";
 
 import { Button } from "@/components/ui/button";
@@ -16,8 +18,10 @@ export const AGENT_SESSION_VIEWER_HINT =
  * name and tooltip carry the same copy so hover and keyboard both get it.
  */
 export function AgentSessionViewerHint() {
+	const [open, setOpen] = useState(false);
+
 	return (
-		<Tooltip>
+		<Tooltip onOpenChange={setOpen} open={open}>
 			<TooltipTrigger
 				render={
 					<Button

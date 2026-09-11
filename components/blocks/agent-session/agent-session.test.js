@@ -738,7 +738,9 @@ test("viewer rows use the outline information circle, not the filled status icon
 		/className="\[&_svg:not\(\[class\*='size-'\]\)\]:size-4! \[&_svg\]:text-icon-subtlest"/u,
 	);
 	assert.match(VIEWER_HINT_SOURCE, /variant="ghost"/u);
-	assert.doesNotMatch(VIEWER_HINT_SOURCE, /aria-expanded|onOpenChange|useState/u);
+	assert.match(VIEWER_HINT_SOURCE, /const \[open, setOpen\] = useState\(false\);/u);
+	assert.match(VIEWER_HINT_SOURCE, /<Tooltip onOpenChange=\{setOpen\} open=\{open\}>/u);
+	assert.doesNotMatch(VIEWER_HINT_SOURCE, /aria-expanded/u);
 	assert.match(
 		VIEWER_HINT_SOURCE,
 		/icon=\{<InformationCircleIcon color="currentColor" label="" size="medium" \/>\}/u,
