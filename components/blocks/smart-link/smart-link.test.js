@@ -21,11 +21,11 @@ const NAV_ADS_SOURCE = fs.readFileSync(path.join(process.cwd(), "app", "data", "
 const BLOCK_DETAILS_SOURCE = readDetailCategorySource("blocks");
 const REGISTRY_SOURCE = readWebsiteRegistrySource();
 
-test("SmartLink is powered by the shared HoverCard primitive", () => {
-	assert.match(COMPONENT_SOURCE, /HoverCard, HoverCardContent, HoverCardTrigger/u);
-	assert.match(COMPONENT_SOURCE, /<HoverCard[\s\S]*openDelay=\{openDelay\}/u);
-	assert.match(COMPONENT_SOURCE, /<HoverCardTrigger[\s\S]*render=\{[\s\S]*<SmartLinkTrigger/u);
-	assert.match(COMPONENT_SOURCE, /<HoverCardContent[\s\S]*alignOffset=\{alignOffset\}[\s\S]*positionerClassName=\{positionerClassName\}[\s\S]*<SmartLinkCard/u);
+test("SmartLink is powered by the shared ConeSafezone utility", () => {
+	assert.match(COMPONENT_SOURCE, /ConeSafezone, ConeSafezoneContent, ConeSafezoneTrigger/u);
+	assert.match(COMPONENT_SOURCE, /<ConeSafezone[\s\S]*openDelay=\{openDelay\}/u);
+	assert.match(COMPONENT_SOURCE, /<ConeSafezoneTrigger[\s\S]*render=\{[\s\S]*<SmartLinkTrigger/u);
+	assert.match(COMPONENT_SOURCE, /<ConeSafezoneContent[\s\S]*alignOffset=\{alignOffset\}[\s\S]*positionerClassName=\{positionerClassName\}[\s\S]*<SmartLinkCard/u);
 	assert.match(COMPONENT_SOURCE, /aria-describedby=\{open \? `smart-link-card-\$\{item\.id\}` : undefined\}/u);
 });
 
