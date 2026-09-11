@@ -678,17 +678,7 @@ export function AgentListRow({
 	const stateMeta = STATE_META[item.state];
 	const prMeta = item.prStatus ? PR_STATUS_META[item.prStatus] : null;
 	const PrIcon = prMeta?.Icon ?? null;
-	// A session row is one line tall by contract, so its title truncates. A row
-	// with body copy is already a paragraph — truncating its title there hides the
-	// one line that says what happened.
 	const hasSummary = Boolean(item.summary);
-	const titleClassName = cn(
-		"min-w-0 font-medium",
-		hasSummary ? "text-pretty" : "truncate",
-		isCompact ? "text-xs" : "text-sm",
-	);
-
-	const viewItem = onView === undefined ? undefined : () => onView(item);
 	// A selected Agent List row is already the destination, so it keeps its
 	// lifecycle indicator. Session cards opt back in because Archive / Resume
 	// still apply after the article is highlighted.
@@ -696,6 +686,24 @@ export function AgentListRow({
 		(hoverActions?.primary !== undefined
 			|| hoverActions?.secondary !== undefined
 			|| hoverActions?.menu !== undefined);
+	// Let the full title wrap at rest. Once actions expand, the title collapses to
+	// one line and owns the ellipsis instead of colliding with them. Rows without
+	// reveal actions keep their existing truncation contract, while summary rows wrap.
+	const titleOverflowClassName = hasSummary
+		? "text-pretty"
+		: showHoverActions
+			? [
+				"group-hover/agent-row:truncate group-has-[:focus-visible]/agent-row:truncate",
+				hoverActions?.pinned ? "truncate" : null,
+			]
+			: "truncate";
+	const titleClassName = cn(
+		"min-w-0 font-medium",
+		titleOverflowClassName,
+		isCompact ? "text-xs" : "text-sm",
+	);
+
+	const viewItem = onView === undefined ? undefined : () => onView(item);
 	// `undefined` is "no opinion" and falls back to the `STATE_META` gate; an
 	// explicit `null` means "no indicator". `??` silently collapsed the two.
 	const lifecycleNode = lifecycle === undefined

@@ -210,10 +210,10 @@ test("rows carry an optional summary below metadata, leading metadata, and a sta
 	assert.match(TYPES_SOURCE, /summary\?: string;/u);
 	assert.match(TYPES_SOURCE, /metadataPrefix\?: string;/u);
 	assert.match(TYPES_SOURCE, /timeLabel\?: string;/u);
-	// The summary wraps below the metadata row; a session row's single-line
-	// title keeps truncating unless that body copy is present.
+	// The summary wraps below the metadata row and keeps the title in natural
+	// wrapping mode instead of inheriting the one-line hover treatment.
 	assert.match(CARD_SOURCE, /const hasSummary = Boolean\(item\.summary\);/u);
-	assert.match(CARD_SOURCE, /hasSummary \? "text-pretty" : "truncate"/u);
+	assert.match(CARD_SOURCE, /const titleOverflowClassName = hasSummary\s*\? "text-pretty"/u);
 	assert.match(
 		CARD_SOURCE,
 		/<AgentListMetadataIdentity item=\{item\} \/>[\s\S]*\{item\.summary \? \(\s*<span\s*className=\{cn\(\s*"mt-2 w-full min-w-0 text-pretty text-text",/u,
@@ -501,6 +501,13 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		/"flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest"/u,
 	);
 	assert.match(CARD_SOURCE, /<span className=\{cn\(titleClassName, "text-text"\)\}>/u);
+	// A row with reveal actions lets the full title wrap at rest. The title only
+	// becomes a one-line ellipsis once hover or keyboard focus expands the actions.
+	assert.match(
+		CARD_SOURCE,
+		/showHoverActions\s*\? \[\s*"group-hover\/agent-row:truncate group-has-\[:focus-visible\]\/agent-row:truncate",\s*hoverActions\?\.pinned \? "truncate" : null,\s*\]\s*: "truncate"/u,
+	);
+	assert.doesNotMatch(CARD_SOURCE, /"whitespace-nowrap",\s*"group-hover\/agent-row:truncate/u);
 	assert.match(CARD_SOURCE, /className="min-w-0 truncate">\{item\.agent\.name\}<\/span>/u);
 	assert.match(
 		CARD_SOURCE,
