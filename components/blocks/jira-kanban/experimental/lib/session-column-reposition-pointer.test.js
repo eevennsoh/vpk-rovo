@@ -16,12 +16,16 @@ const COLUMN_SOURCE = readFileSync(
 	join(__dirname, "../components/in-flow-agent-session-column.tsx"),
 	"utf8",
 );
+const HEADER_SOURCE = readFileSync(
+	join(__dirname, "../../../agent-session-column/agent-session-column-header.tsx"),
+	"utf8",
+);
 const RAIL_SOURCE = readFileSync(
 	join(__dirname, "../../../agent-session-column/agent-session-column-rail.tsx"),
 	"utf8",
 );
 
-test("only the collapsed options button and expanded move handle start a column move", () => {
+test("the collapsed options button and entire expanded header start a column move", () => {
 	assert.equal(
 		canStartSessionColumnReposition({
 			inHeader: true,
@@ -54,28 +58,28 @@ test("only the collapsed options button and expanded move handle start a column 
 			inHeader: true,
 			inNotch: false,
 			inRail: false,
-			interactiveKind: "move-handle",
+			interactiveKind: "none",
 		}),
 		true,
 	);
 });
 
-test("empty column header space does not start a move", () => {
+test("expanded header controls remain valid drag origins", () => {
 	assert.equal(
 		canStartSessionColumnReposition({
 			inHeader: true,
 			inNotch: false,
 			inRail: false,
-			interactiveKind: "none",
+			interactiveKind: "other",
 		}),
-		false,
+		true,
 	);
 });
 
-test("expanded header actions do not start a move", () => {
+test("header content is draggable only inside the explicit move surface", () => {
 	assert.equal(
 		canStartSessionColumnReposition({
-			inHeader: true,
+			inHeader: false,
 			inNotch: false,
 			inRail: false,
 			interactiveKind: "other",
@@ -93,9 +97,13 @@ test("expanded header actions do not start a move", () => {
 	);
 });
 
+test("the expanded header advertises its full drag surface", () => {
+	assert.match(COLUMN_SOURCE, /headerDragHandle: dragHandle/u);
+	assert.match(HEADER_SOURCE, /data-session-column-move-surface/u);
+});
+
 test("the hook no longer special-cases an Expand aria-label", () => {
 	assert.match(HOOK_SOURCE, /isSessionColumnRepositionPointerTarget/u);
-	assert.match(HOOK_SOURCE, /element.setPointerCapture\(event.pointerId\)/u);
 	assert.match(HOOK_SOURCE, /resolveSessionColumnPreviewIndex/u);
 	assert.doesNotMatch(HOOK_SOURCE, /startsWith\("Expand"\)/u);
 	assert.doesNotMatch(HOOK_SOURCE, /The expand button doubles as a compact drag handle/u);
@@ -162,6 +170,11 @@ test("drag moves only the outlined chip; both sources share opacity-disabled", (
 });
 
 test("a short click stays a click; only a 6px move claims the gesture", () => {
+	assert.match(HOOK_SOURCE, /resolveSessionColumnRepositionCaptureElement/u);
+	assert.match(HOOK_SOURCE, /const captureElement = resolveSessionColumnRepositionCaptureElement\(target\)/u);
+	assert.match(HOOK_SOURCE, /captureElement\.setPointerCapture\(event.pointerId\)/u);
+	assert.match(HOOK_SOURCE, /captureElement,/u);
+	assert.doesNotMatch(HOOK_SOURCE, /element\.setPointerCapture\(event.pointerId\)/u);
 	assert.match(HOOK_SOURCE, /if \(!current.active && Math.abs\(current.x - current.startX\) < 6\) return/u);
 	assert.match(HOOK_SOURCE, /suppressClick.current = true/u);
 	assert.match(HOOK_SOURCE, /onClickCapture: \(event: React.MouseEvent<HTMLDivElement>\) => \{/u);
