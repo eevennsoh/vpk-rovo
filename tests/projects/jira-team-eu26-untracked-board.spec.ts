@@ -9,17 +9,25 @@ async function openBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({
 		timeout: 15_000,
 	});
+	const session = page.locator("[data-agent-session-column]")
+		.getByTestId("agent-session-row-lw-scope-thread");
 	const options = page.getByRole("button", { name: "Unattached sessions column options" });
-	if (await options.isVisible()) {
-		await revealCollapsedAgentSessionColumn(page);
+	if (!await session.isVisible()) {
+		if (await page.locator("[data-agent-session-column-hit-area]").count() > 0) {
+			await revealCollapsedAgentSessionColumn(page);
+		}
 		await options.click();
-		await page.getByRole("menuitem", { name: "Pin" }).click();
-		await page.getByRole("button", { name: "Unattached sessions column options" }).click();
+		const pin = page.getByRole("menuitem", { name: "Pin", exact: true });
+		if (await pin.isVisible()) {
+			await pin.click();
+			await expect(page.locator("[data-agent-session-column-expansion]"))
+				.toHaveAttribute("data-agent-session-column-expansion", "pinned");
+			await expect(page.locator("[data-agent-session-column-hit-area]")).toHaveCount(0);
+			await page.getByRole("button", { name: "Unattached sessions column options" }).click();
+		}
 		await page.getByRole("menuitem", { name: "Expand" }).click();
 	}
-	await expect(
-		page.locator("[data-agent-session-column]").getByTestId("agent-session-row-lw-scope-thread"),
-	).toBeVisible();
+	await expect(session).toBeVisible();
 }
 
 async function openCollapsedBoard(page: Page): Promise<void> {
