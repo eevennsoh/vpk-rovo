@@ -115,7 +115,9 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 	}, []);
 	const handleViewChat = useCallback((activity: JiraIssueAgentActivity, card: JiraKanbanCardData) => {
 		openAgentChat({
-			agentId: activity.id,
+			agentId: activity.id.includes(":")
+				? activity.id.slice(activity.id.lastIndexOf(":") + 1)
+				: activity.id,
 			agentName: activity.name,
 			issueKey: card.code,
 			issueSummary: card.title,
@@ -179,6 +181,7 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 		createBoardFromAgentSession,
 		createFromAgentSession,
 		getProps: getListProps,
+		onAssignedAgentIdsChange,
 	} = useJiraGoldenJourneysV4List({
 		boardColumns,
 		onAssignedAgentSelect: handleListAssignedAgentSelect,
@@ -188,9 +191,9 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 	// leave a badge behind, so the flash carries the acknowledgement. One drop of
 	// three marked sessions publishes one flash covering all three rows.
 	//
-	// It only reaches rows the list is rendering. Board-created cards inherit
-	// the dropped session's invoker, so the matching assignee filter keeps the
-	// new row visible long enough for this acknowledgement.
+	// It only reaches rows the list is rendering. Board-created cards are
+	// assigned to Venn (the prototype current user), so the matching assignee
+	// filter keeps the new row visible long enough for this acknowledgement.
 	const { flash: listRowFlash, flashRow: flashListRow } = useJiraListRowFlashSource();
 	// Unlink always lands in `detachedAgentSessionsByCard`. The Untracked list
 	// reads that map, so the session reappears there immediately. Proximity
@@ -313,6 +316,7 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 						}}
 						onCardAgentActivityViewChat={handleViewChat}
 						onCardAgentDoneRunView={handleViewCompletedRun}
+						onCardAssignedAgentIdsChange={onAssignedAgentIdsChange}
 						onCardGenerativeActionSubmit={handleCardGenerativeActionSubmit}
 						onCardAgentSessionLink={handleAgentSessionLink}
 						onCardAgentSessionMove={handleAgentSessionMove}

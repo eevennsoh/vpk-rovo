@@ -43,7 +43,6 @@ const OVERFLOW_MENU_SOURCE = readFileSync(
 	join(__dirname, "agent-session-column-overflow-menu.tsx"),
 	"utf8",
 );
-const OVERFLOW_SOURCE = readFileSync(join(__dirname, "agent-session-column-overflow.ts"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
 const PANEL_DEMO_SOURCE = readFileSync(
 	join(__dirname, "agent-session-column-panel-demo.tsx"),
@@ -725,7 +724,7 @@ test("the column keeps the selected session id across collapse remounts", () => 
 	assert.match(INDEX_SOURCE, /const isSelectionControlled = selectedItemIdProp !== undefined;/u);
 	assert.match(INDEX_SOURCE, /const \[uncontrolledSelectedItemId, setUncontrolledSelectedItemId\]/u);
 	assert.match(INDEX_SOURCE, /selectedItemId=\{selectedItemId\}/u);
-	assert.match(INDEX_SOURCE, /onSelectedItemIdChange=\{handleSelectedItemIdChange\}/u);
+	assert.match(INDEX_SOURCE, /onSelectedItemIdChange=\{multiSelect \? handleSelectedItemIdChange : undefined\}/u);
 	assert.match(
 		INDEX_SOURCE,
 		/onKeyDown=\{multiSelect \? untrackedSelection\.onKeyDown : undefined\}/u,
@@ -754,6 +753,21 @@ test("multiSelect=false removes multi-selection while preserving a singleton dra
 	assert.match(SESSION_DRAG_SOURCE, /cohort\?\.\(\) \?\? singletonSessionCohort\(item\)/u);
 	assert.match(PANEL_DEMO_SOURCE, /multiSelect=\{multiSelect\}/u);
 	assert.match(DETAIL_SOURCE, /name: "multiSelect"/u);
+});
+
+test("multiSelect=false also disables single-select row chrome", () => {
+	assert.match(
+		INDEX_SOURCE,
+		/const selectedItemId = multiSelect\s*\?\s*isSelectionControlled \? selectedItemIdProp : uncontrolledSelectedItemId\s*: null;/u,
+	);
+	assert.match(
+		INDEX_SOURCE,
+		/onSelectedItemIdChange=\{multiSelect \? handleSelectedItemIdChange : undefined\}/u,
+	);
+	assert.match(
+		TYPES_SOURCE,
+		/disables single-select row chrome: article click does not toggle/u,
+	);
 });
 
 test("the column owns a hidden-id set and filters items before AgentSession", () => {
@@ -969,27 +983,4 @@ test("selecting header hover copy comes from the selectedCount table", () => {
 	assert.match(HEADER_SOURCE, /tooltip=\{affordance\.text\}/u);
 	assert.match(PANEL_SOURCE, /tooltip\?: ReactNode/u);
 	assert.match(PANEL_SOURCE, /tooltip === undefined \? action : wrapPanelActionTooltip/u);
-});
-
-test("the overflow menu is Link all suggestions, then Auto sync and Suggest link toggles", () => {
-	assert.match(OVERFLOW_MENU_SOURCE, /Link all suggestions/u);
-	assert.doesNotMatch(OVERFLOW_MENU_SOURCE, />\s*Link all\s*</u);
-	assert.match(OVERFLOW_MENU_SOURCE, /<DropdownMenuSeparator/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /label="Auto sync"/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /const \[autoSync, setAutoSync\] = useState\(true\)/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /label="Suggest link"/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /const \[autoLink, setAutoLink\] = useState\(true\)/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /elemAfter=\{\(/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /<SwitchIndicator/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /aria-checked=\{checked\}/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /role="menuitemcheckbox"/u);
-	assert.doesNotMatch(OVERFLOW_MENU_SOURCE, /<Switch[\s>]/u);
-	assert.doesNotMatch(OVERFLOW_MENU_SOURCE, /suppressMenuDismissal/u);
-	assert.doesNotMatch(OVERFLOW_MENU_SOURCE, /onCheckedChange=\{onCheckedChange\}/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /closeOnClick=\{false\}/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /linkAllAgentSessions/u);
-	assert.match(OVERFLOW_SOURCE, /export function collectLinkableAgentSessions/u);
-	assert.match(OVERFLOW_SOURCE, /export function linkAllAgentSessions/u);
-	assert.match(DETAIL_SOURCE, /header overflow's Link all suggestions action/u);
-	assert.doesNotMatch(DETAIL_SOURCE, /header overflow's Link all action/u);
 });

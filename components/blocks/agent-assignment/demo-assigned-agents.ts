@@ -8,17 +8,9 @@ import type { AgentSessionRole } from "@/components/blocks/agent-session/agent-s
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
 
 const DEMO_INVOKERS: Readonly<Record<string, AgentListInvoker>> = {
-	"github-copilot": {
-		avatarSrc: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
-		name: "Priya Raman",
-	},
 	"release-notes-drafter": {
 		avatarSrc: "/avatar-user/issac-varghese/color/asow-dev-lime.png",
 		name: "Jordan Okafor",
-	},
-	"code-reviewer": {
-		avatarSrc: "/avatar-user/issac-varghese/color/asow-dev-lime.png",
-		name: "Austin Lee",
 	},
 	"readiness-checker": {
 		avatarSrc: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
@@ -28,8 +20,8 @@ const DEMO_INVOKERS: Readonly<Record<string, AgentListInvoker>> = {
 
 export const INITIAL_ASSIGNED_AGENT_IDS = [
 	"github-copilot",
-	"release-notes-drafter",
 	"code-reviewer",
+	"release-notes-drafter",
 	"readiness-checker",
 ] as const;
 
@@ -47,6 +39,7 @@ interface DemoAgentState {
 	intervalMs?: number;
 	jitterMs?: number;
 	labels?: readonly string[];
+	timeLabel: string;
 }
 
 const DEMO_AGENT_STATES: Readonly<Record<string, DemoAgentState>> = {
@@ -55,6 +48,7 @@ const DEMO_AGENT_STATES: Readonly<Record<string, DemoAgentState>> = {
 		role: "owner",
 		statusKind: "working",
 		statusLabel: "Running",
+		timeLabel: "18m",
 		intervalMs: 1700,
 		jitterMs: 1900,
 		labels: [
@@ -65,22 +59,25 @@ const DEMO_AGENT_STATES: Readonly<Record<string, DemoAgentState>> = {
 	},
 	"release-notes-drafter": {
 		host: "cloud",
-		role: "viewer",
+		role: "owner",
 		statusKind: "needs-input",
 		statusLabel: "Needs input",
 		status: "Needs input",
+		timeLabel: "Yesterday",
 	},
 	"code-reviewer": {
 		host: "local",
 		role: "owner",
 		statusKind: "idle",
 		statusLabel: "Idle",
+		timeLabel: "3h",
 	},
 	"readiness-checker": {
 		host: "local",
 		role: "viewer",
 		statusKind: "idle",
 		statusLabel: "Idle",
+		timeLabel: "Last week",
 	},
 };
 
@@ -90,15 +87,19 @@ function getDemoAssignedAgent(agent: AgentSelectorAgent): AgentAssignmentAgent {
 		role: "owner" as const,
 		statusKind: "idle" as const,
 		statusLabel: "Idle",
+		timeLabel: "12m",
 	};
 
 	return {
 		...agent,
 		host: demoStatus.host,
-		invokedBy: DEMO_INVOKERS[agent.id],
+		...(demoStatus.role === "viewer" && DEMO_INVOKERS[agent.id]
+			? { invokedBy: DEMO_INVOKERS[agent.id] }
+			: {}),
 		role: demoStatus.role,
 		statusKind: demoStatus.statusKind,
 		statusLabel: demoStatus.statusLabel,
+		timeLabel: demoStatus.timeLabel,
 		...(demoStatus.status ? { status: demoStatus.status } : {}),
 		...(demoStatus.labels ? {
 			statusSequence: demoStatus.labels,

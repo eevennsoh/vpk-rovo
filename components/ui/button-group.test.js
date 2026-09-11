@@ -41,6 +41,8 @@ const SELECTED_BUTTON_STATE_CLASSES = [
 	"aria-expanded:bg-bg-selected",
 	"aria-expanded:text-text-selected",
 	"aria-expanded:border-border-selected",
+	"aria-expanded:hover:bg-bg-selected-hovered",
+	"aria-expanded:active:bg-bg-selected-pressed",
 	"aria-pressed:[&_[data-slot=icon]]:text-icon-selected",
 	"aria-pressed:[&_svg]:text-icon-selected",
 	"aria-expanded:[&_[data-slot=icon]]:text-icon-selected",

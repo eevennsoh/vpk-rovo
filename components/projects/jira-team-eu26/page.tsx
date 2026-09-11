@@ -12,7 +12,11 @@ import { toJiraIssueDemoAttachedActivity } from "@/components/blocks/jira-issue/
 import type { JiraIssueAgentSessionRef } from "@/components/blocks/jira-issue/agent-session-transfer";
 import type { JiraKanbanCardData, JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
 import ExperimentalJiraKanbanPage from "@/components/blocks/jira-kanban/experimental/page";
-import { isPulseAgentSession, type PulseLooseWork } from "@/components/blocks/jira-kanban/experimental/pulse/types";
+import {
+	isPulseAgentSession,
+	type PulseCodingAgentId,
+	type PulseLooseWork,
+} from "@/components/blocks/jira-kanban/experimental/pulse/types";
 import { linkJiraKanbanAgentSession, moveJiraKanbanAgentSession, unlinkJiraKanbanAgentSession } from "@/components/blocks/jira-kanban/state";
 import {
 	JiraList,
@@ -51,6 +55,25 @@ import { useJiraTeamEu26List } from "./hooks/use-jira-team-eu26-list";
 const JIRA_LIST_PANEL_END_GAP_PX = 24;
 const JIRA_TEAM_EU26_TABS = getJiraTabs(false);
 const JIRA_TEAM_EU26_DEFAULT_TAB_LABEL = getJiraWorkItemsTabLabel(JIRA_TEAM_EU26_TABS);
+
+function resolveJiraTeamEu26ContinueChatAgent(
+	agentId: PulseCodingAgentId,
+): Readonly<{ agentId: string; agentName: string }> {
+	switch (agentId) {
+		case "claude":
+			return { agentId: "claude-code", agentName: "Claude" };
+		case "codex":
+			return { agentId: "review-agent", agentName: "Codex" };
+		case "copilot":
+			return { agentId: "github-copilot", agentName: "GitHub Copilot" };
+		case "cursor":
+			return { agentId: "cursor", agentName: "Cursor" };
+		default: {
+			const exhaustive: never = agentId;
+			return exhaustive;
+		}
+	}
+}
 
 export default function JiraTeamEu26Page(): React.ReactElement {
 	return (
@@ -119,9 +142,23 @@ function JiraTeamEu26App(): React.ReactElement {
 			`Resume command copied for ${item.title}. Paste it in a terminal on ${item.machineName} to continue the session.`,
 		);
 	}, []);
+	const handleContinueLooseWork = useCallback((item: PulseLooseWork) => {
+		if (!isPulseAgentSession(item)) return;
+		const agent = resolveJiraTeamEu26ContinueChatAgent(item.agentId);
+		openAgentChat({
+			agentId: agent.agentId,
+			agentName: agent.agentName,
+			issueKey: item.sourceTitle,
+			issueSummary: item.title,
+			intro: item.title,
+			request: `Continue the local ${agent.agentName} session on ${item.sourceTitle}.`,
+		});
+	}, [openAgentChat]);
 	const handleViewChat = useCallback((activity: JiraIssueAgentActivity, card: JiraKanbanCardData) => {
 		openAgentChat({
-			agentId: activity.id,
+			agentId: activity.id.includes(":")
+				? activity.id.slice(activity.id.lastIndexOf(":") + 1)
+				: activity.id,
 			agentName: activity.name,
 			issueKey: card.code,
 			issueSummary: card.title,
@@ -195,9 +232,9 @@ function JiraTeamEu26App(): React.ReactElement {
 	// leave a badge behind, so the flash carries the acknowledgement. One drop of
 	// three marked sessions publishes one flash covering all three rows.
 	//
-	// It only reaches rows the list is rendering. Board-created cards inherit
-	// the dropped session's invoker, so the matching assignee filter keeps the
-	// new row visible long enough for this acknowledgement.
+	// It only reaches rows the list is rendering. Board-created cards are
+	// assigned to Venn (the prototype current user), so the matching assignee
+	// filter keeps the new row visible long enough for this acknowledgement.
 	const { flash: listRowFlash, flashRow: flashListRow } = useJiraListRowFlashSource();
 	// Unlink always lands in `detachedAgentSessionsByCard`. The Untracked list
 	// reads that map, so the session reappears there immediately. Proximity
@@ -333,6 +370,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						onListAgentSessionCreate={handleListAgentSessionCreate}
 						showAgentSessionUnlinkWell={false}
 						subtaskChrome="stroke"
+						onContinueLooseWork={handleContinueLooseWork}
 						onResumeLooseWork={handleResumeLooseWork}
 						onViewChange={tabOwnsView ? undefined : setWorkItemView}
 						renderListContent={(
