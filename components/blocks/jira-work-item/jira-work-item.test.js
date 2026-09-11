@@ -113,10 +113,16 @@ test("Jira Work Item comment composers keep their height stable when focused", (
 		"team-eu26",
 	]) {
 		const composerSource = readBlockFile(`${variant}/components/activity-composer.tsx`);
+		const activityComposer = composerSource.match(/<JiraActivityComposer\b[\s\S]*?\/>/u)?.[0];
 
+		assert.ok(activityComposer, `${variant} must render a JiraActivityComposer`);
+		assert.match(
+			activityComposer,
+			/placeholder="Comment, @mention an agent, or \/ for skills"/u,
+		);
 		assert.doesNotMatch(
-			composerSource,
-			/<JiraActivityComposer[\s\S]*?\bexpandOnFocus\b[\s\S]*?variant="comment"/u,
+			activityComposer,
+			/\bexpandOnFocus\b/u,
 			`${variant} still expands its comment composer on focus`,
 		);
 	}
