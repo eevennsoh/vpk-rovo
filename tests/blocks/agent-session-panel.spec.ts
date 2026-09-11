@@ -11,7 +11,7 @@ const AGENT_SESSION_COLUMN_COLLAPSED_WIDTH_PX = 32;
 function getPanel(page: Page): Locator {
 	// The panel is a <section> with an accessible name, so it exposes role
 	// "region".
-	return page.getByRole("region", { name: "Unattached sessions panel" });
+	return page.getByRole("region", { name: "Unlink sessions panel" });
 }
 
 /** The absolutely positioned rail host that owns `width` / `top`. */
@@ -52,7 +52,7 @@ async function openBoard(page: Page, options?: { panelVariant?: boolean }): Prom
 
 /** The panel mounts minimised; open it to its full 360px. */
 async function expandPanel(page: Page): Promise<void> {
-	await page.getByRole("button", { name: "Expand Unattached sessions column" }).click();
+	await page.getByRole("button", { name: "Expand Unlink sessions column" }).click();
 	await expect.poll(async () => (await getPanelHost(page).boundingBox())?.width)
 		.toBe(AGENT_SESSION_PANEL_WIDTH_PX);
 }
@@ -174,7 +174,7 @@ test("the docked rail is persistent — nothing can dismiss it", async ({ page }
 
 	// The rail IS the entry point, so the board header must not carry a
 	// show/hide control — a closed state would be unreachable.
-	await expect(page.getByRole("button", { name: /unattached sessions panel/i })).toHaveCount(0);
+	await expect(page.getByRole("button", { name: /unlink sessions panel/i })).toHaveCount(0);
 
 	// Collapsed: still mounted, still hosting the column.
 	await expect(panel.locator("[data-agent-session-column]")).toHaveCount(1);
@@ -190,7 +190,7 @@ test("collapse shrinks the panel to the rail and the rail expands it back", asyn
 	await openBoard(page, { panelVariant: true });
 	const panel = getPanel(page);
 	const panelHost = panel.locator("..");
-	const expandButton = page.getByRole("button", { name: "Expand Unattached sessions column" });
+	const expandButton = page.getByRole("button", { name: "Expand Unlink sessions column" });
 	const [hostBox, expandButtonBox] = await Promise.all([
 		panelHost.boundingBox(),
 		expandButton.boundingBox(),
@@ -369,7 +369,7 @@ function getFloatingRovoButton(page: Page): Locator {
 async function readFabGeometry(page: Page) {
 	return page.evaluate(() => {
 		const fab = document.querySelector('[aria-label="Open Rovo chat"]');
-		const panel = document.querySelector('[aria-label="Unattached sessions panel"]');
+		const panel = document.querySelector('[aria-label="Unlink sessions panel"]');
 		if (!(fab instanceof HTMLElement) || !(panel instanceof HTMLElement)) {
 			return null;
 		}

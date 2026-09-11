@@ -313,7 +313,11 @@ export function AgentSessionColumnHeader({
 			return (
 				<div
 					data-agent-session-column-header=""
-					className="flex min-w-0 flex-nowrap items-center"
+					data-session-column-move-surface={dragHandle === undefined ? undefined : ""}
+					className={cn(
+						"flex min-w-0 flex-nowrap items-center",
+						dragHandle === undefined ? null : "cursor-grab touch-none active:cursor-grabbing",
+					)}
 					style={AGENT_SESSION_COLUMN_HEADER_STYLE[frame]}
 				>
 					{dragHandle}

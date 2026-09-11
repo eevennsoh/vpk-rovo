@@ -64,7 +64,7 @@ export function ComponentDoc({ component }: Readonly<ComponentDocProps>) {
 	const propsSection = detail?.props ? (
 		/* 6. API Reference — only if props data exists */
 		<DocPropsTable
-			componentName={name.replace(/\s+/g, "")}
+			componentName={detail.apiName ?? name.replace(/\s+/g, "")}
 			props={detail.props}
 			subComponents={detail.subComponents}
 		/>

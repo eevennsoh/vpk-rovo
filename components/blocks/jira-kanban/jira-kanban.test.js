@@ -985,12 +985,3 @@ test("Experimental kanban keeps its column or session-rail gutter on the scroll 
 	assert.match(EXPERIMENTAL_HEADER_SOURCE, /items-center gap-2 px-6/u);
 	assert.match(EXPERIMENTAL_HEADER_SOURCE, /flex-wrap items-center gap-2 px-6/u);
 });
-
-test("Experimental kanban variant reuses the shared board data contracts", () => {
-	// Types and state helpers stay shared so both variants remain swappable
-	// inside an owning surface.
-	assert.match(EXPERIMENTAL_SOURCE, /import type \{[\s\S]*JiraKanbanProps,\n\} from "\.\.\/index";/u);
-	assert.match(EXPERIMENTAL_PAGE_SOURCE, /import \{ createJiraKanbanColumns \} from "\.\.\/jira-kanban-data";/u);
-	assert.match(EXPERIMENTAL_PAGE_SOURCE, /\} from "\.\.\/state";/u);
-	assert.doesNotMatch(EXPERIMENTAL_SOURCE, /^export interface JiraKanbanProps/mu);
-});

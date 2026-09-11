@@ -64,6 +64,11 @@ export interface AgentAssignmentAgent extends AgentSelectorAgent {
 	role?: AgentSessionRole;
 	/** Agent-specific tool-call narration. Avoid sharing one sequence across agents. */
 	statusSequence?: readonly string[];
+	/**
+	 * Stable elapsed stamp for the Default picker row. Omit only for a session
+	 * that just started; demo placeholders must set this so the clock is not 0s.
+	 */
+	timeLabel?: string;
 }
 
 export interface AgentAssignmentProps {
@@ -151,6 +156,7 @@ export function AgentAssignment({
 	const [pendingSessionAgent, setPendingSessionAgent] = useState<AgentSelectorAgent | null>(null);
 	const [pinnedAgentIds, setPinnedAgentIds] = useState<readonly string[]>(defaultPinnedAgentIds);
 	const menuRootRef = useRef<HTMLDivElement>(null);
+	const moreMenuOpenRef = useRef(false);
 	const retainPopoverOpenRef = useRef(false);
 	const assignedAgentIds = assignedAgents.map((agent) => agent.id);
 	const showSessionView = view === "session" && pendingSessionAgent !== null;
@@ -201,12 +207,26 @@ export function AgentAssignment({
 		}
 		// The owner more-menu portals to the document. Focusing it looks like
 		// leaving the picker, which would close the list before Rename / Continue
-		// in can be used. Escape and outside presses still close.
+		// in can be used. Escape still closes.
 		if (
 			!nextOpen
 			&& variant === "default"
 			&& view === "assigned"
 			&& eventDetails?.reason === "focus-out"
+		) {
+			eventDetails.cancel?.();
+			return;
+		}
+		// Hovering or pressing that portalled menu looks like leaving the hover
+		// card or clicking outside the picker. Keep the assignment surface mounted
+		// until the more-menu itself closes.
+		if (
+			!nextOpen
+			&& moreMenuOpenRef.current
+			&& (
+				eventDetails?.reason === "outside-press"
+				|| eventDetails?.reason === "trigger-hover"
+			)
 		) {
 			eventDetails.cancel?.();
 			return;
@@ -224,6 +244,9 @@ export function AgentAssignment({
 			return;
 		}
 		retainPopoverOpenRef.current = false;
+		if (!nextOpen) {
+			moreMenuOpenRef.current = false;
+		}
 		setOpen(nextOpen);
 		onOpenChange?.(nextOpen);
 		if (!nextOpen) {
@@ -340,6 +363,9 @@ export function AgentAssignment({
 				? (item) => runAssignedSessionAction(assignedAgents, item.id, onContinueExistingSession)
 				: undefined}
 			onDeleteSession={undefined}
+			onMoreMenuOpenChange={(open) => {
+				moreMenuOpenRef.current = open;
+			}}
 			onRenameSession={onRenameAssignedAgent
 				? (item) => runAssignedSessionAction(assignedAgents, item.id, onRenameAssignedAgent)
 				: undefined}
@@ -361,6 +387,7 @@ export function AgentAssignment({
 	) : (
 		<AgentSelector
 			agents={agents}
+			className="min-w-0 w-full"
 			onAgentToggle={handleAgentToggle}
 			onBrowseAgents={onBrowseAgents ? () => handleFooterAction(onBrowseAgents) : undefined}
 			onCreateAgent={onCreateAgent ? () => handleFooterAction(onCreateAgent) : undefined}
@@ -403,7 +430,7 @@ export function AgentAssignment({
 					<HoverCardContent
 						align="start"
 						aria-label="Agent assignment"
-						className="max-h-none w-[360px] gap-0 overflow-visible rounded-xl p-0 shadow-none"
+						className="max-h-none w-[280px] max-w-[280px] gap-0 overflow-hidden rounded-xl p-0 shadow-none"
 						positionerClassName={overlayPositionerClassName}
 						side={side ?? "right"}
 						sideOffset={8}
@@ -472,7 +499,7 @@ export function AgentAssignment({
 				<PopoverContent
 					align="start"
 					aria-label="Agent assignment"
-					className="max-h-none w-[360px] gap-0 overflow-visible rounded-xl p-0"
+					className="max-h-none w-[280px] max-w-[280px] gap-0 overflow-hidden rounded-xl p-0"
 					positionerClassName={positionerClassName}
 					side={side}
 					sideOffset={8}

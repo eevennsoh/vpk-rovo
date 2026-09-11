@@ -3,6 +3,7 @@
 import type { DragEventHandler, MouseEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
+import { ROVO_AGENT_SELECTOR_AGENTS } from "@/app/data/directory/agents";
 import { type AgentAssignmentAgent } from "@/components/blocks/agent-assignment";
 import { type AgentSelectorAgent } from "@/components/blocks/agent-selector";
 import { AgentSession, type AgentSessionItem } from "@/components/blocks/agent-session";
@@ -72,6 +73,10 @@ function toAssignedAgentFromActivity(
 		status: activity.label,
 		statusKind,
 		statusLabel: activity.label,
+		...(activity.invokedBy ? { invokedBy: activity.invokedBy } : {}),
+		...(activity.host !== undefined ? { host: activity.host } : {}),
+		...(activity.role !== undefined ? { role: activity.role } : {}),
+		...(activity.timeLabel ? { timeLabel: activity.timeLabel } : {}),
 	};
 }
 
@@ -88,6 +93,7 @@ function toAssignedAgentFromDoneRun(
 		status: run.summary,
 		statusKind: "finished",
 		statusLabel: run.summary,
+		...(run.relativeTime ? { timeLabel: run.relativeTime } : {}),
 	};
 }
 
@@ -101,24 +107,34 @@ function resolveKanbanCardAssignment(
 	}
 
 	const assignedAgents = assignedAgentsFromKanbanCard(card);
-	const catalogAgents = (catalog ?? []).map(toSelectorAgentFromCatalog);
-	const extraAssignedAgents = assignedAgents
-		.filter((assigned) => !catalogAgents.some((agent) => agent.id === assigned.id))
-		.map((assigned) => ({
+	const seenIds = new Set(ROVO_AGENT_SELECTOR_AGENTS.map((agent) => agent.id));
+	const extraAgents: AgentSelectorAgent[] = [];
+	for (const assigned of assignedAgents) {
+		if (seenIds.has(assigned.id)) {
+			continue;
+		}
+		seenIds.add(assigned.id);
+		extraAgents.push({
 			id: assigned.id,
 			name: assigned.name,
 			byline: assigned.byline,
 			...(assigned.avatarSrc ? { avatarSrc: assigned.avatarSrc } : {}),
 			...(assigned.brandName ? { brandName: assigned.brandName } : {}),
-		}));
-	const assignmentAgents = extraAssignedAgents.length > 0
-		? [...extraAssignedAgents, ...catalogAgents]
-		: catalogAgents;
-	const pinnedAgentIds = catalogAgents.length > 0
-		? DEFAULT_PINNED_SPACE_AGENT_IDS.filter((agentId) => (
-			catalogAgents.some((agent) => agent.id === agentId)
-		))
-		: DEFAULT_PINNED_SPACE_AGENT_IDS;
+		});
+	}
+	for (const agent of catalog ?? []) {
+		if (seenIds.has(agent.id)) {
+			continue;
+		}
+		seenIds.add(agent.id);
+		extraAgents.push(toSelectorAgentFromCatalog(agent));
+	}
+	const assignmentAgents = extraAgents.length > 0
+		? [...ROVO_AGENT_SELECTOR_AGENTS, ...extraAgents]
+		: ROVO_AGENT_SELECTOR_AGENTS;
+	const pinnedAgentIds = DEFAULT_PINNED_SPACE_AGENT_IDS.filter((agentId) => (
+		assignmentAgents.some((agent) => agent.id === agentId)
+	));
 
 	return {
 		...(assignmentAgents.length > 0 ? { agents: assignmentAgents } : {}),

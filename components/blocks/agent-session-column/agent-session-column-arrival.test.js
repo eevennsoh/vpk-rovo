@@ -47,11 +47,14 @@ const DETAIL_SOURCE = readFileSync(
 	"utf8",
 );
 
-test("newly synced work reaches both the cards and the rail", () => {
-	// One set, threaded to both forms — a collapsed column must not go quiet
-	// about arrivals just because it has no cards to mark.
+test("newly synced work reaches the rail; expanded column cards omit the unreviewed dot", () => {
+	// One set still feeds the collapsed rail and the header new-count. The
+	// expanded list keeps the arrival beat via `arrivingItemIds` and drops
+	// the persistent card mark — Unattached rows do not paint the blue dot.
 	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,700}?newItemIds=\{newItemIds\}/u);
-	assert.match(INDEX_SOURCE, /<AgentSession[^>]*newItemIds=\{newItemIds\}/u);
+	const columnList = INDEX_SOURCE.match(/<AgentSession\n[\s\S]*?visibilityLabel=\{/u)?.[0] ?? "";
+	assert.match(columnList, /arrivingItemIds=\{arrivingItemIds\}/u);
+	assert.doesNotMatch(columnList, /newItemIds=/u);
 	// Destructured rather than left in `...sessionProps`, or the rail could not
 	// see it.
 	assert.match(INDEX_SOURCE, /^\tnewItemIds,$/mu);

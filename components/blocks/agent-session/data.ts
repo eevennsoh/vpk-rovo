@@ -273,12 +273,14 @@ export const AGENT_SESSION_ATTACHED_WORKING_ITEMS: readonly AgentSessionItem[] =
 		},
 		host: "cloud",
 		id: "PAY-112:review-agent",
+		role: "owner",
 		sessionDetails: {
 			host: "cloud",
 			issueKey: "PAY-112",
 			issueSummary: "Confirm the sandbox key retention window before replay",
 		},
 		state: "running",
+		timeLabel: "8m",
 		title: "Working",
 	},
 ];
@@ -287,38 +289,48 @@ export const AGENT_SESSION_ATTACHED_WORKING_ITEMS: readonly AgentSessionItem[] =
 export const AGENT_SESSION_ATTACHED_MULTI_WORKING_ITEMS: readonly AgentSessionItem[] = [
 	{
 		agent: CLAUDE_AGENT,
-		host: "cloud",
+		host: "local",
 		id: "PAY-112:claude",
+		role: "owner",
 		sessionDetails: {
-			host: "cloud",
+			host: "local",
 			issueKey: "PAY-112",
 			issueSummary: "Confirm the sandbox key retention window before replay",
 		},
 		state: "running",
+		timeLabel: "12m",
 		title: "Working",
 	},
 	{
 		agent: CURSOR_AGENT,
 		host: "cloud",
 		id: "PAY-112:cursor",
+		invokedBy: {
+			avatarSrc: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
+			name: "Priya Raman",
+		},
+		role: "viewer",
 		sessionDetails: {
 			host: "cloud",
 			issueKey: "PAY-112",
 			issueSummary: "Confirm the sandbox key retention window before replay",
 		},
 		state: "running",
+		timeLabel: "Yesterday",
 		title: "Working",
 	},
 	{
 		agent: createRovoAgent(),
 		host: "cloud",
 		id: "PAY-112:rovo",
+		role: "owner",
 		sessionDetails: {
 			host: "cloud",
 			issueKey: "PAY-112",
 			issueSummary: "Confirm the sandbox key retention window before replay",
 		},
 		state: "running",
+		timeLabel: "3h",
 		title: "Working",
 	},
 ];
@@ -335,6 +347,7 @@ export const AGENT_SESSION_ATTACHED_NEEDS_INPUT_ITEMS: readonly AgentSessionItem
 			issueSummary: "Confirm the sandbox key retention window before replay",
 		},
 		state: "needs-input",
+		timeLabel: "36s",
 		title: "Needs input",
 	},
 ];
@@ -356,6 +369,7 @@ export const AGENT_SESSION_ATTACHED_FINISHED_ITEMS: readonly AgentSessionItem[] 
 			issueSummary: "Confirm the sandbox key retention window before replay",
 		},
 		state: "complete",
+		timeLabel: "Last week",
 		title: "Finished",
 	},
 ];

@@ -45,6 +45,13 @@ test("a type-only agent-list import is allowed, so the invoker model can be shar
 	// type import is present in the source and must not trip it.
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/^import type \{[^}]*AgentListInvoker[^}]*\} from "@\/components\/blocks\/agent-list[^"]*";$/mu,
+		/^import type \{ AgentListHost, AgentListInvoker \} from "@\/components\/blocks\/agent-list";$/mu,
 	);
+});
+
+test("the assign hover catalog always includes the shared AgentSelector directory", () => {
+	assert.match(AGENT_ACTIVITY_SOURCE, /function mergeJiraIssueAgentCatalog\(/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /mergeJiraIssueAgentCatalog\(activities, assignment\?\.agents\)/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /function canonicalizeJiraIssueAgentId\(/u);
+	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /assignment\?\.agents \?\? getJiraIssueAgentCatalog/u);
 });

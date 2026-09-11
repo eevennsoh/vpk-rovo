@@ -239,6 +239,7 @@ function ExperimentalJiraKanbanPageContent({
 	showAgentSessionUnlinkWell = true, subtaskChrome,
 	onInsightsWorkItemClick,
 	onModeChange,
+	onContinueLooseWork,
 	onResumeLooseWork,
 	onViewChange,
 	renderListContent,
@@ -509,12 +510,14 @@ function ExperimentalJiraKanbanPageContent({
 			isLooseWorkResumable,
 			looseWork: agentSessionLooseWork,
 			onCapture: handleCaptureLooseWork,
+			onContinue: onContinueLooseWork,
 			onResume: onResumeLooseWork,
 		}),
 		[
 			handleCaptureLooseWork,
 			agentSessionLooseWork,
 			isLooseWorkResumable,
+			onContinueLooseWork,
 			onResumeLooseWork,
 		],
 	);

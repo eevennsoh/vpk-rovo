@@ -6,7 +6,7 @@ export type SessionColumnRepositionInteractiveKind =
 	| "other";
 
 const REPOSITION_SURFACE_SELECTOR = [
-	"[data-agent-session-column-header]",
+	"[data-session-column-move-surface]",
 	"[data-agent-session-column-rail]",
 	"[data-agent-session-notch]",
 ].join(", ");
@@ -14,9 +14,9 @@ const REPOSITION_SURFACE_SELECTOR = [
 const INTERACTIVE_SELECTOR = "button, a, input, [role=separator]";
 
 /**
- * Only explicit column controls start a move: the collapsed options button
- * and the expanded move handle. Session notches own their own drag gesture;
- * the enclosing rail and header must not capture it for column repositioning.
+ * The entire expanded header and the collapsed options button start a move.
+ * Session notches own their own drag gesture; the enclosing rail must not
+ * capture it for column repositioning.
  */
 export function canStartSessionColumnReposition({
 	inHeader,
@@ -29,13 +29,21 @@ export function canStartSessionColumnReposition({
 	inRail: boolean;
 	interactiveKind: SessionColumnRepositionInteractiveKind;
 }>): boolean {
+	// The collapsed options trigger is the compact column's explicit move
+	// control, but it renders in collapsed header chrome rather than one of the
+	// expanded/rail move surfaces.
+	if (interactiveKind === "options") {
+		return true;
+	}
 	if (!inHeader && !inNotch && !inRail) {
 		return false;
+	}
+	if (inHeader) {
+		return true;
 	}
 
 	switch (interactiveKind) {
 		case "move-handle":
-		case "options":
 			return true;
 		case "none":
 		case "notch":
@@ -70,7 +78,7 @@ export function isSessionColumnRepositionPointerTarget(target: EventTarget | nul
 	}
 
 	return canStartSessionColumnReposition({
-		inHeader: Boolean(target.closest("[data-agent-session-column-header]")),
+		inHeader: Boolean(target.closest("[data-session-column-move-surface]")),
 		inNotch: Boolean(target.closest("[data-agent-session-notch]")),
 		inRail: Boolean(target.closest("[data-agent-session-column-rail]")),
 		interactiveKind: resolveInteractiveKind(target.closest(INTERACTIVE_SELECTOR)),
@@ -91,12 +99,20 @@ export function resolveSessionColumnPreviewIndex({
 
 export function resolveSessionColumnRepositionCaptureElement(
 	target: EventTarget | null,
+	host: HTMLElement,
 ): HTMLElement | null {
 	if (!(target instanceof Element) || !isSessionColumnRepositionPointerTarget(target)) {
 		return null;
 	}
 
 	const control = target.closest(INTERACTIVE_SELECTOR);
+	// Base UI owns pointer movement on its menu trigger. Capture the collapsed
+	// options gesture above that trigger so the reposition host keeps receiving
+	// moves after the drag threshold, while ordinary header controls still keep
+	// their short-press click target.
+	if (control?.hasAttribute("data-agent-session-column-options")) {
+		return host;
+	}
 	if (control instanceof HTMLElement) {
 		return control;
 	}

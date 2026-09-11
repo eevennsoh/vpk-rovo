@@ -9,7 +9,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 	usage: `import { AgentSessionColumn } from "@/components/blocks/agent-session-column";
 
 <AgentSessionColumn
-  title="Unattached sessions"
+  title="Unlink sessions"
   headerSurface="panel"
   hasScrollingEffect
   multiSelect={false}
@@ -41,7 +41,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 		{
 			name: "title",
 			type: "string",
-			default: '"Unattached sessions"',
+			default: '"Unlink sessions"',
 			description:
 				"Header label. Also seeds the column's accessible name and its `data-agent-session-column` attribute.",
 		},
@@ -69,7 +69,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 		{
 			name: "emptyLabel",
 			type: "string",
-			default: '"No unattached sessions"',
+			default: '"No sessions to unlink"',
 			description: "Copy shown in place of the list when there are no sessions.",
 		},
 		{

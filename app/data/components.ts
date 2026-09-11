@@ -514,6 +514,7 @@ export const ART_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 export const UTILITY_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	{ name: "Agent Browser", slug: "agent-browser", importPath: "@/components/website/demos/utils/agent-browser", category: "utility", detail: UTILITY_DETAILS["agent-browser"] },
 	utilityComponent("gui", "GUI"),
+	{ name: "Cone safezone", slug: "cone-safezone", importPath: "@/components/utils/cone-safezone", category: "utility", detail: UTILITY_DETAILS["cone-safezone"] },
 	utilityComponent("image-generation", "Image Generation"),
 	utilityComponent("multiports", "Multiports"),
 	utilityComponent("sound-generation", "Sound Generation"),

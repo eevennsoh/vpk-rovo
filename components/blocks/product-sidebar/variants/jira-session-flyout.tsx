@@ -60,6 +60,7 @@ import {
 	prStateLozenge,
 } from "./jira-session-flyout-data";
 import { JiraSessionUntrackedWorkCard } from "./jira-session-untracked-work-card";
+import { ConeSafezone, ConeSafezoneContent } from "@/components/utils/cone-safezone";
 
 export { createJiraSessionFlyoutHandle, prStateLozenge };
 
@@ -721,9 +722,9 @@ export function JiraSessionFlyoutSurface({
 	}, [handle, suspended]);
 
 	return (
-		<HoverCard<JiraSidebarSessionItem> handle={handle} onOpenChange={onOpenChange}>
+		<ConeSafezone<JiraSidebarSessionItem> handle={handle} onOpenChange={onOpenChange}>
 			{({ payload }) => (
-				<HoverCardContent
+				<ConeSafezoneContent
 					anchor={anchor}
 					positionMethod={positionMethod}
 					ref={popupRef}
@@ -768,9 +769,9 @@ export function JiraSessionFlyoutSurface({
 							/>
 						) : null}
 					</HoverCardViewport>
-				</HoverCardContent>
+				</ConeSafezoneContent>
 			)}
-		</HoverCard>
+		</ConeSafezone>
 	);
 }
 
