@@ -121,12 +121,16 @@ test("Team EU board cards use experimental v2 raised defaults", () => {
 	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*subtaskChrome="stroke"/u);
 	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*columnChrome="default"/u);
 	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*cardGenerativeActionPresentation="more-actions"/u);
-	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*showCardGenerativeActionFooterActions/u);
-	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showCardGenerativeActionFooterActions=\{showCardGenerativeActionFooterActions\}/u);
-	assert.match(EXPERIMENTAL_BOARD_SOURCE, /showGenerativeActionFooterActions=\{showCardGenerativeActionFooterActions\}/u);
-	for (const capability of ["onBrowseAgents", "onCreateAgent", "onBrowseSkills", "onCreateSkill"]) {
-		assert.match(EXPERIMENTAL_CARD_SOURCE, new RegExp(`${capability}: \\(\\) => undefined`, "u"));
-	}
+	assert.match(PAGE_SOURCE, /cardGenerativeActionFooterActions=\{cardGenerativeActionFooterActions\}/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /cardGenerativeActionFooterActions=\{cardGenerativeActionFooterActions\}/u);
+	assert.match(EXPERIMENTAL_BOARD_SOURCE, /generativeActionFooterActions=\{cardGenerativeActionFooterActions\}/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /\.\.\.generativeActionFooterActions/u);
+	assert.match(PAGE_SOURCE, /onBrowseAgents: \(\) => setAgentsDirectoryOpen\(true\)/u);
+	assert.match(PAGE_SOURCE, /onBrowseSkills: \(\) => setSkillsDirectoryOpen\(true\)/u);
+	assert.match(PAGE_SOURCE, /onCreateAgent: \(\) => router\.push\("\/studio"\)/u);
+	assert.match(PAGE_SOURCE, /onCreateSkill: \(\) => router\.push\("\/skills"\)/u);
+	assert.match(PAGE_SOURCE, /<AgentsDirectoryDialog[\s\S]*open=\{agentsDirectoryOpen\}/u);
+	assert.match(PAGE_SOURCE, /<SkillsDirectoryDialog[\s\S]*open=\{skillsDirectoryOpen\}/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /iconScale\?: JiraIssueIconScale;/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /subtaskChrome\?: JiraIssueChrome;/u);
 	assert.match(
