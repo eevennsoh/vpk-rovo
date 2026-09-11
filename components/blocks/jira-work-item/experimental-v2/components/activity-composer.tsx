@@ -514,7 +514,6 @@ export function ActivityComposer({
 								<JiraActivityComposer
 									autoFocus={autoFocus}
 									author={JIRA_WORK_ITEM_CURRENT_USER}
-									expandOnFocus
 									inputContext={composerInputContext}
 									inputContextSubmitText={composerInputContextSubmitText}
 									mentionSources={mentionSources}

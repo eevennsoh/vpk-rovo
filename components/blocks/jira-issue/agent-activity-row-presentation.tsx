@@ -47,6 +47,7 @@ export type JiraIssueAgentAssignment = Partial<
 		| "onBrowseAgents"
 		| "onContinueExistingSession"
 		| "onCreateAgent"
+		| "onRenameAssignedAgent"
 		| "onStartNewSession"
 		| "pinnedItemsLabel"
 		| "usedAgentIds"
@@ -389,6 +390,7 @@ export function JiraIssueAgentAssignmentHandle({
 				onBrowseAgents={assignment?.onBrowseAgents}
 				onContinueExistingSession={assignment?.onContinueExistingSession}
 				onCreateAgent={assignment?.onCreateAgent}
+				onRenameAssignedAgent={assignment?.onRenameAssignedAgent}
 				onOpenChange={onOpenChange}
 				onStartNewSession={assignment?.onStartNewSession}
 				openMode="hover"
@@ -435,7 +437,7 @@ export function JiraIssueAgentRowSurface({
 				isDraggedOut
 					? "h-auto w-fit max-w-full justify-start bg-transparent p-0"
 					: cn(
-						"h-10 w-full justify-between rounded-md py-2 hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
+						"h-8 w-full justify-between rounded-md py-1 hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 						iconScale === "comfortable" ? "pr-2 pl-1" : "px-2",
 						inheritChinSurface ? "bg-transparent" : "bg-bg-neutral",
 					),

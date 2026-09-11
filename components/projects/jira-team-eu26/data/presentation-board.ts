@@ -4,6 +4,7 @@ import type {
 	JiraIssueAgentActivity,
 	JiraIssueCompletedAgentRun,
 } from "@/components/blocks/jira-issue";
+import type { QuestionCardQuestion } from "@/components/blocks/question-card/types";
 import type {
 	JiraKanbanAgentData,
 	JiraKanbanAssigneeData,
@@ -12,6 +13,7 @@ import type {
 } from "@/components/blocks/jira-kanban";
 import type { ArtifactListItem } from "@/components/ui-custom/artifact-list";
 
+import { JIRA_TEAM_EU26_PAY_CURRENT_USER } from "./current-user";
 import {
 	JIRA_TEAM_EU26_PAY_101_SESSION_ID,
 	JIRA_TEAM_EU26_PAY_101_PULL_REQUEST_NUMBER,
@@ -19,6 +21,8 @@ import {
 	PAY_101_INVENTORY_PR_ARTIFACT,
 } from "./presentation-build";
 import { getJiraTeamEu26PullRequestPreview } from "./presentation-pull-requests";
+
+export { JIRA_TEAM_EU26_PAY_CURRENT_USER };
 
 const PAY_AVATARS = {
 	diego: "/avatar-user/dev-rana/color/asow-product-purple.png",
@@ -28,7 +32,6 @@ const PAY_AVATARS = {
 	releaseAgent: "/avatar-agent/strategy-agents/strategic-insight.svg",
 	reviewAgent: "/avatar-agent/teamwork-agents/decision-director.svg",
 	testAgent: "/avatar-agent/service-agents/rca-agent.svg",
-	venn: "/avatar-user/venn/venn.png",
 } as const;
 
 const PAY_ASSIGNEES = {
@@ -53,6 +56,34 @@ const PAY_ASSIGNEES = {
 		avatarSrc: PAY_AVATARS.priya,
 	},
 } as const satisfies Record<string, JiraKanbanAssigneeData>;
+
+/** Codex pauses PAY-112 until a human picks the sandbox retention call. */
+export const JIRA_TEAM_EU26_PAY_112_RETENTION_QUESTION = {
+	id: "pay-112-sandbox-retention",
+	kind: "single-select",
+	label: "How should Codex treat sandbox key retention before replay?",
+	description: "Replaying without a signed window changes the blast radius of PAY-112.",
+	options: [
+		{
+			id: "seven-day-sandbox",
+			label: "Assume a 7-day sandbox window",
+			description: "Treat keys as retained for seven days and keep replay inside sandbox only.",
+		},
+		{
+			id: "hold-live-replay",
+			label: "Do not replay keys against live accounts",
+			description: "Hold the replay work until payments platform confirms the retention window in writing.",
+		},
+		{
+			id: "jordan-signs-off",
+			label: "Jordan signs off the retention window",
+			description: "Pause until Jordan confirms the number, then resume the sandbox replay plan.",
+		},
+	],
+} as const satisfies QuestionCardQuestion;
+
+export const JIRA_TEAM_EU26_PAY_112_RETENTION_MESSAGE =
+	"I confirmed the sandbox can 401 when a replayed key is still retained, but I need a human call before I keep going. Replaying against live accounts without a signed retention window would change the blast radius of PAY-112.";
 
 export const JIRA_TEAM_EU26_PAY_SESSION_MEMBER_ID_BY_ASSIGNEE_ID = {
 	"diego-santos": "diego",
@@ -102,6 +133,10 @@ export function toJiraTeamEu26AgentActivityFromSession(
 			: session.state === "complete"
 				? "completed"
 				: "working",
+		...(session.invokedBy ? { invokedBy: session.invokedBy } : {}),
+		...(session.host !== undefined ? { host: session.host } : {}),
+		...(session.role !== undefined ? { role: session.role } : {}),
+		...(session.timeLabel ? { timeLabel: session.timeLabel } : {}),
 	};
 }
 
@@ -124,11 +159,15 @@ export function toJiraTeamEu26DetachedAgentSession(
 			kind: "agent",
 			name: activity.name,
 		},
-		invokedBy: card.assignee,
 		sessionDetails: {
 			issueKey: card.code,
 			issueSummary: card.title,
+			...(activity.host !== undefined ? { host: activity.host } : {}),
 		},
+		...(activity.invokedBy ? { invokedBy: activity.invokedBy } : {}),
+		...(activity.host !== undefined ? { host: activity.host } : {}),
+		...(activity.role !== undefined ? { role: activity.role } : {}),
+		...(activity.timeLabel ? { timeLabel: activity.timeLabel } : {}),
 	};
 }
 
@@ -160,11 +199,7 @@ export const JIRA_TEAM_EU26_PAY_COMPOSER_AGENTS = [
 ] as const satisfies readonly AgentSelectorAgent[];
 
 export const JIRA_TEAM_EU26_PAY_HEADER_ASSIGNEES = [
-	{
-		id: "venn",
-		name: "Venn",
-		avatarSrc: PAY_AVATARS.venn,
-	},
+	JIRA_TEAM_EU26_PAY_CURRENT_USER,
 	{
 		id: "review-agent",
 		name: "Codex",
@@ -243,20 +278,32 @@ function createActivity({
 	avatarSrc,
 	cycleIntervalJitterMs,
 	cycleIntervalMs,
+	host,
 	id,
+	invokedBy,
 	label,
 	labels,
+	message,
+	question,
+	role,
 	state,
+	timeLabel,
 }: Readonly<{
 	agentBrandName?: JiraIssueAgentActivity["agentBrandName"];
 	agentName: string;
 	avatarSrc?: string;
 	cycleIntervalJitterMs?: number;
 	cycleIntervalMs?: number;
+	host?: JiraIssueAgentActivity["host"];
 	id: string;
+	invokedBy?: JiraIssueAgentActivity["invokedBy"];
 	label: string;
 	labels?: readonly string[];
+	message?: string;
+	question?: JiraIssueAgentActivity["question"];
+	role?: JiraIssueAgentActivity["role"];
 	state: "working" | "awaiting-input";
+	timeLabel: string;
 }>): JiraIssueAgentActivity {
 	return {
 		id,
@@ -269,10 +316,15 @@ function createActivity({
 		labels: state === "working"
 			? labels ?? [label]
 			: [label],
-		message: state === "working"
+		message: message ?? (state === "working"
 			? `${agentName} is working and will post the next result to the Jira work item.`
-			: `${agentName} needs a person to answer before continuing.`,
+			: `${agentName} needs a person to answer before continuing.`),
 		state,
+		timeLabel,
+		...(host !== undefined ? { host } : {}),
+		...(invokedBy ? { invokedBy } : {}),
+		...(question ? { question } : {}),
+		...(role !== undefined ? { role } : {}),
 	};
 }
 
@@ -376,9 +428,12 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 					agentBrandName: "cursor",
 					cycleIntervalJitterMs: 1800,
 					cycleIntervalMs: 2600,
+					host: "local",
 					label: "Replaying 3-D Secure fixtures",
 					labels: ["Replaying 3-D Secure fixtures", "Comparing challenge payloads", "Running checkout recovery cases"],
+					role: "owner",
 					state: "working",
+					timeLabel: "12m",
 				})],
 			}),
 			createCard({
@@ -395,9 +450,16 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 					agentBrandName: "claude",
 					cycleIntervalJitterMs: 2200,
 					cycleIntervalMs: 3100,
+					host: "cloud",
+					invokedBy: {
+						avatarSrc: PAY_ASSIGNEES.maya.avatarSrc,
+						name: PAY_ASSIGNEES.maya.name,
+					},
 					label: "Implementing webhook retry semantics",
 					labels: ["Implementing webhook retry semantics", "Moving backoff into the v2 client", "Running payments API retry tests"],
+					role: "viewer",
 					state: "working",
+					timeLabel: "Yesterday",
 				})],
 			}),
 			createCard({
@@ -413,9 +475,16 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 						agentBrandName: "cursor",
 						cycleIntervalJitterMs: 1700,
 						cycleIntervalMs: 1900,
+						host: "cloud",
+						invokedBy: {
+							avatarSrc: PAY_ASSIGNEES.jordan.avatarSrc,
+							name: PAY_ASSIGNEES.jordan.name,
+						},
 						label: "Recording decline-code fixtures",
 						labels: ["Recording decline-code fixtures", "Comparing missing decline cases", "Running fixture coverage"],
+						role: "viewer",
 						state: "working",
+						timeLabel: "36s",
 					}),
 					createActivity({
 						id: "PAY-123:claude-code",
@@ -423,9 +492,12 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 						agentBrandName: "claude",
 						cycleIntervalJitterMs: 2100,
 						cycleIntervalMs: 2400,
+						host: "local",
 						label: "Wiring recorded fixtures into the v2 client",
 						labels: ["Wiring recorded fixtures into the v2 client", "Adapting client assertions", "Running v2 client tests"],
+						role: "owner",
 						state: "working",
+						timeLabel: "3h",
 					}),
 				],
 			}),
@@ -454,8 +526,17 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 					id: "PAY-112:review-agent",
 					agentName: "Codex",
 					agentBrandName: "openai-codex",
+					host: "cloud",
+					invokedBy: {
+						avatarSrc: PAY_ASSIGNEES.jordan.avatarSrc,
+						name: PAY_ASSIGNEES.jordan.name,
+					},
 					label: "Needs the retention window",
+					message: JIRA_TEAM_EU26_PAY_112_RETENTION_MESSAGE,
+					question: JIRA_TEAM_EU26_PAY_112_RETENTION_QUESTION,
+					role: "owner",
 					state: "awaiting-input",
+					timeLabel: "Last week",
 				})],
 			}),
 			createCard({
@@ -510,9 +591,12 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 					agentBrandName: "github-copilot",
 					cycleIntervalJitterMs: 2400,
 					cycleIntervalMs: 3600,
+					host: "cloud",
 					label: "Validating one-percent targeting",
 					labels: ["Validating one-percent targeting", "Checking account kill-switch rules", "Reviewing release telemetry gates"],
+					role: "owner",
 					state: "working",
+					timeLabel: "18m",
 				})],
 			}),
 			createCard({

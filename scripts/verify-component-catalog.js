@@ -517,6 +517,9 @@ const TITLE_CASE_MINOR_WORDS = new Set([
 // these are content words, so they are allowed in any position.
 const TITLE_CASE_BRAND_WORDS = new Set(["p5"]);
 
+// Explicit product wording; keep this exception scoped to the named catalog entry.
+const COMPONENT_NAME_OVERRIDES = new Map([["utility/cone-safezone", "Cone safezone"]]);
+
 function isTitleCaseWord(word, index) {
 	// Capitalized word, acronym, brand, or numeric segment (e.g. "Chat", "SVG", "ChatGPT", "01").
 	if (/^[A-Z0-9]/u.test(word)) {
@@ -741,7 +744,7 @@ function validateComponentCatalog({
 		}
 		seenComponents.add(key);
 
-		if (!isTitleCaseName(component.name)) {
+		if (!isTitleCaseName(component.name) && COMPONENT_NAME_OVERRIDES.get(key) !== component.name) {
 			diagnostics.push(createDiagnostic("error", `Component ${key} name "${component.name}" is not Title Case (expected "${toTitleCase(component.slug)}"-style capitalization).`, {
 				category: component.category,
 				name: component.name,

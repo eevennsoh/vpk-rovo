@@ -69,6 +69,7 @@ export function AgentSessionCard({
 	onCopyResume,
 	onDeleteSession,
 	onItemHover,
+	onMoreMenuOpenChange,
 	onRenameSession,
 	onToggleVisibility,
 	onView,
@@ -119,8 +120,13 @@ export function AgentSessionCard({
 	 * behind the picker.
 	 */
 	moreMenuPositionerClassName?: string;
-	/** Keep the more-menu inside a parent overlay instead of portalling to the document. */
+	/**
+	 * Portal the more-menu. Nested clipped overlays can pass `false`;
+	 * assignment uses the default portal so Rename / Delete escape the picker.
+	 */
 	moreMenuPortalled?: boolean;
+	/** Tell a host overlay when the portalled more-menu is open so it can stay mounted. */
+	onMoreMenuOpenChange?: (open: boolean) => void;
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
 	showMoreMenu?: boolean;
 	triageRow?: AgentSessionTriageRow | null;
@@ -223,6 +229,7 @@ export function AgentSessionCard({
 		onCopyResume,
 		onDeleteSession,
 		onItemHover,
+		onMoreMenuOpenChange,
 		onRenameSession,
 		onToggleVisibility,
 		resumeCommand,
@@ -347,7 +354,7 @@ export function AgentSessionCard({
 							aria-current={isSelected ? "true" : undefined}
 							aria-roledescription={bind ? "Draggable agent session" : undefined}
 							className={cn(
-						"group/agent-row relative flex w-full cursor-default rounded-lg text-left text-text",
+						"group/agent-row relative flex w-full min-w-0 cursor-default rounded-lg text-left text-text",
 						padding === "compact" ? "px-3 py-2" : "p-3",
 						// Borderless tiles, 8px radius — same chrome as editor-palette
 						// suggestion rows. The list owns the gap between them.

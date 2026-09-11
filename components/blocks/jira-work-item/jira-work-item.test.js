@@ -103,6 +103,31 @@ test("JiraWorkItem experimental view delegates chat ownership to its composition
 	assert.equal((JIRA_WORK_ITEM_SOURCE.match(/<JiraWorkItemShell onOpen=/gu) ?? []).length, 2);
 });
 
+test("Jira Work Item comment composers keep their height stable when focused", () => {
+	for (const variant of [
+		"experimental",
+		"experimental-v2",
+		"experimental-v3",
+		"experimental-v4",
+		"experimental-v5",
+		"team-eu26",
+	]) {
+		const composerSource = readBlockFile(`${variant}/components/activity-composer.tsx`);
+		const activityComposer = composerSource.match(/<JiraActivityComposer\b[\s\S]*?\/>/u)?.[0];
+
+		assert.ok(activityComposer, `${variant} must render a JiraActivityComposer`);
+		assert.match(
+			activityComposer,
+			/placeholder="Comment, @mention an agent, or \/ for skills"/u,
+		);
+		assert.doesNotMatch(
+			activityComposer,
+			/\bexpandOnFocus\b/u,
+			`${variant} still expands its comment composer on focus`,
+		);
+	}
+});
+
 test("the title Open split button uses direct 24px coding-agent logos", () => {
 	const titleActionsSource = readBlockFile("experimental/components/context-title-actions.tsx");
 

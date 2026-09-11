@@ -44,6 +44,8 @@ export interface DemoLayout {
 
 export interface ComponentDetail {
 	description: string;
+	/** Exported API name when the display name uses different capitalization. */
+	apiName?: string;
 	importStatement?: string;
 	usage?: string;
 	props?: PropDefinition[];

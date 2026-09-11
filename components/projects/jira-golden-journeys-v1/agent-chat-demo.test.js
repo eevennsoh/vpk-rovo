@@ -50,6 +50,7 @@ test("JGP chat profiles include every lifecycle-specific agent", async () => {
 	const dependencyMapper = JGP_CHAT_AGENT_PROFILES.find((profile) => profile.id === "dependency-mapper");
 	const unitTestCreator = JGP_CHAT_AGENT_PROFILES.find((profile) => profile.id === "unit-test-creator");
 	const cursor = JGP_CHAT_AGENT_PROFILES.find((profile) => profile.id === "cursor");
+	const codex = JGP_CHAT_AGENT_PROFILES.find((profile) => profile.id === "review-agent");
 
 	assert.equal(profileIds.has("rfp-drafter"), true);
 	assert.equal(profileIds.has("service-impact-agent"), true);
@@ -70,6 +71,9 @@ test("JGP chat profiles include every lifecycle-specific agent", async () => {
 	assert.equal(serviceImpactAgent.avatarSrc, "/avatar-agent/service-agents/rca-agent.svg");
 	assert.equal(dependencyMapper.avatarSrc, "/avatar-agent/teamwork-agents/work-item-planner.svg");
 	assert.equal(unitTestCreator.avatarSrc, "/avatar-agent/dev-agents/unit-test-creator.svg");
+	assert.equal(profileIds.has("review-agent"), true);
+	assert.equal(codex.name, "Codex");
+	assert.equal(codex.brandName, "openai-codex");
 	assert.notEqual(serviceImpactAgent.avatarSrc, dependencyMapper.avatarSrc);
 });
 
