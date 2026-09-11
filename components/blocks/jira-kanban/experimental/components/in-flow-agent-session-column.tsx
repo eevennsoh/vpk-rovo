@@ -312,15 +312,16 @@ function InFlowAgentSessionColumnSurface({
 }
 
 /**
- * The Untracked rail rests in the page's leading gutter. Hover temporarily
- * returns that same compact timeline to the board's original 24px column inset
- * and reveals the collapsed header chrome — the session total and a "…"
- * options menu — without swapping dots for cards. Pin keeps that surface
- * embedded after the pointer leaves. Expand from the gutter opens the
- * full-width column and pins it. Collapsing the full column keeps the
- * compact rail pinned in the board until the user unpins it. The full-height
- * gutter target sits behind each session row so a row can own its whole
- * 24px band while empty gutter space still opens the column preview.
+ * The Untracked rail starts pinned in the board as a compact timeline.
+ * Unpin tucks it into the page's leading gutter. Hover from the gutter
+ * temporarily returns that same compact timeline to the board's original
+ * 24px column inset and reveals the collapsed header chrome — the session
+ * total and a "…" options menu — without swapping dots for cards. Pin
+ * keeps that surface embedded after the pointer leaves. Expand from the
+ * gutter opens the full-width column and pins it. Collapsing the full
+ * column keeps the compact rail pinned until the user unpins it. The
+ * full-height gutter target sits behind each session row so a row can own
+ * its whole 24px band while empty gutter space still opens the column preview.
  */
 export function InFlowAgentSessionColumn({
 	agentSessionColumn,
@@ -381,7 +382,7 @@ export function InFlowAgentSessionColumn({
 		if (!nextPinned) reposition.moveToLeadingGutter();
 	};
 	const isEmbedded = isInteractionEmbedded || reposition.shifted || reposition.dragging;
-	const dragHandle = reposition.enabled ? (
+	const dragHandle = reposition.available ? (
 		<button
 			aria-label={`Move ${agentSessionColumn.title ?? IN_FLOW_AGENT_SESSION_COLUMN_TITLE} column`}
 			className="me-1 inline-flex size-3 shrink-0 cursor-grab touch-none items-center justify-center text-icon-disabled active:cursor-grabbing [&_svg]:text-icon-disabled"

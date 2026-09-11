@@ -489,7 +489,8 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		CARD_SOURCE,
 		/const showHoverActions = \(!isSelected \|\| showHoverActionsWhenSelected\) &&\s*\(hoverActions\?\.primary !== undefined\s*\|\| hoverActions\?\.secondary !== undefined\s*\|\| hoverActions\?\.menu !== undefined\);/u,
 	);
-	assert.match(CARD_SOURCE, /\{showHoverActions \? \(\s*<CardActions/u);
+	assert.match(CARD_SOURCE, /\{showHoverActions && !overlayHoverActions \? \(\s*<CardActions/u);
+	assert.match(CARD_SOURCE, /\{overlayHoverActions \? \(\s*<CardActions/u);
 	assert.match(CARD_SOURCE, /<AgentListRowActionButton action=\{primary\}/u);
 	assert.match(ROW_ACTION_SOURCE, /event\.stopPropagation\(\);\s*\n\s*action\.onClick\(\)/u);
 	assert.match(

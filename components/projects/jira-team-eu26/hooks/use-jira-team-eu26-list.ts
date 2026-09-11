@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue";
+import { mergeJiraKanbanAgentCatalog } from "@/components/blocks/jira-kanban/lib/agent-catalog";
 import { linkJiraKanbanAgentSession, moveJiraKanbanCardsToColumn } from "@/components/blocks/jira-kanban/state";
 import type { JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
 import type {
@@ -205,7 +206,7 @@ export function useJiraTeamEu26List({
 			columns,
 			issueKey,
 			agentIds,
-			JIRA_TEAM_EU26_PAY_BOARD_AGENTS,
+			mergeJiraKanbanAgentCatalog(JIRA_TEAM_EU26_PAY_BOARD_AGENTS),
 		));
 	}, [setBoardColumns]);
 

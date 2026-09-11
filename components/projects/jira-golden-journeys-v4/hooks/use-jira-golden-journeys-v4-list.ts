@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue";
+import { mergeJiraKanbanAgentCatalog } from "@/components/blocks/jira-kanban/lib/agent-catalog";
 import { linkJiraKanbanAgentSession, moveJiraKanbanCardsToColumn } from "@/components/blocks/jira-kanban/state";
 import type { JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
 import type {
@@ -61,6 +62,7 @@ export interface UseJiraGoldenJourneysV4ListResult {
 	/** Returns the row the session landed in, so the caller can acknowledge it. */
 	createFromAgentSession: (input: CreateFromAgentSessionInput) => string;
 	getProps: (columns: readonly JiraKanbanColumnData[]) => JiraListProps;
+	onAssignedAgentIdsChange: (issueKey: string, agentIds: readonly string[]) => void;
 }
 
 export function useJiraGoldenJourneysV4List({
@@ -204,7 +206,7 @@ export function useJiraGoldenJourneysV4List({
 			columns,
 			issueKey,
 			agentIds,
-			JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,
+			mergeJiraKanbanAgentCatalog(JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS),
 		));
 	}, [setBoardColumns]);
 
@@ -350,5 +352,5 @@ export function useJiraGoldenJourneysV4List({
 		selectedIssueKeys,
 	]);
 
-	return { createBoardFromAgentSession, createFromAgentSession, getProps };
+	return { createBoardFromAgentSession, createFromAgentSession, getProps, onAssignedAgentIdsChange: handleAssignedAgentIdsChange };
 }

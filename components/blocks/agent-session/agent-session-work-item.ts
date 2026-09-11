@@ -40,7 +40,6 @@ export function toJiraIssueAgentActivityFromSession(item: AgentSessionItem): Jir
 		agentBrandName: item.agent.brandName,
 		avatarSrc: item.agent.avatarSrc,
 		id: item.id,
-		invokedBy: item.invokedBy,
 		label: item.title,
 		name: item.agent.name,
 		state: item.state === "needs-input" || item.state === "attention"
@@ -48,6 +47,10 @@ export function toJiraIssueAgentActivityFromSession(item: AgentSessionItem): Jir
 			: item.state === "complete"
 				? "completed"
 				: "working",
+		...(item.invokedBy ? { invokedBy: item.invokedBy } : {}),
+		...(item.host !== undefined ? { host: item.host } : {}),
+		...(item.role !== undefined ? { role: item.role } : {}),
+		...(item.timeLabel ? { timeLabel: item.timeLabel } : {}),
 	};
 }
 

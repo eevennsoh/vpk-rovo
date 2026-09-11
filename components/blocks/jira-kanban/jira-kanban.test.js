@@ -583,6 +583,13 @@ test("Kanban agent assignment helpers apply toggles to every selected card", asy
 	assert.deepEqual(getCommonJiraKanbanAgentIds(assignments, selected), []);
 });
 
+test("Kanban assignment catalog starts from the shared AgentSelector directory", () => {
+	const catalogSource = readFileSync(join(__dirname, "lib", "agent-catalog.ts"), "utf8");
+	assert.match(catalogSource, /export function mergeJiraKanbanAgentCatalog\(/u);
+	assert.match(catalogSource, /ROVO_AGENT_SELECTOR_AGENTS/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /ROVO_AGENT_SELECTOR_AGENTS/u);
+});
+
 test("Kanban cards expose and render Jira issue agent lifecycle presentation", () => {
 	assert.match(SOURCE, /agentActivities\?: readonly JiraIssueAgentActivity\[\];/);
 	assert.match(SOURCE, /agentActivityMode\?: JiraIssueAgentActivityMode;/);

@@ -47,7 +47,7 @@ test("Agent Assignment exposes a reusable controlled block contract", () => {
 	assert.match(index, /export type \{ AgentAssignmentVariant \} from "\.\/components\/assignment-session";/u);
 	assert.match(index, /AgentAssignmentAgent,[\s\S]*AgentAssignmentProps,[\s\S]*AgentAssignmentStatusKind/u);
 	assert.match(demoAssigned, /"github-copilot": \{[\s\S]*host: "cloud"[\s\S]*role: "owner"[\s\S]*statusKind: "working"[\s\S]*"Checking the proposed patch across every changed file in this review"/u);
-	assert.match(demoAssigned, /"release-notes-drafter": \{[\s\S]*host: "cloud"[\s\S]*role: "viewer"[\s\S]*statusKind: "needs-input"/u);
+	assert.match(demoAssigned, /"release-notes-drafter": \{[\s\S]*host: "cloud"[\s\S]*role: "owner"[\s\S]*statusKind: "needs-input"/u);
 	assert.match(demoAssigned, /"code-reviewer": \{[\s\S]*host: "local"[\s\S]*role: "owner"[\s\S]*statusKind: "idle"/u);
 	assert.match(demoAssigned, /"readiness-checker": \{[\s\S]*host: "local"[\s\S]*role: "viewer"[\s\S]*statusKind: "idle"/u);
 	assert.match(demoAssigned, /statusKind: demoStatus\.statusKind,[\s\S]*statusSequence: demoStatus\.labels/u);
@@ -115,6 +115,15 @@ test("Agent Assignment preserves the work-item trigger and two-stage menu behavi
 	assert.match(source, /cloneElement\(trigger, \{ "aria-expanded": open \}\)/u);
 	assert.match(source, /import \{ token \} from "@\/lib\/tokens";/u);
 	assert.match(source, /<PopoverContent[\s\S]*style=\{\{ boxShadow: token\("elevation\.shadow\.overlay"\) \}\}/u);
+	assert.match(
+		source,
+		/<HoverCardContent[\s\S]*className="max-h-none w-\[280px\] max-w-\[280px\] gap-0 overflow-hidden rounded-xl p-0 shadow-none"/u,
+	);
+	assert.match(
+		source,
+		/<PopoverContent[\s\S]*className="max-h-none w-\[280px\] max-w-\[280px\] gap-0 overflow-hidden rounded-xl p-0"/u,
+	);
+	assert.doesNotMatch(source, /w-\[360px\]/u);
 	assert.match(source, /className="absolute inset-0 z-0 rounded-md outline-none"/u);
 	assert.match(source, /aria-label=\{shown\.length === 0 \? "Assign agent" : triggerLabel\}/u);
 	assert.match(
@@ -205,12 +214,12 @@ test("Agent Assignment preserves the work-item trigger and two-stage menu behavi
 	assert.doesNotMatch(menu, /menu-row-title text-text-subtlest/u);
 	assert.doesNotMatch(suggestionMenu, /absolute inset-y-0 right-2/u);
 	assert.doesNotMatch(suggestionMenuCss, /padding-right: 104px/u);
-	assert.match(menu, /className="rich-text-command-menu-embedded w-full!"/u);
+	assert.match(menu, /className="rich-text-command-menu-embedded w-full! \[&_\.rich-text-command-menu-list\]:p-0"/u);
 	assert.match(
 		menu,
-		/className="sticky bottom-0 z-10 mx-1 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-1(?: pb-1)?"/u,
+		/className="sticky bottom-0 z-10 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-1"/u,
 	);
-	assert.doesNotMatch(menu, /className="(?:px-1 )?pb-1"/u);
+	assert.match(menu, /className="flex w-full flex-col gap-1 p-1 outline-none"/u);
 	assert.match(menu, /containerRef\.current\?\.focus\(\);/u);
 	assert.doesNotMatch(menu, /firstOption\?\.focus\(\);/u);
 	assert.match(menu, /selectedIndex === -1\s*\? \(step > 0 \? 0 : items\.length - 1\)/u);
@@ -273,7 +282,7 @@ test("Agent Assignment filled pins follow the space pin set, not assignment or u
 	assert.match(demoAssigned, /export const DEMO_USED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*\] as const;/u);
 	assert.match(
 		demoAssigned,
-		/export const INITIAL_ASSIGNED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*"code-reviewer",\s*"readiness-checker",\s*\] as const;/u,
+		/export const INITIAL_ASSIGNED_AGENT_IDS = \[\s*"github-copilot",\s*"code-reviewer",\s*"release-notes-drafter",\s*"readiness-checker",\s*\] as const;/u,
 	);
 	assert.match(page, /getAgentAssignmentDemoAssignedAgents\(assignedAgentIds/u);
 	assert.doesNotMatch(page, /defaultPinnedAgentIds=\{(?:DEMO_USED_AGENT_IDS|INITIAL_ASSIGNED_AGENT_IDS)\}/u);
@@ -425,6 +434,16 @@ async function loadAgentAssignmentClickHarness() {
 							},
 							type: "button",
 						}),
+						React.createElement("button", {
+							"data-outside-press": "",
+							onClick() {
+								props.onOpenChange?.(false, {
+									cancel() { setHoverCloseCanceled(true); },
+									reason: "outside-press",
+								});
+							},
+							type: "button",
+						}),
 						props.children,
 					);
 				}
@@ -535,6 +554,18 @@ async function loadAgentAssignmentClickHarness() {
 						variant: "simple",
 					});
 				}
+
+				export function DefaultHoverAssignedProbe() {
+					return React.createElement(AgentAssignment, {
+						agents: AGENTS,
+						assignedAgents: [{ ...AGENTS[0], statusLabel: "Working" }],
+						onAssignedAgentIdsChange() {},
+						onAssignedAgentSelect() {},
+						onRenameAssignedAgent() {},
+						openMode: "hover",
+						variant: "default",
+					});
+				}
 			`,
 			loader: "tsx",
 			resolveDir: process.cwd(),
@@ -596,7 +627,22 @@ async function loadAgentAssignmentClickHarness() {
 							return {
 								contents: `
 									import React from "react";
-									export function AssignedAgentsSessionMenu() { return null; }
+									export function AssignedAgentsSessionMenu(props) {
+										return React.createElement(
+											"div",
+											{ "data-assigned-session-menu": "" },
+											React.createElement("button", {
+												"data-more-menu-open": "",
+												onClick() { props.onMoreMenuOpenChange?.(true); },
+												type: "button",
+											}, "Open more menu"),
+											React.createElement("button", {
+												"data-more-menu-close": "",
+												onClick() { props.onMoreMenuOpenChange?.(false); },
+												type: "button",
+											}, "Close more menu"),
+										);
+									}
 								`,
 								loader: "tsx",
 								resolveDir,
@@ -748,6 +794,77 @@ test("hover-open Agent Assignment only retains explicitly transitioned interacti
 			root.unmount();
 		});
 		window.HTMLElement.prototype.focus = originalFocus;
+		Object.assign(globalThis, originalGlobals);
+	}
+});
+
+test("hover-open default assignment keeps the picker while the portalled more-menu is open", async () => {
+	const { window } = parseHTML("<!doctype html><html><body><div id='app'></div></body></html>");
+	const originalGlobals = {
+		document: globalThis.document,
+		Event: globalThis.Event,
+		HTMLElement: globalThis.HTMLElement,
+		Node: globalThis.Node,
+		window: globalThis.window,
+		actEnvironment: globalThis.IS_REACT_ACT_ENVIRONMENT,
+	};
+	Object.assign(globalThis, {
+		document: window.document,
+		Event: window.Event,
+		HTMLElement: window.HTMLElement,
+		Node: window.Node,
+		window,
+		IS_REACT_ACT_ENVIRONMENT: true,
+	});
+
+	const harness = await loadAgentAssignmentClickHarness();
+	const root = createRoot(window.document.getElementById("app"));
+	try {
+		await React.act(async () => {
+			root.render(React.createElement(harness.DefaultHoverAssignedProbe));
+		});
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-open]").click();
+		});
+		assert.equal(window.document.querySelector("[data-open]").getAttribute("data-open"), "true");
+		assert.ok(window.document.querySelector("[data-assigned-session-menu]"));
+
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-close]").click();
+		});
+		assert.equal(window.document.querySelector("[data-open]").getAttribute("data-open"), "false");
+
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-open]").click();
+		});
+		await React.act(async () => {
+			window.document.querySelector("[data-more-menu-open]").click();
+		});
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-close]").click();
+		});
+		assert.equal(window.document.querySelector("[data-open]").getAttribute("data-open"), "true");
+		assert.equal(
+			window.document.querySelector("[data-hover-close-canceled]").getAttribute("data-hover-close-canceled"),
+			"true",
+		);
+
+		await React.act(async () => {
+			window.document.querySelector("[data-outside-press]").click();
+		});
+		assert.equal(window.document.querySelector("[data-open]").getAttribute("data-open"), "true");
+
+		await React.act(async () => {
+			window.document.querySelector("[data-more-menu-close]").click();
+		});
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-close]").click();
+		});
+		assert.equal(window.document.querySelector("[data-open]").getAttribute("data-open"), "false");
+	} finally {
+		await React.act(async () => {
+			root.unmount();
+		});
 		Object.assign(globalThis, originalGlobals);
 	}
 });

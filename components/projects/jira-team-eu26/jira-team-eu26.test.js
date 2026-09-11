@@ -86,6 +86,11 @@ test("the board disables Insights while keeping card agent chat in the Jira shel
 	assert.match(PAGE_SOURCE, /insightsEnabled=\{false\}/u);
 	assert.doesNotMatch(PAGE_SOURCE, /PULSE_|InsightsNudge|boardRef|timelineLastViewedAt/u);
 	assert.match(PAGE_SOURCE, /onCardAgentActivityViewChat=\{handleViewChat\}/u);
+	assert.match(PAGE_SOURCE, /question: activity\.question,/u);
+	assert.match(
+		PAGE_SOURCE,
+		/agentId: activity\.id\.includes\(":"\)\s*\? activity\.id\.slice\(activity\.id\.lastIndexOf\(":"\) \+ 1\)\s*: activity\.id,/u,
+	);
 	assert.match(PAGE_SOURCE, /onCardAgentDoneRunView=\{handleViewCompletedRun\}/u);
 	assert.match(
 		EXPERIMENTAL_PAGE_SOURCE,
@@ -95,7 +100,7 @@ test("the board disables Insights while keeping card agent chat in the Jira shel
 		EXPERIMENTAL_PAGE_SOURCE,
 		/<ExperimentalJiraKanban[\s\S]*onCardAgentDoneRunView=\{onCardAgentDoneRunView\}/u,
 	);
-	assert.match(PAGE_SOURCE, /openAgentChat\(\{[\s\S]*agentId: activity\.id,[\s\S]*issueKey: card\.code/u);
+	assert.match(PAGE_SOURCE, /openAgentChat\(\{[\s\S]*agentId: activity\.id\.includes\(":"\)[\s\S]*issueKey: card\.code/u);
 	assert.match(PAGE_SOURCE, /const handleViewCompletedRun = useCallback\([\s\S]*agentId: run\.agentName\.toLowerCase\(\)\.replace\(\/\\s\+\/g, "-"\),[\s\S]*issueKey: run\.issueKey/u);
 	assert.match(PAGE_SOURCE, /<JgpRovoOverlay[\s\S]*externalThinkingMessageId=\{externalThinkingMessageId\}/u);
 	assert.doesNotMatch(PAGE_SOURCE, /<JgpRovoOverlay[\s\S]*insights=/u);
@@ -104,7 +109,7 @@ test("the board disables Insights while keeping card agent chat in the Jira shel
 test("the route imports the Pulse session guard used by its resume callback", () => {
 	assert.match(
 		PAGE_SOURCE,
-		/import \{ isPulseAgentSession, type PulseLooseWork \} from "@\/components\/blocks\/jira-kanban\/experimental\/pulse\/types";/u,
+		/import \{\s*isPulseAgentSession,\s*type PulseCodingAgentId,\s*type PulseLooseWork,\s*\} from "@\/components\/blocks\/jira-kanban\/experimental\/pulse\/types";/u,
 	);
 	assert.match(PAGE_SOURCE, /if \(!isPulseAgentSession\(item\)\) return;/u);
 });
@@ -186,8 +191,23 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 		EXPERIMENTAL_CARD_SOURCE,
 		/assignment=\{resolveKanbanCardAssignment\(card, agents, onAssignedAgentIdsChange\)\}/u,
 	);
+	assert.match(
+		EXPERIMENTAL_CARD_SOURCE,
+		/\.\.\.\(activity\.invokedBy \? \{ invokedBy: activity\.invokedBy \} : \{\}\)/u,
+	);
+	assert.match(
+		EXPERIMENTAL_CARD_SOURCE,
+		/\.\.\.\(activity\.host !== undefined \? \{ host: activity\.host \} : \{\}\)/u,
+	);
+	assert.match(
+		EXPERIMENTAL_CARD_SOURCE,
+		/\.\.\.\(activity\.role !== undefined \? \{ role: activity\.role \} : \{\}\)/u,
+	);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /onContinueExistingSession: \(\) => undefined/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /onRenameAssignedAgent: \(\) => undefined/u);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /function resolveKanbanCardAssignment\(/u);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /assignedAgentsFromKanbanCard\(card\)/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /ROVO_AGENT_SELECTOR_AGENTS/u);
 	assert.match(EXPERIMENTAL_BOARD_SOURCE, /<ExperimentalJiraKanbanCard[\s\S]*agents=\{agents\}/u);
 	assert.match(
 		EXPERIMENTAL_BOARD_SOURCE,
@@ -239,7 +259,7 @@ test("chin-row agent activity indicators use the Team EU renderer", () => {
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /<ExperimentalJiraKanban[\s\S]*renderAgentActivityIndicator=\{renderAgentActivityIndicator\}/u);
 	assert.match(EXPERIMENTAL_BOARD_SOURCE, /<ExperimentalJiraKanbanCard[\s\S]*renderAgentActivityIndicator=\{renderAgentActivityIndicator\}/u);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /<JiraIssue[\s\S]*renderAgentActivityIndicator=\{renderAgentActivityIndicator\}/u);
-	// Comfortable (v2) paints finished runs as h-10 session rows, which call
+	// Comfortable (v2) paints finished runs as h-8 session rows, which call
 	// the same finished renderer. The compact merged "N Finished" chip still
 	// exists for other boards and must keep that trailing slot.
 	assert.match(
@@ -661,6 +681,10 @@ test("the Work items header switches between Board and List views with their ico
 	assert.match(LIST_HOOK_SOURCE, /onCreate: handleCreateWorkItem/u);
 	assert.match(LIST_HOOK_SOURCE, /onStatusChange: handleStatusChange/u);
 	assert.match(LIST_HOOK_SOURCE, /onAssignedAgentIdsChange: handleAssignedAgentIdsChange/u);
+	assert.match(
+		LIST_HOOK_SOURCE,
+		/mergeJiraKanbanAgentCatalog\(JIRA_TEAM_EU26_PAY_BOARD_AGENTS\)/u,
+	);
 	assert.match(LIST_HOOK_SOURCE, /issueType: draftWorkItem.issueType/u);
 	assert.match(LIST_HOOK_SOURCE, /dueDate: draftWorkItem.dueDate/u);
 	assert.match(LIST_HOOK_SOURCE, /currentOrder.length === 0 \? allKeys : currentOrder/u);

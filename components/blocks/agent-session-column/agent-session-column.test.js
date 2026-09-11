@@ -724,7 +724,7 @@ test("the column keeps the selected session id across collapse remounts", () => 
 	assert.match(INDEX_SOURCE, /const isSelectionControlled = selectedItemIdProp !== undefined;/u);
 	assert.match(INDEX_SOURCE, /const \[uncontrolledSelectedItemId, setUncontrolledSelectedItemId\]/u);
 	assert.match(INDEX_SOURCE, /selectedItemId=\{selectedItemId\}/u);
-	assert.match(INDEX_SOURCE, /onSelectedItemIdChange=\{handleSelectedItemIdChange\}/u);
+	assert.match(INDEX_SOURCE, /onSelectedItemIdChange=\{multiSelect \? handleSelectedItemIdChange : undefined\}/u);
 	assert.match(
 		INDEX_SOURCE,
 		/onKeyDown=\{multiSelect \? untrackedSelection\.onKeyDown : undefined\}/u,
@@ -753,6 +753,21 @@ test("multiSelect=false removes multi-selection while preserving a singleton dra
 	assert.match(SESSION_DRAG_SOURCE, /cohort\?\.\(\) \?\? singletonSessionCohort\(item\)/u);
 	assert.match(PANEL_DEMO_SOURCE, /multiSelect=\{multiSelect\}/u);
 	assert.match(DETAIL_SOURCE, /name: "multiSelect"/u);
+});
+
+test("multiSelect=false also disables single-select row chrome", () => {
+	assert.match(
+		INDEX_SOURCE,
+		/const selectedItemId = multiSelect\s*\?\s*isSelectionControlled \? selectedItemIdProp : uncontrolledSelectedItemId\s*: null;/u,
+	);
+	assert.match(
+		INDEX_SOURCE,
+		/onSelectedItemIdChange=\{multiSelect \? handleSelectedItemIdChange : undefined\}/u,
+	);
+	assert.match(
+		TYPES_SOURCE,
+		/disables single-select row chrome: article click does not toggle/u,
+	);
 });
 
 test("the column owns a hidden-id set and filters items before AgentSession", () => {

@@ -563,15 +563,35 @@ export type AgentListRowHoverActions = Readonly<{
  */
 function CardActions({
 	menu,
+	overlay = false,
 	pinned = false,
 	primary,
 	secondary,
 }: Readonly<{
 	menu?: ReactNode;
+	/** Stack the menu on the reserved lifecycle slot instead of expanding a sibling. */
+	overlay?: boolean;
 	pinned?: boolean;
 	primary?: AgentListRowAction;
 	secondary?: AgentListRowAction;
 }>) {
+	if (overlay) {
+		return (
+			<div
+				className={cn(
+					"pointer-events-none absolute inset-0 flex items-center justify-center opacity-0",
+					"group-hover/agent-row:pointer-events-auto group-hover/agent-row:opacity-100",
+					"group-has-[:focus-visible]/agent-row:pointer-events-auto group-has-[:focus-visible]/agent-row:opacity-100",
+					"group-has-[[aria-expanded=true]]/agent-row:pointer-events-auto group-has-[[aria-expanded=true]]/agent-row:opacity-100",
+					pinned && "pointer-events-auto opacity-100",
+				)}
+				data-session-drag-ignore=""
+			>
+				{menu}
+			</div>
+		);
+	}
+
 	return (
 		<div
 			className={cn(
@@ -598,6 +618,7 @@ function CardActions({
 						"group-data-[variant=uncaptured-work]/agent-row:transition-none",
 						pinned && "pointer-events-auto opacity-100",
 					)}
+					data-session-drag-ignore=""
 				>
 					{primary ? <AgentListRowActionButton action={primary} /> : null}
 					{secondary ? <AgentListRowActionButton action={secondary} /> : null}
@@ -696,6 +717,13 @@ export function AgentListRow({
 		(hoverActions?.primary !== undefined
 			|| hoverActions?.secondary !== undefined
 			|| hoverActions?.menu !== undefined);
+	// A menu-only reveal (session "..." / viewer hint) must occupy the same
+	// 24px trailing slot as the lifecycle glyph. Expanding a sibling `0fr`
+	// column would move the trigger when hover, focus, or open swaps them.
+	const overlayHoverActions = showHoverActions
+		&& hoverActions?.primary === undefined
+		&& hoverActions?.secondary === undefined
+		&& hoverActions?.menu !== undefined;
 	// `undefined` is "no opinion" and falls back to the `STATE_META` gate; an
 	// explicit `null` means "no indicator". `??` silently collapsed the two.
 	const lifecycleNode = lifecycle === undefined
@@ -795,23 +823,42 @@ export function AgentListRow({
 							</span>
 						) : metadata}
 					</RowBody>
-					{lifecycleNode ? (
+					{lifecycleNode || overlayHoverActions ? (
 						// A `div`, not a `span`: every non-running indicator is an
 						// `IconTile`, whose root is a block element. Phrasing content
 						// cannot contain it, and the invalid nesting surfaces as a
 						// hydration recovery on server-rendered session lists.
 						<div
 							className={cn(
-								"ml-3 flex w-6 shrink-0 items-center",
-								showHoverActions &&
+								"relative ml-3 flex size-6 shrink-0 items-center justify-center overflow-visible",
+								!overlayHoverActions && "pointer-events-none",
+								!overlayHoverActions && showHoverActions &&
 									"group-hover/agent-row:hidden group-has-[:focus-visible]/agent-row:hidden",
-								showHoverActions && hoverActions?.pinned && "hidden",
+								!overlayHoverActions && showHoverActions && hoverActions?.pinned && "hidden",
 							)}
 						>
-							{lifecycleNode}
+							{lifecycleNode ? (
+								<div
+									className={cn(
+										overlayHoverActions
+											? "group-hover/agent-row:pointer-events-none group-hover/agent-row:invisible group-has-[:focus-visible]/agent-row:pointer-events-none group-has-[:focus-visible]/agent-row:invisible group-has-[[aria-expanded=true]]/agent-row:pointer-events-none group-has-[[aria-expanded=true]]/agent-row:invisible"
+											: "pointer-events-none",
+										overlayHoverActions && hoverActions?.pinned && "pointer-events-none invisible",
+									)}
+								>
+									{lifecycleNode}
+								</div>
+							) : null}
+							{overlayHoverActions ? (
+								<CardActions
+									menu={hoverActions?.menu}
+									overlay
+									pinned={hoverActions?.pinned}
+								/>
+							) : null}
 						</div>
 					) : null}
-					{showHoverActions ? (
+					{showHoverActions && !overlayHoverActions ? (
 						<CardActions
 							menu={hoverActions?.menu}
 							pinned={hoverActions?.pinned}
