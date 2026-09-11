@@ -9,6 +9,10 @@ const JIRA_WORK_ITEM_URL = `${
 	process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000"
 }/preview/blocks/jira-work-item-demo-experimental`;
 
+const JIRA_WORK_ITEM_V2_URL = `${
+	process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000"
+}/preview/blocks/jira-work-item-demo-experimental-v2`;
+
 const JIRA_WORK_ITEM_V3_URL = `${
 	process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000"
 }/preview/blocks/jira-work-item-demo-experimental-v3`;
@@ -38,6 +42,26 @@ test("rapid metadata toggles settle with visible title actions", async ({ page }
 	await expect(titleActions).not.toHaveAttribute("aria-hidden");
 	await expect(titleActions).not.toHaveAttribute("inert");
 	await expect(titleActions).toHaveCSS("opacity", "1");
+});
+
+test("v2 comment prompt keeps its resting height when focused", async ({ page }) => {
+	await page.goto(JIRA_WORK_ITEM_V2_URL, { waitUntil: "domcontentloaded" });
+	await page.getByRole("button", { name: "Open work item" }).click();
+
+	const composer = page.getByRole("form", {
+		name: "Comment, @mention an agent, or / for skills",
+	});
+	const prompt = page.getByRole("textbox", {
+		name: "Comment, @mention an agent, or / for skills",
+	});
+	await expect(composer).toBeVisible();
+	const restingHeight = await composer.evaluate((element) => getComputedStyle(element).height);
+
+	await prompt.click();
+	await expect(prompt).toBeFocused();
+	await expect.poll(
+		() => composer.evaluate((element) => getComputedStyle(element).height),
+	).toBe(restingHeight);
 });
 
 test("opening v3 resolves section links to the visible desktop scrollport", async ({ page }) => {
