@@ -69,7 +69,7 @@ test("running drops the redundant label; awaiting swaps the title to the Needs i
 	// The shimmering title alone communicates a running session.
 	assert.doesNotMatch(CARD_SOURCE, /Working on it/);
 	assert.match(CARD_SOURCE, /"needs-input":\s*\{[^}]*showDots:\s*true/);
-	assert.doesNotMatch(CARD_SOURCE, /titleOverride|const titleText/);
+	assert.doesNotMatch(CARD_SOURCE, /titleOverride/u);
 	// Awaiting sessions name the blocked state instead of the task title, matching
 	// the Jira queue card's JiraSessionLabel.
 	assert.match(CARD_SOURCE, /const AWAITING_INPUT_TITLE = "Needs input";/u);
@@ -81,11 +81,14 @@ test("running drops the redundant label; awaiting swaps the title to the Needs i
 	);
 	// The helper drives both native card title slots and remains the default for
 	// the shared header when a consumer does not lead with the agent identity.
-	assert.equal((CARD_SOURCE.match(/getSessionTitle\(item\)/gu) ?? []).length, 3);
+	assert.equal((CARD_SOURCE.match(/getSessionTitle\(item\)/gu) ?? []).length, 2);
 	// A row whose caller-owned metadata already states the lifecycle can opt out,
 	// so the state is not said twice with the work name nowhere on the card.
 	assert.match(CARD_SOURCE, /stateAwareTitle = true,/u);
-	assert.match(CARD_SOURCE, /\{stateAwareTitle \? getSessionTitle\(item\) : item\.title\}/u);
+	assert.match(
+		CARD_SOURCE,
+		/const resolvedTitle = stateAwareTitle \? getSessionTitle\(item\) : item\.title;/u,
+	);
 	assert.match(CARD_SOURCE, /\{stateAwareTitle && stateMeta\.showDots \? <AnimatedDots/u);
 	assert.match(
 		CARD_SOURCE,
@@ -217,7 +220,7 @@ test("rows carry an optional summary below metadata, leading metadata, and a sta
 	// The summary wraps below the metadata row and keeps the title in natural
 	// wrapping mode instead of inheriting the one-line hover treatment.
 	assert.match(CARD_SOURCE, /const hasSummary = Boolean\(item\.summary\);/u);
-	assert.match(CARD_SOURCE, /const titleOverflowClassName = hasSummary\s*\? "text-pretty"/u);
+	assert.match(CARD_SOURCE, /"min-w-0 font-medium",\s*hasSummary \? "text-pretty"/u);
 	assert.match(
 		CARD_SOURCE,
 		/<AgentListMetadataIdentity item=\{item\} \/>[\s\S]*\{item\.summary \? \(\s*<span\s*className=\{cn\(\s*"mt-2 w-full min-w-0 text-pretty text-text",/u,
@@ -506,13 +509,25 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		/"flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest"/u,
 	);
 	assert.match(CARD_SOURCE, /<span className=\{cn\(titleClassName, "text-text"\)\}>/u);
-	// A row with reveal actions lets the full title wrap at rest. The title only
-	// becomes a one-line ellipsis once hover or keyboard focus expands the actions.
+	// Long reveal-action titles keep their wrapped copy in layout while a
+	// one-line visual copy takes over on hover/focus. This keeps lower title lines
+	// inside the hit area instead of collapsing the row out from under the pointer.
 	assert.match(
 		CARD_SOURCE,
-		/showHoverActions\s*\? \[\s*"group-hover\/agent-row:truncate group-has-\[:focus-visible\]\/agent-row:truncate",\s*hoverActions\?\.pinned \? "truncate" : null,\s*\]\s*: "truncate"/u,
+		/const stabilizeHoverTitle = !hasSummary\s*&& showHoverActions\s*&& !\(stateAwareTitle && stateMeta\.shimmerTitle\);/u,
 	);
-	assert.doesNotMatch(CARD_SOURCE, /"whitespace-nowrap",\s*"group-hover\/agent-row:truncate/u);
+	assert.match(
+		CARD_SOURCE,
+		/className=\{cn\(titleClassName, "col-start-1 row-start-1 text-text"\)\}\s*data-agent-list-title-layout=""/u,
+	);
+	assert.match(
+		CARD_SOURCE,
+		/const hoverTitleClassName = cn\(\s*"col-start-1 row-start-1 min-w-0 truncate/u,
+	);
+	assert.match(
+		CARD_SOURCE,
+		/aria-hidden="true"\s*className=\{hoverTitleClassName\}\s*data-agent-list-title-hover=""/u,
+	);
 	assert.match(CARD_SOURCE, /className="min-w-0 truncate">\{item\.agent\.name\}<\/span>/u);
 	assert.match(
 		CARD_ACTIONS_SOURCE,

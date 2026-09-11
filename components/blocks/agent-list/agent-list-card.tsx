@@ -631,21 +631,27 @@ export function AgentListRow({
 		(hoverActions?.primary !== undefined
 			|| hoverActions?.secondary !== undefined
 			|| hoverActions?.menu !== undefined);
-	// Let the full title wrap at rest. Once actions expand, the title collapses to
-	// one line and owns the ellipsis instead of colliding with them. Rows without
-	// reveal actions keep their existing truncation contract, while summary rows
-	// wrap.
-	const titleOverflowClassName = hasSummary
-		? "text-pretty"
-		: showHoverActions
-			? [
-				"group-hover/agent-row:truncate group-has-[:focus-visible]/agent-row:truncate",
-				hoverActions?.pinned ? "truncate" : null,
-			]
-			: "truncate";
+	// A long resting title can be several lines tall. Keep that wrapped copy in
+	// layout while a one-line visual copy takes over during reveal, otherwise the
+	// row can collapse out from under a pointer entering one of its lower lines.
+	const stabilizeHoverTitle = !hasSummary
+		&& showHoverActions
+		&& !(stateAwareTitle && stateMeta.shimmerTitle);
+	const resolvedTitle = stateAwareTitle ? getSessionTitle(item) : item.title;
 	const titleClassName = cn(
 		"min-w-0 font-medium",
-		titleOverflowClassName,
+		hasSummary ? "text-pretty" : stabilizeHoverTitle
+			? [
+				"group-hover/agent-row:opacity-0 group-has-[:focus-visible]/agent-row:opacity-0",
+				hoverActions?.pinned ? "opacity-0" : null,
+			]
+			: "truncate",
+		isCompact ? "text-xs" : "text-sm",
+	);
+	const hoverTitleClassName = cn(
+		"col-start-1 row-start-1 min-w-0 truncate font-medium text-text opacity-0",
+		"group-hover/agent-row:opacity-100 group-has-[:focus-visible]/agent-row:opacity-100",
+		hoverActions?.pinned ? "opacity-100" : null,
 		isCompact ? "text-xs" : "text-sm",
 	);
 
@@ -715,11 +721,27 @@ export function AgentListRow({
 									duration={1.4}
 									spread={2}
 								>
-									{getSessionTitle(item)}
+									{resolvedTitle}
 								</Shimmer>
+							) : stabilizeHoverTitle ? (
+								<span className="grid w-full min-w-0">
+									<span
+										className={cn(titleClassName, "col-start-1 row-start-1 text-text")}
+										data-agent-list-title-layout=""
+									>
+										{resolvedTitle}
+									</span>
+									<span
+										aria-hidden="true"
+										className={hoverTitleClassName}
+										data-agent-list-title-hover=""
+									>
+										{resolvedTitle}
+									</span>
+								</span>
 							) : (
 								<span className={cn(titleClassName, "text-text")}>
-									{stateAwareTitle ? getSessionTitle(item) : item.title}
+									{resolvedTitle}
 								</span>
 							)}
 							{stateAwareTitle && stateMeta.showDots ? <AnimatedDots /> : null}
