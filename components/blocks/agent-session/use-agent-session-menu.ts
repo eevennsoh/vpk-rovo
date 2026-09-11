@@ -48,6 +48,7 @@ export function useAgentSessionMenu({
 	onCopyResume,
 	onDeleteSession,
 	onItemHover,
+	onMoreMenuOpenChange,
 	onRenameSession,
 	onToggleVisibility,
 	resumeCommand,
@@ -59,13 +60,18 @@ export function useAgentSessionMenu({
 	onCopyResume?: (item: AgentSessionItem) => void;
 	onDeleteSession?: (item: AgentSessionItem) => void;
 	onItemHover?: (item: AgentSessionItem | null) => void;
+	onMoreMenuOpenChange?: (open: boolean) => void;
 	onRenameSession?: (item: AgentSessionItem) => void;
 	onToggleVisibility?: (item: AgentSessionItem) => void;
 	resumeCommand: string;
 }>): AgentSessionMenuState {
 	const [copied, setCopied] = useState(false);
-	const [isOpen, setIsOpen] = useState(false);
+	const [isOpen, setIsOpenState] = useState(false);
 	const resetRef = useRef<number | undefined>(undefined);
+	const setIsOpen = useCallback((open: boolean) => {
+		setIsOpenState(open);
+		onMoreMenuOpenChange?.(open);
+	}, [onMoreMenuOpenChange]);
 
 	useEffect(() => () => {
 		window.clearTimeout(resetRef.current);

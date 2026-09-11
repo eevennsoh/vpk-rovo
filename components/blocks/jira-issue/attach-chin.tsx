@@ -15,7 +15,7 @@ export function JiraIssueAttachChinSlot({
 			className="pointer-events-none flex h-8 w-full items-center justify-center rounded-md"
 			data-slot="jira-issue-attach-chin-slot"
 		>
-			<span className="text-xs font-normal text-text-subtlest">
+			<span className="text-sm font-normal text-text-subtlest">
 				{copy}
 			</span>
 		</div>

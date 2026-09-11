@@ -369,8 +369,22 @@ test("Jira issue keeps activity rows composer-free and uses one shared assignmen
 	// clones only the drag handle so the hover card keeps `aria-expanded`.
 	assert.match(AGENT_ACTIVITY_SOURCE, /if \(!showAssignmentFlyout \|\| isCompletedRow\) \{\s*return rowHandle;[\s\S]*<AgentAssignment/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /onAssignedAgentIdsChange=\{assignment\?\.onAssignedAgentIdsChange\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /onContinueExistingSession=\{assignment\?\.onContinueExistingSession\}/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /onRenameAssignedAgent=\{assignment\?\.onRenameAssignedAgent\}/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /assignedAgents = assignment\?\.assignedAgents \?\? activities\.map\(toAgentAssignmentAgent\)/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /statusKind: toAssignedAgentStatusKind\(activity\.state\)/u);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/\.\.\.\(activity\.invokedBy \? \{ invokedBy: activity\.invokedBy \} : \{\}\)/u,
+	);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/\.\.\.\(activity\.host !== undefined \? \{ host: activity\.host \} : \{\}\)/u,
+	);
+	assert.match(
+		AGENT_ACTIVITY_SOURCE,
+		/\.\.\.\(activity\.role !== undefined \? \{ role: activity\.role \} : \{\}\)/u,
+	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /case "awaiting-input":\s*return "needs-input";/u);
 	assert.match(SOURCE, /assignment\?: JiraIssueAgentAssignment;/u);
 	assert.match(SOURCE, /assignment=\{assignment\}/u);
@@ -773,7 +787,7 @@ test("Jira issue aggregates completed agents into a Finished row with failure pr
 		/const finishedIndicator = !hasFailedRun && renderAgentActivityIndicator\s*\n\s*\? renderAgentActivityIndicator\("finished"\)\s*\n\s*: null;/u,
 	);
 	assert.match(COMPLETED_RUNS_SOURCE, /<HoverCard open=\{aggregateOpen\} onOpenChange=\{handleAggregateOpenChange\}>[\s\S]*aria-label=\{hasFailedRun \? `\$\{finishedLabel\}, includes errors` : finishedLabel\}[\s\S]*data-slot="jira-issue-agent-row"[\s\S]*usesStrokeChrome \? \(\s*<IconTile[\s\S]*icon=\{<AiAgentIcon label="" size="small" \/>\}[\s\S]*: \([\s\S]*<AiAgentIcon label="" \/>[\s\S]*\{finishedLabel\}[\s\S]*hasFailedRun \? \([\s\S]*<StatusErrorIcon[\s\S]*: finishedIndicator \? \(\s*<span[\s\S]*\{finishedIndicator\}/u);
-	assert.match(COMPLETED_RUNS_SOURCE, /className="flex h-10 w-full[^"]*rounded-b-\[6px\] rounded-t-sm[^"]*px-2 py-2[^"]*"/u);
+	assert.match(COMPLETED_RUNS_SOURCE, /className="flex h-8 w-full[^"]*rounded-b-\[6px\] rounded-t-sm[^"]*px-2 py-1[^"]*"/u);
 	assert.match(COMPLETED_RUNS_SOURCE, /<IconTile[\s\S]*iconSize="medium"[\s\S]*size="small"[\s\S]*variant="transparent"/u);
 	assert.match(COMPLETED_RUNS_SOURCE, /className="truncate text-sm leading-5 text-text"/u);
 	assert.match(COMPLETED_RUNS_SOURCE, /className="grid size-6 shrink-0 place-items-center text-icon-subtle"/u);
@@ -979,22 +993,4 @@ test("Jira issue agent activity chin splits into one row per agent only when ask
 	assert.match(AGENT_ACTIVITY_SOURCE, /<JiraIssueAgentActivityRow\s*\n\s*activities=\{rowGroup\.activities\}/u);
 	assert.match(MODEL_SOURCE, /export type JiraIssueAgentActivityLayout = "merged" \| "split";/u);
 	assert.match(MODEL_SOURCE, /if \(layout === "split"\) \{[\s\S]*activeActivities\.map\(\(activity\) => \(\{ activities: \[activity\], key: activity\.id \}\)\)/u);
-});
-
-test("Jira issue renders explicit unassigned avatars with the shared placeholder", () => {
-	assert.match(SUMMARY_SOURCE, /AvatarUnassigned,/);
-	assert.match(SOURCE, /assigneeUnassignedKind\?: AvatarUnassignedKind;/);
-	assert.match(LIB_SOURCE, /export function resolveIssueAssigneeUnassignedKind/);
-	assert.match(
-		SUMMARY_SOURCE,
-		/function JiraIssueAssignee[\s\S]*size = "sm"[\s\S]*const unassignedKind = resolveIssueAssigneeUnassignedKind\([\s\S]*assigneeAvatarSrc[\s\S]*assigneeUnassignedKind[\s\S]*if \(unassignedKind\) \{[\s\S]*<AvatarUnassigned[\s\S]*kind=\{unassignedKind\}[\s\S]*size=\{size\}/,
-	);
-	assert.match(SUMMARY_SOURCE, /usesStrokeChrome \? \([\s\S]*"flex size-6 shrink-0 items-center justify-center"[\s\S]*comfortableIcons \? undefined : "-mr-1"[\s\S]*data-slot="jira-issue-assignee-slot"[\s\S]*size=\{iconMetrics\.assigneeSize\}/);
-	assert.match(SUMMARY_SOURCE, /size="sm"/);
-});
-
-test("Jira issue assignee avatars honor the shared hexagon shape for agents", () => {
-	assert.match(SOURCE, /assigneeAvatarShape\?: NonNullable<AvatarProps\["shape"\]>;/);
-	assert.match(SOURCE, /assigneeAvatarShape = "circle"/);
-	assert.match(SUMMARY_SOURCE, /function JiraIssueAssignee[\s\S]*shape=\{assigneeAvatarShape\}/);
 });

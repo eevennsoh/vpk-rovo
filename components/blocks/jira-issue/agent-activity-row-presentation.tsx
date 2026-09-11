@@ -47,6 +47,7 @@ export type JiraIssueAgentAssignment = Partial<
 		| "onBrowseAgents"
 		| "onContinueExistingSession"
 		| "onCreateAgent"
+		| "onRenameAssignedAgent"
 		| "onStartNewSession"
 		| "pinnedItemsLabel"
 		| "usedAgentIds"
@@ -389,6 +390,7 @@ export function JiraIssueAgentAssignmentHandle({
 				onBrowseAgents={assignment?.onBrowseAgents}
 				onContinueExistingSession={assignment?.onContinueExistingSession}
 				onCreateAgent={assignment?.onCreateAgent}
+				onRenameAssignedAgent={assignment?.onRenameAssignedAgent}
 				onOpenChange={onOpenChange}
 				onStartNewSession={assignment?.onStartNewSession}
 				openMode="hover"
