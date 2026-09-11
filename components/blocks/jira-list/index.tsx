@@ -535,7 +535,7 @@ export function JiraList({
 					</InputGroupAddon>
 				) : null}
 			</InputGroup>
-			<div className="ml-auto flex shrink-0 items-center gap-1">
+			<div className="ml-auto flex shrink-0 items-center gap-2">
 				<Button
 					className="px-2"
 					disabled={!draftWorkItem?.summary.trim()}
@@ -838,7 +838,7 @@ export function JiraList({
 				) : null}
 				</div>
 				<div
-					className="sticky bottom-0 z-20 flex h-10 min-h-10 items-center gap-3 border-t border-border bg-surface px-1 py-1 text-[13px] shrink-0"
+					className="sticky bottom-0 z-20 flex h-10 min-h-10 items-center gap-3 border-t border-border bg-surface px-2 py-1 text-[13px] shrink-0"
 					data-footer-state={isFooterDraft ? "editing" : "default"}
 					data-testid="jira-list-sticky-footer"
 				>
