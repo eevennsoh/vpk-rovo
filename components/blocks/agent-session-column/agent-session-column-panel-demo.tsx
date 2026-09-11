@@ -263,7 +263,7 @@ export function AgentSessionColumnPanelDemo({
 				style={{ width: hostWidthPx }}
 			>
 				<PanelContainer
-					aria-label="Unattached sessions panel"
+					aria-label="Unlink sessions panel"
 					className="h-full"
 				>
 					<PanelContent className={collapsed ? "pt-1" : "pt-0"}>

@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
  * panel header and the column's `aria-label` cannot disagree when the host does
  * not supply one.
  */
-const AGENT_SESSION_PANEL_TITLE = "Unattached sessions";
+const AGENT_SESSION_PANEL_TITLE = "Unlink sessions";
 
 /**
  * Entrance slide distance in px.
