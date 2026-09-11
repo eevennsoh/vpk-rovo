@@ -27,7 +27,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { ConeSafezone, ConeSafezoneContent, ConeSafezoneTrigger } from "@/components/utils/cone-safezone";
 import { Icon } from "@/components/ui/icon";
 import { IconTile } from "@/components/ui/icon-tile";
 import { Lozenge, LozengeDropdownTrigger, type LozengeProps } from "@/components/ui/lozenge";
@@ -831,7 +831,6 @@ export function SmartLink({
 			/>
 		);
 	}
-
 	const handleOpenChange = (nextOpen: boolean) => {
 		setOpen(nextOpen);
 		onOpenChange?.(nextOpen);
@@ -842,13 +841,13 @@ export function SmartLink({
 	};
 
 	const hoverCard = (
-		<HoverCard
+		<ConeSafezone
 			closeDelay={closeDelay}
 			onOpenChange={handleOpenChange}
 			open={open}
 			openDelay={openDelay}
 		>
-			<HoverCardTrigger
+			<ConeSafezoneTrigger
 				render={
 					<SmartLinkTrigger
 						className={className}
@@ -862,7 +861,7 @@ export function SmartLink({
 					/>
 				}
 			/>
-			<HoverCardContent
+			<ConeSafezoneContent
 				align={align}
 				alignOffset={alignOffset}
 				className="w-auto border-0 bg-transparent p-0 text-text shadow-none"
@@ -876,8 +875,8 @@ export function SmartLink({
 					item={item}
 					onActionSelect={onActionSelect}
 				/>
-			</HoverCardContent>
-		</HoverCard>
+			</ConeSafezoneContent>
+		</ConeSafezone>
 	);
 
 	if (!isRemovableOverlay) {

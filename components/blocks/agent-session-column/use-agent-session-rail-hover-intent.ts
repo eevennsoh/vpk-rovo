@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { isHeadingIntoPopup } from "@/components/utils/cone-safezone/geometry";
 
 import type {
 	JiraSessionFlyoutHandle,
@@ -9,17 +10,6 @@ import type {
 
 type Point = { x: number; y: number };
 const HOVER_INTENT_GRACE_MS = 300;
-
-/** The cone ends at the popup's near edge and works for either collision-resolved side. */
-export function isHeadingIntoPopup(origin: Point, point: Point, popup: DOMRect): boolean {
-	const edge = popup.left > origin.x ? popup.left : popup.right;
-	const distance = edge - origin.x;
-	const progress = (point.x - origin.x) / distance;
-	if (distance === 0 || progress <= 0 || progress > 1) return false;
-	const top = origin.y + (popup.top - 4 - origin.y) * progress;
-	const bottom = origin.y + (popup.bottom + 4 - origin.y) * progress;
-	return point.y >= top && point.y <= bottom;
-}
 
 /** Base UI keeps a popup open on exit; this guards switching between dense sibling triggers. */
 export function useAgentSessionRailHoverIntent(handle: JiraSessionFlyoutHandle) {

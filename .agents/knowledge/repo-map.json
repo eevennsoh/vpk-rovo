@@ -5419,7 +5419,7 @@
 	},
 	"components": {
 		"summary": {
-			"manifestEntryCount": 443,
+			"manifestEntryCount": 444,
 			"categoryCount": 9
 		},
 		"categories": [
@@ -7441,13 +7441,19 @@
 			},
 			{
 				"category": "utility",
-				"entryCount": 9,
+				"entryCount": 10,
 				"entries": [
 					{
 						"category": "utility",
 						"slug": "agent-browser",
 						"name": "Agent Browser",
 						"importPath": "@/components/website/demos/utils/agent-browser"
+					},
+					{
+						"category": "utility",
+						"slug": "cone-safezone",
+						"name": "Cone safezone",
+						"importPath": "@/components/utils/cone-safezone"
 					},
 					{
 						"category": "utility",
