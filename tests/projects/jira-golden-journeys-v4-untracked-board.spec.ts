@@ -213,15 +213,15 @@ test("attaching onto a running session replaces that chin row instead of stackin
 	);
 	await expect(dropZone).toHaveAttribute("data-board-agent-session-target", "attach");
 	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin"]')).toBeVisible();
-	await expect(targetCard.getByText("Attach 1 agent session")).toBeVisible();
+	await expect(targetCard.getByText("Link 1 agent session")).toBeVisible();
+	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin-slot"]')).toHaveCSS("height", "32px");
 	await expect(runningSession).toHaveCount(0);
 	await expect(targetCard.locator('[data-slot="jira-issue-agent-row"]')).toHaveCount(0);
 
 	const attachingBox = await targetCard.boundingBox();
 	expect(attachingBox).not.toBeNull();
 	if (!attachingBox) return;
-	// One extra chin row is 24px plus 8px of gutter. Stay well under that.
-	expect(attachingBox.height).toBeLessThan(restingBox.height + 16);
+	expect(attachingBox.height).toBe(restingBox.height);
 
 	await page.mouse.up();
 });
@@ -251,7 +251,8 @@ test("attaching onto PAY-118 replaces any session chin instead of stacking the d
 	);
 	await expect(dropZone).toHaveAttribute("data-board-agent-session-target", "attach");
 	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin"]')).toHaveCount(1);
-	await expect(targetCard.getByText("Attach 1 agent session")).toBeVisible();
+	await expect(targetCard.getByText("Link 1 agent session")).toBeVisible();
+	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin-slot"]')).toHaveCSS("height", "32px");
 	await expect(targetCard.locator('[data-testid^="agent-session-row-"]:visible')).toHaveCount(0);
 	await expect(targetCard.getByText("Why the wallet was cut")).not.toBeVisible();
 	await expect(targetCard.getByText("The adapter keep-or-delete")).not.toBeVisible();

@@ -400,7 +400,7 @@ function JiraIssueAgentDragWrapper({
 			className={cn(
 				"min-w-0",
 				isDragging && "relative w-full",
-				isDragging && (isDraggedOut ? "h-0" : "h-10"),
+				isDragging && (isDraggedOut ? "h-0" : "h-8"),
 			)}
 			data-session-chip-out={isDraggedOut || undefined}
 			data-slot="jira-issue-agent-row-wrap"
@@ -706,7 +706,7 @@ export function JiraIssueAgentActivityRows({
 		: "animated";
 	// A pointer drag re-renders the row on every move. Hovering the assignment
 	// flyout also remounts trigger attrs. Freezing `layout` keeps Motion from
-	// re-measuring the LayoutGroup and fighting the reserved h-10 chin.
+	// re-measuring the LayoutGroup and fighting the reserved h-8 chin.
 	const rowLayout = shouldReduceMotion || sessionDragging || assignmentHoverOpen
 		? false
 		: "position";
