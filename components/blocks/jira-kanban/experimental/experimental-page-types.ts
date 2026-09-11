@@ -49,6 +49,7 @@ export interface ExperimentalJiraKanbanPageProps {
 	/** Extra local sessions discovered after the static Pulse fixture loaded. */
 	additionalAgentSessions?: readonly PulseAgentSession[];
 	agentActivityLayout?: JiraIssueAgentActivityLayout;
+	cardGenerativeActionFooterActions?: ExperimentalJiraKanbanProps["cardGenerativeActionFooterActions"];
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
 	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
 	iconScale?: JiraIssueIconScale;
