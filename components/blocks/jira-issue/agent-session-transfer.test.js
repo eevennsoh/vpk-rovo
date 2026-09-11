@@ -770,6 +770,10 @@ test("attach chin replaces the last occupied session row instead of stacking or 
 		ATTACH_CHIN_SOURCE,
 		/export function JiraIssueDetachedAttachChinSlot\([\s\S]*h-\[33px\][\s\S]*data-slot="jira-issue-attach-chin"/u,
 	);
+	assert.match(
+		ATTACH_CHIN_SOURCE,
+		/export function JiraIssueAttachChinSlot\([\s\S]*className="pointer-events-none flex h-8 w-full/u,
+	);
 	// Nearby/detached pills already occupy the last chin. Attach copy covers
 	// that slot, but `AgentSessionMediumDrag` stays mounted so pointer capture
 	// and the window pointerup fallback survive the first armed move.
