@@ -6,7 +6,7 @@ export type SessionColumnRepositionInteractiveKind =
 	| "other";
 
 const REPOSITION_SURFACE_SELECTOR = [
-	"[data-agent-session-column-header]",
+	"[data-session-column-move-surface]",
 	"[data-agent-session-column-rail]",
 	"[data-agent-session-notch]",
 ].join(", ");
@@ -14,9 +14,9 @@ const REPOSITION_SURFACE_SELECTOR = [
 const INTERACTIVE_SELECTOR = "button, a, input, [role=separator]";
 
 /**
- * Only explicit column controls start a move: the collapsed options button
- * and the expanded move handle. Session notches own their own drag gesture;
- * the enclosing rail and header must not capture it for column repositioning.
+ * The entire expanded header and the collapsed options button start a move.
+ * Session notches own their own drag gesture; the enclosing rail must not
+ * capture it for column repositioning.
  */
 export function canStartSessionColumnReposition({
 	inHeader,
@@ -31,6 +31,9 @@ export function canStartSessionColumnReposition({
 }>): boolean {
 	if (!inHeader && !inNotch && !inRail) {
 		return false;
+	}
+	if (inHeader) {
+		return true;
 	}
 
 	switch (interactiveKind) {
@@ -70,7 +73,7 @@ export function isSessionColumnRepositionPointerTarget(target: EventTarget | nul
 	}
 
 	return canStartSessionColumnReposition({
-		inHeader: Boolean(target.closest("[data-agent-session-column-header]")),
+		inHeader: Boolean(target.closest("[data-session-column-move-surface]")),
 		inNotch: Boolean(target.closest("[data-agent-session-notch]")),
 		inRail: Boolean(target.closest("[data-agent-session-column-rail]")),
 		interactiveKind: resolveInteractiveKind(target.closest(INTERACTIVE_SELECTOR)),
