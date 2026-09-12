@@ -61,6 +61,7 @@ const SkillsDirectoryDialog = dynamic(() => import("@/components/blocks/skills-d
 
 const JIRA_TEAM_EU26_TABS = getJiraTabs(false);
 const JIRA_TEAM_EU26_DEFAULT_TAB_LABEL = getJiraWorkItemsTabLabel(JIRA_TEAM_EU26_TABS);
+const isJiraTeamEu26LooseWorkResumable = () => true;
 
 function resolveJiraTeamEu26ContinueChatAgent(
 	agentId: PulseCodingAgentId,
@@ -147,10 +148,10 @@ function JiraTeamEu26App(): React.ReactElement {
 		}
 	}, [tabs]);
 	const [resumeAnnouncement, setResumeAnnouncement] = useState("");
-	// Untracked work offers Resume on the rows running on the viewer's own
-	// device; that gate is the board's default, so this route only supplies the
-	// behavior. The card owns the clipboard copy and its own "Copied" label, so
-	// the announcement here is the only thing a screen reader hears.
+	// Team EU presents every unlinked session as locally resumable, even when the
+	// fixture names a teammate's machine. The card owns the clipboard copy and
+	// its own "Copied" label, so the announcement here is the only thing a screen
+	// reader hears.
 	const handleResumeLooseWork = useCallback((item: PulseLooseWork) => {
 		if (!isPulseAgentSession(item)) return;
 		setResumeAnnouncement(
@@ -304,12 +305,14 @@ function JiraTeamEu26App(): React.ReactElement {
 		session: AgentSessionItem,
 		columnTitle: string,
 		insertAtIndex?: number,
+		issueType?: JiraKanbanCardData["issueType"],
 	) => {
 		const activity = consumeDetachedAgentSession(session);
 		return createBoardFromAgentSession({
 			activity,
 			columnTitle,
 			insertAtIndex,
+			issueType,
 			session,
 		});
 	}, [consumeDetachedAgentSession, createBoardFromAgentSession]);
@@ -373,6 +376,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						detachedAgentSessionsByCard={detachedAgentSessionsByCard}
 						headerAssignees={JIRA_TEAM_EU26_PAY_HEADER_ASSIGNEES}
 						insightsEnabled={false}
+						isLooseWorkResumable={isJiraTeamEu26LooseWorkResumable}
 						newAgentSessionIds={newAgentSessionIds}
 						onAgentSessionsReviewed={reviewAgentSessions}
 						onBoardAgentSessionCreate={handleBoardAgentSessionCreate}

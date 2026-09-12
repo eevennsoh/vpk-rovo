@@ -174,13 +174,25 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 			name: "onLinkWorkItem",
 			type: "(item: AgentSessionItem, workItemKey?: string) => void",
 			description:
-				"Links a session to a suggested work item from the chin. Receives the row's key when several are offered. The header overflow's Link all suggestions action calls this once per uncaptured session in the current view.",
+				"Links a session to a suggested work item from the chin. Receives the row's key when several are offered. The header overflow's Link all suggestions action calls this once per uncaptured session in the current view, and the card's more menu calls it with the work item picked in its Link work item submenu.",
 		},
 		{
 			name: "onCreateWorkItem",
 			type: "(item: AgentSessionItem) => void",
 			description:
 				"Creates a work item from a session. When omitted, the action is exposed as unavailable.",
+		},
+		{
+			name: "onCreateWorkItemFromDraft",
+			type: "(item: AgentSessionItem, draft: AgentSessionWorkItemDraft) => void",
+			description:
+				"Creates a work item the viewer named in the card menu's Create new tab, carrying the typed summary and chosen issue type. Omit to disable that tab.",
+		},
+		{
+			name: "workItemOptions",
+			type: "readonly AgentSessionWorkItemOption[]",
+			description:
+				"Work items the card menu's Link work item submenu offers on its Link to existing tab, as { key, summary, issueType }. Supplied by the host so the list is the board in view rather than a fixture.",
 		},
 		{
 			name: "isResumable",

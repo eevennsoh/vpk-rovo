@@ -1,14 +1,27 @@
 "use client";
 
+/**
+ * VPK-facing alias for metal-fx 1.0.2 — the last release published with npm
+ * provenance attestation (1.0.3+ and all of 2.x are unattested and pnpm
+ * rejects them as a trust downgrade).
+ * Original: https://libraries.dev/metal
+ * Source: https://github.com/Jakubantalik/metal-fx
+ *
+ * Note: metal-fx renders every visible instance from one shared offscreen
+ * GL canvas, so a page shows ONE material at a time — `preset` is
+ * effectively page-level, not per-instance. Upstream has no per-instance
+ * preset in 1.x or 2.x, and neither does its own demo.
+ */
+
 import { type Ref } from "react";
 
-import { MetalFx as UpstreamMetalFx } from "./vendor/metal-fx/src/MetalFx";
+import { MetalFx as UpstreamMetalFx } from "metal-fx";
 import type {
 	MetalFxPreset,
 	MetalFxProps,
 	MetalFxTheme,
 	MetalFxVariant,
-} from "./vendor/metal-fx/src/types";
+} from "metal-fx";
 
 export interface LiquidMetalProps extends MetalFxProps {
 	ref?: Ref<HTMLDivElement>;
@@ -27,7 +40,7 @@ export {
 	type PresetMode,
 	type PresetName,
 	type PresetTheme,
-} from "./vendor/metal-fx/src/engine/presets";
+} from "metal-fx";
 
 export {
 	createInstance,
@@ -36,9 +49,9 @@ export {
 	resumeShared,
 	setSharedPreset,
 	updateInstance,
-} from "./vendor/metal-fx/src/engine/renderer/loop";
+} from "metal-fx";
 
-export type { MetalFxInstance } from "./vendor/metal-fx/src/engine/renderer/core";
+export type { MetalFxInstance } from "metal-fx";
 
 export type {
 	MetalFxPreset,

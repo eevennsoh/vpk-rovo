@@ -16,6 +16,7 @@ import { useOptionalRovoChatControls } from "@/app/contexts/context-rovo-chat-co
 import {
 	resolveAgentSessionWorkItemKey,
 	type AgentSessionItem,
+	type AgentSessionWorkItemDraft,
 } from "@/components/blocks/agent-session";
 import {
 	JiraDropzoneField,
@@ -72,6 +73,7 @@ import {
 } from "./experimental-board-header";
 import type { ExperimentalJiraKanbanPageProps } from "./experimental-page-types";
 import { useBoardCreatedCardArrival } from "./hooks/use-created-card-arrival";
+import { useBoardMenuWorkItem } from "./hooks/use-board-menu-work-item";
 import { useAgentFilterDisplay } from "./hooks/use-agent-filter-display";
 import { useBoardFilter, type BoardFilterActions } from "./hooks/use-board-filter";
 import {
@@ -577,6 +579,18 @@ function ExperimentalJiraKanbanPageContent({
 		}
 		untrackedTriage.attach(item, target);
 	};
+	const boardMenuWorkItem = useBoardMenuWorkItem({
+		boardColumns: filteredBoardColumns,
+		hostCreate: onBoardAgentSessionCreate === undefined ? undefined : (item, draft) =>
+			handleBoardAgentSessionCreate(
+				{ ...item, title: draft.summary },
+				filteredBoardColumns[0]?.title ?? "To do",
+				undefined, draft.issueType, // no slot: the menu appends, unlike a gap drop
+			),
+		hostLink: onCardAgentSessionLink === undefined ? undefined : handleUntrackedLinkWorkItem,
+		onCapture: handleCaptureLooseWork,
+		updateBoardColumns,
+	});
 	// One config keeps the in-flow column and floating panel on the same data and handlers.
 	const agentSessionColumnConfig: AgentSessionColumnProps | undefined = showAgentSessionColumn ? {
 		capturedItemIds: capturedLooseWorkIds,
@@ -590,14 +604,14 @@ function ExperimentalJiraKanbanPageContent({
 		onCollapsedChange: handleAgentSessionColumnCollapsedChange,
 		onItemHover: handleUntrackedItemHover,
 		...agentSessionHandlers,
-		onLinkWorkItem: onCardAgentSessionLink === undefined
-			? undefined
-			: handleUntrackedLinkWorkItem,
+		onCreateWorkItemFromDraft: boardMenuWorkItem.onCreateWorkItemFromDraft,
+		onLinkWorkItem: boardMenuWorkItem.onLinkWorkItem,
 		showFilter: showAgentSessionFilter,
 		showLinkAction: showAgentSessionLinkAction,
 		showOverflow: showAgentSessionOverflow,
 		showUntrackedWorkFooter: showAgentSessionFlyoutFooter,
 		triage: untrackedTriage,
+		workItemOptions: boardMenuWorkItem.workItemOptions,
 	} : undefined;
 	const untrackedHoveredWorkItemKey = untrackedHoveredSession === null
 		? null

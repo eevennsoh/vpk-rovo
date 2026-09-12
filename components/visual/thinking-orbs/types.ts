@@ -1,77 +1,68 @@
-import type { CSSProperties, CanvasHTMLAttributes } from "react";
+import type {
+	OrbSize,
+	OrbState,
+	OrbTheme,
+	ThinkingOrbProps as UpstreamThinkingOrbProps,
+} from "thinking-orbs";
+import type { CursorGravityTuning } from "./cursor-gravity";
+
+export type { OrbSize, OrbState, OrbTheme };
 
 /**
- * The nine shipped states — each a hand-tuned animation:
- * - `working`    — particles on tilted orbits
- * - `searching`  — a scan meridian sweeps a dotted globe
- * - `solving`    — bands scramble in quarter turns, then click back
- * - `listening`  — a waveform rolls through latitude rings
- * - `connecting` — a constellation wires itself, packets running the edges
- * - `weaving`    — three strands plait around the sphere
- * - `composing`  — an undulating multi-band sash
- * - `breathing`  — a face-on ring slowly morphing
- * - `shaping`    — a dotted outline morphs circle → triangle → square
+ * Dot-gravity tuning — a VPK addition, not an upstream prop. Every field
+ * is optional; omitted fields derive from the orb's `size`, so the effect
+ * reads the same at 64 and at 20.
  */
-export type OrbState =
-	| "working"
-	| "searching"
-	| "solving"
-	| "listening"
-	| "connecting"
-	| "weaving"
-	| "composing"
-	| "breathing"
-	| "shaping";
-
-/**
- * Rendered size in CSS pixels. Exactly two tuned presets ship:
- * 64 (chat-avatar scale) and 20 (inline-text scale). Each size carries
- * its own dot count, dot size and speed tuning — they are separate
- * designs, not a scale factor.
- */
-export type OrbSize = 64 | 20;
-
-/**
- * Theme mode.
- *
- * - `auto` (default) resolves in three layers, live-updating on change:
- *   1. a `data-theme="dark|light"` attribute or `dark`/`light` class on
- *      any ancestor (the Tailwind / shadcn convention), watched via
- *      `MutationObserver`;
- *   2. otherwise `matchMedia('(prefers-color-scheme: dark)')`,
- *      subscribed for live OS/browser theme switches;
- *   3. during SSR (no DOM) the first client render resolves the theme
- *      before anything is painted — the canvas is client-only.
- * - `dark` / `light` pin the palette regardless of context.
- *
- * Dark renders light ink on the transparent canvas (for dark
- * backgrounds); light renders dark ink (for light backgrounds).
- */
-export type OrbTheme = "auto" | "dark" | "light";
-
-/** Props for the ThinkingOrb React component. */
-export interface ThinkingOrbProps
-	extends Omit<
-		CanvasHTMLAttributes<HTMLCanvasElement>,
-		"height" | "style" | "width"
-	> {
-	/** Which animation to show. @default 'working' */
-	state?: OrbState;
-
-	/** Tuned size preset — 64 or 20 CSS px. @default 64 */
-	size?: OrbSize;
-
-	/** Theme mode; `auto` detects from the host project. @default 'auto' */
-	theme?: OrbTheme;
+export interface OrbGravity {
+	/**
+	 * Influence radius measured from the orb's centre, in CSS px.
+	 * @default size * 2.5
+	 */
+	radius?: number;
 
 	/**
-	 * Animation speed multiplier on top of the preset's baked speed.
-	 * @default 1
+	 * Peak displacement at the centre of the field, in CSS px. Dots never
+	 * travel past the pointer regardless of this value.
+	 * @default size * 0.12
 	 */
-	speed?: number;
+	pull?: number;
 
-	/** Freeze the animation on the current frame. @default false */
-	paused?: boolean;
+	/**
+	 * Extra dot radius at full pull, as a fraction of the dot's own radius
+	 * — pulled dots swell slightly, which reads as approach.
+	 * @default 0.35
+	 */
+	swell?: number;
+}
 
-	style?: CSSProperties;
+/**
+ * VPK's Thinking Orb props: everything upstream accepts, plus the two
+ * VPK-only pointer effects.
+ */
+export interface ThinkingOrbProps extends UpstreamThinkingOrbProps {
+	/**
+	 * Dot gravity: dots bend toward the pointer with an inverse-square
+	 * falloff and ease back when it leaves. `true` takes the size-derived
+	 * defaults; pass an object to tune.
+	 *
+	 * Leaving this off delegates rendering entirely to upstream. Turning
+	 * it on switches to a VPK loop built on `thinking-orbs/engine`.
+	 * Inert under `prefers-reduced-motion: reduce` and while `paused`.
+	 * @default false
+	 */
+	gravity?: boolean | OrbGravity;
+
+	/**
+	 * Cursor gravity — the inverse of `gravity`. Instead of the dots
+	 * bending toward the pointer, the pointer bends toward the orb: the
+	 * native cursor is swapped for a drawn replica whose tip stays pinned
+	 * to the true pointer while its body leans, trails and blurs toward
+	 * the nearest orb.
+	 *
+	 * The replica is a page-level singleton shared by every orb that opts
+	 * in, so object tuning is global — `reach` is the only per-orb value.
+	 * Requires a fine pointer, and is inert under reduced motion.
+	 * @default false
+	 */
+	cursorGravity?: boolean | Partial<CursorGravityTuning>;
 }

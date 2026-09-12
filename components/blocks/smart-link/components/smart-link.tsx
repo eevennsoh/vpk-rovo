@@ -724,11 +724,15 @@ export function SmartLinkCard({
 			aria-labelledby={titleId}
 			className={cn(
 				"w-full max-w-[32rem] overflow-hidden rounded-lg bg-surface text-text",
-				// A pull request fills the card with a context strip, a summary, and
-				// a diff row, so it gets a fixed 400px rather than shrink-to-fit:
-				// otherwise the same card is a different width on every PR, and the
-				// branch path and stats rewrap as the hover moves down a list.
-				item.variant === "pull-request" ? "w-[25rem] max-w-full" : null,
+				// Pull-request previews match the shared 320px Jira session flyout,
+				// while embedded cards keep their wider 400px presentation. Both
+				// stay fixed rather than shrink-to-fit so branch paths and stats do
+				// not rewrap as hover moves down a list.
+				item.variant === "pull-request"
+					? isFlyout
+						? "w-[320px] max-w-[calc(100vw-48px)]"
+						: "w-[25rem] max-w-full"
+					: null,
 				isFlyout ? "bg-surface-overlay shadow-2xl" : "border border-border",
 				onActivate &&
 					selected &&

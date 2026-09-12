@@ -653,6 +653,7 @@ export function AgentSessionColumn({
 								aria-label={`Expand ${title} column`}
 								aria-description={headerDragHandle ? "Drag horizontally to move the column, or use Alt with the arrow keys." : undefined}
 								className={collapsedControlClassName}
+								data-agent-session-column-expand-control=""
 								onClick={handleToggleCollapsed}
 								size="icon-compact"
 								style={{ width: "100%" }}

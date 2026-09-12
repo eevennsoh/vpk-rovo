@@ -807,27 +807,6 @@
 			"type": "eslint-disable"
 		},
 		{
-			"filePath": "components/visual/liquid-metal/vendor/metal-fx/src/engine/reflection/geometry.ts",
-			"occurrence": 1,
-			"reason": "existing baseline",
-			"text": "// eslint-disable-next-line @typescript-eslint/no-explicit-any",
-			"type": "eslint-disable"
-		},
-		{
-			"filePath": "components/visual/liquid-metal/vendor/metal-fx/src/engine/reflection/geometry.ts",
-			"occurrence": 1,
-			"reason": "existing baseline",
-			"text": "const native = (ctx as any).roundRect;",
-			"type": "broad-any"
-		},
-		{
-			"filePath": "components/visual/liquid-metal/vendor/metal-fx/src/MetalFx.tsx",
-			"occurrence": 1,
-			"reason": "existing baseline",
-			"text": "// eslint-disable-next-line react-hooks/exhaustive-deps -- Instance lifecycle is keyed by shape; preset/theme/pause/scale/radius props are re-synced by dedicated effects above and below.",
-			"type": "eslint-disable"
-		},
-		{
 			"filePath": "components/website/demos/utils/components/browser-preview-panel.tsx",
 			"occurrence": 1,
 			"reason": "existing baseline",

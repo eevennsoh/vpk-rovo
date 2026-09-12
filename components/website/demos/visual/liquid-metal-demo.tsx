@@ -178,14 +178,24 @@ function ShowcasePill({
 	config: LiquidMetalDemoConfig;
 	label: string;
 	mode: ShowcaseMotion;
-	preset: MetalFxPreset;
+	/**
+	 * Optional. metal-fx renders every visible instance from one shared GL
+	 * canvas, so the material is page-level — examples that omit this
+	 * inherit whatever preset the page is showing instead of fighting for
+	 * it, which is what an example pinning its own preset would do.
+	 */
+	preset?: MetalFxPreset;
 }>) {
 	return (
 		<div className="flex flex-col items-center justify-center gap-3">
 			<AnimatedShowcaseShell active={active} mode={mode}>
 				<LiquidMetalHost
 					config={config}
-					overrides={{ preset, variant: "button", borderRadius: 999 }}
+					overrides={{
+						...(preset ? { preset } : {}),
+						variant: "button",
+						borderRadius: 999,
+					}}
 				>
 					<span className="text-sm font-semibold text-current">{label}</span>
 				</LiquidMetalHost>
@@ -406,9 +416,8 @@ export function LiquidMetalDemoChromaticPill() {
 		<ShowcasePill
 			active
 			config={DEFAULT_CONFIG}
-			label="Chromatic"
+			label="Static"
 			mode="none"
-			preset="chromatic"
 		/>
 	);
 }
@@ -418,9 +427,8 @@ export function LiquidMetalDemoSilverPill() {
 		<ShowcasePill
 			active
 			config={DEFAULT_CONFIG}
-			label="Silver"
+			label="Pulsing"
 			mode="pulse"
-			preset="silver"
 		/>
 	);
 }

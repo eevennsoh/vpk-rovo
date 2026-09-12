@@ -28,7 +28,6 @@ export const BORDER_BEAM_DETAIL: ComponentDetail = {
 			{ title: "Pulse outside", description: "Outward-blooming halo around an opaque surface.", demoSlug: "border-beam-demo-pulse-outside" },
 			{ title: "Mono pulse search", description: "Grayscale pulse on a rounded pill surface.", demoSlug: "border-beam-demo-mono-pulse-search" },
 			{ title: "Compact gallery", description: "Ocean, sunset, and colorful variants in a dense grid.", demoSlug: "border-beam-demo-compact-gallery" },
-			{ title: "Rovo brand", description: "Rovo brand palette (blue, orange, purple, lime) traveling around a surface.", demoSlug: "border-beam-demo-rovo-brand" },
 			{ title: "Play / pause", description: "Toggle the active prop to fade the beam in and out with its built-in transitions.", demoSlug: "border-beam-demo-play-pause" },
 			{ title: "Strength ladder", description: "The same beam at strength 0.35, 0.65, and 1 to show intensity scaling.", demoSlug: "border-beam-demo-strength-ladder" },
 			{ title: "Reflection", description: "Two pulse-outside surfaces placed close together so their outward halos bleed into the gap and glow onto each other.", demoSlug: "border-beam-demo-reflection" },

@@ -6,7 +6,7 @@ import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue";
 import { mergeJiraKanbanAgentCatalog } from "@/components/blocks/jira-kanban/lib/agent-catalog";
 import { linkJiraKanbanAgentSession, moveJiraKanbanCardsToColumn } from "@/components/blocks/jira-kanban/state";
-import type { JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
+import type { JiraKanbanCardData, JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
 import type {
 	JiraListAssignedAgent,
 	JiraListDraftWorkItem,
@@ -56,6 +56,8 @@ export interface CreateFromAgentSessionInput {
 export interface CreateBoardFromAgentSessionInput {
 	activity: JiraIssueAgentActivity;
 	columnTitle: string;
+	/** Type the viewer picked in the session menu. Defaults to a task. */
+	issueType?: JiraKanbanCardData["issueType"];
 	/** Slot within the column. Omitted by the create well, which appends. */
 	insertAtIndex?: number;
 	session: Readonly<Pick<AgentSessionItem, "id" | "invokedBy" | "title">>;
@@ -253,6 +255,7 @@ export function useJiraGoldenJourneysV4List({
 			activity: input.activity,
 			columns: columnsBeforeCreate,
 			columnTitle: input.columnTitle,
+			issueType: input.issueType,
 			insertAtIndex: input.insertAtIndex,
 			linkSession: linkJiraKanbanAgentSession,
 			session: input.session,

@@ -417,15 +417,6 @@ export function BorderBeamDemoCompactGallery() {
 	);
 }
 
-export function BorderBeamDemoRovoBrand() {
-	const config = getBorderBeamDefaultsForSize("md");
-	return (
-		<BorderBeamMiniDemo config={{ ...config, colorVariant: "rovo", strength: 0.85 }}>
-			{(theme) => <BeamShape theme={theme} className="h-16 w-96 rounded-2xl" />}
-		</BorderBeamMiniDemo>
-	);
-}
-
 export function BorderBeamDemoPlayPause() {
 	const config = getBorderBeamDefaultsForSize("md");
 	const { actualTheme } = useTheme();

@@ -115,6 +115,14 @@ test("the route imports the Pulse session guard used by its resume callback", ()
 	assert.match(PAGE_SOURCE, /if \(!isPulseAgentSession\(item\)\) return;/u);
 });
 
+test("Team EU keeps Terminal enabled for every local unlinked session", () => {
+	assert.match(
+		PAGE_SOURCE,
+		/<ExperimentalJiraKanbanPage[\s\S]*isLooseWorkResumable=\{isJiraTeamEu26LooseWorkResumable\}/u,
+		"the route must override Pulse's viewer-machine gate for its local-session story",
+	);
+});
+
 test("Team EU board cards use experimental v2 raised defaults", () => {
 	// One board-level default, not per-card forks. Raised chrome already
 	// comes from columnChrome="default"; comfortable + stroke is v2.
