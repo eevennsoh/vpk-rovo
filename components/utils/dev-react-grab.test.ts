@@ -8,7 +8,7 @@ test("treats Atlas Tunnel public and private hosts as share hosts", () => {
 	assert.equal(isAtlasTunnelHostname("esoh-297426c52eae.public.atlastunnel.com"), true);
 	assert.equal(isAtlasTunnelHostname("research-session.atlastunnel.com"), true);
 	assert.equal(isAtlasTunnelHostname("atlastunnel.com"), true);
-	assert.equal(isAtlasTunnelHostname("vpk-rovo.localhost"), false);
+	assert.equal(isAtlasTunnelHostname("project.localhost"), false);
 	assert.equal(isAtlasTunnelHostname("localhost"), false);
 	assert.equal(isAtlasTunnelHostname(null), false);
 });
@@ -28,7 +28,7 @@ test("hides react-grab on Atlas Tunnel hosts even for project routes", () => {
 	);
 	assert.equal(
 		shouldDisableReactGrab({
-			hostname: "vpk-rovo.localhost",
+			hostname: "project.localhost",
 			pathname: "/jira-golden-journeys-v4",
 		}),
 		false,

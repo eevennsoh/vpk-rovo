@@ -129,7 +129,7 @@ Optional doc-type hints and flags: `/vpk-html resume`, `/vpk-html one-pager`,
 
 ## License
 
-Inherits the VPK-Rovo monorepo. The 8 base HTML templates and the original 14
+Inherits the VPK monorepo. The 8 base HTML templates and the original 14
 diagram primitives in assets/templates/ and assets/diagrams/ are ported from
 tw93/kami (MIT) and re-skinned with vpk-html's identity. The 20 Phase 2
 engineering templates and 25 Phase E chart additions are original vpk-html

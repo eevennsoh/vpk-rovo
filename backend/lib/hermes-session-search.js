@@ -4,7 +4,7 @@
  * Provides substring/regex search across thread titles and message content.
  * Returns matches with snippets, match counts, and thread metadata.
  *
- * Used by the VPK-Rovo backend to power the /api/sessions/search endpoint
+ * Used by this repository's backend to power the /api/sessions/search endpoint
  * and by the frontend to search within the Rovo sidebar.
  */
 

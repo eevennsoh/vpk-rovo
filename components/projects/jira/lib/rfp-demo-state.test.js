@@ -9,7 +9,6 @@ async function loadRfpDemoStateHarness() {
 		stdin: {
 			contents: `
 				export {
-					AGENTS_RFP_DEMO_STORAGE_KEY,
 					GENERATED_RFP_REPORT_ATTACHMENT_ID,
 						RFP_DRAFTING_AGENT_AVATAR_SRCS,
 						RFP_DRAFTING_AGENT_CONVERSATION_STARTERS,

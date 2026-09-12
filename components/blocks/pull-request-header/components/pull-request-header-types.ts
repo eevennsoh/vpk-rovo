@@ -49,7 +49,7 @@ export interface PullRequestHeaderProps
 	baseBranch?: string | null;
 	/** Source / head branch shown before the arrow. */
 	headBranch?: string | null;
-	/** Owner/name path (e.g. `eevensoh/vpk-rovo`). */
+	/** Owner/name path (e.g. `acme/storefront`). */
 	repository: string;
 	/**
 	 * Merge split-button primary label state.

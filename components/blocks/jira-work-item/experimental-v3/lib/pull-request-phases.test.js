@@ -30,7 +30,7 @@ function prEntry(id, number, status, overrides = {}) {
 			status,
 			additions,
 			deletions,
-			repository: "eevensoh/vpk-rovo",
+			repository: "acme/storefront",
 			...(authorName ? { authorName } : {}),
 			...(createdAtMs != null ? { createdAtMs } : {}),
 			...(updatedAtMs != null ? { updatedAtMs } : {}),

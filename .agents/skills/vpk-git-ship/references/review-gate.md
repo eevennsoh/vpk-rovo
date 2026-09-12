@@ -28,7 +28,7 @@ was not pushed in this run, inspect current status without waiting.
 
 ## Fetch every review surface
 
-Run the repo-owned read-only status helper from the VPK-rovo checkout:
+Run the repo-owned read-only status helper from the VPK checkout:
 
 ```bash
 node .agents/skills/vpk-git-ship/scripts/review-gate-status.js \

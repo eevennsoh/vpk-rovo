@@ -12,7 +12,7 @@ const {
 } = require("./rovo-skills-overlay");
 
 async function withTempDir(fn) {
-	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-rovo-skills-"));
+	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "rovo-skills-"));
 	try {
 		await fn(tempDir);
 	} finally {
