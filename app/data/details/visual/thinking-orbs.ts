@@ -2,7 +2,7 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const THINKING_ORBS_DETAIL: ComponentDetail = {
 	description:
-		"Dotted canvas indicators for AI and agent activity, adapted from Jakub Antalik's MIT-licensed Thinking Orbs. Nine hand-tuned states ship at two independently tuned sizes, with automatic theme detection, reduced-motion static frames, and offscreen pausing.",
+		"Dotted canvas indicators for AI and agent activity. The nine hand-tuned states, two size presets, theme detection, and render lifecycle come from Jakub Antalik's MIT-licensed thinking-orbs package (pinned, not forked). VPK adds two pointer effects built on its public engine API: dot gravity, where the dots bend toward the cursor, and cursor gravity, where the pointer bends toward the orb.",
 	importStatement: `import {
 	ThinkingOrb,
 	type ThinkingOrbProps,
@@ -103,6 +103,20 @@ export const THINKING_ORBS_DETAIL: ComponentDetail = {
 			type: "boolean",
 			default: "false",
 			description: "Freezes the orb while preserving its current visual state.",
+		},
+		{
+			name: "gravity",
+			type: "boolean | OrbGravity",
+			default: "false",
+			description:
+				"Opt-in cursor gravity. Dots bend toward the pointer with an inverse-square falloff and ease back when it leaves. Pass true for size-derived defaults, or an object to tune radius, pull, and swell. Inert under reduced motion and while paused.",
+		},
+		{
+			name: "cursorGravity",
+			type: "boolean | Partial<CursorGravityTuning>",
+			default: "false",
+			description:
+				"The inverse of gravity: the pointer bends toward the orb. Swaps the native cursor for a drawn replica whose tip stays pinned while its body leans, trails, and blurs toward the nearest orb. One replica is shared page-wide by every orb that opts in, so tuning is global and reach is the only per-orb value. Requires a fine pointer; inert under reduced motion, and restores the native cursor if it ever fails.",
 		},
 		{
 			name: "aria-label",

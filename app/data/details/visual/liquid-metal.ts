@@ -18,9 +18,9 @@ export const LIQUID_METAL_DETAIL: ComponentDetail = {
 	</button>
 </LiquidMetal>`,
 		examples: [
-			{ title: "Chromatic pill", description: "The upstream chromatic preset on a pill host.", demoSlug: "liquid-metal-demo-chromatic-pill" },
-			{ title: "Silver pill", description: "The upstream silver preset on a pulsing pill host.", demoSlug: "liquid-metal-demo-silver-pill" },
-			{ title: "Gold send", description: "The upstream circle variant with the gold preset.", demoSlug: "liquid-metal-demo-gold-send" },
+			{ title: "Pill host", description: "A static pill host. The material follows the page-level preset — metal-fx renders every visible instance from one shared GL canvas.", demoSlug: "liquid-metal-demo-chromatic-pill" },
+			{ title: "Pulsing pill host", description: "The same pill host with the pulse treatment.", demoSlug: "liquid-metal-demo-silver-pill" },
+			{ title: "Circle send button", description: "The upstream circle variant on an icon button.", demoSlug: "liquid-metal-demo-gold-send" },
 			{ title: "Proximity reflection", description: "A metal pill sitting close to a few neighboring surfaces wired as reflectionTargets.", demoSlug: "liquid-metal-demo-chat-reflection" },
 		],
 		props: [
