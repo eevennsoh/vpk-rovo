@@ -290,7 +290,11 @@ test("cursor gravity is inert without a DOM and registers wells safely", async (
 
 test("cursor gravity never strands the user without a pointer", () => {
 	assert.match(CURSOR_SOURCE, /function showNativeCursor\(\)/u);
-	assert.match(CURSOR_SOURCE, /removeProperty\("cursor"\)/u);
+	// the real cursor is hidden via a root attribute + stylesheet, not an
+	// inline style: `cursor` only inherits where a descendant declares none,
+	// so an inline rule would leave a second cursor over buttons and inputs
+	assert.match(CURSOR_SOURCE, /\[\$\{CURSOR_HIDE_ATTR\}\] \* \{ cursor: none !important; \}/u);
+	assert.match(CURSOR_SOURCE, /removeAttribute\(CURSOR_HIDE_ATTR\)/u);
 	assert.match(CURSOR_SOURCE, /catch \(err\) \{[\s\S]*?disabled = true;/u);
 	assert.match(CURSOR_SOURCE, /catch \(err\) \{[\s\S]*?teardown\(\);/u);
 	assert.match(

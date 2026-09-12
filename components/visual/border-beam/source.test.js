@@ -2,6 +2,24 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import esbuild from "esbuild";
+
+const { loadCjsModuleFromText } = await import(
+	path.join(process.cwd(), "scripts/lib/esbuild-cjs-loader.js")
+);
+
+async function loadFadeGuard() {
+	const result = await esbuild.build({
+		entryPoints: [
+			path.join(process.cwd(), "components/visual/border-beam/fade-guard.ts"),
+		],
+		bundle: true,
+		format: "cjs",
+		platform: "node",
+		write: false,
+	});
+	return loadCjsModuleFromText(result.outputFiles[0].text);
+}
 
 const ROOT = process.cwd();
 const DIR = "components/visual/border-beam";
@@ -43,18 +61,57 @@ test("Border Beam keeps no vendored copy of upstream source", () => {
 	assert.match(INDEX_SOURCE, /export type \{[\s\S]*?\} from "border-beam";/u);
 });
 
-test("Border Beam scopes fade events to the beam itself", () => {
-	// Upstream 1.3.0 matches `animationName.includes("fade-in"/"fade-out")`
-	// on a bubbling animationend with no target check, so any descendant
-	// animation (VPK ships `@keyframes stagger-fade-in`) fires the beam's
-	// callbacks. We stop descendant events in the capture phase, before
-	// upstream's bubble handler runs.
+test("Border Beam suppresses only the fade names upstream mis-matches", async () => {
+	const { shouldSuppressAnimationEnd } = await loadFadeGuard();
+
+	// Upstream matches `animationName.includes("fade-in"/"fade-out")` on a
+	// bubbling animationend with no target check, so a descendant hijacks
+	// the beam. Those names, from a descendant, must be suppressed.
+	for (const name of [
+		"beam-fade-in-abc",
+		"beam-fade-out-abc",
+		"stagger-fade-in",
+		"my-fade-out-thing",
+	]) {
+		assert.equal(
+			shouldSuppressAnimationEnd(name, false),
+			true,
+			`${name} from a descendant should be suppressed`,
+		);
+	}
+
+	// Anything else from a descendant must pass through untouched — the
+	// child's own listeners and React's delegated handler still need it.
+	for (const name of ["spin", "pulse", "slide-up", "fadein", "my-fade"]) {
+		assert.equal(
+			shouldSuppressAnimationEnd(name, false),
+			false,
+			`${name} from a descendant must not be suppressed`,
+		);
+	}
+
+	// The beam's own events are never suppressed, whatever they are named.
+	for (const name of ["beam-fade-in-abc", "beam-fade-out-abc", "spin"]) {
+		assert.equal(shouldSuppressAnimationEnd(name, true), false);
+	}
+});
+
+test("Border Beam installs the fade guard in the capture phase", () => {
+	// capture is what gets us ahead of upstream's bubble-phase handler
 	assert.match(INDEX_SOURCE, /addEventListener\("animationend", onAnimationEnd, true\)/u);
-	assert.match(INDEX_SOURCE, /event\.target !== beam\) event\.stopPropagation\(\)/u);
 	assert.match(
 		INDEX_SOURCE,
 		/removeEventListener\("animationend", onAnimationEnd, true\)/u,
 	);
+});
+
+test("Border Beam resolves upstream's active default before syncing opacity", () => {
+	// `active` is optional upstream and defaults to true. Reading it raw
+	// would write opacity 0 for every caller that omits it, hiding the
+	// beam under reduced motion — the very bug this wrapper fixes.
+	assert.match(INDEX_SOURCE, /const isActive = active \?\? true;/u);
+	assert.match(INDEX_SOURCE, /isActive \? "1" : "0"/u);
+	assert.doesNotMatch(INDEX_SOURCE, /property, active \? "1" : "0"/u);
 });
 
 test("Border Beam stays visible when motion is reduced", () => {
@@ -69,7 +126,7 @@ test("Border Beam stays visible when motion is reduced", () => {
 	assert.match(INDEX_SOURCE, /--beam-opacity-\$\{id\}/u);
 	assert.match(
 		INDEX_SOURCE,
-		/query\.matches\) beam\.style\.setProperty\(property, active \? "1" : "0"\)/u,
+		/query\.matches\) beam\.style\.setProperty\(property, isActive \? "1" : "0"\)/u,
 	);
 	assert.match(INDEX_SOURCE, /beam\.style\.removeProperty\(property\)/u);
 	// and it tracks live changes to the media query rather than reading once

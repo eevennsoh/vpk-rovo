@@ -28,6 +28,7 @@
 
 import { useCallback, useEffect, useRef, type Ref } from "react";
 import UpstreamBorderBeam, { type BorderBeamProps } from "border-beam";
+import { shouldSuppressAnimationEnd } from "./fade-guard";
 
 export interface VpkBorderBeamProps extends BorderBeamProps {
 	ref?: Ref<HTMLDivElement>;
@@ -42,6 +43,9 @@ function findBeam(host: HTMLElement | null): HTMLElement | null {
 
 export function BorderBeam({ ref, active, ...props }: VpkBorderBeamProps) {
 	const hostRef = useRef<HTMLDivElement | null>(null);
+	// Upstream defaults `active` to true; the wrapper must resolve that the
+	// same way or an omitted prop reads as inactive below.
+	const isActive = active ?? true;
 
 	const setRefs = useCallback(
 		(node: HTMLDivElement | null) => {
@@ -52,13 +56,14 @@ export function BorderBeam({ ref, active, ...props }: VpkBorderBeamProps) {
 		[ref],
 	);
 
-	// Upstream bug 1 — keep descendant animations out of the beam's handler.
+	// Upstream bug 1 — keep descendant fade animations out of the beam's handler.
 	useEffect(() => {
 		const host = hostRef.current;
 		const beam = findBeam(host);
 		if (!host || !beam) return;
 		const onAnimationEnd = (event: AnimationEvent) => {
-			if (event.target !== beam) event.stopPropagation();
+			if (shouldSuppressAnimationEnd(event.animationName, event.target === beam))
+				event.stopPropagation();
 		};
 		host.addEventListener("animationend", onAnimationEnd, true);
 		return () => host.removeEventListener("animationend", onAnimationEnd, true);
@@ -76,14 +81,14 @@ export function BorderBeam({ ref, active, ...props }: VpkBorderBeamProps) {
 			const property = `--beam-opacity-${id}`;
 			// `inherits: true`, so setting it on the beam reaches the
 			// pseudo-elements and the bloom layer that read it.
-			if (query.matches) beam.style.setProperty(property, active ? "1" : "0");
+			if (query.matches) beam.style.setProperty(property, isActive ? "1" : "0");
 			else beam.style.removeProperty(property);
 		};
 
 		sync();
 		query.addEventListener("change", sync);
 		return () => query.removeEventListener("change", sync);
-	}, [active]);
+	}, [isActive]);
 
 	return <UpstreamBorderBeam ref={setRefs} active={active} {...props} />;
 }
@@ -111,5 +116,7 @@ export {
 	type BorderBeamDemoConfig,
 	type BorderBeamFamily,
 } from "./data";
+
+export { shouldSuppressAnimationEnd } from "./fade-guard";
 
 export default BorderBeam;

@@ -162,7 +162,7 @@ function ensureNodes(): void {
 	// still applied and no loop driving it. Clear any orphan before ours.
 	for (const stale of document.querySelectorAll("[data-thinking-orb-cursor]"))
 		stale.remove();
-	document.documentElement.style.removeProperty("cursor");
+	document.documentElement.removeAttribute(CURSOR_HIDE_ATTR);
 	cursorHidden = false;
 	const c = document.createElement("canvas");
 	c.setAttribute("aria-hidden", "true");
@@ -195,15 +195,34 @@ function teardown(): void {
 	targetY = Number.NaN;
 }
 
+/**
+ * Hiding the real cursor cannot be done with an inline `cursor: none` on
+ * the root: `cursor` inherits only where a descendant declares nothing, so
+ * anything with its own value (a button with `cursor-pointer`, a text
+ * input) would keep showing a second, real cursor beside the replica. A
+ * stylesheet gated on a root attribute reaches every descendant instead.
+ */
+const CURSOR_HIDE_STYLE_ID = "thinking-orb-cursor-hide";
+const CURSOR_HIDE_ATTR = "data-thinking-orb-cursor-hidden";
+
+function ensureCursorHideStyle(): void {
+	if (document.getElementById(CURSOR_HIDE_STYLE_ID)) return;
+	const style = document.createElement("style");
+	style.id = CURSOR_HIDE_STYLE_ID;
+	style.textContent = `[${CURSOR_HIDE_ATTR}], [${CURSOR_HIDE_ATTR}] * { cursor: none !important; }`;
+	document.head.appendChild(style);
+}
+
 function hideNativeCursor(): void {
 	if (cursorHidden) return;
-	document.documentElement.style.setProperty("cursor", "none", "important");
+	ensureCursorHideStyle();
+	document.documentElement.setAttribute(CURSOR_HIDE_ATTR, "");
 	cursorHidden = true;
 }
 
 function showNativeCursor(): void {
 	if (!cursorHidden) return;
-	document.documentElement.style.removeProperty("cursor");
+	document.documentElement.removeAttribute(CURSOR_HIDE_ATTR);
 	cursorHidden = false;
 	if (overlay) overlay.style.display = "none";
 }
