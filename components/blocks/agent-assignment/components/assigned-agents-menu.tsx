@@ -276,7 +276,7 @@ export function AssignedAgentsMenu({
 
 	return (
 		<div
-			className="w-full outline-none"
+			className="flex w-full flex-col gap-1 p-1 outline-none"
 			onFocus={handleFocus}
 			onKeyDown={handleKeyDown}
 			ref={containerRef}
@@ -284,7 +284,7 @@ export function AssignedAgentsMenu({
 		>
 			<>
 				<RichTextSuggestionMenu
-					className="rich-text-command-menu-embedded w-full!"
+					className="rich-text-command-menu-embedded w-full! [&_.rich-text-command-menu-list]:p-0"
 					emptyLabel="No agents assigned"
 					items={items}
 					onHover={setSelectedIndex}
@@ -294,7 +294,7 @@ export function AssignedAgentsMenu({
 					title="Assigned agents"
 				/>
 				{onAddAgent ? (
-					<div className="sticky bottom-0 z-10 mx-1 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-1 pb-1">
+					<div className="sticky bottom-0 z-10 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-1">
 						<Button
 							className="h-8 min-h-8 w-full justify-start gap-3 pl-2 pr-3 py-0 text-left text-sm font-normal"
 							onClick={onAddAgent}

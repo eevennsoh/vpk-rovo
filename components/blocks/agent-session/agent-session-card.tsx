@@ -57,6 +57,7 @@ export function AgentSessionCard({
 	flyoutSession,
 	getResumeCommand,
 	isArriving = false,
+	isFlyoutActive = false,
 	isHighlighted = false,
 	isNew = false,
 	isResumable,
@@ -69,12 +70,14 @@ export function AgentSessionCard({
 	onCopyResume,
 	onDeleteSession,
 	onItemHover,
+	onMoreMenuOpenChange,
 	onRenameSession,
 	onToggleVisibility,
 	onView,
 	padding = "default",
 	sessionDrag,
 	showMoreMenu = true,
+	showLifecycleLabel = true,
 	triageRow,
 	draggingIds,
 	visibilityLabel = "Archive",
@@ -89,6 +92,8 @@ export function AgentSessionCard({
 	getResumeCommand?: (item: AgentSessionItem) => string | undefined;
 	/** Play the one-shot arrival beat. A remounted card must not re-arm it. */
 	isArriving?: boolean;
+	/** Keep the row's hover treatment while its portalled flyout chain is active. */
+	isFlyoutActive?: boolean;
 	/** Light this row for a pointer hovering its matching board session. */
 	isHighlighted?: boolean;
 	/** Carry the persistent unreviewed mark. Outlives the beat. */
@@ -119,10 +124,17 @@ export function AgentSessionCard({
 	 * behind the picker.
 	 */
 	moreMenuPositionerClassName?: string;
-	/** Keep the more-menu inside a parent overlay instead of portalling to the document. */
+	/**
+	 * Portal the more-menu. Nested clipped overlays can pass `false`;
+	 * assignment uses the default portal so Rename / Delete escape the picker.
+	 */
 	moreMenuPortalled?: boolean;
+	/** Tell a host overlay when the portalled more-menu is open so it can stay mounted. */
+	onMoreMenuOpenChange?: (open: boolean) => void;
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
 	showMoreMenu?: boolean;
+	/** Keep false only for compact consumers that borrow long-density title geometry. */
+	showLifecycleLabel?: boolean;
 	triageRow?: AgentSessionTriageRow | null;
 	draggingIds?: ReadonlySet<string>;
 	/** Accessible name for the menu's dismiss row. Archive in the active list, Unarchive in the archived view. */
@@ -223,6 +235,7 @@ export function AgentSessionCard({
 		onCopyResume,
 		onDeleteSession,
 		onItemHover,
+		onMoreMenuOpenChange,
 		onRenameSession,
 		onToggleVisibility,
 		resumeCommand,
@@ -273,11 +286,11 @@ export function AgentSessionCard({
 		? null
 		: role === "expired"
 			? <AgentSessionExpiredHint />
-			: <AgentSessionLifecycle state={item.state} />;
+			: <AgentSessionLifecycle showLabel={showLifecycleLabel} state={item.state} />;
 	const hoverActions: AgentListRowHoverActions = {
 		// The reveal must outlive the pointer: a portalled popup and a post-click
 		// confirmation both take the cursor off the row.
-		pinned: showMoreMenu && role === "owner" && (menu.isOpen || menu.copied),
+		pinned: isFlyoutActive || (showMoreMenu && role === "owner" && (menu.isOpen || menu.copied)),
 		primary: approve
 			? {
 				disabled: approve.target.kind === "unavailable",
@@ -347,20 +360,21 @@ export function AgentSessionCard({
 							aria-current={isSelected ? "true" : undefined}
 							aria-roledescription={bind ? "Draggable agent session" : undefined}
 							className={cn(
-						"group/agent-row relative flex w-full cursor-default rounded-lg text-left text-text",
+						"group/agent-row relative flex w-full min-w-0 cursor-default rounded-lg text-left text-text",
 						padding === "compact" ? "px-3 py-2" : "p-3",
 						// Borderless tiles, 8px radius — same chrome as editor-palette
 						// suggestion rows. The list owns the gap between them.
 						"transition-[background-color,border-radius] duration-xxshort ease-out-practical",
 						"motion-reduce:transition-none",
 						showSelectedFill && "bg-bg-selected",
-						!showSelectedFill && isHighlighted && "bg-surface-hovered",
-						!showSelectedFill && !isHighlighted && "bg-transparent hover:bg-surface-hovered",
+						!showSelectedFill && (isHighlighted || isFlyoutActive) && "bg-surface-hovered",
+						!showSelectedFill && !isHighlighted && !isFlyoutActive && "bg-transparent hover:bg-surface-hovered",
 						activateCard === undefined
 							? null
 							: "outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
 							)}
 							data-captured={captured || undefined}
+							data-hovered={isFlyoutActive || undefined}
 							data-highlighted={isHighlighted || undefined}
 							data-marked={isMarked || undefined}
 							data-new={isNew || undefined}
@@ -441,6 +455,7 @@ export function AgentSessionCard({
 					return (
 						<JiraSessionFlyoutTrigger
 							closeDelay={160}
+							data-session-id={item.id}
 							handle={flyoutHandle}
 							render={<div className="w-full" />}
 							session={flyoutSession}

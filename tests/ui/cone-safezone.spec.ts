@@ -79,6 +79,29 @@ test("nested demo shows the live cone and keeps both cards open through diagonal
 	await expect(child).toBeHidden();
 });
 
+test("Escape restores focus to the parent trigger after nested keyboard previews close", async ({ page }) => {
+	for (const url of ["https://fonts.googleapis.com/**", "https://fonts.gstatic.com/**", "https://unpkg.com/**"]) {
+		await page.route(url, (route) => route.abort());
+	}
+	for (const reducedMotion of ["no-preference", "reduce"] as const) {
+		await page.emulateMedia({ reducedMotion });
+		await page.goto(`${baseURL}/preview/utility/cone-safezone`, { waitUntil: "domcontentloaded" });
+		const trigger = page.getByRole("button", { name: "Hover session" });
+		await trigger.focus();
+		await expect(page.getByRole("heading", { name: "Retry policy review is ready" })).toBeVisible();
+		await page.keyboard.press("Tab");
+		const link = page.getByRole("link", { name: "#1847: Add guest checkout to the storefront Open", exact: true });
+		await expect(link).toBeFocused();
+		await expect(page.locator('[data-slot="hover-card-content"]').filter({ has: page.locator('[id^="smart-link-card-"]') })).toBeVisible();
+
+		await page.keyboard.press("Escape");
+		await expect(link).toBeFocused();
+		await page.keyboard.press("Escape");
+		await expect(page.getByRole("heading", { name: "Retry policy review is ready" })).toBeHidden();
+		await expect(trigger).toBeFocused();
+	}
+});
+
 test("debug cone persists over the trigger and card and follows pointer movement", async ({ page }) => {
 	await page.goto(`${baseURL}/preview/utility/cone-safezone`, { waitUntil: "domcontentloaded" });
 	const trigger = page.getByRole("button", { name: "Hover session" });

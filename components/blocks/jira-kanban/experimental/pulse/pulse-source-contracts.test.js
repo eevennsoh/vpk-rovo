@@ -540,6 +540,8 @@ test("Experimental board mode supports controlled and uncontrolled composition",
 test("Insights routes only opted-in work items and local sessions", () => {
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /onInsightsWorkItemClick\?: \(workItem: PulseWorkItem\) => void;/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /isInsightsWorkItemInteractive\?: \(workItem: PulseWorkItem\) => boolean;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /onContinueLooseWork\?: \(item: PulseLooseWork\) => void;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /onContinue: onContinueLooseWork,/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /onResumeLooseWork\?: \(item: PulseLooseWork\) => void;/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /isLooseWorkResumable\?: \(item: PulseLooseWork\) => boolean;/u);
 	assert.match(SOURCES.rail, /data-work-item-key=\{workItem\.key\}/u);
@@ -556,6 +558,7 @@ test("Insights routes only opted-in work items and local sessions", () => {
 	assert.match(SOURCES.sessions, /looseWork\.filter\(isPulseAgentSession\)/u);
 	assert.match(SOURCES.sessions, /isLooseWorkResumable\?\.\(session\) \?\? true/u);
 	assert.match(SOURCES.rail, /toPulseSessionHandlers/u);
+	assert.match(SOURCES.sessions, /onContinueInAgent: continueSession,/u);
 	assert.match(SOURCES.sessions, /onView: onResume === undefined \? undefined : \(item: AgentSessionItem\)/u);
 	assert.doesNotMatch(SOURCES.rail, /canViewItem=/u);
 	assert.match(SOURCES.stream, /onWorkItemClick\?: \(workItem: PulseWorkItem\) => void;/u);

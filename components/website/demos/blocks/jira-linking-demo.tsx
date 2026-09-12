@@ -25,7 +25,8 @@ import {
 import {
 	AGENT_BRAND_TINT_FALLBACK,
 	resolveAgentBrandTint,
-	resolveAgentBrandTintHex,
+	resolveAgentBrandTintColor,
+	resolveAgentBrandTintVariable,
 } from "@/components/blocks/jira-kanban/experimental/lib/agent-brand-tint";
 import {
 	JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE,
@@ -161,11 +162,13 @@ function toIdentities(
 			session.agent.vpkLogo,
 			session.agent.name,
 		);
+		const tintVariable = resolveAgentBrandTintVariable(tintSeed);
 		return {
 			id: session.id,
 			imageSrc: session.agent.avatarSrc,
-			tint: resolveAgentBrandTint(tintSeed),
+			tint: tintVariable ? undefined : resolveAgentBrandTint(tintSeed),
 			tintSeed,
+			tintVariable,
 		};
 	});
 }
@@ -392,7 +395,7 @@ function JiraLinkingStage({ label, sessions, variant }: Readonly<JiraLinkingStag
 				...current,
 				[pending.cardId]: {
 					activityIds: dropped.map((session) => session.id),
-					tint: resolveAgentBrandTintHex(leadTintSeed)
+					tint: resolveAgentBrandTintColor(leadTintSeed)
 						?? AGENT_BRAND_TINT_FALLBACK,
 					token: flashTokenRef.current,
 				},

@@ -17,9 +17,9 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
 		await page.goto(JIRA_GOLDEN_JOURNEYS_V4_URL);
 		await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible();
 		await page.locator("[data-agent-session-column-hit-area]").hover();
-		await page.getByRole("button", { name: "Unattached sessions column options", exact: true }).click();
+		await page.getByRole("button", { name: "Unlink sessions column options", exact: true }).click();
 		await page.getByRole("menuitem", { name: "Pin" }).click();
-		await page.getByRole("button", { name: "Unattached sessions column options", exact: true }).click();
+		await page.getByRole("button", { name: "Unlink sessions column options", exact: true }).click();
 		await page.getByRole("menuitem", { name: "Expand" }).click();
 		const source = page.getByTestId("agent-session-row-lw-scope-thread");
 		await source.scrollIntoViewIfNeeded();

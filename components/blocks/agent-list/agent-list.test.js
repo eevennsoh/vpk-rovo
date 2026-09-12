@@ -7,6 +7,10 @@ const CARD_SOURCE = readFileSync(
 	join(__dirname, "agent-list-card.tsx"),
 	"utf8",
 );
+const CARD_ACTIONS_SOURCE = readFileSync(
+	join(__dirname, "agent-list-card-actions.tsx"),
+	"utf8",
+);
 const IDENTITY_SOURCE = readFileSync(
 	join(__dirname, "agent-list-identity.tsx"),
 	"utf8",
@@ -65,7 +69,7 @@ test("running drops the redundant label; awaiting swaps the title to the Needs i
 	// The shimmering title alone communicates a running session.
 	assert.doesNotMatch(CARD_SOURCE, /Working on it/);
 	assert.match(CARD_SOURCE, /"needs-input":\s*\{[^}]*showDots:\s*true/);
-	assert.doesNotMatch(CARD_SOURCE, /titleOverride|const titleText/);
+	assert.doesNotMatch(CARD_SOURCE, /titleOverride/u);
 	// Awaiting sessions name the blocked state instead of the task title, matching
 	// the Jira queue card's JiraSessionLabel.
 	assert.match(CARD_SOURCE, /const AWAITING_INPUT_TITLE = "Needs input";/u);
@@ -77,11 +81,14 @@ test("running drops the redundant label; awaiting swaps the title to the Needs i
 	);
 	// The helper drives both native card title slots and remains the default for
 	// the shared header when a consumer does not lead with the agent identity.
-	assert.equal((CARD_SOURCE.match(/getSessionTitle\(item\)/gu) ?? []).length, 3);
+	assert.equal((CARD_SOURCE.match(/getSessionTitle\(item\)/gu) ?? []).length, 2);
 	// A row whose caller-owned metadata already states the lifecycle can opt out,
 	// so the state is not said twice with the work name nowhere on the card.
 	assert.match(CARD_SOURCE, /stateAwareTitle = true,/u);
-	assert.match(CARD_SOURCE, /\{stateAwareTitle \? getSessionTitle\(item\) : item\.title\}/u);
+	assert.match(
+		CARD_SOURCE,
+		/const resolvedTitle = stateAwareTitle \? getSessionTitle\(item\) : item\.title;/u,
+	);
 	assert.match(CARD_SOURCE, /\{stateAwareTitle && stateMeta\.showDots \? <AnimatedDots/u);
 	assert.match(
 		CARD_SOURCE,
@@ -210,10 +217,10 @@ test("rows carry an optional summary below metadata, leading metadata, and a sta
 	assert.match(TYPES_SOURCE, /summary\?: string;/u);
 	assert.match(TYPES_SOURCE, /metadataPrefix\?: string;/u);
 	assert.match(TYPES_SOURCE, /timeLabel\?: string;/u);
-	// The summary wraps below the metadata row; a session row's single-line
-	// title keeps truncating unless that body copy is present.
+	// The summary wraps below the metadata row and keeps the title in natural
+	// wrapping mode instead of inheriting the one-line hover treatment.
 	assert.match(CARD_SOURCE, /const hasSummary = Boolean\(item\.summary\);/u);
-	assert.match(CARD_SOURCE, /hasSummary \? "text-pretty" : "truncate"/u);
+	assert.match(CARD_SOURCE, /"min-w-0 font-medium",\s*hasSummary \? "text-pretty"/u);
 	assert.match(
 		CARD_SOURCE,
 		/<AgentListMetadataIdentity item=\{item\} \/>[\s\S]*\{item\.summary \? \(\s*<span\s*className=\{cn\(\s*"mt-2 w-full min-w-0 text-pretty text-text",/u,
@@ -233,7 +240,7 @@ test("rows carry an optional summary below metadata, leading metadata, and a sta
 	assert.match(CARD_SOURCE, /hasSummary \? "items-start" : "items-center"/u);
 	assert.match(
 		CARD_SOURCE,
-		/<div className="flex min-w-0 flex-1 flex-col">[\s\S]*<CardActions[\s\S]*?<\/div>[\s\S]*?\{item\.summary \?/u,
+		/<div className="flex min-w-0 flex-1 flex-col">[\s\S]*<AgentListCardActions[\s\S]*?<\/div>[\s\S]*?\{item\.summary \?/u,
 	);
 	assert.match(
 		CARD_SOURCE,
@@ -489,8 +496,9 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		CARD_SOURCE,
 		/const showHoverActions = \(!isSelected \|\| showHoverActionsWhenSelected\) &&\s*\(hoverActions\?\.primary !== undefined\s*\|\| hoverActions\?\.secondary !== undefined\s*\|\| hoverActions\?\.menu !== undefined\);/u,
 	);
-	assert.match(CARD_SOURCE, /\{showHoverActions \? \(\s*<CardActions/u);
-	assert.match(CARD_SOURCE, /<AgentListRowActionButton action=\{primary\}/u);
+	assert.match(CARD_SOURCE, /\{showHoverActions && !overlayHoverActions \? \(\s*<AgentListCardActions/u);
+	assert.match(CARD_SOURCE, /\{overlayHoverActions \? \(\s*<AgentListCardActions/u);
+	assert.match(CARD_ACTIONS_SOURCE, /<AgentListRowActionButton action=\{primary\}/u);
 	assert.match(ROW_ACTION_SOURCE, /event\.stopPropagation\(\);\s*\n\s*action\.onClick\(\)/u);
 	assert.match(
 		CARD_SOURCE,
@@ -501,18 +509,37 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		/"flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest"/u,
 	);
 	assert.match(CARD_SOURCE, /<span className=\{cn\(titleClassName, "text-text"\)\}>/u);
-	assert.match(CARD_SOURCE, /className="min-w-0 truncate">\{item\.agent\.name\}<\/span>/u);
+	// Long reveal-action titles keep their wrapped copy in layout while a
+	// one-line visual copy takes over on hover/focus. This keeps lower title lines
+	// inside the hit area instead of collapsing the row out from under the pointer.
 	assert.match(
 		CARD_SOURCE,
+		/const stabilizeHoverTitle = !hasSummary\s*&& showHoverActions\s*&& !\(stateAwareTitle && stateMeta\.shimmerTitle\);/u,
+	);
+	assert.match(
+		CARD_SOURCE,
+		/className=\{cn\(titleClassName, "col-start-1 row-start-1 text-text"\)\}\s*data-agent-list-title-layout=""/u,
+	);
+	assert.match(
+		CARD_SOURCE,
+		/const hoverTitleClassName = cn\(\s*"col-start-1 row-start-1 min-w-0 truncate/u,
+	);
+	assert.match(
+		CARD_SOURCE,
+		/aria-hidden="true"\s*className=\{hoverTitleClassName\}\s*data-agent-list-title-hover=""/u,
+	);
+	assert.match(CARD_SOURCE, /className="min-w-0 truncate">\{item\.agent\.name\}<\/span>/u);
+	assert.match(
+		CARD_ACTIONS_SOURCE,
 		/grid-cols-\[0fr\][\s\S]*group-hover\/agent-row:grid-cols-\[1fr\][\s\S]*group-has-\[:focus-visible\]\/agent-row:grid-cols-\[1fr\]/u,
 	);
 	assert.match(
-		CARD_SOURCE,
+		CARD_ACTIONS_SOURCE,
 		/"pointer-events-none flex shrink-0 items-center gap-1 pl-3 opacity-0/u,
 	);
-	assert.match(CARD_SOURCE, /transition-opacity duration-normal ease-out-practical/u);
+	assert.match(CARD_ACTIONS_SOURCE, /transition-opacity duration-normal ease-out-practical/u);
 	assert.match(
-		CARD_SOURCE,
+		CARD_ACTIONS_SOURCE,
 		/group-data-\[variant=uncaptured-work\]\/agent-row:transition-none/u,
 	);
 	assert.doesNotMatch(CARD_SOURCE, /className="ml-3 hidden shrink-0 items-center gap-1/u);
