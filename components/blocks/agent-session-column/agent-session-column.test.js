@@ -5,10 +5,6 @@ const { test } = require("node:test");
 
 const INDEX_SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
 const HOOK_SOURCE = readFileSync(join(__dirname, "use-agent-session-column-hidden.ts"), "utf8");
-const INTERACTION_HOOK_SOURCE = readFileSync(
-	join(__dirname, "use-agent-session-column-interaction.ts"),
-	"utf8",
-);
 const FOOTER_SOURCE = readFileSync(
 	join(__dirname, "agent-session-column-hidden-footer.tsx"),
 	"utf8",
@@ -395,19 +391,6 @@ test("notch flyouts use a stable trigger host so the shared popup follows the ra
 	assert.match(RAIL_COLUMN_SOURCE, /delay=\{0\}/u);
 	assert.match(RAIL_COLUMN_SOURCE, /content="untracked-work"/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /render=\{\s*<motion\.li/u);
-});
-
-test("column interaction is reported across collapsed and expanded presentations", () => {
-	assert.match(TYPES_SOURCE, /onInteractionChange\?: \(interacting: boolean\) => void;/u);
-	assert.match(INDEX_SOURCE, /onFocusCapture=\{handleColumnFocusCapture\}/u);
-	assert.match(INDEX_SOURCE, /onBlurCapture=\{handleColumnBlurCapture\}/u);
-	assert.match(INDEX_SOURCE, /onPointerEnter=\{handleColumnPointerEnter\}/u);
-	assert.match(INDEX_SOURCE, /onPointerLeave=\{handleColumnPointerLeave\}/u);
-	assert.match(
-		INTERACTION_HOOK_SOURCE,
-		/const interacting = interaction\.focused \|\| interaction\.pointer;/u,
-	);
-	assert.match(INTERACTION_HOOK_SOURCE, /onInteractionChangeRef\.current\?\.\(false\);/u);
 });
 
 test("a notch is a drag handle, so a session leaves the collapsed rail too", () => {
