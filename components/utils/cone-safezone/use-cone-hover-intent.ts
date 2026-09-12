@@ -3,13 +3,27 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useDirection } from "@base-ui/react/direction-provider";
 
-import type { HoverCardProps } from "@/components/ui/hover-card";
 import { getConePolygon, isHeadingIntoPopup, resolveConeSide, type ConePolygon, type HoverPoint, type HoverSide } from "./geometry";
 
+interface ConeOpenChangeDetails {
+	cancel: () => void;
+	event: Event;
+	isCanceled: boolean;
+	reason: string;
+	trigger?: Element;
+}
+
+type ConeOpenChange<Details extends ConeOpenChangeDetails> = (open: boolean, details: Details) => void;
+
+function toHoverPoint(event: Event): HoverPoint | null {
+	if (!(event instanceof MouseEvent)) return null;
+	return { x: event.clientX, y: event.clientY };
+}
+
 /** Extend Base UI's short, speed-sensitive cone without changing other dismissals. */
-export function useConeHoverIntent(
+export function useConeHoverIntent<Details extends ConeOpenChangeDetails>(
 	open: boolean,
-	onOpenChange: NonNullable<HoverCardProps["onOpenChange"]>,
+	onOpenChange: ConeOpenChange<Details>,
 	onClose: () => void,
 	graceMs: number,
 	getActiveTrigger: () => Element | null,
@@ -112,7 +126,7 @@ export function useConeHoverIntent(
 		};
 	}, [open, clearPending, deferClose, isInCone, getTrigger]);
 
-	const handleOpenChange: NonNullable<HoverCardProps["onOpenChange"]> = (nextOpen, details) => {
+	const handleOpenChange: ConeOpenChange<Details> = (nextOpen, details) => {
 		if (!nextOpen && details.reason === "trigger-hover" && isInCone()) {
 			details.cancel();
 			deferClose();
@@ -124,7 +138,7 @@ export function useConeHoverIntent(
 		triggerRef.current = nextOpen ? details.trigger ?? null : null;
 		travellingFrom.current = "trigger";
 		origin.current = nextOpen && details.reason === "trigger-hover"
-			? { x: details.event.clientX, y: details.event.clientY }
+			? toHoverPoint(details.event)
 			: null;
 		pointer.current = origin.current;
 	};

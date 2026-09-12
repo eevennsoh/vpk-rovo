@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type PointerEvent } from "react";
+import { useRef, useState, type ComponentProps, type PointerEvent } from "react";
 import DragHandleVerticalIcon from "@atlaskit/icon/core/drag-handle-vertical";
 import GrowHorizontalIcon from "@atlaskit/icon/core/grow-horizontal";
 import PinIcon from "@atlaskit/icon/core/pin";
@@ -15,6 +15,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import { useConeHoverIntent } from "@/components/utils/cone-safezone/use-cone-hover-intent";
 import { cn } from "@/lib/utils";
 import {
 	inFlowCollapsedMenuPinLabel,
@@ -44,9 +45,21 @@ export function InFlowAgentSessionColumnCollapsedMenu({
 	title: string;
 }>) {
 	const [hovered, setHovered] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement>(null);
 	const PinGlyph = pinned ? PinFilledIcon : PinIcon;
-	const showDragHandle = dragging || open || hovered;
+	const resolvedOpen = dragging ? false : open;
+	const showDragHandle = dragging || resolvedOpen || hovered;
 	const TriggerGlyph = showDragHandle ? DragHandleVerticalIcon : ShowMoreHorizontalIcon;
+	const handleOpenChange: NonNullable<ComponentProps<typeof DropdownMenu>["onOpenChange"]> = (nextOpen) => {
+		onOpenChange(dragging ? false : nextOpen);
+	};
+	const coneIntent = useConeHoverIntent(
+		resolvedOpen,
+		handleOpenChange,
+		() => onOpenChange(false),
+		300,
+		() => triggerRef.current,
+	);
 
 	const handleTriggerPointerEnter = (event: PointerEvent<HTMLElement>) => {
 		if (event.pointerType !== "touch") {
@@ -66,10 +79,8 @@ export function InFlowAgentSessionColumnCollapsedMenu({
 
 	return (
 		<DropdownMenu
-			onOpenChange={(nextOpen) => {
-				onOpenChange(dragging ? false : nextOpen);
-			}}
-			open={dragging ? false : open}
+			onOpenChange={coneIntent.onOpenChange}
+			open={resolvedOpen}
 		>
 			<DropdownMenuTrigger
 				delay={0}
@@ -82,6 +93,7 @@ export function InFlowAgentSessionColumnCollapsedMenu({
 						className={cn(className, HOVER_OPEN_TRIGGER_CLASS_NAME)}
 						data-agent-session-column-expand-control=""
 						data-agent-session-column-options=""
+						ref={triggerRef}
 						size="icon-compact"
 						style={{ width: "100%" }}
 						type="button"
@@ -99,6 +111,7 @@ export function InFlowAgentSessionColumnCollapsedMenu({
 				align="start"
 				className="min-w-0 w-max"
 				finalFocus={shouldRestoreInFlowCollapsedMenuFocus}
+				ref={coneIntent.popupRef}
 				side="right"
 			>
 				<DropdownMenuItem

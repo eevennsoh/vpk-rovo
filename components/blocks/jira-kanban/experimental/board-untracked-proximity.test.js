@@ -135,14 +135,14 @@ test("proximity AgentSession forwards the Pulse flyout attach handlers", () => {
 	assert.doesNotMatch(BOARD_SOURCE, /onCreateWorkItem=\{agentSessionColumn\?\.onCreateWorkItem\}/u);
 });
 
-test("one board transaction coordinates every session source and suppresses previews during either drag", () => {
+test("one board transaction coordinates every session source and suppresses competing previews", () => {
 	assert.match(BOARD_SOURCE, /useBoardAgentSessionDrag/u);
 	assert.match(DRAG_HOOK_SOURCE, /createBoardAgentSessionDragTransaction/u);
 	assert.match(DRAG_HOOK_SOURCE, /resolveBoardAgentSessionDropAction/u);
 	assert.match(BOARD_SOURCE, /JiraSessionFlyoutSuspensionProvider/u);
 	assert.match(BOARD_SOURCE, /const sessionFlyoutsSuspended = boardSessionDrag\.transaction !== null \|\| draggedCardCode !== null;/u);
 	assert.match(BOARD_SOURCE, /sessionFlyoutsSuspended=\{sessionFlyoutsSuspended\}/u);
-	assert.match(IN_FLOW_SOURCE, /suspended=\{sessionFlyoutsSuspended \|\| reposition\.dragging \|\| !isEmbedded\}/u);
+	assert.match(IN_FLOW_SOURCE, /suspended=\{sessionFlyoutsSuspended \|\| reposition\.dragging \|\| isMenuOpen \|\| !isEmbedded\}/u);
 	assert.doesNotMatch(IN_FLOW_SOURCE, /isHovered && !isPersistentExpanded/u);
 	assert.match(BOARD_SOURCE, /sessionDrag: boardSessionDrag\.enablement\.transferable[\s\S]*\? boardSessionDrag\.untrackedBinding[\s\S]*: agentSessionColumn\.sessionDrag/u);
 	assert.match(PAGE_SOURCE, /boardAgentSessionDrag=\{boardSessionDrag\}/u);
