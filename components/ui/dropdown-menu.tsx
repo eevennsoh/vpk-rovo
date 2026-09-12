@@ -337,12 +337,14 @@ interface DropdownMenuSubTriggerProps
   extends MenuPrimitive.SubmenuTrigger.Props {
   inset?: boolean;
   allowTextWrap?: boolean;
+  showChevron?: boolean;
 }
 
 function DropdownMenuSubTrigger({
   className,
   inset,
   allowTextWrap = false,
+  showChevron = true,
   children,
   ...props
 }: Readonly<DropdownMenuSubTriggerProps>) {
@@ -358,11 +360,13 @@ function DropdownMenuSubTrigger({
       {...props}
     >
       {children}
-      <Icon
-        render={<ChevronRightIcon label="" size="small" />}
-        label="Open submenu"
-        className="text-icon-subtle ml-auto"
-      />
+      {showChevron ? (
+        <Icon
+          render={<ChevronRightIcon label="" size="small" />}
+          label="Open submenu"
+          className="text-icon-subtle ml-auto"
+        />
+      ) : null}
     </MenuPrimitive.SubmenuTrigger>
   );
 }
