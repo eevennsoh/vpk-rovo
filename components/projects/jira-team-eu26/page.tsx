@@ -135,11 +135,15 @@ function JiraTeamEu26App(): React.ReactElement {
 	const tabOwnsView = activeTab?.view !== undefined;
 	const activeView = activeTab?.view ?? workItemView;
 	const showBoardContent = activeTab?.hasContent === true;
+	const [agentSessionColumnInteracting, setAgentSessionColumnInteracting] = useState(false);
 	const {
 		reviewAgentSessions,
 		newAgentSessionIds,
 		syncedAgentSessions,
-	} = useJiraTeamEu26AgentSessionSync({ active: showBoardContent });
+	} = useJiraTeamEu26AgentSessionSync({
+		active: showBoardContent,
+		paused: agentSessionColumnInteracting,
+	});
 	const handleTabChange = useCallback((tabLabel: string) => {
 		setSelectedTabLabel(tabLabel);
 		const tabView = tabs.find((tab) => tab.label === tabLabel)?.view;
@@ -378,6 +382,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						insightsEnabled={false}
 						isLooseWorkResumable={isJiraTeamEu26LooseWorkResumable}
 						newAgentSessionIds={newAgentSessionIds}
+						onAgentSessionColumnInteractionChange={setAgentSessionColumnInteracting}
 						onAgentSessionsReviewed={reviewAgentSessions}
 						onBoardAgentSessionCreate={handleBoardAgentSessionCreate}
 						onBoardColumnsChange={(columns: readonly JiraKanbanColumnData[]) => {
