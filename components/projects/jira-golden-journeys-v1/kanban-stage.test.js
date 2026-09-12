@@ -19,10 +19,16 @@ const JIRA_KANBAN_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "components/blocks/jira-kanban/index.tsx"),
 	"utf8",
 );
-const JIRA_ISSUE_AGENT_ACTIVITY_SOURCE = fs.readFileSync(
-	path.join(process.cwd(), "components/blocks/jira-issue/agent-activity.tsx"),
-	"utf8",
-);
+const JIRA_ISSUE_AGENT_ACTIVITY_SOURCE = [
+	fs.readFileSync(
+		path.join(process.cwd(), "components/blocks/jira-issue/agent-activity.tsx"),
+		"utf8",
+	),
+	fs.readFileSync(
+		path.join(process.cwd(), "components/blocks/jira-issue/agent-activity-row-presentation.tsx"),
+		"utf8",
+	),
+].join("\n");
 const JIRA_ISSUE_COMPLETED_RUNS_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "components/blocks/jira-issue/completed-agent-runs.tsx"),
 	"utf8",
@@ -104,15 +110,23 @@ test("JGP Kanban reuses the Jira Issue aggregate row for working agents", () => 
 	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /import \{ Spinner \} from "@\/components\/ui\/spinner";/u);
 	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /import \{ AgentAvatarVisual \} from "@\/components\/ui-custom\/agent-avatar-visual";/u);
 	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /agentBrandName\?: ThirdPartyLogoName;/u);
-	// Dragged-out uses the shared mention chip (avatar lives inside it). The chin
+	// Dragged-out uses the shared drag pill (avatar lives inside it). The chin
 	// row keeps one AgentAvatarVisual for a featured agent. Multiple agents share
 	// the Agent Loading ferris instead of mapping a visual per agent.
-	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<AgentSessionMentionChip/u);
-	assert.equal(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE.match(/<AgentAvatarVisual/g)?.length, 1);
-	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /activities\.map\([\s\S]{0,400}<AgentAvatarVisual/u);
-	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<AgentLoading[\s\S]*agents=\{activities\.map\(toAgentLoadingAgent\)\}[\s\S]*size="small"/u);
-	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<Spinner label="" size="xs" \/>/u);
-	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /\$\{summary\.activityCount\} agents: \$\{summary\.label\}/u);
+	//
+	// The second visual belongs to the `horizontal-group` avatar layout, which no
+	// caller selects: both callsites and the default pass `animated`, so these
+	// surfaces still reach the featured avatar and the shared ferris. Wiring a
+	// caller up to `horizontal-group` must re-prove that contract here.
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<AgentSessionDragPill/u);
+	assert.equal(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE.match(/<AgentAvatarVisual/g)?.length, 2);
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /avatarLayout = "animated"/u);
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<AgentLoading[\s\S]*agents=\{activities\.map\(toAgentLoadingAgent\)\}[\s\S]*className="shrink-0"/u);
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /<Spinner label="" \/>/u);
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /const rowLabel = isCompletedRow[\s\S]*: summary\.label;/u);
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /if \(isAwaitingInput\) \{[\s\S]*\{rowLabel\}[\s\S]*<AnimatedDots/u);
+	assert.match(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"[\s\S]*\{rowLabel\}/u);
+	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /JiraIssueCyclingAgentLabel|JIRA_ISSUE_AGENT_SHIMMER/u);
 	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /variant="rainbow"/u);
 	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /phaseOffsetMs=/u);
 	assert.doesNotMatch(JIRA_ISSUE_AGENT_ACTIVITY_SOURCE, /PixelLoader/u);

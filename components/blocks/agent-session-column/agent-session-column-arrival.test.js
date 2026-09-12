@@ -47,11 +47,14 @@ const DETAIL_SOURCE = readFileSync(
 	"utf8",
 );
 
-test("newly synced work reaches both the cards and the rail", () => {
-	// One set, threaded to both forms — a collapsed column must not go quiet
-	// about arrivals just because it has no cards to mark.
+test("newly synced work reaches the rail; expanded column cards omit the unreviewed dot", () => {
+	// One set still feeds the collapsed rail and the header new-count. The
+	// expanded list keeps the arrival beat via `arrivingItemIds` and drops
+	// the persistent card mark — Unattached rows do not paint the blue dot.
 	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]{0,700}?newItemIds=\{newItemIds\}/u);
-	assert.match(INDEX_SOURCE, /<AgentSession[^>]*newItemIds=\{newItemIds\}/u);
+	const columnList = INDEX_SOURCE.match(/<AgentSession\n[\s\S]*?visibilityLabel=\{/u)?.[0] ?? "";
+	assert.match(columnList, /arrivingItemIds=\{arrivingItemIds\}/u);
+	assert.doesNotMatch(columnList, /newItemIds=/u);
 	// Destructured rather than left in `...sessionProps`, or the rail could not
 	// see it.
 	assert.match(INDEX_SOURCE, /^\tnewItemIds,$/mu);
@@ -95,6 +98,25 @@ test("an arrival is a transient beat plus a mark that outlives it", () => {
 	assert.match(ARRIVAL_HOOK_SOURCE, /AGENT_SESSION_USER_NOTCH_ARRIVAL_COMPLETE_MS/u);
 	// A settled card must not replay its entrance on an unrelated re-render.
 	assert.match(CARD_SOURCE, /initial=\{shouldPlayArrival \? \{ opacity: 0, y: AGENT_SESSION_ARRIVAL_OFFSET_PX \} : false\}/u);
+});
+
+test("settled rail avatars reveal immediately while arrival morphing stays animated", () => {
+	const avatarStart = USER_NOTCH_SOURCE.indexOf("{avatarSrc ? (");
+	const avatarEnd = USER_NOTCH_SOURCE.indexOf("width={12}", avatarStart);
+	assert.notEqual(avatarStart, -1);
+	assert.notEqual(avatarEnd, -1);
+	const hoverRevealSource = USER_NOTCH_SOURCE.slice(
+		avatarStart,
+		avatarEnd,
+	);
+
+	assert.match(hoverRevealSource, /group-data-\[hovered\]\/notch:scale-100 group-data-\[hovered\]\/notch:opacity-100/u);
+	assert.match(hoverRevealSource, /group-has-\[:focus-visible\]\/notch:scale-100 group-has-\[:focus-visible\]\/notch:opacity-100/u);
+	assert.doesNotMatch(hoverRevealSource, /transition-\[opacity,scale\]/u);
+	assert.match(
+		hoverRevealSource,
+		/arrivalExiting && !isHighlighted[\s\S]*transition-transform duration-normal ease-in-out/u,
+	);
 });
 
 test("the rest disc stays hidden while the arrival face is on screen", () => {

@@ -66,11 +66,6 @@ export function BoardCardInsertionLine({
 			aria-hidden
 			className={cn(
 				"pointer-events-none absolute inset-x-0 z-30 h-0.5 bg-border-selected",
-				// `animate-in` drives the mount fade (a bare transition cannot animate a
-				// freshly mounted node); the `transition-opacity` pair keeps any parent-driven
-				// opacity change eased. Both need their own reduced-motion escape.
-				"animate-in fade-in-0 duration-fast ease-out-practical motion-reduce:animate-none",
-				"transition-opacity duration-fast ease-out-practical motion-reduce:transition-none",
 				seam === "edge" ? EDGE_POSITION_CLASS_NAME[position] : undefined,
 			)}
 			data-insertion-line={position}

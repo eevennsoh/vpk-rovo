@@ -10,8 +10,7 @@ import {
 	type JiraIssueAgentActivity,
 	type JiraIssueAgentActivityIndicatorRenderer,
 	type JiraIssueAgentActivityLayout,
-	type JiraIssueAgentActivityMode,
-	type JiraIssueAgentSessionFlyoutContext,
+	type JiraIssueAgentActivityMode, type JiraIssueAgentAssignment,
 	type JiraIssueAgentSessionDragBinding,
 	type JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue/agent-activity";
@@ -36,8 +35,10 @@ import {
 	JiraIssueAgentDone,
 	type JiraIssueCompletedAgentRun,
 } from "@/components/blocks/jira-issue/completed-agent-runs";
+import { resolveComfortableCompletedRunViewChat, toJiraIssueAgentActivityFromCompletedRun } from "@/components/blocks/jira-issue/completed-agent-runs-model";
 import {
 	getCompletedCount,
+	getJiraIssueAgentSurfaceOffsets,
 	getJiraIssueLayoutTransition,
 	getJiraIssuePresenceMotion,
 	JIRA_ISSUE_MOTION_STYLE,
@@ -52,6 +53,7 @@ import { JiraIssueUncapturedWork } from "@/components/blocks/jira-issue/uncaptur
 import { JiraIssueSummary } from "@/components/blocks/jira-issue/summary";
 import type {
 	JiraIssueChrome,
+	JiraIssueIconScale,
 	JiraIssuePriority,
 	JiraIssuePullRequestPreview,
 	JiraIssuePullRequestStatus,
@@ -85,6 +87,7 @@ const AGENT_ACTIVITY_SURFACE_STYLE: CSSProperties = {
 
 export type {
 	JiraIssueChrome,
+	JiraIssueIconScale,
 	JiraIssuePriority,
 	JiraIssuePullRequestPreview,
 	JiraIssuePullRequestStatus,
@@ -97,7 +100,7 @@ export type {
 	JiraIssueAgentActivityIndicatorState,
 	JiraIssueAgentActivityLayout,
 	JiraIssueAgentActivityMode,
-	JiraIssueAgentActivityState,
+	JiraIssueAgentActivityState, JiraIssueAgentAssignment,
 	JiraIssueAgentSessionDragBinding,
 	JiraIssueAgentSessionDragState,
 } from "@/components/blocks/jira-issue/agent-activity";
@@ -203,6 +206,10 @@ export interface JiraIssueDefaultProps extends Omit<ComponentProps<"button">, "c
 	chrome?: JiraIssueChrome;
 	/** Compact experimental internals. Implied by stroke chrome; pair with raised chrome to change only elevation. */
 	compact?: boolean;
+	/** Compact keeps 12px icons and 16px avatars. Comfortable uses 16px icons and 24px avatars. */
+	iconScale?: JiraIssueIconScale;
+	/** Nested subtask cards inherit the parent chrome unless set. Compact cards default to stroke so Raised/Stroke only changes the parent. */
+	subtaskChrome?: JiraIssueChrome;
 	selected?: boolean;
 	dragging?: boolean;
 	showPriorityIndicator?: boolean;
@@ -217,14 +224,13 @@ export interface JiraIssueDefaultProps extends Omit<ComponentProps<"button">, "c
 	agentActivities?: readonly JiraIssueAgentActivity[];
 	agentDoneRuns?: readonly JiraIssueCompletedAgentRun[];
 	agentActivityMode?: JiraIssueAgentActivityMode;
+	assignment?: JiraIssueAgentAssignment;
 	/** Stable preview capability for Agent Session column targeting. Keep present while highlighted changes. */
 	agentSessionTargetPreview?: Readonly<{ highlighted: boolean }>;
 	/** Merged collapses active agents into one prioritized chin row; split gives each agent its own row. */
 	agentActivityLayout?: JiraIssueAgentActivityLayout;
 	/** One-shot brand sweep across the chin row a session was just linked into. */
 	agentLinkFlash?: JiraIssueAgentLinkFlash;
-	/** Optional board context that makes attached activity rows open session details on hover. */
-	agentSessionFlyout?: JiraIssueAgentSessionFlyoutContext;
 	onAgentActivityOpenChange?: (open: boolean) => void;
 	onAgentActivityViewChat?: (activity: JiraIssueAgentActivity) => void;
 	/** Optional host-owned visual override for active agent-session states. */
@@ -267,8 +273,7 @@ function JiraIssueDefault({
 	active = false,
 	agentActivities,
 	agentActivityMode,
-	agentActivityLayout = "merged",
-	agentSessionFlyout,
+	agentActivityLayout = "merged", assignment,
 	agentSessionDragControl,
 	agentSessionTargetPreview,
 	agentDoneRuns = [],
@@ -281,6 +286,7 @@ function JiraIssueDefault({
 	assigneeUnassignedKind,
 	chrome = "raised",
 	compact = false,
+	iconScale = "compact",
 	className,
 	defaultSubtasksExpanded = false,
 	dragging = false,
@@ -309,6 +315,7 @@ function JiraIssueDefault({
 	showMoreAction = true,
 	showPriorityIndicator = true,
 	style,
+	subtaskChrome,
 	subtasks,
 	subtasksCompleted,
 	subtasksExpanded,
@@ -382,10 +389,21 @@ function JiraIssueDefault({
 				? "completed"
 				: "none";
 	const resolvedAgentActivityMode = agentActivityMode ?? inferredAgentActivityMode;
-	const activeAgentActivities = resolvedAgentActivityMode === "none" || resolvedAgentActivityMode === "completed"
+	// Comfortable (experimental v2) paints finished agents as normal session
+	// rows. The compact merged "N Finished" chip is original-experimental only.
+	const finishedAgentActivities = iconScale === "comfortable" && resolvedAgentActivityMode === "completed"
+		? agentDoneRuns.map(toJiraIssueAgentActivityFromCompletedRun)
+		: [];
+	const activeAgentActivities = resolvedAgentActivityMode === "none"
 		? []
-		: nonCompletedAgentActivities;
-	const hasAgentDoneNotification = resolvedAgentActivityMode === "completed" && agentDoneRuns.length > 0;
+		: resolvedAgentActivityMode === "completed"
+			? finishedAgentActivities
+			: nonCompletedAgentActivities;
+	const hasCompletedAgentChin = resolvedAgentActivityMode === "completed" && agentDoneRuns.length > 0;
+	const hasAgentDoneNotification = iconScale !== "comfortable" && hasCompletedAgentChin;
+	const handleAgentActivityViewChat = resolveComfortableCompletedRunViewChat(
+		onAgentActivityViewChat, onAgentDoneRunView, agentDoneRuns, iconScale,
+	);
 	const agentSessionTargetHighlighted = agentSessionTargetPreview?.highlighted ?? false;
 	const inferredPullRequestNumber = agentDoneRuns.find((run) => run.pullRequestNumber)?.pullRequestNumber;
 	const resolvedPullRequestNumber = pullRequestNumber ?? inferredPullRequestNumber;
@@ -419,14 +437,34 @@ function JiraIssueDefault({
 	// around the issue. The shell keys off mode, not a mounted row.
 	const hasActiveAgentActivityShell = resolvedAgentActivityMode === "working"
 		|| resolvedAgentActivityMode === "awaiting-input"
-		|| hasAgentDoneNotification
+		|| hasCompletedAgentChin
 		|| isAttachingSession
 		|| agentSessionTargetHighlighted;
 	const hasAgentActivityChin = activeAgentActivities.length > 0
-		|| hasAgentDoneNotification
+		|| hasCompletedAgentChin
 		|| isAttachingSession;
 	const hasIssueRows = hasSubtasks;
-	const hasAgentActivityPresentation = agentActivityMode !== undefined || Boolean(agentActivities?.length) || hasAgentDoneNotification;
+	const hasAgentActivityPresentation = agentActivityMode !== undefined || Boolean(agentActivities?.length) || hasCompletedAgentChin;
+	// Agent chrome also leaves for reasons that have nothing to do with this card:
+	// a board filter such as View → Agents strips every row off the cards it is
+	// not focusing, and the shell it hosts is the element-type switch described
+	// below. Falling back to the plain tree there remounts a card that never left
+	// the screen — keyboard focus is lost and every mount-animated descendant
+	// replays its entrance, the assignee avatar's scale-and-fade most visibly.
+	//
+	// This is history, not derived state: nothing in the current props can say
+	// whether this card has already mounted a shell, so the latch is set during
+	// render rather than from an effect. There is no stale frame to adjust away —
+	// the render that first sees agent chrome already resolves the shell through
+	// the `hasAgentActivityPresentation` term below — and a shell with no active
+	// agent activity is the resting state of a session-target preview, so the
+	// card paints identically once the rows are gone.
+	const [agentActivityShellMounted, setAgentActivityShellMounted] = useState(
+		hasAgentActivityPresentation,
+	);
+	if (hasAgentActivityPresentation && !agentActivityShellMounted) {
+		setAgentActivityShellMounted(true);
+	}
 	// The approach also mounts the shell. With `initial={false}` on the backdrop,
 	// a shell that only appears once the pointer is already inside the rect has
 	// nothing to fade from and snaps to full grey. Mounting early is visually
@@ -438,13 +476,14 @@ function JiraIssueDefault({
 	// remount the whole card — dropping keyboard focus — every time a pointer
 	// passed within the proximity range.
 	const usesAgentActivityShell = hasAgentActivityPresentation
+		|| agentActivityShellMounted
 		|| Boolean(agentSessionTransfer)
 		|| agentSessionDragControl !== undefined
 		|| Boolean(agentSessionTargetPreview);
 	const chromeStyles = resolveJiraIssueChrome(chrome);
 	const usesStrokeChrome = chrome === "stroke";
 	const usesCompactVisual = compact || usesStrokeChrome;
-	const hasInteractiveContent = showMoreAction || hasSubtasks || Boolean(parentEpicControl) || hasAgentActivityPresentation || Boolean(generativeAction) || Boolean(agentSessionTransfer) || usesCompactVisual || Boolean(agentSessionTargetPreview);
+	const hasInteractiveContent = showMoreAction || hasSubtasks || Boolean(parentEpicControl) || hasAgentActivityPresentation || agentActivityShellMounted || Boolean(generativeAction) || Boolean(agentSessionTransfer) || usesCompactVisual || Boolean(agentSessionTargetPreview);
 	const shouldRenderIssueClickButton = Boolean(props.onClick && !parentEpicControl);
 	const issueRowsClassName = cn("pt-1", !(hasSubtasks && resolvedSubtasksExpanded) && "pb-1");
 	const layoutTransition = getJiraIssueLayoutTransition(shouldReduceMotion);
@@ -560,12 +599,15 @@ function JiraIssueDefault({
 		? layoutTransition
 		: { ...layoutTransition, opacity: JIRA_ISSUE_MOTION_BACKDROP_NEARNESS };
 	const agentActivitySurfacePosition = agentActivitySurfaceInset - 1;
-	const agentActivitySurfaceAnimation = {
-		bottom: -1,
-		left: agentActivitySurfacePosition,
-		right: agentActivitySurfacePosition,
-		top: agentActivitySurfacePosition,
-	};
+	// No chin row under the card means the well's bottom band has to come out of
+	// the card, exactly like its left, right, and top bands. Adding a spacer row
+	// instead would grow the shell by 4px the moment a hovered agent session
+	// highlighted the card and shove every card below it down.
+	const insetsAgentActivitySurfaceBottom = hasActiveAgentActivityShell && !hasAgentActivityChin;
+	const agentActivitySurfaceAnimation = getJiraIssueAgentSurfaceOffsets(
+		agentActivitySurfacePosition,
+		insetsAgentActivitySurfaceBottom,
+	);
 	const agentActivitySurfaceStyle: CSSProperties = {
 		...AGENT_ACTIVITY_SURFACE_STYLE,
 		boxShadow: chromeStyles.boxShadow,
@@ -643,6 +685,7 @@ function JiraIssueDefault({
 			assigneeAvatarSrc={assigneeAvatarSrc}
 			assigneePulse={assigneePulse}
 			assigneeUnassignedKind={assigneeUnassignedKind}
+			iconScale={iconScale}
 			issueKey={issueKey}
 			issueTypeLabel={issueTypeLabel}
 			isMounted={isMounted}
@@ -727,10 +770,12 @@ function JiraIssueDefault({
 								completedCount={completedSubtaskCount}
 								controlId={subtasksPanelId}
 								expanded={resolvedSubtasksExpanded}
-								hasInsetSurface={hasActiveAgentActivityShell}
+								hasInsetSurface={hasActiveAgentActivityShell && !insetsAgentActivitySurfaceBottom}
+								iconScale={iconScale}
 								label={subtasksLabel}
 								onToggle={handleSubtasksToggle}
 								shouldReduceMotion={shouldReduceMotion}
+								subtaskChrome={subtaskChrome}
 								subtasks={subtasks}
 							/>
 						</div>
@@ -760,7 +805,7 @@ function JiraIssueDefault({
 			className={agentActivityShellClassName}
 			data-slot="jira-issue-agent-shell"
 			initial={false}
-			layout={shouldReduceMotion ? false : "size"}
+			layout={shouldReduceMotion || agentActivityHoverOpen ? false : "size"}
 			style={AGENT_ACTIVITY_SHELL_STYLE}
 			transition={layoutTransition}
 		>
@@ -780,7 +825,7 @@ function JiraIssueDefault({
 				<motion.div
 					className={rootClassName}
 					data-slot="jira-issue-card"
-					layout={shouldReduceMotion ? false : "position"}
+					layout={shouldReduceMotion || agentActivityHoverOpen ? false : "position"}
 					style={AGENT_ACTIVITY_INNER_STYLE}
 					transition={layoutTransition}
 				>
@@ -801,15 +846,16 @@ function JiraIssueDefault({
 				    row instead of stacking. Split layouts keep the other rows so the
 				    card height — and drop-zone geometry — stays put. */}
 				<JiraIssueAgentActivityRows
-					activities={activeAgentActivities}
+					activities={activeAgentActivities} assignment={assignment}
 					attachPreviewCopy={replaceDetachedTransfer ? undefined : attachChinCopy}
+					iconScale={iconScale}
+					inheritChinSurface
 					linkFlash={agentLinkFlash}
 					instantSessionTransfer={agentSessionDragControl !== undefined}
 					layout={agentActivityLayout}
 					onOpenChange={handleAgentActivityOpenChange}
-					onViewChat={onAgentActivityViewChat}
+					onViewChat={handleAgentActivityViewChat}
 					renderAgentActivityIndicator={renderAgentActivityIndicator}
-					sessionFlyout={agentSessionFlyout}
 					sessionDrag={agentSessionDragBinding}
 					shouldReduceMotion={shouldReduceMotion}
 					usesStrokeChrome={usesCompactVisual}
@@ -838,19 +884,25 @@ function JiraIssueDefault({
 						</motion.div>
 					) : null}
 				</AnimatePresence>
-				{hasActiveAgentActivityShell && !hasAgentActivityChin ? (
-					<div
-						aria-hidden
-						className="h-1"
-						data-slot="jira-issue-agent-shell-gutter"
-					/>
-				) : null}
 			</LayoutGroup>
 		</motion.div>
 	);
-	const agentActivityShellWithTransfer = agentSessionTransfer ? (
-		<div className={cn("relative w-full min-w-0 overflow-visible", JIRA_ISSUE_SESSION_TRANSFER_GROUP_CLASS)}>
+	// The transfer host is unconditional. `agentSessionTransfer` is a capability
+	// that comes and goes with the board's own state — a filter that hides the
+	// last unlinkable row takes it away — and making it choose between a wrapped
+	// and an unwrapped shell is another element-type change on the article's
+	// first child, with the same remount cost as the shell gate above. The
+	// wrapper is a plain full-width block with no chrome, so keeping it costs
+	// nothing when there is no transfer to host.
+	const agentActivityShellWithTransfer = (
+		<div
+			className={cn(
+				"relative w-full min-w-0 overflow-visible",
+				agentSessionTransfer ? JIRA_ISSUE_SESSION_TRANSFER_GROUP_CLASS : null,
+			)}
+		>
 			{agentActivityShell}
+			{agentSessionTransfer ? (
 				<JiraIssueAgentSessionTransfer
 					cancelled={resolvedAgentSessionDragState.cancelled}
 					cardMeasureRef={cardMeasureRef}
@@ -862,11 +914,12 @@ function JiraIssueDefault({
 					session={resolvedAgentSessionDragState.activities[0]}
 					sessionLabel={resolvedAgentSessionDragState.activities[0]?.name}
 					source={resolvedAgentSessionDragState.source}
-			/>
+				/>
+			) : null}
 			{/* Detached/proximity pills sit under the shell. Attach copy covers
 			    that occupied slot so the chin does not grow a second row, but
 			    the drag source stays mounted through pointer release. */}
-			{agentSessionDragBinding && sessionTransferAfter
+			{agentSessionTransfer && agentSessionDragBinding && sessionTransferAfter
 				? (
 					<JiraIssueDetachedSessionTransferSlot
 						attachCopy={replaceDetachedTransfer ? attachChinCopy : undefined}
@@ -876,7 +929,7 @@ function JiraIssueDefault({
 				)
 				: null}
 		</div>
-	) : agentActivityShell;
+	);
 
 	if (hasInteractiveContent) {
 		if (usesAgentActivityShell) {

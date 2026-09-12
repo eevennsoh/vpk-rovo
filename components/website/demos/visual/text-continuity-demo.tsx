@@ -2,7 +2,7 @@
 
 /**
  * The Text Continuity gallery — every example from https://torph.lochie.me/examples,
- * in upstream's hand-ordered sequence, over a panel that retunes the shared morph.
+ * selected one at a time over a panel that retunes the shared morph.
  */
 
 import { useMemo, useState } from "react";
@@ -14,6 +14,7 @@ import {
 	EXAMPLES,
 	SETTLE_SPRING,
 	type EasePreset,
+	type ExampleId,
 	type TextContinuityConfig,
 } from "@/components/visual/text-continuity/data";
 import { EXAMPLE_COMPONENTS } from "@/components/visual/text-continuity/examples";
@@ -28,8 +29,15 @@ const EASE_LABELS: Readonly<Record<EasePreset, string>> = {
 };
 
 const EASE_SELECT_OPTIONS = EASE_OPTIONS.map((value) => ({ value, label: EASE_LABELS[value] }));
+const DEFAULT_EXAMPLE = EXAMPLES[0]!;
+const EXAMPLE_SELECT_OPTIONS = EXAMPLES.map((example) => ({
+	value: example.id,
+	label: example.label,
+	description: example.blurb,
+}));
 
 export default function TextContinuityDemo() {
+	const [selectedExampleId, setSelectedExampleId] = useState<ExampleId>(DEFAULT_EXAMPLE.id);
 	const [duration, setDuration] = useState(DEFAULT_CONFIG.duration);
 	const [ease, setEase] = useState<EasePreset>(DEFAULT_CONFIG.ease);
 	const [stiffness, setStiffness] = useState(SETTLE_SPRING.stiffness ?? 150);
@@ -40,6 +48,8 @@ export default function TextContinuityDemo() {
 	const [disabled, setDisabled] = useState(DEFAULT_CONFIG.disabled);
 
 	const isSpring = ease === "spring";
+	const selectedExample = EXAMPLES.find((example) => example.id === selectedExampleId) ?? DEFAULT_EXAMPLE;
+	const ActiveExample = EXAMPLE_COMPONENTS[selectedExample.id];
 
 	const config = useMemo<TextContinuityConfig>(
 		() => ({
@@ -56,30 +66,28 @@ export default function TextContinuityDemo() {
 
 	return (
 		<div className="flex w-full max-w-5xl flex-col" style={{ gap: token("space.400") }}>
-			<TextContinuityProvider config={config}>
-				<div className="grid grid-cols-[repeat(auto-fill,minmax(19rem,1fr))]" style={{ gap: token("space.200") }}>
-					{EXAMPLES.map((example) => {
-						const Example = EXAMPLE_COMPONENTS[example.id];
-						return (
-							<figure
-								key={example.id}
-								className="m-0 flex flex-col overflow-hidden rounded-2xl border border-border bg-surface"
-							>
-								<div className="flex min-h-56 flex-1 items-center justify-center overflow-hidden p-5">
-									<Example />
-								</div>
+			<GUI.Select
+				id="text-continuity-example"
+				label="Demo"
+				value={selectedExampleId}
+				options={EXAMPLE_SELECT_OPTIONS}
+				onChange={setSelectedExampleId}
+			/>
 
-								<figcaption
-									className="flex flex-col gap-0.5 border-t border-border px-4 py-3"
-									style={{ background: token("elevation.surface.sunken") }}
-								>
-									<span className="text-sm font-semibold text-text">{example.label}</span>
-									<span className="text-xs leading-snug text-text-subtlest">{example.blurb}</span>
-								</figcaption>
-							</figure>
-						);
-					})}
-				</div>
+			<TextContinuityProvider config={config}>
+				<figure className="m-0 flex flex-col overflow-hidden rounded-2xl border border-border bg-surface">
+					<div className="flex min-h-56 flex-1 items-center justify-center overflow-hidden p-5">
+						<ActiveExample key={selectedExample.id} />
+					</div>
+
+					<figcaption
+						className="flex flex-col gap-0.5 border-t border-border px-4 py-3"
+						style={{ background: token("elevation.surface.sunken") }}
+					>
+						<span className="text-sm font-semibold text-text">{selectedExample.label}</span>
+						<span className="text-xs leading-snug text-text-subtlest">{selectedExample.blurb}</span>
+					</figcaption>
+				</figure>
 			</TextContinuityProvider>
 
 			<GUI.Panel

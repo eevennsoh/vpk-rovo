@@ -129,6 +129,9 @@ export const UI_CUSTOM_PRIMARY_DEMOS: Record<string, ComponentType> = {
 		ssr: false,
 	}),
 	shimmer: dynamic(() => import("../../demos/ui-custom/shimmer-demo"), { ssr: false }),
+	"shimmer-wave": dynamic(() => import("../../demos/ui-custom/shimmer-wave-demo"), {
+		ssr: false,
+	}),
 	snippet: dynamic(() => import("../../demos/ui-custom/snippet-demo"), { ssr: false }),
 	sources: dynamic(() => import("../../demos/ui-custom/sources-demo"), { ssr: false }),
 	"speech-input": dynamic(() => import("../../demos/ui-custom/speech-input-demo"), {

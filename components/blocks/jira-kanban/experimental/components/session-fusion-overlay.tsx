@@ -7,16 +7,21 @@ import {
 	JiraLinking,
 	type JiraLinkingIdentity,
 	type JiraLinkingRelease,
+	type JiraLinkingVariant,
 } from "@/components/blocks/jira-linking";
 
-import { resolveAgentBrandTint } from "../lib/agent-brand-tint";
+import {
+	resolveAgentBrandTint,
+	resolveAgentBrandTintVariable,
+} from "../lib/agent-brand-tint";
 import type { BoardAgentSessionAttachProximity } from "../lib/board-agent-session-drag";
 import { toSessionFusionTarget } from "../lib/session-fusion-overlay-state";
 
 /**
- * Both drag sources put this attribute on the centred inner chip node. The
- * outer portal wrapper's border box ignores that child's transform, so
- * measuring the wrapper instead would be off by half the chip in both axes.
+ * Both drag sources mark the drawn lead pill — `AgentSessionDragPill` with
+ * `isFusionSource`, never the centring wrapper around it. The wrapper's border
+ * box ignores the chip's own transform, so measuring it would be off by half
+ * the chip in both axes and would sit still through the chip's entrance FLIP.
  */
 const CHIP_SELECTOR = "[data-session-drag-overlay] [data-session-fusion-chip]";
 
@@ -39,12 +44,16 @@ function toLinkingIdentities(
 		return null;
 	}
 
-	return members.map((member) => ({
-		id: member.id,
-		imageSrc: member.avatarSrc,
-		tint: resolveAgentBrandTint(member.tintSeed),
-		tintSeed: member.tintSeed || member.name || member.id,
-	}));
+	return members.map((member) => {
+		const tintVariable = resolveAgentBrandTintVariable(member.tintSeed);
+		return {
+			id: member.id,
+			imageSrc: member.avatarSrc,
+			tint: tintVariable ? undefined : resolveAgentBrandTint(member.tintSeed),
+			tintSeed: member.tintSeed || member.name || member.id,
+			tintVariable,
+		};
+	});
 }
 
 export interface SessionFusionOverlayProps {
@@ -56,20 +65,29 @@ export interface SessionFusionOverlayProps {
 	proximity: BoardAgentSessionAttachProximity | null;
 	/** Armed on an attach drop so subjects fly into the card. */
 	release?: JiraLinkingRelease | null;
+	/** Which linking decoration to draw. Defaults to the metaball `fuse`. */
+	variant?: JiraLinkingVariant;
 }
 
 /**
  * Board adapter for the reusable Jira linking.
  *
- * Approach is the metaball field. An attach drop arms `release.drop` so the
- * subjects fly into the card's agent session row with the same stagger as the
- * create well, and the chin-row sweep waits until those flights have landed.
+ * Fuse's approach is the metaball field. An attach drop arms `release.drop` so
+ * the subjects fly into the card's agent session row with the same stagger as
+ * the create well, and the chin-row sweep waits until those flights have
+ * landed.
+ *
+ * Glow draws nothing on approach: it arms on release only. A drop collapses
+ * one cohort chip into the card; a click-to-assign release omits that chip
+ * and goes straight to the halo and backdrop pulse. It stays mounted after
+ * the host clears `release` so that backdrop can finish.
  */
 export function SessionFusionOverlay({
 	members,
 	onFuseSettled,
 	proximity,
 	release = null,
+	variant = "fuse",
 }: Readonly<SessionFusionOverlayProps>) {
 	const identities = useMemo(() => toLinkingIdentities(members), [members]);
 
@@ -81,6 +99,7 @@ export function SessionFusionOverlay({
 			release={release}
 			sourceSelector={CHIP_SELECTOR}
 			target={release?.target ?? toSessionFusionTarget(proximity)}
+			variant={variant}
 			zIndex={FUSION_Z_INDEX}
 		/>
 	);

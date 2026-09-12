@@ -218,6 +218,7 @@ test("session activation is omitted when the host cannot resume it", async () =>
 
 	assert.equal(handlers.onView, undefined);
 	assert.equal(handlers.onCopyResume, undefined);
+	assert.equal(handlers.onContinueInAgent, undefined);
 	assert.equal(handlers.isResumable(item), false);
 	assert.equal(typeof handlers.onCreateWorkItem, "function");
 	assert.equal(typeof handlers.onLinkWorkItem, "function");
@@ -249,6 +250,7 @@ test("session callbacks ignore stale rows and host-denied resume requests", asyn
 	handlers.onSubtasks(staleItem);
 	handlers.onCopyResume(staleItem);
 	handlers.onView(staleItem);
+	handlers.onContinueInAgent?.(staleItem);
 	assert.deepEqual(calls, []);
 
 	// The host decision gates both resume entry points. Capture remains available
@@ -279,6 +281,77 @@ test("create, link, and subtask capture through the same host callback", async (
 	assert.deepEqual(captured, [session.id, session.id, session.id]);
 });
 
+test("continue-in is omitted until the host supplies it, then ignores stale rows", async () => {
+	const { PULSE_TIMELINE, toPulseSessionHandlers, toPulseSessionItems } = await loadSessionsHarness();
+	const session = PULSE_TIMELINE.looseWork.find((item) => item.kind === "agent-session");
+	assert.ok(session !== undefined, "fixture should include a local agent session");
+	const [item] = toPulseSessionItems([session], PULSE_TIMELINE.members);
+	const withoutContinue = toPulseSessionHandlers({
+		looseWork: [session],
+		onCapture() {},
+		onResume() {},
+	});
+	assert.equal(withoutContinue.onContinueInAgent, undefined);
+
+	const continued = [];
+	const handlers = toPulseSessionHandlers({
+		looseWork: [session],
+		onCapture() {},
+		onContinue(looseWork) {
+			continued.push(looseWork.id);
+		},
+	});
+	const staleItem = { ...item, id: "lw-session-no-longer-on-this-board" };
+
+	assert.equal(typeof handlers.onContinueInAgent, "function");
+	handlers.onContinueInAgent(staleItem);
+	assert.deepEqual(continued, []);
+	handlers.onContinueInAgent(item);
+	assert.deepEqual(continued, [session.id]);
+});
+
+/**
+ * A session's PR is a Smart Link, not a bare link: the flyout's Artifacts chip
+ * expands into a card with the repo tag, the `branch → main` path, the diff
+ * stats, and the summary. The mapper used to forward only number, title and
+ * URL, so every one of those cards opened nearly empty. Assert the whole
+ * payload survives the fixture → row → flyout hop for every authored PR.
+ */
+test("every session pull request maps to a complete Smart Link payload", async () => {
+	const { PULSE_SPACE_REPOSITORY, PULSE_TIMELINE, toPulseSessionItems } = await loadSessionsHarness();
+	const sessions = PULSE_TIMELINE.looseWork.filter(
+		(item) => item.kind === "agent-session" && item.pullRequest !== undefined,
+	);
+	const items = toPulseSessionItems(sessions, PULSE_TIMELINE.members, PULSE_TIMELINE.workItems);
+
+	assert.ok(sessions.length > 0, "no PR-bearing sessions left to check");
+	assert.equal(items.length, sessions.length);
+
+	items.forEach((item, index) => {
+		const { pullRequest } = sessions[index];
+		const details = item.sessionDetails;
+		const repository = pullRequest.repository ?? PULSE_SPACE_REPOSITORY;
+		const where = `${sessions[index].id}/#${pullRequest.number}`;
+
+		assert.equal(details.pullRequestNumber, pullRequest.number, where);
+		assert.equal(details.pullRequestTitle, pullRequest.title, where);
+		assert.equal(details.pullRequestDescription, pullRequest.description, where);
+		assert.equal(details.files, pullRequest.files, where);
+		assert.equal(details.additions, pullRequest.additions, where);
+		assert.equal(details.deletions, pullRequest.deletions, where);
+		assert.equal(details.branch, pullRequest.branch, where);
+		assert.equal(details.repository, repository, where);
+		// Every PR in the fixture merges into the space's trunk, and the URL is
+		// built from the resolved repo so an overridden one cannot link elsewhere.
+		assert.equal(details.targetBranch, "main", where);
+		assert.equal(
+			details.pullRequestUrl,
+			`https://github.com/${repository}/pull/${pullRequest.number}`,
+			where,
+		);
+	});
+});
+
 test("the uncaptured column renders sessions through the Agent Session block", () => {
 	assert.match(SOURCES.rail, /import \{ AgentSession \} from "@\/components\/blocks\/agent-session";/u);
 	assert.match(
@@ -294,6 +367,7 @@ test("the uncaptured column renders sessions through the Agent Session block", (
 	// The row -> loose work callbacks live in the shared adapter, so the rail and
 	// the v2 board's untracked-work column apply one set of rules.
 	assert.match(SOURCES.rail, /\{\.\.\.sessionHandlers\}/u);
+	assert.match(SOURCES.sessions, /onContinueInAgent: continueSession,/u);
 	assert.match(SOURCES.sessions, /onCopyResume: onResume === undefined \? undefined : \(item: AgentSessionItem\) => \{/u);
 	assert.match(SOURCES.sessions, /onCreateWorkItem: captureSession,/u);
 	assert.match(SOURCES.sessions, /onLinkWorkItem: captureSession,/u);

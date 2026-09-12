@@ -10,7 +10,6 @@ import PullRequestIcon from "@atlaskit/icon/core/pull-request";
 import StatusInformationIcon from "@atlaskit/icon/core/status-information";
 import StatusWarningIcon from "@atlaskit/icon/core/status-warning";
 
-import { AgentAvatarVisual } from "@/components/ui-custom/agent-avatar-visual";
 import { AnimatedDots } from "@/components/ui-custom/animated-dots";
 import { PixelLoader } from "@/components/ui-custom/pixel-loader";
 import {
@@ -22,7 +21,6 @@ import {
 	type JiraSessionFlyoutHandle,
 } from "@/components/blocks/product-sidebar/variants/jira-session-flyout";
 import { Shimmer } from "@/components/ui-custom/shimmer";
-import { Avatar, AvatarFallback, AvatarImage, type AvatarProps } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ElapsedTime, RelativeTime } from "@/components/ui/elapsed-time";
 import {
@@ -34,15 +32,12 @@ import {
 import { IconTile } from "@/components/ui/icon-tile";
 import { cn } from "@/lib/utils";
 
-import { actorInitials } from "./agent-list-actor";
+import { AgentListIdentity } from "./agent-list-identity";
 import { InvokerBy } from "./agent-list-invoker";
-import {
-	AgentListRowActionButton,
-	type AgentListRowAction,
-} from "./agent-list-row-action";
+import { AgentListCardActions } from "./agent-list-card-actions";
+import type { AgentListRowAction } from "./agent-list-row-action";
 import { isLocalAgentListItem, toAgentSessionFlyoutItem } from "./agent-list-session";
 import type {
-	AgentListAgent,
 	AgentListCustomFlyoutActions,
 	AgentListFlyout,
 	AgentListItem,
@@ -50,6 +45,8 @@ import type {
 	AgentListState,
 	AgentListVariant,
 } from "./agent-list-types";
+
+export { AgentListIdentity } from "./agent-list-identity";
 
 /**
  * State → title-line + lifecycle treatment. `running` shows a solid title with a
@@ -147,48 +144,6 @@ function MetadataDot() {
 		<span aria-hidden="true" className="text-text-subtlest">
 			·
 		</span>
-	);
-}
-
-/** The two leading-avatar footprints the row uses, as Avatar size tokens. */
-const PX_TO_PERSON_AVATAR_SIZE: Record<number, NonNullable<AvatarProps["size"]>> = {
-	24: "sm",
-	32: "default",
-};
-
-/**
- * The row's leading identity. Agents keep the shared hexagon agent visual;
- * people get the circular photo avatar the rest of Jira uses, so a mixed list —
- * agents waiting on an answer beside teammates who @mentioned you — is
- * separable at a glance without reading a word.
- */
-export function AgentListIdentity({
-	agent,
-	className,
-	sizePx,
-}: Readonly<{ agent: AgentListAgent; className?: string; sizePx: number }>) {
-	if (agent.kind === "person") {
-		return (
-			<Avatar
-				className={className}
-				label={agent.name}
-				size={PX_TO_PERSON_AVATAR_SIZE[sizePx] ?? "default"}
-			>
-				{agent.avatarSrc ? <AvatarImage alt="" src={agent.avatarSrc} /> : null}
-				<AvatarFallback>{actorInitials(agent.name)}</AvatarFallback>
-			</Avatar>
-		);
-	}
-
-	return (
-		<AgentAvatarVisual
-			avatarClassName={className}
-			avatarSrc={agent.avatarSrc}
-			brandName={agent.brandName}
-			label={agent.name}
-			sizePx={sizePx}
-			vpkLogo={agent.vpkLogo}
-		/>
 	);
 }
 
@@ -576,55 +531,27 @@ function RowBody({
 export type { AgentListRowAction };
 
 /**
- * The pair of controls a row owner reveals on hover/focus. The row stays
- * generic about what they do: Agent List builds View / Resume + Archive, Agent
- * Session builds Resume + Archive / Unarchive. Omit both to reveal nothing.
+ * The controls a row owner reveals on hover/focus. The row stays generic about
+ * what they do: Agent List builds View / Resume + Archive, Agent Session builds
+ * a single "…" menu. Omit all of them to reveal nothing.
  */
 export type AgentListRowHoverActions = Readonly<{
 	primary?: AgentListRowAction;
 	secondary?: AgentListRowAction;
+	/**
+	 * Caller-owned trailing control rendered after the button pair, for an
+	 * affordance the `{icon,label,onClick}` record cannot express — a dropdown
+	 * trigger, say, which needs to own its own element.
+	 */
+	menu?: ReactNode;
+	/**
+	 * Hold the reveal open regardless of pointer position. A portalled menu popup
+	 * takes the pointer off the row, and a post-click confirmation outlives the
+	 * hover that produced it; either would otherwise collapse this back to `0fr`
+	 * mid-interaction.
+	 */
+	pinned?: boolean;
 }>;
-
-/**
- * The hover/focus-revealed action pair. Kept in the tab order rather than
- * `display: none`-hidden, because a hidden wrapper could never satisfy its own
- * `:focus-visible` reveal condition. Width collapses via `0fr`/`1fr` so the
- * lifecycle indicator sits flush right at rest.
- */
-function CardActions({
-	primary,
-	secondary,
-}: Readonly<{
-	primary?: AgentListRowAction;
-	secondary?: AgentListRowAction;
-}>) {
-	return (
-		<div
-			className={cn(
-				"grid shrink-0 grid-cols-[0fr] transition-[grid-template-columns] duration-normal ease-out-practical",
-				"group-hover/agent-row:grid-cols-[1fr] group-has-[:focus-visible]/agent-row:grid-cols-[1fr]",
-				"motion-reduce:transition-none",
-				// Uncaptured-work rows reveal the eye instantly; Agent List keeps the fade.
-				"group-data-[variant=uncaptured-work]/agent-row:transition-none",
-			)}
-		>
-			<div className="min-w-0 overflow-hidden has-[:focus-visible]:overflow-visible">
-				<div
-					className={cn(
-						"pointer-events-none flex shrink-0 items-center gap-1 pl-3 opacity-0 transition-opacity duration-normal ease-out-practical",
-						"group-hover/agent-row:pointer-events-auto group-hover/agent-row:opacity-100",
-						"group-has-[:focus-visible]/agent-row:pointer-events-auto group-has-[:focus-visible]/agent-row:opacity-100",
-						"motion-reduce:transition-none",
-						"group-data-[variant=uncaptured-work]/agent-row:transition-none",
-					)}
-				>
-					{primary ? <AgentListRowActionButton action={primary} /> : null}
-					{secondary ? <AgentListRowActionButton action={secondary} /> : null}
-				</div>
-			</div>
-		</div>
-	);
-}
 
 /** Class list for the `<li>` each flyout variant renders through its trigger. */
 function rowClassName(isCompact: boolean, isSelected: boolean): string {
@@ -641,27 +568,51 @@ function rowClassName(isCompact: boolean, isSelected: boolean): string {
  * the session flyout from the keyboard.
  */
 export function AgentListRow({
+	hideIdentity = false,
 	hoverActions,
 	isCompact,
 	isSelected,
 	item,
+	lifecycle,
 	metadata,
 	onView,
 	renderIdentity,
 	showHoverActionsWhenSelected = false,
+	stateAwareTitle = true,
 }: Readonly<{
+	/**
+	 * Drop the leading identity column entirely. A title-led row puts the agent
+	 * mark inside its own metadata line instead, and an empty wrapper would still
+	 * spend its 12px right margin. Mirrors `hideAvatar` on
+	 * {@link AgentListActivityHeader}.
+	 */
+	hideIdentity?: boolean;
 	/** Controls revealed on hover/focus. Omit to render a row with no actions. */
 	hoverActions?: AgentListRowHoverActions;
 	isCompact: boolean;
 	isSelected: boolean;
 	item: AgentListItem;
-	/** Caller-owned metadata for a specialized row, such as Agent Session's PR summary. */
+	/**
+	 * Caller-owned trailing lifecycle indicator, replacing the built-in one and
+	 * its `STATE_META` gate. Symmetric with {@link metadata}: a specialized row
+	 * states its own vocabulary, and `null` omits the slot entirely.
+	 */
+	lifecycle?: ReactNode;
+	/** Caller-owned metadata. Pass `null` to omit the default metadata line. */
 	metadata?: ReactNode;
 	onView?: (item: AgentListItem) => void;
 	/**
 	 * Wrap the row's leading identity. Agent List never passes it.
 	 */
 	renderIdentity?: (identity: ReactNode) => ReactNode;
+	/**
+	 * Whether a blocked session takes over the title line with "Needs input" plus
+	 * the shimmer-and-dots treatment. On by default, because on a plain row the
+	 * state *is* the news. A row whose caller-owned {@link metadata} already
+	 * states the lifecycle should turn this off — otherwise the state is said
+	 * twice and the actual work name is nowhere on the card.
+	 */
+	stateAwareTitle?: boolean;
 	/**
 	 * Keep Resume / Hide visible on a selected row. Agent List leaves this off
 	 * because a selected list row is already the destination; session cards still
@@ -672,22 +623,51 @@ export function AgentListRow({
 	const stateMeta = STATE_META[item.state];
 	const prMeta = item.prStatus ? PR_STATUS_META[item.prStatus] : null;
 	const PrIcon = prMeta?.Icon ?? null;
-	// A session row is one line tall by contract, so its title truncates. A row
-	// with body copy is already a paragraph — truncating its title there hides the
-	// one line that says what happened.
 	const hasSummary = Boolean(item.summary);
-	const titleClassName = cn(
-		"min-w-0 font-medium",
-		hasSummary ? "text-pretty" : "truncate",
-		isCompact ? "text-xs" : "text-sm",
-	);
-
-	const viewItem = onView === undefined ? undefined : () => onView(item);
 	// A selected Agent List row is already the destination, so it keeps its
 	// lifecycle indicator. Session cards opt back in because Archive / Resume
 	// still apply after the article is highlighted.
 	const showHoverActions = (!isSelected || showHoverActionsWhenSelected) &&
-		(hoverActions?.primary !== undefined || hoverActions?.secondary !== undefined);
+		(hoverActions?.primary !== undefined
+			|| hoverActions?.secondary !== undefined
+			|| hoverActions?.menu !== undefined);
+	// A long resting title can be several lines tall. Keep that wrapped copy in
+	// layout while a one-line visual copy takes over during reveal, otherwise the
+	// row can collapse out from under a pointer entering one of its lower lines.
+	const stabilizeHoverTitle = !hasSummary
+		&& showHoverActions
+		&& !(stateAwareTitle && stateMeta.shimmerTitle);
+	const resolvedTitle = stateAwareTitle ? getSessionTitle(item) : item.title;
+	const titleClassName = cn(
+		"min-w-0 font-medium",
+		hasSummary ? "text-pretty" : stabilizeHoverTitle
+			? [
+				"group-hover/agent-row:opacity-0 group-has-[:focus-visible]/agent-row:opacity-0",
+				hoverActions?.pinned ? "opacity-0" : null,
+			]
+			: "truncate",
+		isCompact ? "text-xs" : "text-sm",
+	);
+	const hoverTitleClassName = cn(
+		"col-start-1 row-start-1 min-w-0 truncate font-medium text-text opacity-0",
+		"group-hover/agent-row:opacity-100 group-has-[:focus-visible]/agent-row:opacity-100",
+		hoverActions?.pinned ? "opacity-100" : null,
+		isCompact ? "text-xs" : "text-sm",
+	);
+
+	const viewItem = onView === undefined ? undefined : () => onView(item);
+	// A menu-only reveal (session "..." / viewer hint) must occupy the same
+	// 24px trailing slot as the lifecycle glyph. Expanding a sibling `0fr`
+	// column would move the trigger when hover, focus, or open swaps them.
+	const overlayHoverActions = showHoverActions
+		&& hoverActions?.primary === undefined
+		&& hoverActions?.secondary === undefined
+		&& hoverActions?.menu !== undefined;
+	// `undefined` is "no opinion" and falls back to the `STATE_META` gate; an
+	// explicit `null` means "no indicator". `??` silently collapsed the two.
+	const lifecycleNode = lifecycle === undefined
+		? (stateMeta.showLifecycle ? <LifecycleIndicator state={item.state} /> : null)
+		: lifecycle;
 	const identity = (
 		<AgentListIdentity
 			agent={item.agent}
@@ -699,16 +679,18 @@ export function AgentListRow({
 	return (
 		<div
 			className={cn(
-				"flex min-w-0 gap-0",
+				"flex w-full min-w-0 gap-0",
 				// A summary makes the row taller than one line; the identity and the
 				// trailing controls then belong beside the title, not floating in the
 				// middle of a paragraph.
 				hasSummary ? "items-start" : "items-center",
 			)}
 		>
-			<div className="mr-3 shrink-0">
-				{renderIdentity === undefined ? identity : renderIdentity(identity)}
-			</div>
+			{hideIdentity ? null : (
+				<div className="mr-3 shrink-0">
+					{renderIdentity === undefined ? identity : renderIdentity(identity)}
+				</div>
+			)}
 			<div className="flex min-w-0 flex-1 flex-col">
 				<div
 					className={cn(
@@ -732,23 +714,39 @@ export function AgentListRow({
 								hasSummary ? null : "overflow-hidden",
 							)}
 						>
-							{stateMeta.shimmerTitle ? (
+							{stateAwareTitle && stateMeta.shimmerTitle ? (
 								<Shimmer
 									as="span"
 									className={titleClassName}
 									duration={1.4}
 									spread={2}
 								>
-									{getSessionTitle(item)}
+									{resolvedTitle}
 								</Shimmer>
+							) : stabilizeHoverTitle ? (
+								<span className="grid w-full min-w-0">
+									<span
+										className={cn(titleClassName, "col-start-1 row-start-1 text-text")}
+										data-agent-list-title-layout=""
+									>
+										{resolvedTitle}
+									</span>
+									<span
+										aria-hidden="true"
+										className={hoverTitleClassName}
+										data-agent-list-title-hover=""
+									>
+										{resolvedTitle}
+									</span>
+								</span>
 							) : (
 								<span className={cn(titleClassName, "text-text")}>
-									{getSessionTitle(item)}
+									{resolvedTitle}
 								</span>
 							)}
-							{stateMeta.showDots ? <AnimatedDots /> : null}
+							{stateAwareTitle && stateMeta.showDots ? <AnimatedDots /> : null}
 						</span>
-						{metadata ?? (
+						{metadata === undefined ? (
 							<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
 								{item.metadataPrefix ? (
 									<>
@@ -778,21 +776,47 @@ export function AgentListRow({
 									<AgentListTime item={item} />
 								</span>
 							</span>
-						)}
+						) : metadata}
 					</RowBody>
-					{stateMeta.showLifecycle ? (
-						<span
+					{lifecycleNode || overlayHoverActions ? (
+						// A `div`, not a `span`: every non-running indicator is an
+						// `IconTile`, whose root is a block element. Phrasing content
+						// cannot contain it, and the invalid nesting surfaces as a
+						// hydration recovery on server-rendered session lists.
+						<div
 							className={cn(
-								"ml-3 flex w-6 shrink-0 items-center",
-								showHoverActions &&
+								"relative ml-3 flex min-h-6 min-w-6 shrink-0 items-center justify-end overflow-visible",
+								!overlayHoverActions && "pointer-events-none",
+								!overlayHoverActions && showHoverActions &&
 									"group-hover/agent-row:hidden group-has-[:focus-visible]/agent-row:hidden",
+								!overlayHoverActions && showHoverActions && hoverActions?.pinned && "hidden",
 							)}
 						>
-							<LifecycleIndicator state={item.state} />
-						</span>
+							{lifecycleNode ? (
+								<div
+								className={cn(
+									overlayHoverActions
+											? "group-hover/agent-row:pointer-events-none group-hover/agent-row:invisible group-has-[[data-agent-list-card-actions]:focus-within]/agent-row:pointer-events-none group-has-[[data-agent-list-card-actions]:focus-within]/agent-row:invisible group-has-[[aria-expanded=true]]/agent-row:pointer-events-none group-has-[[aria-expanded=true]]/agent-row:invisible"
+											: "pointer-events-none",
+										overlayHoverActions && hoverActions?.pinned && "pointer-events-none invisible",
+									)}
+								>
+									{lifecycleNode}
+								</div>
+							) : null}
+							{overlayHoverActions ? (
+								<AgentListCardActions
+									menu={hoverActions?.menu}
+									overlay
+									pinned={hoverActions?.pinned}
+								/>
+							) : null}
+						</div>
 					) : null}
-					{showHoverActions ? (
-						<CardActions
+					{showHoverActions && !overlayHoverActions ? (
+						<AgentListCardActions
+							menu={hoverActions?.menu}
+							pinned={hoverActions?.pinned}
 							primary={hoverActions?.primary}
 							secondary={hoverActions?.secondary}
 						/>

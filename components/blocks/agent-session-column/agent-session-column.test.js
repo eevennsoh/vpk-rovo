@@ -31,6 +31,10 @@ const SELECTION_COPY_SOURCE = readFileSync(
 	join(__dirname, "untracked-selection.ts"),
 	"utf8",
 );
+const SELECTION_HOOK_SOURCE = readFileSync(
+	join(__dirname, "use-untracked-selection.ts"),
+	"utf8",
+);
 const PANEL_SOURCE = readFileSync(
 	join(__dirname, "../../ui/panel.tsx"),
 	"utf8",
@@ -39,20 +43,6 @@ const OVERFLOW_MENU_SOURCE = readFileSync(
 	join(__dirname, "agent-session-column-overflow-menu.tsx"),
 	"utf8",
 );
-const FILTER_MENU_SOURCE = readFileSync(
-	join(__dirname, "agent-session-column-filter-menu.tsx"),
-	"utf8",
-);
-const FILTER_SECTIONS_SOURCE = readFileSync(
-	join(__dirname, "agent-session-column-filter-sections.tsx"),
-	"utf8",
-);
-const FILTER_SOURCE = readFileSync(
-	join(__dirname, "agent-session-column-filter.ts"),
-	"utf8",
-);
-const TIME_PICKER_SOURCE = readFileSync(join(__dirname, "../../ui/time-picker.tsx"), "utf8");
-const OVERFLOW_SOURCE = readFileSync(join(__dirname, "agent-session-column-overflow.ts"), "utf8");
 const PAGE_SOURCE = readFileSync(join(__dirname, "page.tsx"), "utf8");
 const PANEL_DEMO_SOURCE = readFileSync(
 	join(__dirname, "agent-session-column-panel-demo.tsx"),
@@ -60,6 +50,10 @@ const PANEL_DEMO_SOURCE = readFileSync(
 );
 const CARD_SOURCE = readFileSync(
 	join(__dirname, "../agent-session/agent-session-card.tsx"),
+	"utf8",
+);
+const SESSION_DRAG_SOURCE = readFileSync(
+	join(__dirname, "../agent-session/agent-session-medium-drag.tsx"),
 	"utf8",
 );
 const SESSION_INDEX_SOURCE = readFileSync(
@@ -151,7 +145,8 @@ test("the column does not fuse large session cards into one stroke", () => {
 	assert.doesNotMatch(SESSION_INDEX_SOURCE, /data-stack=/u);
 	assert.match(SESSION_INDEX_SOURCE, /variant === "large"\s*\n\s*\? "gap-0"/u);
 	assert.doesNotMatch(SESSION_INDEX_SOURCE, /gap: token\("space\.100"\)/u);
-	assert.match(CARD_SOURCE, /rounded-lg p-3 text-left text-text/u);
+	assert.match(CARD_SOURCE, /rounded-lg text-left text-text/u);
+	assert.match(CARD_SOURCE, /padding === "compact" \? "px-3 py-2" : "p-3"/u);
 	assert.match(CARD_SOURCE, /\[\[data-marked\]\+&\[data-marked\]\]:in-\[\.gap-1\]:-mt-1/u);
 	assert.doesNotMatch(CARD_SOURCE, /\[li:first-child_&\]:rounded-t-lg/u);
 	assert.doesNotMatch(CARD_SOURCE, /\[li:last-child_&\]:rounded-b-lg/u);
@@ -182,9 +177,10 @@ test("card rendering is delegated to the Agent Session block, never re-implement
 });
 
 test("the header count defaults to the visible sessions and can be overridden", () => {
+	assert.match(INDEX_SOURCE, /title = "Unlink sessions"/u);
 	assert.match(INDEX_SOURCE, /untrackedCount = count \?\? visibleItems\.length/u);
 	assert.match(INDEX_SOURCE, /hasActiveFilters/u);
-	assert.match(INDEX_SOURCE, /filteredViewItems\.length/u);
+	assert.match(INDEX_SOURCE, /displayedItems\.length/u);
 	assert.match(INDEX_SOURCE, /view === "hidden" \? hiddenItems\.length : untrackedCount/u);
 	assert.match(TYPES_SOURCE, /count\?: number;/u);
 });
@@ -217,8 +213,8 @@ test("edge fades sit on the column plane so they span the full backdrop width", 
 });
 
 test("an empty column says so rather than rendering an empty list", () => {
-	assert.match(INDEX_SOURCE, /filteredViewItems\.length === 0/u);
-	assert.match(INDEX_SOURCE, /emptyLabel = "No unattached sessions"/u);
+	assert.match(INDEX_SOURCE, /displayedItems\.length === 0/u);
+	assert.match(INDEX_SOURCE, /emptyLabel = "No sessions to unlink"/u);
 	assert.match(INDEX_SOURCE, /from "@\/components\/ui\/empty"/u);
 	assert.match(INDEX_SOURCE, /<Empty width="narrow">/u);
 	assert.match(INDEX_SOURCE, /<EmptyTitle headingSize="xsmall">No matching sessions<\/EmptyTitle>/u);
@@ -291,10 +287,22 @@ test("the catalog page shows a Panel wrap and an in-flow kanban host", () => {
 	assert.match(PAGE_SOURCE, /<ToggleGroupItem value="default">Default<\/ToggleGroupItem>/u);
 	assert.match(PAGE_SOURCE, /<ToggleGroupItem value="simple">Simple<\/ToggleGroupItem>/u);
 	assert.match(PAGE_SOURCE, /insightsEnabled=\{false\}/u);
+	assert.match(PAGE_SOURCE, /aria-label="Column header actions"/u);
+	assert.match(PAGE_SOURCE, /aria-label="Show filter"/u);
+	assert.match(PAGE_SOURCE, /aria-label="Show overflow"/u);
+	assert.match(PAGE_SOURCE, /showFilter=\{showFilter\}/u);
+	assert.match(PAGE_SOURCE, /showOverflow=\{showOverflow\}/u);
+	assert.match(PAGE_SOURCE, /showAgentSessionFilter=\{showFilter\}/u);
+	assert.match(PAGE_SOURCE, /showAgentSessionOverflow=\{showOverflow\}/u);
+	assert.match(PAGE_SOURCE, /useState\(true\)/u);
+	assert.match(PANEL_DEMO_SOURCE, /showFilter=\{showFilter\}/u);
+	assert.match(PANEL_DEMO_SOURCE, /showOverflow=\{showOverflow\}/u);
+	assert.match(DEMO_SOURCE, /AgentSessionColumnHeaderActionToggles/u);
 	assert.match(DETAIL_SOURCE, /name: "headerSurface"/u);
 	assert.match(DETAIL_SOURCE, /name: "triage"/u);
 	assert.match(DETAIL_SOURCE, /headerSurface="panel"/u);
-	assert.match(DETAIL_SOURCE, /two hosts/u);
+	assert.match(DETAIL_SOURCE, /docked panel/u);
+	assert.match(DETAIL_SOURCE, /in-flow kanban board/u);
 	assert.doesNotMatch(
 		REGISTRY_SOURCE,
 		/"agent-session-column":[\s\S]{0,200}?variants/u,
@@ -359,9 +367,9 @@ test("column resize buttons swap icons without using selected button state", () 
 	assert.match(INDEX_SOURCE, /collapseLabel=\{headerSurface === "panel"/u);
 	assert.match(HEADER_SOURCE, /<ShrinkHorizontalIcon/u);
 	assert.match(HEADER_SOURCE, /<TooltipContent>Collapse<\/TooltipContent>/u);
-	assert.match(INDEX_SOURCE, /aria-label=\{`\$\{collapsedExpandAction\?\.label \?\? "Expand"\} \$\{title\} column`\}/u);
+	assert.match(INDEX_SOURCE, /aria-label=\{`Expand \$\{title\} column`\}/u);
 	assert.match(INDEX_SOURCE, /<GrowHorizontalIcon/u);
-	assert.match(INDEX_SOURCE, /<TooltipContent>\{collapsedExpandAction\?\.label \?\? "Expand"\}<\/TooltipContent>/u);
+	assert.match(INDEX_SOURCE, /<TooltipContent>Expand<\/TooltipContent>/u);
 	assert.doesNotMatch(INDEX_SOURCE, /<TooltipContent>Collapse column<\/TooltipContent>/u);
 	assert.doesNotMatch(INDEX_SOURCE, /<TooltipContent>Expand column<\/TooltipContent>/u);
 	assert.doesNotMatch(INDEX_SOURCE, /\baria-(?:expanded|pressed)(?:\s|=)/u);
@@ -462,6 +470,32 @@ test("a notch is reachable and legible without a pointer", () => {
 	assert.doesNotMatch(INDEX_SOURCE, /group-hover\/session-column:block/u);
 	assert.match(INDEX_SOURCE, /peer\/expand-control opacity-0/u);
 	assert.match(INDEX_SOURCE, /hover:opacity-100 focus-visible:opacity-100/u);
+});
+
+test("the in-flow column move handle is a 12px disabled icon, not a 24px button", () => {
+	assert.match(IN_FLOW_COLUMN_SOURCE, /data-session-column-move-handle=""/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/<button[\s\S]*?className="me-1 inline-flex size-3 shrink-0 cursor-grab[\s\S]*?text-icon-disabled[\s\S]*?\[&_svg\]:text-icon-disabled[\s\S]*?<\/button>/u,
+	);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/render=\{<DragHandleVerticalIcon color="currentColor" label="" size="small" \/>\}/u,
+	);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/<Icon className="size-3 text-icon-disabled"/u,
+	);
+	assert.doesNotMatch(
+		IN_FLOW_COLUMN_SOURCE,
+		/data-session-column-move-handle=""[\s\S]*?text-icon-subtle/u,
+	);
+	assert.doesNotMatch(
+		IN_FLOW_COLUMN_SOURCE,
+		/data-session-column-move-handle=""[\s\S]*?text-icon-subtlest/u,
+	);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /from "@\/components\/ui\/button"/u);
+	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /size="icon-compact"/u);
 });
 
 test("collapsed motion is tokenised and honours reduced motion", () => {
@@ -639,7 +673,7 @@ test("headerSurface panel keeps the column-owned header and drops the nested wel
 test("the gutter rail keeps a keyboard expand control and hides the count", () => {
 	assert.match(INDEX_SOURCE, /header: collapsed \? collapsedHeader : expandedHeader/u);
 	assert.match(INDEX_SOURCE, /const hideGutterCount = isGutterCollapsed/u);
-	assert.match(INDEX_SOURCE, /aria-label=\{`\$\{collapsedExpandAction\?\.label \?\? "Expand"\} \$\{title\} column`\}/u);
+	assert.match(INDEX_SOURCE, /aria-label=\{`Expand \$\{title\} column`\}/u);
 	assert.match(INDEX_SOURCE, /relative flex h-6 w-full min-w-0 items-center justify-center px-1/u);
 	// The rail itself still has no header of its own to fall back on.
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /onExpand/u);
@@ -690,8 +724,11 @@ test("the column keeps the selected session id across collapse remounts", () => 
 	assert.match(INDEX_SOURCE, /const isSelectionControlled = selectedItemIdProp !== undefined;/u);
 	assert.match(INDEX_SOURCE, /const \[uncontrolledSelectedItemId, setUncontrolledSelectedItemId\]/u);
 	assert.match(INDEX_SOURCE, /selectedItemId=\{selectedItemId\}/u);
-	assert.match(INDEX_SOURCE, /onSelectedItemIdChange=\{handleSelectedItemIdChange\}/u);
-	assert.match(INDEX_SOURCE, /onKeyDown=\{untrackedSelection\.onKeyDown\}/u);
+	assert.match(INDEX_SOURCE, /onSelectedItemIdChange=\{multiSelect \? handleSelectedItemIdChange : undefined\}/u);
+	assert.match(
+		INDEX_SOURCE,
+		/onKeyDown=\{multiSelect \? untrackedSelection\.onKeyDown : undefined\}/u,
+	);
 	assert.match(INDEX_SOURCE, /canActivateItem\(item\)/u);
 	assert.match(INDEX_SOURCE, /handleSelectedItemIdChange\(null\)/u);
 	assert.match(
@@ -699,6 +736,38 @@ test("the column keeps the selected session id across collapse remounts", () => 
 		/if \(!isSelectionControlled\) \{\s*\n\s*setUncontrolledSelectedItemId\(itemId\);\s*\n\s*\}/u,
 	);
 	assert.match(SESSION_TYPES_SOURCE, /selectedItemId\?: string \| null;/u);
+});
+
+test("multiSelect=false removes multi-selection while preserving a singleton drag", () => {
+	assert.match(TYPES_SOURCE, /multiSelect\?: boolean;/u);
+	assert.match(INDEX_SOURCE, /multiSelect = true,/u);
+	assert.match(INDEX_SOURCE, /multiSelect,\s*\n\s*onLeadItem: handleLeadItem,/u);
+	assert.match(
+		INDEX_SOURCE,
+		/onKeyDown=\{multiSelect \? untrackedSelection\.onKeyDown : undefined\}/u,
+	);
+	assert.match(SELECTION_HOOK_SOURCE, /multiSelect: boolean;/u);
+	assert.match(SELECTION_HOOK_SOURCE, /\(\) => input\.multiSelect\s*\?/u);
+	assert.match(SELECTION_HOOK_SOURCE, /drag: input\.multiSelect\s*\?/u);
+	assert.match(SELECTION_HOOK_SOURCE, /mark: input\.multiSelect\s*\?/u);
+	assert.match(SESSION_DRAG_SOURCE, /cohort\?\.\(\) \?\? singletonSessionCohort\(item\)/u);
+	assert.match(PANEL_DEMO_SOURCE, /multiSelect=\{multiSelect\}/u);
+	assert.match(DETAIL_SOURCE, /name: "multiSelect"/u);
+});
+
+test("multiSelect=false also disables single-select row chrome", () => {
+	assert.match(
+		INDEX_SOURCE,
+		/const selectedItemId = multiSelect\s*\?\s*isSelectionControlled \? selectedItemIdProp : uncontrolledSelectedItemId\s*: null;/u,
+	);
+	assert.match(
+		INDEX_SOURCE,
+		/onSelectedItemIdChange=\{multiSelect \? handleSelectedItemIdChange : undefined\}/u,
+	);
+	assert.match(
+		TYPES_SOURCE,
+		/disables single-select row chrome: article click does not toggle/u,
+	);
 });
 
 test("the column owns a hidden-id set and filters items before AgentSession", () => {
@@ -717,7 +786,7 @@ test("the column owns a hidden-id set and filters items before AgentSession", ()
 	assert.doesNotMatch(HOOK_SOURCE, /type: "prune"/u);
 	assert.doesNotMatch(HOOK_SOURCE, /dispatch\(\{ items, type: "prune" \}\)/u);
 	assert.match(INDEX_SOURCE, /const viewItems = view === "hidden" \? hiddenItems : visibleItems/u);
-	assert.match(INDEX_SOURCE, /items=\{filteredViewItems\}/u);
+	assert.match(INDEX_SOURCE, /items=\{displayedItems\}/u);
 	assert.match(INDEX_SOURCE, /hideHidden\(session\)/u);
 	assert.match(INDEX_SOURCE, /case "hidden":\s*\n\s*toggleHidden\(session\)/u);
 	assert.match(INDEX_SOURCE, /case "active":\s*\n\s*hideHidden\(session\)/u);
@@ -757,7 +826,7 @@ test("the sticky footer reads Archived N in the active view", () => {
 	// the bottom sibling instead of jumping under a short empty message.
 	assert.match(
 		INDEX_SOURCE,
-		/relative flex min-h-0 min-w-0 flex-1 flex-col">\s*\{filteredViewItems\.length === 0 \?/u,
+		/relative flex min-h-0 min-w-0 flex-1 flex-col">\s*\{displayedItems\.length === 0 \?/u,
 	);
 	assert.match(INDEX_SOURCE, /<AgentSessionColumnHiddenFooter/u);
 	assert.match(INDEX_SOURCE, /mode=\{view === "hidden" \? "back" : "hidden"\}/u);
@@ -782,13 +851,13 @@ test("the archived view keeps Archived in the header and a back footer", () => {
 	assert.doesNotMatch(INDEX_SOURCE, /aria-label=\{`Back to \$\{title\}`\}[\s\S]*size="icon-compact"/u);
 	assert.match(INDEX_SOURCE, /displayTitle = view === "hidden" \? "Archived" : title/u);
 	assert.match(INDEX_SOURCE, /size="icon-compact"/u);
-	assert.match(FOOTER_SOURCE, /Back to unattached sessions/u);
+	assert.match(FOOTER_SOURCE, /title = "Unlink sessions"/u);
 	assert.match(FOOTER_SOURCE, /import ChevronLeftIcon from "@atlaskit\/icon\/core\/chevron-left"/u);
 	assert.match(FOOTER_SOURCE, /<ChevronLeftIcon label="" size="small" \/>/u);
 	assert.match(FOOTER_SOURCE, /Back to \$\{title\}/u);
 	assert.match(INDEX_SOURCE, /onClick=\{view === "hidden" \? closeHiddenView : openHiddenView\}/u);
 	assert.match(INDEX_SOURCE, /untrackedCount = count \?\? visibleItems\.length/u);
-	assert.match(INDEX_SOURCE, /items=\{filteredViewItems\}/u);
+	assert.match(INDEX_SOURCE, /items=\{displayedItems\}/u);
 });
 
 test("the collapsed rail keeps a focus-ring gutter on its scrollport", () => {
@@ -849,7 +918,7 @@ test("the embedded column rail does not cap the viewport to ten notches", () => 
 });
 
 test("the collapsed rail receives visible items only and collapse leaves hidden view", () => {
-	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]*items=\{filteredViewItems\}/u);
+	assert.match(INDEX_SOURCE, /<AgentSessionColumnRail[\s\S]*items=\{displayedItems\}/u);
 	assert.match(INDEX_SOURCE, /if \(nextCollapsed\) \{\s*closeHiddenView\(\);/u);
 	assert.doesNotMatch(RAIL_COLUMN_SOURCE, /Work hidden|Archived|HiddenFooter/u);
 });
@@ -881,7 +950,7 @@ test("the expanded header sizes its overflow trigger for the host surface", () =
 	assert.doesNotMatch(HEADER_SOURCE, /group-hover\/session-column:block/u);
 	assert.match(HEADER_SOURCE, /has-\[\[data-popup-open\]\]:opacity-100/u);
 	assert.match(HEADER_SOURCE, /group-has-\[\[data-popup-open\]\]\/header-actions:opacity-100/u);
-	assert.match(INDEX_SOURCE, /items=\{filteredViewItems\}/u);
+	assert.match(INDEX_SOURCE, /items=\{displayedItems\}/u);
 	assert.match(INDEX_SOURCE, /onLinkWorkItem=\{sessionProps\.onLinkWorkItem\}/u);
 });
 
@@ -914,87 +983,4 @@ test("selecting header hover copy comes from the selectedCount table", () => {
 	assert.match(HEADER_SOURCE, /tooltip=\{affordance\.text\}/u);
 	assert.match(PANEL_SOURCE, /tooltip\?: ReactNode/u);
 	assert.match(PANEL_SOURCE, /tooltip === undefined \? action : wrapPanelActionTooltip/u);
-});
-
-test("the overflow menu is Link all suggestions, then Auto sync and Suggest link toggles", () => {
-	assert.match(OVERFLOW_MENU_SOURCE, /Link all suggestions/u);
-	assert.doesNotMatch(OVERFLOW_MENU_SOURCE, />\s*Link all\s*</u);
-	assert.match(OVERFLOW_MENU_SOURCE, /<DropdownMenuSeparator/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /label="Auto sync"/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /const \[autoSync, setAutoSync\] = useState\(true\)/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /label="Suggest link"/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /const \[autoLink, setAutoLink\] = useState\(true\)/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /elemAfter=\{\(/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /<SwitchIndicator/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /aria-checked=\{checked\}/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /role="menuitemcheckbox"/u);
-	assert.doesNotMatch(OVERFLOW_MENU_SOURCE, /<Switch[\s>]/u);
-	assert.doesNotMatch(OVERFLOW_MENU_SOURCE, /suppressMenuDismissal/u);
-	assert.doesNotMatch(OVERFLOW_MENU_SOURCE, /onCheckedChange=\{onCheckedChange\}/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /closeOnClick=\{false\}/u);
-	assert.match(OVERFLOW_MENU_SOURCE, /linkAllAgentSessions/u);
-	assert.match(OVERFLOW_SOURCE, /export function collectLinkableAgentSessions/u);
-	assert.match(OVERFLOW_SOURCE, /export function linkAllAgentSessions/u);
-	assert.match(DETAIL_SOURCE, /header overflow's Link all suggestions action/u);
-	assert.doesNotMatch(DETAIL_SOURCE, /header overflow's Link all action/u);
-});
-
-test("the expanded header filter popover covers owner, agent, date, artifacts, and link suggestions", () => {
-	assert.match(HEADER_SOURCE, /filter: ReactElement/u);
-	assert.match(HEADER_SOURCE, /\{filter\}/u);
-	assert.match(INDEX_SOURCE, /<AgentSessionColumnFilterMenu/u);
-	assert.match(INDEX_SOURCE, /filter=\{filterMenu\}/u);
-	assert.match(FILTER_MENU_SOURCE, /import FilterIcon from "@atlaskit\/icon\/core\/filter"/u);
-	assert.match(FILTER_MENU_SOURCE, /data-agent-session-column-filter=""/u);
-	assert.match(FILTER_MENU_SOURCE, /<Popover[\s>]/u);
-	assert.match(FILTER_MENU_SOURCE, /title="Session owner"/u);
-	assert.match(FILTER_MENU_SOURCE, /title="Agents"/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /title="Date\/time range"/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /"last-7-days": "Last 7d"/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /"last-30-days": "Last 30d"/u);
-	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /Last 7 days/u);
-	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /Last 30 days/u);
-	assert.match(FILTER_MENU_SOURCE, /label="Contains artifacts"/u);
-	assert.match(FILTER_MENU_SOURCE, /label="Link suggestions"/u);
-	assert.match(FILTER_SOURCE, /name: "Claude"/u);
-	assert.match(FILTER_SOURCE, /name: "Codex"/u);
-	assert.match(FILTER_SOURCE, /name: "Cursor"/u);
-	assert.match(FILTER_SOURCE, /name: "Copilot"/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /<SwitchIndicator/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /role="switch"/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /className="rich-text-command-menu-heading"/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /role="presentation"/u);
-	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /uppercase leading-4/u);
-	assert.match(FILTER_MENU_SOURCE, /w-max min-w-\[min\(20rem,calc\(100vw-32px\)\)\] max-w-\[calc\(100vw-32px\)\] gap-0 rounded-xl p-1/u);
-	assert.doesNotMatch(FILTER_MENU_SOURCE, /className="w-80 max-w-\[calc\(100vw-32px\)\] p-3"/u);
-	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /label="Yes"/u);
-	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /label="No"/u);
-	assert.doesNotMatch(FILTER_SECTIONS_SOURCE, /Clear \$\{title\}/u);
-	assert.doesNotMatch(FILTER_MENU_SOURCE, /Clear all/u);
-	assert.match(FILTER_MENU_SOURCE, /Clear selection/u);
-	assert.match(FILTER_MENU_SOURCE, /dropdownStyles\.separator/u);
-	assert.match(
-		FILTER_MENU_SOURCE,
-		/<div className="flex flex-col">\s*<div aria-hidden="true" className=\{dropdownStyles\.separator\}/u,
-	);
-	assert.match(FILTER_SECTIONS_SOURCE, /flex h-8 w-full cursor-pointer items-center gap-3 rounded-lg px-2/u);
-	assert.match(FILTER_SOURCE, /agentSessionFilterToggleTriState/u);
-	assert.match(HEADER_SOURCE, /hasActiveFilters/u);
-	assert.match(INDEX_SOURCE, /hasActiveFilters=\{hasActiveFilters\}/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /<AvatarGroup/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /<TimePicker/u);
-	assert.match(TIME_PICKER_SOURCE, /value=\{value \?\? ""\}/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /contentPositionerClassName="isolate z-\[220\]"/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /numberOfMonths=\{2\}/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /mode="range"/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /<PopoverTitle className="sr-only">Custom date range/u);
-	assert.match(FILTER_MENU_SOURCE, /customCalendarOpen/u);
-	assert.match(FILTER_MENU_SOURCE, /shouldKeepAgentSessionFilterMenuOpen/u);
-	assert.match(FILTER_MENU_SOURCE, /focusOutStayedInside: didFilterFocusOutStayInside\(eventDetails\.event\)/u);
-	assert.match(FILTER_MENU_SOURCE, /eventDetails\.cancel\(\)/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /flex flex-wrap gap-1\.5 pb-2 min-\[22rem\]:flex-nowrap/u);
-	assert.match(FILTER_SECTIONS_SOURCE, /onCalendarOpenChange/u);
-	assert.doesNotMatch(FILTER_MENU_SOURCE, /overflow-y-auto/u);
-	assert.doesNotMatch(FILTER_MENU_SOURCE, /max-h-\[min\(36rem/u);
-	assert.match(INDEX_SOURCE, /visibleItems: filteredViewItems/u);
 });

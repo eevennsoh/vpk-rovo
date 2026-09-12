@@ -7,6 +7,14 @@ const CARD_SOURCE = readFileSync(
 	join(__dirname, "agent-list-card.tsx"),
 	"utf8",
 );
+const CARD_ACTIONS_SOURCE = readFileSync(
+	join(__dirname, "agent-list-card-actions.tsx"),
+	"utf8",
+);
+const IDENTITY_SOURCE = readFileSync(
+	join(__dirname, "agent-list-identity.tsx"),
+	"utf8",
+);
 const ROW_ACTION_SOURCE = readFileSync(
 	join(__dirname, "agent-list-row-action.tsx"),
 	"utf8",
@@ -61,7 +69,7 @@ test("running drops the redundant label; awaiting swaps the title to the Needs i
 	// The shimmering title alone communicates a running session.
 	assert.doesNotMatch(CARD_SOURCE, /Working on it/);
 	assert.match(CARD_SOURCE, /"needs-input":\s*\{[^}]*showDots:\s*true/);
-	assert.doesNotMatch(CARD_SOURCE, /titleOverride|const titleText/);
+	assert.doesNotMatch(CARD_SOURCE, /titleOverride/u);
 	// Awaiting sessions name the blocked state instead of the task title, matching
 	// the Jira queue card's JiraSessionLabel.
 	assert.match(CARD_SOURCE, /const AWAITING_INPUT_TITLE = "Needs input";/u);
@@ -71,9 +79,17 @@ test("running drops the redundant label; awaiting swaps the title to the Needs i
 		CARD_SOURCE,
 		/return item\.state === "needs-input" \? AWAITING_INPUT_TITLE : item\.title;/u,
 	);
-	// The helper drives the native card title slots and remains the default for
+	// The helper drives both native card title slots and remains the default for
 	// the shared header when a consumer does not lead with the agent identity.
-	assert.equal((CARD_SOURCE.match(/\{getSessionTitle\(item\)\}/gu) ?? []).length, 2);
+	assert.equal((CARD_SOURCE.match(/getSessionTitle\(item\)/gu) ?? []).length, 2);
+	// A row whose caller-owned metadata already states the lifecycle can opt out,
+	// so the state is not said twice with the work name nowhere on the card.
+	assert.match(CARD_SOURCE, /stateAwareTitle = true,/u);
+	assert.match(
+		CARD_SOURCE,
+		/const resolvedTitle = stateAwareTitle \? getSessionTitle\(item\) : item\.title;/u,
+	);
+	assert.match(CARD_SOURCE, /\{stateAwareTitle && stateMeta\.showDots \? <AnimatedDots/u);
 	assert.match(
 		CARD_SOURCE,
 		/const title = leadWithAgentName \? item\.agent\.name : getSessionTitle\(item\);/u,
@@ -138,10 +154,10 @@ test("View and Resume open the Rovo floating chat in the demo", () => {
 
 test("the leading tile renders the agent or VPK identity at the selected density", () => {
 	assert.match(
-		CARD_SOURCE,
+		IDENTITY_SOURCE,
 		/<AgentAvatarVisual[\s\S]*avatarSrc=\{agent\.avatarSrc\}[\s\S]*sizePx=\{sizePx\}/,
 	);
-	assert.match(CARD_SOURCE, /vpkLogo=\{agent\.vpkLogo\}/u);
+	assert.match(IDENTITY_SOURCE, /vpkLogo=\{agent\.vpkLogo\}/u);
 	assert.match(CARD_SOURCE, /<AgentListIdentity[\s\S]*sizePx=\{isCompact \? 24 : 32\}/u);
 	assert.doesNotMatch(CARD_SOURCE, /CATALOG_VPK_LOGO_SIZE_PX|agentVisualSizePx/u);
 });
@@ -151,13 +167,33 @@ test("people render a circular photo beside the hexagon agents in the same list"
 	assert.match(TYPES_SOURCE, /kind\?: AgentListActorKind;/u);
 	// The person branch is the one that must not reach for hexagon agent art.
 	assert.match(
-		CARD_SOURCE,
+		IDENTITY_SOURCE,
 		/if \(agent\.kind === "person"\) \{[\s\S]*<Avatar[\s\S]*label=\{agent\.name\}[\s\S]*<AvatarImage alt="" src=\{agent\.avatarSrc\} \/>[\s\S]*<AvatarFallback>\{actorInitials\(agent\.name\)\}<\/AvatarFallback>/u,
 	);
 	// One identity component, so the list row and the activity header cannot
 	// disagree about what an agent or a person looks like.
 	assert.equal((CARD_SOURCE.match(/<AgentListIdentity\b/gu) ?? []).length, 2);
-	assert.match(CARD_SOURCE, /PX_TO_PERSON_AVATAR_SIZE: Record<number, NonNullable<AvatarProps\["size"\]>> = \{\s*24: "sm",\s*32: "default",/u);
+	assert.match(IDENTITY_SOURCE, /PX_TO_PERSON_AVATAR_SIZE: Record<number, NonNullable<AvatarProps\["size"\]>> = \{\s*16: "xs",\s*24: "sm",\s*32: "default",/u);
+});
+
+test("agent identities can show a human invoker in the 32px attribution frame", () => {
+	assert.match(IDENTITY_SOURCE, /attributedBy\?: AgentListInvoker;/u);
+	assert.match(IDENTITY_SOURCE, /aria-label=\{`\$\{agent\.name\}, used by \$\{attributedBy\.name\}`\}/u);
+	assert.match(IDENTITY_SOURCE, /PX_TO_ATTRIBUTED_AGENT_SIZE: Record<number, number> = \{[\s\S]*32: 24,/u);
+	assert.match(IDENTITY_SOURCE, /PX_TO_ATTRIBUTED_PERSON_AVATAR_SIZE:[\s\S]*32: "xs",/u);
+	assert.match(IDENTITY_SOURCE, /className="absolute bottom-0 right-0 ring-2 ring-background"/u);
+});
+
+test("agent attribution groups overlap the agent and invoker like a facepile", () => {
+	assert.match(
+		IDENTITY_SOURCE,
+		/export function AgentListAttributionAvatarGroup[\s\S]*<AvatarGroup[\s\S]*className=\{cn\("shrink-0", className\)\}[\s\S]*label=\{`\$\{agent\.name\}, used by \$\{attributedBy\.name\}`\}/u,
+	);
+	assert.doesNotMatch(IDENTITY_SOURCE, /gap-1 space-x-0/u);
+	assert.match(
+		IDENTITY_SOURCE,
+		/export function AgentListAttributionAvatarGroup[\s\S]*<AgentAvatarVisual[\s\S]*sizePx=\{sizePx\}[\s\S]*<Avatar[\s\S]*size=\{PX_TO_PERSON_AVATAR_SIZE\[sizePx\] \?\? "default"\}/u,
+	);
 });
 
 test("the attention state keeps the row's own title and warns instead of shimmering", () => {
@@ -181,10 +217,10 @@ test("rows carry an optional summary below metadata, leading metadata, and a sta
 	assert.match(TYPES_SOURCE, /summary\?: string;/u);
 	assert.match(TYPES_SOURCE, /metadataPrefix\?: string;/u);
 	assert.match(TYPES_SOURCE, /timeLabel\?: string;/u);
-	// The summary wraps below the metadata row; a session row's single-line
-	// title keeps truncating unless that body copy is present.
+	// The summary wraps below the metadata row and keeps the title in natural
+	// wrapping mode instead of inheriting the one-line hover treatment.
 	assert.match(CARD_SOURCE, /const hasSummary = Boolean\(item\.summary\);/u);
-	assert.match(CARD_SOURCE, /hasSummary \? "text-pretty" : "truncate"/u);
+	assert.match(CARD_SOURCE, /"min-w-0 font-medium",\s*hasSummary \? "text-pretty"/u);
 	assert.match(
 		CARD_SOURCE,
 		/<AgentListMetadataIdentity item=\{item\} \/>[\s\S]*\{item\.summary \? \(\s*<span\s*className=\{cn\(\s*"mt-2 w-full min-w-0 text-pretty text-text",/u,
@@ -204,7 +240,7 @@ test("rows carry an optional summary below metadata, leading metadata, and a sta
 	assert.match(CARD_SOURCE, /hasSummary \? "items-start" : "items-center"/u);
 	assert.match(
 		CARD_SOURCE,
-		/<div className="flex min-w-0 flex-1 flex-col">[\s\S]*<CardActions[\s\S]*?<\/div>[\s\S]*?\{item\.summary \?/u,
+		/<div className="flex min-w-0 flex-1 flex-col">[\s\S]*<AgentListCardActions[\s\S]*?<\/div>[\s\S]*?\{item\.summary \?/u,
 	);
 	assert.match(
 		CARD_SOURCE,
@@ -454,12 +490,15 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		/const viewItem = onView === undefined \? undefined : \(\) => onView\(item\);/u,
 	);
 	assert.match(CARD_SOURCE, /onView=\{viewItem\}/u);
+	// A caller-owned `menu` counts as a revealed control too — a row whose only
+	// action is a dropdown must still reveal it and still hide the lifecycle slot.
 	assert.match(
 		CARD_SOURCE,
-		/const showHoverActions = \(!isSelected \|\| showHoverActionsWhenSelected\) &&\s*\(hoverActions\?\.primary !== undefined \|\| hoverActions\?\.secondary !== undefined\);/u,
+		/const showHoverActions = \(!isSelected \|\| showHoverActionsWhenSelected\) &&\s*\(hoverActions\?\.primary !== undefined\s*\|\| hoverActions\?\.secondary !== undefined\s*\|\| hoverActions\?\.menu !== undefined\);/u,
 	);
-	assert.match(CARD_SOURCE, /\{showHoverActions \? \(\s*<CardActions/u);
-	assert.match(CARD_SOURCE, /<AgentListRowActionButton action=\{primary\}/u);
+	assert.match(CARD_SOURCE, /\{showHoverActions && !overlayHoverActions \? \(\s*<AgentListCardActions/u);
+	assert.match(CARD_SOURCE, /\{overlayHoverActions \? \(\s*<AgentListCardActions/u);
+	assert.match(CARD_ACTIONS_SOURCE, /<AgentListRowActionButton action=\{primary\}/u);
 	assert.match(ROW_ACTION_SOURCE, /event\.stopPropagation\(\);\s*\n\s*action\.onClick\(\)/u);
 	assert.match(
 		CARD_SOURCE,
@@ -470,18 +509,37 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		/"flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest"/u,
 	);
 	assert.match(CARD_SOURCE, /<span className=\{cn\(titleClassName, "text-text"\)\}>/u);
-	assert.match(CARD_SOURCE, /className="min-w-0 truncate">\{item\.agent\.name\}<\/span>/u);
+	// Long reveal-action titles keep their wrapped copy in layout while a
+	// one-line visual copy takes over on hover/focus. This keeps lower title lines
+	// inside the hit area instead of collapsing the row out from under the pointer.
 	assert.match(
 		CARD_SOURCE,
+		/const stabilizeHoverTitle = !hasSummary\s*&& showHoverActions\s*&& !\(stateAwareTitle && stateMeta\.shimmerTitle\);/u,
+	);
+	assert.match(
+		CARD_SOURCE,
+		/className=\{cn\(titleClassName, "col-start-1 row-start-1 text-text"\)\}\s*data-agent-list-title-layout=""/u,
+	);
+	assert.match(
+		CARD_SOURCE,
+		/const hoverTitleClassName = cn\(\s*"col-start-1 row-start-1 min-w-0 truncate/u,
+	);
+	assert.match(
+		CARD_SOURCE,
+		/aria-hidden="true"\s*className=\{hoverTitleClassName\}\s*data-agent-list-title-hover=""/u,
+	);
+	assert.match(CARD_SOURCE, /className="min-w-0 truncate">\{item\.agent\.name\}<\/span>/u);
+	assert.match(
+		CARD_ACTIONS_SOURCE,
 		/grid-cols-\[0fr\][\s\S]*group-hover\/agent-row:grid-cols-\[1fr\][\s\S]*group-has-\[:focus-visible\]\/agent-row:grid-cols-\[1fr\]/u,
 	);
 	assert.match(
-		CARD_SOURCE,
+		CARD_ACTIONS_SOURCE,
 		/"pointer-events-none flex shrink-0 items-center gap-1 pl-3 opacity-0/u,
 	);
-	assert.match(CARD_SOURCE, /transition-opacity duration-normal ease-out-practical/u);
+	assert.match(CARD_ACTIONS_SOURCE, /transition-opacity duration-normal ease-out-practical/u);
 	assert.match(
-		CARD_SOURCE,
+		CARD_ACTIONS_SOURCE,
 		/group-data-\[variant=uncaptured-work\]\/agent-row:transition-none/u,
 	);
 	assert.doesNotMatch(CARD_SOURCE, /className="ml-3 hidden shrink-0 items-center gap-1/u);
@@ -767,10 +825,7 @@ test("local sessions show a static timestamp, devices icon, and machine name", (
 	assert.match(ACTOR_SOURCE, /export function actorInitials/u);
 	assert.match(INVOKER_SOURCE, /import \{ actorInitials \} from "\.\/agent-list-actor";/u);
 	assert.doesNotMatch(INVOKER_SOURCE, /export function actorInitials/u);
-	assert.match(
-		CARD_SOURCE,
-		/import \{ actorInitials \} from "\.\/agent-list-actor";/u,
-	);
+	assert.match(IDENTITY_SOURCE, /import \{ actorInitials \} from "\.\/agent-list-actor";/u);
 	assert.match(
 		CARD_SOURCE,
 		/import \{ InvokerBy \} from "\.\/agent-list-invoker";/u,

@@ -1,7 +1,5 @@
 ---
 description: React and CSS gotchas — state updates, derived state, CSS gap transitions
-globs: "**/*.tsx"
-alwaysApply: false
 ---
 
 # React / CSS Gotchas

@@ -15,6 +15,10 @@ const COLLAPSED_COLUMN_SOURCE = readFileSync(
 	join(__dirname, "../components/collapsed-board-column.tsx"),
 	"utf8",
 );
+const SESSION_COLUMN_PLACEMENT_SOURCE = readFileSync(
+	join(__dirname, "../components/session-column-placement.tsx"),
+	"utf8",
+);
 const V2_BOARD_SOURCE = readFileSync(
 	join(__dirname, "../../experimental-v2/experimental-v2-jira-kanban.tsx"),
 	"utf8",
@@ -33,6 +37,7 @@ const {
 } = require("./board-column-collapse.ts");
 const {
 	resolveInFlowAgentSessionColumnGapPx,
+	resolveInFlowAgentSessionColumnSlotWidthPx,
 	resolveInFlowResizeHandleOffsetPx,
 	resolveStatusColumnVisualGutterPx,
 } = require("./in-flow-agent-session-column-geometry.ts");
@@ -101,7 +106,7 @@ test("collapse survives a switch to the list or Pulse view", () => {
 	// The page that owns the view switch owns the state.
 	assert.match(PAGE_SOURCE, /const \[collapsedColumns, setCollapsedColumns\] = useState\(\s*EMPTY_COLLAPSED_BOARD_COLUMNS,?\s*\)/u);
 	assert.match(PAGE_SOURCE, /collapsedColumns=\{displayedCollapsedColumns\}/u);
-	assert.match(PAGE_SOURCE, /onCollapsedColumnsChange=\{setCollapsedColumns\}/u);
+	assert.match(PAGE_SOURCE, /onCollapsedColumnsChange=\{handleCollapsedColumnsChange\}/u);
 	assert.match(PAGE_SOURCE, /useAgentFilterDisplay\(/u);
 	assert.match(
 		PAGE_SOURCE,
@@ -109,7 +114,15 @@ test("collapse survives a switch to the list or Pulse view", () => {
 	);
 	assert.match(
 		PAGE_SOURCE,
-		/<ExperimentalJiraKanbanBoardHeader[\s\S]*agentFilterId=\{agentFilterId\}[\s\S]*onAgentFilterIdChange=\{setAgentFilterId\}/u,
+		/<ExperimentalJiraKanbanBoardHeader[\s\S]*agentFilterId=\{agentFilterId\}[\s\S]*onAgentFilterIdChange=\{handleAgentFilterChange\}/u,
+	);
+	// The header writes through a handler, but the state it writes is still the
+	// page-owned one that outlives the view branch.
+	assert.match(PAGE_SOURCE, /const handleAgentFilterChange = \([\s\S]*?setAgentFilterId\(nextAgentFilterId\)/u);
+	assert.match(PAGE_SOURCE, /setFocusedCollapsedColumns\(null\);[\s\S]*?setAgentFilterId\(nextAgentFilterId\)/u);
+	assert.match(
+		PAGE_SOURCE,
+		/const handleCollapsedColumnsChange = \(nextCollapsedColumns: CollapsedBoardColumns\) => \{[\s\S]*?agentFilterId === null[\s\S]*?setCollapsedColumns\(nextCollapsedColumns\)[\s\S]*?setFocusedCollapsedColumns\(nextCollapsedColumns\)/u,
 	);
 });
 
@@ -118,8 +131,8 @@ test("the resize button swaps its icon without using selected button state", () 
 	const resizeButtonEnd = COLLAPSED_COLUMN_SOURCE.indexOf("/**", resizeButtonStart);
 	const resizeButtonSource = COLLAPSED_COLUMN_SOURCE.slice(resizeButtonStart, resizeButtonEnd);
 
-	assert.match(resizeButtonSource, /collapsed\s*\?\s*<GrowHorizontalIcon/u);
-	assert.match(resizeButtonSource, /:\s*<ShrinkHorizontalIcon/u);
+	assert.match(resizeButtonSource, /collapsed\s*\?\s*<GrowHorizontalIcon label="" size="small"/u);
+	assert.match(resizeButtonSource, /:\s*<ShrinkHorizontalIcon label="" size="small"/u);
 	assert.match(
 		resizeButtonSource,
 		/aria-label=\{collapsed \? `Expand \$\{title\} column` : `Collapse \$\{title\} column`\}/u,
@@ -130,6 +143,7 @@ test("the resize button swaps its icon without using selected button state", () 
 	);
 	assert.doesNotMatch(resizeButtonSource, /"Expand column"|"Collapse column"/u);
 	assert.doesNotMatch(resizeButtonSource, /aria-(?:expanded|pressed)=/u);
+	assert.doesNotMatch(resizeButtonSource, /pt-\d|pb-\d/u);
 });
 
 test("the pinned session column shares the status columns' box model", () => {
@@ -139,7 +153,7 @@ test("the pinned session column shares the status columns' box model", () => {
 	// the column itself remains the Untracked drop zone and lights when armed.
 	assert.match(
 		IN_FLOW_SOURCE,
-		/className=\{cn\(\s*"group\/in-flow-agent-session-column absolute inset-y-0 start-0 z-40 flex min-h-0 border-2 border-r-0",[\s\S]*?untrackedDropArmed \? "border-ring" : "border-transparent",\s*className,\s*\)\}/u,
+		/className=\{cn\(\s*"group\/in-flow-agent-session-column absolute inset-y-0 start-0 z-40 flex min-h-0 border-2 border-r-0",[\s\S]*?untrackedDropArmed \? "border-ring" : "border-transparent",[\s\S]*?className,\s*\)\}/u,
 	);
 	assert.match(IN_FLOW_SOURCE, /data-board-agent-session-drop-zone="untracked"/u);
 });
@@ -149,7 +163,7 @@ test("the expanded pinned session column reuses the accessible sidebar resize co
 		"const IN_FLOW_AGENT_SESSION_COLUMN_RESIZE_HANDLE_CLASS_NAME",
 	);
 	const resizeClassEnd = IN_FLOW_SOURCE.indexOf(
-		"const IN_FLOW_AGENT_SESSION_COLUMN_VARIANTS",
+		"export interface InFlowAgentSessionColumnProps",
 		resizeClassStart,
 	);
 	const resizeClassSource = IN_FLOW_SOURCE.slice(resizeClassStart, resizeClassEnd);
@@ -189,7 +203,7 @@ test("the expanded pinned session column reuses the accessible sidebar resize co
 	);
 	assert.match(
 		IN_FLOW_SOURCE,
-		/const title = agentSessionColumn\.title \?\? IN_FLOW_AGENT_SESSION_COLUMN_TITLE;[\s\S]*\{isPersistentExpanded \? \([\s\S]*<SidebarResizeHandle[\s\S]*aria-label=\{`Resize \$\{title\} column`\}[\s\S]*aria-valuemax=\{resize\.maxWidth\}[\s\S]*aria-valuemin=\{resize\.minWidth\}[\s\S]*aria-valuenow=\{expandedWidthPx\}[\s\S]*className=\{IN_FLOW_AGENT_SESSION_COLUMN_RESIZE_HANDLE_CLASS_NAME\}[\s\S]*onKeyDown=\{resize\.onResizeHandleKeyDown\}[\s\S]*onPointerDown=\{resize\.onResizeHandlePointerDown\}[\s\S]*role="separator"[\s\S]*side="right"[\s\S]*left: `calc\(100% \+ \$\{resolveInFlowResizeHandleOffsetPx\(columnFrame\)\}px\)`[\s\S]*right: "auto"[\s\S]*tabIndex=\{0\}/u,
+		/const title = agentSessionColumn\.title \?\? IN_FLOW_AGENT_SESSION_COLUMN_TITLE;[\s\S]*\{isFullWidth \? \([\s\S]*<SidebarResizeHandle[\s\S]*aria-label=\{`Resize \$\{title\} column`\}[\s\S]*aria-valuemax=\{resize\.maxWidth\}[\s\S]*aria-valuemin=\{resize\.minWidth\}[\s\S]*aria-valuenow=\{expandedWidthPx\}[\s\S]*className=\{IN_FLOW_AGENT_SESSION_COLUMN_RESIZE_HANDLE_CLASS_NAME\}[\s\S]*onKeyDown=\{resize\.onResizeHandleKeyDown\}[\s\S]*onPointerDown=\{resize\.onResizeHandlePointerDown\}[\s\S]*role="separator"[\s\S]*side="right"[\s\S]*left: `calc\(100% \+ \$\{resolveInFlowResizeHandleOffsetPx\(columnFrame\)\}px\)`[\s\S]*right: "auto"[\s\S]*tabIndex=\{0\}/u,
 	);
 });
 
@@ -200,6 +214,15 @@ test("Untracked trailing geometry matches painted status-column gutters", () => 
 	assert.equal(resolveStatusColumnVisualGutterPx("enclosed"), 12);
 	assert.equal(resolveInFlowAgentSessionColumnGapPx("enclosed"), 12);
 	assert.equal(resolveInFlowResizeHandleOffsetPx("enclosed"), 6);
+});
+
+test("a repositioned session column balances the visual gutter on both sides", () => {
+	assert.equal(resolveInFlowAgentSessionColumnSlotWidthPx(32), 42);
+	assert.equal(resolveInFlowAgentSessionColumnSlotWidthPx(280), 290);
+	assert.match(
+		SESSION_COLUMN_PLACEMENT_SOURCE,
+		/width: resolveInFlowAgentSessionColumnSlotWidthPx\(placement\.width\)/u,
+	);
 });
 
 test("a collapsed status pill hugs its label while the shell keeps the drop lane", () => {

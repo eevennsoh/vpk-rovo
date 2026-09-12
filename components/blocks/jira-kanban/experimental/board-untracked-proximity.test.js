@@ -33,6 +33,10 @@ const JIRA_ISSUE_SOURCE = readFileSync(
 	"utf8",
 );
 const DRAG_HOOK_SOURCE = readFileSync(join(EXPERIMENTAL_DIR, "use-board-agent-session-drag.ts"), "utf8");
+const GLOW_SOURCE = readFileSync(
+	join(EXPERIMENTAL_DIR, "..", "..", "jira-linking", "jira-linking-glow.tsx"),
+	"utf8",
+);
 const HELPER_SOURCE = readFileSync(join(EXPERIMENTAL_DIR, "lib", "board-untracked-sessions.ts"), "utf8");
 const SESSION_INDEX_SOURCE = readFileSync(
 	join(EXPERIMENTAL_DIR, "..", "..", "agent-session", "index.tsx"),
@@ -137,7 +141,7 @@ test("one board transaction coordinates every session source and suppresses prev
 	assert.match(BOARD_SOURCE, /JiraSessionFlyoutSuspensionProvider/u);
 	assert.match(BOARD_SOURCE, /const sessionFlyoutsSuspended = boardSessionDrag\.transaction !== null \|\| draggedCardCode !== null;/u);
 	assert.match(BOARD_SOURCE, /sessionFlyoutsSuspended=\{sessionFlyoutsSuspended\}/u);
-	assert.match(IN_FLOW_SOURCE, /suspended=\{sessionFlyoutsSuspended \|\| !isEmbedded\}/u);
+	assert.match(IN_FLOW_SOURCE, /suspended=\{sessionFlyoutsSuspended \|\| reposition\.dragging \|\| !isEmbedded\}/u);
 	assert.doesNotMatch(IN_FLOW_SOURCE, /isHovered && !isPersistentExpanded/u);
 	assert.match(BOARD_SOURCE, /sessionDrag: boardSessionDrag\.enablement\.transferable[\s\S]*\? boardSessionDrag\.untrackedBinding[\s\S]*: agentSessionColumn\.sessionDrag/u);
 	assert.match(PAGE_SOURCE, /boardAgentSessionDrag=\{boardSessionDrag\}/u);
@@ -190,6 +194,51 @@ test("release re-hit-tests the current pointer against current board geometry", 
 	assert.match(DRAG_HOOK_SOURCE, /commitDrop\(finalTransaction\)/u);
 });
 
+test("the link sweep survives an overlay that never reports its flights landed", () => {
+	// The chip flights are decoration: a portal behind a lazy chunk, gated on
+	// reduced motion. Holding the acknowledgement for a committed link on their
+	// callback is what makes the sweep look intermittent, so the drop arms its
+	// own deadline off the effect's published budget and flushes either way.
+	// Both linking variants publish one, so neither can hardcode a duration.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/settleDeadlineRef\.current = setTimeout\(\s*flushPendingAttach,\s*\(linkingVariant === "glow"\s*\? resolveJiraLinkingGlowSettleMs\(shouldReduceMotion, input\.release\)\s*: resolveJiraLinkingReleaseSettleMs\(input\.release, JIRA_LINKING_FULL_DROP_PROFILE\)\)\s*\+ SESSION_FUSION_SETTLE_GRACE_MS,/u,
+	);
+	// One arming path, so a drop and a menu assignment cannot drift into two
+	// different clocks for the same acknowledgement.
+	assert.equal(
+		DRAG_HOOK_SOURCE.match(/settleDeadlineRef\.current = setTimeout\(/gu)?.length,
+		1,
+	);
+	// Whoever gets there first wins; the deadline must not leave a timer armed
+	// after the overlay settles, or outlive the board.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/const flushPendingAttach = useCallback\(\(\) => \{\s*if \(settleDeadlineRef\.current !== null\) \{\s*clearTimeout\(settleDeadlineRef\.current\);/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/useEffect\(\(\) => \(\) => \{\s*if \(settleDeadlineRef\.current !== null\) \{\s*clearTimeout\(settleDeadlineRef\.current\);/u,
+	);
+	// A sweep retires on its own duration, so reaching for the next session does
+	// not cut it short. Clearing on gesture start is the regression this guards:
+	// both drag sources publish on every qualifying pointer move, so any drag
+	// begun inside the sweep's ~900ms life used to truncate it within a frame.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/flashRetireRef\.current = setTimeout\(\s*\(\) => \{[\s\S]*setLinkFlash\(\(current\) => \(current === flash \? null : current\)\);\s*\},\s*JIRA_ISSUE_LINK_FLASH_DURATION_MS \+ SESSION_LINK_FLASH_RETIRE_GRACE_MS,/u,
+	);
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/import \{\s*JIRA_ISSUE_LINK_FLASH_DURATION_MS,\s*\} from "@\/components\/blocks\/jira-issue\/agent-link-flash";/u,
+	);
+	// Every flash goes through the arming helper, so none can be shown without a
+	// retirement clock, and the dragging branch never writes the flash at all.
+	assert.doesNotMatch(DRAG_HOOK_SOURCE, /setDragState\(state\);\s*(\/\/[^\n]*\n\s*)*setLinkFlash\(/u);
+	assert.match(DRAG_HOOK_SOURCE, /\} else \{\s*armLinkFlash\(flash\);\s*\}/u);
+	assert.match(DRAG_HOOK_SOURCE, /armLinkFlash\(pending\.flash\);/u);
+});
+
 test("list-row hit testing reads shared scrollport geometry once per drag evaluation", () => {
 	assert.match(
 		DRAG_HOOK_SOURCE,
@@ -240,13 +289,18 @@ test("column session hover previews its suggested Jira issue at the grey hover r
 
 	assert.notStrictEqual(hoverHandlerStart, -1);
 	assert.match(BOARD_SOURCE, /onItemHover: handleColumnSessionHover,/u);
-	assert.match(hoverHandlerBody, /setHoveredColumnSessionId\(item\?\.id \?\? null\)/u);
+	assert.match(hoverHandlerBody, /if \(suggestSessionBoardLinkOnHover\) \{\s*setHoveredColumnSessionId\(item\?\.id \?\? null\);\s*\}/u);
 	assert.match(hoverHandlerBody, /agentSessionColumn\?\.onItemHover\?\.\(item\)/u);
-	assert.match(BOARD_SOURCE, /const hoveredIssueKey = hoveredColumnSessionId === null/u);
+	assert.match(BOARD_SOURCE, /const \{ highlightedSessionId, hoveredIssueKey \} = resolveSessionBoardLinkHoverPreview\(/u);
+	assert.match(BOARD_SOURCE, /enabled: suggestSessionBoardLinkOnHover,/u);
 	assert.match(PAGE_SOURCE, /const untrackedHoveredWorkItemKey = untrackedHoveredSession/u);
-	assert.match(PAGE_SOURCE, /proximityHighlightedWorkItemKey=\{untrackedHoveredWorkItemKey\}/u);
+	assert.match(
+		PAGE_SOURCE,
+		/proximityHighlightedWorkItemKey=\{suggestSessionBoardLinkOnHover\s*\? untrackedHoveredWorkItemKey\s*: null\}/u,
+	);
 	assert.match(BOARD_SOURCE, /proximityHighlightedWorkItemKey\?: string \| null;/u);
-	assert.match(BOARD_SOURCE, /const hostHoveredIssueKey = proximityHighlightedWorkItemKey === undefined/u);
+	assert.match(BOARD_SOURCE, /suggestSessionBoardLinkOnHover\?: boolean;/u);
+	assert.match(HELPER_SOURCE, /if \(!input\.enabled\) \{\s*return \{\s*highlightedSessionId: null,\s*hoveredIssueKey: null,/u);
 	assert.match(CARD_SOURCE, /agentSessionTargetPreview=\{\{ highlighted: agentSessionTargetHighlighted \}\}/u);
 	assert.match(JIRA_ISSUE_SOURCE, /agentSessionTargetHighlighted \? "bg-bg-neutral-hovered" : "bg-bg-neutral"/u);
 	// Hover previews the relationship with color only. Only a click owns focus,
@@ -286,7 +340,27 @@ test("a hovered detached board session lights its column twin", () => {
 	assert.match(MEDIUM_CARD_SOURCE, /onPointerEnter=\{\(\) => \{\s*[\s\S]*?onItemHover\?\.\(item\);\s*\}\}/u);
 	assert.match(MEDIUM_CARD_SOURCE, /onPointerLeave=\{\(\) => \{\s*[\s\S]*?onItemHover\?\.\(null\);\s*\}\}/u);
 	assert.match(SESSION_INDEX_SOURCE, /isHighlighted=\{item\.id === highlightedItemId\}/u);
-	assert.match(LARGE_CARD_SOURCE, /!showSelectedFill && isHighlighted && "bg-surface-hovered"/u);
+	assert.match(
+		LARGE_CARD_SOURCE,
+		/!showSelectedFill && \(isHighlighted \|\| isFlyoutActive\) && "bg-surface-hovered"/u,
+	);
+});
+
+test("suggested-link hover preview is a host capability that defaults on", () => {
+	assert.match(PAGE_SOURCE, /suggestSessionBoardLinkOnHover\?: boolean;/u);
+	assert.match(PAGE_SOURCE, /suggestSessionBoardLinkOnHover = true,/u);
+	assert.match(BOARD_SOURCE, /suggestSessionBoardLinkOnHover\?: boolean;/u);
+	assert.match(BOARD_SOURCE, /suggestSessionBoardLinkOnHover = true,/u);
+	assert.match(
+		PAGE_SOURCE,
+		/proximityHighlightedSessionId=\{suggestSessionBoardLinkOnHover\s*\? untrackedHoveredSessionId\s*: null\}/u,
+	);
+	assert.match(
+		PAGE_SOURCE,
+		/highlightedItemId: suggestSessionBoardLinkOnHover\s*\? untrackedHoveredSessionId\s*: undefined,/u,
+	);
+	assert.match(BOARD_SOURCE, /enabled: suggestSessionBoardLinkOnHover,/u);
+	assert.match(HELPER_SOURCE, /if \(!input\.enabled\) \{\s*return \{\s*highlightedSessionId: null,\s*hoveredIssueKey: null,/u);
 });
 
 test("column card click scrolls the related issue and applies the blue-subtlest spotlight", () => {
@@ -366,4 +440,64 @@ test("column presentation pins Untracked beside the list as well as the board", 
 		/agentSessionColumn=\{agentSessionPresentation === "panel"/u,
 		"the page-owned column must not also mount inside ExperimentalJiraKanban",
 	);
+});
+
+test("a menu assignment measures the card after the link its own commit caused", () => {
+	// A drop hit-tests a board the pointer was already over. An assignment can
+	// move the card it targets — a host that advances the work item on start
+	// re-columns it in the same commit — so measuring before that commit hands
+	// Glow a stale anchor whose hit test finds whichever card slid in behind.
+	// The wrong card then glows.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/assignmentFrameRef\.current = requestAnimationFrame\(\(\) => \{\s*assignmentFrameRef\.current = null;\s*const proximity = toBoardAgentSessionCardProximity\(/u,
+	);
+	// The deferred frame must not outlive the board, or it arms against a tree
+	// that is already gone.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/clearTimeout\(flashRetireRef\.current\);\s*\}\s*if \(assignmentFrameRef\.current !== null\) \{\s*cancelAnimationFrame\(assignmentFrameRef\.current\);\s*\}\s*\}, \[\]\);/u,
+	);
+	// Click-assign skips the travelling chip a drop builds: Glow's halo is the
+	// whole acknowledgement, and faking a drop origin would replay the collapse.
+	assert.match(DRAG_HOOK_SOURCE, /toSessionFusionAssignmentRelease\(/u);
+	assert.equal(
+		DRAG_HOOK_SOURCE.match(/toSessionFusionDrop\(/gu)?.length,
+		1,
+		"only the pointer-up path may arm a travelling-chip drop",
+	);
+});
+
+test("the assign menu only acknowledges on glow, and never asks for a sweep", () => {
+	// Fuse keys its sweep to the activity id the host minted, and that id is the
+	// host's own convention — v4 builds `${card.code}:${selection.id}` out of a
+	// mention id this board never sees. Arming a sweep the board cannot target
+	// would silently never play, so fuse boards keep today's assign menu.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/if \(!member \|\| shouldReduceMotion \|\| linkingVariant !== "glow"\) \{\s*return;\s*\}/u,
+	);
+	// Glow's own halo and pulse are the acknowledgement, so the assignment must
+	// not hand the rows a flash at all.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/armFusionRelease\(\{[\s\S]{0,220}?flash: null,/u,
+	);
+	assert.doesNotMatch(
+		DRAG_HOOK_SOURCE,
+		/targetCardCode: cardCode,/u,
+		"a menu assignment must not build a chin-row flash it cannot key correctly",
+	);
+	// Without a travelling chip, the card must not open its attach chin or
+	// count as a drop target the way a session flight does.
+	assert.match(
+		DRAG_HOOK_SOURCE,
+		/const isFusionDropFlight = Boolean\(\s*fusionDrop\?\.release\.drop && fusionDrop\.proximity\.cardCode === card\.code,\s*\);/u,
+	);
+	assert.doesNotMatch(
+		GLOW_SOURCE,
+		/if \(shouldReduceMotion \|\| !drop \|\| !landing \|\| !backdrop\)/,
+		"a click-to-assign release omits drop and must still play the halo",
+	);
+	assert.match(GLOW_SOURCE, /if \(!drop \|\| !flight\) \{\s*playGlow\(\);/u);
 });

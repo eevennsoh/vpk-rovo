@@ -2,16 +2,26 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+	resolveAgentBrandTintColor,
+	resolveAgentBrandTintVariable,
+} = require("./agent-brand-tint.ts");
+
+const {
 	SESSION_FUSION_ROW_RADIUS_PX,
 	SESSION_FUSION_SHELL_RADIUS_PX,
+	SESSION_FUSION_SURFACE_RADIUS_PX,
+	toAssignedAgentTransferMember,
 	toBoardAgentSessionLinkFlash,
+	toSessionFusionAssignmentRelease,
 	toSessionFusionDrop,
+	toSessionFusionGlowLandTarget,
 	toSessionFusionLandTarget,
 	toSessionFusionTarget,
 } = require("./session-fusion-overlay-state.ts");
 
 const CARD_BOUNDS = { bottom: 420, left: 100, right: 380, top: 300 };
 const SHELL_RECT = { bottom: 444, left: 104, right: 376, top: 300 };
+const SURFACE_RECT = { bottom: 412, left: 108, right: 372, top: 304 };
 const CLAUDE = { id: "claude-1", name: "Claude", tintSeed: "claude" };
 const CODEX = { id: "codex-1", name: "Codex", tintSeed: "openai-codex" };
 
@@ -23,6 +33,7 @@ function proximityOf(overrides = {}) {
 		dockRect: null,
 		landRect: null,
 		nearness: 1,
+		surfaceRect: null,
 		...overrides,
 	};
 }
@@ -92,6 +103,24 @@ test("the flash names the rows that were added and wears the lead agent's mark",
 	});
 	assert.deepEqual(cohort.flash.activityIds, ["codex-1", "claude-1"]);
 	assert.equal(cohort.flash.tint, "#3941ff");
+});
+
+test("near-black agent tints follow the active theme", () => {
+	assert.equal(resolveAgentBrandTintVariable("cursor"), "--color-icon");
+	assert.equal(resolveAgentBrandTintVariable("github"), "--color-icon");
+	assert.equal(resolveAgentBrandTintVariable("github-copilot"), "--color-icon");
+	assert.equal(resolveAgentBrandTintVariable("github copilot"), "--color-icon");
+	assert.equal(resolveAgentBrandTintVariable("claude"), undefined);
+	assert.equal(resolveAgentBrandTintColor("cursor"), "var(--color-icon)");
+	assert.equal(resolveAgentBrandTintColor("claude"), "#d97757");
+
+	const cursorFlash = toBoardAgentSessionLinkFlash({
+		members: [{ id: "cursor-1", name: "Cursor", tintSeed: "cursor" }],
+		proximity: proximityOf(),
+		targetCardCode: "PAY-121",
+		token: 9,
+	});
+	assert.equal(cursorFlash.flash.tint, "var(--color-icon)");
 });
 
 test("an unmapped brand still flashes, on a neutral accent", () => {
@@ -179,4 +208,135 @@ test("an empty cohort has no row to acknowledge", () => {
 		}),
 		null,
 	);
+});
+
+test("a glow release lands on the card surface, not the chin row", () => {
+	const landRect = { bottom: 444, left: 108, right: 372, top: 420 };
+	const proximity = proximityOf({
+		dockRect: SHELL_RECT,
+		landRect,
+		surfaceRect: SURFACE_RECT,
+	});
+	const release = toSessionFusionDrop({
+		from: { x: 48, y: 90 },
+		id: 4,
+		members: [CODEX, CLAUDE],
+		proximity,
+		variant: "glow",
+	});
+	assert.equal(SESSION_FUSION_SURFACE_RADIUS_PX, 8);
+	assert.deepEqual(release?.target, {
+		anchor: { x: 240, y: 358 },
+		height: 108,
+		radius: 8,
+		width: 264,
+	});
+	assert.deepEqual(toSessionFusionGlowLandTarget(proximity), release?.target);
+	// The shell is what grows the halo and backdrop pulse, so glow snapshots it
+	// even though the chip lands on the surface inside it.
+	assert.deepEqual(release?.fromTarget, toSessionFusionTarget(proximity));
+	assert.deepEqual(release?.drop.from, { x: 48, y: 90 });
+	assert.deepEqual(
+		release?.drop.members.map((member) => member.id),
+		["codex-1", "claude-1"],
+	);
+});
+
+test("fuse still lands on the chin row and snapshots no approach shape", () => {
+	const release = toSessionFusionDrop({
+		from: { x: 48, y: 90 },
+		id: 5,
+		members: [CLAUDE],
+		proximity: proximityOf({
+			dockRect: SHELL_RECT,
+			landRect: { bottom: 444, left: 108, right: 372, top: 420 },
+			surfaceRect: SURFACE_RECT,
+		}),
+	});
+	assert.equal(release?.target.radius, SESSION_FUSION_ROW_RADIUS_PX);
+	assert.equal(release?.target.height, 24);
+	assert.equal(release?.fromTarget, undefined);
+});
+
+test("an unmeasured surface falls back to the shell, then to the drop-zone bounds", () => {
+	assert.deepEqual(toSessionFusionGlowLandTarget(proximityOf({ dockRect: SHELL_RECT })), {
+		anchor: { x: 240, y: 372 },
+		height: 144,
+		radius: 8,
+		width: 272,
+	});
+	assert.deepEqual(toSessionFusionGlowLandTarget(proximityOf()), {
+		anchor: { x: 240, y: 360 },
+		height: 120,
+		radius: 8,
+		width: 280,
+	});
+	assert.equal(toSessionFusionGlowLandTarget(null), null);
+});
+
+test("glow acknowledges its own drop, so it never earns a chin-row sweep", () => {
+	const input = {
+		members: [CLAUDE],
+		proximity: proximityOf(),
+		targetCardCode: "PAY-121",
+		token: 11,
+	};
+	assert.equal(toBoardAgentSessionLinkFlash({ ...input, variant: "glow" }), null);
+	// The same drop under fuse still sweeps, so the suppression is the variant's
+	// and not a gate the drop failed.
+	assert.deepEqual(toBoardAgentSessionLinkFlash({ ...input, variant: "fuse" }), {
+		cardCode: "PAY-121",
+		flash: { activityIds: ["claude-1"], tint: "#d97757", token: 11 },
+	});
+});
+
+test("an assigned agent becomes the link subject, seeded so a brand still tints it", () => {
+	assert.deepEqual(
+		toAssignedAgentTransferMember({
+			issue: { issueKey: "PAY-121", summary: "Carry card-artwork metadata" },
+			kind: "agent",
+			prompt: "Ask \"Rovo\" to help",
+			selectedItem: { avatarSrc: "/3p/rovo.png", id: "subagent:rovo", label: "Rovo" },
+		}),
+		{ avatarSrc: "/3p/rovo.png", id: "subagent:rovo", name: "Rovo", tintSeed: "rovo" },
+	);
+});
+
+test("only an agent submit names a subject the acknowledgement can point at", () => {
+	const issue = { issueKey: "PAY-121", summary: "Carry card-artwork metadata" };
+	// Ask Rovo opens a chat, so no agent row lands on the card.
+	assert.equal(
+		toAssignedAgentTransferMember({ issue, kind: "ask-rovo", prompt: "why" }),
+		null,
+	);
+	// A skill submit does land a row, but the host picks which agent runs it, so
+	// the board cannot name the subject and must not guess the skill.
+	assert.equal(
+		toAssignedAgentTransferMember({
+			issue,
+			kind: "skill",
+			prompt: "Use the \"Ship note\" skill",
+			selectedItem: { id: "ship-note", label: "Ship note" },
+		}),
+		null,
+	);
+	// An agent submit with nothing selected cannot be a subject either.
+	assert.equal(
+		toAssignedAgentTransferMember({ issue, kind: "agent", prompt: "Ask" }),
+		null,
+	);
+});
+
+test("an assignment release glows the card without a travelling chip", () => {
+	const proximity = proximityOf({
+		dockRect: SHELL_RECT,
+		landRect: { bottom: 444, left: 108, right: 372, top: 420 },
+		surfaceRect: SURFACE_RECT,
+	});
+	const release = toSessionFusionAssignmentRelease({ id: 12, proximity });
+	assert.deepEqual(release.target, toSessionFusionGlowLandTarget(proximity));
+	assert.deepEqual(release.fromTarget, toSessionFusionTarget(proximity));
+	assert.equal(release.drop, undefined);
+	assert.equal(release.id, 12);
+	assert.equal(toSessionFusionAssignmentRelease({ id: 13, proximity: null }), null);
 });

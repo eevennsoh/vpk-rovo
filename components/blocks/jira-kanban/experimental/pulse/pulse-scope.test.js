@@ -546,6 +546,7 @@ test("the brief switch is exhaustive over the scope union", () => {
 test("the ask dock reuses the work item's composer instead of growing a third one", () => {
 	assert.match(SCOPE_SOURCES.composer, /JiraActivityComposer/u);
 	assert.match(SCOPE_SOURCES.composer, /variant="comment"/u);
+	assert.doesNotMatch(SCOPE_SOURCES.composer, /\bexpandOnFocus\b/u);
 	// Controlled, or a suggestion tap leaves the typed draft alive under an
 	// answer that has already been given.
 	assert.match(SCOPE_SOURCES.composer, /value=\{draft\}/u);

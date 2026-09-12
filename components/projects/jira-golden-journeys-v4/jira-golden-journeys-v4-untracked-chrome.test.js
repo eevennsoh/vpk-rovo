@@ -41,9 +41,15 @@ const FAB_GEOMETRY_SOURCE = readProjectFile(
 
 test("the route pins the shared Agent Session column beside Jira statuses", () => {
 	assert.match(PAGE_SOURCE, /showAgentSessionColumn/u);
+	assert.match(PAGE_SOURCE, /agentSessionMultiSelect=\{false\}/u);
+	assert.doesNotMatch(PAGE_SOURCE, /showAgentSessionFilter=\{false\}/u);
+	assert.doesNotMatch(PAGE_SOURCE, /showAgentSessionOverflow=\{false\}/u);
 	assert.match(PAGE_SOURCE, /defaultAgentSessionColumnCollapsed/u);
 	assert.match(PAGE_SOURCE, /agentSessionAssigneeIdAliases=\{JIRA_GOLDEN_JOURNEYS_V4_PAY_SESSION_MEMBER_ID_BY_ASSIGNEE_ID\}/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /showAgentSessionColumn\?: boolean;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /agentSessionMultiSelect\?: boolean;/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /agentSessionMultiSelect = true,/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /multiSelect: agentSessionMultiSelect,/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /defaultAgentSessionColumnCollapsed\?: boolean;/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /function useAgentSessionReview[\s\S]*useState\(defaultCollapsed\)/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /collapsed: displayedAgentSessionColumnCollapsed,/u);
@@ -129,7 +135,7 @@ test("the Panel design variant floats untracked work over the board and the list
 	assert.doesNotMatch(EXPERIMENTAL_PAGE_SOURCE, /onToggleAgentSessionPanel/u);
 	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /agentSessionPanelOpen/u);
 	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /onToggleAgentSessionPanel/u);
-	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /Unattached sessions panel/u);
+	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /Unlink sessions panel/u);
 	assert.doesNotMatch(PANEL_SOURCE, /PanelActionClose|onClose/u);
 	// Collapse stays on the column-owned header so the rail is not a trap.
 	assert.match(PANEL_SOURCE, /headerSurface="panel"/u);

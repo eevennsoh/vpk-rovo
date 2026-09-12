@@ -1,12 +1,14 @@
 "use client";
 
-import type { ComponentType, CSSProperties, ReactElement } from "react";
+import type { ComponentType, CSSProperties, ReactElement, ReactNode } from "react";
 
 import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import AddIcon from "@atlaskit/icon/core/add";
 import ArchiveBoxIcon from "@atlaskit/icon/core/archive-box";
 import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
 import CrossIcon from "@atlaskit/icon/core/cross";
+import PinIcon from "@atlaskit/icon/core/pin";
+import PinFilledIcon from "@atlaskit/icon/core/pin-filled";
 import ShrinkHorizontalIcon from "@atlaskit/icon/core/shrink-horizontal";
 import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
 
@@ -211,6 +213,43 @@ function SelectAllSlot({
 	);
 }
 
+function PinButton({
+	label,
+	onPinToggle,
+	pinned,
+}: Readonly<{
+	label: string;
+	onPinToggle: () => void;
+	pinned: boolean;
+}>): ReactElement {
+	const PinGlyph = pinned ? PinFilledIcon : PinIcon;
+
+	return (
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger
+					render={
+						<Button
+							aria-label={label}
+							data-agent-session-column-pin=""
+							onClick={onPinToggle}
+							size="icon-compact"
+							type="button"
+							variant="ghost"
+						/>
+					}
+				>
+					<Icon
+						className="text-icon-subtle [&_svg]:size-3"
+						render={<PinGlyph label="" size="small" />}
+					/>
+				</TooltipTrigger>
+				<TooltipContent>{pinned ? "Unpin" : "Pin"}</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	);
+}
+
 function CollapseButton({
 	label,
 	onCollapse,
@@ -242,32 +281,46 @@ function CollapseButton({
 
 export function AgentSessionColumnHeader({
 	collapseLabel,
+	dragHandle,
 	filter,
 	frame = DEFAULT_AGENT_SESSION_COLUMN_FRAME,
 	hasActiveFilters = false,
 	model,
 	onAction,
 	onCollapse,
+	onPinToggle,
 	overflow,
+	pinLabel,
+	pinned = false,
 	surface,
 }: Readonly<{
 	collapseLabel: string;
-	filter: ReactElement;
+	dragHandle?: ReactNode;
+	filter?: ReactElement;
 	frame?: AgentSessionColumnFrame;
 	hasActiveFilters?: boolean;
 	model: UntrackedHeaderModel;
 	onAction: (id: HeaderActionId) => void;
 	onCollapse: () => void;
-	overflow: ReactElement;
+	onPinToggle?: () => void;
+	overflow?: ReactElement;
+	pinLabel?: string;
+	pinned?: boolean;
 	surface: "column" | "panel";
 }>): ReactElement {
 	switch (surface) {
 		case "column":
 			return (
 				<div
-					className="flex min-w-0 flex-nowrap items-center"
+					data-agent-session-column-header=""
+					data-session-column-move-surface={dragHandle === undefined ? undefined : ""}
+					className={cn(
+						"flex min-w-0 flex-nowrap items-center",
+						dragHandle === undefined ? null : "cursor-grab touch-none active:cursor-grabbing",
+					)}
 					style={AGENT_SESSION_COLUMN_HEADER_STYLE[frame]}
 				>
+					{dragHandle}
 					{renderColumnChrome({
 						collapseLabel,
 						filter,
@@ -276,7 +329,10 @@ export function AgentSessionColumnHeader({
 						model,
 						onAction,
 						onCollapse,
+						onPinToggle,
 						overflow,
+						pinLabel,
+						pinned,
 					})}
 				</div>
 			);
@@ -304,22 +360,37 @@ function renderColumnChrome({
 	model,
 	onAction,
 	onCollapse,
+	onPinToggle,
 	overflow,
+	pinLabel,
+	pinned,
 }: Readonly<{
 	collapseLabel: string;
-	filter: ReactElement;
+	filter?: ReactElement;
 	frame: AgentSessionColumnFrame;
 	hasActiveFilters: boolean;
 	model: UntrackedHeaderModel;
 	onAction: (id: HeaderActionId) => void;
 	onCollapse: () => void;
-	overflow: ReactElement;
+	onPinToggle?: () => void;
+	overflow?: ReactElement;
+	pinLabel?: string;
+	pinned: boolean;
 }>): ReactElement {
 	const isSelecting = model.kind === "selecting";
-	const revealHeaderActions = hasActiveFilters && !isSelecting;
+	const revealHeaderActions = (hasActiveFilters || pinned) && !isSelecting;
 	const headerActionsClass = revealHeaderActions
 		? HEADER_ACTIONS_VISIBLE
 		: HEADER_ACTIONS_REVEAL;
+	const pinControl = onPinToggle === undefined || pinLabel === undefined
+		? null
+		: (
+			<PinButton
+				label={pinLabel}
+				onPinToggle={onPinToggle}
+				pinned={pinned}
+			/>
+		);
 
 	return (
 		<>
@@ -350,14 +421,17 @@ function renderColumnChrome({
 				</div>
 			) : (
 				<div className="group/header-actions ms-auto flex shrink-0 items-center">
-					<div className={headerActionsClass}>
-						{filter}
-					</div>
+					{filter === undefined ? null : (
+						<div className={headerActionsClass}>
+							{filter}
+						</div>
+					)}
 					<div
 						className={headerActionsClass}
 						data-session-header-reveal=""
 					>
-						{overflow}
+						{overflow === undefined ? null : overflow}
+						{pinControl}
 						<CollapseButton label={collapseLabel} onCollapse={onCollapse} />
 					</div>
 				</div>
@@ -375,11 +449,11 @@ function renderPanelChrome({
 	overflow,
 }: Readonly<{
 	collapseLabel: string;
-	filter: ReactElement;
+	filter?: ReactElement;
 	model: UntrackedHeaderModel;
 	onAction: (id: HeaderActionId) => void;
 	onCollapse: () => void;
-	overflow: ReactElement;
+	overflow?: ReactElement;
 }>): ReactElement {
 	switch (model.kind) {
 		case "browsing":
@@ -393,8 +467,8 @@ function renderPanelChrome({
 						</span>
 					</PanelTitle>
 					<PanelActionGroup>
-						{filter}
-						{overflow}
+						{filter === undefined ? null : filter}
+						{overflow === undefined ? null : overflow}
 						<PanelAction
 							icon={ShrinkHorizontalIcon}
 							label={collapseLabel}

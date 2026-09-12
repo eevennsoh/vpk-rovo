@@ -54,9 +54,10 @@ const INDICATORS_SOURCE = readProjectFile(
 const COMPLETED_RUNS_SOURCE = readProjectFile(
 	"components/blocks/jira-issue/completed-agent-runs.tsx",
 );
-const AGENT_ACTIVITY_SOURCE = readProjectFile(
-	"components/blocks/jira-issue/agent-activity.tsx",
-);
+const AGENT_ACTIVITY_SOURCE = [
+	readProjectFile("components/blocks/jira-issue/agent-activity.tsx"),
+	readProjectFile("components/blocks/jira-issue/agent-activity-row-presentation.tsx"),
+].join("\n");
 const TRANSFER_SOURCE = readProjectFile(
 	"components/blocks/jira-issue/agent-session-transfer.tsx",
 );
@@ -82,6 +83,11 @@ test("the board disables Insights while keeping card agent chat in the Jira shel
 	assert.match(PAGE_SOURCE, /insightsEnabled=\{false\}/u);
 	assert.doesNotMatch(PAGE_SOURCE, /PULSE_|InsightsNudge|boardRef|timelineLastViewedAt/u);
 	assert.match(PAGE_SOURCE, /onCardAgentActivityViewChat=\{handleViewChat\}/u);
+	assert.match(PAGE_SOURCE, /question: activity\.question,/u);
+	assert.match(
+		PAGE_SOURCE,
+		/agentId: activity\.id\.includes\(":"\)\s*\? activity\.id\.slice\(activity\.id\.lastIndexOf\(":"\) \+ 1\)\s*: activity\.id,/u,
+	);
 	assert.match(PAGE_SOURCE, /onCardAgentDoneRunView=\{handleViewCompletedRun\}/u);
 	assert.match(
 		EXPERIMENTAL_PAGE_SOURCE,
@@ -91,7 +97,7 @@ test("the board disables Insights while keeping card agent chat in the Jira shel
 		EXPERIMENTAL_PAGE_SOURCE,
 		/<ExperimentalJiraKanban[\s\S]*onCardAgentDoneRunView=\{onCardAgentDoneRunView\}/u,
 	);
-	assert.match(PAGE_SOURCE, /openAgentChat\(\{[\s\S]*agentId: activity\.id,[\s\S]*issueKey: card\.code/u);
+	assert.match(PAGE_SOURCE, /openAgentChat\(\{[\s\S]*agentId: activity\.id\.includes\(":"\)[\s\S]*issueKey: card\.code/u);
 	assert.match(PAGE_SOURCE, /const handleViewCompletedRun = useCallback\([\s\S]*agentId: run\.agentName\.toLowerCase\(\)\.replace\(\/\\s\+\/g, "-"\),[\s\S]*issueKey: run\.issueKey/u);
 	assert.match(PAGE_SOURCE, /<JgpRovoOverlay[\s\S]*externalThinkingMessageId=\{externalThinkingMessageId\}/u);
 	assert.doesNotMatch(PAGE_SOURCE, /<JgpRovoOverlay[\s\S]*insights=/u);
@@ -125,8 +131,8 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 		EXPERIMENTAL_PAGE_SOURCE,
 		/<ExperimentalJiraKanban[\s\S]*agentActivityLayout=\{agentActivityLayout\}/u,
 	);
-	// Grouped chins must not steal hover for a single-session flyout. Dropping
-	// sessionFlyout on multi-agent rows is what lets AgentAssignment open.
+	// Every merged chin opens AgentAssignment, including the one-session case,
+	// so the interaction does not change when a second session attaches.
 	// Attach copy occupying the last chin also suppresses flyout and drag so
 	// the slot stays a drop target instead of a session handle.
 	assert.match(
@@ -135,16 +141,14 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 	);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const rowSessionFlyout = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionFlyout : undefined;/u,
-	);
-	assert.match(
-		AGENT_ACTIVITY_SOURCE,
 		/const rowSessionDrag = replaceLastRowWithAttach \? undefined : isSingleAgentRow \? sessionDrag : undefined;/u,
 	);
 	assert.match(AGENT_ACTIVITY_SOURCE, /sessionDrag=\{rowSessionDrag\}/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = isSingleAgent \|\| sessionFlyout \? rowHandle : \(/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<JiraIssueAgentAssignmentHandle/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout \? \(\s*<JiraSessionFlyoutTrigger/u);
+	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout|JiraSessionFlyoutTrigger/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /ROVO_AGENT_SELECTOR_AGENTS/u);
+	assert.match(PAGE_SOURCE, /onCardAssignedAgentIdsChange=\{onAssignedAgentIdsChange\}/u);
 });
 
 test("chin-row agent activity indicators use the Team EU renderer", () => {
@@ -262,7 +266,11 @@ test("the board reveals compact magnetic create targets that expand and arm duri
 	);
 	assert.match(
 		JIRA_DROPZONE_SOURCE,
-		/selected[\s\S]*\? "border-border-selected bg-bg-selected text-text-selected"[\s\S]*: "border-border bg-surface text-text-subtlest"/u,
+		/selected\s*\n\t\t\t\t\t\? "border-border-selected bg-bg-selected text-text-selected"\n\t\t\t\t\t: "border-border bg-surface text-text-subtlest"/u,
+	);
+	assert.match(
+		JIRA_DROPZONE_SOURCE,
+		/marching \? JIRA_DROPZONE_ANTS_CLASS : null/u,
 	);
 	assert.doesNotMatch(
 		JIRA_DROPZONE_SOURCE,
@@ -271,7 +279,12 @@ test("the board reveals compact magnetic create targets that expand and arm duri
 	);
 	assert.match(
 		JIRA_DROPZONE_SOURCE,
-		/transition-\[height,background-color\] duration-normal ease-out-practical motion-reduce:transition-none/u,
+		/transition-\[background-color,border-color\] duration-normal ease-out-practical motion-reduce:transition-none/u,
+	);
+	assert.doesNotMatch(
+		JIRA_DROPZONE_SOURCE,
+		/transition-property:[^"]*height|transition-\[[^\]]*height/u,
+		"create wells must not transition the layout height; only colour is transitional",
 	);
 	assert.match(
 		EXPERIMENTAL_BOARD_SOURCE,
@@ -412,7 +425,7 @@ test("Team EU returns unlinked sessions to Untracked without parking them on sta
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /showUnlinkWell = true,/u);
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/const showUnlinkControl = Boolean\(sessionDrag\?\.onUnlink\) && !isDraggedOut;/u,
+		/const showUnlinkControl = iconScale !== "comfortable"\s*\n\s*&& Boolean\(sessionDrag\?\.onUnlink\)\s*\n\s*&& !isDraggedOut;/u,
 	);
 	assert.match(
 		TRANSFER_SOURCE,
@@ -574,10 +587,19 @@ test("the Work items header switches between Board and List views with their ico
 	assert.match(LIST_HOOK_SOURCE, /onCreate: handleCreateWorkItem/u);
 	assert.match(LIST_HOOK_SOURCE, /onStatusChange: handleStatusChange/u);
 	assert.match(LIST_HOOK_SOURCE, /onAssignedAgentIdsChange: handleAssignedAgentIdsChange/u);
+	assert.match(
+		LIST_HOOK_SOURCE,
+		/onAssignedAgentIdsChange: \(issueKey: string, agentIds: readonly string\[\]\) => void;/u,
+	);
+	assert.match(
+		LIST_HOOK_SOURCE,
+		/const JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG = mergeJiraKanbanAgentCatalog\(\s*JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,\s*\);/u,
+	);
 	assert.match(LIST_HOOK_SOURCE, /issueType: draftWorkItem.issueType/u);
 	assert.match(LIST_HOOK_SOURCE, /dueDate: draftWorkItem.dueDate/u);
 	assert.match(LIST_HOOK_SOURCE, /currentOrder.length === 0 \? allKeys : currentOrder/u);
-	assert.match(LIST_HOOK_SOURCE, /agentCatalog: JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS/u);
+	assert.match(LIST_HOOK_SOURCE, /agentCatalog: JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG/u);
+	assert.match(LIST_HOOK_SOURCE, /createListRows\(columns, JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG\)/u);
 	assert.match(LIST_HOOK_SOURCE, /statusOptions: JIRA_GOLDEN_JOURNEYS_V4_LIST_STATUS_OPTIONS/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /activeView\?: ExperimentalJiraKanbanView;/u);
 	assert.match(
@@ -664,7 +686,7 @@ test("the Work items header switches between Board and List views with their ico
 	assert.ok(modeToggleIndex > 0 && modeToggleIndex < inlineMoreIndex);
 	assert.match(
 		EXPERIMENTAL_HEADER_SOURCE,
-		/\{filterControl\}\s*<BoardViewMenu[\s\S]*?\{modeToggle\}[\s\S]*?moreControlsPlacement === "inline"/u,
+		/\{filterControl\}[\s\S]*?<BoardViewMenu[\s\S]*?\{modeToggle\}[\s\S]*?moreControlsPlacement === "inline"/u,
 	);
 	assert.doesNotMatch(
 		EXPERIMENTAL_HEADER_SOURCE,

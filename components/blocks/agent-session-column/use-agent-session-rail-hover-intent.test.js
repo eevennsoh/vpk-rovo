@@ -3,9 +3,19 @@ const test = require("node:test");
 
 const {
 	isHeadingIntoPopup,
-} = require("./use-agent-session-rail-hover-intent.ts");
+	resolveConeSide,
+} = require("../../utils/cone-safezone/geometry.ts");
 
 const RIGHT_POPUP = { bottom: 160, left: 200, right: 320, top: 40 };
+
+test("logical cone sides follow Base UI reading direction", () => {
+	assert.equal(resolveConeSide("inline-start", "ltr"), "left");
+	assert.equal(resolveConeSide("inline-end", "ltr"), "right");
+	assert.equal(resolveConeSide("inline-start", "rtl"), "right");
+	assert.equal(resolveConeSide("inline-end", "rtl"), "left");
+	assert.equal(resolveConeSide("bottom", "rtl"), "bottom");
+	assert.equal(resolveConeSide(undefined, "ltr"), null);
+});
 
 test("rail hover intent preserves a flyout while the pointer travels diagonally toward its right-side popup", () => {
 	assert.equal(
@@ -30,4 +40,20 @@ test("rail hover intent supports a collision-resolved popup on the left of its t
 		),
 		true,
 	);
+});
+
+test("shared hover cone supports previews above and below a Smart Link", () => {
+	assert.equal(isHeadingIntoPopup({ x: 100, y: 100 }, { x: 120, y: 150 }, {
+		left: 40, right: 160, top: 200, bottom: 320,
+	}, "bottom"), true);
+	assert.equal(isHeadingIntoPopup({ x: 100, y: 300 }, { x: 120, y: 250 }, {
+		left: 40, right: 160, top: 80, bottom: 200,
+	}, "top"), true);
+});
+
+test("shared hover cone rejects reversal, travel beyond the popup edge, and zero distance", () => {
+	for (const point of [{ x: 90, y: 100 }, { x: 210, y: 100 }]) {
+		assert.equal(isHeadingIntoPopup({ x: 100, y: 100 }, point, RIGHT_POPUP), false);
+	}
+	assert.equal(isHeadingIntoPopup({ x: 200, y: 100 }, { x: 200, y: 100 }, RIGHT_POPUP, "right"), false);
 });

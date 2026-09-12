@@ -25,10 +25,12 @@ import {
 import {
 	AGENT_BRAND_TINT_FALLBACK,
 	resolveAgentBrandTint,
-	resolveAgentBrandTintHex,
+	resolveAgentBrandTintColor,
+	resolveAgentBrandTintVariable,
 } from "@/components/blocks/jira-kanban/experimental/lib/agent-brand-tint";
 import {
 	JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE,
+	sessionTransferTintSeed,
 	type JiraIssueAgentSessionDragState,
 	type JiraIssueAgentSessionTransferMember,
 } from "@/components/blocks/jira-issue/agent-session-drag";
@@ -41,10 +43,11 @@ import {
 	type JiraLinkingIdentity,
 	type JiraLinkingRelease,
 	type JiraLinkingTarget,
+	type JiraLinkingVariant,
 } from "@/components/blocks/jira-linking";
 
 /**
- * The travelling at-mention chip `AgentSessionMediumDrag` portals to the body.
+ * The travelling drag pill `AgentSessionMediumDrag` portals to the body.
  *
  * The same selector `jira-golden-journeys-v4` measures. Only one drag can be in
  * flight at a time, so a document-wide selector is correct here even with
@@ -58,12 +61,15 @@ const CHIP_SELECTOR = "[data-session-drag-overlay] [data-session-fusion-chip]";
  * approximating with the wrapper's rect.
  */
 const SHELL_SELECTOR = '[data-slot="jira-issue-agent-shell"]';
+const SURFACE_SELECTOR = '[data-slot="jira-issue-surface"]';
 const CHIN_SLOT_SELECTOR = '[data-slot="jira-issue-attach-chin-slot"]';
 const CHIN_SELECTOR = '[data-slot="jira-issue-attach-chin"]';
 const ROW_SELECTOR = '[data-slot="jira-issue-agent-row"]';
 
 /** Matches `AGENT_ACTIVITY_SHELL_STYLE.borderRadius` on the real card. */
 const SHELL_RADIUS_PX = 10;
+/** Matches `radius.large` on the issue's main card surface. */
+const SURFACE_RADIUS_PX = 8;
 /** Matches `rounded-md` on the activity row and attach-chin slot. */
 const ROW_RADIUS_PX = 6;
 const CHIN_HEIGHT_PX = 24;
@@ -76,6 +82,7 @@ interface Rect {
 }
 
 interface Approach {
+	cardId: JiraLinkingCardId | null;
 	inside: boolean;
 	nearness: number;
 	/** The whole shell — what the field grows into during the approach. */
@@ -83,6 +90,7 @@ interface Approach {
 }
 
 const IDLE_APPROACH: Approach = {
+	cardId: null,
 	inside: false,
 	nearness: 0,
 	target: null,
@@ -105,13 +113,13 @@ function toRect(node: Element | null | undefined): Rect | null {
 	return { bottom, left, right, top };
 }
 
-function toTarget(shell: Rect): JiraLinkingTarget {
+function toTarget(shell: Rect, radius = SHELL_RADIUS_PX): JiraLinkingTarget {
 	return {
 		anchor: { x: (shell.left + shell.right) / 2, y: (shell.top + shell.bottom) / 2 },
 		height: shell.bottom - shell.top,
-		radius: SHELL_RADIUS_PX,
+		radius,
 		width: shell.right - shell.left,
-	};
+	}
 }
 
 function lastMatchingRect(root: Element | null, selector: string): Rect | null {
@@ -148,12 +156,21 @@ function toLandTarget(root: Element | null, shell: Rect): JiraLinkingTarget {
 function toIdentities(
 	sessions: readonly AgentSessionItem[],
 ): readonly JiraLinkingIdentity[] {
-	return sessions.map((session) => ({
-		id: session.id,
-		imageSrc: session.agent.avatarSrc,
-		tint: resolveAgentBrandTint(session.agent.brandName),
-		tintSeed: session.agent.brandName ?? session.agent.name,
-	}));
+	return sessions.map((session) => {
+		const tintSeed = sessionTransferTintSeed(
+			session.agent.brandName,
+			session.agent.vpkLogo,
+			session.agent.name,
+		);
+		const tintVariable = resolveAgentBrandTintVariable(tintSeed);
+		return {
+			id: session.id,
+			imageSrc: session.agent.avatarSrc,
+			tint: tintVariable ? undefined : resolveAgentBrandTint(tintSeed),
+			tintSeed,
+			tintVariable,
+		};
+	});
 }
 
 function toDropMembers(
@@ -163,6 +180,7 @@ function toDropMembers(
 		avatarSrc: session.agent.avatarSrc,
 		brandName: session.agent.brandName,
 		id: session.id,
+		invoker: session.invokedBy,
 		name: session.agent.name,
 		vpkLogo: session.agent.vpkLogo,
 	}));
@@ -196,6 +214,67 @@ function mergeLinkedSessions(
 			return true;
 		}),
 	];
+}
+
+type JiraLinkingCardId = "active" | "empty";
+
+interface PendingDrop {
+	cardId: JiraLinkingCardId;
+	sessions: readonly AgentSessionItem[];
+}
+
+interface ReleaseState {
+	cardId: JiraLinkingCardId;
+	release: JiraLinkingRelease;
+}
+
+type SessionsByCard = Readonly<Record<JiraLinkingCardId, readonly AgentSessionItem[]>>;
+type FlashesByCard = Readonly<Record<JiraLinkingCardId, JiraIssueAgentLinkFlash | null>>;
+
+const EXISTING_RUNNING_SESSION: AgentSessionItem = {
+	...AGENT_SESSION_ITEMS[1],
+	id: "jira-linking-existing-running-session",
+};
+
+const JIRA_LINKING_CARD_FIXTURES = [
+	{
+		caption: "Agent session already running",
+		id: "active",
+		issueKey: "PAY-117",
+		summary: "Review checkout telemetry before the wallet launch",
+		tags: [{ color: "blue", text: "active session" }],
+	},
+	{
+		caption: "No agent session yet",
+		id: "empty",
+		issueKey: "PAY-118",
+		summary: "Carry card-artwork metadata into the next wallet epic",
+		tags: [{ color: "purple", text: "wallet" }],
+	},
+] as const satisfies readonly {
+	caption: string;
+	id: JiraLinkingCardId;
+	issueKey: string;
+	summary: string;
+	tags: readonly [{ color: "blue" | "purple"; text: string }];
+}[];
+
+function createInitialSessionsByCard(): SessionsByCard {
+	return {
+		active: [EXISTING_RUNNING_SESSION],
+		empty: [],
+	};
+}
+
+function createEmptyFlashesByCard(): FlashesByCard {
+	return { active: null, empty: null };
+}
+
+function toWorkingActivities(sessions: readonly AgentSessionItem[]) {
+	return sessions.map((session) => ({
+		...toJiraIssueAgentActivityFromSession(session),
+		state: "working" as const,
+	}));
 }
 
 function ExampleStage({ children, label }: Readonly<{ children: ReactNode; label: string }>) {
@@ -249,6 +328,7 @@ function useDemoSessionMarks(items: readonly AgentSessionItem[]) {
 interface JiraLinkingStageProps {
 	label: string;
 	sessions: readonly AgentSessionItem[];
+	variant: JiraLinkingVariant;
 }
 
 /**
@@ -260,57 +340,72 @@ interface JiraLinkingStageProps {
  * row. Drag one session, or Command-click to mark several and drag them
  * together — the same one-or-many gesture as the create well.
  */
-function JiraLinkingStage({ label, sessions }: Readonly<JiraLinkingStageProps>) {
+function JiraLinkingStage({ label, sessions, variant }: Readonly<JiraLinkingStageProps>) {
 	const shouldReduceMotion = useReducedMotion();
 	const [approach, setApproach] = useState<Approach>(IDLE_APPROACH);
-	const [linkFlash, setLinkFlash] = useState<JiraIssueAgentLinkFlash | null>(null);
-	const [linkedSessions, setLinkedSessions] = useState<readonly AgentSessionItem[]>([]);
+	const [linkFlashes, setLinkFlashes] = useState<FlashesByCard>(createEmptyFlashesByCard);
+	const [sessionsByCard, setSessionsByCard] = useState<SessionsByCard>(createInitialSessionsByCard);
 	const [identities, setIdentities] = useState<readonly JiraLinkingIdentity[] | null>(null);
 	const [draggingIds, setDraggingIds] = useState<ReadonlySet<string>>(() => new Set());
-	const [release, setRelease] = useState<JiraLinkingRelease | null>(null);
-	const issueRef = useRef<HTMLDivElement>(null);
+	const [releaseState, setReleaseState] = useState<ReleaseState | null>(null);
+	const activeIssueRef = useRef<HTMLDivElement>(null);
+	const emptyIssueRef = useRef<HTMLDivElement>(null);
 	const approachRef = useRef<Approach>(IDLE_APPROACH);
 	const pointerRef = useRef<PointerDragPosition | null>(null);
 	const draggedSessionsRef = useRef<readonly AgentSessionItem[]>([]);
-	const pendingDropRef = useRef<readonly AgentSessionItem[] | null>(null);
+	const pendingDropRef = useRef<PendingDrop | null>(null);
 	const flashTokenRef = useRef(0);
 	const releaseIdRef = useRef(0);
 	const availableSessions = useMemo(
 		() => sessions.filter((session) => (
-			!linkedSessions.some((linked) => linked.id === session.id)
+			!Object.values(sessionsByCard).some((linked) => (
+				linked.some((candidate) => candidate.id === session.id)
+			))
 		)),
-		[linkedSessions, sessions],
+		[sessions, sessionsByCard],
 	);
 	const marks = useDemoSessionMarks(availableSessions);
 	const { clear: clearMarks, rows: rowTriage } = marks;
-
-	const linkedActivities = useMemo(
-		() => linkedSessions.map((session) => ({
-			...toJiraIssueAgentActivityFromSession(session),
-			state: "working" as const,
-		})),
-		[linkedSessions],
-	);
+	const activitiesByCard = useMemo(() => ({
+		active: toWorkingActivities(sessionsByCard.active),
+		empty: toWorkingActivities(sessionsByCard.empty),
+	}), [sessionsByCard]);
 
 	const commitLink = useCallback(() => {
-		const dropped = pendingDropRef.current ?? [];
+		const pending = pendingDropRef.current;
 		pendingDropRef.current = null;
+		if (!pending) {
+			setReleaseState(null);
+			return;
+		}
+		const dropped = pending.sessions;
 		const lead = dropped[0];
-		flashTokenRef.current += 1;
-		setLinkedSessions((current) => mergeLinkedSessions(current, dropped));
-		if (lead) {
-			setLinkFlash({
-				activityIds: dropped.map((session) => session.id),
-				tint: resolveAgentBrandTintHex(lead.agent.brandName)
-					?? AGENT_BRAND_TINT_FALLBACK,
-				token: flashTokenRef.current,
-			});
+		setSessionsByCard((current) => ({
+			...current,
+			[pending.cardId]: mergeLinkedSessions(current[pending.cardId], dropped),
+		}));
+		if (lead && variant === "fuse") {
+			flashTokenRef.current += 1;
+			const leadTintSeed = sessionTransferTintSeed(
+				lead.agent.brandName,
+				lead.agent.vpkLogo,
+				lead.agent.name,
+			);
+			setLinkFlashes((current) => ({
+				...current,
+				[pending.cardId]: {
+					activityIds: dropped.map((session) => session.id),
+					tint: resolveAgentBrandTintColor(leadTintSeed)
+						?? AGENT_BRAND_TINT_FALLBACK,
+					token: flashTokenRef.current,
+				},
+			}));
 		}
 		setDraggingIds(new Set());
 		setIdentities(null);
-		setRelease(null);
+		setReleaseState(null);
 		clearMarks();
-	}, [clearMarks]);
+	}, [clearMarks, variant]);
 
 	/**
 	 * Re-measured on every pointer move, exactly as the board's `collectDropZones`
@@ -328,15 +423,23 @@ function JiraLinkingStage({ label, sessions }: Readonly<JiraLinkingStageProps>) 
 					? new Set(dragged.map((session) => session.id))
 					: current
 			));
-			const shell = toRect(issueRef.current?.querySelector(SHELL_SELECTOR));
-			const distance = shell ? distanceToRect(state.pointer, shell) : Number.POSITIVE_INFINITY;
-			const next = shell
-				? {
-					inside: distance === 0,
-					nearness: resolveJiraLinkingNearness(distance),
-					target: toTarget(shell),
-				}
-				: IDLE_APPROACH;
+			const candidates = ([
+				["active", activeIssueRef.current],
+				["empty", emptyIssueRef.current],
+			] as const).flatMap(([cardId, root]) => {
+				const shell = toRect(root?.querySelector(SHELL_SELECTOR));
+				return shell ? [{ cardId, distance: distanceToRect(state.pointer, shell), shell }] : [];
+			});
+			const nearest = candidates.reduce<(typeof candidates)[number] | null>(
+				(current, candidate) => !current || candidate.distance < current.distance ? candidate : current,
+				null,
+			);
+			const next = nearest ? {
+				cardId: nearest.cardId,
+				inside: nearest.distance === 0,
+				nearness: resolveJiraLinkingNearness(nearest.distance),
+				target: toTarget(nearest.shell),
+			} : IDLE_APPROACH;
 			approachRef.current = next;
 			setApproach(next);
 			return;
@@ -345,8 +448,8 @@ function JiraLinkingStage({ label, sessions }: Readonly<JiraLinkingStageProps>) 
 		const settled = approachRef.current;
 		const dragged = draggedSessionsRef.current;
 		const dropMembers = toDropMembers(dragged);
-		if (!state.cancelled && settled.inside && settled.target && dropMembers) {
-			pendingDropRef.current = dragged;
+		if (!state.cancelled && settled.cardId && settled.inside && settled.target && dropMembers) {
+			pendingDropRef.current = { cardId: settled.cardId, sessions: dragged };
 			if (shouldReduceMotion) {
 				commitLink();
 			} else {
@@ -354,21 +457,29 @@ function JiraLinkingStage({ label, sessions }: Readonly<JiraLinkingStageProps>) 
 					x: settled.target.anchor.x,
 					y: settled.target.anchor.y,
 				};
-				const shell = toRect(issueRef.current?.querySelector(SHELL_SELECTOR));
+				const issueRoot = settled.cardId === "active" ? activeIssueRef.current : emptyIssueRef.current;
+				const shell = toRect(issueRoot?.querySelector(SHELL_SELECTOR));
+				const surface = toRect(issueRoot?.querySelector(SURFACE_SELECTOR));
 				releaseIdRef.current += 1;
-				setRelease({
-					drop: {
-						from,
-						members: dropMembers,
-						playback: "stagger",
+				setReleaseState({
+					cardId: settled.cardId,
+					release: {
+						drop: {
+							from,
+							members: dropMembers,
+							playback: "stagger",
+						},
+						fromTarget: settled.target,
+						id: releaseIdRef.current,
+						target: variant === "glow" && surface
+							? toTarget(surface, SURFACE_RADIUS_PX)
+							: toLandTarget(issueRoot, shell ?? {
+								bottom: settled.target.anchor.y + settled.target.height / 2,
+								left: settled.target.anchor.x - settled.target.width / 2,
+								right: settled.target.anchor.x + settled.target.width / 2,
+								top: settled.target.anchor.y - settled.target.height / 2,
+							}),
 					},
-					id: releaseIdRef.current,
-					target: toLandTarget(issueRef.current, shell ?? {
-						bottom: settled.target.anchor.y + settled.target.height / 2,
-						left: settled.target.anchor.x - settled.target.width / 2,
-						right: settled.target.anchor.x + settled.target.width / 2,
-						top: settled.target.anchor.y - settled.target.height / 2,
-					}),
 				});
 			}
 		} else {
@@ -380,7 +491,7 @@ function JiraLinkingStage({ label, sessions }: Readonly<JiraLinkingStageProps>) 
 		pointerRef.current = null;
 		approachRef.current = IDLE_APPROACH;
 		setApproach(IDLE_APPROACH);
-	}, [availableSessions, commitLink, shouldReduceMotion]);
+	}, [availableSessions, commitLink, shouldReduceMotion, variant]);
 
 	/**
 	 * Put the stage back to its pre-drag state so the link can be tried again.
@@ -397,9 +508,9 @@ function JiraLinkingStage({ label, sessions }: Readonly<JiraLinkingStageProps>) 
 		setApproach(IDLE_APPROACH);
 		setDraggingIds(new Set());
 		setIdentities(null);
-		setLinkFlash(null);
-		setLinkedSessions([]);
-		setRelease(null);
+		setLinkFlashes(createEmptyFlashesByCard());
+		setSessionsByCard(createInitialSessionsByCard());
+		setReleaseState(null);
 		clearMarks();
 	}
 
@@ -409,27 +520,32 @@ function JiraLinkingStage({ label, sessions }: Readonly<JiraLinkingStageProps>) 
 	 * inside the rect. The binding is inert because the drag is published by the
 	 * session cards, not by the issue.
 	 */
-	const receiving = release !== null;
-	const hasLinked = linkedSessions.length > 0;
+	const receiving = releaseState !== null;
+	const addedCount = sessionsByCard.active.length + sessionsByCard.empty.length - 1;
+	const hasAdded = addedCount > 0;
 	const dragCount = identities?.length ?? draggingIds.size;
-	const agentSessionDragControl: JiraIssueAgentSessionDragControl = {
-		attachNearness: receiving ? 1 : approach.nearness,
-		binding: {
-			onDragStateChange: () => {},
-			onFocusedActivitiesChange: () => {},
-		},
-		dragCount,
-		dropTarget: receiving || approach.inside ? "attach" : null,
-		sourceActive: false,
-		state: JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE,
-	};
+	function agentSessionDragControl(cardId: JiraLinkingCardId): JiraIssueAgentSessionDragControl {
+		const isApproaching = approach.cardId === cardId;
+		const isReceiving = releaseState?.cardId === cardId;
+		return {
+			attachNearness: isReceiving ? 1 : isApproaching ? approach.nearness : 0,
+			binding: {
+				onDragStateChange: () => {},
+				onFocusedActivitiesChange: () => {},
+			},
+			dragCount,
+			dropTarget: isReceiving || isApproaching && approach.inside ? "attach" : null,
+			sourceActive: false,
+			state: JIRA_ISSUE_AGENT_SESSION_DRAG_IDLE,
+		};
+	}
 
 	return (
 		<ExampleStage label={label}>
-			<div className="relative flex w-full max-w-[720px] items-start justify-between gap-4">
+			<div className="relative grid w-full max-w-[920px] grid-cols-1 items-start gap-5 pb-12 md:grid-cols-[280px_minmax(0,1fr)]">
 				{availableSessions.length > 0 ? (
 					<AgentSession
-						className="w-[280px] shrink-0 gap-1 p-1"
+						className="w-full max-w-[280px] gap-1 p-1"
 						draggingIds={draggingIds}
 						items={availableSessions}
 						rowTriage={rowTriage}
@@ -439,21 +555,32 @@ function JiraLinkingStage({ label, sessions }: Readonly<JiraLinkingStageProps>) 
 						}}
 					/>
 				) : (
-					<div className="w-[280px] shrink-0" />
+					<div className="w-full max-w-[280px]" />
 				)}
 
-				<div ref={issueRef} className="w-[268px] shrink-0">
-					<JiraIssue
-						agentActivities={hasLinked ? linkedActivities : undefined}
-						agentActivityLayout="merged"
-						agentLinkFlash={linkFlash ?? undefined}
-						agentActivityMode={hasLinked ? "working" : undefined}
-						agentSessionDragControl={agentSessionDragControl}
-						chrome="stroke"
-						issueKey="PAY-118"
-						summary="Carry card-artwork metadata into the next wallet epic"
-						tags={[{ color: "purple", text: "wallet" }]}
-					/>
+				<div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+					{JIRA_LINKING_CARD_FIXTURES.map((card) => {
+						const linkedSessions = sessionsByCard[card.id];
+						const linkedActivities = activitiesByCard[card.id];
+						return (
+							<div key={card.id} className="min-w-0" data-jira-linking-card-state={card.id}>
+								<p className="mb-2 text-xs font-medium text-text-subtle">{card.caption}</p>
+								<div ref={card.id === "active" ? activeIssueRef : emptyIssueRef}>
+									<JiraIssue
+										agentActivities={linkedActivities.length > 0 ? linkedActivities : undefined}
+										agentActivityLayout="merged"
+										agentLinkFlash={linkFlashes[card.id] ?? undefined}
+										agentActivityMode={linkedSessions.length > 0 ? "working" : undefined}
+										agentSessionDragControl={agentSessionDragControl(card.id)}
+										chrome="stroke"
+										issueKey={card.issueKey}
+										summary={card.summary}
+										tags={[...card.tags]}
+									/>
+								</div>
+							</div>
+						);
+					})}
 				</div>
 			</div>
 
@@ -461,20 +588,19 @@ function JiraLinkingStage({ label, sessions }: Readonly<JiraLinkingStageProps>) 
 				identities={identities}
 				nearness={receiving ? 0 : approach.nearness}
 				onFuseSettled={commitLink}
-				release={release}
+				release={releaseState?.release ?? null}
 				sourceSelector={CHIP_SELECTOR}
 				target={approach.target}
+				variant={variant}
 			/>
 
 			<div className="absolute bottom-6 flex items-center gap-3">
 				<p className="text-xs text-text-subtle">
-					{hasLinked
-						? linkedSessions.length === 1
-							? "Linked — the session now sits in the card's chin row"
-							: "Linked — the sessions now sit in the card's chin row"
-						: "Drag one session, or Command-click to mark several and drag them together"}
+					{hasAdded
+						? `${addedCount} ${addedCount === 1 ? "session" : "sessions"} linked — reset to compare again`
+						: "Drag into either card to compare adding to a running session or starting the first session"}
 				</p>
-				{hasLinked ? (
+				{hasAdded ? (
 					<Button onClick={handleReset} size="compact" variant="outline">
 						Reset
 					</Button>
@@ -484,25 +610,25 @@ function JiraLinkingStage({ label, sessions }: Readonly<JiraLinkingStageProps>) 
 	);
 }
 
-const DRAG_TO_LINK_SESSIONS = AGENT_SESSION_ITEMS;
+const FUSE_SESSIONS = AGENT_SESSION_ITEMS;
 /**
  * Distinct ids from the lead stage on purpose. The docs page mounts every
  * example at once, and two stages sharing one session id put two drag sources
  * behind the same identity.
  */
-const COLOUR_MELT_SESSIONS = AGENT_SESSION_ITEMS.map((item) => ({
+const GLOW_SESSIONS = AGENT_SESSION_ITEMS.map((item) => ({
 	...item,
-	id: `${item.id}-melt`,
+	id: `${item.id}-glow`,
 }));
 
-export function JiraLinkingDragToLinkExample() {
-	return <JiraLinkingStage label="Drag to link" sessions={DRAG_TO_LINK_SESSIONS} />;
+export function JiraLinkingFuseExample() {
+	return <JiraLinkingStage label="Fuse" sessions={FUSE_SESSIONS} variant="fuse" />;
 }
 
-export function JiraLinkingColourMeltExample() {
-	return <JiraLinkingStage label="Multi-subject colour melt" sessions={COLOUR_MELT_SESSIONS} />;
+export function JiraLinkingGlowExample() {
+	return <JiraLinkingStage label="Glow" sessions={GLOW_SESSIONS} variant="glow" />;
 }
 
 export default function JiraLinkingDemo() {
-	return <JiraLinkingDragToLinkExample />;
+	return <JiraLinkingFuseExample />;
 }

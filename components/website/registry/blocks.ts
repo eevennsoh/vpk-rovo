@@ -205,10 +205,17 @@ export const BLOCK_DEMOS: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
-	"jira-work-item-demo-experimental-v6": dynamic(
+	"jira-work-item-demo-team-eu26": dynamic(
 		() =>
 			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
-				default: mod.JiraWorkItemDemoExperimentalV6,
+				default: mod.JiraWorkItemDemoTeamEu26,
+			})),
+		{ ssr: false },
+	),
+	"jira-work-item-demo-team-eu26-empty": dynamic(
+		() =>
+			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
+				default: mod.JiraWorkItemDemoTeamEu26Empty,
 			})),
 		{ ssr: false },
 	),
@@ -424,7 +431,7 @@ export const BLOCK_DEMOS: Record<string, ComponentType> = {
 	"jira-kanban": dynamic(() => import("../demos/blocks/jira-kanban-demo"), {
 		ssr: false,
 	}),
-	"jira-create": dynamic(() => import("../demos/blocks/jira-create-demo"), {
+	"jira-creating": dynamic(() => import("../demos/blocks/jira-creating-demo"), {
 		ssr: false,
 	}),
 	"jira-dropzone": dynamic(() => import("../demos/blocks/jira-dropzone-demo"), {
@@ -450,12 +457,12 @@ export const BLOCK_DEMOS: Record<string, ComponentType> = {
 
 export const BLOCK_VARIANT_DEMOS: Record<string, ComponentType> = {
 	...BLOCK_VARIANT_DEMO_ENTRIES,
-	"jira-linking-drag-to-link": dynamic(
-		() => import("../demos/blocks/jira-linking-demo").then((mod) => ({ default: mod.JiraLinkingDragToLinkExample })),
+	"jira-linking-fuse": dynamic(
+		() => import("../demos/blocks/jira-linking-demo").then((mod) => ({ default: mod.JiraLinkingFuseExample })),
 		{ ssr: false },
 	),
-	"jira-linking-colour-melt": dynamic(
-		() => import("../demos/blocks/jira-linking-demo").then((mod) => ({ default: mod.JiraLinkingColourMeltExample })),
+	"jira-linking-glow": dynamic(
+		() => import("../demos/blocks/jira-linking-demo").then((mod) => ({ default: mod.JiraLinkingGlowExample })),
 		{ ssr: false },
 	),
 };

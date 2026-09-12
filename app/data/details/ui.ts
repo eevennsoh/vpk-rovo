@@ -47,11 +47,13 @@ import { COMBOBOX_DETAIL } from "./ui/combobox";
 import { INPUT_GROUP_DETAIL } from "./ui/input-group";
 import { ASPECT_RATIO_DETAIL } from "./ui/aspect-ratio";
 import { SCROLL_AREA_DETAIL } from "./ui/scroll-area";
+import { SCROLL_FADE_DETAIL } from "./ui/scroll-fade";
 import { ATTACHMENT_DETAIL } from "./ui/attachment";
 import { BUBBLE_DETAIL } from "./ui/bubble";
 import { MARKER_DETAIL } from "./ui/marker";
 import { MESSAGE_DETAIL } from "./ui/message";
 import { MESSAGE_SCROLLER_DETAIL } from "./ui/message-scroller";
+import { QUESTIONNAIRE_DETAIL } from "./ui/questionnaire";
 import { RESIZABLE_DETAIL } from "./ui/resizable";
 import { DIRECTION_DETAIL } from "./ui/direction";
 import { BUTTON_GROUP_DETAIL } from "./ui/button-group";
@@ -129,11 +131,13 @@ export const UI_DETAILS: Record<string, ComponentDetail> = {
 	"input-group": INPUT_GROUP_DETAIL,
 	"aspect-ratio": ASPECT_RATIO_DETAIL,
 	"scroll-area": SCROLL_AREA_DETAIL,
+	"scroll-fade": SCROLL_FADE_DETAIL,
 	attachment: ATTACHMENT_DETAIL,
 	bubble: BUBBLE_DETAIL,
 	marker: MARKER_DETAIL,
 	message: MESSAGE_DETAIL,
 	"message-scroller": MESSAGE_SCROLLER_DETAIL,
+	questionnaire: QUESTIONNAIRE_DETAIL,
 	resizable: RESIZABLE_DETAIL,
 	direction: DIRECTION_DETAIL,
 	"button-group": BUTTON_GROUP_DETAIL,

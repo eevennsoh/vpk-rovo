@@ -1,4 +1,4 @@
-import type { AgentListAgent } from "@/components/blocks/agent-list";
+import type { AgentListAgent, AgentListSessionDetails } from "@/components/blocks/agent-list";
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 
 import {
@@ -7,6 +7,7 @@ import {
 } from "../data/pulse-loose-work";
 import {
 	isPulseAgentSession,
+	type PulseAgentSessionPullRequest,
 	type PulseCodingAgentId,
 	type PulseLooseWork,
 	type PulseMember,
@@ -86,6 +87,34 @@ export function toPulseSessionWorktree(detail: string): string | undefined {
 	return WORKTREE_PATTERN.exec(detail)?.[1];
 }
 
+/**
+ * Session pull request → the flyout fields the pull-request Smart Link renders.
+ *
+ * The repository is the space's own repo unless the fixture names another, and
+ * every PR merges into `main` — the same two defaults the uncaptured GitHub
+ * cards use, so a PR reads identically whether it arrives as loose work or as a
+ * session artifact. The URL is built from the resolved repository rather than
+ * the constant, so an overridden repo cannot link to a repo it does not name.
+ */
+export function toPulseSessionPullRequestDetails(
+	pullRequest: PulseAgentSessionPullRequest,
+): AgentListSessionDetails {
+	const repository = pullRequest.repository ?? PULSE_SPACE_REPOSITORY;
+
+	return {
+		additions: pullRequest.additions,
+		branch: pullRequest.branch,
+		deletions: pullRequest.deletions,
+		files: pullRequest.files,
+		pullRequestDescription: pullRequest.description,
+		pullRequestNumber: pullRequest.number,
+		pullRequestTitle: pullRequest.title,
+		pullRequestUrl: `https://github.com/${repository}/pull/${pullRequest.number}`,
+		repository,
+		targetBranch: "main",
+	};
+}
+
 /** Board status for the issue a session names, when that work item is on the timeline. */
 export function toPulseSessionIssueStatus(
 	issueKey: string,
@@ -143,11 +172,7 @@ export function toPulseSessionItems(
 				...(issueStatus === undefined ? {} : { issueStatus }),
 				...(item.pullRequest === undefined
 					? {}
-					: {
-						pullRequestNumber: item.pullRequest.number,
-						pullRequestTitle: item.pullRequest.title,
-						pullRequestUrl: `https://github.com/${PULSE_SPACE_REPOSITORY}/pull/${item.pullRequest.number}`,
-					}),
+					: toPulseSessionPullRequestDetails(item.pullRequest)),
 				worktreePath: worktree,
 			},
 			shortTitle: item.shortTitle,
@@ -199,16 +224,23 @@ export function filterPulseLooseWorkByMember(
  * Create, link, and add-as-subtask all capture: the prototype has one capture
  * path, the same one uncaptured GitHub cards already use. Omitting create or
  * subtask is what greyed those flyout actions out.
+ *
+ * Continue-in is a separate host capability from resume. Resume copies a
+ * terminal prompt and is gated on the viewer's machine. Continue-in reopens
+ * the session in its agent. The menu already hides that row for cloud hosts;
+ * this adapter only omits the callback when the host did not supply one.
  */
 export function toPulseSessionHandlers({
 	isLooseWorkResumable,
 	looseWork,
 	onCapture,
+	onContinue,
 	onResume,
 }: Readonly<{
 	isLooseWorkResumable?: (item: PulseLooseWork) => boolean;
 	looseWork: readonly PulseLooseWork[];
 	onCapture: (item: PulseLooseWork) => void;
+	onContinue?: (item: PulseLooseWork) => void;
 	onResume?: (item: PulseLooseWork) => void;
 }>) {
 	const sessionById = new Map(
@@ -225,9 +257,17 @@ export function toPulseSessionHandlers({
 		if (session === undefined) return undefined;
 		return (isLooseWorkResumable?.(session) ?? true) ? session : undefined;
 	};
+	const continueSession = onContinue === undefined
+		? undefined
+		: (item: AgentSessionItem) => {
+			const session = sessionById.get(item.id);
+			if (session === undefined) return;
+			onContinue(session);
+		};
 
 	return {
 		isResumable: (item: AgentSessionItem) => resolveResumable(item) !== undefined,
+		onContinueInAgent: continueSession,
 		onCopyResume: onResume === undefined ? undefined : (item: AgentSessionItem) => {
 			const session = resolveResumable(item);
 			if (session === undefined) return;

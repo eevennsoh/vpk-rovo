@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import ArchiveBoxIcon from "@atlaskit/icon/core/archive-box";
 import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
-import LibraryIcon from "@atlaskit/icon/core/library";
 import {
 	AgentListIdentity,
-	AgentListPrStatusIcon,
 	AgentListRow,
-	AgentListTime,
 	type AgentListRowHoverActions,
 } from "@/components/blocks/agent-list/agent-list-card";
-import { toAgentListResumeCommand } from "@/components/blocks/agent-list/agent-list-session";
+import {
+	isLocalAgentListItem,
+	toAgentListResumeCommand,
+} from "@/components/blocks/agent-list/agent-list-session";
 import type { JiraSidebarSessionItem } from "@/components/blocks/product-sidebar/variants/jira";
 import {
 	JiraSessionFlyoutTrigger,
@@ -21,7 +20,6 @@ import {
 } from "@/components/blocks/product-sidebar/variants/jira-session-flyout";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
 import { Icon } from "@/components/ui/icon";
-import { MetadataPathLink } from "@/components/ui/metadata-path-link";
 import { cn } from "@/lib/utils";
 
 import {
@@ -30,104 +28,77 @@ import {
 } from "./agent-session-arrival-motion";
 import { approveActionLabel } from "./agent-session-approve";
 import { SESSION_DRAG_INTERACTIVE_SELECTOR } from "./agent-session-drag-interactive";
+import { AgentSessionLifecycle } from "./agent-session-lifecycle";
 import { AgentSessionMediumDrag } from "./agent-session-medium-drag";
+import {
+	AgentSessionLongMetadata,
+	AgentSessionShortMetadata,
+} from "./agent-session-metadata";
+import { AgentSessionMoreMenu } from "./agent-session-more-menu";
+import { AgentSessionExpiredHint } from "./agent-session-expired-hint";
+import { AgentSessionViewerHint } from "./agent-session-viewer-hint";
 import { AgentSessionSelectMark } from "./agent-session-select-mark";
 import { selectionGestureFromModifierKeys } from "./agent-session-selection-gesture";
 import { isTransferSourceFaded } from "./session-cohort";
 import {
-	toAgentSessionVisibleIdentity,
+	type AgentSessionDensity,
 	type AgentSessionItem,
 	type AgentSessionSelectionGesture,
+	getAgentSessionRole,
 	type AgentSessionTriageRow,
+	type AgentSessionWorkItemDraft,
+	type AgentSessionWorkItemOption,
 } from "./agent-session-types";
-
-/** How long Resume reads "Copied" after it writes the command to the clipboard. */
-const COPIED_RESET_MS = 2000;
-
-/** PR-first session metadata. Local device names stay in the flyout, not the work row. */
-function AgentSessionPullRequestMetadata({ item }: Readonly<{ item: AgentSessionItem }>) {
-	const pullRequestNumber = item.sessionDetails?.pullRequestNumber;
-	const pullRequestTitle = item.sessionDetails?.pullRequestTitle;
-	const pullRequestUrl = item.sessionDetails?.pullRequestUrl;
-	const pullRequestLabel = pullRequestNumber === undefined
-		? undefined
-		: pullRequestTitle === undefined
-			? `#${pullRequestNumber}`
-			: `#${pullRequestNumber}: ${pullRequestTitle}`;
-
-	return (
-		<span className="flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest">
-			{pullRequestLabel ? (
-				<>
-					<AgentListPrStatusIcon status={item.prStatus ?? "created"} />
-					{pullRequestUrl ? (
-						<MetadataPathLink
-							className="min-w-0 truncate text-text-subtle"
-							href={pullRequestUrl}
-							rel="noreferrer"
-							target="_blank"
-							title={pullRequestLabel}
-						>
-							{pullRequestLabel}
-						</MetadataPathLink>
-					) : (
-						<span className="min-w-0 truncate text-text-subtle" title={pullRequestLabel}>
-							{pullRequestLabel}
-						</span>
-					)}
-					<span aria-hidden="true" className="shrink-0 text-text-subtlest">
-						·
-					</span>
-				</>
-			) : null}
-			<span className="shrink-0 text-nowrap" title="Last update">
-				<AgentListTime item={item} />
-			</span>
-		</span>
-	);
-}
-
-async function copyResumeCommand(command: string): Promise<void> {
-	if (typeof navigator === "undefined" || navigator.clipboard?.writeText === undefined) {
-		return;
-	}
-
-	try {
-		await navigator.clipboard.writeText(command);
-	} catch {
-		// Keep the click successful when clipboard permission is denied.
-	}
-}
+import { useAgentSessionMenu } from "./use-agent-session-menu";
 
 export function AgentSessionCard({
 	arrivalDelaySeconds,
 	captured = false,
+	density = "short",
 	flyoutHandle,
 	flyoutSession,
 	getResumeCommand,
 	isArriving = false,
+	isFlyoutActive = false,
 	isHighlighted = false,
 	isNew = false,
 	isResumable,
 	isSelected = false,
 	item,
+	moreMenuPortalled,
+	moreMenuPositionerClassName,
 	onArrivalComplete,
+	onContinueInAgent,
 	onCopyResume,
+	onCreateWorkItemFromDraft,
+	onDeleteSession,
 	onItemHover,
+	onLinkWorkItem,
+	onMoreMenuOpenChange,
+	onRenameSession,
 	onToggleVisibility,
 	onView,
+	padding = "default",
 	sessionDrag,
+	showMoreMenu = true,
+	showLifecycleLabel = true,
 	triageRow,
 	draggingIds,
 	visibilityLabel = "Archive",
+	workItemOptions,
 }: Readonly<{
 	arrivalDelaySeconds?: number;
 	captured?: boolean;
-	flyoutHandle: JiraSessionFlyoutHandle;
-	flyoutSession: JiraSidebarSessionItem;
+	/** Row shape — see {@link AgentSessionDensity}. Defaults to the avatar-led short row. */
+	density?: AgentSessionDensity;
+	/** Omit on long density — those rows have no hover flyout. */
+	flyoutHandle?: JiraSessionFlyoutHandle;
+	flyoutSession?: JiraSidebarSessionItem;
 	getResumeCommand?: (item: AgentSessionItem) => string | undefined;
 	/** Play the one-shot arrival beat. A remounted card must not re-arm it. */
 	isArriving?: boolean;
+	/** Keep the row's hover treatment while its portalled flyout chain is active. */
+	isFlyoutActive?: boolean;
 	/** Light this row for a pointer hovering its matching board session. */
 	isHighlighted?: boolean;
 	/** Carry the persistent unreviewed mark. Outlives the beat. */
@@ -137,19 +108,50 @@ export function AgentSessionCard({
 	isSelected?: boolean;
 	item: AgentSessionItem;
 	onArrivalComplete?: () => void;
+	/** Reopen a local session in its own agent. Omit to disable the menu row. */
+	onContinueInAgent?: (item: AgentSessionItem) => void;
 	onCopyResume?: (item: AgentSessionItem) => void;
+	/** Create a work item named in the menu's Create new tab. Omit to disable that tab. */
+	onCreateWorkItemFromDraft?: (item: AgentSessionItem, draft: AgentSessionWorkItemDraft) => void;
+	/** Delete a cloud session record. Omit to disable the menu row. */
+	onDeleteSession?: (item: AgentSessionItem) => void;
 	onItemHover?: (item: AgentSessionItem | null) => void;
+	/** Link the session to a work item picked in the menu. Omit to disable that tab. */
+	onLinkWorkItem?: (item: AgentSessionItem, workItemKey?: string) => void;
+	/** Rename a cloud session. Omit to disable the menu row. */
+	onRenameSession?: (item: AgentSessionItem) => void;
 	onToggleVisibility?: (item: AgentSessionItem) => void;
 	onView?: (item: AgentSessionItem) => void;
+	/**
+	 * Article inset. Assignment pickers use `compact` (`px-3 py-2` / 8px
+	 * vertical) so stacked menu rows sit tighter than catalog cards.
+	 */
+	padding?: "default" | "compact";
+	/**
+	 * Overlay stacking for the owner more-menu. Assignment's picker sits above
+	 * the default dropdown tier, so it passes a higher `z-` or the menu opens
+	 * behind the picker.
+	 */
+	moreMenuPositionerClassName?: string;
+	/**
+	 * Portal the more-menu. Nested clipped overlays can pass `false`;
+	 * assignment uses the default portal so Rename / Delete escape the picker.
+	 */
+	moreMenuPortalled?: boolean;
+	/** Tell a host overlay when the portalled more-menu is open so it can stay mounted. */
+	onMoreMenuOpenChange?: (open: boolean) => void;
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
+	showMoreMenu?: boolean;
+	/** Keep false only for compact consumers that borrow long-density title geometry. */
+	showLifecycleLabel?: boolean;
 	triageRow?: AgentSessionTriageRow | null;
 	draggingIds?: ReadonlySet<string>;
-	/** Tooltip and accessible name for the hover archive control. Archive in the active list, Unarchive in the archived view. */
+	/** Accessible name for the menu's dismiss row. Archive in the active list, Unarchive in the archived view. */
 	visibilityLabel?: string;
+	/** Work items the menu's Link work item submenu offers. */
+	workItemOptions?: readonly AgentSessionWorkItemOption[];
 }>) {
 	const shouldReduceMotion = useReducedMotion();
-	const [copiedResume, setCopiedResume] = useState(false);
-	const copiedResetRef = useRef<number | undefined>(undefined);
 	const onItemHoverRef = useRef(onItemHover);
 	// Whether the pointer is on *this* row, so unmount cleanup can tell "I was
 	// the hovered row" from "a sibling went away".
@@ -160,7 +162,6 @@ export function AgentSessionCard({
 	}, [onItemHover]);
 
 	useEffect(() => () => {
-		window.clearTimeout(copiedResetRef.current);
 		// Hide / filter can unmount the hovered row before pointerleave fires.
 		// Only the row that owns the hover may clear it: a filter or capture that
 		// unmounts a sibling must not wipe a highlight the pointer still rests on,
@@ -190,7 +191,6 @@ export function AgentSessionCard({
 	const isLead = mark?.isLead ?? false;
 	const isTransferSource = Boolean(draggingIds?.has(item.id));
 	const showSelectedFill = isMarked || (isSelected && mark == null);
-	const visibleIdentity = toAgentSessionVisibleIdentity(item);
 
 	// The same hover/focus-revealed pair Agent List rows use, with Archive /
 	// Unarchive in the slot Agent List gives to Archive. The control always
@@ -232,7 +232,79 @@ export function AgentSessionCard({
 		};
 	const articleRole = mark == null ? undefined : "gridcell";
 	const articleTabIndex = mark == null ? undefined : isLead ? 0 : -1;
+
+	// One trailing affordance instead of a Resume/Archive pair: everything a row
+	// can do now lives behind "…". Approve is the exception — it is a triage
+	// decision the column surfaces inline, not a session action, so it keeps its
+	// own button.
+	const isCloudSession = !isLocalAgentListItem(item);
+	const menu = useAgentSessionMenu({
+		canResume,
+		isCloud: isCloudSession,
+		item,
+		onContinueInAgent,
+		onCopyResume,
+		onCreateWorkItemFromDraft,
+		onDeleteSession,
+		onItemHover,
+		onLinkWorkItem,
+		onMoreMenuOpenChange,
+		onRenameSession,
+		onToggleVisibility,
+		resumeCommand,
+	});
+	const role = getAgentSessionRole(item);
+	// Title-led long rows spend their reclaimed width on a trailing progression
+	// column. Short rows do not: `stateAwareTitle` already says "Needs input" on
+	// the title line, so a resting status glyph would only repeat it.
+	const isLongDensity = density === "long";
+	const trailingControl = (() => {
+		if (!showMoreMenu) {
+			return undefined;
+		}
+
+		switch (role) {
+			case "expired":
+				// Long rows keep the hint in the resting lifecycle slot it shares with
+				// the status glyph. A short row has no resting slot, so its one control
+				// moves into the hover-revealed column beside "…" and the viewer hint.
+				return isLongDensity ? undefined : <AgentSessionExpiredHint />;
+			case "viewer":
+				return <AgentSessionViewerHint />;
+			case "owner":
+				return (
+					<AgentSessionMoreMenu
+						actions={menu.actions}
+						copied={menu.copied}
+						// Only the legacy "Archive" default becomes "Dismiss". Any other
+						// label is caller-authored copy for this row and passes through.
+						dismissLabel={visibilityLabel === "Archive" ? "Dismiss" : visibilityLabel}
+						isCloud={isCloudSession}
+						item={item}
+						onOpenChange={menu.setIsOpen}
+						open={menu.isOpen}
+						portalled={moreMenuPortalled}
+						positionerClassName={moreMenuPositionerClassName}
+						workItemOptions={workItemOptions}
+					/>
+				);
+			default: {
+				const exhaustiveRole: never = role;
+				return exhaustiveRole;
+			}
+		}
+	})();
+	// `null`, not `undefined`: the shared row treats `undefined` as "no opinion"
+	// and falls back to its own `STATE_META` indicator.
+	const lifecycleIndicator = !isLongDensity
+		? null
+		: role === "expired"
+			? <AgentSessionExpiredHint />
+			: <AgentSessionLifecycle showLabel={showLifecycleLabel} state={item.state} />;
 	const hoverActions: AgentListRowHoverActions = {
+		// The reveal must outlive the pointer: a portalled popup and a post-click
+		// confirmation both take the cursor off the row.
+		pinned: isFlyoutActive || (showMoreMenu && role === "owner" && (menu.isOpen || menu.copied)),
 		primary: approve
 			? {
 				disabled: approve.target.kind === "unavailable",
@@ -240,38 +312,14 @@ export function AgentSessionCard({
 				label: approveActionLabel(approve.target),
 				onClick: approve.onApprove,
 			}
-			: canResume
-				? {
-					label: copiedResume ? "Copied" : "Resume",
-					onClick: () => {
-						void copyResumeCommand(resumeCommand).then(() => {
-							onCopyResume?.(item);
-							setCopiedResume(true);
-							window.clearTimeout(copiedResetRef.current);
-							copiedResetRef.current = window.setTimeout(() => {
-								setCopiedResume(false);
-							}, COPIED_RESET_MS);
-						});
-					},
-				}
-				: undefined,
-		secondary: {
-			// Archive (active list) uses the archive box; Unarchive (hidden view)
-			// uses Library so the restore action is distinct from hide.
-			icon: (
-				<Icon
-					render={visibilityLabel === "Unarchive"
-						? <LibraryIcon label="" size="small" />
-						: <ArchiveBoxIcon label="" size="small" />}
-				/>
-			),
-			label: visibilityLabel,
-			onClick: () => {
-				onItemHover?.(null);
-				onToggleVisibility?.(item);
-			},
-		},
+			: undefined,
+		menu: trailingControl,
 	};
+
+	// A triage mark lives on the leading avatar, so a markable row keeps its
+	// identity column even in the title-led density — losing multi-select would
+	// cost more than the horizontal space it buys back.
+	const hideIdentity = isLongDensity && mark == null;
 
 	// Arrival layout lives on the list item, not the flyout trigger. Base UI
 	// closes a preview card when its active trigger unmounts, and Motion's layout
@@ -319,31 +367,28 @@ export function AgentSessionCard({
 				shouldReduceMotion={shouldReduceMotion}
 				source="untracked"
 			>
-				{(bind) => (
-					<JiraSessionFlyoutTrigger
-						closeDelay={160}
-						handle={flyoutHandle}
-						render={<div className="w-full" />}
-						session={flyoutSession}
-					>
+				{(bind) => {
+					const card = (
 						<article
 							{...bind}
 							aria-current={isSelected ? "true" : undefined}
 							aria-roledescription={bind ? "Draggable agent session" : undefined}
 							className={cn(
-						"group/agent-row relative flex w-full cursor-default rounded-lg p-3 text-left text-text",
+						"group/agent-row relative flex w-full min-w-0 cursor-default rounded-lg text-left text-text",
+						padding === "compact" ? "px-3 py-2" : "p-3",
 						// Borderless tiles, 8px radius — same chrome as editor-palette
 						// suggestion rows. The list owns the gap between them.
 						"transition-[background-color,border-radius] duration-xxshort ease-out-practical",
 						"motion-reduce:transition-none",
 						showSelectedFill && "bg-bg-selected",
-						!showSelectedFill && isHighlighted && "bg-surface-hovered",
-						!showSelectedFill && !isHighlighted && "bg-transparent hover:bg-surface-hovered",
+						!showSelectedFill && (isHighlighted || isFlyoutActive) && "bg-surface-hovered",
+						!showSelectedFill && !isHighlighted && !isFlyoutActive && "bg-transparent hover:bg-surface-hovered",
 						activateCard === undefined
 							? null
 							: "outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
 							)}
 							data-captured={captured || undefined}
+							data-hovered={isFlyoutActive || undefined}
 							data-highlighted={isHighlighted || undefined}
 							data-marked={isMarked || undefined}
 							data-new={isNew || undefined}
@@ -352,7 +397,7 @@ export function AgentSessionCard({
 							onClick={handleArticleClick}
 							onKeyDown={handleArticleKeyDown}
 							role={articleRole}
-							tabIndex={articleTabIndex}
+							tabIndex={articleTabIndex ?? (bind !== undefined && activateCard !== undefined ? 0 : undefined)}
 						>
 							{isNew ? (
 						<>
@@ -367,36 +412,72 @@ export function AgentSessionCard({
 						</>
 							) : null}
 							<AgentListRow
+								hideIdentity={hideIdentity}
 								hoverActions={hoverActions}
 								isCompact={false}
 								isSelected={showSelectedFill}
 								item={item}
-								metadata={<AgentSessionPullRequestMetadata item={item} />}
-								onView={mark == null ? onView : undefined}
+								// The title-led long row states its own lifecycle, including the
+								// success check Agent List has no slot for. A short row states
+								// it in the title and keeps the trailing column empty at rest.
+								lifecycle={lifecycleIndicator}
+								metadata={
+									isLongDensity
+										? <AgentSessionLongMetadata item={item} />
+										: <AgentSessionShortMetadata item={item} />
+								}
+								onView={mark == null && bind === undefined ? onView : undefined}
 								renderIdentity={() => {
 									const sessionIdentity = (
 										<AgentListIdentity
-											agent={visibleIdentity}
-											sizePx={24}
+											agent={item.agent}
+											attributedBy={item.invokedBy}
+											sizePx={32}
 										/>
 									);
 
-									return mark === undefined || mark === null
-										? sessionIdentity
-										: (
-											<AgentSessionSelectMark
-												identity={sessionIdentity}
-												isMarked={mark.isMarked}
-												label={`Select "${item.title}"`}
-												onActivate={activateCard ?? mark.onActivate}
-											/>
-										);
+									// The travelling drag chip measures this box on
+									// pointerdown and flies out of it. Marked outside the
+									// select-mark branch so the origin exists in both.
+									return (
+										<span className="block" data-session-drag-identity="">
+											{mark === undefined || mark === null
+												? sessionIdentity
+												: (
+													<AgentSessionSelectMark
+														identity={sessionIdentity}
+														isMarked={mark.isMarked}
+														label={`Select "${item.title}"`}
+														onActivate={activateCard ?? mark.onActivate}
+													/>
+												)}
+										</span>
+									);
 								}}
 								showHoverActionsWhenSelected
+								// Long form keeps the work title; progression is the trailing
+								// icon, not a state-aware title swap.
+								stateAwareTitle={!isLongDensity}
 							/>
 						</article>
-					</JiraSessionFlyoutTrigger>
-				)}
+					);
+
+					if (isLongDensity || flyoutHandle === undefined || flyoutSession === undefined) {
+						return card;
+					}
+
+					return (
+						<JiraSessionFlyoutTrigger
+							closeDelay={160}
+							data-session-id={item.id}
+							handle={flyoutHandle}
+							render={<div className="w-full" />}
+							session={flyoutSession}
+						>
+							{card}
+						</JiraSessionFlyoutTrigger>
+					);
+				}}
 			</AgentSessionMediumDrag>
 		</motion.li>
 	);

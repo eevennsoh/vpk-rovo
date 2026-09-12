@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useReducer, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useReducer, type KeyboardEvent } from "react";
 
 import { resolveApproveTarget } from "@/components/blocks/agent-session/agent-session-approve";
 import type { ApproveTarget } from "@/components/blocks/agent-session/agent-session-approve";
@@ -21,6 +21,7 @@ import {
 	NO_SELECTION_MARKS,
 	reduceSelectionMarks,
 	resolveLeadSpotlight,
+	resolveTriageApprove,
 	resolveUntrackedSelectionGesture,
 	resolveVisibleLeadId,
 	selectEffectiveSelection,
@@ -44,7 +45,14 @@ export function useUntrackedSelection<T>(
 		focusRow: (id: string | null) => void;
 		getSuggestedWorkItemKey?: (item: AgentSessionItem) => string | undefined;
 		getSuggestedWorkItemKeys?: (item: AgentSessionItem) => readonly string[] | undefined;
+		multiSelect: boolean;
 		onLeadItem?: (item: AgentSessionItem | null) => void;
+		/**
+		 * Whether a row offers the hover check that links a session to its
+		 * suggested work item. Defaults to on; a board without the link feature
+		 * passes `false` and its rows carry no approve action.
+		 */
+		showLinkAction?: boolean;
 		title: string;
 		triage?: UntrackedWorkTriage<T>;
 		visibilityLabel?: VisibilityActionLabel;
@@ -86,9 +94,17 @@ export function useUntrackedSelection<T>(
 	]);
 
 	const selection = useMemo(
-		() => selectEffectiveSelection(marks, input.visibleItems),
-		[input.visibleItems, marks],
+		() => input.multiSelect
+			? selectEffectiveSelection(marks, input.visibleItems)
+			: { kind: "empty" } as const,
+		[input.multiSelect, input.visibleItems, marks],
 	);
+
+	useEffect(() => {
+		if (!input.multiSelect) {
+			dispatch({ type: "clear" });
+		}
+	}, [input.multiSelect]);
 
 	const header = useMemo(
 		() => buildUntrackedHeaderModel({
@@ -146,29 +162,42 @@ export function useUntrackedSelection<T>(
 			}
 
 			next.set(item.id, {
-				approve: {
+				approve: resolveTriageApprove(target, {
+					enabled: input.showLinkAction !== false,
 					onApprove: () => {
 						if (target.kind === "work-item") {
 							triage.attach(item, target.target);
 						}
 					},
-					target,
-				},
-				drag: {
-					cohort: () => selectDragCohort(item.id, marks, input.visibleItems),
-				},
-				mark: {
-					isLead: item.id === leadId,
-					isMarked: marks.markedIds.has(item.id),
-					onActivate: (gesture: AgentSessionSelectionGesture) => {
-						activate(item.id, gesture);
-					},
-				},
+				}),
+				drag: input.multiSelect
+					? {
+						cohort: () => selectDragCohort(item.id, marks, input.visibleItems),
+					}
+					: null,
+				mark: input.multiSelect
+					? {
+						isLead: item.id === leadId,
+						isMarked: marks.markedIds.has(item.id),
+						onActivate: (gesture: AgentSessionSelectionGesture) => {
+							activate(item.id, gesture);
+						},
+					}
+					: null,
 			});
 		}
 
 		return next;
-	}, [activate, approveTargetById, input.visibleItems, leadId, marks, triage]);
+	}, [
+		activate,
+		approveTargetById,
+		input.multiSelect,
+		input.showLinkAction,
+		input.visibleItems,
+		leadId,
+		marks,
+		triage,
+	]);
 
 	const onHeaderAction = useCallback((id: HeaderActionId) => {
 		if (id === "clear") {
@@ -201,6 +230,9 @@ export function useUntrackedSelection<T>(
 	}, [approveTargetById, input.visibleItems, orderedIds, selection, triage]);
 
 	const onKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
+		if (!input.multiSelect) {
+			return;
+		}
 		handleColumnSelectionKeyDown(event, {
 			dispatch,
 			focus: input.focusRow,

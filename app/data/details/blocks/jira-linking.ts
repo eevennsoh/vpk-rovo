@@ -2,7 +2,7 @@ import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const JIRA_LINKING_DETAIL: ComponentDetail = {
 	description:
-		"A WebGL2 metaball field that fuses a travelling element into the thing it is being linked to. The two silhouettes neck together through a signed-distance smooth union as they close, subject colours blend in OKLab across the neck, and on release they collapse into the target with velocity-driven chromatic dispersion. The host owns the gesture; this only draws.",
+		"A decorative linking effect for dragging agent sessions into Jira work items. Fuse uses the original WebGL2 metaball field; Glow reproduces the Jira board's lift, shrink, fade, contextual card glow, and backdrop pulse using the lead avatar's accent colour. The host owns the gesture; this component only draws.",
 	importStatement: `import {
 	JiraLinking,
 	resolveJiraLinkingNearness,
@@ -10,6 +10,7 @@ export const JIRA_LINKING_DETAIL: ComponentDetail = {
 	type JiraLinkingTarget,
 } from "@/components/blocks/jira-linking";`,
 	usage: `<JiraLinking
+	variant="fuse"
 	sourceSelector="[data-drag-chip]"
 	target={{ anchor: { x: 240, y: 372 }, height: 144, radius: 10, width: 272 }}
 	nearness={resolveJiraLinkingNearness(distanceToCard)}
@@ -24,19 +25,26 @@ export const JIRA_LINKING_DETAIL: ComponentDetail = {
 	},
 	examples: [
 		{
-			title: "Drag to link",
-			description:
-				"Drag one session onto the work item, or Command-click to mark several and drag them together. The chin bleeds in with proximity, and the drop flies each session into the card's agent session row — then the chin row sweeps.",
-			demoSlug: "jira-linking-drag-to-link",
+				title: "Fuse",
+				description:
+					"The original shader variant. Compare linking into a work item with a running agent session and one with no session yet. The metaball field necks the travelling chip into the selected card, then the drop flies each session into its agent session row.",
+			demoSlug: "jira-linking-fuse",
 		},
 		{
-			title: "Multi-subject colour melt",
-			description:
-				"Command-click two or three sessions, then drag them onto the card. Only the first two tint the field — a pair makes a legible gradient across the neck, where three or more average out in OKLab into a muddy neutral. On drop they fly into the card's agent session row one after another, the same stagger as the create well.",
-			demoSlug: "jira-linking-colour-melt",
+				title: "Glow",
+				description:
+					"Compare linking into a work item with a running agent session and one with no session yet. The dragged session lifts, accelerates into the selected card while shrinking and fading, then the surface glows and a pulse in the lead avatar's accent colour travels through its backdrop. This card-level acknowledgement replaces the session-row flash.",
+			demoSlug: "jira-linking-glow",
 		},
 	],
 	props: [
+		{
+			name: "variant",
+			type: '"fuse" | "glow"',
+			default: '"fuse"',
+			description:
+					"Visual treatment for the link. Fuse uses the metaball shader; Glow uses the contextual card glow and depth-like lift, shrink, and fade drop from the Jira board reference.",
+		},
 		{
 			name: "sourceSelector",
 			type: "string",
@@ -63,14 +71,14 @@ export const JIRA_LINKING_DETAIL: ComponentDetail = {
 			type: "readonly JiraLinkingIdentity[] | null",
 			required: true,
 			description:
-				"Subjects that melt together. Only the first two tint the field (`JIRA_LINKING_MAX_TINT_SUBJECTS`) — more than that averages into a muddy neutral. Keep referentially stable per gesture; the texture atlas rebuilds when the array identity changes.",
+					"Subjects being linked. Fuse uses the first two to tint the field (`JIRA_LINKING_MAX_TINT_SUBJECTS`); Glow uses the lead identity's tint for its halo and backdrop pulse. Keep referentially stable per gesture.",
 		},
 		{
 			name: "release",
 			type: "JiraLinkingRelease | null",
 			required: true,
 			description:
-				"Set on drop to run the 400ms fuse (`{ id, target }`) or to fly subjects into the landing (`{ id, target, drop }`). `drop.playback` defaults to `stagger` — one chip per subject, delayed by 70ms, matching the create well. For a card attach, `target` is the agent session row at the bottom, not the card centre. Bump `id` to restart.",
+				"Set on drop to run the 400ms Fuse (`{ id, target }`) or animate subjects into the landing (`{ id, target, fromTarget, drop }`). Glow uses `fromTarget` for the full receiving-card backdrop and `target` for the landing point. Bump `id` to restart.",
 		},
 		{
 			name: "onFuseSettled",

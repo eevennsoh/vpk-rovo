@@ -90,6 +90,7 @@ function firstAvatarSize(children: React.ReactNode): AvatarSize | undefined {
 interface AvatarProps
 	extends AvatarPrimitive.Root.Props,
 		VariantProps<typeof avatarVariants> {
+	animate?: boolean
 	disabled?: boolean
 	label?: string
 	/** Rendered as an unclipped sibling of hex artwork so the badge can hang past the tile. */
@@ -120,6 +121,7 @@ function Avatar({
 	className,
 	size = "default",
 	shape = "circle",
+	animate = true,
 	disabled = false,
 	label,
 	status,
@@ -134,12 +136,13 @@ function Avatar({
 
 	// avatar.enter (scale 80→100 + fade), avatar.exit (100→80 + fade), avatar.hovered (spring 100→112%).
 	// Exit only plays when a consumer wraps keyed avatars in their own <AnimatePresence>; enter + hover
-	// work everywhere. Pass `initial={false}` at a call site to skip mount-enter.
+	// work everywhere. Pass `animate={false}` at a call site when a high-frequency
+	// surface must reveal an avatar immediately.
 	// Disabled avatars opt out entirely: animating opacity would write inline `opacity: 1` and override
 	// the `opacity-(--opacity-disabled)` dim class, and a disabled avatar should not react to hover.
 	const reduce = useReducedMotion()
 	const motionProps: MotionProps =
-		reduce || disabled
+		!animate || reduce || disabled
 			? { initial: false }
 			: {
 					initial: { scale: 0.8, opacity: 0 },

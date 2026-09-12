@@ -12,7 +12,8 @@ import {
 import {
 	displayedAgentSessionColumnCollapsedForAgentFilter,
 	displayedCollapsedColumnsForAgentFilter,
-} from "../lib/board-agent-filter-collapse";
+	filterJiraKanbanColumnsByAgentFilter,
+} from "../lib/board-agent-filter";
 import { filterJiraKanbanColumnsByAgentSessionState } from "../lib/board-agent-session-visibility";
 import type { CollapsedBoardColumns } from "../lib/board-column-collapse";
 
@@ -23,6 +24,7 @@ import type { CollapsedBoardColumns } from "../lib/board-column-collapse";
 export function useAgentFilterDisplay({
 	agentFilterId,
 	boardColumns,
+	focusedCollapsedColumns,
 	selectedAssigneeIds,
 	viewerAgentSessionColumnCollapsed,
 	viewerCollapsedColumns,
@@ -31,6 +33,7 @@ export function useAgentFilterDisplay({
 }: {
 	agentFilterId: BoardAgentFilterId | null;
 	boardColumns: readonly JiraKanbanColumnData[];
+	focusedCollapsedColumns: CollapsedBoardColumns | null;
 	selectedAssigneeIds: ReadonlySet<string>;
 	viewerAgentSessionColumnCollapsed: boolean;
 	viewerCollapsedColumns: CollapsedBoardColumns;
@@ -45,9 +48,10 @@ export function useAgentFilterDisplay({
 		() => displayedCollapsedColumnsForAgentFilter({
 			columns: assigneeScopedColumns,
 			filterId: agentFilterId,
+			focusedOverride: focusedCollapsedColumns,
 			viewerCollapsed: viewerCollapsedColumns,
 		}),
-		[agentFilterId, assigneeScopedColumns, viewerCollapsedColumns],
+		[agentFilterId, assigneeScopedColumns, focusedCollapsedColumns, viewerCollapsedColumns],
 	);
 	const displayedShownSessionStateIds = useMemo(
 		() => agentFilterId === null
@@ -58,12 +62,20 @@ export function useAgentFilterDisplay({
 	const displayedShowUntracked = agentFilterId === null
 		? viewerShowUntracked
 		: agentFilterId === "untracked";
+	// Scope first, then strip chrome. The focus row answers "which work is
+	// waiting on me", so a card that only shares a column with a waiting
+	// session leaves the board; the visibility pass then trims the rows the
+	// viewer is not focused on inside the cards that stayed.
+	const agentFocusedColumns = useMemo(
+		() => filterJiraKanbanColumnsByAgentFilter(assigneeScopedColumns, agentFilterId),
+		[agentFilterId, assigneeScopedColumns],
+	);
 	const filteredBoardColumns = useMemo(
 		() => filterJiraKanbanColumnsByAgentSessionState(
-			assigneeScopedColumns,
+			agentFocusedColumns,
 			displayedShownSessionStateIds,
 		),
-		[assigneeScopedColumns, displayedShownSessionStateIds],
+		[agentFocusedColumns, displayedShownSessionStateIds],
 	);
 
 	return {

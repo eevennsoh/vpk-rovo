@@ -5,6 +5,20 @@ import { BLOCK_VARIANT_CATALOG_DEMO_ENTRIES } from "./blocks-variants-catalog";
 
 export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 	...BLOCK_VARIANT_CATALOG_DEMO_ENTRIES,
+	"agent-assignment-demo-default": dynamic(
+		() =>
+			import("../demos/blocks/agent-assignment-demo").then((mod) => ({
+				default: mod.AgentAssignmentDemoDefault,
+			})),
+		{ ssr: false },
+	),
+	"agent-assignment-demo-simple": dynamic(
+		() =>
+			import("../demos/blocks/agent-assignment-demo").then((mod) => ({
+				default: mod.AgentAssignmentDemoSimple,
+			})),
+		{ ssr: false },
+	),
 	"agent-list-demo-compact": dynamic(
 		() =>
 			import("../demos/blocks/agent-list-demo").then((mod) => ({
@@ -124,6 +138,41 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
+	"agent-session-demo-drag": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-demo").then((mod) => ({
+				default: mod.AgentSessionDemoDrag,
+			})),
+		{ ssr: false },
+	),
+	"agent-session-demo-local-short": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-demo").then((mod) => ({
+				default: mod.AgentSessionDemoLocalShort,
+			})),
+		{ ssr: false },
+	),
+	"agent-session-demo-local-long": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-demo").then((mod) => ({
+				default: mod.AgentSessionDemoLocalLong,
+			})),
+		{ ssr: false },
+	),
+	"agent-session-demo-cloud-short": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-demo").then((mod) => ({
+				default: mod.AgentSessionDemoCloudShort,
+			})),
+		{ ssr: false },
+	),
+	"agent-session-demo-cloud-long": dynamic(
+		() =>
+			import("../demos/blocks/agent-session-demo").then((mod) => ({
+				default: mod.AgentSessionDemoCloudLong,
+			})),
+		{ ssr: false },
+	),
 	"agent-session-column-demo": dynamic(
 		() =>
 			import("../demos/blocks/agent-session-column-demo").then((mod) => ({
@@ -170,6 +219,13 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 		() =>
 			import("../demos/blocks/jira-kanban-demo").then((mod) => ({
 				default: mod.JiraKanbanDemoExperimentalV2Simple,
+			})),
+		{ ssr: false },
+	),
+	"jira-kanban-demo-empty-columns": dynamic(
+		() =>
+			import("../demos/blocks/jira-kanban-demo").then((mod) => ({
+				default: mod.JiraKanbanDemoEmptyColumns,
 			})),
 		{ ssr: false },
 	),
@@ -243,10 +299,17 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
-	"jira-work-item-demo-experimental-v6": dynamic(
+	"jira-work-item-demo-team-eu26": dynamic(
 		() =>
 			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
-				default: mod.JiraWorkItemDemoExperimentalV6,
+				default: mod.JiraWorkItemDemoTeamEu26,
+			})),
+		{ ssr: false },
+	),
+	"jira-work-item-demo-team-eu26-empty": dynamic(
+		() =>
+			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
+				default: mod.JiraWorkItemDemoTeamEu26Empty,
 			})),
 		{ ssr: false },
 	),
@@ -271,13 +334,6 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
-	"jira-work-item-demo-experimental-v6-empty": dynamic(
-		() =>
-			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
-				default: mod.JiraWorkItemDemoExperimentalV6Empty,
-			})),
-		{ ssr: false },
-	),
 	"jira-work-item-demo-experimental-v3-running": dynamic(
 		() =>
 			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
@@ -296,13 +352,6 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 		() =>
 			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
 				default: mod.JiraWorkItemDemoExperimentalV5Running,
-			})),
-		{ ssr: false },
-	),
-	"jira-work-item-demo-experimental-v6-running": dynamic(
-		() =>
-			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
-				default: mod.JiraWorkItemDemoExperimentalV6Running,
 			})),
 		{ ssr: false },
 	),
@@ -552,10 +601,13 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 	"jira-issue-demo-agent-activity-states-experimental": dynamic(() => import("../demos/blocks/jira-issue-demo").then((mod) => ({
 		default: mod.JiraIssueDemoAgentActivityStatesExperimental,
 	})), { ssr: false }),
-	"jira-create-demo-work-item": dynamic(() => import("../demos/blocks/jira-create-demo").then((mod) => ({
+	"jira-issue-demo-agent-activity-states-experimental-v2": dynamic(() => import("../demos/blocks/jira-issue-demo").then((mod) => ({
+		default: mod.JiraIssueDemoAgentActivityStatesExperimentalV2,
+	})), { ssr: false }),
+	"jira-creating-demo-work-item": dynamic(() => import("../demos/blocks/jira-creating-demo").then((mod) => ({
 		default: mod.JiraCreateDemoWorkItem,
 	})), { ssr: false }),
-	"jira-create-demo-sessions": dynamic(() => import("../demos/blocks/jira-create-demo").then((mod) => ({
+	"jira-creating-demo-sessions": dynamic(() => import("../demos/blocks/jira-creating-demo").then((mod) => ({
 		default: mod.JiraCreateDemoSessions,
 	})), { ssr: false }),
 	"jira-activity-demo-activity-card": dynamic(

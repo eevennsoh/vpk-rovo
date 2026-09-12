@@ -66,12 +66,19 @@ function DetailsMetaRow({
 	);
 }
 
-function DetailsInvokerMeta({ session }: Readonly<{ session: JiraSidebarSessionItem }>) {
+function DetailsInvokerMeta({
+	animateAvatars,
+	session,
+}: Readonly<{
+	animateAvatars: boolean;
+	session: JiraSidebarSessionItem;
+}>) {
 	return (
 		<div className="flex h-4 min-w-0 items-center gap-1">
 			{session.invokedBy ? (
 				<>
 					<Avatar
+						animate={animateAvatars}
 						className="shrink-0"
 						label={session.invokedBy.name}
 						shape="circle"
@@ -97,7 +104,13 @@ function DetailsInvokerMeta({ session }: Readonly<{ session: JiraSidebarSessionI
 	);
 }
 
-function DetailsAgentTag({ session }: Readonly<{ session: JiraSidebarSessionItem }>) {
+function DetailsAgentTag({
+	animateAvatars,
+	session,
+}: Readonly<{
+	animateAvatars: boolean;
+	session: JiraSidebarSessionItem;
+}>) {
 	const agentBannerSrc = getAgentProfileBannerSrc(session.agentAvatarSrc);
 	preload(agentBannerSrc, { as: "image" });
 
@@ -114,6 +127,7 @@ function DetailsAgentTag({ session }: Readonly<{ session: JiraSidebarSessionItem
 							elemBefore={
 								<span aria-hidden>
 									<AgentAvatarVisual
+										animate={animateAvatars}
 										avatarClassName="after:border-0"
 										avatarSrc={session.agentAvatarSrc}
 										brandName={session.brandName}
@@ -192,10 +206,12 @@ function DetailsChecksRow({ session }: Readonly<{ session: JiraSidebarSessionIte
 
 /** Shared middle layer used by both details and untracked-work flyouts. */
 export function JiraSessionDetailsBody({
+	animateAvatars = true,
 	hideAgentRow = false,
 	hideSessionRow = false,
 	session,
 }: Readonly<{
+	animateAvatars?: boolean;
 	hideAgentRow?: boolean;
 	hideSessionRow?: boolean;
 	session: JiraSidebarSessionItem;
@@ -207,7 +223,9 @@ export function JiraSessionDetailsBody({
 					{session.host === "cloud" ? "Cloud" : "Local"}
 				</DetailsMetaRow>
 			)}
-			{hideAgentRow ? null : <DetailsAgentTag session={session} />}
+			{hideAgentRow ? null : (
+				<DetailsAgentTag animateAvatars={animateAvatars} session={session} />
+			)}
 			<DetailsBranchRow session={session} />
 			<DetailsChecksRow session={session} />
 		</>
@@ -221,16 +239,20 @@ export function JiraSessionDetailsBody({
  * `JiraSessionFlyoutBody` for detail panels.
  */
 export function JiraSessionDetailsCard({
+	animateAvatars = true,
 	session,
-}: Readonly<{ session: JiraSidebarSessionItem }>) {
+}: Readonly<{
+	animateAvatars?: boolean;
+	session: JiraSidebarSessionItem;
+}>) {
 	const titleId = useId();
 
 	return (
 		<JiraSessionFlyoutCard
 			artifacts={sessionArtifactItems(session)}
-			body={<JiraSessionDetailsBody session={session} />}
+			body={<JiraSessionDetailsBody animateAvatars={animateAvatars} session={session} />}
 			bodyClassName="gap-1"
-			meta={<DetailsInvokerMeta session={session} />}
+			meta={<DetailsInvokerMeta animateAvatars={animateAvatars} session={session} />}
 			title={session.title}
 			titleId={titleId}
 			trailing={

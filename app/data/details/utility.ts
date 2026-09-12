@@ -1,6 +1,48 @@
 import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const UTILITY_DETAILS: Record<string, ComponentDetail> = {
+	"cone-safezone": {
+		apiName: "ConeSafezone",
+		description: "Keeps hover previews open while the pointer travels diagonally between a trigger and a card, in either direction. Nested previews hold their parent open until the pointer leaves the whole interaction. Built on the shared HoverCard primitive, with a 300 ms pause allowance inside the cone.",
+		importStatement: 'import { ConeSafezone, ConeSafezoneTrigger, ConeSafezoneContent } from "@/components/utils/cone-safezone";',
+		demoLayout: { previewContentWidth: "full", examplesContentWidth: "full" },
+		usage: `import { ConeSafezone, ConeSafezoneTrigger, ConeSafezoneContent } from "@/components/utils/cone-safezone";
+import { Button } from "@/components/ui/button";
+
+<ConeSafezone openDelay={120} closeDelay={80} graceMs={300}>
+	<ConeSafezoneTrigger render={<Button variant="outline" />}>
+		Hover session
+	</ConeSafezoneTrigger>
+	<ConeSafezoneContent side="right" sideOffset={8}>
+		<p>Session details</p>
+		<ConeSafezone>
+			<ConeSafezoneTrigger render={<Button variant="link" />}>
+				Preview artifact
+			</ConeSafezoneTrigger>
+			<ConeSafezoneContent side="right">
+				<p>The parent stays open while you visit this card.</p>
+			</ConeSafezoneContent>
+		</ConeSafezone>
+	</ConeSafezoneContent>
+</ConeSafezone>`,
+		examples: [
+			{ title: "Placement", description: "Try physical and logical sides in either reading direction. Left starts open. The cone follows the final popup position after collision handling and protects the return journey too.", demoSlug: "cone-safezone-placement" },
+			{ title: "Controlled state", description: "Starts open with externally controlled state. Dismiss explicitly and allow a longer pause. Keyboard focus and Escape continue to work.", demoSlug: "cone-safezone-controlled" },
+		],
+		props: [
+			{ name: "graceMs", type: "number", default: "300", description: "Pause allowance inside the cone, renewed by pointer movement. Moving out of the cone uses normal dismissal." },
+			{ name: "debug", type: "boolean", default: "false", description: "Keeps the cursor-to-destination cone visible while the preview is open, following pointer movement and popup positioning without intercepting input. Nested roots inherit the setting unless overridden." },
+			{ name: "open / defaultOpen", type: "boolean", description: "Controlled or initial open state, matching HoverCard." },
+			{ name: "onOpenChange", type: "(open, details) => void", description: "Called for accepted open-state requests. Cancel through details.cancel() to keep the current state." },
+			{ name: "openDelay / closeDelay", type: "number", description: "Normal hover delays, passed to the shared HoverCard trigger." },
+			{ name: "handle", type: "HoverCardHandle<Payload>", description: "Optional handle for detached triggers and shared payload viewports. Create one with createConeSafezoneHandle()." },
+		],
+		subComponents: [
+			{ name: "ConeSafezoneTrigger", description: "Shared HoverCard trigger. Supports render, payload, and detached handles." },
+			{ name: "ConeSafezoneContent", description: "Shared portalled HoverCard content with cone tracking and nested retention. Supports side, align, offsets, and refs." },
+			{ name: "ConeSafezoneViewport", description: "Shared HoverCard viewport for switching content between detached triggers." },
+		],
+	},
 	"agent-browser": {
 		description:
 			"An AI-assisted browser workspace for VPK. Binds chat actions to a dedicated embedded browser workspace with real tabs, live preview streaming, accessibility snapshots, and an explicit fullscreen preview route.",

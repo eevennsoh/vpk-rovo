@@ -47,6 +47,10 @@ export function toJiraIssueAgentActivityFromSession(item: AgentSessionItem): Jir
 			: item.state === "complete"
 				? "completed"
 				: "working",
+		...(item.invokedBy ? { invokedBy: item.invokedBy } : {}),
+		...(item.host !== undefined ? { host: item.host } : {}),
+		...(item.role !== undefined ? { role: item.role } : {}),
+		...(item.timeLabel ? { timeLabel: item.timeLabel } : {}),
 	};
 }
 

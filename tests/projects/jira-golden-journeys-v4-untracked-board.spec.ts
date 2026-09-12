@@ -9,15 +9,25 @@ async function openBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({
 		timeout: 15_000,
 	});
-	const expandUntracked = page.getByRole("button", { name: "Expand Unattached sessions column" });
-	if (await expandUntracked.isVisible()) {
-		await revealCollapsedAgentSessionColumn(page);
-		await expandUntracked.click();
-		await page.getByRole("button", { name: "Expand more Unattached sessions column" }).click();
+	const session = page.locator("[data-agent-session-column]")
+		.getByTestId("agent-session-row-lw-scope-thread");
+	const options = page.getByRole("button", { name: "Unlink sessions column options" });
+	if (!await session.isVisible()) {
+		if (await page.locator("[data-agent-session-column-hit-area]").count() > 0) {
+			await revealCollapsedAgentSessionColumn(page);
+		}
+		await options.click();
+		const pin = page.getByRole("menuitem", { name: "Pin", exact: true });
+		if (await pin.isVisible()) {
+			await pin.click();
+			await expect(page.locator("[data-agent-session-column-expansion]"))
+				.toHaveAttribute("data-agent-session-column-expansion", "pinned");
+			await expect(page.locator("[data-agent-session-column-hit-area]")).toHaveCount(0);
+			await page.getByRole("button", { name: "Unlink sessions column options" }).click();
+		}
+		await page.getByRole("menuitem", { name: "Expand" }).click();
 	}
-	await expect(
-		page.locator("[data-agent-session-column]").getByTestId("agent-session-row-lw-scope-thread"),
-	).toBeVisible();
+	await expect(session).toBeVisible();
 }
 
 async function openCollapsedBoard(page: Page): Promise<void> {
@@ -25,41 +35,51 @@ async function openCollapsedBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({
 		timeout: 15_000,
 	});
-	await expect(page.getByRole("button", { name: "Expand Unattached sessions column" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Unlink sessions column options" })).toBeVisible();
 }
 
-test("Untracked cycles from gutter to pinned timeline to full column and back", async ({ page }) => {
+
+test("Untracked pins and expands as separate axes", async ({ page }) => {
 	await openCollapsedBoard(page);
 	const host = page.locator("[data-agent-session-column-expansion]");
 	const column = page.locator("[data-agent-session-column]");
 	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
 	await revealCollapsedAgentSessionColumn(page);
-	const expand = page.getByRole("button", { name: "Expand Unattached sessions column" });
-	await expand.hover();
-	await expect(page.locator('[data-slot="tooltip-content"]').filter({ hasText: /^Expand$/u })).toBeVisible();
-	await expand.click();
+	const options = page.getByRole("button", { name: "Unlink sessions column options" });
+	await options.hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "preview");
+	await expect(column).toHaveCSS("width", "32px");
+	await options.click();
+	await expect(page.getByRole("menuitem", { name: "Pin" })).toBeVisible();
+	await expect(page.getByRole("menuitem", { name: "Expand" })).toBeVisible();
+	await page.getByRole("menuitem", { name: "Expand" }).click();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
+	await expect(host).not.toHaveAttribute("data-agent-session-column-pinned", "");
+	await expect(column).toHaveCSS("width", "280px");
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
+	await revealCollapsedAgentSessionColumn(page);
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
+	await expect(column).toHaveCSS("width", "280px");
+	await page.getByRole("button", { name: "Pin Unlink sessions column" }).click();
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
+	await expect(host).toHaveAttribute("data-agent-session-column-pinned", "");
+	await page.getByRole("button", { name: "Unpin Unlink sessions column" }).click();
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
+	await revealCollapsedAgentSessionColumn(page);
+	await page.getByRole("button", { name: "Unlink sessions column options" }).click();
+	await page.getByRole("menuitem", { name: "Pin" }).click();
 	await page.getByRole("heading", { name: "Jira Design" }).hover();
 	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "pinned");
 	await expect(column).toHaveCSS("width", "32px");
-	await expect(page.locator("[data-agent-session-column-hit-area]")).toHaveCount(0);
-	const expandMore = page.getByRole("button", { name: "Expand more Unattached sessions column" });
-	await expandMore.hover();
-	await expect(page.locator('[data-slot="tooltip-content"]').filter({ hasText: /^Expand more$/u })).toBeVisible();
-	expect((await expandMore.boundingBox())?.width).toBe(56);
-	await expandMore.click();
-	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await page.getByRole("button", { name: "Unlink sessions column options" }).click();
+	await page.getByRole("menuitem", { name: "Expand" }).click();
 	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
-	await expect(column).toHaveCSS("width", "280px");
-	await page.getByRole("button", { name: "Collapse Unattached sessions column" }).click();
+	await page.getByRole("button", { name: "Collapse Unlink sessions column" }).click();
 	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
 	await expect(page.locator("[data-agent-session-column-hit-area]")).toHaveCount(1);
-	// The same staged action is reachable without hovering, using Enter then Space.
-	await expand.focus();
-	await page.keyboard.press("Enter");
-	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "pinned");
-	await expect(expandMore).toBeFocused();
-	await page.keyboard.press("Space");
-	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
 });
 
 async function openAgentViewMenu(page: Page): Promise<void> {
@@ -82,7 +102,8 @@ async function selectAgentViewOption(page: Page, name: "Unattached" | "Working")
 test("agent filter collapse clears a previously pinned timeline", async ({ page }) => {
 	await openCollapsedBoard(page);
 	await revealCollapsedAgentSessionColumn(page);
-	await page.getByRole("button", { name: "Expand Unattached sessions column" }).click();
+	await page.getByRole("button", { name: "Unlink sessions column options" }).click();
+	await page.getByRole("menuitem", { name: "Pin" }).click();
 	const host = page.locator("[data-agent-session-column-expansion]");
 	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "pinned");
 	await selectAgentViewOption(page, "Unattached");
@@ -130,7 +151,7 @@ function getIssueDropZone(page: Page, issueKey: string): Locator {
 }
 
 async function getUntrackedSessionCount(page: Page): Promise<number> {
-	const label = await page.getByLabel(/^Unattached sessions,/u).getAttribute("aria-label");
+	const label = await page.getByLabel(/^Unlink sessions,/u).getAttribute("aria-label");
 	const count = Number(label?.match(/\d+/u)?.[0]);
 	expect(Number.isFinite(count)).toBe(true);
 	return count;
@@ -201,14 +222,14 @@ test("attaching onto a running session replaces that chin row instead of stackin
 	await expect(dropZone).toHaveAttribute("data-board-agent-session-target", "attach");
 	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin"]')).toBeVisible();
 	await expect(targetCard.getByText("Link 1 agent session")).toBeVisible();
+	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin-slot"]')).toHaveCSS("height", "32px");
 	await expect(runningSession).toHaveCount(0);
 	await expect(targetCard.locator('[data-slot="jira-issue-agent-row"]')).toHaveCount(0);
 
 	const attachingBox = await targetCard.boundingBox();
 	expect(attachingBox).not.toBeNull();
 	if (!attachingBox) return;
-	// One extra chin row is 24px plus 8px of gutter. Stay well under that.
-	expect(attachingBox.height).toBeLessThan(restingBox.height + 16);
+	expect(attachingBox.height).toBe(restingBox.height);
 
 	await page.mouse.up();
 });
@@ -239,6 +260,7 @@ test("attaching onto PAY-118 replaces any session chin instead of stacking the d
 	await expect(dropZone).toHaveAttribute("data-board-agent-session-target", "attach");
 	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin"]')).toHaveCount(1);
 	await expect(targetCard.getByText("Link 1 agent session")).toBeVisible();
+	await expect(targetCard.locator('[data-slot="jira-issue-attach-chin-slot"]')).toHaveCSS("height", "32px");
 	await expect(targetCard.locator('[data-testid^="agent-session-row-"]:visible')).toHaveCount(0);
 	await expect(targetCard.getByText("Why the wallet was cut")).not.toBeVisible();
 	await expect(targetCard.getByText("The adapter keep-or-delete")).not.toBeVisible();
@@ -295,7 +317,7 @@ test("the gutter preview supports timeline traversal across wider session target
 	await expect(notches).toHaveCount(sessionCount);
 	await notches.last().scrollIntoViewIfNeeded();
 	await expect(notches.last()).toBeVisible();
-	const expandControl = page.getByRole("button", { name: "Expand Unattached sessions column" });
+	const expandControl = page.getByRole("button", { name: "Unlink sessions column options" });
 	const countBox = await count.boundingBox();
 	const expandBox = await expandControl.boundingBox();
 	expect(countBox).not.toBeNull();
@@ -438,13 +460,13 @@ test("unchecking Untracked hides board-adjacent rows and leaves the column", asy
 	const pay101Proximity = page.locator("[data-issue-key='PAY-101']")
 		.getByTestId("agent-session-row-lw-scope-thread");
 	await expect(pay101Proximity).toBeVisible();
-	await expect(page.getByLabel(/^Unattached sessions,/u)).toBeVisible();
+	await expect(page.getByLabel(/^Unlink sessions,/u)).toBeVisible();
 
 	await openAgentViewMenu(page);
 	await page.getByRole("menuitemradio", { name: "Unattached" }).click();
 
 	await expect(pay101Proximity).toHaveCount(0);
-	await expect(page.getByLabel(/^Unattached sessions,/u)).toBeVisible();
+	await expect(page.getByLabel(/^Unlink sessions,/u)).toBeVisible();
 	await expect(
 		page.locator("[data-agent-session-column]").getByTestId("agent-session-row-lw-scope-thread"),
 	).toBeVisible();
@@ -484,13 +506,13 @@ test("clicking a column session for PAY-121 spotlights that issue", async ({ pag
 	const pay101 = page.locator("[data-issue-key='PAY-101']");
 	await expect(pay121).toHaveClass(/bg-bg-accent-blue-subtlest/);
 	await expect(pay101).toHaveClass(/opacity-40/);
-	await expect(page.getByLabel(/^Unattached sessions,/u)).not.toHaveClass(/opacity-40/);
+	await expect(page.getByLabel(/^Unlink sessions,/u)).not.toHaveClass(/opacity-40/);
 });
 
 test("click auto-scroll keeps Untracked frozen and allows the status pane to scroll back", async ({ page }) => {
 	await openBoard(page);
 
-	const untrackedColumn = page.getByLabel(/^Unattached sessions,/u);
+	const untrackedColumn = page.getByLabel(/^Unlink sessions,/u);
 	const statusScrollport = page.locator("[data-jira-kanban-scrollport]");
 	const frozenLeft = (await untrackedColumn.boundingBox())?.x;
 	const columnSession = page.locator("[data-agent-session-column]")
@@ -523,7 +545,7 @@ test("click auto-scroll keeps Untracked frozen and allows the status pane to scr
 test("Untracked stays frozen while the status pane scrolls", async ({ page }) => {
 	await openBoard(page);
 
-	const untrackedColumn = page.getByLabel(/^Unattached sessions,/u);
+	const untrackedColumn = page.getByLabel(/^Unlink sessions,/u);
 	const statusScrollport = page.locator("[data-jira-kanban-scrollport]");
 	const frozenLeft = (await untrackedColumn.boundingBox())?.x;
 
@@ -544,9 +566,9 @@ test("Untracked stays frozen while the status pane scrolls", async ({ page }) =>
 test("the Untracked resize handle reveals on column hover and widens the pinned column", async ({ page }) => {
 	await openBoard(page);
 
-	const untrackedColumn = page.getByLabel(/^Unattached sessions,/u);
+	const untrackedColumn = page.getByLabel(/^Unlink sessions,/u);
 	const resizeHandle = page.getByRole("separator", {
-		name: "Resize Unattached sessions column",
+		name: "Resize Unlink sessions column",
 	});
 	const resizeNotch = resizeHandle.locator(":scope > div");
 	const widthFootprint = page.locator('[data-agent-session-column-footprint="width"]');
@@ -697,7 +719,7 @@ test("an unattached session card attaches to any Jira work item and leaves the c
 	await dragPointer(untrackedSession, getIssueDropZone(page, "PAY-118"), page);
 
 	await expect(untrackedColumn.getByTestId("agent-session-row-lw-scope-thread")).toHaveCount(0);
-	await expect(page.getByLabel(`Unattached sessions, ${initialCount - 1} sessions`)).toBeVisible();
+	await expect(page.getByLabel(`Unlink sessions, ${initialCount - 1} sessions`)).toBeVisible();
 	await expect(getIssueArticle(page, "PAY-118").getByRole("button", {
 		name: /^Open Claude in Rovo chat:/u,
 	})).toBeVisible();
@@ -765,35 +787,28 @@ test("dropping an Untracked session on Create new work item appends and reveals 
 	);
 	await expect(createDropZone).toHaveAttribute("data-armed", "true");
 	await page.evaluate(() => {
-		let pulseStartedAt: number | null = null;
-		const observeBackdropPulse = () => {
-			const pulse = document.querySelector("[data-created-card-backdrop]");
-			if (pulse && pulseStartedAt === null) {
-				pulseStartedAt = performance.now();
-				document.documentElement.setAttribute("data-created-card-backdrop-observed", "true");
-				return;
-			}
-			if (!pulse && pulseStartedAt !== null) {
-				document.documentElement.setAttribute(
-					"data-created-card-backdrop-duration",
-					String(performance.now() - pulseStartedAt),
-				);
-				observer.disconnect();
+		const observeBlueCreateFlash = () => {
+			const flashed = Array.from(document.querySelectorAll<HTMLElement>(
+				'[data-board-agent-session-drop-zone="issue"]',
+			)).some((card) => (
+				card.className.includes("bg-bg-accent-blue-subtlest")
+				|| card.querySelector<HTMLElement>('[data-slot="jira-issue-agent-backdrop"]')
+					?.className.includes("bg-bg-accent-blue-subtlest")
+			));
+			if (flashed) {
+				document.documentElement.setAttribute("data-blue-create-flash-observed", "true");
 			}
 		};
-		const observer = new MutationObserver(observeBackdropPulse);
+		const observer = new MutationObserver(observeBlueCreateFlash);
 		observer.observe(document.body, {
-			attributeFilter: ["class", "data-created-card-backdrop"],
+			attributeFilter: ["class"],
 			attributes: true,
 			childList: true,
 			subtree: true,
 		});
+		window.setTimeout(() => observer.disconnect(), 2000);
 	});
 	await page.mouse.up();
-	await expect(page.locator("html")).toHaveAttribute("data-created-card-backdrop-observed", "true");
-	await expect.poll(async () => Number(
-		await page.locator("html").getAttribute("data-created-card-backdrop-duration"),
-	)).toBeGreaterThanOrEqual(600);
 
 	await expect(issueCards).toHaveCount(initialCardCount + 1);
 	const createdCard = issueCards.last();
@@ -807,6 +822,7 @@ test("dropping an Untracked session on Create new work item appends and reveals 
 	await expect(createdCard.getByRole("button", {
 		name: /^Open Claude in Rovo chat:/u,
 	})).toBeVisible();
+	await expect(page.locator("html")).not.toHaveAttribute("data-blue-create-flash-observed", "true");
 	await expect(untrackedColumn.getByTestId(`agent-session-row-${sessionId}`)).toHaveCount(0);
 
 	await expect.poll(
@@ -838,7 +854,7 @@ test("releasing an unattached session drag outside a Jira target makes no change
 	await dragPointer(untrackedSession, page.getByRole("heading", { name: "Jira Design" }), page);
 
 	await expect(untrackedSession).toBeVisible();
-	await expect(page.getByLabel(`Unattached sessions, ${initialCount} sessions`)).toBeVisible();
+	await expect(page.getByLabel(`Unlink sessions, ${initialCount} sessions`)).toBeVisible();
 	await expect(getIssueArticle(page, "PAY-118").getByRole("button", {
 		name: /^Open Claude in Rovo chat:/u,
 	})).toHaveCount(0);

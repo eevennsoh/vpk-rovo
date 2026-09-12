@@ -1,3 +1,4 @@
+import type { AgentListInvoker } from "@/components/blocks/agent-list";
 import type { ThirdPartyLogoName } from "@/components/ui/data/logo-third-party-data";
 
 export interface ViewportPoint {
@@ -9,6 +10,8 @@ export interface JiraDropzoneMember {
 	readonly avatarSrc?: string;
 	readonly brandName?: ThirdPartyLogoName;
 	readonly id: string;
+	/** Human who invoked the session, so the flight chip keeps the face. */
+	readonly invoker?: AgentListInvoker;
 	readonly name: string;
 	readonly vpkLogo?: "rovo";
 }
@@ -17,7 +20,7 @@ export type SessionReceiptId = string & { readonly __brand: "SessionReceiptId" }
 
 export type JiraDropzoneDropPlayback = "cohort" | "stagger";
 
-export type JiraDropzoneBouncePlayback = "each" | "once";
+export type JiraDropzoneBouncePlayback = "each" | "off" | "once";
 
 export interface SessionDropReceipt {
 	readonly bounce?: JiraDropzoneBouncePlayback;
@@ -56,7 +59,7 @@ export interface SessionFlight {
 	readonly receiptId: SessionReceiptId;
 }
 
-export type FlightTravel = "arc" | "none";
+export type FlightTravel = "arc" | "linear" | "none";
 
 /** Motion `arc()` side. `"automatic"` omits `direction` so Motion picks a stable screen-space bulge. */
 export type JiraDropzoneArcDirection = "automatic" | "ccw" | "cw";

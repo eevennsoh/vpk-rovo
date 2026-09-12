@@ -100,6 +100,8 @@ export interface EditorToolbarProps {
 	isMarkdownMode?: boolean;
 	mode?: EditorToolbarViewMode;
 	controlsOverflow?: "responsive" | "fixed";
+	/** Hide document-formatting groups for minimal composer schemas. */
+	showFormattingControls?: boolean;
 	showDataFlowMode?: boolean;
 	onToggleMarkdownMode?: () => void;
 	onModeChange?: (mode: EditorToolbarViewMode) => void;
@@ -363,6 +365,7 @@ export function EditorToolbar({
 	isMarkdownMode = false,
 	mode,
 	controlsOverflow = "responsive",
+	showFormattingControls = true,
 	showDataFlowMode = false,
 	onToggleMarkdownMode,
 	onModeChange,
@@ -400,12 +403,13 @@ export function EditorToolbar({
 	// The five separator-bounded control groups fold (right-to-left) into the
 	// "+" insert dropdown when the toolbar runs out of horizontal room. The "+"
 	// button is the pinned anchor and never folds.
+	const toolbarGroupCount = showFormattingControls ? FOLDABLE_GROUP_COUNT : 0;
 	const { containerRef, visibleCount: measuredVisibleCount } = useToolbarOverflow(
-		FOLDABLE_GROUP_COUNT,
+		toolbarGroupCount,
 	);
-	const visibleCount = foldsControls ? measuredVisibleCount : FOLDABLE_GROUP_COUNT;
+	const visibleCount = foldsControls ? measuredVisibleCount : toolbarGroupCount;
 	const isGroupFolded = (index: number): boolean => index >= visibleCount;
-	const hasFoldedGroups = visibleCount < FOLDABLE_GROUP_COUNT;
+	const hasFoldedGroups = showFormattingControls && visibleCount < FOLDABLE_GROUP_COUNT;
 
 	useEditorTransactionRerender(editor);
 	useClickOutside(outsideRefs, () => setOpenDropdown(null), openDropdown !== null);
@@ -770,6 +774,8 @@ export function EditorToolbar({
 					ref={containerRef}
 					className={cn("flex items-center gap-1", foldsControls ? "min-w-0 flex-1" : "shrink-0", controlsClassName)}
 				>
+					{showFormattingControls ? (
+						<>
 					<div
 						data-toolbar-group
 						data-toolbar-folded={isGroupFolded(0) ? "true" : undefined}
@@ -1064,6 +1070,8 @@ export function EditorToolbar({
 							<TableIcon label="" size="small" />
 						</Button>
 					</div>
+						</>
+					) : null}
 
 					<div data-toolbar-anchor className="relative flex items-center gap-1">
 						{hasFoldedGroups ? <ToolbarSeparator /> : null}

@@ -2,10 +2,7 @@
 
 import { useCallback, useId, useMemo, useState } from "react";
 
-import {
-	isCodingAgentListItem,
-	toAgentSessionFlyoutItem,
-} from "@/components/blocks/agent-list";
+import { isCodingAgentListItem } from "@/components/blocks/agent-list";
 import {
 	createJiraSessionFlyoutHandle,
 	JiraSessionFlyoutSurface,
@@ -16,7 +13,11 @@ import { cn } from "@/lib/utils";
 
 import { AGENT_SESSION_ATTACHED_ITEMS, AGENT_SESSION_ITEMS } from "./data";
 import { AgentSessionCard } from "./agent-session-card";
-import { AgentSessionCompactCard } from "./agent-session-compact-card";
+import { useAgentSessionScrollPreview } from "./use-agent-session-scroll-preview";
+import {
+	AgentSessionAttachedCard,
+	AgentSessionCompactCard,
+} from "./agent-session-compact-card";
 import {
 	bindAgentSessionFlyoutActions,
 	resolveAgentSessionWorkItemKey,
@@ -68,20 +69,24 @@ function buildArrivalDelays(
  * the same hover/focus action pair Agent List rows use — Resume, plus
  * Archive / Unarchive where Agent List puts Archive. Work-item capture lives on the
  * shared untracked-work session flyout, the same surface
- * `components/blocks/agent-session-flyout` uses, so hovering a card offers
- * Link / Create / Add as a subtask without a footer chin. Medium detached keeps
- * that uncaptured relationship in the Jira Agents compact row: a 276×33
- * surface card with a solid disabled stroke, and Create / Add as a subtask
- * from a hover more menu. Medium attached reuses the Jira Issue activity row
- * and opens session details because its work relationship already exists.
- * Small is the collapsed-column identity notch.
+ * `components/blocks/agent-session-flyout` uses, so hovering a short card offers
+ * Link / Create / Add as a subtask without a footer chin. Long density has no
+ * flyout — hover only highlights the row and reveals trailing controls. Medium
+ * detached keeps that uncaptured relationship as a 276px stroked white chip:
+ * 24px agent+human identity, the session title, and a trailing up-arrow key,
+ * with the untracked-work flyout. Medium attached reuses the Jira Issue
+ * activity row and its assignment hover — the Assign agent footer appears when
+ * the host supplies `assignment.onAssignedAgentIdsChange`. Work-item capture
+ * is already the card. Small is the collapsed-column identity notch.
  */
 export function AgentSession({
 	className,
 	items: itemsProp,
 	arrivingItemIds,
+	assignment,
 	canViewItem,
 	capturedItemIds,
+	density = "short",
 	getResumeCommand,
 	getSuggestedWorkItemKey,
 	getSuggestedWorkItemKeys,
@@ -89,11 +94,15 @@ export function AgentSession({
 	issueKey,
 	isResumable,
 	newItemIds,
+	onContinueInAgent,
 	onCopyResume,
 	onArchiveSession,
 	onCreateWorkItem,
+	onCreateWorkItemFromDraft,
 	onArrivalComplete,
+	onDeleteSession,
 	onLinkWorkItem,
+	onRenameSession,
 	onSubtasks,
 	onItemHover,
 	onSelectedItemIdChange,
@@ -103,11 +112,15 @@ export function AgentSession({
 	selectedItemId: selectedItemIdProp,
 	sessionDrag,
 	draggingIds,
+	showUntrackedWorkFooter,
 	style,
 	variant = "large",
 	visibilityLabel,
+	workItemOptions,
 }: Readonly<AgentSessionProps>) {
 	const isAttached = variant === "medium-attached";
+	const isLongDensity = variant === "large" && density === "long";
+	const showUntrackedWorkFlyout = !isAttached && !isLongDensity;
 	const items = itemsProp ?? (isAttached ? AGENT_SESSION_ATTACHED_ITEMS : AGENT_SESSION_ITEMS);
 	const isSelectionControlled = selectedItemIdProp !== undefined;
 	const [uncontrolledSelectedItemId, setUncontrolledSelectedItemId] = useState<string | null>(
@@ -139,6 +152,7 @@ export function AgentSession({
 	// Agent Session flyout block do: the popup stays mounted and follows the
 	// hovered card, so sliding down the list crossfades instead of remounting.
 	const [flyoutHandle] = useState(createJiraSessionFlyoutHandle);
+	const scrollPreview = useAgentSessionScrollPreview(flyoutHandle);
 	const flyoutActions = useMemo(
 		() => bindAgentSessionFlyoutActions(items, {
 			capturedItemIds,
@@ -187,7 +201,17 @@ export function AgentSession({
 					? { ...style, gap: token("space.025") }
 					: style}
 			>
-				{items.map((item: AgentSessionItem) => {
+				{isAttached ? (
+					<li data-testid="agent-session-attached-group">
+						<AgentSessionAttachedCard
+							assignment={assignment}
+							isArriving={items.some((item) => beatItemIds?.has(item.id) ?? false)}
+							isNew={items.some((item) => newItemIds?.has(item.id) ?? false)}
+							items={items}
+							onView={onView === undefined ? undefined : handleView}
+						/>
+					</li>
+				) : items.map((item: AgentSessionItem) => {
 					const itemOnView = isCodingAgentListItem(item)
 						? onView === undefined
 							? undefined
@@ -196,51 +220,59 @@ export function AgentSession({
 							? undefined
 							: handleView;
 
-					const flyoutSession = isAttached
-						? toAgentSessionFlyoutItem(item)
-						: toAgentSessionUntrackedWorkFlyoutItem(
-							item,
-							resolveAgentSessionWorkItemKey(
-								item,
-								getSuggestedWorkItemKey,
-								getSuggestedWorkItemKeys,
-							),
-						);
-
 					if (variant === "large") {
+						const flyoutSession = isLongDensity
+							? undefined
+							: toAgentSessionUntrackedWorkFlyoutItem(
+								item,
+								resolveAgentSessionWorkItemKey(
+									item,
+									getSuggestedWorkItemKey,
+									getSuggestedWorkItemKeys,
+								),
+							);
 						return (
 							<AgentSessionCard
 								arrivalDelaySeconds={arrivalDelays.get(item.id)}
 								captured={capturedItemIds?.has(item.id) ?? false}
-								flyoutHandle={flyoutHandle}
+								density={density}
+								flyoutHandle={isLongDensity ? undefined : flyoutHandle}
 								flyoutSession={flyoutSession}
 								getResumeCommand={getResumeCommand}
 								isArriving={beatItemIds?.has(item.id) ?? false}
+								isFlyoutActive={item.id === scrollPreview.activeItemId}
 								isHighlighted={item.id === highlightedItemId}
 								isNew={newItemIds?.has(item.id) ?? false}
 								isResumable={isResumable}
 								isSelected={item.id === selectedItemId}
 								item={item}
 								key={item.id}
+								onContinueInAgent={onContinueInAgent}
 								onCopyResume={onCopyResume}
+								onCreateWorkItemFromDraft={onCreateWorkItemFromDraft}
+								onDeleteSession={onDeleteSession}
 								onArrivalComplete={onArrivalComplete === undefined
 									? undefined
 									: () => onArrivalComplete(item.id)}
 								onItemHover={onItemHover}
+								onLinkWorkItem={onLinkWorkItem}
+								onRenameSession={onRenameSession}
 								onToggleVisibility={onToggleVisibility}
 								onView={itemOnView}
 								sessionDrag={sessionDrag}
 								triageRow={rowTriage?.get(item.id)}
 								draggingIds={draggingIds}
 								visibilityLabel={visibilityLabel}
+								workItemOptions={workItemOptions}
 							/>
 						);
 					}
 
 					const compactCard = (
 						<AgentSessionCompactCard
+							assignment={isAttached ? assignment : undefined}
 							captured={capturedItemIds?.has(item.id) ?? false}
-							flyout
+							flyout={!isAttached}
 							isArriving={beatItemIds?.has(item.id) ?? false}
 							// The column and the board hold the same session ids, so an id
 							// match is the whole relationship test: hovering an Untracked
@@ -268,6 +300,15 @@ export function AgentSession({
 						/>
 					);
 
+					const flyoutSession = toAgentSessionUntrackedWorkFlyoutItem(
+						item,
+						resolveAgentSessionWorkItemKey(
+							item,
+							getSuggestedWorkItemKey,
+							getSuggestedWorkItemKeys,
+						),
+					);
+
 					return (
 						<JiraSessionFlyoutTrigger
 							closeDelay={160}
@@ -288,25 +329,47 @@ export function AgentSession({
 				animated shell reads as lag rather than as a transition, and collapsing
 				the column would otherwise swap motion profiles mid-hover.
 			*/}
-			<JiraSessionFlyoutSurface
-				archiveActionLabel={visibilityLabel}
-				capturedSessionIds={capturedItemIds}
-				content={isAttached ? "details" : "untracked-work"}
-				handle={flyoutHandle}
-				instantPosition
-				onAddAsSubtask={flyoutActions.onAddAsSubtask}
-				onArchiveSession={flyoutActions.onArchiveSession}
-				onCreateWorkItem={flyoutActions.onCreateWorkItem}
-				onLinkWorkItem={flyoutActions.onLinkWorkItem}
-			/>
+			{showUntrackedWorkFlyout ? (
+				<JiraSessionFlyoutSurface
+					{...scrollPreview}
+					archiveActionLabel={visibilityLabel}
+					capturedSessionIds={capturedItemIds}
+					content="untracked-work"
+					handle={flyoutHandle}
+					instantPosition
+					onAddAsSubtask={flyoutActions.onAddAsSubtask}
+					onArchiveSession={flyoutActions.onArchiveSession}
+					onCreateWorkItem={flyoutActions.onCreateWorkItem}
+					onLinkWorkItem={flyoutActions.onLinkWorkItem}
+					showUntrackedWorkFooter={showUntrackedWorkFooter}
+				/>
+			) : null}
 		</>
 	);
 }
 
-export { AGENT_SESSION_ATTACHED_ITEMS, AGENT_SESSION_ITEMS, AGENT_SESSION_MULTI_LINK_KEYS } from "./data";
+export {
+	AGENT_SESSION_ATTACHED_FINISHED_ITEMS,
+	AGENT_SESSION_ATTACHED_ITEMS,
+	AGENT_SESSION_ATTACHED_MULTI_WORKING_ITEMS,
+	AGENT_SESSION_ATTACHED_NEEDS_INPUT_ITEMS,
+	AGENT_SESSION_ATTACHED_WORKING_ITEMS,
+	AGENT_SESSION_CLOUD_ITEMS,
+	AGENT_SESSION_ITEMS,
+	AGENT_SESSION_MULTI_LINK_KEYS,
+} from "./data";
 export { approveActionLabel, resolveApproveTarget } from "./agent-session-approve";
 export type { ApproveTarget, ApproveUnavailableReason } from "./agent-session-approve";
 export { AgentSessionCard } from "./agent-session-card";
+export {
+	AGENT_SESSION_STATUS_LABEL,
+	toAgentSessionMetadataSegments,
+} from "./agent-session-long-metadata";
+export type {
+	AgentSessionMetadataInput,
+	AgentSessionMetadataSegment,
+	AgentSessionMetadataSegmentKind,
+} from "./agent-session-long-metadata";
 export {
 	bindAgentSessionFlyoutActions,
 	resolveAgentSessionWorkItemKey,
@@ -315,10 +378,15 @@ export {
 	toJiraIssueAgentActivityFromSession,
 } from "./agent-session-work-item";
 export type {
+	AgentSessionDensity,
 	AgentSessionItem,
 	AgentSessionProps,
+	AgentSessionRole,
 	AgentSessionSelectionGesture,
 	AgentSessionTriageRow,
 	AgentSessionVariant,
+	AgentSessionWorkItemDraft,
+	AgentSessionWorkItemOption,
 } from "./agent-session-types";
+export { getAgentSessionRole } from "./agent-session-types";
 export type { UntrackedWorkTriage } from "./untracked-work-triage";

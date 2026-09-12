@@ -1,7 +1,5 @@
 ---
 description: Directory structure, env vars, provider reference, skills catalog, team workflow, validation checklists
-globs: backend/**, app/contexts/**, app/providers.tsx, .agents/skills/**
-alwaysApply: false
 ---
 
 # Appendix

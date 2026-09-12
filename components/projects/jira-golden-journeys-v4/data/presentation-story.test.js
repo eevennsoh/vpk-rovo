@@ -112,7 +112,24 @@ test("the PAY board fills every existing status with coding work and the full st
 		"agents working together should have distinct base dwell times",
 	);
 	assert.ok(workingActivities.every((activity) => (activity.cycleIntervalJitterMs ?? 0) > 0));
+	assert.equal(multiAgentCard?.code, "PAY-123");
+	assert.deepEqual(
+		workingActivities.map((activity) => ({
+			host: activity.host,
+			name: activity.name,
+			role: activity.role,
+			invokedBy: activity.invokedBy?.name,
+		})),
+		[
+			{ host: "cloud", name: "Cursor", role: "viewer", invokedBy: "Jordan Okafor" },
+			{ host: "local", name: "Claude Code", role: "owner", invokedBy: undefined },
+		],
+	);
+	assert.ok(!("invokedBy" in (workingActivities.find((activity) => activity.role === "owner") ?? {})));
 
+	assert.equal(story.JIRA_GOLDEN_JOURNEYS_V4_PAY_CURRENT_USER.id, "venn");
+	assert.equal(story.JIRA_GOLDEN_JOURNEYS_V4_PAY_CURRENT_USER.name, "Venn");
+	assert.equal(story.JIRA_GOLDEN_JOURNEYS_V4_PAY_CURRENT_USER.avatarSrc, "/avatar-user/venn/venn.png");
 	assert.deepEqual(
 		story.JIRA_GOLDEN_JOURNEYS_V4_PAY_HEADER_ASSIGNEES.map((assignee) => assignee.id),
 		["venn", "review-agent", "test-agent", "release-agent"],
@@ -159,6 +176,20 @@ test("the PAY board fills every existing status with coding work and the full st
 		prCards.find((card) => card.code === "PAY-104")?.pullRequestPreview.title,
 		"shared PR numbers still get issue-keyed dummy titles",
 	);
+
+	const pay112 = cards.find((card) => card.code === "PAY-112")?.agentActivities?.[0];
+	assert.equal(pay112?.name, "Codex");
+	assert.equal(pay112?.role, "owner");
+	assert.equal(pay112?.state, "awaiting-input");
+	assert.equal(pay112?.timeLabel, "Last week");
+	assert.equal(pay112?.question?.label, story.JIRA_GOLDEN_JOURNEYS_V4_PAY_112_RETENTION_QUESTION.label);
+	assert.equal(pay112?.message, story.JIRA_GOLDEN_JOURNEYS_V4_PAY_112_RETENTION_MESSAGE);
+	assert.equal(pay112?.question?.options.length, 3);
+	assert.doesNotMatch(pay112?.question?.label ?? "", /date-range|blue-green|PD-40/u);
+	assert.deepEqual(
+		workingActivities.map((activity) => activity.timeLabel),
+		["36s", "3h"],
+	);
 });
 
 test("a linked Jira activity becomes a medium-detached Agent Session item", async () => {
@@ -184,13 +215,17 @@ test("a linked Jira activity becomes a medium-detached Agent Session item", asyn
 				kind: "agent",
 				name: activity.name,
 			},
-			invokedBy: card.assignee,
+			host: "local",
+			role: "owner",
 			sessionDetails: {
+				host: "local",
 				issueKey: card.code,
 				issueSummary: card.title,
 			},
+			timeLabel: "12m",
 		},
 	);
+	assert.equal(detached.invokedBy, undefined);
 	assert.deepEqual(
 		story.toJiraGoldenJourneysV4AgentActivityFromSession(detached),
 		{
@@ -198,8 +233,11 @@ test("a linked Jira activity becomes a medium-detached Agent Session item", asyn
 			name: activity.name,
 			avatarSrc: activity.avatarSrc,
 			agentBrandName: activity.agentBrandName,
+			host: "local",
 			label: activity.label,
+			role: "owner",
 			state: "working",
+			timeLabel: "12m",
 		},
 	);
 });

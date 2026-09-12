@@ -16,11 +16,15 @@ test("Agent Assignment exposes a reusable controlled block contract", () => {
 	const source = readProjectFile("components/blocks/agent-assignment/components/agent-assignment.tsx");
 	const index = readProjectFile("components/blocks/agent-assignment/index.ts");
 	const page = readProjectFile("components/blocks/agent-assignment/page.tsx");
+	const demoAssigned = readProjectFile("components/blocks/agent-assignment/demo-assigned-agents.ts");
 
 	assert.match(source, /export interface AgentAssignmentAgent extends AgentSelectorAgent/u);
 	assert.match(source, /status\?: ReactNode;/u);
 	assert.match(source, /statusSequence\?: readonly string\[\];/u);
 	assert.match(source, /statusKind\?: AgentAssignmentStatusKind;/u);
+	assert.match(source, /invokedBy\?: AgentListInvoker;/u);
+	assert.match(source, /host\?: AgentListHost;/u);
+	assert.match(source, /role\?: AgentSessionRole;/u);
 	assert.match(source, /export type \{ AgentAssignmentStatusKind \} from "@\/components\/blocks\/agent-assignment\/components\/assigned-agent-status";/u);
 	const statusHelper = readProjectFile("components/blocks/agent-assignment/components/assigned-agent-status.ts");
 	assert.match(statusHelper, /export type AgentAssignmentStatusKind = "working" \| "needs-input" \| "finished" \| "idle";/u);
@@ -31,23 +35,26 @@ test("Agent Assignment exposes a reusable controlled block contract", () => {
 	assert.match(source, /export interface AgentAssignmentProps/u);
 	assert.match(source, /agents: readonly AgentSelectorAgent\[\];/u);
 	assert.match(source, /assignedAgents: readonly AgentAssignmentAgent\[\];/u);
-	assert.match(source, /onAssignedAgentIdsChange: \(agentIds: readonly string\[\]\) => void;/u);
+	assert.match(source, /onAssignedAgentIdsChange\?: \(agentIds: readonly string\[\]\) => void;/u);
 	assert.match(source, /onAgentAssign\?: \(agent: AgentSelectorAgent\) => void;/u);
 	assert.match(source, /onAssignedAgentSelect: \(agent: AgentAssignmentAgent\) => void;/u);
 	assert.match(source, /onContinueExistingSession\?: \(agent: AgentSelectorAgent\) => void;/u);
+	assert.match(source, /onRenameAssignedAgent\?: \(agent: AgentAssignmentAgent\) => void;/u);
 	assert.match(source, /onStartNewSession\?: \(agent: AgentSelectorAgent\) => void;/u);
 	assert.match(source, /usedAgentIds\?: readonly string\[\];/u);
 	assert.match(index, /export \{ AgentAssignment \} from "\.\/components\/agent-assignment";/u);
 	assert.match(index, /export \{ resolveAssignedAgentStatusKind \} from "\.\/components\/assigned-agent-status";/u);
+	assert.match(index, /export type \{ AgentAssignmentVariant \} from "\.\/components\/assignment-session";/u);
 	assert.match(index, /AgentAssignmentAgent,[\s\S]*AgentAssignmentProps,[\s\S]*AgentAssignmentStatusKind/u);
-	assert.match(page, /"github-copilot": \{[\s\S]*statusKind: "working"[\s\S]*"Checking the proposed patch across every changed file in this review"/u);
-	assert.match(page, /"release-notes-drafter": \{[\s\S]*statusKind: "needs-input"/u);
-	assert.match(page, /"code-reviewer": \{[\s\S]*statusKind: "idle"/u);
-	assert.match(page, /"readiness-checker": \{[\s\S]*statusKind: "idle"/u);
-	assert.match(page, /statusKind: demoStatus\.statusKind,[\s\S]*statusSequence: demoStatus\.labels/u);
+	assert.match(demoAssigned, /"github-copilot": \{[\s\S]*host: "cloud"[\s\S]*role: "owner"[\s\S]*statusKind: "working"[\s\S]*"Checking the proposed patch across every changed file in this review"/u);
+	assert.match(demoAssigned, /"release-notes-drafter": \{[\s\S]*host: "cloud"[\s\S]*role: "owner"[\s\S]*statusKind: "needs-input"/u);
+	assert.match(demoAssigned, /"code-reviewer": \{[\s\S]*host: "local"[\s\S]*role: "owner"[\s\S]*statusKind: "idle"/u);
+	assert.match(demoAssigned, /"readiness-checker": \{[\s\S]*host: "local"[\s\S]*role: "viewer"[\s\S]*statusKind: "idle"/u);
+	assert.match(demoAssigned, /statusKind: demoStatus\.statusKind,[\s\S]*statusSequence: demoStatus\.labels/u);
+	assert.match(demoAssigned, /statusKind: "finished"/u);
+	assert.match(page, /getAgentAssignmentDemoAssignedAgents\(assignedAgentIds, \{\s*codeReviewerFinished,/u);
 	assert.match(page, /import \{ SONNER_TOAST_AUTO_DISMISS_MS \} from "@\/components\/ui\/sonner"/u);
 	assert.match(page, /window\.setTimeout\(\(\) => \{\s*setCodeReviewerFinished\(true\);\s*\}, SONNER_TOAST_AUTO_DISMISS_MS \+ 400\)/u);
-	assert.match(page, /statusKind: "finished" as const/u);
 	assert.doesNotMatch(page, /DemoAgentActivity|setInterval|useReducedMotion/u);
 
 	const avatar = readProjectFile("components/blocks/agent-assignment/components/assignment-avatar.tsx");
@@ -108,6 +115,15 @@ test("Agent Assignment preserves the work-item trigger and two-stage menu behavi
 	assert.match(source, /cloneElement\(trigger, \{ "aria-expanded": open \}\)/u);
 	assert.match(source, /import \{ token \} from "@\/lib\/tokens";/u);
 	assert.match(source, /<PopoverContent[\s\S]*style=\{\{ boxShadow: token\("elevation\.shadow\.overlay"\) \}\}/u);
+	assert.match(
+		source,
+		/<HoverCardContent[\s\S]*className="max-h-none w-\[280px\] max-w-\[280px\] gap-0 overflow-hidden rounded-xl p-0 shadow-none"/u,
+	);
+	assert.match(
+		source,
+		/<PopoverContent[\s\S]*className="max-h-none w-\[280px\] max-w-\[280px\] gap-0 overflow-hidden rounded-xl p-0"/u,
+	);
+	assert.doesNotMatch(source, /w-\[360px\]/u);
 	assert.match(source, /className="absolute inset-0 z-0 rounded-md outline-none"/u);
 	assert.match(source, /aria-label=\{shown\.length === 0 \? "Assign agent" : triggerLabel\}/u);
 	assert.match(
@@ -119,7 +135,10 @@ test("Agent Assignment preserves the work-item trigger and two-stage menu behavi
 		source,
 		/const showSessionView = view === "session" && pendingSessionAgent !== null;[\s\S]*const effectiveView = showSessionView[\s\S]*assignedAgents\.length === 0 \|\| view === "session"[\s\S]*"selector"/u,
 	);
-	assert.match(source, /<AssignedAgentsMenu[\s\S]*onAddAgent=\{handleShowSelector\}/u);
+	assert.match(source, /<AssignedAgentsMenu[\s\S]*onAddAgent=\{onAssignedAgentIdsChange \? handleShowSelector : undefined\}[\s\S]*onArchiveAgent=\{allowArchive && onAssignedAgentIdsChange \? handleArchiveAgent : undefined\}/u);
+	assert.match(menu, /onAddAgent\?: \(\) => void;[\s\S]*onArchiveAgent\?: \(agent: AgentAssignmentAgent\) => void;/u);
+	assert.match(menu, /hoverActions: onArchiveAgent \? \{[\s\S]*secondaryLabel: "Archive",[\s\S]*\} : undefined,/u);
+	assert.match(menu, /\{onAddAgent \? \([\s\S]*Assign agent[\s\S]*\) : null\}/u);
 	assert.match(source, /if \(usedAgentIds\.includes\(agentId\)\) \{\s*retainPopoverOpenRef\.current = true;\s*menuRootRef\.current\?\.focus\(\);\s*setPendingSessionAgent\(agent\);\s*setView\("session"\);/u);
 	assert.match(source, /<AgentSessionTargetMenu[\s\S]*onChoose=\{\(choice\) => handleSessionChoice\(pendingSessionAgent, choice\)\}/u);
 	assert.match(source, /<AgentSelector[\s\S]*searchVariant="palette"[\s\S]*selectionMode="single"/u);
@@ -149,7 +168,7 @@ test("Agent Assignment preserves the work-item trigger and two-stage menu behavi
 	assert.match(menu, /inlineMetadata: getAssignedAgentHoverByline\(row, statusKind, rowIndex\)/u);
 	assert.match(menu, /case "working":\s*return <AssignedAgentStatus agent=\{agent\} rowIndex=\{rowIndex\} \/>;/u);
 	assert.doesNotMatch(menu, /setInterval/u);
-	assert.match(menu, /hoverActions: \{[\s\S]*primaryLabel: "View"[\s\S]*secondaryLabel: "Archive"/u);
+	assert.match(menu, /hoverActions: onArchiveAgent \? \{[\s\S]*primaryLabel: "View"[\s\S]*secondaryLabel: "Archive"/u);
 	assert.match(menu, /function AssignedAgentTrailingStatus\(/u);
 	assert.match(menu, /const statusKind = resolveAssignedAgentStatusKind\(row\);/u);
 	assert.match(menu, /<Spinner label=\{`\$\{agent\.name\} running`\} size="sm" \/>/u);
@@ -195,12 +214,12 @@ test("Agent Assignment preserves the work-item trigger and two-stage menu behavi
 	assert.doesNotMatch(menu, /menu-row-title text-text-subtlest/u);
 	assert.doesNotMatch(suggestionMenu, /absolute inset-y-0 right-2/u);
 	assert.doesNotMatch(suggestionMenuCss, /padding-right: 104px/u);
-	assert.match(menu, /className="rich-text-command-menu-embedded w-full!"/u);
+	assert.match(menu, /className="rich-text-command-menu-embedded w-full! \[&_\.rich-text-command-menu-list\]:p-0"/u);
 	assert.match(
 		menu,
-		/className="sticky bottom-0 z-10 mx-1 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-1(?: pb-1)?"/u,
+		/className="sticky bottom-0 z-10 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-1"/u,
 	);
-	assert.doesNotMatch(menu, /className="(?:px-1 )?pb-1"/u);
+	assert.match(menu, /className="flex w-full flex-col gap-1 p-1 outline-none"/u);
 	assert.match(menu, /containerRef\.current\?\.focus\(\);/u);
 	assert.doesNotMatch(menu, /firstOption\?\.focus\(\);/u);
 	assert.match(menu, /selectedIndex === -1\s*\? \(step > 0 \? 0 : items\.length - 1\)/u);
@@ -259,11 +278,13 @@ test("Agent Assignment filled pins follow the space pin set, not assignment or u
 		/export const DEFAULT_PINNED_SPACE_AGENT_IDS = \[\s*"rfp-drafting-agent",\s*"readiness-checker",\s*\] as const;/u,
 	);
 	assert.match(page, /defaultPinnedAgentIds=\{DEFAULT_PINNED_SPACE_AGENT_IDS\}/u);
-	assert.match(page, /const DEMO_USED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*\] as const;/u);
+	const demoAssigned = readProjectFile("components/blocks/agent-assignment/demo-assigned-agents.ts");
+	assert.match(demoAssigned, /export const DEMO_USED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*\] as const;/u);
 	assert.match(
-		page,
-		/const INITIAL_ASSIGNED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*"code-reviewer",\s*"readiness-checker",\s*\] as const;/u,
+		demoAssigned,
+		/export const INITIAL_ASSIGNED_AGENT_IDS = \[\s*"github-copilot",\s*"code-reviewer",\s*"release-notes-drafter",\s*"readiness-checker",\s*\] as const;/u,
 	);
+	assert.match(page, /getAgentAssignmentDemoAssignedAgents\(assignedAgentIds/u);
 	assert.doesNotMatch(page, /defaultPinnedAgentIds=\{(?:DEMO_USED_AGENT_IDS|INITIAL_ASSIGNED_AGENT_IDS)\}/u);
 	assert.doesNotMatch(pickerOptions, /"github-copilot"|"release-notes-drafter"|"code-reviewer"/u);
 
@@ -284,13 +305,11 @@ test("Agent Assignment filled pins follow the space pin set, not assignment or u
 
 test("assigned-agent action rows truncate 8px from CTAs and idle the byline on hover-out", () => {
 	const menu = readProjectFile("components/blocks/agent-assignment/components/assigned-agents-menu.tsx");
-	const page = readProjectFile("components/blocks/agent-assignment/page.tsx");
+	const demoAssigned = readProjectFile("components/blocks/agent-assignment/demo-assigned-agents.ts");
 	const suggestionMenu = readProjectFile("components/ui-custom/rich-text-editor/suggestion-menu.tsx");
 	const suggestionMenuCss = readProjectFile("components/ui-custom/rich-text-editor/suggestion-menu-actions.css");
 	const editorCss = readProjectFile("components/ui-custom/rich-text-editor/rich-text-editor.css");
 
-	// Action rows must not reserve the 28px return-shortcut gutter — the CTA
-	// column already owns trailing space (padding-right: space-100 = 8px).
 	assert.match(
 		editorCss,
 		/\.rich-text-command-menu-item:not\(\[data-has-actions="true"\]\):hover \.rich-text-command-menu-copy,[\s\S]*\.rich-text-command-menu-item-selected:not\(\[data-has-actions="true"\]\) \.rich-text-command-menu-copy \{\s*padding-right: 28px;/u,
@@ -305,22 +324,16 @@ test("assigned-agent action rows truncate 8px from CTAs and idle the byline on h
 		/\[data-suggestion-actions\]:has\(:focus-visible\) \.rich-text-command-menu-item\[data-has-actions="true"\] \.rich-text-command-menu-copy,[\s\S]*padding-right: 0;/u,
 	);
 
-	// Long-label fixture: the 2nd-line toolcall must be long enough to ellipsis
-	// before the View CTA (gotchas-ui: hover-reveal + truncating copy).
 	assert.match(
-		page,
+		demoAssigned,
 		/Checking the proposed patch across every changed file in this review/u,
 	);
 
-	// Working assigned agents show a rest-state spinner that yields (opacity) to
-	// View/Archive — never unmounted with display:none / hidden.
 	assert.match(menu, /<Spinner label=\{`\$\{agent\.name\} running`\} size="sm" \/>/u);
 	assert.doesNotMatch(menu, /<Spinner[^>]*variant="rainbow"/u);
 	assert.match(suggestionMenu, /shouldYieldTrailingToHoverActions \? "pointer-events-none opacity-0"/u);
 	assert.doesNotMatch(suggestionMenu, /className="hidden items-center gap-1/u);
 
-	// Hover-out must idle the byline: clear selectedIndex and do not drive the
-	// 2nd line from a stale isSelected on hover-action rows.
 	assert.match(menu, /onHoverEnd=\{\(\) => setSelectedIndex\(-1\)\}/u);
 	assert.match(suggestionMenu, /const isBylineRevealed = hasHoverActions \? isHoverActionsRevealed : isSelected;/u);
 	assert.match(suggestionMenu, /animate=\{isBylineRevealed \? "active" : "idle"\}/u);
@@ -348,6 +361,7 @@ test("Agent Assignment is registered with a catalog demo and documentation", () 
 	const components = readProjectFile("app/data/components.ts");
 	const manifest = readProjectFile("app/data/component-manifest.ts");
 	const registry = readProjectFile("components/website/registry/blocks.ts");
+	const variantRegistry = readProjectFile("components/website/registry/blocks-variants.ts");
 
 	assert.match(page, /<AgentAssignment/u);
 	assert.match(page, /onBrowseAgents=\{\(\) => undefined\}/u);
@@ -355,11 +369,23 @@ test("Agent Assignment is registered with a catalog demo and documentation", () 
 	assert.match(page, /defaultPinnedAgentIds=\{DEFAULT_PINNED_SPACE_AGENT_IDS\}/u);
 	assert.match(page, /pinnedItemsLabel=\{WORK_ITEM_PINNED_ITEMS_LABEL\}/u);
 	assert.match(page, /usedAgentIds=\{DEMO_USED_AGENT_IDS\}/u);
-	assert.match(page, /const DEMO_USED_AGENT_IDS = \[\s*"github-copilot",\s*"release-notes-drafter",\s*\] as const;/u);
+	assert.match(page, /from "@\/components\/blocks\/agent-assignment\/demo-assigned-agents"/u);
 	assert.match(page, /onContinueExistingSession=\{\(\) => undefined\}/u);
+	assert.match(page, /onRenameAssignedAgent=\{\(\) => undefined\}/u);
 	assert.match(page, /onStartNewSession=\{\(\) => undefined\}/u);
 	assert.match(demo, /AgentAssignmentPage/u);
+	assert.match(demo, /export function AgentAssignmentDemoDefault/u);
+	assert.match(demo, /export function AgentAssignmentDemoSimple/u);
+	assert.match(demo, /variant="default"/u);
+	assert.match(demo, /variant="simple"/u);
 	assert.match(details, /importStatement: `import \{ AgentAssignment \} from "@\/components\/blocks\/agent-assignment";`/u);
+	assert.match(details, /title: "Default"/u);
+	assert.match(details, /title: "Simple"/u);
+	assert.match(details, /demoSlug: "agent-assignment-demo-default"/u);
+	assert.match(details, /demoSlug: "agent-assignment-demo-simple"/u);
+	assert.match(details, /type: '"default" \| "simple"'/u);
+	assert.match(variantRegistry, /"agent-assignment-demo-default": dynamic/u);
+	assert.match(variantRegistry, /"agent-assignment-demo-simple": dynamic/u);
 	assert.match(components, /blockComponent\("agent-assignment", "Agent Assignment"\)/u);
 	assert.match(manifest, /blockComponent\("agent-assignment", "Agent Assignment"\)/u);
 	assert.match(registry, /"agent-assignment": dynamic/u);
@@ -404,6 +430,16 @@ async function loadAgentAssignmentClickHarness() {
 								props.onOpenChange?.(false, {
 									cancel() { setHoverCloseCanceled(true); },
 									reason: "trigger-hover",
+								});
+							},
+							type: "button",
+						}),
+						React.createElement("button", {
+							"data-outside-press": "",
+							onClick() {
+								props.onOpenChange?.(false, {
+									cancel() { setHoverCloseCanceled(true); },
+									reason: "outside-press",
 								});
 							},
 							type: "button",
@@ -494,6 +530,7 @@ async function loadAgentAssignmentClickHarness() {
 						onStartNewSession() {},
 						openMode: "hover",
 						usedAgentIds: ["github-copilot"],
+						variant: "simple",
 					});
 				}
 
@@ -504,6 +541,29 @@ async function loadAgentAssignmentClickHarness() {
 						onAssignedAgentIdsChange() {},
 						onAssignedAgentSelect() {},
 						openMode: "hover",
+						variant: "simple",
+					});
+				}
+
+				export function DisplayOnlyAssignmentProbe() {
+					return React.createElement(AgentAssignment, {
+						agents: AGENTS,
+						assignedAgents: [{ ...AGENTS[0], statusLabel: "Working" }],
+						onAssignedAgentSelect() {},
+						openMode: "hover",
+						variant: "simple",
+					});
+				}
+
+				export function DefaultHoverAssignedProbe() {
+					return React.createElement(AgentAssignment, {
+						agents: AGENTS,
+						assignedAgents: [{ ...AGENTS[0], statusLabel: "Working" }],
+						onAssignedAgentIdsChange() {},
+						onAssignedAgentSelect() {},
+						onRenameAssignedAgent() {},
+						openMode: "hover",
+						variant: "default",
 					});
 				}
 			`,
@@ -525,6 +585,15 @@ async function loadAgentAssignmentClickHarness() {
 						if (args.path.includes("assigned-agents-menu")) {
 							return { path: "assigned-agents-menu", namespace: "agent-assignment-click-mock" };
 						}
+						if (args.path.includes("assigned-agents-session-menu")) {
+							return { path: "assigned-agents-session-menu", namespace: "agent-assignment-click-mock" };
+						}
+						if (args.path.includes("agent-assignment-default-field")) {
+							return { path: "agent-assignment-default-field", namespace: "agent-assignment-click-mock" };
+						}
+						if (args.path.includes("assignment-session")) {
+							return { path: "assignment-session", namespace: "agent-assignment-click-mock" };
+						}
 						if (args.path.includes("assignment-avatar")) {
 							return { path: "assignment-avatar", namespace: "agent-assignment-click-mock" };
 						}
@@ -543,13 +612,55 @@ async function loadAgentAssignmentClickHarness() {
 								contents: `
 									import React from "react";
 									export function AssignedAgentsMenu(props) {
-										return React.createElement(
+										return props.onAddAgent ? React.createElement(
 											"button",
 											{ onClick: props.onAddAgent, type: "button" },
 											"Assign agent",
+										) : React.createElement("div", null, "Read only");
+									}
+								`,
+								loader: "tsx",
+								resolveDir,
+							};
+						}
+						if (args.path === "assigned-agents-session-menu") {
+							return {
+								contents: `
+									import React from "react";
+									export function AssignedAgentsSessionMenu(props) {
+										return React.createElement(
+											"div",
+											{ "data-assigned-session-menu": "" },
+											React.createElement("button", {
+												"data-more-menu-open": "",
+												onClick() { props.onMoreMenuOpenChange?.(true); },
+												type: "button",
+											}, "Open more menu"),
+											React.createElement("button", {
+												"data-more-menu-close": "",
+												onClick() { props.onMoreMenuOpenChange?.(false); },
+												type: "button",
+											}, "Close more menu"),
 										);
 									}
 								`,
+								loader: "tsx",
+								resolveDir,
+							};
+						}
+						if (args.path === "agent-assignment-default-field") {
+							return {
+								contents: `
+									import React from "react";
+									export function AgentAssignmentDefaultField() { return null; }
+								`,
+								loader: "tsx",
+								resolveDir,
+							};
+						}
+						if (args.path === "assignment-session") {
+							return {
+								contents: "export function toAssignmentSessionItem() { return {}; }",
 								loader: "tsx",
 								resolveDir,
 							};
@@ -656,6 +767,15 @@ test("hover-open Agent Assignment only retains explicitly transitioned interacti
 		assert.doesNotMatch(window.document.body.textContent, /GitHub Copilot/u);
 
 		await React.act(async () => {
+			root.render(React.createElement(harness.DisplayOnlyAssignmentProbe));
+		});
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-open]").click();
+		});
+		assert.match(window.document.body.textContent, /Read only/u);
+		assert.doesNotMatch(window.document.body.textContent, /Assign agent/u);
+
+		await React.act(async () => {
 			root.render(React.createElement(harness.EmptyHoverAssignmentProbe));
 		});
 		await React.act(async () => {
@@ -678,170 +798,7 @@ test("hover-open Agent Assignment only retains explicitly transitioned interacti
 	}
 });
 
-async function loadAssignedAgentPipHarness() {
-	const mockModules = new Map([
-		[
-			"@/components/ui/popover",
-			`
-				import React from "react";
-				export function Popover(props) { return React.createElement("div", { "data-open": props.open }, props.children); }
-				export function PopoverTrigger(props) { return props.render ?? props.children ?? null; }
-				export function PopoverContent(props) { return React.createElement("div", { "data-assignment-menu": "" }, props.children); }
-			`,
-		],
-		[
-			"@/components/ui/hover-card",
-			`
-				import React from "react";
-				export function HoverCard(props) { return React.createElement("div", null, props.children); }
-				export function HoverCardTrigger() { return null; }
-				export function HoverCardContent(props) { return React.createElement("div", null, props.children); }
-			`,
-		],
-		[
-			"@/components/ui/tooltip",
-			`
-				import React from "react";
-				export function TooltipProvider(props) { return props.children; }
-				export function Tooltip(props) {
-					return React.createElement(
-						"div",
-						{ "data-assignment-tooltip": "", "data-open": props.open ? "true" : "false" },
-						props.children,
-					);
-				}
-				export function TooltipTrigger(props) {
-					if (props.render) {
-						return React.cloneElement(props.render, {}, props.children);
-					}
-					return props.children ?? null;
-				}
-				export function TooltipContent() { return null; }
-			`,
-		],
-		["@/components/ui/avatar", "export function Avatar(props) { return props.children ?? null; }"],
-		["@/components/ui/vpk-icons", "export function PlusIcon() { return null; }"],
-		["@/lib/tokens", "export function token() { return ''; }"],
-		["@/lib/utils", "export function cn(...values) { return values.filter(Boolean).join(' '); }"],
-		["@/components/ui/sonner", "export const SONNER_TOAST_AUTO_DISMISS_MS = 8000;"],
-		["@/components/blocks/agent-selector", "export function AgentSelector() { return null; }"],
-		[
-			"@/components/ui-custom/agent-avatar-visual",
-			`
-				import React from "react";
-				export function AgentAvatarVisual(props) {
-					return React.createElement("span", {
-						"aria-label": props.label,
-						"data-assignment-avatar": "",
-						"data-status": props.status ?? "",
-					});
-				}
-			`,
-		],
-	]);
-	const result = await esbuild.build({
-		stdin: {
-			contents: `
-				import React from "react";
-				import { AgentAssignment } from "./components/blocks/agent-assignment/components/agent-assignment.tsx";
-
-				const AGENTS = [
-					{ id: "release-notes-drafter", name: "Release Notes Drafter", byline: "Drafts notes" },
-					{ id: "code-reviewer", name: "Code Reviewer", byline: "Reviews code" },
-					{ id: "readiness-checker", name: "Readiness Checker", byline: "Checks readiness" },
-				];
-
-				export function AssignedAgentPipProbe() {
-					const assignedAgents = [
-						{ ...AGENTS[0], statusKind: "needs-input", statusLabel: "Needs input" },
-						{ ...AGENTS[1], statusKind: "finished", statusLabel: "Finished" },
-						{ ...AGENTS[2], statusKind: "idle", statusLabel: "Idle" },
-					];
-					return React.createElement(AgentAssignment, {
-						agents: AGENTS,
-						assignedAgents,
-						onAssignedAgentIdsChange() {},
-						onAssignedAgentSelect() {},
-					});
-				}
-			`,
-			loader: "tsx",
-			resolveDir: process.cwd(),
-			sourcefile: "agent-assignment-pip-harness.tsx",
-		},
-		bundle: true,
-		external: ["react", "react-dom"],
-		format: "cjs",
-		platform: "node",
-		tsconfig: path.join(process.cwd(), "tsconfig.json"),
-		write: false,
-		plugins: [
-			{
-				name: "agent-assignment-pip-mocks",
-				setup(build) {
-					build.onResolve({ filter: /.*/ }, (args) => {
-						if (args.path.includes("assigned-agents-menu")) {
-							return { path: "assigned-agents-menu", namespace: "agent-assignment-pip-mock" };
-						}
-						if (args.path.includes("agent-session-target-menu")) {
-							return { path: "agent-session-target-menu", namespace: "agent-assignment-pip-mock" };
-						}
-						if (mockModules.has(args.path)) {
-							return { path: args.path, namespace: "agent-assignment-pip-mock" };
-						}
-						return undefined;
-					});
-					build.onLoad({ filter: /.*/, namespace: "agent-assignment-pip-mock" }, (args) => {
-						const resolveDir = process.cwd();
-						if (args.path === "assigned-agents-menu") {
-							return {
-								contents: `
-									import React from "react";
-									export function AssignedAgentsMenu(props) {
-										return React.createElement(
-											"div",
-											{ "data-assigned-agents-menu": "" },
-											(props.rows ?? []).map((row) => React.createElement(
-												"button",
-												{
-													"data-assigned-agent-row": row.id,
-													key: row.id,
-													onClick() { props.onSelectAgent(row); },
-													type: "button",
-												},
-												row.name,
-											)),
-										);
-									}
-								`,
-								loader: "tsx",
-								resolveDir,
-							};
-						}
-						if (args.path === "agent-session-target-menu") {
-							return { contents: "export function AgentSessionTargetMenu() { return null; }", loader: "tsx", resolveDir };
-						}
-						return {
-							contents: mockModules.get(args.path),
-							loader: "tsx",
-							resolveDir,
-						};
-					});
-				},
-			},
-		],
-	});
-
-	return loadCjsModuleFromText(result.outputFiles[0].text, "agent-assignment-pip-harness.cjs");
-}
-
-function fieldAvatarStatus(document, agentName) {
-	const avatar = [...document.querySelectorAll("[data-assignment-avatar]")]
-		.find((node) => (node.getAttribute("aria-label") ?? "").startsWith(agentName));
-	return avatar?.getAttribute("data-status") ?? "";
-}
-
-test("clicking an assigned-agents row dismisses that agent's needs-input field pip", async () => {
+test("hover-open default assignment keeps the picker while the portalled more-menu is open", async () => {
 	const { window } = parseHTML("<!doctype html><html><body><div id='app'></div></body></html>");
 	const originalGlobals = {
 		document: globalThis.document,
@@ -860,30 +817,50 @@ test("clicking an assigned-agents row dismisses that agent's needs-input field p
 		IS_REACT_ACT_ENVIRONMENT: true,
 	});
 
-	const harness = await loadAssignedAgentPipHarness();
+	const harness = await loadAgentAssignmentClickHarness();
 	const root = createRoot(window.document.getElementById("app"));
 	try {
 		await React.act(async () => {
-			root.render(React.createElement(harness.AssignedAgentPipProbe));
+			root.render(React.createElement(harness.DefaultHoverAssignedProbe));
 		});
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-open]").click();
+		});
+		assert.equal(window.document.querySelector("[data-open]").getAttribute("data-open"), "true");
+		assert.ok(window.document.querySelector("[data-assigned-session-menu]"));
 
-		assert.equal(fieldAvatarStatus(window.document, "Release Notes Drafter"), "needs-input");
-		assert.equal(fieldAvatarStatus(window.document, "Code Reviewer"), "finished");
-		assert.equal(fieldAvatarStatus(window.document, "Readiness Checker"), "");
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-close]").click();
+		});
+		assert.equal(window.document.querySelector("[data-open]").getAttribute("data-open"), "false");
+
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-open]").click();
+		});
+		await React.act(async () => {
+			window.document.querySelector("[data-more-menu-open]").click();
+		});
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-close]").click();
+		});
+		assert.equal(window.document.querySelector("[data-open]").getAttribute("data-open"), "true");
 		assert.equal(
-			[...window.document.querySelectorAll("[data-assignment-tooltip]")]
-				.filter((node) => node.getAttribute("data-open") === "true")
-				.length,
-			0,
+			window.document.querySelector("[data-hover-close-canceled]").getAttribute("data-hover-close-canceled"),
+			"true",
 		);
 
 		await React.act(async () => {
-			window.document.querySelector("[data-assigned-agent-row='release-notes-drafter']").click();
+			window.document.querySelector("[data-outside-press]").click();
 		});
+		assert.equal(window.document.querySelector("[data-open]").getAttribute("data-open"), "true");
 
-		assert.equal(fieldAvatarStatus(window.document, "Release Notes Drafter"), "");
-		assert.equal(fieldAvatarStatus(window.document, "Code Reviewer"), "finished");
-		assert.equal(fieldAvatarStatus(window.document, "Readiness Checker"), "");
+		await React.act(async () => {
+			window.document.querySelector("[data-more-menu-close]").click();
+		});
+		await React.act(async () => {
+			window.document.querySelector("[data-hover-close]").click();
+		});
+		assert.equal(window.document.querySelector("[data-open]").getAttribute("data-open"), "false");
 	} finally {
 		await React.act(async () => {
 			root.unmount();

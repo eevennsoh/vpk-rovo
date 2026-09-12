@@ -475,6 +475,23 @@ function canCreateFromTarget<T>(target: ApproveTarget<T> | undefined): boolean {
 	return target.kind === "work-item" || target.reason !== "already-attached";
 }
 
+/**
+ * The row's approve affordance — the hover check that links a session to its
+ * suggested work item. A board without the link feature passes
+ * `enabled: false` and gets `null`, so the row renders no control at all
+ * rather than a disabled or no-op one.
+ */
+export function resolveTriageApprove<T>(
+	target: ApproveTarget<T>,
+	options: Readonly<{ enabled: boolean; onApprove: () => void }>,
+): { readonly onApprove: () => void; readonly target: ApproveTarget<T> } | null {
+	if (!options.enabled) {
+		return null;
+	}
+
+	return { onApprove: options.onApprove, target };
+}
+
 export function buildUntrackedHeaderModel<T>(
 	input: Readonly<{
 		approveTargetById: ReadonlyMap<string, ApproveTarget<T>>;

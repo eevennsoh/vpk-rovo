@@ -29,6 +29,11 @@ import ExperimentalV2JiraKanbanPage from "@/components/blocks/jira-kanban/experi
 			description: "Same v2 board, starting on simple chrome. Toggle back to Default on the board.",
 			demoSlug: "jira-kanban-demo-experimental-v2-simple",
 		},
+		{
+			title: "Empty columns",
+			description: "Experimental v2 with To do, In progress, and Done empty beside a populated In review column, for checking zero-item column layout and resize controls.",
+			demoSlug: "jira-kanban-demo-empty-columns",
+		},
 	],
 	props: [
 		{ name: "columnChrome", type: '"default" | "simple"', description: "Expanded column backdrop. \"default\" is the sunken well. \"simple\" is no well. Omit for \"default\"." },

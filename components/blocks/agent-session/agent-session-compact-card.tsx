@@ -2,8 +2,12 @@
 
 import { motion, useReducedMotion } from "motion/react";
 
-import { JiraIssueAgentActivityRows } from "@/components/blocks/jira-issue/agent-activity";
+import { JiraIssueAgentActivityRows, type JiraIssueAgentAssignment } from "@/components/blocks/jira-issue/agent-activity";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
+import {
+	DEFAULT_PINNED_SPACE_AGENT_IDS,
+	WORK_ITEM_PINNED_ITEMS_LABEL,
+} from "@/components/blocks/jira-work-item/experimental-v3/lib/work-item-picker-options";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -16,19 +20,22 @@ import { AgentSessionNotchMark } from "./agent-session-notch";
 import type { AgentSessionItem, AgentSessionVariant } from "./agent-session-types";
 import { toJiraIssueAgentActivityFromSession } from "./agent-session-work-item";
 
-function AttachedAgentSession({
+export function AgentSessionAttachedCard({
+	assignment,
 	isArriving,
 	isNew,
-	item,
+	items,
 	onView,
 }: Readonly<{
+	assignment?: JiraIssueAgentAssignment;
 	isArriving: boolean;
 	isNew: boolean;
-	item: AgentSessionItem;
+	items: readonly AgentSessionItem[];
 	onView?: (item: AgentSessionItem) => void;
 }>) {
 	const shouldReduceMotion = useReducedMotion();
 	const shouldPlayArrival = isArriving && !shouldReduceMotion;
+	const activities = items.map(toJiraIssueAgentActivityFromSession);
 
 	return (
 		<motion.div
@@ -49,8 +56,22 @@ function AttachedAgentSession({
 				</>
 			) : null}
 			<JiraIssueAgentActivityRows
-				activities={[toJiraIssueAgentActivityFromSession(item)]}
-				onViewChat={onView === undefined ? undefined : () => onView(item)}
+				activities={activities}
+				assignment={{
+					defaultPinnedAgentIds: DEFAULT_PINNED_SPACE_AGENT_IDS,
+					pinnedItemsLabel: WORK_ITEM_PINNED_ITEMS_LABEL,
+					...assignment,
+				}}
+				avatarLayout="animated"
+				inheritChinSurface
+				onViewChat={onView === undefined
+					? undefined
+					: (activity) => {
+						const item = items.find((candidate) => candidate.id === activity.id);
+						if (item !== undefined) {
+							onView(item);
+						}
+					}}
 				shouldReduceMotion={shouldReduceMotion}
 				usesStrokeChrome
 			/>
@@ -97,6 +118,7 @@ function SmallAgentSession({
 }
 
 export function AgentSessionCompactCard({
+	assignment,
 	captured = false,
 	flyout = false,
 	isArriving = false,
@@ -112,6 +134,7 @@ export function AgentSessionCompactCard({
 	sessionDrag,
 	variant,
 }: Readonly<{
+	assignment?: JiraIssueAgentAssignment;
 	captured?: boolean;
 	isArriving?: boolean;
 	/**
@@ -141,10 +164,11 @@ export function AgentSessionCompactCard({
 			onView={onView}
 		/>
 	) : variant === "medium-attached" ? (
-		<AttachedAgentSession
+		<AgentSessionAttachedCard
+			assignment={assignment}
 			isArriving={isArriving}
 			isNew={isNew}
-			item={item}
+			items={[item]}
 			onView={onView}
 		/>
 	) : (

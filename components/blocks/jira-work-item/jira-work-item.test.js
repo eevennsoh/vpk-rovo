@@ -22,7 +22,7 @@ function readBlockFile(relativePath) {
 // ── Source shape: variant API + experimental preset ──────────────────────────
 
 test("JiraWorkItem exposes the variant API and the minimal experimental preset prop", () => {
-	assert.match(JIRA_WORK_ITEM_SOURCE, /export type JiraWorkItemVariant = "default" \| "experimental" \| "experimental-v2" \| "experimental-v3" \| "experimental-v4" \| "experimental-v5" \| "experimental-v6";/u);
+	assert.match(JIRA_WORK_ITEM_SOURCE, /export type JiraWorkItemVariant = "default" \| "experimental" \| "experimental-v2" \| "experimental-v3" \| "experimental-v4" \| "experimental-v5" \| "team-eu26";/u);
 	assert.match(JIRA_WORK_ITEM_SOURCE, /variant\?: JiraWorkItemVariant;/u);
 	assert.match(JIRA_WORK_ITEM_SOURCE, /variant = "default"/u);
 	assert.match(JIRA_WORK_ITEM_SOURCE, /initialExperimentalPreset\?: JiraWorkItemExperimentalPreset;/u);
@@ -35,7 +35,7 @@ test("JiraWorkItem exposes the variant API and the minimal experimental preset p
 	// is written once and the variant union cannot drift from the surfaces.
 	assert.match(
 		JIRA_WORK_ITEM_SOURCE,
-		/const EXPERIMENTAL_SURFACES = \{\s*experimental: ExperimentalJiraWorkItem,\s*"experimental-v2": ExperimentalV2JiraWorkItem,\s*"experimental-v3": ExperimentalV3JiraWorkItem,\s*"experimental-v4": ExperimentalV4JiraWorkItem,\s*"experimental-v5": ExperimentalV5JiraWorkItem,\s*"experimental-v6": ExperimentalV6JiraWorkItem,\s*\} as const;/u,
+		/const EXPERIMENTAL_SURFACES = \{\s*experimental: ExperimentalJiraWorkItem,\s*"experimental-v2": ExperimentalV2JiraWorkItem,\s*"experimental-v3": ExperimentalV3JiraWorkItem,\s*"experimental-v4": ExperimentalV4JiraWorkItem,\s*"experimental-v5": ExperimentalV5JiraWorkItem,\s*"team-eu26": TeamEu26JiraWorkItem,\s*\} as const;/u,
 	);
 	assert.match(JIRA_WORK_ITEM_SOURCE, /type ExperimentalVariant = keyof typeof EXPERIMENTAL_SURFACES;/u);
 	// The experimental preset type is the model's preset union.
@@ -92,15 +92,40 @@ test("JiraWorkItem experimental view delegates chat ownership to its composition
 		/const ExperimentalV5JiraWorkItem = dynamic\(\s*\(\) => import\("@\/components\/blocks\/jira-work-item\/experimental-v5\/experimental-v5-jira-work-item"\)\s*\.then\(\(module\) => module\.ExperimentalV5JiraWorkItem\),\s*\);/u,
 	);
 	assert.doesNotMatch(JIRA_WORK_ITEM_SOURCE, /ExperimentalV5JiraWorkItem = dynamic\([\s\S]*ssr:\s*false/u);
-	assert.doesNotMatch(JIRA_WORK_ITEM_SOURCE, /import \{ ExperimentalV6JiraWorkItem \} from/u);
+	assert.doesNotMatch(JIRA_WORK_ITEM_SOURCE, /import \{ TeamEu26JiraWorkItem \} from/u);
 	assert.match(
 		JIRA_WORK_ITEM_SOURCE,
-		/const ExperimentalV6JiraWorkItem = dynamic\(\s*\(\) => import\("@\/components\/blocks\/jira-work-item\/experimental-v6\/experimental-v6-jira-work-item"\)\s*\.then\(\(module\) => module\.ExperimentalV6JiraWorkItem\),\s*\);/u,
+		/const TeamEu26JiraWorkItem = dynamic\(\s*\(\) => import\("@\/components\/blocks\/jira-work-item\/team-eu26\/team-eu26-jira-work-item"\)\s*\.then\(\(module\) => module\.TeamEu26JiraWorkItem\),\s*\);/u,
 	);
-	assert.doesNotMatch(JIRA_WORK_ITEM_SOURCE, /ExperimentalV6JiraWorkItem = dynamic\([\s\S]*ssr:\s*false/u);
+	assert.doesNotMatch(JIRA_WORK_ITEM_SOURCE, /TeamEu26JiraWorkItem = dynamic\([\s\S]*ssr:\s*false/u);
 	// Shared open/close shell is extracted and used by both views.
 	assert.match(JIRA_WORK_ITEM_SOURCE, /function JiraWorkItemShell\(/u);
 	assert.equal((JIRA_WORK_ITEM_SOURCE.match(/<JiraWorkItemShell onOpen=/gu) ?? []).length, 2);
+});
+
+test("Jira Work Item comment composers keep their height stable when focused", () => {
+	for (const variant of [
+		"experimental",
+		"experimental-v2",
+		"experimental-v3",
+		"experimental-v4",
+		"experimental-v5",
+		"team-eu26",
+	]) {
+		const composerSource = readBlockFile(`${variant}/components/activity-composer.tsx`);
+		const activityComposer = composerSource.match(/<JiraActivityComposer\b[\s\S]*?\/>/u)?.[0];
+
+		assert.ok(activityComposer, `${variant} must render a JiraActivityComposer`);
+		assert.match(
+			activityComposer,
+			/placeholder="Comment, @mention an agent, or \/ for skills"/u,
+		);
+		assert.doesNotMatch(
+			activityComposer,
+			/\bexpandOnFocus\b/u,
+			`${variant} still expands its comment composer on focus`,
+		);
+	}
 });
 
 test("the title Open split button uses direct 24px coding-agent logos", () => {
@@ -566,14 +591,14 @@ test("page.tsx is the variant chooser with the newest fork primary and all varia
 	assert.match(pageSource, /Open experimental v3 session/u);
 	assert.match(pageSource, /Open experimental v4 session/u);
 	assert.match(pageSource, /Open experimental v5 session/u);
-	assert.match(pageSource, /Open experimental v6 session/u);
+	assert.match(pageSource, /Open Team EU26 session/u);
 	assert.match(pageSource, /onClick=\{\(\) => setActiveVariant\("default"\)\}/u);
 	assert.match(pageSource, /onClick=\{\(\) => setActiveVariant\("experimental"\)\}/u);
 	assert.match(pageSource, /onClick=\{\(\) => setActiveVariant\("experimental-v2"\)\}/u);
 	assert.match(pageSource, /onClick=\{\(\) => setActiveVariant\("experimental-v3"\)\}/u);
 	assert.match(pageSource, /onClick=\{\(\) => setActiveVariant\("experimental-v4"\)\}/u);
 	assert.match(pageSource, /onClick=\{\(\) => setActiveVariant\("experimental-v5"\)\}/u);
-	assert.match(pageSource, /onClick=\{\(\) => setActiveVariant\("experimental-v6"\)\}/u);
+	assert.match(pageSource, /onClick=\{\(\) => setActiveVariant\("team-eu26"\)\}/u);
 	assert.match(
 		pageSource,
 		/className="flex h-full min-h-screen flex-wrap content-center items-center justify-center gap-3 p-4"/u,
@@ -583,11 +608,7 @@ test("page.tsx is the variant chooser with the newest fork primary and all varia
 	assert.equal((pageSource.match(/variant="outline"/gu) ?? []).length, 6);
 	assert.match(
 		pageSource,
-		/<Button type="button" onClick=\{\(\) => setActiveVariant\("experimental-v6"\)\}>/u,
-	);
-	assert.match(
-		pageSource,
-		/<Button type="button" variant="outline" onClick=\{\(\) => setActiveVariant\("experimental-v5"\)\}>/u,
+		/<Button type="button" onClick=\{\(\) => setActiveVariant\("team-eu26"\)\}>/u,
 	);
 	// Remounts deterministically via key; every experimental variant uses the filled preset.
 	assert.match(pageSource, /<JiraWorkItem[\s\S]*key=\{activeVariant\}[\s\S]*variant=\{activeVariant\}[\s\S]*initialExperimentalPreset="filled"[\s\S]*\/>/u);
@@ -596,7 +617,8 @@ test("page.tsx is the variant chooser with the newest fork primary and all varia
 	assert.match(pageSource, /export function JiraWorkItemExperimentalV3Page/u);
 	assert.match(pageSource, /export function JiraWorkItemExperimentalV4Page/u);
 	assert.match(pageSource, /export function JiraWorkItemExperimentalV5Page/u);
-	assert.match(pageSource, /export function JiraWorkItemExperimentalV6Page/u);
+	assert.match(pageSource, /export function JiraWorkItemTeamEu26Page/u);
+	assert.match(pageSource, /export function JiraWorkItemTeamEu26EmptyPage/u);
 });
 
 // ── Registry / details / demo parity (must stay consistent for test:catalog) ──
@@ -618,18 +640,16 @@ test("JiraWorkItem keeps the standard + experimental registry, detail, demo, and
 	assert.match(detailsSource, /title: "Experimental v3 · Filled context"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v3"/u);
 	assert.match(detailsSource, /title: "Experimental v4 · Filled context"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v4"/u);
 	assert.match(detailsSource, /title: "Experimental v5 · Filled context"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v5"/u);
-	assert.match(detailsSource, /title: "Experimental v6 · Filled context"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v6"/u);
 	assert.match(detailsSource, /title: "Experimental v3 · Empty context"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v3-empty"/u);
 	assert.match(detailsSource, /title: "Experimental v4 · Empty context"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v4-empty"/u);
 	assert.match(detailsSource, /title: "Experimental v5 · Empty context"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v5-empty"/u);
-	assert.match(detailsSource, /title: "Experimental v6 · Empty context"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v6-empty"/u);
 	assert.match(detailsSource, /title: "Experimental v3 · Multiple agents running"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v3-running"/u);
 	assert.match(detailsSource, /title: "Experimental v4 · Multiple agents running"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v4-running"/u);
 	assert.match(detailsSource, /title: "Experimental v5 · Multiple agents running"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v5-running"/u);
-	assert.match(detailsSource, /title: "Experimental v6 · Multiple agents running"[\s\S]*demoSlug: "jira-work-item-demo-experimental-v6-running"/u);
+	assert.match(detailsSource, /title: "Team EU26"[\s\S]*demoSlug: "jira-work-item-demo-team-eu26"/u);
+	assert.match(detailsSource, /title: "Team EU26 · Empty context"[\s\S]*demoSlug: "jira-work-item-demo-team-eu26-empty"/u);
 	assert.match(detailsSource, /name: "initialIssueOpen"[\s\S]*Opens the Jira work item modal on initial render/u);
 	assert.match(detailsSource, /name: "onIssueClose"[\s\S]*Called after the Jira work item modal closes/u);
-	assert.match(detailsSource, /name: "variant"[\s\S]*type: "\\"default\\" \| \\"experimental\\" \| \\"experimental-v2\\" \| \\"experimental-v3\\" \| \\"experimental-v4\\" \| \\"experimental-v5\\" \| \\"experimental-v6\\"/u);
 	assert.match(detailsSource, /name: "initialExperimentalPreset"[\s\S]*empty[\s\S]*filled[\s\S]*running/u);
 	assert.match(registrySource, /"jira-work-item-demo-standard": dynamic[\s\S]*default: mod\.JiraWorkItemDemoStandard/u);
 	assert.match(registrySource, /"jira-work-item-demo-experimental": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimental/u);
@@ -637,7 +657,8 @@ test("JiraWorkItem keeps the standard + experimental registry, detail, demo, and
 	assert.match(registrySource, /"jira-work-item-demo-experimental-v3": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV3/u);
 	assert.match(registrySource, /"jira-work-item-demo-experimental-v4": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV4/u);
 	assert.match(registrySource, /"jira-work-item-demo-experimental-v5": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV5/u);
-	assert.match(registrySource, /"jira-work-item-demo-experimental-v6": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV6/u);
+	assert.match(registrySource, /"jira-work-item-demo-team-eu26": dynamic[\s\S]*default: mod\.JiraWorkItemDemoTeamEu26/u);
+	assert.match(registrySource, /"jira-work-item-demo-team-eu26-empty": dynamic[\s\S]*default: mod\.JiraWorkItemDemoTeamEu26Empty/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-standard": dynamic[\s\S]*default: mod\.JiraWorkItemDemoStandard/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimental/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-empty": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalEmpty/u);
@@ -648,15 +669,14 @@ test("JiraWorkItem keeps the standard + experimental registry, detail, demo, and
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v3": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV3/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v4": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV4/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v5": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV5/u);
-	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v6": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV6/u);
+	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-team-eu26": dynamic[\s\S]*default: mod\.JiraWorkItemDemoTeamEu26/u);
+	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-team-eu26-empty": dynamic[\s\S]*default: mod\.JiraWorkItemDemoTeamEu26Empty/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v3-empty": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV3Empty/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v4-empty": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV4Empty/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v5-empty": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV5Empty/u);
-	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v6-empty": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV6Empty/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v3-running": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV3Running/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v4-running": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV4Running/u);
 	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v5-running": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV5Running/u);
-	assert.match(blockVariantRegistrySource, /"jira-work-item-demo-experimental-v6-running": dynamic[\s\S]*default: mod\.JiraWorkItemDemoExperimentalV6Running/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoStandard/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimental/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalEmpty/u);
@@ -667,15 +687,14 @@ test("JiraWorkItem keeps the standard + experimental registry, detail, demo, and
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV3/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV4/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV5/u);
-	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV6/u);
+	assert.match(demoSource, /export function JiraWorkItemDemoTeamEu26/u);
+	assert.match(demoSource, /export function JiraWorkItemDemoTeamEu26Empty/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV3Empty/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV4Empty/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV5Empty/u);
-	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV6Empty/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV3Running/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV4Running/u);
 	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV5Running/u);
-	assert.match(demoSource, /export function JiraWorkItemDemoExperimentalV6Running/u);
 	assert.match(demoSource, /<JiraWorkItem variant="default" \/>/u);
 	// The hero demo is the variant chooser page; the experimental example is the filled variant.
 	assert.match(demoSource, /import JiraWorkItemPage from "@\/components\/blocks\/jira-work-item\/page";/u);
@@ -689,21 +708,19 @@ test("JiraWorkItem keeps the standard + experimental registry, detail, demo, and
 	assert.match(demoSource, /<JiraWorkItem variant="experimental-v3" initialExperimentalPreset="filled" \/>/u);
 	assert.match(demoSource, /<JiraWorkItem variant="experimental-v4" initialExperimentalPreset="filled" \/>/u);
 	assert.match(demoSource, /<JiraWorkItem variant="experimental-v5" initialExperimentalPreset="filled" \/>/u);
-	assert.match(demoSource, /<JiraWorkItem variant="experimental-v6" initialExperimentalPreset="filled" \/>/u);
+	assert.match(demoSource, /<JiraWorkItem variant="team-eu26" initialExperimentalPreset="filled" \/>/u);
+	assert.match(demoSource, /<JiraWorkItem variant="team-eu26" initialExperimentalPreset="empty" \/>/u);
 	assert.match(demoSource, /<JiraWorkItem variant="experimental-v3" initialExperimentalPreset="empty" \/>/u);
 	assert.match(demoSource, /<JiraWorkItem variant="experimental-v4" initialExperimentalPreset="empty" \/>/u);
 	assert.match(demoSource, /<JiraWorkItem variant="experimental-v5" initialExperimentalPreset="empty" \/>/u);
-	assert.match(demoSource, /<JiraWorkItem variant="experimental-v6" initialExperimentalPreset="empty" \/>/u);
 	assert.match(demoSource, /<JiraWorkItem variant="experimental-v3" initialExperimentalPreset="running" \/>/u);
 	assert.match(demoSource, /<JiraWorkItem variant="experimental-v4" initialExperimentalPreset="running" \/>/u);
 	assert.match(demoSource, /<JiraWorkItem variant="experimental-v5" initialExperimentalPreset="running" \/>/u);
-	assert.match(demoSource, /<JiraWorkItem variant="experimental-v6" initialExperimentalPreset="running" \/>/u);
 	assert.match(previewLayoutSource, /"jira-work-item-demo-standard"/u);
 	assert.match(previewLayoutSource, /"jira-work-item-demo-experimental"/u);
 	assert.match(previewLayoutSource, /"jira-work-item-demo-experimental-v2"/u);
 	assert.match(previewLayoutSource, /"jira-work-item-demo-experimental-v3"/u);
 	assert.match(previewLayoutSource, /"jira-work-item-demo-experimental-v4"/u);
 	assert.match(previewLayoutSource, /"jira-work-item-demo-experimental-v5"/u);
-	assert.match(previewLayoutSource, /"jira-work-item-demo-experimental-v6"/u);
-	assert.doesNotMatch(previewLayoutSource, /"jira-work-item-demo-experimental-v6-(?:empty|running)"/u);
+	assert.match(previewLayoutSource, /"jira-work-item-demo-team-eu26"/u);
 });

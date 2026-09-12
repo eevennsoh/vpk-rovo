@@ -3644,8 +3644,8 @@
 	},
 	"appPages": {
 		"summary": {
-			"ownerImportCount": 92,
-			"pageCount": 68
+			"ownerImportCount": 93,
+			"pageCount": 69
 		},
 		"pages": [
 			{
@@ -4090,6 +4090,22 @@
 				"shellOwnerCount": 0,
 				"shellOwners": [],
 				"source": "app/jira-queue/page.tsx"
+			},
+			{
+				"ownerCount": 1,
+				"owners": [
+					{
+						"importPath": "@/components/website/demo-registry-loader",
+						"source": "components/website/demo-registry-loader",
+						"symbols": [
+							"loadDemoComponent"
+						]
+					}
+				],
+				"routePath": "/jira-team-eu26",
+				"shellOwnerCount": 0,
+				"shellOwners": [],
+				"source": "app/jira-team-eu26/page.tsx"
 			},
 			{
 				"ownerCount": 0,
@@ -5403,7 +5419,7 @@
 	},
 	"components": {
 		"summary": {
-			"manifestEntryCount": 439,
+			"manifestEntryCount": 444,
 			"categoryCount": 9
 		},
 		"categories": [
@@ -5713,9 +5729,9 @@
 					},
 					{
 						"category": "blocks",
-						"slug": "jira-create",
-						"name": "Jira Create",
-						"importPath": "@/components/blocks/jira-create"
+						"slug": "jira-creating",
+						"name": "Jira Creating",
+						"importPath": "@/components/blocks/jira-creating"
 					},
 					{
 						"category": "blocks",
@@ -6129,7 +6145,7 @@
 			},
 			{
 				"category": "projects",
-				"entryCount": 17,
+				"entryCount": 18,
 				"entries": [
 					{
 						"category": "projects",
@@ -6199,6 +6215,12 @@
 					},
 					{
 						"category": "projects",
+						"slug": "jira-team-eu26",
+						"name": "Jira Team EU26",
+						"importPath": "@/components/projects/jira-team-eu26"
+					},
+					{
+						"category": "projects",
 						"slug": "rovo",
 						"name": "Rovo",
 						"importPath": "@/components/projects/rovo"
@@ -6237,7 +6259,7 @@
 			},
 			{
 				"category": "ui",
-				"entryCount": 80,
+				"entryCount": 82,
 				"entries": [
 					{
 						"category": "ui",
@@ -6601,6 +6623,12 @@
 					},
 					{
 						"category": "ui",
+						"slug": "questionnaire",
+						"name": "Questionnaire",
+						"importPath": "@/components/ui/questionnaire"
+					},
+					{
+						"category": "ui",
 						"slug": "radio-group",
 						"name": "Radio Group",
 						"importPath": "@/components/ui/radio-group"
@@ -6616,6 +6644,12 @@
 						"slug": "scroll-area",
 						"name": "Scroll Area",
 						"importPath": "@/components/ui/scroll-area"
+					},
+					{
+						"category": "ui",
+						"slug": "scroll-fade",
+						"name": "Scroll Fade",
+						"importPath": "@/components/ui/scroll-fade"
 					},
 					{
 						"category": "ui",
@@ -6957,7 +6991,7 @@
 			},
 			{
 				"category": "ui-custom",
-				"entryCount": 73,
+				"entryCount": 74,
 				"entries": [
 					{
 						"category": "ui-custom",
@@ -7291,6 +7325,12 @@
 					},
 					{
 						"category": "ui-custom",
+						"slug": "shimmer-wave",
+						"name": "Shimmer Wave",
+						"importPath": "@/components/ui-custom/shimmer-wave"
+					},
+					{
+						"category": "ui-custom",
 						"slug": "sidebar-nav-item",
 						"name": "Sidebar Nav Item",
 						"importPath": "@/components/ui-custom/sidebar-nav-item"
@@ -7401,13 +7441,19 @@
 			},
 			{
 				"category": "utility",
-				"entryCount": 9,
+				"entryCount": 10,
 				"entries": [
 					{
 						"category": "utility",
 						"slug": "agent-browser",
 						"name": "Agent Browser",
 						"importPath": "@/components/website/demos/utils/agent-browser"
+					},
+					{
+						"category": "utility",
+						"slug": "cone-safezone",
+						"name": "Cone safezone",
+						"importPath": "@/components/utils/cone-safezone"
 					},
 					{
 						"category": "utility",
