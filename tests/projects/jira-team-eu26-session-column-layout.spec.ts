@@ -322,6 +322,32 @@ test("the collapsed options menu offers Pin and Expand", async ({ page }) => {
 	await expect(page.getByRole("menuitem", { name: "Expand" })).toHaveCount(0);
 });
 
+test("the hover-open collapsed menu keeps timeline notches inert across its safezone", async ({ page }) => {
+	await openCollapsedBoard(page);
+	if (await page.locator("[data-agent-session-column-hit-area]").count() > 0) {
+		await revealCollapsedAgentSessionColumn(page);
+	}
+	const column = page.locator("[data-agent-session-column]");
+	const options = page.getByRole("button", { name: "Unlink sessions column options" });
+	const first = column.locator("[data-agent-session-notch]").first();
+	const menu = page.getByRole("menu", { name: "Unlink sessions column options" });
+
+	await options.hover();
+	await expect(menu).toBeVisible();
+	const optionsBox = (await options.boundingBox())!;
+	const firstBox = (await first.boundingBox())!;
+	const menuBox = (await menu.boundingBox())!;
+	const crossingY = firstBox.y + firstBox.height / 2;
+
+	await page.mouse.move(menuBox.x + 8, crossingY);
+	await page.mouse.move(firstBox.x + firstBox.width - 8, crossingY);
+	await page.waitForTimeout(400);
+	await expect(page.locator('[data-slot="hover-card-content"]')).toBeHidden();
+	await page.mouse.move(optionsBox.x + optionsBox.width / 2, optionsBox.y + optionsBox.height / 2);
+
+	await expect(menu).toBeVisible();
+});
+
 test("scrolling the session column preserves the active flyout until pointer movement", async ({ page }) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openBoard(page);
