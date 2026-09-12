@@ -13,7 +13,7 @@ import {
 	createBoardCardFromDraft,
 	linkBoardCardToSession,
 } from "../lib/board-menu-work-item";
-import { toAgentSessionWorkItemOptions } from "../lib/board-work-item-options";
+import { toAgentSessionWorkItemOptions, boardHasWorkItem } from "../lib/board-work-item-options";
 
 export interface BoardMenuWorkItem {
 	readonly workItemOptions: readonly AgentSessionWorkItemOption[];
@@ -73,6 +73,12 @@ export function useBoardMenuWorkItem({
 				hostCreate(item, draft);
 				return;
 			}
+			// Capture hides the session from untracked work, so it may only follow a
+			// mutation that actually lands a card. An empty board has nowhere to put
+			// one, and capturing anyway would lose the session to no work item.
+			if (boardColumns.length === 0) {
+				return;
+			}
 
 			updateBoardColumns((columns) => createBoardCardFromDraft(columns, item, draft));
 			onCapture(item);
@@ -82,7 +88,7 @@ export function useBoardMenuWorkItem({
 				hostLink(item, workItemKey);
 				return;
 			}
-			if (workItemKey === undefined) {
+			if (workItemKey === undefined || !boardHasWorkItem(boardColumns, workItemKey)) {
 				return;
 			}
 

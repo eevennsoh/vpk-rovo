@@ -574,6 +574,7 @@ function ExperimentalJiraKanbanPageContent({
 			handleBoardAgentSessionCreate(
 				{ ...item, title: draft.summary },
 				filteredBoardColumns[0]?.title ?? "To do",
+				undefined, draft.issueType, // no slot: the menu appends, unlike a gap drop
 			),
 		hostLink: onCardAgentSessionLink === undefined ? undefined : handleUntrackedLinkWorkItem,
 		onCapture: handleCaptureLooseWork,

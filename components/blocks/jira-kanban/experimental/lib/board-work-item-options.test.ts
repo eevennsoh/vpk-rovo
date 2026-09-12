@@ -4,7 +4,7 @@ import test from "node:test";
 import type { JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
 
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
-import { appendBoardCardFromDraft, nextBoardIssueKey, toAgentSessionWorkItemOptions } from "./board-work-item-options.ts";
+import { appendBoardCardFromDraft, boardHasWorkItem, nextBoardIssueKey, toAgentSessionWorkItemOptions } from "./board-work-item-options.ts";
 
 function column(
 	title: string,
@@ -124,4 +124,19 @@ test("a freshly created card is offered by the picker on the next open", () => {
 		toAgentSessionWorkItemOptions(next).map((option) => option.key),
 		["RFP-101", "RFP-102"],
 	);
+});
+
+test("the board reports whether a key has a card to link against", () => {
+	// Capture hides a session from untracked work, so callers check this first:
+	// linking against a key no column carries would lose the session to nothing.
+	const columns = [
+		column("To do", [{ code: "RFP-101", title: "One" }]),
+		column("Done", [{ code: "RFP-102", title: "Two" }]),
+	];
+
+	assert.equal(boardHasWorkItem(columns, "RFP-101"), true);
+	assert.equal(boardHasWorkItem(columns, "RFP-102"), true);
+	assert.equal(boardHasWorkItem(columns, "RFP-999"), false);
+	assert.equal(boardHasWorkItem([], "RFP-101"), false);
+	assert.equal(boardHasWorkItem([column("To do", [])], "RFP-101"), false);
 });

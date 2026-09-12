@@ -60,6 +60,20 @@ export function nextBoardIssueKey(columns: readonly JiraKanbanColumnData[]): str
 }
 
 /**
+ * Whether the board already holds a card under this key.
+ *
+ * Callers check before capturing a session: linking against a key no column
+ * carries would hide the session from untracked work while attaching it to
+ * nothing, which is worse than declining the action.
+ */
+export function boardHasWorkItem(
+	columns: readonly JiraKanbanColumnData[],
+	workItemKey: string,
+): boolean {
+	return columns.some((column) => column.cards.some((card) => card.code === workItemKey));
+}
+
+/**
  * Appends a card built from what the viewer typed, and reports its new key.
  *
  * The first column is the landing spot because the menu, unlike a drag, names no

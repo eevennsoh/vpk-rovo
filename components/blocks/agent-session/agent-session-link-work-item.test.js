@@ -11,6 +11,16 @@ const MORE_MENU_SOURCE = readFileSync(join(__dirname, "agent-session-more-menu.t
 const MENU_HOOK_SOURCE = readFileSync(join(__dirname, "use-agent-session-menu.ts"), "utf8");
 const CARD_SOURCE = readFileSync(join(__dirname, "agent-session-card.tsx"), "utf8");
 const LIST_SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
+// The board host is the only consumer that wires these capabilities, so its two
+// review-found contracts are pinned here beside the feature they belong to.
+const BOARD_HOOK_SOURCE = readFileSync(
+	join(__dirname, "../jira-kanban/experimental/hooks/use-board-menu-work-item.ts"),
+	"utf8",
+);
+const BOARD_PAGE_SOURCE = readFileSync(
+	join(__dirname, "../jira-kanban/experimental/page.tsx"),
+	"utf8",
+);
 
 test("the picker is a submenu of the row's own menu, not a second overlay", () => {
 	assert.match(SUBMENU_SOURCE, /<DropdownMenuSub\b/u);
@@ -88,10 +98,17 @@ test("the return chip is a real submit button, reachable by pointer and by Enter
 	assert.match(SUBMENU_SOURCE, /if \(event\.key !== "Enter" \|\| !canSubmit\) \{/u);
 });
 
-test("the issue-type picker stays inside the menu it was opened from", () => {
-	// A portalled popup mounts outside the parent menu's subtree, which Base UI
-	// reads as an outside press and uses to close the whole menu on selection.
-	assert.match(SUBMENU_SOURCE, /<DropdownMenuContent align="start" className="min-w-40" portalled=\{false\}>/u);
+test("the issue-type picker stays inside the menu without leaving the a11y tree", () => {
+	// A popup portalled to the body sits outside the parent menu's subtree, which
+	// Base UI reads as an outside press and uses to close the whole menu. The
+	// shared `portalled={false}` container would contain it but carries
+	// aria-hidden, dropping the radios from the accessibility tree while leaving
+	// them focusable — so the picker owns a plain container of its own.
+	assert.match(SUBMENU_SOURCE, /<span className="contents" ref=\{portalContainerRef\} \/>/u);
+	assert.match(SUBMENU_SOURCE, /portalContainer=\{portalContainerRef\}/u);
+	// Scoped to a JSX prop line: the rationale above the picker names the rejected
+	// `portalled={false}` option in prose, and that mention is not a usage.
+	assert.doesNotMatch(SUBMENU_SOURCE, /\n\t+portalled=\{false\}/u);
 	assert.match(SUBMENU_SOURCE, /aria-label=\{`Work item type: \$\{issueTypeLabel\(value\)\}`\}/u);
 	// The un-portalled popup needs a non-clipping ancestor; scroll belongs to the list.
 	assert.doesNotMatch(SUBMENU_SOURCE, /className="max-h-none w-\[22rem\] overflow-hidden p-0"/u);
@@ -145,4 +162,25 @@ test("the list threads the picker's capabilities and options down to the card", 
 		assert.match(CARD_SOURCE, new RegExp(`\\b${prop}\\b`, "u"));
 	}
 	assert.match(CARD_SOURCE, /workItemOptions=\{workItemOptions\}/u);
+});
+
+test("the host forwards the picked issue type, not just the typed name", () => {
+	// The hosted create path reads the session's title for the card summary, but
+	// the type has no such carrier: dropping it would silently make every
+	// Bug/Story/Epic a Task on the routes that own board creation.
+	assert.match(BOARD_PAGE_SOURCE, /\{ \.\.\.item, title: draft\.summary \}/u);
+	assert.match(BOARD_PAGE_SOURCE, /draft\.issueType,/u);
+});
+
+test("the fallback captures a session only once a card exists to hold it", () => {
+	// Capture hides the row from untracked work. Capturing when the mutation
+	// could not land leaves the session attached to nothing.
+	assert.match(
+		BOARD_HOOK_SOURCE,
+		/if \(boardColumns\.length === 0\) \{\s*return;\s*\}\s*\n\s*updateBoardColumns/u,
+	);
+	assert.match(
+		BOARD_HOOK_SOURCE,
+		/if \(workItemKey === undefined \|\| !boardHasWorkItem\(boardColumns, workItemKey\)\) \{\s*return;\s*\}/u,
+	);
 });

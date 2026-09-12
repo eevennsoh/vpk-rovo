@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import ReturnIcon from "@atlaskit/icon-lab/core/return";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
@@ -47,10 +47,13 @@ function issueTypeLabel(issueType: JiraListIssueType): string {
 /**
  * Issue-type picker that sits inside the name field as a glyph + chevron.
  *
- * Rendered un-portalled on purpose. A portalled popup mounts outside the parent
- * menu's DOM subtree, which Base UI reads as an outside press and uses to close
- * the whole menu the moment you pick a type. Keeping it inline makes the choice
- * land inside the surface that asked for it.
+ * Mounted into a container of its own inside the submenu rather than to the
+ * document. A popup portalled to the body sits outside the parent menu's DOM
+ * subtree, which Base UI reads as an outside press — picking a type would close
+ * the whole menu. The shared `portalled={false}` path would also keep it inside,
+ * but that container carries `aria-hidden`, which drops the radio options out of
+ * the accessibility tree while leaving them focusable. Owning the container
+ * keeps the choice both contained and announced.
  */
 function IssueTypePicker({
 	onChange,
@@ -60,6 +63,7 @@ function IssueTypePicker({
 	value: JiraListIssueType;
 }>) {
 	const [open, setOpen] = useState(false);
+	const portalContainerRef = useRef<HTMLSpanElement | null>(null);
 
 	return (
 		<DropdownMenu onOpenChange={setOpen} open={open}>
@@ -78,7 +82,12 @@ function IssueTypePicker({
 					render={<ChevronDownIcon color="currentColor" label="" size="small" />}
 				/>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="min-w-40" portalled={false}>
+			<span className="contents" ref={portalContainerRef} />
+			<DropdownMenuContent
+				align="start"
+				className="min-w-40"
+				portalContainer={portalContainerRef}
+			>
 				<DropdownMenuRadioGroup
 					aria-label="Work item type"
 					onValueChange={(next) => {
