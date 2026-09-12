@@ -2,8 +2,8 @@ import type {
 	MetalFxPreset,
 	MetalFxTheme,
 	MetalFxVariant,
-} from "./vendor/metal-fx/src/types";
-import { PRESETS } from "./vendor/metal-fx/src/engine/presets";
+} from "metal-fx";
+import { PRESETS } from "metal-fx";
 
 export type LiquidMetalReflectionTargetsMode = "none" | "refs";
 export type LiquidMetalDemoSurface = "pill" | "icon" | "toolbar";
@@ -40,13 +40,16 @@ export type LiquidMetalControlConfig = Readonly<{
 	scale: number;
 }>;
 
+/**
+ * Which upstream release this component tracks. 1.0.2 is the last metal-fx
+ * version published with npm provenance attestation. Integrity is the
+ * lockfile's job now, so the vendored commit + archive hash are gone.
+ */
 export const LIQUID_METAL_SOURCE_METADATA = {
 	repository: "https://github.com/Jakubantalik/metal-fx",
-	commit: "be1bf89c63056521a4e8224f368768314c9006f7",
 	packageName: "metal-fx",
-	packageVersion: "1.0.4",
+	packageVersion: "1.0.2",
 	license: "MIT",
-	archiveSha256: "12a11d9129477083b86ca3ba52fe29de2dc92ce0364a2058b68c637497a32d0d",
 } as const;
 
 export const LIQUID_METAL_VARIANT_OPTIONS: readonly LiquidMetalOption<MetalFxVariant>[] = [

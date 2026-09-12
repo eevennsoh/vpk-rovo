@@ -61,7 +61,12 @@ function ThinkingOrbsStateDemo({ state }: Readonly<{ state: OrbState }>) {
 		>
 			{ORB_SIZES.map((size) => (
 				<div key={size} className="flex flex-col items-center gap-3">
-					<ThinkingOrb state={state} size={size} theme={actualTheme} />
+					<ThinkingOrb
+						state={state}
+						size={size}
+						theme={actualTheme}
+						gravity
+					/>
 					<span
 						className={cn(
 							"text-xs",
@@ -119,11 +124,37 @@ export default function ThinkingOrbsDemo() {
 	const [theme, setTheme] = useState<OrbTheme>("auto");
 	const [speed, setSpeed] = useState(1);
 	const [paused, setPaused] = useState(false);
+	const [gravity, setGravity] = useState(true);
+	const [gravityReach, setGravityReach] = useState(2.5);
+	const [gravityPull, setGravityPull] = useState(0.12);
+	const [cursorGravity, setCursorGravity] = useState(true);
 	const [ariaLabel, setAriaLabel] = useState("");
 	const resolvedTheme = theme === "auto" ? actualTheme : theme;
 	const values = useMemo(
-		() => ({ state, size, theme, speed, paused, ariaLabel }),
-		[state, size, theme, speed, paused, ariaLabel],
+		() => ({
+			state,
+			size,
+			theme,
+			speed,
+			paused,
+			gravity,
+			gravityReach,
+			gravityPull,
+			cursorGravity,
+			ariaLabel,
+		}),
+		[
+			state,
+			size,
+			theme,
+			speed,
+			paused,
+			gravity,
+			gravityReach,
+			gravityPull,
+			cursorGravity,
+			ariaLabel,
+		],
 	);
 
 	return (
@@ -134,6 +165,8 @@ export default function ThinkingOrbsDemo() {
 				data-size={size}
 				data-speed={speed}
 				data-paused={paused}
+				data-gravity={gravity}
+				data-cursor-gravity={cursorGravity}
 				data-theme={theme}
 				className={cn(
 					"flex min-h-72 items-center justify-center rounded-xl border p-8 transition-colors duration-medium motion-reduce:transition-none",
@@ -148,6 +181,12 @@ export default function ThinkingOrbsDemo() {
 					theme={theme === "auto" ? actualTheme : theme}
 					speed={speed}
 					paused={paused}
+					gravity={
+						gravity
+							? { radius: size * gravityReach, pull: size * gravityPull }
+							: false
+					}
+					cursorGravity={cursorGravity}
 					aria-label={ariaLabel || undefined}
 				/>
 			</div>
@@ -199,6 +238,50 @@ export default function ThinkingOrbsDemo() {
 						description="Freezes every orb on its current representative frame."
 						checked={paused}
 						onChange={setPaused}
+					/>
+				</GUI.Section>
+
+				<GUI.Section title="Dot gravity">
+					<GUI.Toggle
+						id="thinking-orbs-gravity"
+						label="Dots bend to cursor"
+						description="Dots bend toward the pointer with an inverse-square falloff and ease back when it leaves. Ignored under reduced motion and while paused."
+						checked={gravity}
+						onChange={setGravity}
+					/>
+					<GUI.Control
+						id="thinking-orbs-gravity-reach"
+						label="Reach"
+						description="Influence radius from the orb's centre, as a multiple of its size."
+						value={gravityReach}
+						defaultValue={2.5}
+						min={1}
+						max={6}
+						step={0.1}
+						unit="×"
+						onChange={setGravityReach}
+					/>
+					<GUI.Control
+						id="thinking-orbs-gravity-pull"
+						label="Pull"
+						description="Peak displacement at the pointer, as a fraction of the orb's size."
+						value={gravityPull}
+						defaultValue={0.12}
+						min={0}
+						max={0.4}
+						step={0.01}
+						unit="×"
+						onChange={setGravityPull}
+					/>
+				</GUI.Section>
+
+				<GUI.Section title="Cursor gravity">
+					<GUI.Toggle
+						id="thinking-orbs-cursor-gravity"
+						label="Pointer bends to orb"
+						description="The inverse effect: the native cursor is swapped for a drawn replica whose tip stays pinned while its body leans and trails toward the nearest orb. Needs a fine pointer; off under reduced motion."
+						checked={cursorGravity}
+						onChange={setCursorGravity}
 					/>
 				</GUI.Section>
 

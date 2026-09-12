@@ -193,6 +193,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		"components/visual/heatmap/data.test.js",
 		"components/visual/gooey/gooey.test.ts",
 		"components/visual/dropzone-effect/flow-model.test.ts",
+		"components/visual/thinking-orbs/thinking-orbs.test.js",
 		"components/website/demos/visual/ascii-control-model.test.js",
 		"components/projects/studio/lib/demo-agent-builder.test.js",
 		"components/projects/studio/lib/studio-context-descriptions.test.js",

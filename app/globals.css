@@ -1001,3 +1001,16 @@ html[data-embedded] [data-shell-chrome] {
 		-webkit-mask-image: none;
 	}
 }
+
+/* metal-fx normalizes host chrome on its children with `!important`
+   (`border: 0; outline: 0; box-shadow: none`) so consumer styling cannot
+   clash with the metal ring. That also erases the keyboard focus ring,
+   leaving focus invisible inside a <LiquidMetal>. Upstream offers no
+   opt-out, so restore a ring for :focus-visible only. Higher specificity
+   than the normalizer plus `!important`, unlayered and after the import,
+   so it wins on specificity, layer order and source order alike. */
+.metal-fx-root[data-normalize="true"] .metal-fx-content > *:focus-visible {
+	outline: var(--ds-border-width-outline, 2px) solid
+		var(--ds-border-focused, #388bff) !important;
+	outline-offset: 2px !important;
+}
