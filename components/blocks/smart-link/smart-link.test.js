@@ -157,6 +157,10 @@ test("SmartLink owns the pull-request variant with code stats in the flyout", ()
 	assert.match(COMPONENT_SOURCE, /function SmartLinkCodeStatsRow/u);
 	assert.match(COMPONENT_SOURCE, /text-text-success[\s\S]*\+\{codeStats\.additions\}/u);
 	assert.match(COMPONENT_SOURCE, /text-text-danger[\s\S]*-\{codeStats\.deletions\}/u);
+	assert.match(
+		COMPONENT_SOURCE,
+		/item\.variant === "pull-request"[\s\S]*\? isFlyout[\s\S]*\? "w-\[320px\] max-w-\[calc\(100vw-48px\)\]"[\s\S]*: "w-\[25rem\] max-w-full"/u,
+	);
 	assert.match(INDEX_SOURCE, /toPullRequestSmartLink/u);
 	assert.match(DEMO_SOURCE, /export function SmartLinkDemoPullRequest\(\)/u);
 });
