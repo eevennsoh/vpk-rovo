@@ -59,6 +59,10 @@ test("Link to existing searches the host's own work items", () => {
 	);
 	// The heading names what the list is: recall at rest, matches while filtering.
 	assert.match(SUBMENU_SOURCE, /trimmedQuery\.length > 0 \? "Results" : "Recently viewed"/u);
+	assert.match(
+		SUBMENU_SOURCE,
+		/<DropdownMenuGroup[^>]*>\s*<DropdownMenuLabel>\s*\{trimmedQuery\.length > 0 \? "Results" : "Recently viewed"\}\s*<\/DropdownMenuLabel>/u,
+	);
 	assert.match(SUBMENU_SOURCE, /No matching work items\./u);
 });
 
