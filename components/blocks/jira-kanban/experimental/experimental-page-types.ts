@@ -169,6 +169,8 @@ export interface ExperimentalJiraKanbanPageProps {
 	onContinueLooseWork?: (item: PulseLooseWork) => void;
 	onResumeLooseWork?: (item: PulseLooseWork) => void;
 	onViewChange?: (view: ExperimentalJiraKanbanView) => void;
+	/** Keep visited Board/List views warm; hidden effects are suspended. */
+	retainWorkItemViews?: boolean;
 	renderListContent?: (
 		columns: readonly JiraKanbanColumnData[],
 		context: ExperimentalJiraKanbanListRenderContext,

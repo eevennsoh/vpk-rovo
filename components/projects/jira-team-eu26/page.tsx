@@ -1,11 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import { RovoChatProvider } from "@/app/contexts/context-rovo-chat";
 import { DEFAULT_SKILLS, ROVO_DIRECTORY_AGENT_PROFILES } from "@/app/data/directory";
-import { AgentsDirectoryDialog } from "@/components/blocks/agent-directory";
+import { MountOnFirstUse } from "@/components/projects/shared/components/mount-on-first-use";
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type {
 	JiraIssueAgentActivity,
@@ -22,12 +23,11 @@ import {
 } from "@/components/blocks/jira-kanban/experimental/pulse/types";
 import { linkJiraKanbanAgentSession, moveJiraKanbanAgentSession, unlinkJiraKanbanAgentSession } from "@/components/blocks/jira-kanban/state";
 import {
-	JiraList,
 	useJiraListRowFlashSource,
 	type JiraListAssignedAgent,
 	type JiraListInsertion,
 } from "@/components/blocks/jira-list";
-import { SkillsDirectoryDialog } from "@/components/blocks/skills-directory";
+
 import { JgpRovoOverlay } from "@/components/projects/jira-golden-journeys-v1/components/jira-golden-journeys-v1-rovo-overlay";
 import { JGP_CHAT_AGENT_PROFILES } from "@/components/projects/jira-golden-journeys-v1/data/agent-chat-data";
 import { useJgpAgentChatDemo } from "@/components/projects/jira-golden-journeys-v1/hooks/use-jira-golden-journeys-v1-agent-chat-demo";
@@ -42,7 +42,7 @@ import {
 	resolveJiraTab,
 } from "@/components/projects/jira/lib/jira-tab-model";
 import AppLayout from "@/components/projects/page";
-import { cn } from "@/lib/utils";
+import { JiraTeamEu26List } from "./components/jira-team-eu26-list";
 
 import { renderJiraTeamEu26AgentActivityIndicator } from "./data/agent-activity-indicators";
 import {
@@ -56,7 +56,9 @@ import { useJiraTeamEu26AgentSessionSync } from "./hooks/use-jira-team-eu26-agen
 import { useJiraTeamEu26GenerativeActions } from "./hooks/use-jira-team-eu26-generative-actions";
 import { useJiraTeamEu26List } from "./hooks/use-jira-team-eu26-list";
 
-const JIRA_LIST_PANEL_END_GAP_PX = 24;
+const AgentsDirectoryDialog = dynamic(() => import("@/components/blocks/agent-directory").then((module) => module.AgentsDirectoryDialog));
+const SkillsDirectoryDialog = dynamic(() => import("@/components/blocks/skills-directory").then((module) => module.SkillsDirectoryDialog));
+
 const JIRA_TEAM_EU26_TABS = getJiraTabs(false);
 const JIRA_TEAM_EU26_DEFAULT_TAB_LABEL = getJiraWorkItemsTabLabel(JIRA_TEAM_EU26_TABS);
 const isJiraTeamEu26LooseWorkResumable = () => true;
@@ -237,6 +239,7 @@ function JiraTeamEu26App(): React.ReactElement {
 		createFromAgentSession,
 		getProps: getListProps,
 		onAssignedAgentIdsChange,
+		onVisibleRowsChange,
 	} = useJiraTeamEu26List({
 		boardColumns,
 		onAssignedAgentSelect: handleListAssignedAgentSelect,
@@ -342,6 +345,7 @@ function JiraTeamEu26App(): React.ReactElement {
 			<AppLayout
 				chatContextBar={chatContextBar}
 				chatPanelFlush
+				sidebarChatMount="on-first-open"
 				defaultSidebarOpen={true}
 				hideFloatingRovo
 				product="jira"
@@ -350,6 +354,7 @@ function JiraTeamEu26App(): React.ReactElement {
 				<div className="h-full min-h-0 min-w-0 overflow-hidden bg-surface [&>div]:min-h-0">
 					<ExperimentalJiraKanbanPage
 						activeView={activeView}
+						retainWorkItemViews
 						additionalAgentSessions={syncedAgentSessions}
 						agentActivityLayout="merged"
 						agentSessionMultiSelect={false}
@@ -391,37 +396,15 @@ function JiraTeamEu26App(): React.ReactElement {
 						onContinueLooseWork={handleContinueLooseWork}
 						onResumeLooseWork={handleResumeLooseWork}
 						onViewChange={tabOwnsView ? undefined : setWorkItemView}
-						renderListContent={(
-							columns,
-							{
-								agentSessionDropIntent,
-								onTrailingContentUnderlapChange,
-								scrollEndInset,
-								trailingOverlayRef,
-							},
-						) => {
-							const listProps = getListProps(columns);
-							const listScrollEndInset = scrollEndInset > 0
-								? scrollEndInset + JIRA_LIST_PANEL_END_GAP_PX
-								: 0;
-							return (
-								<div
-									className={cn(
-										"min-h-0 flex-1 overflow-hidden pb-4 ps-6 md:pb-5",
-										scrollEndInset > 0 ? "pe-0" : "pe-4 md:pe-5",
-									)}
-								>
-									<JiraList
-										{...listProps}
-										agentSessionDropIntent={agentSessionDropIntent}
-										onTrailingContentUnderlapChange={onTrailingContentUnderlapChange}
-										rowFlash={listRowFlash}
-										scrollEndInset={listScrollEndInset}
-										trailingOverlayRef={trailingOverlayRef}
-									/>
-								</div>
-							);
-						}}
+						renderListContent={(columns, layout) => (
+							<JiraTeamEu26List
+								columns={columns}
+								getProps={getListProps}
+								onVisibleRowsChange={onVisibleRowsChange}
+								rowFlash={listRowFlash}
+								{...layout}
+							/>
+						)}
 						renderAgentActivityIndicator={renderJiraTeamEu26AgentActivityIndicator}
 						showAgentSessionColumn
 						showAgentSessionFlyoutFooter={false}
@@ -450,19 +433,23 @@ function JiraTeamEu26App(): React.ReactElement {
 			<span aria-live="polite" className="sr-only" role="status">
 				{resumeAnnouncement}
 			</span>
-			<AgentsDirectoryDialog
-				agents={ROVO_DIRECTORY_AGENT_PROFILES}
-				onCreateAgent={() => router.push("/studio")}
-				onOpenChange={setAgentsDirectoryOpen}
-				onSelectAgent={() => setAgentsDirectoryOpen(false)}
-				open={agentsDirectoryOpen}
-			/>
-			<SkillsDirectoryDialog
-				onCreateSkill={() => router.push("/skills")}
-				onOpenChange={setSkillsDirectoryOpen}
-				open={skillsDirectoryOpen}
-				skills={DEFAULT_SKILLS}
-			/>
+			<MountOnFirstUse active={agentsDirectoryOpen}>
+				<AgentsDirectoryDialog
+					agents={ROVO_DIRECTORY_AGENT_PROFILES}
+					onCreateAgent={() => router.push("/studio")}
+					onOpenChange={setAgentsDirectoryOpen}
+					onSelectAgent={() => setAgentsDirectoryOpen(false)}
+					open={agentsDirectoryOpen}
+				/>
+			</MountOnFirstUse>
+			<MountOnFirstUse active={skillsDirectoryOpen}>
+				<SkillsDirectoryDialog
+					onCreateSkill={() => router.push("/skills")}
+					onOpenChange={setSkillsDirectoryOpen}
+					open={skillsDirectoryOpen}
+					skills={DEFAULT_SKILLS}
+				/>
+			</MountOnFirstUse>
 			<JgpRovoOverlay
 				chatContextBar={chatContextBar}
 				composerPrefillRequest={composerPrefillRequest}

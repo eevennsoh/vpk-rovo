@@ -7,6 +7,7 @@ const {
 	CREATE_WORK_ITEM_PROXIMITY_HOVER_AREA_PX,
 	distanceFromPointToRect,
 	resolveExclusiveProximityWinner,
+	createExclusiveProximityScheduler,
 } = require("./create-work-item-exclusive-proximity.ts");
 
 const LEFT = {
@@ -80,4 +81,101 @@ test("equal distance prefers the leftmost well, then first registered", () => {
 		resolveExclusiveProximityWinner({ x: 200, y: 612 }, [LEFT, stacked]),
 		"To do",
 	);
+});
+
+function createFrameHarness() {
+	let nextId = 0;
+	const pending = new Map();
+	return {
+		pending,
+		requestFrame(callback) {
+			const id = nextId++;
+			pending.set(id, callback);
+			return id;
+		},
+		cancelFrame(id) {
+			pending.delete(id);
+		},
+		flush() {
+			const callbacks = [...pending.values()];
+			pending.clear();
+			for (const callback of callbacks) callback();
+		},
+	};
+}
+
+test("pointer bursts measure current geometry once per frame using the latest pointer", () => {
+	const frames = createFrameHarness();
+	let wells = [LEFT, RIGHT];
+	let rectangleReads = 0;
+	const winners = [];
+	const scheduler = createExclusiveProximityScheduler({
+		...frames,
+		onPointer(pointer) {
+			rectangleReads += wells.length;
+			winners.push(resolveExclusiveProximityWinner(pointer, wells));
+		},
+		onClear() {},
+	});
+
+	for (let index = 0; index < 100; index++) {
+		scheduler.move({ x: 200, y: 612 }, "mouse");
+	}
+	scheduler.move({ x: 500, y: 612 }, "pen");
+	assert.equal(frames.pending.size, 1);
+	assert.equal(rectangleReads, 0);
+	// Layout can change between the event and the frame; do not cache stale rects.
+	wells = [{ ...RIGHT, id: "Moved well" }];
+	frames.flush();
+	assert.deepEqual(winners, ["Moved well"]);
+	assert.equal(rectangleReads, 1);
+	assert.equal(frames.pending.size, 0);
+	frames.flush();
+	assert.equal(rectangleReads, 1);
+
+	scheduler.move({ x: 200, y: 400 }, "mouse");
+	frames.flush();
+	assert.deepEqual(winners, ["Moved well", null]);
+});
+
+test("touch and pointer leave clear feedback and cancel a queued mouse frame", () => {
+	for (const clear of [
+		(scheduler) => scheduler.move({ x: 200, y: 612 }, "touch"),
+		(scheduler) => scheduler.clear(),
+	]) {
+		const frames = createFrameHarness();
+		const feedback = [];
+		const scheduler = createExclusiveProximityScheduler({
+			...frames,
+			onPointer: () => feedback.push("winner"),
+			onClear: () => feedback.push(null),
+		});
+		scheduler.move({ x: 200, y: 612 }, "mouse");
+		frames.flush();
+		scheduler.move({ x: 500, y: 612 }, "mouse");
+		clear(scheduler);
+		assert.equal(frames.pending.size, 0);
+		frames.flush();
+		assert.deepEqual(feedback, ["winner", null]);
+		scheduler.move({ x: 500, y: 612 }, "mouse");
+		frames.flush();
+		assert.deepEqual(feedback, ["winner", null, "winner"]);
+	}
+});
+
+test("disposal cancels pending work without updating unmounted consumers", () => {
+	const frames = createFrameHarness();
+	const feedback = [];
+	const scheduler = createExclusiveProximityScheduler({
+		...frames,
+		onPointer: () => feedback.push("winner"),
+		onClear: () => feedback.push(null),
+	});
+	scheduler.move({ x: 200, y: 612 }, "mouse");
+	scheduler.dispose();
+	assert.equal(frames.pending.size, 0);
+	scheduler.move({ x: 500, y: 612 }, "mouse");
+	scheduler.clear();
+	frames.flush();
+	assert.deepEqual(feedback, []);
 });

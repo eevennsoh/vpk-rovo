@@ -55,3 +55,11 @@ const badgeVariants = cva("base-classes", {
 
 interface BadgeProps extends React.ComponentProps<"span">, VariantProps<typeof badgeVariants> {}
 ```
+
+## Performance ownership
+
+For responsiveness, mounting or subscription changes, read [the performance playbook](../docs/playbooks/improve-ui-performance.md).
+
+- Rovo consumers that need only supported surface/actions use `useRovoChatControls()`; provider-optional blocks use `useOptionalRovoChatControls()`. Keep message readers on the full context. Destructuring a broad context does not narrow its subscription.
+- Reuse `MountOnFirstUse` for expensive unused project surfaces and `RetainedView` only for measured, bounded revisits. First-use deferral retains mounted effects after opening; Activity-based retention suspends hidden effects. Preserve drafts and verify hidden keyboard/focus behavior before choosing either.
+- Keep hover/drag chrome separate from unchanged content and coalesce continuous geometry work to a frame. Promote measured behavior-preserving fixes at their shared owner; lifecycle/memory choices remain explicit capabilities until affected consumers are verified.

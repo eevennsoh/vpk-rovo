@@ -17,6 +17,7 @@ const PAGE_SOURCE = [
 	readFileSync(join(EXPERIMENTAL_DIR, "page.tsx"), "utf8"),
 	readFileSync(join(EXPERIMENTAL_DIR, "experimental-page-types.ts"), "utf8"),
 	readFileSync(join(EXPERIMENTAL_DIR, "hooks", "use-page-content-model.ts"), "utf8"),
+	readFileSync(join(EXPERIMENTAL_DIR, "hooks", "use-agent-session-review.ts"), "utf8"),
 ].join("\n");
 const BOARD_SOURCE = [
 	readFileSync(join(EXPERIMENTAL_DIR, "experimental-jira-kanban.tsx"), "utf8"),
@@ -432,7 +433,7 @@ test("column presentation pins Untracked beside the list as well as the board", 
 	assert.match(PAGE_SOURCE, /columnFrame=\{columnChromeStyles\.headerFrame\}/u);
 	assert.match(
 		PAGE_SOURCE,
-		/<InFlowAgentSessionColumn[\s\S]*\{isListContent \? \(/u,
+		/<InFlowAgentSessionColumn[\s\S]*<RetainedView active=\{isListContent\} retain=\{retainWorkItemViews\}>[\s\S]*<RetainedView active=\{!isListContent\}/u,
 		"one Untracked column instance must wrap both Board and List so hide/archive state survives the switch",
 	);
 	assert.doesNotMatch(
