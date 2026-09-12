@@ -8,7 +8,7 @@ import type { UntrackedWorkTriage } from "../agent-session/untracked-work-triage
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
 import { runBulkAction } from "./untracked-selection-actions.ts";
 // @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
-import { buildUntrackedHeaderModel, NO_SELECTION_MARKS, reduceSelectionMarks, resolveLeadSpotlight, resolveUntrackedSelectionGesture, resolveVisibleLeadId, selectEffectiveSelection } from "./untracked-selection.ts";
+import { buildUntrackedHeaderModel, NO_SELECTION_MARKS, reduceSelectionMarks, resolveLeadSpotlight, resolveTriageApprove, resolveUntrackedSelectionGesture, resolveVisibleLeadId, selectEffectiveSelection } from "./untracked-selection.ts";
 
 function session(id: string, issueKey?: string): AgentSessionItem {
 	return {
@@ -405,10 +405,10 @@ test("the browsing header keeps the host title and count", () => {
 			approveTargetById: new Map(),
 			count: 4,
 			selection: { kind: "empty" },
-			title: "Unattached sessions",
+			title: "Unlink sessions",
 			visibleCount: 4,
 		}),
-		{ kind: "browsing", title: "Unattached sessions", count: 4 },
+		{ kind: "browsing", title: "Unlink sessions", count: 4 },
 	);
 });
 
@@ -426,7 +426,7 @@ test("the selecting header counts only rows Approve can attach", () => {
 		approveTargetById,
 		count: 8,
 		selection: { kind: "active", items: [linkable, unknown, captured] },
-		title: "Unattached sessions",
+		title: "Unlink sessions",
 		visibleCount: 8,
 	});
 
@@ -471,7 +471,7 @@ test("header Create copy uses selectedCount, not eligibleCount", () => {
 		]),
 		count: 2,
 		selection: { kind: "active", items: [linkable, captured] },
-		title: "Unattached sessions",
+		title: "Unlink sessions",
 		visibleCount: 2,
 	});
 
@@ -492,14 +492,14 @@ test("the selecting header is all-selected only when every visible row is marked
 		approveTargetById: new Map(),
 		count: 2,
 		selection: { kind: "active", items: [first] },
-		title: "Unattached sessions",
+		title: "Unlink sessions",
 		visibleCount: 2,
 	});
 	const complete = buildUntrackedHeaderModel({
 		approveTargetById: new Map(),
 		count: 2,
 		selection: { kind: "active", items: [first, second] },
-		title: "Unattached sessions",
+		title: "Unlink sessions",
 		visibleCount: 2,
 	});
 
@@ -521,7 +521,7 @@ test("header copy table pins exact available and unavailable strings", () => {
 		]),
 		count: 1,
 		selection: { kind: "active", items: [captured] },
-		title: "Unattached sessions",
+		title: "Unlink sessions",
 		visibleCount: 1,
 	});
 
@@ -618,4 +618,44 @@ test("bulk create and archive skip ineligible rows and ignore an empty selection
 
 	assert.deepEqual(created, ["lw-a"]);
 	assert.deepEqual(archived, ["lw-a", "lw-c"]);
+});
+
+test("a row offers the link check when the board still has the feature", () => {
+	const target: ApproveTarget<{ code: string }> = {
+		kind: "work-item",
+		key: "PAY-107",
+		target: { code: "PAY-107" },
+	};
+	let attached = 0;
+	const approve = resolveTriageApprove(target, {
+		enabled: true,
+		onApprove: () => {
+			attached += 1;
+		},
+	});
+
+	assert.notEqual(approve, null);
+	assert.equal(approve?.target, target);
+	approve?.onApprove();
+	assert.equal(attached, 1);
+});
+
+test("a board without the link feature gets no approve action, not a dead one", () => {
+	const target: ApproveTarget<{ code: string }> = {
+		kind: "work-item",
+		key: "PAY-107",
+		target: { code: "PAY-107" },
+	};
+	let attached = 0;
+
+	assert.equal(
+		resolveTriageApprove(target, {
+			enabled: false,
+			onApprove: () => {
+				attached += 1;
+			},
+		}),
+		null,
+	);
+	assert.equal(attached, 0);
 });

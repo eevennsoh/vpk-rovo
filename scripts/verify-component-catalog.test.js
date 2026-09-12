@@ -313,6 +313,19 @@ test("component catalog validator flags names that are not Title Case", () => {
 	assert.match(summary.errors.map((error) => error.message).join("\n"), /blocks\/jira-issue name "Jira issue" is not Title Case/);
 });
 
+test("catalog preserves the requested Cone safezone name only at its utility entry", () => {
+	for (const slug of ["cone-safezone", "different-utility"]) {
+		const diagnostics = validateComponentCatalog({
+			cwd: process.cwd(),
+			components: [{ category: "utility", slug, name: "Cone safezone", importPath: "@/components/utils/cone-safezone" }],
+			detailRecords: {},
+			registryData: { primary: {}, variants: {} },
+		});
+		const nameErrors = diagnostics.filter((entry) => entry.message.includes("is not Title Case"));
+		assert.equal(nameErrors.length, slug === "cone-safezone" ? 0 : 1);
+	}
+});
+
 test("component loader reads the editable manifest source", () => {
 	const cwd = mkdtempSync(path.join(os.tmpdir(), "vpk-catalog-manifest-source-"));
 	try {

@@ -1,11 +1,13 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { isPlannerProcessing } from "@/components/blocks/jira-work-item/data/planner-state";
+import { ContextDescriptionEditor } from "@/components/blocks/jira-work-item/team-eu26/components/context-description-editor";
 import {
 	useJiraWorkItemActions,
 	useJiraWorkItemState,
 } from "@/components/blocks/jira-work-item/team-eu26/context-jira-work-item";
-import { ContextDescriptionEditor } from "@/components/blocks/jira-work-item/team-eu26/components/context-description-editor";
 import {
 	CONTEXT_TITLE_FONT_STYLE,
 	CONTEXT_TITLE_COMPACT_FONT_STYLE,
@@ -49,7 +51,15 @@ export function ContextEditableTitle({ compact = false }: Readonly<{ compact?: b
  * planner hug behavior. Pull request overview uses the same shared surface with
  * PR description content.
  */
-export function ContextEditableDescription() {
+export function ContextEditableDescription({
+	hugContent,
+	placeholder,
+	placeholderSlot,
+}: Readonly<{
+	hugContent?: boolean;
+	placeholder?: string;
+	placeholderSlot?: ReactNode;
+}>) {
 	const { contextResources, planner } = useJiraWorkItemState();
 	const actions = useJiraWorkItemActions();
 	// While the Teamwork Graph planner is running, drop the editor's min-height so
@@ -58,7 +68,9 @@ export function ContextEditableDescription() {
 	return (
 		<ContextDescriptionEditor
 			aria-label="Work item description"
-			hugContent={isProcessing}
+			hugContent={hugContent ?? isProcessing}
+			placeholder={placeholder}
+			placeholderSlot={placeholderSlot}
 			value={contextResources.description}
 			viewMode="rendered"
 			onMarkdownChange={(value) => actions.editContextText("description", value)}

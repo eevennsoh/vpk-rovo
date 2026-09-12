@@ -438,7 +438,7 @@ test("Jira issue splits the finished review chin into one row per completed run"
 	// Split rows reuse the working-row chrome so Review reads like 1-n agents.
 	assert.match(COMPLETED_RUNS_SOURCE, /function JiraIssueCompletedRunRow\(/u);
 	assert.match(COMPLETED_RUNS_SOURCE, /<JiraIssueCompletedRunRow[\s\S]*key=\{run\.id\}/u);
-	assert.match(COMPLETED_RUNS_SOURCE, /className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-2[^"]*hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed[^"]*"/u);
+	assert.match(COMPLETED_RUNS_SOURCE, /className="flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-1[^"]*hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed[^"]*"/u);
 	assert.match(COMPLETED_RUNS_SOURCE, /<AgentAvatarVisual[\s\S]*avatarSrc=\{run\.agentAvatarSrc\}[\s\S]*label=\{run\.agentName\}[\s\S]*sizePx=\{24\}/u);
 	assert.match(COMPLETED_RUNS_SOURCE, /className="block min-w-0 flex-1 truncate text-sm leading-5 text-text"/u);
 	// Per-run outcome icon replaces the aggregate's failure-only indicator.
@@ -530,7 +530,7 @@ test("Jira issue dragged session reads as the at-mention chip it becomes", () =>
 
 test("Jira issue at-mention chip hugs its own width once it leaves the chin", () => {
 	assert.match(AGENT_ACTIVITY_SOURCE, /className="pointer-events-none left-0 top-0 z-\[300\] w-fit"/u);
-	assert.match(AGENT_ACTIVITY_SOURCE, /isDragging && \(isDraggedOut \? "h-0" : "h-10"\),/u);
+	assert.match(AGENT_ACTIVITY_SOURCE, /isDragging && \(isDraggedOut \? "h-0" : "h-8"\),/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /JIRA_ISSUE_SESSION_DRAG_CHIP_MORPH|JIRA_ISSUE_SESSION_DRAG_MORPH|JIRA_ISSUE_SESSION_DRAG_DISSOLVE/u);
 });
 
@@ -634,7 +634,7 @@ test("Jira issue card hugs its content the moment the chip leaves the chin", () 
 	// white surface to fill it.
 	assert.match(
 		AGENT_ACTIVITY_SOURCE,
-		/isDragging && \(isDraggedOut \? "h-0" : "h-10"\),/u,
+		/isDragging && \(isDraggedOut \? "h-0" : "h-8"\),/u,
 	);
 	// The row flags itself; the list closes its gutter off that flag with `:has()`.
 	assert.match(AGENT_ACTIVITY_SOURCE, /data-session-chip-out=\{isDraggedOut \|\| undefined\}/u);
@@ -770,6 +770,10 @@ test("attach chin replaces the last occupied session row instead of stacking or 
 		ATTACH_CHIN_SOURCE,
 		/export function JiraIssueDetachedAttachChinSlot\([\s\S]*h-\[33px\][\s\S]*data-slot="jira-issue-attach-chin"/u,
 	);
+	assert.match(
+		ATTACH_CHIN_SOURCE,
+		/export function JiraIssueAttachChinSlot\([\s\S]*className="pointer-events-none flex h-8 w-full/u,
+	);
 	// Nearby/detached pills already occupy the last chin. Attach copy covers
 	// that slot, but `AgentSessionMediumDrag` stays mounted so pointer capture
 	// and the window pointerup fallback survive the first armed move.
@@ -781,6 +785,8 @@ test("attach chin replaces the last occupied session row instead of stacking or 
 		SOURCE,
 		/replaceDetachedTransfer && attachChinCopy\s*\n\s*\? <JiraIssueDetachedAttachChinSlot copy=\{attachChinCopy\} \/>/u,
 	);
+	assert.match(ATTACH_CHIN_SOURCE, /<span className="text-sm font-normal text-text-subtlest">/u);
+	assert.doesNotMatch(ATTACH_CHIN_SOURCE, /text-xs/u);
 	assert.match(ATTACH_CHIN_SOURCE, /export function JiraIssueDetachedSessionTransferSlot/u);
 	assert.match(ATTACH_CHIN_SOURCE, /inert=\{replace \|\| undefined\}/u);
 	assert.match(ATTACH_CHIN_SOURCE, /invisible col-start-1 row-start-1/u);

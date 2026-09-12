@@ -95,7 +95,9 @@ export interface AgentSessionColumnProps extends Omit<
 	/**
 	 * Enables additive/range selection, selection keyboard shortcuts, bulk header
 	 * actions, and multi-session drag cohorts. Defaults to `true`. Set to `false`
-	 * when every drag must carry only the session it started from.
+	 * when every drag must carry only the session it started from. `false` also
+	 * disables single-select row chrome: article click does not toggle
+	 * `selectedItemId`.
 	 */
 	multiSelect?: boolean;
 	/**
@@ -128,6 +130,13 @@ export interface AgentSessionColumnProps extends Omit<
 	 * Off omits that control; collapse and any remaining real actions stay.
 	 */
 	showOverflow?: boolean;
+	/**
+	 * Shows the per-row hover check that links a session to its suggested work
+	 * item. Defaults to `true`. Off omits that control on every row; drag-to-link
+	 * and the bulk selection actions are unaffected. A board whose product no
+	 * longer offers one-click linking passes `false`.
+	 */
+	showLinkAction?: boolean;
 	/**
 	 * Enables the bottom depth tail, scroll fade, and end summary on the
 	 * expanded list. Defaults to `false`.

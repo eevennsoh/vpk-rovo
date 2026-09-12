@@ -4,6 +4,7 @@ import AddIcon from "@atlaskit/icon/core/add";
 import ArrowLeftIcon from "@atlaskit/icon/core/arrow-left";
 import AutomationIcon from "@atlaskit/icon/core/automation";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
+import PersonIcon from "@atlaskit/icon/core/person";
 import StatusSuccessIcon from "@atlaskit/icon/core/status-success";
 
 import type { WorkItemAutomationRule } from "@/components/blocks/jira-work-item/team-eu26/components/automation-tab";
@@ -35,15 +36,67 @@ function recentRules(rules: readonly WorkItemAutomationRule[]) {
 		);
 }
 
+function AutomationEmptyIllustration() {
+	return (
+		<div className="flex flex-col items-center gap-3 px-4 pb-3 pt-1 text-center">
+			<div aria-hidden className="flex flex-col items-center">
+				<IconTile
+					aria-hidden
+					as="span"
+					className="relative z-30"
+					icon={<AutomationIcon color="currentColor" label="" size="small" />}
+					label=""
+					size="medium"
+					variant="blueBold"
+				/>
+				<IconTile
+					aria-hidden
+					as="span"
+					className="relative z-20 -mt-2"
+					icon={<PersonIcon color="currentColor" label="" size="small" />}
+					label=""
+					size="medium"
+					variant="purpleBold"
+				/>
+				<IconTile
+					aria-hidden
+					as="span"
+					className="relative z-10 -mt-2"
+					icon={<StatusSuccessIcon color="currentColor" label="" size="small" />}
+					label=""
+					size="medium"
+					variant="greenBold"
+				/>
+			</div>
+			<p className="text-sm leading-5 text-text-subtle">
+				Create an automation to perform tasks with the click of a button. Once created, manually triggered
+				automations will appear here.
+			</p>
+			<Button className="h-auto px-0" disabled type="button" variant="link">
+				Add manually triggered automation
+			</Button>
+			<a
+				className="text-sm font-medium text-link hover:underline"
+				href="#"
+				onClick={(event) => event.preventDefault()}
+			>
+				See templates
+			</a>
+		</div>
+	);
+}
+
 export function TeamEuAutomationPanel({
+	empty = false,
 	onShowRecentRuns,
 	rules,
 }: Readonly<{
+	empty?: boolean;
 	onShowRecentRuns: () => void;
 	rules: readonly WorkItemAutomationRule[];
 }>) {
 	return (
-		<TeamEuRailPanel title="Automation">
+		<TeamEuRailPanel defaultOpen={empty} title="Automation">
 			<div className="pb-3">
 				{rules.length > 0 ? (
 					<ul aria-label="Available automations" className="px-2 pb-2">
@@ -64,9 +117,7 @@ export function TeamEuAutomationPanel({
 						))}
 					</ul>
 				) : (
-					<p className="px-4 pb-3 text-sm text-text-subtle">
-						No automation rules have run for this work item.
-					</p>
+					<AutomationEmptyIllustration />
 				)}
 				<button
 					className={`${ACTION_ROW_CLASS} border-y border-border outline-none transition-colors duration-xxshort ease-out-practical hover:bg-bg-neutral-subtle-hovered focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none`}

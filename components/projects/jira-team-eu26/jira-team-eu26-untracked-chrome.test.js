@@ -66,6 +66,19 @@ test("the route pins the shared Agent Session column beside Jira statuses", () =
 	assert.doesNotMatch(EXPERIMENTAL_PAGE_SOURCE, /defaultCollapsed: agentSessionColumnCollapsed/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /capturedItemIds: capturedLooseWorkIds,/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /toPulseSessionHandlers/u);
+	assert.match(
+		EXPERIMENTAL_PAGE_SOURCE,
+		/onContinue: onContinueLooseWork,/u,
+	);
+	assert.match(PAGE_SOURCE, /onContinueLooseWork=\{handleContinueLooseWork\}/u);
+	assert.match(
+		PAGE_SOURCE,
+		/const handleContinueLooseWork = useCallback\(\(item: PulseLooseWork\) => \{[\s\S]*openAgentChat\(\{/u,
+	);
+	assert.match(
+		PAGE_SOURCE,
+		/case "claude":\s*\n\s*return \{ agentId: "claude-code", agentName: "Claude" \};/u,
+	);
 
 	const columnIndex = EXPERIMENTAL_BOARD_SOURCE.indexOf("<InFlowAgentSessionColumn");
 	const scrollportIndex = EXPERIMENTAL_BOARD_SOURCE.indexOf("<section");
@@ -173,7 +186,7 @@ test("the route locks untracked work to the in-flow column", () => {
 	assert.doesNotMatch(EXPERIMENTAL_PAGE_SOURCE, /onToggleAgentSessionPanel/u);
 	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /agentSessionPanelOpen/u);
 	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /onToggleAgentSessionPanel/u);
-	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /Unattached sessions panel/u);
+	assert.doesNotMatch(EXPERIMENTAL_HEADER_SOURCE, /Unlink sessions panel/u);
 	assert.doesNotMatch(PANEL_SOURCE, /PanelActionClose|onClose/u);
 	// Collapse stays on the column-owned header so the rail is not a trap.
 	assert.match(PANEL_SOURCE, /headerSurface="panel"/u);
@@ -369,4 +382,20 @@ test("the route locks the board to default kanban chrome", () => {
 	// Experimental internals stay compact; iconScale/subtaskChrome are board props.
 	assert.match(EXPERIMENTAL_BOARD_SOURCE, /chrome=\{chrome\.cardChrome\}/u);
 	assert.match(EXPERIMENTAL_CARD_SOURCE, /<JiraIssue[\s\S]*chrome=\{chrome\}[\s\S]*compact/u);
+});
+
+test("the Team EU26 session column does not wire single-select", () => {
+	assert.match(PAGE_SOURCE, /agentSessionMultiSelect=\{false\}/u);
+	assert.doesNotMatch(PAGE_SOURCE, /selectedItemId/u);
+	assert.doesNotMatch(PAGE_SOURCE, /onSelectedItemIdChange/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /multiSelect: agentSessionMultiSelect,/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /single-select row chrome on that column/u);
+	assert.match(
+		AGENT_SESSION_COLUMN_SOURCE,
+		/const selectedItemId = multiSelect\s*\?\s*isSelectionControlled \? selectedItemIdProp : uncontrolledSelectedItemId\s*: null;/u,
+	);
+	assert.match(
+		AGENT_SESSION_COLUMN_SOURCE,
+		/onSelectedItemIdChange=\{multiSelect \? handleSelectedItemIdChange : undefined\}/u,
+	);
 });

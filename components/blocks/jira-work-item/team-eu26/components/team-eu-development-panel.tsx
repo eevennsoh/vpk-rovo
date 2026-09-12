@@ -1,6 +1,7 @@
 "use client";
 
 import AddIcon from "@atlaskit/icon/core/add";
+import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import AngleBracketsIcon from "@atlaskit/icon/core/angle-brackets";
 import BranchIcon from "@atlaskit/icon/core/branch";
 import CommitIcon from "@atlaskit/icon/core/commit";
@@ -8,6 +9,7 @@ import DevicesIcon from "@atlaskit/icon/core/devices";
 import LinkIcon from "@atlaskit/icon/core/link";
 import MergeFailureIcon from "@atlaskit/icon/core/merge-failure";
 import PullRequestIcon from "@atlaskit/icon/core/pull-request";
+import SearchIcon from "@atlaskit/icon/core/search";
 import SettingsIcon from "@atlaskit/icon/core/settings";
 import StatusErrorIcon from "@atlaskit/icon/core/status-error";
 import TaskIcon from "@atlaskit/icon/core/task";
@@ -15,7 +17,9 @@ import TaskToDoIcon from "@atlaskit/icon/core/task-to-do";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import RovoIcon from "@atlaskit/icon-lab/core/rovo";
 
+import { OpenInMenu } from "@/components/blocks/jira-work-item/team-eu26/components/open-in-menu";
 import { TeamEuRailPanel } from "@/components/blocks/jira-work-item/team-eu26/components/team-eu-rail-panel";
+import { WorkItemAgentSelectorMenu } from "@/components/blocks/jira-work-item/team-eu26/components/work-item-agent-selector";
 import { Button } from "@/components/ui/button";
 import {
 	HoverCard,
@@ -177,6 +181,57 @@ function PullRequestRow({
 	);
 }
 
+const EMPTY_DEVELOPMENT_HEADER_ACTIONS = (
+	<>
+		<Button
+			aria-label="Search development"
+			disabled
+			size="icon-compact"
+			type="button"
+			variant="ghost"
+		>
+			<SearchIcon label="" size="small" />
+		</Button>
+		<Button
+			aria-label="Development settings"
+			disabled
+			size="icon-compact"
+			type="button"
+			variant="ghost"
+		>
+			<SettingsIcon label="" size="small" />
+		</Button>
+	</>
+);
+
+const EMPTY_DEVELOPMENT_ACTION_CLASS =
+	"inline-flex h-8 min-w-0 items-center gap-2 rounded-md px-1 text-sm text-text outline-none transition-colors duration-xxshort ease-out-practical hover:bg-bg-neutral-subtle-hovered focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none";
+
+function EmptyDevelopmentBody() {
+	return (
+		<div className="flex flex-wrap items-center gap-4 px-4 pb-4">
+			<WorkItemAgentSelectorMenu
+				align="start"
+				trigger={(
+					<button className={EMPTY_DEVELOPMENT_ACTION_CLASS} type="button">
+						<Icon aria-hidden className="shrink-0 text-icon-subtle" render={<AiAgentIcon label="" size="small" />} />
+						Start with agent
+					</button>
+				)}
+			/>
+			<OpenInMenu
+				align="start"
+				trigger={(
+					<button className={EMPTY_DEVELOPMENT_ACTION_CLASS} type="button">
+						<Icon aria-hidden className="shrink-0 text-icon-subtle" render={<DevicesIcon label="" size="small" />} />
+						Start local session
+					</button>
+				)}
+			/>
+		</div>
+	);
+}
+
 const DEVELOPMENT_HEADER_ACTIONS = (
 	<>
 		<Button
@@ -200,13 +255,16 @@ const DEVELOPMENT_HEADER_ACTIONS = (
 	</>
 );
 
-export function TeamEuDevelopmentPanel() {
+export function TeamEuDevelopmentPanel({
+	empty = false,
+}: Readonly<{ empty?: boolean }>) {
 	return (
 		<TeamEuRailPanel
 			defaultOpen
-			headerActions={DEVELOPMENT_HEADER_ACTIONS}
+			headerActions={empty ? EMPTY_DEVELOPMENT_HEADER_ACTIONS : DEVELOPMENT_HEADER_ACTIONS}
 			title="Development"
 		>
+			{empty ? <EmptyDevelopmentBody /> : (
 			<div className="px-4 pb-4">
 				<div
 					aria-label="Development totals"
@@ -243,6 +301,7 @@ export function TeamEuDevelopmentPanel() {
 					<PullRequestRow tone="discovery" />
 				</div>
 			</div>
+			)}
 		</TeamEuRailPanel>
 	);
 }

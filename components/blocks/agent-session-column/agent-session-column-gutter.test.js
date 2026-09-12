@@ -106,7 +106,7 @@ test("gutter Expand expands and pins; the menu then says Unpin", () => {
 	assert.match(IN_FLOW_COLUMN_SOURCE, /isFullWidth = expanded && isEmbedded/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/data-agent-session-column-expansion=\{\s*!isEmbedded \? "gutter" : isFullWidth \? "expanded" : pinned \? "pinned" : "preview"\s*\}/u,
+		/data-agent-session-column-expansion=\{resolveSessionColumnExpansion\(isEmbedded, isFullWidth, pinned\)\}/u,
 	);
 });
 
@@ -129,7 +129,7 @@ test("the collapsed options menu uses Atlaskit show-more-horizontal, not a custo
 	assert.match(IN_FLOW_MENU_SOURCE, /delay=\{0\}/u);
 	assert.match(
 		IN_FLOW_MENU_SOURCE,
-		/const HOVER_OPEN_TRIGGER_CLASS_NAME =\s*"aria-expanded:border-transparent aria-expanded:bg-bg-neutral-subtle-hovered aria-expanded:text-text-subtle aria-expanded:\[&_\[data-slot=icon\]\]:text-icon-subtle aria-expanded:\[&_svg\]:text-icon-subtle"/u,
+		/const HOVER_OPEN_TRIGGER_CLASS_NAME =\s*"aria-expanded:border-transparent aria-expanded:bg-bg-neutral-subtle-hovered aria-expanded:hover:bg-bg-neutral-subtle-hovered! aria-expanded:active:bg-bg-neutral-subtle-pressed! aria-expanded:text-text-subtle aria-expanded:\[&_\[data-slot=icon\]\]:text-icon-subtle aria-expanded:\[&_svg\]:text-icon-subtle"/u,
 	);
 	assert.match(
 		IN_FLOW_MENU_SOURCE,
@@ -142,10 +142,12 @@ test("the collapsed options menu uses Atlaskit show-more-horizontal, not a custo
 	assert.match(IN_FLOW_MENU_SOURCE, /<TriggerGlyph color="currentColor" label="" size="small" \/>/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /<PinGlyph label="" size="small" \/>/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /<GrowHorizontalIcon label="" size="small" \/>/u);
-	assert.match(
-		IN_FLOW_MENU_SOURCE,
-		/<DropdownMenuContent align="start" className="min-w-0 w-max" side="right">/u,
-	);
+	// Anchoring is the contract, not the JSX line breaks: assert the props the
+	// popup needs rather than one formatted line that reflows on any edit.
+	assert.match(IN_FLOW_MENU_SOURCE, /<DropdownMenuContent[\s\S]*?>/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /align="start"/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /className="min-w-0 w-max"/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /side="right"/u);
 	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /align="center"/u);
 	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /side="bottom"/u);
 	assert.match(

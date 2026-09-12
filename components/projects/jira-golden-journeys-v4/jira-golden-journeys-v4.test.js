@@ -83,6 +83,11 @@ test("the board disables Insights while keeping card agent chat in the Jira shel
 	assert.match(PAGE_SOURCE, /insightsEnabled=\{false\}/u);
 	assert.doesNotMatch(PAGE_SOURCE, /PULSE_|InsightsNudge|boardRef|timelineLastViewedAt/u);
 	assert.match(PAGE_SOURCE, /onCardAgentActivityViewChat=\{handleViewChat\}/u);
+	assert.match(PAGE_SOURCE, /question: activity\.question,/u);
+	assert.match(
+		PAGE_SOURCE,
+		/agentId: activity\.id\.includes\(":"\)\s*\? activity\.id\.slice\(activity\.id\.lastIndexOf\(":"\) \+ 1\)\s*: activity\.id,/u,
+	);
 	assert.match(PAGE_SOURCE, /onCardAgentDoneRunView=\{handleViewCompletedRun\}/u);
 	assert.match(
 		EXPERIMENTAL_PAGE_SOURCE,
@@ -92,7 +97,7 @@ test("the board disables Insights while keeping card agent chat in the Jira shel
 		EXPERIMENTAL_PAGE_SOURCE,
 		/<ExperimentalJiraKanban[\s\S]*onCardAgentDoneRunView=\{onCardAgentDoneRunView\}/u,
 	);
-	assert.match(PAGE_SOURCE, /openAgentChat\(\{[\s\S]*agentId: activity\.id,[\s\S]*issueKey: card\.code/u);
+	assert.match(PAGE_SOURCE, /openAgentChat\(\{[\s\S]*agentId: activity\.id\.includes\(":"\)[\s\S]*issueKey: card\.code/u);
 	assert.match(PAGE_SOURCE, /const handleViewCompletedRun = useCallback\([\s\S]*agentId: run\.agentName\.toLowerCase\(\)\.replace\(\/\\s\+\/g, "-"\),[\s\S]*issueKey: run\.issueKey/u);
 	assert.match(PAGE_SOURCE, /<JgpRovoOverlay[\s\S]*externalThinkingMessageId=\{externalThinkingMessageId\}/u);
 	assert.doesNotMatch(PAGE_SOURCE, /<JgpRovoOverlay[\s\S]*insights=/u);
@@ -142,6 +147,8 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 	assert.match(AGENT_ACTIVITY_SOURCE, /const assignedRowHandle = \(\s*<JiraIssueAgentAssignmentHandle/u);
 	assert.match(AGENT_ACTIVITY_SOURCE, /openMode="hover"/u);
 	assert.doesNotMatch(AGENT_ACTIVITY_SOURCE, /rowSessionFlyout|JiraSessionFlyoutTrigger/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /ROVO_AGENT_SELECTOR_AGENTS/u);
+	assert.match(PAGE_SOURCE, /onCardAssignedAgentIdsChange=\{onAssignedAgentIdsChange\}/u);
 });
 
 test("chin-row agent activity indicators use the Team EU renderer", () => {
@@ -580,10 +587,19 @@ test("the Work items header switches between Board and List views with their ico
 	assert.match(LIST_HOOK_SOURCE, /onCreate: handleCreateWorkItem/u);
 	assert.match(LIST_HOOK_SOURCE, /onStatusChange: handleStatusChange/u);
 	assert.match(LIST_HOOK_SOURCE, /onAssignedAgentIdsChange: handleAssignedAgentIdsChange/u);
+	assert.match(
+		LIST_HOOK_SOURCE,
+		/onAssignedAgentIdsChange: \(issueKey: string, agentIds: readonly string\[\]\) => void;/u,
+	);
+	assert.match(
+		LIST_HOOK_SOURCE,
+		/const JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG = mergeJiraKanbanAgentCatalog\(\s*JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,\s*\);/u,
+	);
 	assert.match(LIST_HOOK_SOURCE, /issueType: draftWorkItem.issueType/u);
 	assert.match(LIST_HOOK_SOURCE, /dueDate: draftWorkItem.dueDate/u);
 	assert.match(LIST_HOOK_SOURCE, /currentOrder.length === 0 \? allKeys : currentOrder/u);
-	assert.match(LIST_HOOK_SOURCE, /agentCatalog: JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS/u);
+	assert.match(LIST_HOOK_SOURCE, /agentCatalog: JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG/u);
+	assert.match(LIST_HOOK_SOURCE, /createListRows\(columns, JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG\)/u);
 	assert.match(LIST_HOOK_SOURCE, /statusOptions: JIRA_GOLDEN_JOURNEYS_V4_LIST_STATUS_OPTIONS/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /activeView\?: ExperimentalJiraKanbanView;/u);
 	assert.match(

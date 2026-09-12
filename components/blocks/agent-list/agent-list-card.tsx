@@ -34,10 +34,8 @@ import { cn } from "@/lib/utils";
 
 import { AgentListIdentity } from "./agent-list-identity";
 import { InvokerBy } from "./agent-list-invoker";
-import {
-	AgentListRowActionButton,
-	type AgentListRowAction,
-} from "./agent-list-row-action";
+import { AgentListCardActions } from "./agent-list-card-actions";
+import type { AgentListRowAction } from "./agent-list-row-action";
 import { isLocalAgentListItem, toAgentSessionFlyoutItem } from "./agent-list-session";
 import type {
 	AgentListCustomFlyoutActions,
@@ -555,59 +553,6 @@ export type AgentListRowHoverActions = Readonly<{
 	pinned?: boolean;
 }>;
 
-/**
- * The hover/focus-revealed actions. Kept in the tab order rather than
- * `display: none`-hidden, because a hidden wrapper could never satisfy its own
- * `:focus-visible` reveal condition. Width collapses via `0fr`/`1fr` so the
- * lifecycle indicator sits flush right at rest.
- */
-function CardActions({
-	menu,
-	pinned = false,
-	primary,
-	secondary,
-}: Readonly<{
-	menu?: ReactNode;
-	pinned?: boolean;
-	primary?: AgentListRowAction;
-	secondary?: AgentListRowAction;
-}>) {
-	return (
-		<div
-			className={cn(
-				"grid shrink-0 grid-cols-[0fr] transition-[grid-template-columns] duration-normal ease-out-practical",
-				"group-hover/agent-row:grid-cols-[1fr] group-has-[:focus-visible]/agent-row:grid-cols-[1fr]",
-				"motion-reduce:transition-none",
-				// Uncaptured-work rows reveal the eye instantly; Agent List keeps the fade.
-				"group-data-[variant=uncaptured-work]/agent-row:transition-none",
-				pinned && "grid-cols-[1fr]",
-			)}
-		>
-			<div
-				className={cn(
-					"min-w-0 overflow-hidden has-[:focus-visible]:overflow-visible",
-					pinned && "overflow-visible",
-				)}
-			>
-				<div
-					className={cn(
-						"pointer-events-none flex shrink-0 items-center gap-1 pl-3 opacity-0 transition-opacity duration-normal ease-out-practical",
-						"group-hover/agent-row:pointer-events-auto group-hover/agent-row:opacity-100",
-						"group-has-[:focus-visible]/agent-row:pointer-events-auto group-has-[:focus-visible]/agent-row:opacity-100",
-						"motion-reduce:transition-none",
-						"group-data-[variant=uncaptured-work]/agent-row:transition-none",
-						pinned && "pointer-events-auto opacity-100",
-					)}
-				>
-					{primary ? <AgentListRowActionButton action={primary} /> : null}
-					{secondary ? <AgentListRowActionButton action={secondary} /> : null}
-					{menu}
-				</div>
-			</div>
-		</div>
-	);
-}
-
 /** Class list for the `<li>` each flyout variant renders through its trigger. */
 function rowClassName(isCompact: boolean, isSelected: boolean): string {
 	return cn(
@@ -650,7 +595,7 @@ export function AgentListRow({
 	/**
 	 * Caller-owned trailing lifecycle indicator, replacing the built-in one and
 	 * its `STATE_META` gate. Symmetric with {@link metadata}: a specialized row
-	 * can state its own vocabulary without Agent List learning it.
+	 * states its own vocabulary, and `null` omits the slot entirely.
 	 */
 	lifecycle?: ReactNode;
 	/** Caller-owned metadata. Pass `null` to omit the default metadata line. */
@@ -678,17 +623,7 @@ export function AgentListRow({
 	const stateMeta = STATE_META[item.state];
 	const prMeta = item.prStatus ? PR_STATUS_META[item.prStatus] : null;
 	const PrIcon = prMeta?.Icon ?? null;
-	// A session row is one line tall by contract, so its title truncates. A row
-	// with body copy is already a paragraph — truncating its title there hides the
-	// one line that says what happened.
 	const hasSummary = Boolean(item.summary);
-	const titleClassName = cn(
-		"min-w-0 font-medium",
-		hasSummary ? "text-pretty" : "truncate",
-		isCompact ? "text-xs" : "text-sm",
-	);
-
-	const viewItem = onView === undefined ? undefined : () => onView(item);
 	// A selected Agent List row is already the destination, so it keeps its
 	// lifecycle indicator. Session cards opt back in because Archive / Resume
 	// still apply after the article is highlighted.
@@ -696,11 +631,43 @@ export function AgentListRow({
 		(hoverActions?.primary !== undefined
 			|| hoverActions?.secondary !== undefined
 			|| hoverActions?.menu !== undefined);
-	// A caller-owned indicator states its own vocabulary, so it renders whenever
-	// it is supplied — Agent Session marks a finished session with a check where
-	// `STATE_META` would reserve no slot at all.
-	const lifecycleNode = lifecycle
-		?? (stateMeta.showLifecycle ? <LifecycleIndicator state={item.state} /> : null);
+	// A long resting title can be several lines tall. Keep that wrapped copy in
+	// layout while a one-line visual copy takes over during reveal, otherwise the
+	// row can collapse out from under a pointer entering one of its lower lines.
+	const stabilizeHoverTitle = !hasSummary
+		&& showHoverActions
+		&& !(stateAwareTitle && stateMeta.shimmerTitle);
+	const resolvedTitle = stateAwareTitle ? getSessionTitle(item) : item.title;
+	const titleClassName = cn(
+		"min-w-0 font-medium",
+		hasSummary ? "text-pretty" : stabilizeHoverTitle
+			? [
+				"group-hover/agent-row:opacity-0 group-has-[:focus-visible]/agent-row:opacity-0",
+				hoverActions?.pinned ? "opacity-0" : null,
+			]
+			: "truncate",
+		isCompact ? "text-xs" : "text-sm",
+	);
+	const hoverTitleClassName = cn(
+		"col-start-1 row-start-1 min-w-0 truncate font-medium text-text opacity-0",
+		"group-hover/agent-row:opacity-100 group-has-[:focus-visible]/agent-row:opacity-100",
+		hoverActions?.pinned ? "opacity-100" : null,
+		isCompact ? "text-xs" : "text-sm",
+	);
+
+	const viewItem = onView === undefined ? undefined : () => onView(item);
+	// A menu-only reveal (session "..." / viewer hint) must occupy the same
+	// 24px trailing slot as the lifecycle glyph. Expanding a sibling `0fr`
+	// column would move the trigger when hover, focus, or open swaps them.
+	const overlayHoverActions = showHoverActions
+		&& hoverActions?.primary === undefined
+		&& hoverActions?.secondary === undefined
+		&& hoverActions?.menu !== undefined;
+	// `undefined` is "no opinion" and falls back to the `STATE_META` gate; an
+	// explicit `null` means "no indicator". `??` silently collapsed the two.
+	const lifecycleNode = lifecycle === undefined
+		? (stateMeta.showLifecycle ? <LifecycleIndicator state={item.state} /> : null)
+		: lifecycle;
 	const identity = (
 		<AgentListIdentity
 			agent={item.agent}
@@ -754,11 +721,27 @@ export function AgentListRow({
 									duration={1.4}
 									spread={2}
 								>
-									{getSessionTitle(item)}
+									{resolvedTitle}
 								</Shimmer>
+							) : stabilizeHoverTitle ? (
+								<span className="grid w-full min-w-0">
+									<span
+										className={cn(titleClassName, "col-start-1 row-start-1 text-text")}
+										data-agent-list-title-layout=""
+									>
+										{resolvedTitle}
+									</span>
+									<span
+										aria-hidden="true"
+										className={hoverTitleClassName}
+										data-agent-list-title-hover=""
+									>
+										{resolvedTitle}
+									</span>
+								</span>
 							) : (
 								<span className={cn(titleClassName, "text-text")}>
-									{stateAwareTitle ? getSessionTitle(item) : item.title}
+									{resolvedTitle}
 								</span>
 							)}
 							{stateAwareTitle && stateMeta.showDots ? <AnimatedDots /> : null}
@@ -795,24 +778,43 @@ export function AgentListRow({
 							</span>
 						) : metadata}
 					</RowBody>
-					{lifecycleNode ? (
+					{lifecycleNode || overlayHoverActions ? (
 						// A `div`, not a `span`: every non-running indicator is an
 						// `IconTile`, whose root is a block element. Phrasing content
 						// cannot contain it, and the invalid nesting surfaces as a
 						// hydration recovery on server-rendered session lists.
 						<div
 							className={cn(
-								"ml-3 flex w-6 shrink-0 items-center",
-								showHoverActions &&
+								"relative ml-3 flex min-h-6 min-w-6 shrink-0 items-center justify-end overflow-visible",
+								!overlayHoverActions && "pointer-events-none",
+								!overlayHoverActions && showHoverActions &&
 									"group-hover/agent-row:hidden group-has-[:focus-visible]/agent-row:hidden",
-								showHoverActions && hoverActions?.pinned && "hidden",
+								!overlayHoverActions && showHoverActions && hoverActions?.pinned && "hidden",
 							)}
 						>
-							{lifecycleNode}
+							{lifecycleNode ? (
+								<div
+								className={cn(
+									overlayHoverActions
+											? "group-hover/agent-row:pointer-events-none group-hover/agent-row:invisible group-has-[[data-agent-list-card-actions]:focus-within]/agent-row:pointer-events-none group-has-[[data-agent-list-card-actions]:focus-within]/agent-row:invisible group-has-[[aria-expanded=true]]/agent-row:pointer-events-none group-has-[[aria-expanded=true]]/agent-row:invisible"
+											: "pointer-events-none",
+										overlayHoverActions && hoverActions?.pinned && "pointer-events-none invisible",
+									)}
+								>
+									{lifecycleNode}
+								</div>
+							) : null}
+							{overlayHoverActions ? (
+								<AgentListCardActions
+									menu={hoverActions?.menu}
+									overlay
+									pinned={hoverActions?.pinned}
+								/>
+							) : null}
 						</div>
 					) : null}
-					{showHoverActions ? (
-						<CardActions
+					{showHoverActions && !overlayHoverActions ? (
+						<AgentListCardActions
 							menu={hoverActions?.menu}
 							pinned={hoverActions?.pinned}
 							primary={hoverActions?.primary}

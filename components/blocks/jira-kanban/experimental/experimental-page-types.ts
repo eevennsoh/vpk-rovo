@@ -49,6 +49,7 @@ export interface ExperimentalJiraKanbanPageProps {
 	/** Extra local sessions discovered after the static Pulse fixture loaded. */
 	additionalAgentSessions?: readonly PulseAgentSession[];
 	agentActivityLayout?: JiraIssueAgentActivityLayout;
+	cardGenerativeActionFooterActions?: ExperimentalJiraKanbanProps["cardGenerativeActionFooterActions"];
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
 	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
 	iconScale?: JiraIssueIconScale;
@@ -91,7 +92,8 @@ export interface ExperimentalJiraKanbanPageProps {
 	agentSessionPresentation?: "column" | "panel";
 	/**
 	 * Whether the unattached sessions column supports additive/range selection
-	 * and multi-session drag cohorts. Defaults to true.
+	 * and multi-session drag cohorts. Defaults to true. `false` also disables
+	 * single-select row chrome on that column.
 	 */
 	agentSessionMultiSelect?: boolean;
 	agents?: readonly JiraKanbanAgentData[];
@@ -154,6 +156,12 @@ export interface ExperimentalJiraKanbanPageProps {
 	subtaskChrome?: JiraIssueChrome;
 	onInsightsWorkItemClick?: (workItem: PulseWorkItem) => void;
 	onModeChange?: (mode: ExperimentalJiraKanbanMode) => void;
+	/**
+	 * Reopen an unattached local session in its own agent. Omit it and the
+	 * row's Continue-in action stays disabled — an enabled control with no
+	 * host action would be a lie.
+	 */
+	onContinueLooseWork?: (item: PulseLooseWork) => void;
 	onResumeLooseWork?: (item: PulseLooseWork) => void;
 	onViewChange?: (view: ExperimentalJiraKanbanView) => void;
 	renderListContent?: (
@@ -171,6 +179,13 @@ export interface ExperimentalJiraKanbanPageProps {
 	 * passes false.
 	 */
 	showAgentSessionFilter?: boolean;
+	/**
+	 * Whether an unattached session row offers the hover check that links it to
+	 * its suggested work item. Defaults to true so other boards keep one-click
+	 * linking. jira-team-eu26 passes false: that board no longer ships the
+	 * feature, so the row shows no link affordance at all.
+	 */
+	showAgentSessionLinkAction?: boolean;
 	/**
 	 * Whether the unattached sessions column shows the overflow (ellipsis)
 	 * menu. Collapse remains when this is off. Defaults to true.

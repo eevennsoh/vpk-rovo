@@ -16,10 +16,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
-import { inFlowCollapsedMenuPinLabel } from "../lib/in-flow-agent-session-column-interaction";
+import {
+	inFlowCollapsedMenuPinLabel,
+	shouldRestoreInFlowCollapsedMenuFocus,
+} from "../lib/in-flow-agent-session-column-interaction";
 
 const HOVER_OPEN_TRIGGER_CLASS_NAME =
-	"aria-expanded:border-transparent aria-expanded:bg-bg-neutral-subtle-hovered aria-expanded:text-text-subtle aria-expanded:[&_[data-slot=icon]]:text-icon-subtle aria-expanded:[&_svg]:text-icon-subtle";
+	"aria-expanded:border-transparent aria-expanded:bg-bg-neutral-subtle-hovered aria-expanded:hover:bg-bg-neutral-subtle-hovered! aria-expanded:active:bg-bg-neutral-subtle-pressed! aria-expanded:text-text-subtle aria-expanded:[&_[data-slot=icon]]:text-icon-subtle aria-expanded:[&_svg]:text-icon-subtle";
 
 export function InFlowAgentSessionColumnCollapsedMenu({
 	className,
@@ -91,7 +94,12 @@ export function InFlowAgentSessionColumnCollapsedMenu({
 					render={<TriggerGlyph color="currentColor" label="" size="small" />}
 				/>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="min-w-0 w-max" side="right">
+			<DropdownMenuContent
+				align="start"
+				className="min-w-0 w-max"
+				finalFocus={shouldRestoreInFlowCollapsedMenuFocus}
+				side="right"
+			>
 				<DropdownMenuItem
 					className={itemClassName}
 					elemBefore={<Icon className="text-icon-subtle" render={<PinGlyph label="" size="small" />} />}

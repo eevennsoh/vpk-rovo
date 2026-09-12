@@ -21,6 +21,7 @@ import {
 	NO_SELECTION_MARKS,
 	reduceSelectionMarks,
 	resolveLeadSpotlight,
+	resolveTriageApprove,
 	resolveUntrackedSelectionGesture,
 	resolveVisibleLeadId,
 	selectEffectiveSelection,
@@ -46,6 +47,12 @@ export function useUntrackedSelection<T>(
 		getSuggestedWorkItemKeys?: (item: AgentSessionItem) => readonly string[] | undefined;
 		multiSelect: boolean;
 		onLeadItem?: (item: AgentSessionItem | null) => void;
+		/**
+		 * Whether a row offers the hover check that links a session to its
+		 * suggested work item. Defaults to on; a board without the link feature
+		 * passes `false` and its rows carry no approve action.
+		 */
+		showLinkAction?: boolean;
 		title: string;
 		triage?: UntrackedWorkTriage<T>;
 		visibilityLabel?: VisibilityActionLabel;
@@ -155,14 +162,14 @@ export function useUntrackedSelection<T>(
 			}
 
 			next.set(item.id, {
-				approve: {
+				approve: resolveTriageApprove(target, {
+					enabled: input.showLinkAction !== false,
 					onApprove: () => {
 						if (target.kind === "work-item") {
 							triage.attach(item, target.target);
 						}
 					},
-					target,
-				},
+				}),
 				drag: input.multiSelect
 					? {
 						cohort: () => selectDragCohort(item.id, marks, input.visibleItems),
@@ -181,7 +188,16 @@ export function useUntrackedSelection<T>(
 		}
 
 		return next;
-	}, [activate, approveTargetById, input.multiSelect, input.visibleItems, leadId, marks, triage]);
+	}, [
+		activate,
+		approveTargetById,
+		input.multiSelect,
+		input.showLinkAction,
+		input.visibleItems,
+		leadId,
+		marks,
+		triage,
+	]);
 
 	const onHeaderAction = useCallback((id: HeaderActionId) => {
 		if (id === "clear") {

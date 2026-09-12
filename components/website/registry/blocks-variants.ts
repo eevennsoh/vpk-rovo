@@ -299,17 +299,17 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
-	"jira-work-item-demo-experimental-v6": dynamic(
-		() =>
-			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
-				default: mod.JiraWorkItemDemoExperimentalV6,
-			})),
-		{ ssr: false },
-	),
 	"jira-work-item-demo-team-eu26": dynamic(
 		() =>
 			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
 				default: mod.JiraWorkItemDemoTeamEu26,
+			})),
+		{ ssr: false },
+	),
+	"jira-work-item-demo-team-eu26-empty": dynamic(
+		() =>
+			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
+				default: mod.JiraWorkItemDemoTeamEu26Empty,
 			})),
 		{ ssr: false },
 	),
@@ -334,13 +334,6 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 			})),
 		{ ssr: false },
 	),
-	"jira-work-item-demo-experimental-v6-empty": dynamic(
-		() =>
-			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
-				default: mod.JiraWorkItemDemoExperimentalV6Empty,
-			})),
-		{ ssr: false },
-	),
 	"jira-work-item-demo-experimental-v3-running": dynamic(
 		() =>
 			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
@@ -359,13 +352,6 @@ export const BLOCK_VARIANT_DEMO_ENTRIES: Record<string, ComponentType> = {
 		() =>
 			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
 				default: mod.JiraWorkItemDemoExperimentalV5Running,
-			})),
-		{ ssr: false },
-	),
-	"jira-work-item-demo-experimental-v6-running": dynamic(
-		() =>
-			import("../demos/blocks/jira-work-item-demo").then((mod) => ({
-				default: mod.JiraWorkItemDemoExperimentalV6Running,
 			})),
 		{ ssr: false },
 	),

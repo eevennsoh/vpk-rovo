@@ -326,7 +326,7 @@ export function AgentSessionColumn({
 	collapsedRailHitSlopPx = 0,
 	count,
 	defaultCollapsed = false,
-	emptyLabel = "No unattached sessions",
+	emptyLabel = "No sessions to unlink",
 	expandedWidthPx = AGENT_SESSION_COLUMN_WIDTH_PX,
 	hasScrollingEffect = false,
 	widthTransitionDisabled = false,
@@ -345,8 +345,9 @@ export function AgentSessionColumn({
 	playGutterIntro = false,
 	selectedItemId: selectedItemIdProp,
 	showFilter = true,
+	showLinkAction = true,
 	showOverflow = true,
-	title = "Unattached sessions",
+	title = "Unlink sessions",
 	triage,
 	toggleChangesWidth = true,
 	...sessionProps
@@ -359,12 +360,16 @@ export function AgentSessionColumn({
 	const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(defaultCollapsed);
 	const collapsed = collapsedProp ?? uncontrolledCollapsed;
 	// Collapse remounts `AgentSession`, so the column keeps the selected id the
-	// same way it keeps arrival-beat history.
+	// same way it keeps arrival-beat history. `multiSelect={false}` also opts
+	// out of that singleton chrome — article click still views, but the row
+	// never takes `bg-bg-selected`.
 	const isSelectionControlled = selectedItemIdProp !== undefined;
 	const [uncontrolledSelectedItemId, setUncontrolledSelectedItemId] = useState<string | null>(
 		null,
 	);
-	const selectedItemId = isSelectionControlled ? selectedItemIdProp : uncontrolledSelectedItemId;
+	const selectedItemId = multiSelect
+		? isSelectionControlled ? selectedItemIdProp : uncontrolledSelectedItemId
+		: null;
 	const canViewItem = sessionProps.canViewItem;
 	const onViewSession = sessionProps.onView;
 	const {
@@ -476,6 +481,7 @@ export function AgentSessionColumn({
 		getSuggestedWorkItemKeys: sessionProps.getSuggestedWorkItemKeys,
 		multiSelect,
 		onLeadItem: handleLeadItem,
+		showLinkAction,
 		title: displayTitle,
 		triage: selectionTriage,
 		visibilityLabel: view === "hidden" ? "Unarchive" : "Archive",
@@ -767,6 +773,7 @@ export function AgentSessionColumn({
 						data-agent-session-column-scrollport=""
 						className="min-h-0 min-w-0 flex-1 overflow-y-auto has-[:focus-visible]:overflow-visible relative z-0 scrollbar-auto-hide [&[data-scrolling]>ul]:pointer-events-none"
 					>
+						{/* Omit newItemIds so expanded rows skip the unreviewed blue dot; arrival still uses arrivingItemIds. */}
 						<AgentSession
 							arrivingItemIds={arrivingItemIds}
 							className={cn(
@@ -774,11 +781,10 @@ export function AgentSessionColumn({
 								listClassName,
 							)}
 							items={displayedItems}
-							newItemIds={newItemIds}
 							onArrivalComplete={handleArrivalComplete}
 							{...sessionProps}
 							onArchiveSession={handleArchiveSession}
-							onSelectedItemIdChange={handleSelectedItemIdChange}
+							onSelectedItemIdChange={multiSelect ? handleSelectedItemIdChange : undefined}
 							onToggleVisibility={handleToggleVisibility}
 							rowTriage={untrackedSelection.rows}
 							selectedItemId={selectedItemId}

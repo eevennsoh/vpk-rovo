@@ -57,6 +57,7 @@ export function AgentSessionCard({
 	flyoutSession,
 	getResumeCommand,
 	isArriving = false,
+	isFlyoutActive = false,
 	isHighlighted = false,
 	isNew = false,
 	isResumable,
@@ -69,6 +70,7 @@ export function AgentSessionCard({
 	onCopyResume,
 	onDeleteSession,
 	onItemHover,
+	onMoreMenuOpenChange,
 	onRenameSession,
 	onToggleVisibility,
 	onView,
@@ -89,6 +91,8 @@ export function AgentSessionCard({
 	getResumeCommand?: (item: AgentSessionItem) => string | undefined;
 	/** Play the one-shot arrival beat. A remounted card must not re-arm it. */
 	isArriving?: boolean;
+	/** Keep the row's hover treatment while its portalled flyout chain is active. */
+	isFlyoutActive?: boolean;
 	/** Light this row for a pointer hovering its matching board session. */
 	isHighlighted?: boolean;
 	/** Carry the persistent unreviewed mark. Outlives the beat. */
@@ -119,8 +123,13 @@ export function AgentSessionCard({
 	 * behind the picker.
 	 */
 	moreMenuPositionerClassName?: string;
-	/** Keep the more-menu inside a parent overlay instead of portalling to the document. */
+	/**
+	 * Portal the more-menu. Nested clipped overlays can pass `false`;
+	 * assignment uses the default portal so Rename / Delete escape the picker.
+	 */
 	moreMenuPortalled?: boolean;
+	/** Tell a host overlay when the portalled more-menu is open so it can stay mounted. */
+	onMoreMenuOpenChange?: (open: boolean) => void;
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
 	showMoreMenu?: boolean;
 	triageRow?: AgentSessionTriageRow | null;
@@ -223,11 +232,16 @@ export function AgentSessionCard({
 		onCopyResume,
 		onDeleteSession,
 		onItemHover,
+		onMoreMenuOpenChange,
 		onRenameSession,
 		onToggleVisibility,
 		resumeCommand,
 	});
 	const role = getAgentSessionRole(item);
+	// Title-led long rows spend their reclaimed width on a trailing progression
+	// column. Short rows do not: `stateAwareTitle` already says "Needs input" on
+	// the title line, so a resting status glyph would only repeat it.
+	const isLongDensity = density === "long";
 	const trailingControl = (() => {
 		if (!showMoreMenu) {
 			return undefined;
@@ -235,7 +249,10 @@ export function AgentSessionCard({
 
 		switch (role) {
 			case "expired":
-				return undefined;
+				// Long rows keep the hint in the resting lifecycle slot it shares with
+				// the status glyph. A short row has no resting slot, so its one control
+				// moves into the hover-revealed column beside "…" and the viewer hint.
+				return isLongDensity ? undefined : <AgentSessionExpiredHint />;
 			case "viewer":
 				return <AgentSessionViewerHint />;
 			case "owner":
@@ -260,10 +277,17 @@ export function AgentSessionCard({
 			}
 		}
 	})();
+	// `null`, not `undefined`: the shared row treats `undefined` as "no opinion"
+	// and falls back to its own `STATE_META` indicator.
+	const lifecycleIndicator = !isLongDensity
+		? null
+		: role === "expired"
+			? <AgentSessionExpiredHint />
+			: <AgentSessionLifecycle state={item.state} />;
 	const hoverActions: AgentListRowHoverActions = {
 		// The reveal must outlive the pointer: a portalled popup and a post-click
 		// confirmation both take the cursor off the row.
-		pinned: showMoreMenu && role === "owner" && (menu.isOpen || menu.copied),
+		pinned: isFlyoutActive || (showMoreMenu && role === "owner" && (menu.isOpen || menu.copied)),
 		primary: approve
 			? {
 				disabled: approve.target.kind === "unavailable",
@@ -278,7 +302,6 @@ export function AgentSessionCard({
 	// A triage mark lives on the leading avatar, so a markable row keeps its
 	// identity column even in the title-led density — losing multi-select would
 	// cost more than the horizontal space it buys back.
-	const isLongDensity = density === "long";
 	const hideIdentity = isLongDensity && mark == null;
 
 	// Arrival layout lives on the list item, not the flyout trigger. Base UI
@@ -334,20 +357,21 @@ export function AgentSessionCard({
 							aria-current={isSelected ? "true" : undefined}
 							aria-roledescription={bind ? "Draggable agent session" : undefined}
 							className={cn(
-						"group/agent-row relative flex w-full cursor-default rounded-lg text-left text-text",
+						"group/agent-row relative flex w-full min-w-0 cursor-default rounded-lg text-left text-text",
 						padding === "compact" ? "px-3 py-2" : "p-3",
 						// Borderless tiles, 8px radius — same chrome as editor-palette
 						// suggestion rows. The list owns the gap between them.
 						"transition-[background-color,border-radius] duration-xxshort ease-out-practical",
 						"motion-reduce:transition-none",
 						showSelectedFill && "bg-bg-selected",
-						!showSelectedFill && isHighlighted && "bg-surface-hovered",
-						!showSelectedFill && !isHighlighted && "bg-transparent hover:bg-surface-hovered",
+						!showSelectedFill && (isHighlighted || isFlyoutActive) && "bg-surface-hovered",
+						!showSelectedFill && !isHighlighted && !isFlyoutActive && "bg-transparent hover:bg-surface-hovered",
 						activateCard === undefined
 							? null
 							: "outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
 							)}
 							data-captured={captured || undefined}
+							data-hovered={isFlyoutActive || undefined}
 							data-highlighted={isHighlighted || undefined}
 							data-marked={isMarked || undefined}
 							data-new={isNew || undefined}
@@ -376,11 +400,10 @@ export function AgentSessionCard({
 								isCompact={false}
 								isSelected={showSelectedFill}
 								item={item}
-								// The title-led row states its own lifecycle, including the
-								// success check Agent List has no slot for.
-								lifecycle={role === "expired"
-									? <AgentSessionExpiredHint />
-									: <AgentSessionLifecycle state={item.state} />}
+								// The title-led long row states its own lifecycle, including the
+								// success check Agent List has no slot for. A short row states
+								// it in the title and keeps the trailing column empty at rest.
+								lifecycle={lifecycleIndicator}
 								metadata={
 									isLongDensity
 										? <AgentSessionLongMetadata item={item} />
@@ -429,6 +452,7 @@ export function AgentSessionCard({
 					return (
 						<JiraSessionFlyoutTrigger
 							closeDelay={160}
+							data-session-id={item.id}
 							handle={flyoutHandle}
 							render={<div className="w-full" />}
 							session={flyoutSession}

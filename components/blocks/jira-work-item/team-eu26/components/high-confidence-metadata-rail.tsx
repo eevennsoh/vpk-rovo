@@ -12,6 +12,7 @@ import {
 	PersonRowField,
 	PriorityRowField,
 } from "@/components/blocks/jira-work-item/team-eu26/components/detail-field-editors";
+import { CollapsibleWorkItemSection } from "@/components/blocks/jira-work-item/team-eu26/components/collapsible-work-item-section";
 import { DetailFieldRow, DetailValueTrigger } from "@/components/blocks/jira-work-item/team-eu26/components/detail-field-row";
 import { TeamEuAppsPanel } from "@/components/blocks/jira-work-item/team-eu26/components/team-eu-apps-panel";
 import {
@@ -55,7 +56,7 @@ export function HighConfidenceMetadataRail({
 	}, [metadata.assignee, workItem.assignee, workItem.reporter]);
 
 	return (
-		<aside aria-label="Work item details" className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto" data-team-eu26-high-confidence-rail>
+		<aside aria-label="Work item details" className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto @[860px]/agentlayout:pt-6" data-team-eu26-high-confidence-rail>
 			{showRecentAutomationRuns ? (
 				<TeamEuRecentAutomationRuns onBack={() => setShowRecentAutomationRuns(false)} rules={automationRules} />
 			) : null}
@@ -64,8 +65,8 @@ export function HighConfidenceMetadataRail({
 				className={showRecentAutomationRuns ? "hidden" : "flex flex-col gap-4"}
 				inert={showRecentAutomationRuns ? true : undefined}
 			>
-			<section aria-labelledby="team-eu26-details-heading" className="rounded-lg border border-border bg-surface p-4">
-				<h2 className="mb-4 text-sm font-semibold text-text" id="team-eu26-details-heading">Details</h2>
+			<div className="overflow-hidden rounded-lg border border-border-disabled bg-surface">
+				<CollapsibleWorkItemSection headingId="team-eu26-details-heading" label="Details" variant="rail">
 				<div className="space-y-4">
 					<DetailFieldRow
 						label="Assignee"
@@ -125,7 +126,8 @@ export function HighConfidenceMetadataRail({
 						{showMoreDetails ? "Show fewer details" : "Show more details"}
 					</Button>
 				</div>
-			</section>
+				</CollapsibleWorkItemSection>
+			</div>
 			<TeamEuDevelopmentPanel />
 			<TeamEuAutomationPanel onShowRecentRuns={() => setShowRecentAutomationRuns(true)} rules={automationRules} />
 			<TeamEuAppsPanel />

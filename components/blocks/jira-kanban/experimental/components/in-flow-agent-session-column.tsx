@@ -34,7 +34,7 @@ import { useSessionColumnReposition } from "./use-session-column-reposition";
 // Extend the preview's 24px session targets to 56px, within the empty gutter.
 // The 32px column footprint and marker axis stay fixed; To do remains clickable.
 const IN_FLOW_AGENT_SESSION_COLUMN_RAIL_HIT_SLOP_PX = 16;
-const IN_FLOW_AGENT_SESSION_COLUMN_TITLE = "Unattached sessions";
+const IN_FLOW_AGENT_SESSION_COLUMN_TITLE = "Unlink sessions";
 // Centers the rail's 16px dot axis in the 26px visible gutter (24px inset + border).
 const IN_FLOW_AGENT_SESSION_COLUMN_GUTTER_OFFSET_PX = -5;
 const IN_FLOW_AGENT_SESSION_COLUMN_MAX_WIDTH_PX = 560;
@@ -311,26 +311,57 @@ function InFlowAgentSessionColumnSurface({
 	);
 }
 
-/**
- * The Untracked rail rests in the page's leading gutter. Hover temporarily
- * returns that same compact timeline to the board's original 24px column inset
- * and reveals the collapsed header chrome — the session total and a "…"
- * options menu — without swapping dots for cards. Pin keeps that surface
- * embedded after the pointer leaves. Expand from the gutter opens the
- * full-width column and pins it. Collapsing the full column keeps the
- * compact rail pinned in the board until the user unpins it. The full-height
- * gutter target sits behind each session row so a row can own its whole
- * 24px band while empty gutter space still opens the column preview.
- */
-export function InFlowAgentSessionColumn({
+function resolveSessionColumnExpansion(
+	isEmbedded: boolean,
+	isFullWidth: boolean,
+	pinned: boolean,
+): "expanded" | "gutter" | "pinned" | "preview" {
+	if (!isEmbedded) return "gutter";
+	if (isFullWidth) return "expanded";
+	return pinned ? "pinned" : "preview";
+}
+
+function InFlowAgentSessionColumnGutter({
+	handleGutterPointerDown,
+	handlePointerEnter,
+	isEmbedded,
+	showGutterScrollMask,
+}: Readonly<{
+	handleGutterPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+	handlePointerEnter: (event: PointerEvent<HTMLDivElement>) => void;
+	isEmbedded: boolean;
+	showGutterScrollMask: boolean;
+}>) {
+	if (isEmbedded) return null;
+
+	return (
+		<div
+			aria-hidden="true"
+			className="absolute inset-y-0 start-0 z-30"
+			data-agent-session-column-hit-area=""
+			onPointerEnter={handlePointerEnter}
+			onPointerDown={handleGutterPointerDown}
+			style={{
+				width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX
+					+ IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_LEADING_BORDER_PX,
+			}}
+		>
+			{showGutterScrollMask ? (
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute inset-y-0 start-0 z-40 bg-surface"
+					data-agent-session-column-gutter-fill=""
+					style={{ width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX }}
+				/>
+			) : null}
+		</div>
+	);
+}
+
+function useInFlowAgentSessionColumnModel({
 	agentSessionColumn,
-	className,
-	columnFrame,
-	paddingBottom,
-	paddingTop,
 	sessionFlyoutsSuspended,
-	untrackedDropArmed,
-}: Readonly<InFlowAgentSessionColumnProps>): ReactNode {
+}: Readonly<Pick<InFlowAgentSessionColumnProps, "agentSessionColumn" | "sessionFlyoutsSuspended">>) {
 	const shouldReduceMotion = useReducedMotion();
 	const hostRef = useRef<HTMLDivElement>(null);
 	const showGutterScrollMask = useInFlowGutterScrollMask(hostRef);
@@ -340,20 +371,7 @@ export function InFlowAgentSessionColumn({
 			setPlayGutterIntro(false);
 		}
 	}, [shouldReduceMotion]);
-	const {
-		expanded,
-		handleCollapsedChange,
-		handleExpand,
-		handleGutterPointerDown,
-		handleMenuOpenChange,
-		handlePinnedChange,
-		handlePointerEnter,
-		handlePointerLeave,
-		isEmbedded: isInteractionEmbedded,
-		isFullWidth,
-		isMenuOpen,
-		pinned,
-	} = useInFlowAgentSessionColumnInteraction(
+	const interaction = useInFlowAgentSessionColumnInteraction(
 		agentSessionColumn.collapsed,
 		agentSessionColumn.onCollapsedChange,
 	);
@@ -364,7 +382,7 @@ export function InFlowAgentSessionColumn({
 		minWidthResistance: true,
 	});
 	const expandedWidthPx = resize.sidebarWidth;
-	const columnWidthPx = isFullWidth
+	const columnWidthPx = interaction.isFullWidth
 		? expandedWidthPx
 		: AGENT_SESSION_COLUMN_COLLAPSED_WIDTH_PX;
 	const reposition = useSessionColumnReposition({
@@ -372,16 +390,16 @@ export function InFlowAgentSessionColumn({
 		width: columnWidthPx,
 		disabled: sessionFlyoutsSuspended || resize.isResizing,
 		onStart: () => {
-			handleMenuOpenChange(false);
-			if (!pinned && !isFullWidth) handlePinnedChange(true);
+			interaction.handleMenuOpenChange(false);
+			if (!interaction.pinned && !interaction.isFullWidth) interaction.handlePinnedChange(true);
 		},
 	});
 	const handlePinnedPlacementChange = (nextPinned: boolean) => {
-		handlePinnedChange(nextPinned);
+		interaction.handlePinnedChange(nextPinned);
 		if (!nextPinned) reposition.moveToLeadingGutter();
 	};
-	const isEmbedded = isInteractionEmbedded || reposition.shifted || reposition.dragging;
-	const dragHandle = reposition.enabled ? (
+	const isEmbedded = interaction.isEmbedded || reposition.shifted || reposition.dragging;
+	const dragHandle = reposition.available ? (
 		<button
 			aria-label={`Move ${agentSessionColumn.title ?? IN_FLOW_AGENT_SESSION_COLUMN_TITLE} column`}
 			className="me-1 inline-flex size-3 shrink-0 cursor-grab touch-none items-center justify-center text-icon-disabled active:cursor-grabbing [&_svg]:text-icon-disabled"
@@ -393,6 +411,71 @@ export function InFlowAgentSessionColumn({
 		</button>
 	) : undefined;
 
+	return {
+		columnWidthPx,
+		dragHandle,
+		expandedWidthPx,
+		handlePinnedPlacementChange,
+		hostRef,
+		interaction,
+		isEmbedded,
+		playGutterIntro,
+		reposition,
+		resize,
+		setPlayGutterIntro,
+		shouldReduceMotion,
+		showGutterScrollMask,
+	};
+}
+
+/**
+ * The Untracked rail starts pinned in the board as a compact timeline.
+ * Unpin tucks it into the page's leading gutter. Hover from the gutter
+ * temporarily returns that same compact timeline to the board's original
+ * 24px column inset and reveals the collapsed header chrome — the session
+ * total and a "…" options menu — without swapping dots for cards. Pin
+ * keeps that surface embedded after the pointer leaves. Expand from the
+ * gutter opens the full-width column and pins it. Collapsing the full
+ * column keeps the compact rail pinned until the user unpins it. The
+ * full-height gutter target sits behind each session row so a row can own
+ * its whole 24px band while empty gutter space still opens the column preview.
+ */
+export function InFlowAgentSessionColumn({
+	agentSessionColumn,
+	className,
+	columnFrame,
+	paddingBottom,
+	paddingTop,
+	sessionFlyoutsSuspended,
+	untrackedDropArmed,
+}: Readonly<InFlowAgentSessionColumnProps>): ReactNode {
+	const {
+		columnWidthPx,
+		dragHandle,
+		expandedWidthPx,
+		handlePinnedPlacementChange,
+		hostRef,
+		interaction: {
+			expanded,
+			handleCollapsedChange,
+			handleExpand,
+			handleGutterPointerDown,
+			handleMenuOpenChange,
+			handlePointerEnter,
+			handlePointerLeave,
+			isFullWidth,
+			isMenuOpen,
+			pinned,
+		},
+		isEmbedded,
+		playGutterIntro,
+		reposition,
+		resize,
+		setPlayGutterIntro,
+		shouldReduceMotion,
+		showGutterScrollMask,
+	} = useInFlowAgentSessionColumnModel({ agentSessionColumn, sessionFlyoutsSuspended });
+
 	return (
 		<JiraSessionFlyoutSuspensionProvider
 			suspended={sessionFlyoutsSuspended || reposition.dragging || !isEmbedded}
@@ -400,9 +483,7 @@ export function InFlowAgentSessionColumn({
 			<div
 				ref={hostRef}
 				{...reposition.bindings}
-				data-agent-session-column-expansion={
-					!isEmbedded ? "gutter" : isFullWidth ? "expanded" : pinned ? "pinned" : "preview"
-				}
+				data-agent-session-column-expansion={resolveSessionColumnExpansion(isEmbedded, isFullWidth, pinned)}
 				data-agent-session-column-pinned={pinned ? "" : undefined}
 				data-session-column-dragging={reposition.dragging || undefined}
 				className={cn(
@@ -418,28 +499,12 @@ export function InFlowAgentSessionColumn({
 				onPointerEnter={handlePointerEnter}
 				onPointerLeave={handlePointerLeave}
 			>
-				{isEmbedded ? null : (
-					<div
-						aria-hidden="true"
-						className="absolute inset-y-0 start-0 z-30"
-						data-agent-session-column-hit-area=""
-						onPointerEnter={handlePointerEnter}
-						onPointerDown={handleGutterPointerDown}
-						style={{
-							width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX
-								+ IN_FLOW_AGENT_SESSION_COLUMN_SURFACE_LEADING_BORDER_PX,
-						}}
-					>
-						{showGutterScrollMask ? (
-							<div
-								aria-hidden="true"
-								className="pointer-events-none absolute inset-y-0 start-0 z-40 bg-surface"
-								data-agent-session-column-gutter-fill=""
-								style={{ width: IN_FLOW_AGENT_SESSION_COLUMN_INSET_PX }}
-							/>
-						) : null}
-					</div>
-				)}
+				<InFlowAgentSessionColumnGutter
+					handleGutterPointerDown={handleGutterPointerDown}
+					handlePointerEnter={handlePointerEnter}
+					isEmbedded={isEmbedded}
+					showGutterScrollMask={showGutterScrollMask}
+				/>
 				{reposition.shifted ? null : <InFlowAgentSessionColumnFootprint
 					columnFrame={columnFrame}
 					columnWidthPx={columnWidthPx}

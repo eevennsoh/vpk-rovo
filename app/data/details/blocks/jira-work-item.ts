@@ -88,24 +88,14 @@ export const JIRA_WORK_ITEM_DETAIL: ComponentDetail = {
 			demoSlug: "jira-work-item-demo-experimental-v5-running",
 		},
 		{
-			title: "Experimental v6 · Filled context",
-			description: "VITA-1-inspired Jira work item view with a spacious activity timeline, a persistent details rail, and work-item-scoped agent status, rebuilt with VPK components and design tokens.",
-			demoSlug: "jira-work-item-demo-experimental-v6",
-		},
-		{
-			title: "Experimental v6 · Empty context",
-			description: "Experimental v6 empty-context preset with the VITA-1-inspired activity and details layout, automatic deterministic AI planning, natural-language refinement, and one explicit confirmation action.",
-			demoSlug: "jira-work-item-demo-experimental-v6-empty",
-		},
-		{
-			title: "Experimental v6 · Multiple agents running",
-			description: "Experimental v6 running preset pairs the VITA-1-inspired work item view with several concurrent, work-item-scoped agents and deterministic progress.",
-			demoSlug: "jira-work-item-demo-experimental-v6-running",
-		},
-		{
 			title: "Team EU26",
 			description: "Team EU26 work item experience recreated with VPK components and design tokens.",
 			demoSlug: "jira-work-item-demo-team-eu26",
+		},
+		{
+			title: "Team EU26 · Empty context",
+			description: "Team EU26 empty-context preset: VITA-1 chrome with sparse description, add-resource actions, seed activity, and empty Details / Development / Automation rail.",
+			demoSlug: "jira-work-item-demo-team-eu26-empty",
 		},
 	],
 	props: [
@@ -122,7 +112,7 @@ export const JIRA_WORK_ITEM_DETAIL: ComponentDetail = {
 		},
 		{
 			name: "variant",
-			type: "\"default\" | \"experimental\" | \"experimental-v2\" | \"experimental-v3\" | \"experimental-v4\" | \"experimental-v5\" | \"experimental-v6\" | \"team-eu26\"",
+			type: "\"default\" | \"experimental\" | \"experimental-v2\" | \"experimental-v3\" | \"experimental-v4\" | \"experimental-v5\" | \"team-eu26\"",
 			default: "\"default\"",
 			description: "Opt-in layout variation with independently owned component trees.",
 		},
