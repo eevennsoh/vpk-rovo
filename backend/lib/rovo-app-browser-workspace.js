@@ -26,7 +26,7 @@ const EMPTY_PAGE_SNAPSHOT = "Empty page"
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024
 const SCREENSHOT_OUTPUT_DIR = path.join(
 	os.tmpdir(),
-	"vpk-rovo-agent-browser-screenshots",
+	"agent-browser-screenshots",
 )
 
 const threadOperationTails = new Map()

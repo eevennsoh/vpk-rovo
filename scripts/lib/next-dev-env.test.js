@@ -84,14 +84,14 @@ test("getNextDevHostname binds IPv4 when this project has a portless route", () 
 	try {
 		fs.writeFileSync(
 			path.join(fixture.cwd, "package.json"),
-			JSON.stringify({ name: "vpk-rovo" }),
+			JSON.stringify({ name: "example-project" }),
 		);
 		fs.mkdirSync(path.join(fixture.home, ".portless"));
 		fs.writeFileSync(
 			path.join(fixture.home, ".portless", "routes.json"),
 			JSON.stringify([
 				{ hostname: "other-app.localhost", port: 5000, pid: 1 },
-				{ hostname: "vpk-rovo.localhost", port: 4259, pid: 2 },
+				{ hostname: "example-project.localhost", port: 4259, pid: 2 },
 			]),
 		);
 
@@ -109,7 +109,7 @@ test("getNextDevHostname ignores portless routes for other projects", () => {
 	try {
 		fs.writeFileSync(
 			path.join(fixture.cwd, "package.json"),
-			JSON.stringify({ name: "vpk-rovo" }),
+			JSON.stringify({ name: "example-project" }),
 		);
 		fs.mkdirSync(path.join(fixture.home, ".portless"));
 		fs.writeFileSync(

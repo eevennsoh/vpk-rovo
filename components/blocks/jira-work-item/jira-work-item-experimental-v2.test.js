@@ -389,7 +389,7 @@ test("experimental v2 Development starts with a searchable provider-branded repo
 	assert.match(developmentRepositoriesSource, /provider: "github"[\s\S]*provider: "bitbucket"/u);
 	assert.match(repositoryPickerSource, /<GithubLogo borderless label="" size="small" \/>/u);
 	assert.match(repositoryPickerSource, /<BitbucketLogo appearance="brand" label="" size="small" \/>/u);
-	assert.match(developmentRepositoriesSource, /symphony-explainer[\s\S]*proximity[\s\S]*vpk-rovo[\s\S]*vpk-rovodev/u);
+	assert.match(developmentRepositoriesSource, /symphony-explainer[\s\S]*proximity[\s\S]*id: "storefront"[\s\S]*vpk-rovodev/u);
 	// Full URLs stay on the option data (search / future links); bylines strip the scheme.
 	assert.match(developmentRepositoriesSource, /https:\/\/github\.com\/eevensoh\/symphony-explainer[\s\S]*https:\/\/bitbucket\.org\/eevensoh\/vpk-rovodev/u);
 	assert.match(repositoryPickerSource, /`\$\{repository\.name\} \$\{repository\.url\}`/u);
@@ -402,7 +402,7 @@ test("experimental v2 Development starts with a searchable provider-branded repo
 	// Tiny behavior check mirroring `stripUrlScheme` (CJS contract test can't import the TSX module).
 	const stripUrlScheme = (url) => url.replace(/^https?:\/\//i, "");
 	assert.equal(stripUrlScheme("https://github.com/eevensoh/symphony-explainer"), "github.com/eevensoh/symphony-explainer");
-	assert.equal(stripUrlScheme("HTTP://bitbucket.org/eevensoh/vpk-rovo"), "bitbucket.org/eevensoh/vpk-rovo");
+	assert.equal(stripUrlScheme("HTTP://bitbucket.org/acme/storefront"), "bitbucket.org/acme/storefront");
 	assert.equal(stripUrlScheme("github.com/eevensoh/proximity"), "github.com/eevensoh/proximity");
 	assert.match(repositoryPickerSource, /const REPOSITORY_LABEL_CLASS = "menu-row-title text-left";/u);
 	assert.match(repositoryPickerSource, /const REPOSITORY_DESCRIPTION_CLASS = "menu-row-byline text-left";/u);

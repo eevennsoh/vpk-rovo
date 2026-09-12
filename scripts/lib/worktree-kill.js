@@ -23,7 +23,7 @@ const DEFAULT_SESSION_PREFIX = "vpk-dev";
 // in-cwd. Use `worktreeName` (getWorktreeDisplayName), NOT the raw `identifier`:
 // for a detached worktree whose dir basename collides with the repo name, the
 // display name walks up to the parent hash dir (e.g. `0ebd`), while `identifier`
-// stays the basename (`vpk-rovo`).
+// stays the repository-directory basename.
 function sessionTokenForWorktree(worktree) {
 	const displayName =
 		worktree && typeof worktree.worktreeName === "string" && worktree.worktreeName.length > 0

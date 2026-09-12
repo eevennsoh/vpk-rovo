@@ -70,7 +70,7 @@ test("Pulse preview pages match the connected sources one-for-one", () => {
 	assert.match(PREVIEW_SOURCE, /PULSE_SOURCES\.map\(\(source\) =>/u);
 	assert.match(PREVIEW_SOURCE, /hello\.atlassian\.net\/browse\/PAY-102/u);
 	assert.match(PREVIEW_SOURCE, /hello\.atlassian\.net\/wiki\/spaces\/PAY/u);
-	assert.match(PREVIEW_SOURCE, /github\.com\/eevensoh\/vpk-rovo\/pull\/1847/u);
+	assert.match(PREVIEW_SOURCE, /github\.com\/acme\/storefront\/pull\/1847/u);
 	assert.match(PREVIEW_SOURCE, /atlassian\.slack\.com\/archives\/C0PAYMENTS/u);
 	assert.match(PREVIEW_SOURCE, /atlassian\.sentry\.io/u);
 	assert.match(PREVIEW_SOURCE, /app\.launchdarkly\.com/u);

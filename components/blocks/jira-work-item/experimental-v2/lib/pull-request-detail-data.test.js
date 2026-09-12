@@ -41,7 +41,7 @@ function pullRequestEntry(overrides = {}) {
 			status: "Open",
 			additions: 86,
 			deletions: 21,
-			repository: "eevensoh/vpk-rovo",
+			repository: "acme/storefront",
 			...overrides,
 		},
 	};
@@ -52,8 +52,8 @@ test("resolves the #1847 guest-checkout guided review fixture", async () => {
 	const detail = resolvePullRequestDetailData(pullRequestEntry());
 
 	assert.ok(detail);
-	assert.equal(detail.identity, "eevensoh/vpk-rovo#1847");
-	assert.equal(detail.url, "https://github.com/eevensoh/vpk-rovo/pull/1847");
+	assert.equal(detail.identity, "acme/storefront#1847");
+	assert.equal(detail.url, "https://github.com/acme/storefront/pull/1847");
 	assert.equal(detail.authorName, "Venn");
 	assert.equal(detail.authorAvatarSrc, "/avatar-user/venn/venn.png");
 	assert.equal(detail.authorKind, "person");
@@ -81,7 +81,7 @@ test("resolves the #1847 guest-checkout guided review fixture", async () => {
 		detail.commits.every(
 			(commit) =>
 				typeof commit.url === "string" &&
-				commit.url === `https://github.com/eevensoh/vpk-rovo/commit/${commit.shortSha}`,
+				commit.url === `https://github.com/acme/storefront/commit/${commit.shortSha}`,
 		),
 	);
 	assert.deepEqual(
@@ -392,7 +392,7 @@ test("changes-requested #1847 marks Priya with a declined Approvers badge", asyn
 
 test("keeps URL identity while recognizing the repository fixture", async () => {
 	const { resolvePullRequestDetailData } = await loadDetailData();
-	const url = "https://github.com/eevensoh/vpk-rovo/pull/1847";
+	const url = "https://github.com/acme/storefront/pull/1847";
 	const detail = resolvePullRequestDetailData(pullRequestEntry({ url }));
 
 	assert.equal(detail?.identity, url);

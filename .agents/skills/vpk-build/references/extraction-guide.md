@@ -38,10 +38,11 @@ controls, and scripted tours depend on the VPK backend. Preserve copied app
 source byte-for-byte where possible and place export behavior in the harness.
 
 The target `pnpm run dev` must start both the extracted frontend and source VPK
-backend, with a default source root such as `../vpk-rovo` and a
-`VPK_ROVO_ROOT=/path/to/vpk-rovo` override. A common harness builds and serves
-the static frontend on port 3001 while invoking `pnpm run dev:backend` in the
-source checkout.
+backend. Discover an adjacent source checkout when possible and accept a
+`VPK_ROOT=/path/to/repository` override; generated harnesses should continue to
+accept the deprecated `VPK_ROVO_ROOT` name as a fallback during migration. A
+common harness builds and serves the static frontend on port 3001 while invoking
+`pnpm run dev:backend` in the source checkout.
 
 Proxy real routes rather than recreating them. Depending on the app, this
 includes:
@@ -109,7 +110,7 @@ The harness also writes a minimal `next-env.d.ts` (no `.next/dev` imports) and
 `types/jsx-namespace.d.ts` so React 19 files that still use `JSX.Element`
 typecheck without rewriting copied source.
 
-The linked skills use relative paths back to VPK-Rovo and will break if the
+The linked skills use relative paths back to VPK and will break if the
 source checkout moves independently. Re-run the scaffold or repair the symlinks
 after such a move.
 
@@ -155,7 +156,7 @@ computed layout (Jira header tabs `flex-direction: column` when
 
 ## Ports and local runtime
 
-Extracted frontends default to port 3001 so VPK-Rovo can remain on 3000. An
+Extracted frontends default to port 3001 so VPK can remain on 3000. An
 `EADDRINUSE` on 3001 is a listener collision, not a build failure. Stop the
 existing frontend or select another port. Preview via `http://localhost:3001`.
 Next may advertise a Network URL on `127.0.2.2`; that origin needs

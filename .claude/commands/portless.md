@@ -8,11 +8,11 @@ Give the current worktree a stable `.localhost` URL using **vanilla `portless ru
 
 | HEAD state | Command | URL |
 | --- | --- | --- |
-| main checkout | `portless run` | `https://vpk-rovo.localhost` |
-| branched worktree | `portless run` | `https://<branch>.vpk-rovo.localhost` |
+| main checkout | `portless run` | `https://<package-name>.localhost` |
+| branched worktree | `portless run` | `https://<branch>.<package-name>.localhost` |
 | detached worktree | `portless run --name <worktree-dir>` | `https://<worktree-dir>.localhost` |
 
-Bare `portless run` already produces the first two automatically: main is a default branch (no prefix), and a branch is prepended as a subdomain (a slash branch like `claude/foo` uses its last segment → `foo.vpk-rovo.localhost`). Only a detached worktree has no branch for portless to key on.
+Bare `portless run` already produces the first two automatically from the current package and Git branch: main is a default branch (no prefix), and a branch is prepended as a subdomain (a slash branch like `claude/foo` uses its last segment → `foo.<package-name>.localhost`). Only a detached worktree has no branch for portless to key on.
 
 ## Behavior
 

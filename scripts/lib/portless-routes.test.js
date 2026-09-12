@@ -12,16 +12,16 @@ test("isOwnerAlive: true for this process, false for 0/negative", () => {
 
 test("findPortlessUrl returns the https URL of the route matching the frontend port", () => {
 	const routes = [
-		{ hostname: "vpk-rovo.localhost", port: 3000, pid: process.pid },
-		{ hostname: "feature-x.vpk-rovo.localhost", port: 3020, pid: process.pid },
+		{ hostname: "example-project.localhost", port: 3000, pid: process.pid },
+		{ hostname: "feature-x.example-project.localhost", port: 3020, pid: process.pid },
 	];
 
 	assert.equal(
 		findPortlessUrl(routes, 3020),
-		"https://feature-x.vpk-rovo.localhost"
+		"https://feature-x.example-project.localhost"
 	);
 	// String ports (as read from .dev-frontend-port) still match.
-	assert.equal(findPortlessUrl(routes, "3000"), "https://vpk-rovo.localhost");
+	assert.equal(findPortlessUrl(routes, "3000"), "https://example-project.localhost");
 });
 
 test("findPortlessUrl prefers the live route over a stale one sharing the same reused port", () => {
@@ -40,7 +40,7 @@ test("findPortlessUrl prefers the live route over a stale one sharing the same r
 });
 
 test("findPortlessUrl returns null when no route matches or input is missing", () => {
-	const routes = [{ hostname: "vpk-rovo.localhost", port: 3000, pid: process.pid }];
+	const routes = [{ hostname: "example-project.localhost", port: 3000, pid: process.pid }];
 
 	assert.equal(findPortlessUrl(routes, 9999), null);
 	assert.equal(findPortlessUrl(routes, null), null);

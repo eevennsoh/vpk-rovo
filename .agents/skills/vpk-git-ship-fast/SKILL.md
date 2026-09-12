@@ -1,6 +1,6 @@
 ---
 name: vpk-git-ship-fast
-description: "Commit all eligible changes and push directly to VPK-rovo main without a PR. Use when the user says \"vpk-git-ship-fast\", \"commit and push to main\", \"push straight to main, no PR\", or \"land this directly\"; protected main may require fallback to vpk-git-ship."
+description: "Commit all eligible changes and push directly to VPK main without a PR. Use when the user says \"vpk-git-ship-fast\", \"commit and push to main\", \"push straight to main, no PR\", or \"land this directly\"; protected main may require fallback to vpk-git-ship."
 validation_command: git status --short
 ---
 

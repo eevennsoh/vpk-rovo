@@ -37,7 +37,7 @@ test("toPullRequestSmartLink builds the pull-request SmartLink model", async () 
 		files: 6,
 		additions: 86,
 		deletions: 21,
-		repository: "eevensoh/vpk-rovo",
+		repository: "acme/storefront",
 		branch: "feature/shop-4821-guest-checkout",
 		targetBranch: "main",
 		author: { name: "Venn", src: "/avatar-user/venn/venn.png" },
@@ -47,7 +47,7 @@ test("toPullRequestSmartLink builds the pull-request SmartLink model", async () 
 	// The number prefixes the title so every surface — card, flyout, inline chip —
 	// identifies the PR, not just the ones that render the metadata row.
 	assert.equal(item.title, "#1847: Add guest checkout to the storefront");
-	assert.equal(item.href, "https://github.com/eevensoh/vpk-rovo/pull/1847");
+	assert.equal(item.href, "https://github.com/acme/storefront/pull/1847");
 	assert.equal(item.provider.name, "GitHub");
 	assert.deepEqual(item.provider.logo, { kind: "third-party", name: "github" });
 	// The front slot is the pull-request glyph; GitHub stays the provider.
@@ -64,7 +64,7 @@ test("toPullRequestSmartLink builds the pull-request SmartLink model", async () 
 		targetBranch: "main",
 	});
 	// The repo builds the href but never reaches the card.
-	assert.equal(item.href, "https://github.com/eevensoh/vpk-rovo/pull/1847");
+	assert.equal(item.href, "https://github.com/acme/storefront/pull/1847");
 	assert.equal(item.repository, undefined);
 	assert.equal(item.metadata, undefined);
 	assert.deepEqual(item.author, { name: "Venn", src: "/avatar-user/venn/venn.png" });

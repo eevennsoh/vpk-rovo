@@ -385,7 +385,7 @@ test("Pulse uncaptured work is only GitHub PRs, branches, commits, or local codi
 	const kinds = new Set(["pull-request", "branch", "commit", "agent-session"]);
 	const byId = new Map(PULSE_TIMELINE.looseWork.map((item) => [item.id, item]));
 
-	assert.equal(PULSE_SPACE_REPOSITORY, "eevensoh/vpk-rovo");
+	assert.equal(PULSE_SPACE_REPOSITORY, "acme/storefront");
 	assert.equal(PULSE_TIMELINE.looseWork.length, 51);
 
 	for (const item of PULSE_TIMELINE.looseWork) {
@@ -413,7 +413,7 @@ test("Pulse uncaptured work is only GitHub PRs, branches, commits, or local codi
 
 		assert.equal(source, "GitHub", `${item.id} should brand as GitHub`);
 		assert.equal(pulseLooseWorkCanCreateWorkItem(item.kind), true, `${item.id} should be capturable`);
-		assert.match(item.detail, /eevensoh\/vpk-rovo/u, `${item.id} is not on the space repo`);
+		assert.match(item.detail, /acme\/storefront/u, `${item.id} is not on the space repo`);
 		if (item.kind === "pull-request") {
 			assert.ok(item.pullRequest, `${item.id} is a PR without pullRequest fields`);
 			assert.match(item.sourceTitle, /^PRs? #/u, `${item.id} sourceTitle should be PR #N`);

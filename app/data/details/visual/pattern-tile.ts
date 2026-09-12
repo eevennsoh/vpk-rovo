@@ -1,7 +1,7 @@
 import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const PATTERN_TILE_DETAIL: ComponentDetail = {
-		description: "VPK-rovo CSS background pattern tile generator with 21 pattern types, two-color palette, blend/fill controls, grid stroke customization, and optional tile animation.",
+		description: "VPK CSS background pattern tile generator with 21 pattern types, two-color palette, blend/fill controls, grid stroke customization, and optional tile animation.",
 		importStatement: `import PatternTile from "@/components/website/demos/visual/pattern-tile";`,
 		usage: `<PatternTile
 	patternType="grid"
