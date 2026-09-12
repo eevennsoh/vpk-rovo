@@ -58,6 +58,16 @@ test("the PAY board fills every existing status with coding work and the full st
 	assert.ok(columns.every((column) => column.count === column.cards.length));
 	assert.ok(cards.every((card) => card.code.startsWith("PAY-")));
 	assert.ok(!columns.some((column) => column.title === "Review"));
+	assert.deepEqual(
+		new Set(cards.map((card) => card.assignee?.avatarSrc).filter(Boolean)),
+		new Set([
+			"/avatar-user/chloe-lee/color/asow-strategy-orange-64.png",
+			"/avatar-user/dev-rana/color/asow-product-purple.png",
+			"/avatar-user/issac-varghese/color/asow-service-yellow-64.png",
+			"/avatar-user/ting-chen/color/asow-teamwork-blue.png",
+		]),
+		"board assignees should use a balanced mix of existing avatar color variants",
+	);
 
 	const inReviewCodes = new Set(
 		columns.find((column) => column.title === "In review")?.cards.map((card) => card.code) ?? [],

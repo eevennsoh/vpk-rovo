@@ -120,10 +120,15 @@ export function BoardColumnCardList({
 		}),
 		[showBottomScrollMask, showTopScrollMask],
 	);
-	const paintInsertion = insertionArmed || hoverInsertion !== null;
+	const suppressCardInsertion = createdCardArrival !== undefined;
+	const paintInsertion = !suppressCardInsertion && (insertionArmed || hoverInsertion !== null);
 
 	const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
 		if (event.pointerType === "touch") {
+			return;
+		}
+		if (suppressCardInsertion) {
+			setHoverInsertion((current) => (current === null ? current : null));
 			return;
 		}
 		if (insertionArmed) {
@@ -146,14 +151,14 @@ export function BoardColumnCardList({
 			}
 			return nextInsertion;
 		});
-	}, [insertionArmed]);
+	}, [insertionArmed, suppressCardInsertion]);
 
 	const handlePointerLeave = useCallback(() => {
 		setHoverInsertion((current) => (current === null ? current : null));
 	}, []);
 
 	return (
-		<BoardCardHoverInsertionContext value={hoverInsertion}>
+		<BoardCardHoverInsertionContext value={suppressCardInsertion ? null : hoverInsertion}>
 			<div
 				ref={setCardListRef}
 				data-created-card-arrival-id={createdCardArrival?.id}

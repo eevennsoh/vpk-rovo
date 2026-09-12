@@ -119,6 +119,8 @@ export interface ExperimentalJiraKanbanPageProps {
 	mode?: ExperimentalJiraKanbanMode;
 	/** Newly discovered session ids that keep the shared arrival mark visible. */
 	newAgentSessionIds?: ReadonlySet<string>;
+	/** Reports hover or focus within the unattached sessions column. */
+	onAgentSessionColumnInteractionChange?: (interacting: boolean) => void;
 	onAgentSessionsReviewed?: (sessionIds?: readonly string[]) => void;
 	onBoardColumnsChange?: (columns: readonly JiraKanbanColumnData[]) => void;
 	onBoardAgentSessionCreate?: (
