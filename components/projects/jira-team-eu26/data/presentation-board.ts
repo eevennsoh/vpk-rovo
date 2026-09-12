@@ -26,8 +26,8 @@ export { JIRA_TEAM_EU26_PAY_CURRENT_USER };
 
 const PAY_AVATARS = {
 	diego: "/avatar-user/dev-rana/color/asow-product-purple.png",
-	jordan: "/avatar-user/issac-varghese/color/asow-service-yellow.png",
-	maya: "/avatar-user/chloe-lee/color/asow-strategy-orange.png",
+	jordan: "/avatar-user/issac-varghese/color/asow-service-yellow-64.png",
+	maya: "/avatar-user/chloe-lee/color/asow-strategy-orange-64.png",
 	priya: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
 	releaseAgent: "/avatar-agent/strategy-agents/strategic-insight.svg",
 	reviewAgent: "/avatar-agent/teamwork-agents/decision-director.svg",

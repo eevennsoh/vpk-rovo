@@ -7,11 +7,11 @@ const PAY_REPOSITORY = "payments-platform/payments";
 const PAY_AUTHORS = {
 	jordan: {
 		name: "Jordan Okafor",
-		avatarUrl: "/avatar-user/issac-varghese/color/asow-service-yellow.png",
+		avatarUrl: "/avatar-user/issac-varghese/color/asow-service-yellow-64.png",
 	},
 	maya: {
 		name: "Maya Ferreira",
-		avatarUrl: "/avatar-user/chloe-lee/color/asow-strategy-orange.png",
+		avatarUrl: "/avatar-user/chloe-lee/color/asow-strategy-orange-64.png",
 	},
 	priya: {
 		name: "Priya Raman",

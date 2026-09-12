@@ -61,9 +61,9 @@ test("the PAY board fills every existing status with coding work and the full st
 	assert.deepEqual(
 		new Set(cards.map((card) => card.assignee?.avatarSrc).filter(Boolean)),
 		new Set([
-			"/avatar-user/chloe-lee/color/asow-strategy-orange.png",
+			"/avatar-user/chloe-lee/color/asow-strategy-orange-64.png",
 			"/avatar-user/dev-rana/color/asow-product-purple.png",
-			"/avatar-user/issac-varghese/color/asow-service-yellow.png",
+			"/avatar-user/issac-varghese/color/asow-service-yellow-64.png",
 			"/avatar-user/ting-chen/color/asow-teamwork-blue.png",
 		]),
 		"board assignees should use a balanced mix of existing avatar color variants",
