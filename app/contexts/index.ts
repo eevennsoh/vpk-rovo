@@ -5,6 +5,7 @@
  */
 
 // Chat contexts
+export { useRovoChatControls, useOptionalRovoChatControls } from "./context-rovo-chat-controls";
 export {
 	RovoChatProvider,
 	useOptionalRovoChat,

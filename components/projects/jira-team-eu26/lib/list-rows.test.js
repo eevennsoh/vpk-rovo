@@ -10,6 +10,8 @@ const {
 	appendBoardCreatedListOrder,
 	createBoardWorkItemFromSession,
 	createListRows,
+	createListRowIndex,
+	selectListRows,
 	createListWorkItemFromSession,
 	getNextPayIssueKey,
 	insertListOrderKey,
@@ -630,4 +632,34 @@ test("createBoardWorkItemFromSession lands a cohort in drag order at one gap", (
 			.cards.flatMap((card) => (card.agentActivities ?? []).map((activity) => activity.id)),
 		["lw-a", "lw-b", "lw-c"],
 	);
+});
+
+
+test("indexed list rows keep identity through filtering and ordering without stale card content", () => {
+	const index = createListRowIndex(COLUMNS, PAY_BOARD_CATALOG);
+	const rows = selectListRows(COLUMNS, PAY_BOARD_CATALOG, index);
+	const filteredColumns = [{ ...COLUMNS[0], cards: [COLUMNS[0].cards[1]] }, COLUMNS[1]];
+	const filtered = applyListOrder(selectListRows(filteredColumns, PAY_BOARD_CATALOG, index), ["PAY-101", "PAY-107"]);
+	assert.strictEqual(filtered[0], rows[2]);
+	assert.strictEqual(filtered[1], rows[1]);
+	assert.strictEqual(selectListRows(COLUMNS, PAY_BOARD_CATALOG, index)[0], rows[0]);
+
+	const editedCard = { ...COLUMNS[0].cards[0], title: "Edited", dueDate: "2026-09-20" };
+	const changed = selectListRows([{ ...COLUMNS[0], cards: [editedCard, COLUMNS[0].cards[1]] }], PAY_BOARD_CATALOG, index);
+	assert.equal(changed[0].summary, "Edited");
+	assert.equal(changed[0].dueDate, "2026-09-20");
+	assert.notStrictEqual(changed[0], rows[0]);
+	assert.strictEqual(changed[1], rows[1]);
+	assert.equal(rows[0].summary, "First");
+});
+
+test("indexed rows reflect status moves and session visibility filters", () => {
+	const index = createListRowIndex(COLUMNS, PAY_BOARD_CATALOG);
+	const moved = selectListRows([{ title: "Done", cards: [COLUMNS[0].cards[0]], count: 1 }], PAY_BOARD_CATALOG, index);
+	assert.equal(moved[0].status, "Done");
+	assert.equal(moved[0].statusVariant, "success");
+	const filteredCard = { ...COLUMNS[1].cards[0], agentActivities: undefined };
+	const filtered = selectListRows([{ ...COLUMNS[1], cards: [filteredCard] }], PAY_BOARD_CATALOG, index);
+	assert.deepEqual(filtered[0].agentSessions.map((agent) => agent.name), ["Codex"]);
+	assert.equal(selectListRows(COLUMNS, PAY_BOARD_CATALOG, index)[2].agentSessions.length, 2);
 });

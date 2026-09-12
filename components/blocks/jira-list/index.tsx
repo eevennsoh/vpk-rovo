@@ -113,6 +113,7 @@ import { createJiraListBaseColumns } from "@/components/blocks/jira-list/jira-li
 import {
 	IssueTypeGlyph,
 	JiraListAvatar,
+	JiraListCellContent,
 } from "@/components/blocks/jira-list/jira-list-cells";
 import {
 	getOrderedColumns,
@@ -123,6 +124,9 @@ import {
 	RowBoundaryCreateControls,
 } from "@/components/blocks/jira-list/jira-list-rows";
 import { useJiraListHorizontalUnderlap } from "@/components/blocks/jira-list/use-jira-list-horizontal-underlap";
+
+const EMPTY_EXTRA_COLUMNS: NonNullable<JiraListProps["extraColumns"]> = [];
+const EMPTY_STATUS_OPTIONS: NonNullable<JiraListProps["statusOptions"]> = [];
 
 const ISSUE_TYPE_OPTIONS: readonly {
 	label: string;
@@ -223,9 +227,9 @@ export function JiraList({
 	selectedIssueKeys = new Set<string>(),
 	copiedIssueKey = null,
 	draftWorkItem = null,
-	extraColumns = [],
+	extraColumns = EMPTY_EXTRA_COLUMNS,
 	agentCatalog,
-	statusOptions = [],
+	statusOptions = EMPTY_STATUS_OPTIONS,
 	onAssignedAgentIdsChange,
 	onAssignedAgentSelect,
 	onAgentAssign,
@@ -353,7 +357,7 @@ export function JiraList({
 			onMoveRow?.(String(active.id), targetIndex);
 		}
 	};
-	const baseColumns = createJiraListBaseColumns({
+	const baseColumns = useMemo(() => createJiraListBaseColumns({
 		agentCatalog,
 		copiedIssueKey,
 		onAgentAssign,
@@ -367,8 +371,12 @@ export function JiraList({
 		openCopyTooltipIssueKey,
 		setOpenCopyTooltipIssueKey,
 		statusOptions,
-	});
-	const orderedColumns = getOrderedColumns(baseColumns, extraColumns);
+	}), [
+		agentCatalog, copiedIssueKey, onAgentAssign, onAssignedAgentIdsChange,
+		onAssignedAgentSelect, onCopyLink, onIssueClick, onIssueKeyClick,
+		onStatusChange, onToggleExpand, openCopyTooltipIssueKey, statusOptions,
+	]);
+	const orderedColumns = useMemo(() => getOrderedColumns(baseColumns, extraColumns), [baseColumns, extraColumns]);
 	const trailingEdgeLayout = getJiraListTrailingEdgeLayout(
 		scrollEndInset,
 		orderedColumns.length,
@@ -803,7 +811,7 @@ export function JiraList({
 													data-insertion-line={insertionLinePosition}
 													key={column.id}
 												>
-													{column.renderCell(row)}
+													<JiraListCellContent column={column} row={row} />
 												</TableCell>
 											))}
 										</JiraListSortableRow>

@@ -97,7 +97,8 @@ function FloatingRovoButtonInner({
 			key="floating-rovo-button-icon"
 			ref={ref}
 			aria-label={ariaLabel}
-			className="flex h-full w-full items-center justify-center bg-bg-neutral-bold"
+			// Keep the native click target mounted when first-hover animation swaps logos.
+			className="flex h-full w-full items-center justify-center bg-bg-neutral-bold *:pointer-events-none"
 			onClick={onClick}
 			onMouseDownCapture={onDragMouseDown}
 			onPointerEnter={onLogoPointerEnter}

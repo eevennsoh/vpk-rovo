@@ -29,6 +29,56 @@ export interface ExclusiveProximityWell {
 	rect: ExclusiveProximityRect;
 }
 
+/** Coalesce pointer events while leaving geometry reads until the next frame. */
+export function createExclusiveProximityScheduler({
+	requestFrame,
+	cancelFrame,
+	onPointer,
+	onClear,
+}: Readonly<{
+	requestFrame: (callback: () => void) => number;
+	cancelFrame: (id: number) => void;
+	onPointer: (pointer: Readonly<ExclusiveProximityPointer>) => void;
+	onClear: () => void;
+}>) {
+	let frameId: number | null = null;
+	let latestPointer: Readonly<ExclusiveProximityPointer> | null = null;
+	let disposed = false;
+
+	const cancel = () => {
+		if (frameId !== null) cancelFrame(frameId);
+		frameId = null;
+		latestPointer = null;
+	};
+	const clear = () => {
+		cancel();
+		if (!disposed) onClear();
+	};
+
+	return {
+		move(pointer: Readonly<ExclusiveProximityPointer>, pointerType: string) {
+			if (disposed) return;
+			if (pointerType === "touch") {
+				clear();
+				return;
+			}
+			latestPointer = pointer;
+			if (frameId !== null) return;
+			frameId = requestFrame(() => {
+				frameId = null;
+				const pointerToResolve = latestPointer;
+				latestPointer = null;
+				if (!disposed && pointerToResolve) onPointer(pointerToResolve);
+			});
+		},
+		clear,
+		dispose() {
+			disposed = true;
+			cancel();
+		},
+	};
+}
+
 export function distanceFromPointToRect(
 	pointer: Readonly<ExclusiveProximityPointer>,
 	rect: Readonly<ExclusiveProximityRect>,

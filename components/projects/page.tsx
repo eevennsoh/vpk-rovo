@@ -13,13 +13,14 @@ import type {
 	FloatingRovoButtonSuggestion,
 } from "@/components/projects/shared/components/floating-rovo-button";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
+import { MountOnFirstUse } from "@/components/projects/shared/components/mount-on-first-use";
 import type { ChatPanelCustomAgentTabs, ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
 import type { ChatContextBarDescriptor } from "@/components/projects/shared/lib/chat-context-bar";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import { SidebarResizeHandle } from "@/components/ui/sidebar";
 import { useSidebarResize } from "@/components/projects/rovo-core/hooks/use-sidebar-resize";
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts/context-rovo-chat-controls";
 
 type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search" | "studio";
 
@@ -50,6 +51,8 @@ interface AppLayoutProps {
 	 * nav and viewport edges (e.g. /agents, /jira).
 	 */
 	chatPanelFlush?: boolean;
+	/** Defer unused chat; retain its draft and exit transition after first use. */
+	sidebarChatMount?: "eager" | "on-first-open";
 }
 
 /**
@@ -149,10 +152,11 @@ export default function AppLayout({
 	onArtifactDialogOpen,
 	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 	chatPanelFlush = false,
+	sidebarChatMount = "eager",
 }: Readonly<AppLayoutProps>) {
 	const isEmbedded = useIsEmbedded(embedded);
 	const isRovoCanvasOpen = useIsRovoCanvasOpen();
-	const { chatSurface, toggleChat } = useRovoChat();
+	const { chatSurface, toggleChat } = useRovoChatControls();
 	const chatResize = useSidebarResize({
 		defaultWidth: 400,
 		minWidth: 320,
@@ -213,24 +217,26 @@ export default function AppLayout({
 						zIndex: 90,
 					}}
 				>
-					<ChatPanel
-						onClose={toggleChat}
-						abortOnUnmount={false}
-						onSurfaceSwitch={onChatSurfaceSwitch}
-						chatContextBar={chatContextBar}
-						greeting={chatGreeting}
-						customAgentTabs={customAgentTabs}
-						onArtifactDialogOpen={onArtifactDialogOpen}
-						preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
-						containerStyle={
-							chatPanelFlush
-								? {
-										borderRadius: 0,
-										borderWidth: 0,
-									}
-								: undefined
-						}
-					/>
+					<MountOnFirstUse active={sidebarChatMount === "eager" || isSidebarChatActive}>
+						<ChatPanel
+							onClose={toggleChat}
+							abortOnUnmount={false}
+							onSurfaceSwitch={onChatSurfaceSwitch}
+							chatContextBar={chatContextBar}
+							greeting={chatGreeting}
+							customAgentTabs={customAgentTabs}
+							onArtifactDialogOpen={onArtifactDialogOpen}
+							preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
+							containerStyle={
+								chatPanelFlush
+									? {
+											borderRadius: 0,
+											borderWidth: 0,
+										}
+									: undefined
+							}
+						/>
+					</MountOnFirstUse>
 					<SidebarResizeHandle
 						side="left"
 						data-active={chatResize.isResizing ? "" : undefined}

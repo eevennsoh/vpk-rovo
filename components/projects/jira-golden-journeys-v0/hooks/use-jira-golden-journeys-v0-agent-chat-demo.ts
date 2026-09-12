@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 import {
 	buildAsxAgentChatContextBar,
 	buildAsxAgentChatPlayback,
@@ -17,7 +17,7 @@ export interface UseAsxAgentChatDemoResult {
 }
 
 export function useAsxAgentChatDemo(): UseAsxAgentChatDemoResult {
-	const { openChat, replaceMessages, selectAgent } = useRovoChat();
+	const { openChat, replaceMessages, selectAgent } = useRovoChatControls();
 	const [chatContextBar, setChatContextBar] = useState<ChatContextBarDescriptor | null>(null);
 	const [externalThinkingMessageId, setExternalThinkingMessageId] = useState<string | null>(null);
 	const playbackTokenRef = useRef(0);

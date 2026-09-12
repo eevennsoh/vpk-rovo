@@ -14,8 +14,9 @@ import {
 
 import {
 	CREATE_WORK_ITEM_PROXIMITY_HOVER_AREA_PX,
+	createExclusiveProximityScheduler,
 	resolveExclusiveProximityWinner,
-} from "../lib/create-work-item-exclusive-proximity";
+} from "@/components/blocks/jira-kanban/experimental/lib/create-work-item-exclusive-proximity";
 
 interface ExclusiveCreateWellEntry {
 	getRect: () => { bottom: number; left: number; right: number; top: number } | null;
@@ -50,29 +51,36 @@ export function ExclusiveCreateWellProximityProvider({
 	useEffect(() => {
 		if (typeof document === "undefined") return;
 
+		const scheduler = createExclusiveProximityScheduler({
+			requestFrame: (callback) => window.requestAnimationFrame(callback),
+			cancelFrame: (id) => window.cancelAnimationFrame(id),
+			onClear: () => setWinnerId(null),
+			onPointer(pointer) {
+				const wells = wellsRef.current.flatMap((well) => {
+					const rect = well.getRect();
+					if (!rect || rect.right <= rect.left || rect.bottom <= rect.top) return [];
+					return [{ id: well.id, rect }];
+				});
+				setWinnerId(resolveExclusiveProximityWinner(pointer, wells, hoverArea));
+			},
+		});
 		const handleMove = (event: PointerEvent) => {
-			if (event.pointerType === "touch") {
-				setWinnerId((current) => (current === null ? current : null));
-				return;
-			}
-
-			const wells = wellsRef.current.flatMap((well) => {
-				const rect = well.getRect();
-				if (!rect || rect.right <= rect.left || rect.bottom <= rect.top) return [];
-				return [{ id: well.id, rect }];
-			});
-			const nextWinnerId = resolveExclusiveProximityWinner(
-				{ x: event.clientX, y: event.clientY },
-				wells,
-				hoverArea,
-			);
-			setWinnerId((current) => (current === nextWinnerId ? current : nextWinnerId));
+			scheduler.move({ x: event.clientX, y: event.clientY }, event.pointerType);
+		};
+		const handleOut = (event: PointerEvent) => {
+			if (event.relatedTarget === null) scheduler.clear();
 		};
 
 		document.addEventListener("pointermove", handleMove, { passive: true });
+		document.addEventListener("pointerout", handleOut, { passive: true });
+		document.addEventListener("pointercancel", scheduler.clear, { passive: true });
+		window.addEventListener("blur", scheduler.clear);
 		return () => {
 			document.removeEventListener("pointermove", handleMove);
-			setWinnerId(null);
+			document.removeEventListener("pointerout", handleOut);
+			document.removeEventListener("pointercancel", scheduler.clear);
+			window.removeEventListener("blur", scheduler.clear);
+			scheduler.dispose();
 		};
 	}, [hoverArea]);
 
@@ -93,11 +101,12 @@ export function useExclusiveCreateWellProximity(
 	targetRef: RefObject<HTMLElement | null>,
 ): boolean {
 	const coordinator = use(ExclusiveCreateWellProximityContext);
+	const register = coordinator?.register;
 
 	useEffect(() => {
-		if (!coordinator) return;
-		return coordinator.register(id, () => targetRef.current?.getBoundingClientRect() ?? null);
-	}, [coordinator, id, targetRef]);
+		if (!register) return;
+		return register(id, () => targetRef.current?.getBoundingClientRect() ?? null);
+	}, [register, id, targetRef]);
 
 	return coordinator ? coordinator.winnerId === id : true;
 }

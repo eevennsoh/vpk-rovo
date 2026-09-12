@@ -3,7 +3,7 @@
 import React from "react";
 import { token } from "@/lib/tokens";
 import { Button } from "@/components/ui/button";
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 import AiGenerativeAudioBriefingIcon from "@atlaskit/icon/core/audio";
 import CommentIcon from "@atlaskit/icon/core/comment";
 import InformationCircleIcon from "@atlaskit/icon/core/information-circle";
@@ -16,7 +16,7 @@ interface FloatingConfluenceActionsProps {
 export default function FloatingConfluenceActions({
 	embedded = false,
 }: Readonly<FloatingConfluenceActionsProps>) {
-	const { chatSurface } = useRovoChat();
+	const { chatSurface } = useRovoChatControls();
 	const isSidebarChatOpen = chatSurface === "sidebar";
 
 	return (

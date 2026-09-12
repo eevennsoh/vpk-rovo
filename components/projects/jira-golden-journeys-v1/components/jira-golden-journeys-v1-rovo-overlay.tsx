@@ -4,7 +4,7 @@ import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts/context-rovo-chat-controls";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
 import type { ChatSubmitInterceptOutcome } from "@/components/projects/sidebar-chat/page";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
@@ -48,7 +48,7 @@ export function JgpRovoOverlay({
 	onLauncherClick,
 	onQuestionAnswer,
 }: Readonly<JgpRovoOverlayProps>): React.ReactNode {
-	const { chatSurface } = useRovoChat();
+	const { chatSurface } = useRovoChatControls();
 	const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
 	const [isRovoCanvasOpen, setIsRovoCanvasOpen] = useState(false);
 	const [isEmbeddedHostOpen, setIsEmbeddedHostOpen] = useState(false);
