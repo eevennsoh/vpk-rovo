@@ -223,11 +223,20 @@ test("gutter rest keeps the overlay and rail visually transparent", () => {
 	);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/isEmbedded[\s\S]{0,100}?\? "pointer-events-auto bg-surface"[\s\S]{0,140}?: "pointer-events-none bg-transparent \[&_\[data-agent-session-notch\]\]:pointer-events-auto"/u,
+		/isEmbedded[\s\S]{0,100}?\? "pointer-events-auto bg-surface"[\s\S]{0,220}?: "pointer-events-none bg-transparent \[&_\[data-agent-session-notch\]\]:pointer-events-auto \[&_\[data-agent-session-column-expand-control\]\]:pointer-events-auto"/u,
 	);
 	assert.doesNotMatch(
 		IN_FLOW_COLUMN_SOURCE,
 		/"group\/in-flow-agent-session-column[^"]*bg-surface"/u,
+	);
+});
+
+test("gutter rest keeps its exposed expand control pointer-enabled", () => {
+	assert.match(INDEX_SOURCE, /data-agent-session-column-expand-control=""/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /data-agent-session-column-expand-control=""/u);
+	assert.match(
+		IN_FLOW_COLUMN_SOURCE,
+		/\[&_\[data-agent-session-notch\]\]:pointer-events-auto\s+\[&_\[data-agent-session-column-expand-control\]\]:pointer-events-auto/u,
 	);
 });
 
@@ -277,7 +286,7 @@ test("the entire visible gutter is a hover target without covering To do", () =>
 	);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/isEmbedded[\s\S]{0,100}?\? "pointer-events-auto bg-surface"[\s\S]{0,140}?: "pointer-events-none bg-transparent \[&_\[data-agent-session-notch\]\]:pointer-events-auto"/u,
+		/isEmbedded[\s\S]{0,100}?\? "pointer-events-auto bg-surface"[\s\S]{0,220}?: "pointer-events-none bg-transparent \[&_\[data-agent-session-notch\]\]:pointer-events-auto \[&_\[data-agent-session-column-expand-control\]\]:pointer-events-auto"/u,
 	);
 	assert.doesNotMatch(
 		IN_FLOW_COLUMN_SOURCE,

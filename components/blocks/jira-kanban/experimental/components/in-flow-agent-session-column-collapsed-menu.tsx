@@ -80,6 +80,7 @@ export function InFlowAgentSessionColumnCollapsedMenu({
 					<Button
 						aria-label={`${title} column options`}
 						className={cn(className, HOVER_OPEN_TRIGGER_CLASS_NAME)}
+						data-agent-session-column-expand-control=""
 						data-agent-session-column-options=""
 						size="icon-compact"
 						style={{ width: "100%" }}
