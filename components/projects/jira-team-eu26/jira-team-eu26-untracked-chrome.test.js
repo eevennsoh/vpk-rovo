@@ -22,6 +22,7 @@ const EXPERIMENTAL_PAGE_SOURCE = [
 	readProjectFile("components/blocks/jira-kanban/experimental/page.tsx"),
 	readProjectFile("components/blocks/jira-kanban/experimental/experimental-page-types.ts"),
 	readProjectFile("components/blocks/jira-kanban/experimental/hooks/use-page-content-model.ts"),
+	readProjectFile("components/blocks/jira-kanban/experimental/hooks/use-agent-session-review.ts"),
 ].join("\n");
 const EXPERIMENTAL_BOARD_SOURCE = readProjectFile(
 	"components/blocks/jira-kanban/experimental/experimental-jira-kanban.tsx",

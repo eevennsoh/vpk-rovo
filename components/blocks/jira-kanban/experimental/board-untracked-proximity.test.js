@@ -17,6 +17,7 @@ const PAGE_SOURCE = [
 	readFileSync(join(EXPERIMENTAL_DIR, "page.tsx"), "utf8"),
 	readFileSync(join(EXPERIMENTAL_DIR, "experimental-page-types.ts"), "utf8"),
 	readFileSync(join(EXPERIMENTAL_DIR, "hooks", "use-page-content-model.ts"), "utf8"),
+	readFileSync(join(EXPERIMENTAL_DIR, "hooks", "use-agent-session-review.ts"), "utf8"),
 ].join("\n");
 const BOARD_SOURCE = [
 	readFileSync(join(EXPERIMENTAL_DIR, "experimental-jira-kanban.tsx"), "utf8"),
