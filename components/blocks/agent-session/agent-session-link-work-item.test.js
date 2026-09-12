@@ -127,6 +127,7 @@ test("the issue-type picker matches Jira List geometry without shifting the name
 		SUBMENU_SOURCE,
 		/<DropdownMenuSubTrigger[\s\S]*className="h-6 w-auto gap-1 rounded-md px-2"[\s\S]*showChevron=\{false\}/u,
 	);
+	assert.match(SUBMENU_SOURCE, /<DropdownMenuSubTrigger[\s\S]*nativeButton[\s\S]*render=\{/u);
 	assert.match(
 		SUBMENU_SOURCE,
 		/<DropdownMenuSubContent\s+align="start"\s+className="min-w-40"\s+side="bottom"\s+sideOffset=\{4\}/u,

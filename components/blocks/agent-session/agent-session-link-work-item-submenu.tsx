@@ -68,6 +68,7 @@ function IssueTypePicker({
 		<DropdownMenuSub onOpenChange={setOpen} open={open}>
 			<DropdownMenuSubTrigger
 				className="h-6 w-auto gap-1 rounded-md px-2"
+				nativeButton
 				render={(
 					<Button
 						aria-label={`Work item type: ${issueTypeLabel(value)}`}
