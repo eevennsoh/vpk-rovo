@@ -233,6 +233,7 @@ test("gutter rest keeps the overlay and rail visually transparent", () => {
 
 test("gutter rest keeps its exposed expand control pointer-enabled", () => {
 	assert.match(INDEX_SOURCE, /data-agent-session-column-expand-control=""/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /data-agent-session-column-expand-control=""/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
 		/\[&_\[data-agent-session-notch\]\]:pointer-events-auto\s+\[&_\[data-agent-session-column-expand-control\]\]:pointer-events-auto/u,

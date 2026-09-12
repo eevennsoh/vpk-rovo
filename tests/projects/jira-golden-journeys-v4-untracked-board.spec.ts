@@ -38,6 +38,19 @@ async function openCollapsedBoard(page: Page): Promise<void> {
 	await expect(page.getByRole("button", { name: "Unlink sessions column options" })).toBeVisible();
 }
 
+test("the collapsed gutter options receive pointer input and can expand the column", async ({ page }) => {
+	await openCollapsedBoard(page);
+	const host = page.locator("[data-agent-session-column-expansion]");
+	const options = page.getByRole("button", { name: "Unlink sessions column options" });
+	await options.click();
+	await page.getByRole("menuitem", { name: "Unpin" }).click();
+	await page.getByRole("heading", { name: "Jira Design" }).hover();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "gutter");
+	await options.click();
+	await page.getByRole("menuitem", { name: "Expand" }).click();
+	await expect(host).toHaveAttribute("data-agent-session-column-expansion", "expanded");
+});
+
 
 test("Untracked pins and expands as separate axes", async ({ page }) => {
 	await openCollapsedBoard(page);
