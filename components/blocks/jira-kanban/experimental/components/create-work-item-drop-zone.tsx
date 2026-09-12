@@ -9,7 +9,6 @@ import {
 } from "@/components/blocks/jira-dropzone";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
 import { resolveBoardCreateDropzoneDrag } from "../lib/board-agent-session-drag";
@@ -22,12 +21,14 @@ const CREATE_WORK_ITEM_WELL_CHROME_CLASS = "rounded-lg border border-dashed";
 export function BoardColumnCreateAction({
 	ants = true,
 	dropZoneLabel,
+	placement = "bottom",
 	reveal,
 	sessionDragTransaction,
 	title,
 }: Readonly<{
 	ants?: boolean;
 	dropZoneLabel?: string;
+	placement?: "top" | "bottom";
 	reveal?: "always" | "column-hover";
 	sessionDragTransaction: BoardAgentSessionDrag["transaction"];
 	title: string;
@@ -40,20 +41,24 @@ export function BoardColumnCreateAction({
 	);
 
 	return (
-		<div className="w-full" style={{ paddingBlock: token("space.050") }}>
-			{dropZoneLabel ? (
-				<JiraDropzone
-					ants={ants}
-					drag={drag}
-					exclusiveWinner={isExclusiveWinner}
-					label={dropZoneLabel}
-					measuredRef={targetRef}
-					renderResting={() => <BoardColumnAddButton reveal={reveal} title={title} />}
-					title={title}
-				/>
-			) : (
-				<BoardColumnAddButton reveal={reveal} title={title} />
-			)}
+		// Reserve only the resting button footprint. The expanded well overlays
+		// the card list so arrival scrolling always measures the same viewport.
+		<div className="relative h-8 w-full">
+			<div className={cn("absolute inset-x-0 z-10", placement === "top" ? "top-1" : "bottom-1")}>
+				{dropZoneLabel ? (
+					<JiraDropzone
+						ants={ants}
+						drag={drag}
+						exclusiveWinner={isExclusiveWinner}
+						label={dropZoneLabel}
+						measuredRef={targetRef}
+						renderResting={() => <BoardColumnAddButton reveal={reveal} title={title} />}
+						title={title}
+					/>
+				) : (
+					<BoardColumnAddButton reveal={reveal} title={title} />
+				)}
+			</div>
 		</div>
 	);
 }
