@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuSub,
@@ -261,10 +263,10 @@ export function AgentSessionLinkWorkItemSubmenu({
 							/>
 						</InputGroup>
 						{matches.length > 0 ? (
-							<section className="flex max-h-[16rem] flex-col gap-0.5 overflow-y-auto">
-								<h3 className="px-2 py-1 text-sm font-semibold text-text">
+							<DropdownMenuGroup className="flex max-h-[16rem] flex-col gap-0.5 overflow-y-auto">
+								<DropdownMenuLabel>
 									{trimmedQuery.length > 0 ? "Results" : "Recently viewed"}
-								</h3>
+								</DropdownMenuLabel>
 								{matches.map((option) => (
 									<button
 										className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-text transition-colors duration-fast ease-out-practical hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
@@ -278,7 +280,7 @@ export function AgentSessionLinkWorkItemSubmenu({
 										</span>
 									</button>
 								))}
-							</section>
+							</DropdownMenuGroup>
 						) : (
 							<p className="px-2 py-2 text-sm text-text-subtlest">No matching work items.</p>
 						)}
