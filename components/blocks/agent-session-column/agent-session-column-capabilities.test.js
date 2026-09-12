@@ -5,6 +5,10 @@ const { test } = require("node:test");
 
 const TYPES_SOURCE = readFileSync(join(__dirname, "agent-session-column-types.ts"), "utf8");
 const INDEX_SOURCE = readFileSync(join(__dirname, "index.tsx"), "utf8");
+const INTERACTION_HOOK_SOURCE = readFileSync(
+	join(__dirname, "use-agent-session-column-interaction.ts"),
+	"utf8",
+);
 const HEADER_SOURCE = readFileSync(
 	join(__dirname, "agent-session-column-header.tsx"),
 	"utf8",
@@ -34,6 +38,19 @@ const PANEL_DEMO_SOURCE = readFileSync(
 	join(__dirname, "agent-session-column-panel-demo.tsx"),
 	"utf8",
 );
+
+test("column interaction is reported across collapsed and expanded presentations", () => {
+	assert.match(TYPES_SOURCE, /onInteractionChange\?: \(interacting: boolean\) => void;/u);
+	assert.match(INDEX_SOURCE, /onFocusCapture=\{handleColumnFocusCapture\}/u);
+	assert.match(INDEX_SOURCE, /onBlurCapture=\{handleColumnBlurCapture\}/u);
+	assert.match(INDEX_SOURCE, /onPointerEnter=\{handleColumnPointerEnter\}/u);
+	assert.match(INDEX_SOURCE, /onPointerLeave=\{handleColumnPointerLeave\}/u);
+	assert.match(
+		INTERACTION_HOOK_SOURCE,
+		/const interacting = interaction\.focused \|\| interaction\.pointer;/u,
+	);
+	assert.match(INTERACTION_HOOK_SOURCE, /onInteractionChangeRef\.current\?\.\(false\);/u);
+});
 
 test("the expanded header filter popover covers owner, agent, date, artifacts, and link suggestions", () => {
 	assert.match(HEADER_SOURCE, /filter\?: ReactElement/u);
