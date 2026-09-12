@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import type { AgentListAgent, AgentListItem } from "@/components/blocks/agent-list";
 import type { JiraIssueAgentAssignment } from "@/components/blocks/jira-issue/agent-activity-row-presentation";
 import type { JiraIssueAgentSessionDragBinding } from "@/components/blocks/jira-issue/agent-session-drag";
+import type { JiraListIssueType } from "@/components/blocks/jira-list/jira-list-types";
 
 import type { ApproveTarget } from "./agent-session-approve";
 import type { SessionCohort } from "./session-cohort";
@@ -34,6 +35,30 @@ export type AgentSessionItem = AgentListItem & {
 /** Defaults to `owner` so existing payloads keep the more menu. */
 export function getAgentSessionRole(item: AgentSessionItem): AgentSessionRole {
 	return item.role ?? "owner";
+}
+
+/**
+ * A work item a session can be linked to, as the menu needs to render it.
+ *
+ * Deliberately not `JiraKanbanCardData`: the picker shows a glyph, a key and a
+ * summary, and the block should not learn the board's card model to do that.
+ * Hosts project their own rows onto this shape.
+ */
+export interface AgentSessionWorkItemOption {
+	readonly key: string;
+	readonly summary: string;
+	readonly issueType?: JiraListIssueType;
+}
+
+/**
+ * What the viewer typed into the menu's Create new tab.
+ *
+ * Passed alongside the session so the host titles the new work item with the
+ * viewer's words rather than the session's own title.
+ */
+export interface AgentSessionWorkItemDraft {
+	readonly summary: string;
+	readonly issueType: JiraListIssueType;
 }
 
 /**
@@ -158,6 +183,21 @@ export interface AgentSessionProps {
 	onLinkWorkItem?: (item: AgentSessionItem, workItemKey?: string) => void;
 	/** Creates a work item from a session. Omit to expose an unavailable Create action. */
 	onCreateWorkItem?: (item: AgentSessionItem) => void;
+	/**
+	 * Creates a work item the viewer named in the menu's Create new tab.
+	 *
+	 * Deliberately separate from {@link AgentSessionProps.onCreateWorkItem}: the
+	 * board's drag-to-create path already spends that callback's second argument
+	 * on a column title, and one field carrying two different second arguments is
+	 * how a type stops describing anything. Omit to disable the Create new tab.
+	 */
+	onCreateWorkItemFromDraft?: (item: AgentSessionItem, draft: AgentSessionWorkItemDraft) => void;
+	/**
+	 * Work items the menu's Link work item submenu offers. Supplied by the host so
+	 * the list is the board the viewer is looking at, not a fixture. An empty or
+	 * omitted list leaves the Link to existing tab in its empty state.
+	 */
+	workItemOptions?: readonly AgentSessionWorkItemOption[];
 	/**
 	 * Add-as-subtask action behind the untracked-work flyout menu. Omit to expose
 	 * the menu option as unavailable.

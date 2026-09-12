@@ -247,12 +247,14 @@ function JiraGoldenJourneysV4App(): React.ReactElement {
 		session: AgentSessionItem,
 		columnTitle: string,
 		insertAtIndex?: number,
+		issueType?: JiraKanbanCardData["issueType"],
 	) => {
 		const activity = consumeDetachedAgentSession(session);
 		return createBoardFromAgentSession({
 			activity,
 			columnTitle,
 			insertAtIndex,
+			issueType,
 			session,
 		});
 	}, [consumeDetachedAgentSession, createBoardFromAgentSession]);

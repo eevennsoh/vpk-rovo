@@ -565,7 +565,8 @@ test("the menu offers host-appropriate actions, disabled without the capability"
 	assert.match(SESSION_MORE_MENU_SOURCE, /import TerminalIcon from "@atlaskit\/icon-lab\/core\/terminal";/u);
 	assert.match(SESSION_MORE_MENU_SOURCE, /<EditIcon label="" size="small" \/>[\s\S]*Rename/u);
 	assert.match(SESSION_MORE_MENU_SOURCE, /<DeleteIcon label="" size="small" \/>[\s\S]*variant="destructive"[\s\S]*Delete/u);
-	assert.match(SESSION_MORE_MENU_SOURCE, /<DropdownMenuSeparator \/>\s*<DropdownMenuItem[\s\S]*\{dismissLabel\}/u);
+	// Order below the separator: work-item picker, then Dismiss. The picker's own contract lives in agent-session-link-work-item.test.js.
+	assert.match(SESSION_MORE_MENU_SOURCE, /<DropdownMenuSeparator \/>\s*\{canPickWorkItem \?[\s\S]*<DropdownMenuItem[\s\S]*\{dismissLabel\}/u);
 	// Every remaining row disables itself when its capability is missing.
 	for (const capability of ["onRename", "onDelete", "onContinueInAgent", "onCopyPrompt", "onDismiss"]) {
 		assert.match(SESSION_MORE_MENU_SOURCE, new RegExp(`disabled=\\{actions\\.${capability} === undefined\\}`, "u"));
@@ -641,7 +642,7 @@ test("the long density is title-led, with its own metadata line and lifecycle", 
 	assert.match(CARD_SOURCE, /const hideIdentity = isLongDensity && mark == null;/u);
 	assert.match(CARD_SOURCE, /<AgentListRow[\s\S]*hideIdentity=\{hideIdentity\}/u);
 	assert.match(CARD_SOURCE, /lifecycle=\{lifecycleIndicator\}/u);
-	assert.match(CARD_SOURCE, /const lifecycleIndicator = !isLongDensity\s*\? null\s*: role === "expired"\s*\? <AgentSessionExpiredHint \/>\s*: <AgentSessionLifecycle state=\{item\.state\} \/>;/u);
+	assert.match(CARD_SOURCE, /const lifecycleIndicator = !isLongDensity\s*\? null\s*: role === "expired"\s*\? <AgentSessionExpiredHint \/>\s*: <AgentSessionLifecycle showLabel=\{showLifecycleLabel\} state=\{item\.state\} \/>;/u);
 	assert.match(CARD_SOURCE, /<AgentSessionLongMetadata item=\{item\} \/>/u);
 	assert.match(CARD_SOURCE, /"group\/agent-row relative flex w-full min-w-0 cursor-default rounded-lg/u);
 	assert.match(
@@ -781,7 +782,7 @@ test("a working long row breathes with the experimental spinner, not the pixel l
 	assert.match(LIFECYCLE_SOURCE, /"needs-input": "Needs input"/u);
 	assert.match(LIFECYCLE_SOURCE, /attention: "Needs attention"/u);
 	assert.match(LIFECYCLE_SOURCE, /complete: "Finished"/u);
-	assert.match(LIFECYCLE_SOURCE, /state === "running" \? \(\s*<Shimmer[\s\S]*\{label\}[\s\S]*<\/Shimmer>\s*\) : \(\s*<span[\s\S]*\{label\}[\s\S]*<\/span>/u);
+	assert.match(LIFECYCLE_SOURCE, /showLabel[\s\S]*state === "running"[\s\S]*<Shimmer[\s\S]*\{label\}[\s\S]*<\/Shimmer>[\s\S]*: <span>\{label\}<\/span>[\s\S]*: null/u);
 	// Grow in and out on the state swap, with the exit timing on the exit variant
 	// so it does not silently run at the enter timing.
 	assert.match(LIFECYCLE_SOURCE, /const INDICATOR_ENTER = \{ duration: 0\.15, ease: \[0\.4, 1, 0\.6, 1\] \}/u);

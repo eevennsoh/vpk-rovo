@@ -49,6 +49,7 @@ export interface ExperimentalJiraKanbanPageProps {
 	/** Extra local sessions discovered after the static Pulse fixture loaded. */
 	additionalAgentSessions?: readonly PulseAgentSession[];
 	agentActivityLayout?: JiraIssueAgentActivityLayout;
+	cardGenerativeActionFooterActions?: ExperimentalJiraKanbanProps["cardGenerativeActionFooterActions"];
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
 	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
 	iconScale?: JiraIssueIconScale;
@@ -128,6 +129,11 @@ export interface ExperimentalJiraKanbanPageProps {
 		 * supplied when the session is dropped in the gap between two cards.
 		 */
 		insertAtIndex?: number,
+		/**
+		 * Type the viewer picked in the session menu's Create new tab. Omitted by
+		 * the drag paths, which name no type, and the host defaults to a task.
+		 */
+		issueType?: JiraKanbanCardData["issueType"],
 	) => string | undefined;
 	onCardClick?: (card: JiraKanbanCardData, columnTitle: string) => void;
 	onCardAgentActivityViewChat?: JiraKanbanProps["onCardAgentActivityViewChat"];

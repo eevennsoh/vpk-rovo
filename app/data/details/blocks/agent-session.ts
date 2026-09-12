@@ -100,13 +100,25 @@ export const AGENT_SESSION_DETAIL: ComponentDetail = {
 			name: "onLinkWorkItem",
 			type: "(item: AgentSessionItem, workItemKey?: string) => void",
 			description:
-				"Links a session to a suggested work item from the untracked-work flyout. Receives the flyout's offered key.",
+				"Links a session to a work item, from either the untracked-work flyout or the more menu's Link work item submenu. Omit to disable the submenu's Link to existing tab.",
 		},
 		{
 			name: "onCreateWorkItem",
 			type: "(item: AgentSessionItem) => void",
 			description:
 				"Creates a work item from a session via the untracked-work flyout. When omitted, the action is exposed as unavailable.",
+		},
+		{
+			name: "onCreateWorkItemFromDraft",
+			type: "(item: AgentSessionItem, draft: AgentSessionWorkItemDraft) => void",
+			description:
+				"Creates a work item the viewer named in the more menu's Create new tab, carrying the typed summary and chosen issue type. Separate from onCreateWorkItem, whose second argument the board's drag-to-create path already uses for a column title. Omit to disable that tab.",
+		},
+		{
+			name: "workItemOptions",
+			type: "readonly AgentSessionWorkItemOption[]",
+			description:
+				"Work items the more menu's Link work item submenu offers on its Link to existing tab, as { key, summary, issueType }. Supplied by the host so the list is the board in view rather than a fixture.",
 		},
 		{
 			name: "onSubtasks",

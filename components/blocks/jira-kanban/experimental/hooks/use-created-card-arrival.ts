@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
+import type { JiraKanbanCardData } from "@/components/blocks/jira-kanban";
 import { subscribeCreatedCardBottomReveal } from "@/components/blocks/jira-creating/lib/jira-creating-column-scroll";
 
 export interface JiraKanbanCreatedCardArrival {
@@ -33,6 +34,7 @@ export function useBoardCreatedCardArrival({
 		session: AgentSessionItem,
 		columnTitle: string,
 		insertAtIndex?: number,
+		issueType?: JiraKanbanCardData["issueType"],
 	) => string | undefined;
 }>) {
 	const [createdCardArrival, setCreatedCardArrival] = useState<JiraKanbanCreatedCardArrival | null>(null);
@@ -42,11 +44,12 @@ export function useBoardCreatedCardArrival({
 		session: AgentSessionItem,
 		columnTitle: string,
 		insertAtIndex?: number,
+		issueType?: JiraKanbanCardData["issueType"],
 	) => {
 		if (onCreate === undefined) return;
 
 		captureSession(session);
-		const cardCode = onCreate(session, columnTitle, insertAtIndex);
+		const cardCode = onCreate(session, columnTitle, insertAtIndex, issueType);
 		if (cardCode === undefined) return;
 
 		const appended = insertAtIndex === undefined;
