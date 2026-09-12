@@ -1,8 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import { RovoChatProvider } from "@/app/contexts/context-rovo-chat";
+import { DEFAULT_SKILLS, ROVO_DIRECTORY_AGENT_PROFILES } from "@/app/data/directory";
+import { AgentsDirectoryDialog } from "@/components/blocks/agent-directory";
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type {
 	JiraIssueAgentActivity,
@@ -24,6 +27,7 @@ import {
 	type JiraListAssignedAgent,
 	type JiraListInsertion,
 } from "@/components/blocks/jira-list";
+import { SkillsDirectoryDialog } from "@/components/blocks/skills-directory";
 import { JgpRovoOverlay } from "@/components/projects/jira-golden-journeys-v1/components/jira-golden-journeys-v1-rovo-overlay";
 import { JGP_CHAT_AGENT_PROFILES } from "@/components/projects/jira-golden-journeys-v1/data/agent-chat-data";
 import { useJgpAgentChatDemo } from "@/components/projects/jira-golden-journeys-v1/hooks/use-jira-golden-journeys-v1-agent-chat-demo";
@@ -85,7 +89,10 @@ export default function JiraTeamEu26Page(): React.ReactElement {
 }
 
 function JiraTeamEu26App(): React.ReactElement {
+	const router = useRouter();
 	const { chatContextBar, externalThinkingMessageId, openAgentChat } = useJgpAgentChatDemo();
+	const [agentsDirectoryOpen, setAgentsDirectoryOpen] = useState(false);
+	const [skillsDirectoryOpen, setSkillsDirectoryOpen] = useState(false);
 	const [boardColumns, setBoardColumns] = useState(createJiraTeamEu26PayBoardColumns);
 	const needsInputCount = boardColumns.reduce(
 		(total, column) => total + column.cards.reduce(
@@ -105,6 +112,12 @@ function JiraTeamEu26App(): React.ReactElement {
 			openAgentChat,
 			setBoardColumns,
 		});
+	const cardGenerativeActionFooterActions = {
+		onBrowseAgents: () => setAgentsDirectoryOpen(true),
+		onBrowseSkills: () => setSkillsDirectoryOpen(true),
+		onCreateAgent: () => router.push("/studio"),
+		onCreateSkill: () => router.push("/skills"),
+	};
 	const [detachedAgentSessionsByCard, setDetachedAgentSessionsByCard] = useState<
 		Readonly<Record<string, readonly AgentSessionItem[]>>
 	>({});
@@ -338,6 +351,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						additionalAgentSessions={syncedAgentSessions}
 						agentActivityLayout="merged"
 						agentSessionMultiSelect={false}
+						cardGenerativeActionFooterActions={cardGenerativeActionFooterActions}
 						cardGenerativeActionPresentation="more-actions"
 						iconScale="comfortable"
 						createWellBounce="off"
@@ -434,6 +448,19 @@ function JiraTeamEu26App(): React.ReactElement {
 			<span aria-live="polite" className="sr-only" role="status">
 				{resumeAnnouncement}
 			</span>
+			<AgentsDirectoryDialog
+				agents={ROVO_DIRECTORY_AGENT_PROFILES}
+				onCreateAgent={() => router.push("/studio")}
+				onOpenChange={setAgentsDirectoryOpen}
+				onSelectAgent={() => setAgentsDirectoryOpen(false)}
+				open={agentsDirectoryOpen}
+			/>
+			<SkillsDirectoryDialog
+				onCreateSkill={() => router.push("/skills")}
+				onOpenChange={setSkillsDirectoryOpen}
+				open={skillsDirectoryOpen}
+				skills={DEFAULT_SKILLS}
+			/>
 			<JgpRovoOverlay
 				chatContextBar={chatContextBar}
 				composerPrefillRequest={composerPrefillRequest}

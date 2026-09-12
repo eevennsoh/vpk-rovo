@@ -25,7 +25,7 @@ import type {
 
 import {
 	AGENT_BRAND_TINT_FALLBACK,
-	resolveAgentBrandTintHex,
+	resolveAgentBrandTintColor,
 	// @ts-expect-error Node's strip-types test runner requires the explicit .ts extension here.
 } from "./agent-brand-tint.ts";
 import {
@@ -298,7 +298,7 @@ export function toBoardAgentSessionLinkFlash(
 		cardCode: targetCardCode,
 		flash: {
 			activityIds: members.map((member) => member.id),
-			tint: resolveAgentBrandTintHex(members[0].tintSeed) ?? AGENT_BRAND_TINT_FALLBACK,
+			tint: resolveAgentBrandTintColor(members[0].tintSeed) ?? AGENT_BRAND_TINT_FALLBACK,
 			token: input.token,
 		},
 	};
