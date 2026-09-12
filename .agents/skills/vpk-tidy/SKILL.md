@@ -1,11 +1,11 @@
 ---
 name: vpk-tidy
-description: Repo-local VPK-rovo component refactoring and placement guidance. Use when the user asks to tidy or refactor a VPK React component, split an overgrown component under app or components, move VPK UI logic into hooks or data files, make a VPK component easier to reuse without changing behavior, remove stale shared buckets, or verify VPK route/accessibility impact after cleanup. Do not use for generic behavior-preserving simplification outside VPK UI; prefer the global code-simplification skill for that.
+description: Repo-local VPK component refactoring and placement guidance. Use when the user asks to tidy or refactor a VPK React component, split an overgrown component under app or components, move VPK UI logic into hooks or data files, make a VPK component easier to reuse without changing behavior, remove stale shared buckets, or verify VPK route/accessibility impact after cleanup. Do not use for generic behavior-preserving simplification outside VPK UI; prefer the global code-simplification skill for that.
 ---
 
 # VPK Tidy
 
-Refactor VPK-rovo React component surfaces without losing repo conventions,
+Refactor VPK React component surfaces without losing repo conventions,
 route behavior, or ownership clarity. This skill is a repo-local router and
 checklist; use broader system skills for generic React theory.
 

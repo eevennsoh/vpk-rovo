@@ -116,17 +116,17 @@ test("watch refresh detects meaningful dashboard row changes", () => {
 test("interactive open prefers the Portless URL and falls back to the live frontend", () => {
 	assert.equal(
 		browserUrlForRow({
-			portlessUrl: "https://feature.vpk-rovo.localhost",
+			portlessUrl: "https://feature.example-project.localhost",
 			runningFrontend: "4321",
 		}),
-		"https://feature.vpk-rovo.localhost",
+		"https://feature.example-project.localhost",
 	);
 	assert.equal(browserUrlForRow({ portlessUrl: null, runningFrontend: "4321" }), "http://localhost:4321");
 	assert.equal(browserUrlForRow({ portlessUrl: null, runningFrontend: null }), null);
 });
 
 test("interactive open uses the platform default-browser command", () => {
-	const url = "https://vpk-rovo.localhost";
+	const url = "https://example-project.localhost";
 	assert.deepEqual(defaultBrowserCommand(url, "darwin"), { command: "open", args: [url] });
 	assert.deepEqual(defaultBrowserCommand(url, "linux"), { command: "xdg-open", args: [url] });
 	assert.deepEqual(defaultBrowserCommand(url, "win32"), {

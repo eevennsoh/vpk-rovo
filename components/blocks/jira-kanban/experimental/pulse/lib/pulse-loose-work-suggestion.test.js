@@ -37,7 +37,7 @@ test("suggestPulseLooseWorkItemKey prefers the last key named in the artifact co
 
 	assert.equal(
 		suggestPulseLooseWorkItemKey({
-			detail: "eevensoh/vpk-rovo · PR #1841 · createPaymentIntent waits on PAY-121 · no linked work item",
+			detail: "acme/storefront · PR #1841 · createPaymentIntent waits on PAY-121 · no linked work item",
 			id: "lw-kickoff-port-gate-pr",
 			kind: "commit",
 			memberIds: ["venn"],
@@ -54,7 +54,7 @@ test("suggestPulseLooseWorkItemKey falls back to the window item that shares the
 	assert.equal(
 		suggestPulseLooseWorkItemKey(
 			{
-				detail: "eevensoh/vpk-rovo · PR #1840 · no linked work item",
+				detail: "acme/storefront · PR #1840 · no linked work item",
 				id: "lw-kickoff-inventory-pr",
 				kind: "commit",
 				memberIds: ["jordan"],

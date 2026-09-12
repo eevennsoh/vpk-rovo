@@ -74,7 +74,7 @@ export const JIRA_AGENTS_STORY_CHAPTERS = [
 
 export const JIRA_AGENTS_STORY_ITEM_ID = "shop-4821-guest-checkout";
 export const JIRA_AGENTS_STORY_ISSUE_KEY = "SHOP-4821";
-export const JIRA_AGENTS_PULL_REQUEST_IDENTITY = "https://github.com/eevensoh/vpk-rovo/pull/1847";
+export const JIRA_AGENTS_PULL_REQUEST_IDENTITY = "https://github.com/acme/storefront/pull/1847";
 
 export const STORY_EPOCH_MS = Date.UTC(2026, 7, 5, 2, 0, 0);
 /** Matches the `story-created` timeline event — one hour before the story clock. */

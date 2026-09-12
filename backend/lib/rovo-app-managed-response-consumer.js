@@ -88,7 +88,8 @@ function createRovoAppManagedResponseConsumer({
 			throw new Error("Rovo expected an event stream response.");
 		}
 
-		const resolvedPort = getPositiveInteger(response.headers.get("x-vpk-rovo-port"));
+		const resolvedPort = getPositiveInteger(response.headers.get("x-vpk-port"))
+			?? getPositiveInteger(response.headers.get("x-vpk-rovo-port"));
 		if (
 			typeof resolvedPort === "number"
 			&& Number.isInteger(resolvedPort)

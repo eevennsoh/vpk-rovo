@@ -1,12 +1,15 @@
 import type { NextConfig } from "next";
 
+import packageMetadata from "./package.json";
+
 const projectRoot = process.cwd();
+const projectName = packageMetadata.name.replace(/^@[^/]+\//, "");
 
 const nextConfig: NextConfig = {
 	devIndicators: false,
 	allowedDevOrigins: [
-		"vpk-rovo.localhost",
-		"*.vpk-rovo.localhost",
+		`${projectName}.localhost`,
+		`*.${projectName}.localhost`,
 		// Atlas Tunnel public hosts are ephemeral (`<id>.public.atlastunnel.com`).
 		"*.public.atlastunnel.com",
 		"*.atlastunnel.com",

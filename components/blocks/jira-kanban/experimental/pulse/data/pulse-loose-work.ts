@@ -22,7 +22,7 @@ import type {
  * The PAY space's configured GitHub repo. Every uncaptured PR, branch, and
  * commit lives here — the same repo Pulse already names on PR #1847.
  */
-export const PULSE_SPACE_REPOSITORY = "eevensoh/vpk-rovo";
+export const PULSE_SPACE_REPOSITORY = "acme/storefront";
 
 const REPO = PULSE_SPACE_REPOSITORY;
 

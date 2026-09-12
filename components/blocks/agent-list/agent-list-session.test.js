@@ -20,8 +20,8 @@ test("resume command leaves shell-safe values unquoted", async () => {
 	const { toAgentListResumeCommand } = await loadSession();
 
 	assert.equal(
-		toAgentListResumeCommand(sessionItem({ resumeSessionId: "abc-123", worktreePath: "/Users/venn/Labs/vpk-rovo" })),
-		"cd /Users/venn/Labs/vpk-rovo && claude --resume abc-123",
+		toAgentListResumeCommand(sessionItem({ resumeSessionId: "abc-123", worktreePath: "/Users/venn/Labs/project" })),
+		"cd /Users/venn/Labs/project && claude --resume abc-123",
 	);
 	assert.equal(
 		toAgentListResumeCommand(sessionItem(undefined)),

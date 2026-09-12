@@ -155,7 +155,7 @@ test("short uncaptured-work rows restore the owner byline", () => {
 	assert.doesNotMatch(METADATA_SOURCE, /machineName/u);
 	assert.match(DATA_SOURCE, /pullRequestNumber: 1306,/u);
 	assert.match(DATA_SOURCE, /pullRequestTitle: "Add guest checkout to the storefront",/u);
-	assert.match(DATA_SOURCE, /pullRequestUrl: "https:\/\/github\.com\/eevensoh\/vpk-rovo\/pull\/1306",/u);
+	assert.match(DATA_SOURCE, /pullRequestUrl: "https:\/\/github\.com\/acme\/storefront\/pull\/1306",/u);
 	assert.match(DATA_SOURCE, /repository: GITHUB_REPOSITORY/u);
 	assert.match(DATA_SOURCE, /targetBranch: GITHUB_TARGET_BRANCH/u);
 	assert.match(DATA_SOURCE, /branch: "feature\/shop-4821-guest-checkout"/u);

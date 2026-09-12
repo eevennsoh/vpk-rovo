@@ -85,13 +85,13 @@ function createFixture(options = {}) {
 	);
 	writeFileSync(
 		path.join(root, "service-descriptor.yml"),
-		descriptorFor(options.descriptorService || "vpk-rovo", options.extraSsmService),
+		descriptorFor(options.descriptorService || "example-service", options.extraSsmService),
 	);
 	writeFileSync(path.join(root, "backend/Dockerfile"), "FROM scratch\n");
 	writeFileSync(
 		path.join(root, ".deploy.local"),
 		[
-			'SERVICE_NAME="vpk-rovo"',
+			'SERVICE_NAME="example-service"',
 			'ENV="pdev-west2"',
 			'DOCKER_USERNAME="fixture-user"',
 			'DOCKER_PASSWORD="fixture-password"',
@@ -198,7 +198,7 @@ test("canonical deploy accepts an existing service with no stack yet", () => {
 		const result = runFixture(
 			fixture,
 			".agents/skills/vpk-deploy/scripts/deploy.sh",
-			["vpk-rovo", "1.2.3", "pdev-west2"],
+			["example-service", "1.2.3", "pdev-west2"],
 			{ home: "" },
 		);
 
@@ -209,14 +209,14 @@ test("canonical deploy accepts an existing service with no stack yet", () => {
 
 test("both deploy paths reject descriptor identity drift before mutation", () => {
 	for (const [scriptPath, args] of [
-		[".agents/skills/vpk-deploy/scripts/deploy.sh", ["vpk-rovo", "1.2.3", "pdev-west2"]],
+		[".agents/skills/vpk-deploy/scripts/deploy.sh", ["example-service", "1.2.3", "pdev-west2"]],
 		["scripts/dev-deploy-fast.sh", ["1.2.3"]],
 	]) {
 		withFixture({ descriptorService: "different-service" }, (fixture) => {
 			const result = runFixture(fixture, scriptPath, args, { home: "" });
 
 			assert.notEqual(result.status, 0, `${scriptPath} should reject descriptor drift`);
-			assert.match(`${result.stdout}\n${result.stderr}`, /descriptor.*vpk-rovo/iu);
+			assert.match(`${result.stdout}\n${result.stderr}`, /descriptor.*example-service/iu);
 			assertNoMutationCalls(callsFor(fixture));
 		});
 	}
@@ -224,7 +224,7 @@ test("both deploy paths reject descriptor identity drift before mutation", () =>
 
 test("both deploy paths reject any foreign descriptor SSM prefix before mutation", () => {
 	for (const [scriptPath, args] of [
-		[".agents/skills/vpk-deploy/scripts/deploy.sh", ["vpk-rovo", "1.2.3", "pdev-west2"]],
+		[".agents/skills/vpk-deploy/scripts/deploy.sh", ["example-service", "1.2.3", "pdev-west2"]],
 		["scripts/dev-deploy-fast.sh", ["1.2.3"]],
 	]) {
 		withFixture({ extraSsmService: "other-service" }, (fixture) => {
@@ -290,7 +290,7 @@ test("Dockerfile combines tracked registry routing with an optional user auth se
 
 test("both deploy paths work under macOS Bash 3 when HOME is unset", () => {
 	for (const [scriptPath, args] of [
-		[".agents/skills/vpk-deploy/scripts/deploy.sh", ["vpk-rovo", "1.2.3", "pdev-west2"]],
+		[".agents/skills/vpk-deploy/scripts/deploy.sh", ["example-service", "1.2.3", "pdev-west2"]],
 		["scripts/dev-deploy-fast.sh", ["1.2.3"]],
 	]) {
 		withFixture({}, (fixture) => {
@@ -306,7 +306,7 @@ test("canonical deploy requires an explicit tag-valid version", () => {
 		const missing = runFixture(
 			fixture,
 			".agents/skills/vpk-deploy/scripts/deploy.sh",
-			["vpk-rovo"],
+			["example-service"],
 			{ home: "" },
 		);
 		assert.notEqual(missing.status, 0);
@@ -318,7 +318,7 @@ test("canonical deploy requires an explicit tag-valid version", () => {
 		const invalid = runFixture(
 			fixture,
 			".agents/skills/vpk-deploy/scripts/deploy.sh",
-			["vpk-rovo", "release/latest", "pdev-west2"],
+			["example-service", "release/latest", "pdev-west2"],
 			{ home: "" },
 		);
 		assert.notEqual(invalid.status, 0);
@@ -367,7 +367,7 @@ test("canonical deploy verifies remote prerequisites before building or mutating
 			const result = runFixture(
 				fixture,
 				".agents/skills/vpk-deploy/scripts/deploy.sh",
-				["vpk-rovo", "1.2.3", "pdev-west2"],
+				["example-service", "1.2.3", "pdev-west2"],
 				{ home: "", ...runOptions },
 			);
 

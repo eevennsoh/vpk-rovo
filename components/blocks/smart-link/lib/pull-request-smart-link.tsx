@@ -22,7 +22,7 @@ export interface PullRequestSmartLinkInput {
 	/** Number of files touched by the diff, rendered alongside the +/- counts. */
 	files?: number;
 	/**
-	 * Owner/name path (e.g. `eevensoh/vpk-rovo`). Builds the GitHub URL; it is
+	 * Owner/name path (e.g. `acme/storefront`). Builds the GitHub URL; it is
 	 * not shown on the card — the provider mark and `#N` already say where the
 	 * change lives.
 	 */

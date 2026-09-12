@@ -14,7 +14,7 @@ export interface DevelopmentRepositoryOption {
 export const DEVELOPMENT_REPOSITORIES: readonly DevelopmentRepositoryOption[] = [
 	{ id: "symphony-explainer", name: "symphony-explainer", provider: "github", url: "https://github.com/eevensoh/symphony-explainer" },
 	{ id: "proximity", name: "proximity", provider: "github", url: "https://github.com/eevensoh/proximity" },
-	{ id: "vpk-rovo", name: "vpk-rovo", provider: "bitbucket", url: "https://bitbucket.org/eevensoh/vpk-rovo" },
+	{ id: "storefront", name: "storefront", provider: "bitbucket", url: "https://bitbucket.org/acme/storefront" },
 	{ id: "vpk-rovodev", name: "vpk-rovodev", provider: "bitbucket", url: "https://bitbucket.org/eevensoh/vpk-rovodev" },
 ];
 

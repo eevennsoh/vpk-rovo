@@ -210,7 +210,7 @@ export function ContextBarDemoCreatePullRequest() {
 	}
 
 	const branch = item.branch ?? "main";
-	const repository = item.repository ?? "vpk-rovo";
+	const repository = item.repository ?? "storefront";
 
 	return (
 		<div className="w-full max-w-xl p-8">

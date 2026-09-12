@@ -8,8 +8,10 @@ const { setTimeout: delay } = require("node:timers/promises");
 const { getAllWorktreePortInfo } = require("../../../../scripts/lib/worktree-ports");
 const { probePortAlive } = require("../../../../scripts/lib/port-liveness");
 const { loadPortlessRoutes, isOwnerAlive } = require("../../../../scripts/lib/portless-routes");
+const packageMetadata = require("../../../../package.json");
 
-const DEFAULT_TARGET_URL = "https://vpk-rovo.localhost";
+const projectName = packageMetadata.name.replace(/^@[^/]+\//u, "");
+const DEFAULT_TARGET_URL = `https://${projectName}.localhost`;
 const SESSION_PREFIX = "vpk-tunnel-";
 const START_TIMEOUT_MS = 30_000;
 const START_POLL_INTERVAL_MS = 250;

@@ -65,7 +65,7 @@ export const CONTEXT_BAR_DETAIL: ComponentDetail = {
 
 // Pre-PR variation (branch + diffs + Create PR split button)
 <ContextBarCreatePullRequest
-  repository="eevensoh/vpk-rovo"
+  repository="acme/storefront"
   branch="rovo/rfp-103-response-validation"
   additions={86}
   deletions={21}
@@ -78,13 +78,13 @@ export const CONTEXT_BAR_DETAIL: ComponentDetail = {
 // Pull-request variation (status + hoverable #N + branch + diffs)
 <ContextBarPullRequest
   number={1306}
-  href="https://github.com/eevensoh/vpk-rovo/pull/1306"
+  href="https://github.com/acme/storefront/pull/1306"
   title="Add guest checkout to the storefront"
   status="Open"
   branch="rovo/rfp-103-response-validation"
   additions={86}
   deletions={21}
-  repository="eevensoh/vpk-rovo"
+  repository="acme/storefront"
   targetBranch="main"
   ci={{
     status: "passed",

@@ -18,7 +18,7 @@ const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   status="Open"
   baseBranch="main"
   headBranch="feature/guest-checkout"
-  repository="eevensoh/vpk-rovo"
+  repository="acme/storefront"
   mergeState="ready"
   defaultMergeMethod="squash"
   defaultAutoMerge
