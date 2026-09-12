@@ -38,7 +38,8 @@ Migrate the current Venn Prototype Kit repository from `vpk-rovo` to `vpk` acros
 
 - [ ] Land the source migration through protected GitHub review.
 - [x] Rename `eevennsoh/vpk-rovo` to `eevennsoh/vpk` and verify protection, secrets, PRs, and redirects.
-- [ ] Update Git/LFS remotes, move the persistent checkout to a chosen local directory, and repair registered worktrees safely.
+- [x] Rename `atlassian/vpk-rovo` to `atlassian/vpk`, verify SSH access, and update Git/LFS remotes.
+- [ ] Move the persistent checkout to a chosen local directory and repair registered worktrees safely.
 - [ ] Update the saved Codex project, existing automations, ignored local configuration, and Portless routes.
 
 ### Checkpoint: Complete
@@ -59,5 +60,5 @@ Migrate the current Venn Prototype Kit repository from `vpk-rovo` to `vpk` acros
 
 ## Open Questions
 
-- Bitbucket rename requires an authenticated settings session; the target and redirect must be verified after the mutation.
+- Bitbucket was renamed manually and the new Secretive-backed SSH endpoint is verified.
 - Micros service, Docker repository, and `/vpk/*` SSM stashes must be provisioned before the deployment identity can cut over.

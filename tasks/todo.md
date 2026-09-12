@@ -6,7 +6,8 @@
 - [x] Migrate canonical docs, agent tooling, and generated indexes.
 - [x] Run targeted tests, lint, typecheck, and exhaustive identity scans.
 - [ ] Land the protected migration PR.
-- [ ] Rename the GitHub source repository and update remotes.
+- [x] Rename the Bitbucket repository and update its Git/LFS remote.
+- [x] Rename the GitHub source repository and update its Git/LFS remote.
 - [ ] Move and repair local worktrees and development origins.
 - [ ] Update saved Codex project and existing automations.
 - [ ] Report external Bitbucket/Micros transition items.
