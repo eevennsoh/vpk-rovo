@@ -275,6 +275,7 @@ function BoardColumn({
 	const isEmptyColumn = count === 0;
 	const createAction = <BoardColumnCreateAction
 		dropZoneLabel={createWorkItemDropZoneLabel}
+		placement={isEmptyColumn ? "top" : "bottom"}
 		reveal={isEmptyColumn ? "always" : "column-hover"}
 		sessionDragTransaction={sessionDragTransaction}
 		title={title}
