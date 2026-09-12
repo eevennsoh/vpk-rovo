@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue";
+import { mergeJiraKanbanAgentCatalog } from "@/components/blocks/jira-kanban/lib/agent-catalog";
 import { linkJiraKanbanAgentSession, moveJiraKanbanCardsToColumn } from "@/components/blocks/jira-kanban/state";
 import type { JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
 import type {
@@ -32,6 +33,10 @@ import {
 	moveListOrder,
 	toKanbanCardFromDraft,
 } from "../lib/list-rows";
+
+const JIRA_TEAM_EU26_AGENT_CATALOG = mergeJiraKanbanAgentCatalog(
+	JIRA_TEAM_EU26_PAY_BOARD_AGENTS,
+);
 
 interface ListDraftWorkItem {
 	anchorIssueKey: string | null;
@@ -121,7 +126,7 @@ export function useJiraTeamEu26List({
 		setListOrder((currentOrder) => {
 			const allKeys = createListRows(
 				boardColumns,
-				JIRA_TEAM_EU26_PAY_BOARD_AGENTS,
+				JIRA_TEAM_EU26_AGENT_CATALOG,
 			).map((row) => row.issueKey);
 			return moveListOrder(
 				currentOrder.length === 0 ? allKeys : currentOrder,
@@ -205,7 +210,7 @@ export function useJiraTeamEu26List({
 			columns,
 			issueKey,
 			agentIds,
-			JIRA_TEAM_EU26_PAY_BOARD_AGENTS,
+			JIRA_TEAM_EU26_AGENT_CATALOG,
 		));
 	}, [setBoardColumns]);
 
@@ -271,7 +276,7 @@ export function useJiraTeamEu26List({
 
 	const getProps = useCallback((columns: readonly JiraKanbanColumnData[]): JiraListProps => {
 		const rows = applyListOrder(
-			createListRows(columns, JIRA_TEAM_EU26_PAY_BOARD_AGENTS),
+			createListRows(columns, JIRA_TEAM_EU26_AGENT_CATALOG),
 			listOrder,
 		);
 		// Event handlers need the keys last shown (assignee filter may hide rows).
@@ -280,7 +285,7 @@ export function useJiraTeamEu26List({
 		const nextIssueKey = getNextPayIssueKey(boardColumns);
 
 		return {
-			agentCatalog: JIRA_TEAM_EU26_PAY_BOARD_AGENTS,
+			agentCatalog: JIRA_TEAM_EU26_AGENT_CATALOG,
 			ariaLabel: "Payments SDK v2 migration work items list",
 			className: "max-h-full",
 			copiedIssueKey,

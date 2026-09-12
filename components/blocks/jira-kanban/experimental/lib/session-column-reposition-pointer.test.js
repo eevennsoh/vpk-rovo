@@ -28,7 +28,7 @@ const RAIL_SOURCE = readFileSync(
 test("the collapsed options button and entire expanded header start a column move", () => {
 	assert.equal(
 		canStartSessionColumnReposition({
-			inHeader: true,
+			inHeader: false,
 			inNotch: false,
 			inRail: false,
 			interactiveKind: "options",
@@ -171,7 +171,7 @@ test("drag moves only the outlined chip; both sources share opacity-disabled", (
 
 test("a short click stays a click; only a 6px move claims the gesture", () => {
 	assert.match(HOOK_SOURCE, /resolveSessionColumnRepositionCaptureElement/u);
-	assert.match(HOOK_SOURCE, /const captureElement = resolveSessionColumnRepositionCaptureElement\(target\)/u);
+	assert.match(HOOK_SOURCE, /const captureElement = resolveSessionColumnRepositionCaptureElement\(target, element\)/u);
 	assert.match(HOOK_SOURCE, /captureElement\.setPointerCapture\(event.pointerId\)/u);
 	assert.match(HOOK_SOURCE, /captureElement,/u);
 	assert.doesNotMatch(HOOK_SOURCE, /element\.setPointerCapture\(event.pointerId\)/u);
@@ -179,6 +179,21 @@ test("a short click stays a click; only a 6px move claims the gesture", () => {
 	assert.match(HOOK_SOURCE, /suppressClick.current = true/u);
 	assert.match(HOOK_SOURCE, /onClickCapture: \(event: React.MouseEvent<HTMLDivElement>\) => \{/u);
 	assert.match(HOOK_SOURCE, /if \(!suppressClick.current\) return/u);
+});
+
+test("the expanded header move handle stays mounted while a width resize is live", () => {
+	assert.match(HOOK_SOURCE, /available: placement !== null,/u);
+	assert.match(HOOK_SOURCE, /enabled: placement !== null && !disabled,/u);
+	assert.match(COLUMN_SOURCE, /disabled: sessionFlyoutsSuspended \|\| resize\.isResizing,/u);
+	assert.match(COLUMN_SOURCE, /const dragHandle = reposition\.available \? \(/u);
+	assert.doesNotMatch(COLUMN_SOURCE, /const dragHandle = reposition\.enabled \? \(/u);
+});
+
+test("the Base UI collapsed menu captures its drag gesture on the host", () => {
+	assert.match(
+		readFileSync(join(__dirname, "session-column-reposition-pointer.ts"), "utf8"),
+		/control\.hasAttribute\("data-agent-session-column-options"\)[\s\S]*?return host/u,
+	);
 });
 
 test("unpinning a shifted session column returns it to the leading gutter", () => {

@@ -1,8 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import { RovoChatProvider } from "@/app/contexts/context-rovo-chat";
+import { DEFAULT_SKILLS, ROVO_DIRECTORY_AGENT_PROFILES } from "@/app/data/directory";
+import { AgentsDirectoryDialog } from "@/components/blocks/agent-directory";
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type {
 	JiraIssueAgentActivity,
@@ -12,7 +15,11 @@ import { toJiraIssueDemoAttachedActivity } from "@/components/blocks/jira-issue/
 import type { JiraIssueAgentSessionRef } from "@/components/blocks/jira-issue/agent-session-transfer";
 import type { JiraKanbanCardData, JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
 import ExperimentalJiraKanbanPage from "@/components/blocks/jira-kanban/experimental/page";
-import { isPulseAgentSession, type PulseLooseWork } from "@/components/blocks/jira-kanban/experimental/pulse/types";
+import {
+	isPulseAgentSession,
+	type PulseCodingAgentId,
+	type PulseLooseWork,
+} from "@/components/blocks/jira-kanban/experimental/pulse/types";
 import { linkJiraKanbanAgentSession, moveJiraKanbanAgentSession, unlinkJiraKanbanAgentSession } from "@/components/blocks/jira-kanban/state";
 import {
 	JiraList,
@@ -20,6 +27,7 @@ import {
 	type JiraListAssignedAgent,
 	type JiraListInsertion,
 } from "@/components/blocks/jira-list";
+import { SkillsDirectoryDialog } from "@/components/blocks/skills-directory";
 import { JgpRovoOverlay } from "@/components/projects/jira-golden-journeys-v1/components/jira-golden-journeys-v1-rovo-overlay";
 import { JGP_CHAT_AGENT_PROFILES } from "@/components/projects/jira-golden-journeys-v1/data/agent-chat-data";
 import { useJgpAgentChatDemo } from "@/components/projects/jira-golden-journeys-v1/hooks/use-jira-golden-journeys-v1-agent-chat-demo";
@@ -51,6 +59,26 @@ import { useJiraTeamEu26List } from "./hooks/use-jira-team-eu26-list";
 const JIRA_LIST_PANEL_END_GAP_PX = 24;
 const JIRA_TEAM_EU26_TABS = getJiraTabs(false);
 const JIRA_TEAM_EU26_DEFAULT_TAB_LABEL = getJiraWorkItemsTabLabel(JIRA_TEAM_EU26_TABS);
+const isJiraTeamEu26LooseWorkResumable = () => true;
+
+function resolveJiraTeamEu26ContinueChatAgent(
+	agentId: PulseCodingAgentId,
+): Readonly<{ agentId: string; agentName: string }> {
+	switch (agentId) {
+		case "claude":
+			return { agentId: "claude-code", agentName: "Claude" };
+		case "codex":
+			return { agentId: "review-agent", agentName: "Codex" };
+		case "copilot":
+			return { agentId: "github-copilot", agentName: "GitHub Copilot" };
+		case "cursor":
+			return { agentId: "cursor", agentName: "Cursor" };
+		default: {
+			const exhaustive: never = agentId;
+			return exhaustive;
+		}
+	}
+}
 
 export default function JiraTeamEu26Page(): React.ReactElement {
 	return (
@@ -61,7 +89,10 @@ export default function JiraTeamEu26Page(): React.ReactElement {
 }
 
 function JiraTeamEu26App(): React.ReactElement {
+	const router = useRouter();
 	const { chatContextBar, externalThinkingMessageId, openAgentChat } = useJgpAgentChatDemo();
+	const [agentsDirectoryOpen, setAgentsDirectoryOpen] = useState(false);
+	const [skillsDirectoryOpen, setSkillsDirectoryOpen] = useState(false);
 	const [boardColumns, setBoardColumns] = useState(createJiraTeamEu26PayBoardColumns);
 	const needsInputCount = boardColumns.reduce(
 		(total, column) => total + column.cards.reduce(
@@ -81,6 +112,12 @@ function JiraTeamEu26App(): React.ReactElement {
 			openAgentChat,
 			setBoardColumns,
 		});
+	const cardGenerativeActionFooterActions = {
+		onBrowseAgents: () => setAgentsDirectoryOpen(true),
+		onBrowseSkills: () => setSkillsDirectoryOpen(true),
+		onCreateAgent: () => router.push("/studio"),
+		onCreateSkill: () => router.push("/skills"),
+	};
 	const [detachedAgentSessionsByCard, setDetachedAgentSessionsByCard] = useState<
 		Readonly<Record<string, readonly AgentSessionItem[]>>
 	>({});
@@ -109,19 +146,33 @@ function JiraTeamEu26App(): React.ReactElement {
 		}
 	}, [tabs]);
 	const [resumeAnnouncement, setResumeAnnouncement] = useState("");
-	// Untracked work offers Resume on the rows running on the viewer's own
-	// device; that gate is the board's default, so this route only supplies the
-	// behavior. The card owns the clipboard copy and its own "Copied" label, so
-	// the announcement here is the only thing a screen reader hears.
+	// Team EU presents every unlinked session as locally resumable, even when the
+	// fixture names a teammate's machine. The card owns the clipboard copy and
+	// its own "Copied" label, so the announcement here is the only thing a screen
+	// reader hears.
 	const handleResumeLooseWork = useCallback((item: PulseLooseWork) => {
 		if (!isPulseAgentSession(item)) return;
 		setResumeAnnouncement(
 			`Resume command copied for ${item.title}. Paste it in a terminal on ${item.machineName} to continue the session.`,
 		);
 	}, []);
+	const handleContinueLooseWork = useCallback((item: PulseLooseWork) => {
+		if (!isPulseAgentSession(item)) return;
+		const agent = resolveJiraTeamEu26ContinueChatAgent(item.agentId);
+		openAgentChat({
+			agentId: agent.agentId,
+			agentName: agent.agentName,
+			issueKey: item.sourceTitle,
+			issueSummary: item.title,
+			intro: item.title,
+			request: `Continue the local ${agent.agentName} session on ${item.sourceTitle}.`,
+		});
+	}, [openAgentChat]);
 	const handleViewChat = useCallback((activity: JiraIssueAgentActivity, card: JiraKanbanCardData) => {
 		openAgentChat({
-			agentId: activity.id,
+			agentId: activity.id.includes(":")
+				? activity.id.slice(activity.id.lastIndexOf(":") + 1)
+				: activity.id,
 			agentName: activity.name,
 			issueKey: card.code,
 			issueSummary: card.title,
@@ -195,9 +246,9 @@ function JiraTeamEu26App(): React.ReactElement {
 	// leave a badge behind, so the flash carries the acknowledgement. One drop of
 	// three marked sessions publishes one flash covering all three rows.
 	//
-	// It only reaches rows the list is rendering. Board-created cards inherit
-	// the dropped session's invoker, so the matching assignee filter keeps the
-	// new row visible long enough for this acknowledgement.
+	// It only reaches rows the list is rendering. Board-created cards are
+	// assigned to Venn (the prototype current user), so the matching assignee
+	// filter keeps the new row visible long enough for this acknowledgement.
 	const { flash: listRowFlash, flashRow: flashListRow } = useJiraListRowFlashSource();
 	// Unlink always lands in `detachedAgentSessionsByCard`. The Untracked list
 	// reads that map, so the session reappears there immediately. Proximity
@@ -300,6 +351,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						additionalAgentSessions={syncedAgentSessions}
 						agentActivityLayout="merged"
 						agentSessionMultiSelect={false}
+						cardGenerativeActionFooterActions={cardGenerativeActionFooterActions}
 						cardGenerativeActionPresentation="more-actions"
 						iconScale="comfortable"
 						createWellBounce="off"
@@ -317,6 +369,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						detachedAgentSessionsByCard={detachedAgentSessionsByCard}
 						headerAssignees={JIRA_TEAM_EU26_PAY_HEADER_ASSIGNEES}
 						insightsEnabled={false}
+						isLooseWorkResumable={isJiraTeamEu26LooseWorkResumable}
 						newAgentSessionIds={newAgentSessionIds}
 						onAgentSessionsReviewed={reviewAgentSessions}
 						onBoardAgentSessionCreate={handleBoardAgentSessionCreate}
@@ -333,6 +386,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						onListAgentSessionCreate={handleListAgentSessionCreate}
 						showAgentSessionUnlinkWell={false}
 						subtaskChrome="stroke"
+						onContinueLooseWork={handleContinueLooseWork}
 						onResumeLooseWork={handleResumeLooseWork}
 						onViewChange={tabOwnsView ? undefined : setWorkItemView}
 						renderListContent={(
@@ -394,6 +448,19 @@ function JiraTeamEu26App(): React.ReactElement {
 			<span aria-live="polite" className="sr-only" role="status">
 				{resumeAnnouncement}
 			</span>
+			<AgentsDirectoryDialog
+				agents={ROVO_DIRECTORY_AGENT_PROFILES}
+				onCreateAgent={() => router.push("/studio")}
+				onOpenChange={setAgentsDirectoryOpen}
+				onSelectAgent={() => setAgentsDirectoryOpen(false)}
+				open={agentsDirectoryOpen}
+			/>
+			<SkillsDirectoryDialog
+				onCreateSkill={() => router.push("/skills")}
+				onOpenChange={setSkillsDirectoryOpen}
+				open={skillsDirectoryOpen}
+				skills={DEFAULT_SKILLS}
+			/>
 			<JgpRovoOverlay
 				chatContextBar={chatContextBar}
 				composerPrefillRequest={composerPrefillRequest}

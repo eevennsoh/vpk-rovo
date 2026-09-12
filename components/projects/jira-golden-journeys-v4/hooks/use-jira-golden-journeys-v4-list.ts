@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue";
+import { mergeJiraKanbanAgentCatalog } from "@/components/blocks/jira-kanban/lib/agent-catalog";
 import { linkJiraKanbanAgentSession, moveJiraKanbanCardsToColumn } from "@/components/blocks/jira-kanban/state";
 import type { JiraKanbanColumnData } from "@/components/blocks/jira-kanban";
 import type {
@@ -33,6 +34,10 @@ import {
 	toKanbanCardFromDraft,
 } from "../lib/list-rows";
 
+const JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG = mergeJiraKanbanAgentCatalog(
+	JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,
+);
+
 interface ListDraftWorkItem {
 	anchorIssueKey: string | null;
 	assignee?: JiraListPerson;
@@ -61,6 +66,7 @@ export interface UseJiraGoldenJourneysV4ListResult {
 	/** Returns the row the session landed in, so the caller can acknowledge it. */
 	createFromAgentSession: (input: CreateFromAgentSessionInput) => string;
 	getProps: (columns: readonly JiraKanbanColumnData[]) => JiraListProps;
+	onAssignedAgentIdsChange: (issueKey: string, agentIds: readonly string[]) => void;
 }
 
 export function useJiraGoldenJourneysV4List({
@@ -120,7 +126,7 @@ export function useJiraGoldenJourneysV4List({
 		setListOrder((currentOrder) => {
 			const allKeys = createListRows(
 				boardColumns,
-				JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,
+				JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG,
 			).map((row) => row.issueKey);
 			return moveListOrder(
 				currentOrder.length === 0 ? allKeys : currentOrder,
@@ -204,7 +210,7 @@ export function useJiraGoldenJourneysV4List({
 			columns,
 			issueKey,
 			agentIds,
-			JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,
+			JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG,
 		));
 	}, [setBoardColumns]);
 
@@ -270,7 +276,7 @@ export function useJiraGoldenJourneysV4List({
 
 	const getProps = useCallback((columns: readonly JiraKanbanColumnData[]): JiraListProps => {
 		const rows = applyListOrder(
-			createListRows(columns, JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS),
+			createListRows(columns, JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG),
 			listOrder,
 		);
 		// Event handlers need the keys last shown (assignee filter may hide rows).
@@ -279,7 +285,7 @@ export function useJiraGoldenJourneysV4List({
 		const nextIssueKey = getNextPayIssueKey(boardColumns);
 
 		return {
-			agentCatalog: JIRA_GOLDEN_JOURNEYS_V4_PAY_BOARD_AGENTS,
+			agentCatalog: JIRA_GOLDEN_JOURNEYS_V4_AGENT_CATALOG,
 			ariaLabel: "Payments SDK v2 migration work items list",
 			className: "max-h-full",
 			copiedIssueKey,
@@ -350,5 +356,5 @@ export function useJiraGoldenJourneysV4List({
 		selectedIssueKeys,
 	]);
 
-	return { createBoardFromAgentSession, createFromAgentSession, getProps };
+	return { createBoardFromAgentSession, createFromAgentSession, getProps, onAssignedAgentIdsChange: handleAssignedAgentIdsChange };
 }

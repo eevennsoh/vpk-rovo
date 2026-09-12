@@ -18,6 +18,9 @@ const {
 	progressJiraTeamEu26WorkItemOnStart,
 	toKanbanCardFromDraft,
 } = require("./list-rows.ts");
+const {
+	JIRA_TEAM_EU26_PAY_CURRENT_USER,
+} = require("../data/current-user.ts");
 
 const PAY_BOARD_CATALOG = [
 	{
@@ -266,6 +269,25 @@ test("applyAssignedAgentIdsToColumns archives and assigns against board columns"
 		?.cards.find((card) => card.code === "PAY-101");
 	assert.equal(unchangedCard?.agentActivities?.[0]?.name, "Claude Code");
 	assert.equal(unchangedCard?.agentDoneRuns?.[0]?.agentName, "Codex");
+
+	const directoryAssigned = applyAssignedAgentIdsToColumns(
+		COLUMNS,
+		"PAY-118",
+		["readiness-checker"],
+		[
+			...PAY_BOARD_CATALOG,
+			{
+				id: "readiness-checker",
+				name: "Readiness Checker",
+				byline: "Rovo agent by Enterprise Solutions",
+			},
+		],
+	);
+	const directoryCard = directoryAssigned
+		.find((column) => column.title === "In progress")
+		?.cards.find((card) => card.code === "PAY-118");
+	assert.equal(directoryCard?.agentActivities?.[0]?.id, "PAY-118:readiness-checker");
+	assert.equal(directoryCard?.agentActivities?.[0]?.name, "Readiness Checker");
 });
 
 test("starting an agent session progresses only To do and Done work items", () => {
@@ -339,8 +361,10 @@ test("createListWorkItemFromSession mints a To-do card titled from the session a
 		?.cards.find((card) => card.code === "PAY-119");
 	assert.equal(todoCard?.title, "Scope the adapter keep-or-delete argument");
 	assert.equal(todoCard?.issueType, "task");
-	assert.equal(todoCard?.assignee, undefined);
-	assert.equal(todoCard?.avatarUnassignedKind, "person");
+	assert.equal(todoCard?.assignee?.id, JIRA_TEAM_EU26_PAY_CURRENT_USER.id);
+	assert.equal(todoCard?.assignee?.name, JIRA_TEAM_EU26_PAY_CURRENT_USER.name);
+	assert.equal(todoCard?.avatarSrc, JIRA_TEAM_EU26_PAY_CURRENT_USER.avatarSrc);
+	assert.equal(todoCard?.avatarUnassignedKind, undefined);
 	assert.equal(todoCard?.agentActivities?.[0], activity);
 	assert.equal(todoCard?.agentActivities?.[0]?.id, "lw-scope-thread");
 
@@ -435,9 +459,10 @@ test("createBoardWorkItemFromSession appends a task to the requested status and 
 	assert.equal(createdCard?.title, "Review the board drop behavior");
 	assert.equal(createdCard?.issueType, "task");
 	assert.equal(createdCard?.agentActivities?.[0], activity);
-	assert.equal(createdCard?.assignee, undefined);
-	assert.equal(createdCard?.avatarSrc, undefined);
-	assert.equal(createdCard?.avatarUnassignedKind, "person");
+	assert.equal(createdCard?.assignee?.id, JIRA_TEAM_EU26_PAY_CURRENT_USER.id);
+	assert.equal(createdCard?.assignee?.name, JIRA_TEAM_EU26_PAY_CURRENT_USER.name);
+	assert.equal(createdCard?.avatarSrc, JIRA_TEAM_EU26_PAY_CURRENT_USER.avatarSrc);
+	assert.equal(createdCard?.avatarUnassignedKind, undefined);
 
 	const again = createBoardWorkItemFromSession({
 		activity,

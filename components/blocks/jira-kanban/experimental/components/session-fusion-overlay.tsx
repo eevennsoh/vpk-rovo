@@ -10,7 +10,10 @@ import {
 	type JiraLinkingVariant,
 } from "@/components/blocks/jira-linking";
 
-import { resolveAgentBrandTint } from "../lib/agent-brand-tint";
+import {
+	resolveAgentBrandTint,
+	resolveAgentBrandTintVariable,
+} from "../lib/agent-brand-tint";
 import type { BoardAgentSessionAttachProximity } from "../lib/board-agent-session-drag";
 import { toSessionFusionTarget } from "../lib/session-fusion-overlay-state";
 
@@ -41,12 +44,16 @@ function toLinkingIdentities(
 		return null;
 	}
 
-	return members.map((member) => ({
-		id: member.id,
-		imageSrc: member.avatarSrc,
-		tint: resolveAgentBrandTint(member.tintSeed),
-		tintSeed: member.tintSeed || member.name || member.id,
-	}));
+	return members.map((member) => {
+		const tintVariable = resolveAgentBrandTintVariable(member.tintSeed);
+		return {
+			id: member.id,
+			imageSrc: member.avatarSrc,
+			tint: tintVariable ? undefined : resolveAgentBrandTint(member.tintSeed),
+			tintSeed: member.tintSeed || member.name || member.id,
+			tintVariable,
+		};
+	});
 }
 
 export interface SessionFusionOverlayProps {

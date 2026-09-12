@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import InformationCircleIcon from "@atlaskit/icon/core/information-circle";
 
 import { Button } from "@/components/ui/button";
@@ -16,13 +18,15 @@ export const AGENT_SESSION_VIEWER_HINT =
  * name and tooltip carry the same copy so hover and keyboard both get it.
  */
 export function AgentSessionViewerHint() {
+	const [open, setOpen] = useState(false);
+
 	return (
-		<Tooltip>
+		<Tooltip onOpenChange={setOpen} open={open}>
 			<TooltipTrigger
 				render={
 					<Button
 						aria-label={AGENT_SESSION_VIEWER_HINT}
-						className="[&_svg:not([class*='size-'])]:size-4!"
+						className="[&_svg:not([class*='size-'])]:size-4! [&_svg]:text-icon-subtlest"
 						onClick={(event) => event.stopPropagation()}
 						onPointerDown={(event) => event.stopPropagation()}
 						size="icon-compact"
@@ -34,7 +38,7 @@ export function AgentSessionViewerHint() {
 				<IconTile
 					aria-hidden
 					as="span"
-					className="text-icon-subtle"
+					className="text-icon-subtlest"
 					icon={<InformationCircleIcon color="currentColor" label="" size="medium" />}
 					iconSize="medium"
 					label=""

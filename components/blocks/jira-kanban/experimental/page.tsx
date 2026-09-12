@@ -200,6 +200,7 @@ function ExperimentalJiraKanbanPageContent({
 	activeCardCode,
 	additionalAgentSessions,
 	agentActivityLayout,
+	cardGenerativeActionFooterActions,
 	cardGenerativeActionPresentation, iconScale,
 	createWellBounce = "once",
 	createWorkItemDropZoneLabel,
@@ -238,6 +239,7 @@ function ExperimentalJiraKanbanPageContent({
 	showAgentSessionUnlinkWell = true, subtaskChrome,
 	onInsightsWorkItemClick,
 	onModeChange,
+	onContinueLooseWork,
 	onResumeLooseWork,
 	onViewChange,
 	renderListContent,
@@ -508,12 +510,14 @@ function ExperimentalJiraKanbanPageContent({
 			isLooseWorkResumable,
 			looseWork: agentSessionLooseWork,
 			onCapture: handleCaptureLooseWork,
+			onContinue: onContinueLooseWork,
 			onResume: onResumeLooseWork,
 		}),
 		[
 			handleCaptureLooseWork,
 			agentSessionLooseWork,
 			isLooseWorkResumable,
+			onContinueLooseWork,
 			onResumeLooseWork,
 		],
 	);
@@ -1016,6 +1020,7 @@ function ExperimentalJiraKanbanPageContent({
 								ariaLabel={ariaLabel}
 								assignedAgentIdsByColumn={columnAgentAssignments}
 								boardColumns={filteredBoardColumns}
+								cardGenerativeActionFooterActions={cardGenerativeActionFooterActions}
 								cardGenerativeActionPresentation={cardGenerativeActionPresentation} iconScale={iconScale}
 								collapsedColumns={displayedCollapsedColumns}
 								columnChrome={columnChrome}

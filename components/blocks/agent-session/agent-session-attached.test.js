@@ -67,6 +67,12 @@ test("medium attached reuses the Jira issue agent activity row", () => {
 		/from "@\/components\/blocks\/agent-assignment\/demo-assigned-agents"/u,
 	);
 	assert.match(PAGE_SOURCE, /getAgentAssignmentDemoAssignedAgents/u);
+	assert.match(
+		PAGE_SOURCE,
+		/\.\.\.\(item\.invokedBy \? \{ invokedBy: item\.invokedBy \} : \{\}\)/u,
+	);
+	assert.match(PAGE_SOURCE, /\.\.\.\(item\.host !== undefined \? \{ host: item\.host \} : \{\}\)/u);
+	assert.match(PAGE_SOURCE, /\.\.\.\(item\.role !== undefined \? \{ role: item\.role \} : \{\}\)/u);
 	assert.match(PAGE_SOURCE, /variant === "medium-attached"/u);
 	assert.doesNotMatch(
 		COMPACT_CARD_SOURCE,
@@ -79,11 +85,21 @@ test("medium attached reuses the Jira issue agent activity row", () => {
 });
 
 test("medium attached demonstrates one, many, and finished sessions", () => {
-	assert.match(DATA_SOURCE, /AGENT_SESSION_ATTACHED_WORKING_ITEMS:[\s\S]*state: "running"/u);
+	assert.match(DATA_SOURCE, /AGENT_SESSION_ATTACHED_WORKING_ITEMS:[\s\S]*state: "running"[\s\S]*timeLabel: "8m"/u);
 	assert.match(
 		DATA_SOURCE,
 		/AGENT_SESSION_ATTACHED_MULTI_WORKING_ITEMS:[\s\S]*id: "PAY-112:claude"[\s\S]*id: "PAY-112:cursor"[\s\S]*id: "PAY-112:rovo"/u,
 	);
+	assert.match(
+		DATA_SOURCE,
+		/id: "PAY-112:claude",\s*role: "owner"/u,
+	);
+	assert.match(
+		DATA_SOURCE,
+		/id: "PAY-112:cursor",\s*invokedBy: \{[\s\S]*name: "Priya Raman"[\s\S]*role: "viewer"/u,
+	);
+	assert.match(DATA_SOURCE, /host: "local",\s*id: "PAY-112:claude"/u);
+	assert.match(DATA_SOURCE, /host: "cloud",\s*id: "PAY-112:cursor"/u);
 	assert.match(DATA_SOURCE, /AGENT_SESSION_ATTACHED_FINISHED_ITEMS:[\s\S]*state: "complete"[\s\S]*title: "Finished"/u);
 	assert.match(PAGE_SOURCE, /label: "1 agent working"/u);
 	assert.match(PAGE_SOURCE, /label: "1–n agents working"/u);

@@ -13,6 +13,7 @@ import {
 	type JiraIssueAgentActivityLayout,
 	type JiraIssueAgentActivityIndicatorRenderer,
 	type JiraIssueChrome,
+	type JiraIssueGenerativeActionConfig,
 	type JiraIssueGenerativeActionPresentation,
 	type JiraIssueIconScale,
 } from "@/components/blocks/jira-issue";
@@ -148,6 +149,11 @@ export interface ExperimentalJiraKanbanProps extends JiraKanbanProps {
 	onCardAgentSessionMove?: (session: JiraIssueAgentSessionRef, sourceCard: JiraKanbanCardData, targetCard: JiraKanbanCardData, sourceColumnTitle: string, targetColumnTitle: string) => void;
 	/** Chooses where card agent and skill actions are presented. */
 	cardGenerativeActionPresentation?: JiraIssueGenerativeActionPresentation;
+	/** Route-owned Browse/Create capabilities for card agent and skill pickers. */
+	cardGenerativeActionFooterActions?: Pick<
+		JiraIssueGenerativeActionConfig,
+		"onBrowseAgents" | "onBrowseSkills" | "onCreateAgent" | "onCreateSkill"
+	>;
 	/** Compact keeps 12px glyphs. Comfortable is experimental v2 (16px icons, 24px avatars). */
 	iconScale?: JiraIssueIconScale;
 	renderAgentActivityIndicator?: JiraIssueAgentActivityIndicatorRenderer;
@@ -433,6 +439,7 @@ function ExperimentalJiraKanbanView({
 	scrollEndInset = 0,
 	boardColumns,
 	cardGenerativeActionPresentation = "sparkle",
+	cardGenerativeActionFooterActions,
 	cardMoveAnimation,
 	iconScale = "compact",
 	collapsedColumns: controlledCollapsedColumns,
@@ -854,6 +861,7 @@ function ExperimentalJiraKanbanView({
 													detachedSessionDrag={detachedSessionDragBinding}
 												dragging={isCardBeingDragged || isSelectedCardBeingDragged}
 												generativeActionAgents={generativeActionAgents}
+												generativeActionFooterActions={cardGenerativeActionFooterActions}
 												generativeActionPresentation={cardGenerativeActionPresentation}
 												generativeActionSkills={generativeActionSkills}
 												highlightedSessionId={highlightedSessionId}

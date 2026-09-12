@@ -10,8 +10,9 @@ export type InFlowSessionColumnAction =
 
 /**
  * Host `collapsed === false` is a full persistent column. Any other host
- * collapsed value starts in the gutter (unpinned compact rail) until the
- * user pins it into the board or expands it.
+ * collapsed value starts as a compact rail pinned in the board so the
+ * timeline dots are in the layout on first land. Unpin returns it to the
+ * gutter; Expand still opens the full-width column.
  */
 export function resolveInFlowSessionColumnRest(
 	hostCollapsed: boolean | undefined,
@@ -20,7 +21,7 @@ export function resolveInFlowSessionColumnRest(
 		return { expanded: true, pinned: true };
 	}
 
-	return { expanded: false, pinned: false };
+	return { expanded: false, pinned: true };
 }
 
 export function inFlowCollapsedMenuPinLabel(pinned: boolean): "Pin" | "Unpin" {

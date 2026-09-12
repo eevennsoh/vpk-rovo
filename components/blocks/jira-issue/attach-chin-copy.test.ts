@@ -8,19 +8,19 @@ import {
 } from "./attach-chin-copy.ts";
 
 test("a singleton transfer uses the singular chin copy", () => {
-	assert.equal(linkAgentSessionChinCopy(1), "Attach 1 agent session");
+	assert.equal(linkAgentSessionChinCopy(1), "Link 1 agent session");
 });
 
 test("a cohort transfer pluralizes the chin copy", () => {
-	assert.equal(linkAgentSessionChinCopy(2), "Attach 2 agent sessions");
-	assert.equal(linkAgentSessionChinCopy(3), "Attach 3 agent sessions");
+	assert.equal(linkAgentSessionChinCopy(2), "Link 2 agent sessions");
+	assert.equal(linkAgentSessionChinCopy(3), "Link 3 agent sessions");
 });
 
 test("non-positive or non-finite counts fall back to a singleton", () => {
-	assert.equal(linkAgentSessionChinCopy(0), "Attach 1 agent session");
-	assert.equal(linkAgentSessionChinCopy(-4), "Attach 1 agent session");
-	assert.equal(linkAgentSessionChinCopy(Number.NaN), "Attach 1 agent session");
-	assert.equal(linkAgentSessionChinCopy(1.8), "Attach 1 agent session");
+	assert.equal(linkAgentSessionChinCopy(0), "Link 1 agent session");
+	assert.equal(linkAgentSessionChinCopy(-4), "Link 1 agent session");
+	assert.equal(linkAgentSessionChinCopy(Number.NaN), "Link 1 agent session");
+	assert.equal(linkAgentSessionChinCopy(1.8), "Link 1 agent session");
 });
 
 test("an explicit drag count wins over the live transfer length", () => {

@@ -176,13 +176,31 @@ test("JiraList frame constrains vertical overflow while preserving 40px footer g
 	);
 });
 
-test("JiraList sticky footer uses a 4px horizontal inset", () => {
+test("JiraList sticky footer matches its 8px control gap at both horizontal edges", () => {
 	const footerMarker = SOURCE.indexOf('data-testid="jira-list-sticky-footer"');
 	const footerStart = SOURCE.lastIndexOf("<div", footerMarker);
 	const footerSource = SOURCE.slice(footerStart, footerMarker);
 
-	assert.match(footerSource, /\bpx-1\b/u);
-	assert.doesNotMatch(footerSource, /\bpx-3\b/u);
+	assert.match(footerSource, /\bpx-2\b/u);
+	assert.match(footerSource, /\bpy-1\b/u);
+});
+
+test("JiraList draft actions preserve an 8px gap around Create", () => {
+	const editorStart = SOURCE.indexOf("const renderDraftWorkItemEditor");
+	const editorEnd = SOURCE.indexOf("const renderDraftWorkItemRow", editorStart);
+	const editorSource = SOURCE.slice(editorStart, editorEnd);
+
+	assert.match(editorSource, /flex min-w-0 items-center gap-2/u);
+	assert.match(editorSource, /ml-auto flex shrink-0 items-center gap-2/u);
+});
+
+test("JiraList issue type glyphs retain Jira colors inside dropdown items", () => {
+	assert.match(CELLS_SOURCE, /epic: "text-icon-accent-purple \[&_svg\]:text-icon-accent-purple!"/u);
+	assert.match(CELLS_SOURCE, /task: "text-icon-accent-blue \[&_svg\]:text-icon-accent-blue!"/u);
+	assert.match(CELLS_SOURCE, /story: "text-icon-accent-green \[&_svg\]:text-icon-accent-green!"/u);
+	assert.match(CELLS_SOURCE, /subtask: "text-icon-accent-blue \[&_svg\]:text-icon-accent-blue!"/u);
+	assert.match(CELLS_SOURCE, /bug: "text-icon-accent-red \[&_svg\]:text-icon-accent-red!"/u);
+	assert.match(CELLS_SOURCE, /<IssueTypeIcon color="currentColor" label="" size="small" \/>/u);
 });
 
 test("JiraList exposes the expected table headers and sticky footer content", () => {
