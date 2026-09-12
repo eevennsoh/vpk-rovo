@@ -32,6 +32,7 @@ export function ConeSafezone<Payload = unknown>({
 	open: controlledOpen,
 	defaultOpen = false,
 	onOpenChange,
+	onOpenChangeComplete,
 	handle: externalHandle,
 	triggerId,
 	defaultTriggerId,
@@ -64,7 +65,7 @@ export function ConeSafezone<Payload = unknown>({
 		onOpenChange?.(nextOpen, details);
 		if (!details.isCanceled) setInternalOpen(nextOpen);
 	};
-	const family = useConeFamily(handle, commitOpen, getActiveTrigger);
+	const family = useConeFamily(handle, commitOpen, onOpenChangeComplete, getActiveTrigger);
 	const intent = useConeHoverIntent(open, family.onOpenChange, close, Math.max(0, graceMs), getActiveTrigger);
 	useConeDebug(open, intent.getDebugCone, debug ? setCone : undefined);
 	const registerWithParent = parent?.onPreviewOpenChange;
@@ -83,7 +84,7 @@ export function ConeSafezone<Payload = unknown>({
 
 	return (
 		<ConeContext value={context}>
-			<HoverCard<Payload> {...props} handle={handle} triggerId={triggerId} defaultTriggerId={defaultTriggerId} open={open} onOpenChange={intent.onOpenChange}>
+			<HoverCard<Payload> {...props} handle={handle} triggerId={triggerId} defaultTriggerId={defaultTriggerId} open={open} onOpenChange={intent.onOpenChange} onOpenChangeComplete={family.onOpenChangeComplete}>
 				{children}
 			</HoverCard>
 			{debug && open && cone ? createPortal(
