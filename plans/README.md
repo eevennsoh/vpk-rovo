@@ -1,6 +1,6 @@
 # Jira Team EU26 performance plan
 
-Prepared 12 September 2026 for https://vpk-rovo.localhost/jira-team-eu26.
+Prepared 12 September 2026 for the `/jira-team-eu26` route.
 
 **Implementation update:** the fixes are now implemented and verified in this worktree. See [measured results and validation](IMPLEMENTATION.md). List switching median improved from 188 to 136 ms; Board from 152 to 128 ms in the controlled development comparison. Production/field measurements remain pending.
 
@@ -8,7 +8,7 @@ Make Board, List, agent sessions and Rovo feel immediate by reducing the work on
 
 ## Scope and evidence
 
-Audited the live route and its project owner, shared board/list components, chat mounting and context, proximity handlers, and existing performance tooling. Worktree: `/Users/esoh/.codex/worktrees/4dff/vpk-rovo`, commit `d35d42fc0`. Persistent checkout was `9b583cdc8`; a diff found no differences in the project, board/list, chat context, shell, and chat playback paths cited here. Recheck both revisions before implementation.
+Audited the live route and its project owner, shared board/list components, chat mounting and context, proximity handlers, and existing performance tooling. The linked worktree was at commit `d35d42fc0`. The persistent checkout was `9b583cdc8`; a diff found no differences in the project, board/list, chat context, shell, and chat playback paths cited here. Recheck both revisions before implementation.
 
 Browser: desktop Chromium, 1200 × 803 CSS pixels, DPR 2, localhost, no deliberate CPU/network throttle. Development Next.js, React DevTools instrumentation, and React Grab were present. Cache state was not controlled. These are diagnostic observations, not production benchmarks or field INP percentiles.
 
