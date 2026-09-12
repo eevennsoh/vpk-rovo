@@ -46,6 +46,7 @@ test("Default uses the activity row and long session cards; Simple keeps the fac
 
 	assert.match(sessionMenu, /<AgentSessionCard/u);
 	assert.match(sessionMenu, /density="long"/u);
+	assert.match(sessionMenu, /showLifecycleLabel=\{false\}/u);
 	assert.match(sessionMenu, /padding="compact"/u);
 	assert.doesNotMatch(sessionMenu, /showMoreMenu=\{false\}/u);
 	assert.match(sessionMenu, /onContinueInAgent=\{onContinueInAgent\}/u);
