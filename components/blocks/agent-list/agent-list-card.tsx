@@ -631,27 +631,9 @@ export function AgentListRow({
 		(hoverActions?.primary !== undefined
 			|| hoverActions?.secondary !== undefined
 			|| hoverActions?.menu !== undefined);
-	// A long resting title can be several lines tall. Keep that wrapped copy in
-	// layout while a one-line visual copy takes over during reveal, otherwise the
-	// row can collapse out from under a pointer entering one of its lower lines.
-	const stabilizeHoverTitle = !hasSummary
-		&& showHoverActions
-		&& !(stateAwareTitle && stateMeta.shimmerTitle);
-	const resolvedTitle = stateAwareTitle ? getSessionTitle(item) : item.title;
 	const titleClassName = cn(
 		"min-w-0 font-medium",
-		hasSummary ? "text-pretty" : stabilizeHoverTitle
-			? [
-				"group-hover/agent-row:opacity-0 group-has-[:focus-visible]/agent-row:opacity-0",
-				hoverActions?.pinned ? "opacity-0" : null,
-			]
-			: "truncate",
-		isCompact ? "text-xs" : "text-sm",
-	);
-	const hoverTitleClassName = cn(
-		"col-start-1 row-start-1 min-w-0 truncate font-medium text-text opacity-0",
-		"group-hover/agent-row:opacity-100 group-has-[:focus-visible]/agent-row:opacity-100",
-		hoverActions?.pinned ? "opacity-100" : null,
+		hasSummary ? "text-pretty" : "truncate",
 		isCompact ? "text-xs" : "text-sm",
 	);
 
@@ -694,7 +676,7 @@ export function AgentListRow({
 			<div className="flex min-w-0 flex-1 flex-col">
 				<div
 					className={cn(
-						"flex min-w-0",
+						"relative flex min-w-0",
 						hasSummary ? "items-start" : "items-center",
 					)}
 				>
@@ -704,7 +686,16 @@ export function AgentListRow({
 					 * would otherwise put one focusable no-op in the tab order per row.
 					 */}
 					<RowBody
-						className="flex min-w-0 flex-1 flex-col items-start justify-center rounded-xs text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+						className={cn(
+							"flex min-w-0 flex-1 flex-col items-start justify-center rounded-xs text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+							overlayHoverActions && !lifecycleNode
+								? [
+									"group-hover/agent-row:pr-9 group-has-[:focus-visible]/agent-row:pr-9",
+									"group-has-[[aria-expanded=true]]/agent-row:pr-9",
+									hoverActions?.pinned ? "pr-9" : null,
+								]
+								: null,
+						)}
 						isSelected={isSelected}
 						onView={viewItem}
 					>
@@ -721,27 +712,14 @@ export function AgentListRow({
 									duration={1.4}
 									spread={2}
 								>
-									{resolvedTitle}
+									{getSessionTitle(item)}
 								</Shimmer>
-							) : stabilizeHoverTitle ? (
-								<span className="grid w-full min-w-0">
-									<span
-										className={cn(titleClassName, "col-start-1 row-start-1 text-text")}
-										data-agent-list-title-layout=""
-									>
-										{resolvedTitle}
-									</span>
-									<span
-										aria-hidden="true"
-										className={hoverTitleClassName}
-										data-agent-list-title-hover=""
-									>
-										{resolvedTitle}
-									</span>
-								</span>
 							) : (
-								<span className={cn(titleClassName, "text-text")}>
-									{resolvedTitle}
+								<span
+									className={cn(titleClassName, "text-text")}
+									data-agent-list-title=""
+								>
+									{stateAwareTitle ? getSessionTitle(item) : item.title}
 								</span>
 							)}
 							{stateAwareTitle && stateMeta.showDots ? <AnimatedDots /> : null}
@@ -778,7 +756,7 @@ export function AgentListRow({
 							</span>
 						) : metadata}
 					</RowBody>
-					{lifecycleNode || overlayHoverActions ? (
+					{lifecycleNode ? (
 						// A `div`, not a `span`: every non-running indicator is an
 						// `IconTile`, whose root is a block element. Phrasing content
 						// cannot contain it, and the invalid nesting surfaces as a
@@ -812,6 +790,13 @@ export function AgentListRow({
 								/>
 							) : null}
 						</div>
+					) : null}
+					{overlayHoverActions && !lifecycleNode ? (
+						<AgentListCardActions
+							menu={hoverActions?.menu}
+							overlay
+							pinned={hoverActions?.pinned}
+						/>
 					) : null}
 					{showHoverActions && !overlayHoverActions ? (
 						<AgentListCardActions
