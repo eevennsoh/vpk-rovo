@@ -1,12 +1,12 @@
 ---
 name: vpk-git-clean
-description: "Remove only proven-landed VPK-rovo worktrees and branches, prune stale refs, and close explicitly abandoned PRs. Use when the user says \"vpk-git-clean\", \"clean up worktrees\", \"clean up branches\", \"remove merged worktrees\", \"prune stale refs\", or \"worktrees are piling up\"."
+description: "Remove only proven-landed VPK worktrees and branches, prune stale refs, and close explicitly abandoned PRs. Use when the user says \"vpk-git-clean\", \"clean up worktrees\", \"clean up branches\", \"remove merged worktrees\", \"prune stale refs\", or \"worktrees are piling up\"."
 validation_command: git status --short
 ---
 
 # VPK Git Clean
 
-Use this skill for deferred VPK-rovo housekeeping after work has landed. It
+Use this skill for deferred VPK housekeeping after work has landed. It
 removes only targets whose committed work, clean state, PR state, and process
 ownership are proven safe; ambiguous or active targets remain untouched.
 

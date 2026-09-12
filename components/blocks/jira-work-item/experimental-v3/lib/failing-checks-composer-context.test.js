@@ -23,9 +23,9 @@ test("serializeFailingChecksContext stays demo-scale and empty-safe", () => {
 
 test("buildPullRequestFixComposerPrompt keeps production sections and is terse", () => {
 	const single = buildPullRequestFixComposerPrompt({
-		repository: "eevensoh/vpk-rovo",
+		repository: "acme/storefront",
 		number: 1847,
-		url: "https://github.com/eevensoh/vpk-rovo/pull/1847",
+		url: "https://github.com/acme/storefront/pull/1847",
 		headBranch: "feature/shop-4821-guest-checkout",
 		baseBranch: "main",
 		checks: [
@@ -37,17 +37,17 @@ test("buildPullRequestFixComposerPrompt keeps production sections and is terse",
 		single,
 		[
 			"## Pull request fix:",
-			"Review eevensoh/vpk-rovo PR 1847 (feature/shop-4821-guest-checkout -> main) and make the smallest safe fix for the attached failing CI. Use `gh` as the source of truth for runs, annotations, and logs. Do not guess without logs. No unrelated refactors. After fixing, run the narrowest verification, commit and push, then summarize root cause, fix, and result.",
+			"Review acme/storefront PR 1847 (feature/shop-4821-guest-checkout -> main) and make the smallest safe fix for the attached failing CI. Use `gh` as the source of truth for runs, annotations, and logs. Do not guess without logs. No unrelated refactors. After fixing, run the narrowest verification, commit and push, then summarize root cause, fix, and result.",
 			"",
 			"## My request:",
-			'Use gh to inspect and fix failing check "Unit tests". Once fixed, commit and push. Pull request URL: https://github.com/eevensoh/vpk-rovo/pull/1847 Before editing, verify the repository and checked-out branch match this pull request; if no repository exists, clone it inside this chat\'s writable workspace; never switch or modify an unrelated checkout.',
+			'Use gh to inspect and fix failing check "Unit tests". Once fixed, commit and push. Pull request URL: https://github.com/acme/storefront/pull/1847 Before editing, verify the repository and checked-out branch match this pull request; if no repository exists, clone it inside this chat\'s writable workspace; never switch or modify an unrelated checkout.',
 		].join("\n"),
 	);
 
 	const all = buildPullRequestFixComposerPrompt({
-		repository: "eevensoh/vpk-rovo",
+		repository: "acme/storefront",
 		number: 1847,
-		url: "https://github.com/eevensoh/vpk-rovo/pull/1847",
+		url: "https://github.com/acme/storefront/pull/1847",
 		headBranch: "feature/shop-4821-guest-checkout",
 		baseBranch: "main",
 		checks: [

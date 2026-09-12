@@ -273,15 +273,15 @@ function sanitizePortlessName(value) {
  * Build the extra args for `portless run` from a worktree record.
  *
  * Vanilla `portless run` already derives the right URL on its own for the main
- * checkout (default branch -> vpk-rovo.localhost) and for branched worktrees
- * (branch prepended as a subdomain -> <branch>.vpk-rovo.localhost). Only a
+ * checkout (default branch -> <package-name>.localhost) and for branched
+ * worktrees (branch prepended as a subdomain). Only a
  * detached worktree has no branch for portless to key on, so we supply an
  * explicit --name (-> <name>.localhost).
  *
  * Naming the detached worktree is subtle: the directory basename is the unique
  * token for layouts like `.claude/worktrees/<feature>`, but managed providers
  * nest the checkout as `.../<hash>/<repo-dir>` (e.g. Codex
- * `.codex/worktrees/972c/vpk-rovo`), where the basename is just the repo dir
+ * `.codex/worktrees/972c/<repo-dir>`), where the basename is just the repo dir
  * name and the unique token lives in the PARENT dir. Using the basename there
  * would emit `--name <repo-dir>` for every such worktree, colliding with each
  * other and with the main checkout. So when the basename equals the repo dir

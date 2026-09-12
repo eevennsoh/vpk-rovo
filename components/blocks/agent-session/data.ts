@@ -27,7 +27,7 @@ function createRovoAgent(): AgentListAgent {
 	};
 }
 
-const GITHUB_REPOSITORY = "eevensoh/vpk-rovo";
+const GITHUB_REPOSITORY = "acme/storefront";
 const GITHUB_TARGET_BRANCH = "main";
 
 /** Shared GitHub PR author used by the catalog pull-request Smart Link. */
@@ -69,7 +69,7 @@ export const AGENT_SESSION_ITEMS: readonly AgentSessionItem[] = [
 				"## Summary - Add experimental-v2 pull requests panel with phase sorting, plus activity filtering and guest checkout for the storefront.",
 			pullRequestNumber: 1306,
 			pullRequestTitle: "Add guest checkout to the storefront",
-			pullRequestUrl: "https://github.com/eevensoh/vpk-rovo/pull/1306",
+			pullRequestUrl: "https://github.com/acme/storefront/pull/1306",
 			repository: GITHUB_REPOSITORY,
 			targetBranch: GITHUB_TARGET_BRANCH,
 			worktreePath: ".worktrees/pay-101-adapter",
@@ -106,7 +106,7 @@ export const AGENT_SESSION_ITEMS: readonly AgentSessionItem[] = [
 				"## Summary - Flatten the threaded comment highlight so bottom corners no longer clip against the composer.",
 			pullRequestNumber: 1847,
 			pullRequestTitle: "Fix threaded comment highlight bottom corners",
-			pullRequestUrl: "https://github.com/eevensoh/vpk-rovo/pull/1847",
+			pullRequestUrl: "https://github.com/acme/storefront/pull/1847",
 			repository: GITHUB_REPOSITORY,
 			targetBranch: GITHUB_TARGET_BRANCH,
 			worktreePath: ".worktrees/pay-121-kill-switch",
@@ -143,7 +143,7 @@ export const AGENT_SESSION_ITEMS: readonly AgentSessionItem[] = [
 				"## Summary - Stabilize the overnight 3-D Secure contract suite so PAY-113 can merge without flaking assertions.",
 			pullRequestNumber: 1852,
 			pullRequestTitle: "Stabilize the 3-D Secure contract suite",
-			pullRequestUrl: "https://github.com/eevensoh/vpk-rovo/pull/1852",
+			pullRequestUrl: "https://github.com/acme/storefront/pull/1852",
 			repository: GITHUB_REPOSITORY,
 			targetBranch: GITHUB_TARGET_BRANCH,
 			worktreePath: ".worktrees/pay-113-contract-suite",
@@ -203,7 +203,7 @@ export const AGENT_SESSION_CLOUD_ITEMS: readonly AgentSessionItem[] = [
 			pullRequestAuthor: GITHUB_PR_AUTHOR,
 			pullRequestNumber: 124,
 			pullRequestTitle: "Cargo retract",
-			pullRequestUrl: "https://github.com/eevensoh/vpk-rovo/pull/124",
+			pullRequestUrl: "https://github.com/acme/storefront/pull/124",
 			repository: GITHUB_REPOSITORY,
 			targetBranch: GITHUB_TARGET_BRANCH,
 		},

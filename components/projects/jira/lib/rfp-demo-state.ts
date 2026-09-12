@@ -4,7 +4,6 @@ import type {
 } from "@/components/blocks/jira-kanban";
 import { BOARD_COLUMNS } from "../data/board-data";
 
-export const AGENTS_RFP_DEMO_STORAGE_KEY = "vpk-rovo:agents-rfp-demo:v1";
 export const AGENTS_RFP_DEMO_VERSION = 1;
 export const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
 export const RFP_DRAFTING_AGENT_NAME = "RFP Drafter";

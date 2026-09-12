@@ -1,5 +1,5 @@
 ---
-name: VPK-rovo
+name: VPK
 description: Shared visual contract for Venn Prototype Kit surfaces.
 colors:
   surface: "var(--ds-surface)"
@@ -78,9 +78,9 @@ components:
     padding: "4px 10px"
 ---
 
-# Design System: VPK-rovo
+# Design System: VPK
 
-This root `DESIGN.md` defines shared toolkit constraints for VPK-rovo. It is
+This root `DESIGN.md` defines shared toolkit constraints for VPK. It is
 not a single product identity. Product and art surfaces can add a more specific
 `DESIGN.md` under `components/projects/<name>/` or `components/arts/<name>/`;
 the nearest nested file owns that surface's visual direction while this root
@@ -88,7 +88,7 @@ file continues to define the common implementation contract.
 
 ## 1. Overview
 
-VPK-rovo is a prototyping toolkit for product surfaces, agent workflows, and
+VPK is a prototyping toolkit for product surfaces, agent workflows, and
 visual experiments. The shared design system must stay useful across quiet
 operational tools and expressive art demos, so the root posture is restrained,
 semantic, and theme-aware. It provides a stable baseline rather than a fixed
@@ -116,7 +116,7 @@ for each nested project or art piece to carry its own atmosphere.
 
 ## 2. Colors
 
-VPK-rovo colors resolve through ADS CSS variables and Tailwind semantic aliases.
+VPK colors resolve through ADS CSS variables and Tailwind semantic aliases.
 Do not treat the light-mode hex comments in CSS as the source of truth because
 theme mode and ADS token resolution can change the final values.
 
@@ -268,7 +268,7 @@ repo's semantic Tailwind classes whenever a class exists.
 
 ## 6. Elevation
 
-VPK-rovo uses tonal layering first and shadow second. A surface should usually
+VPK uses tonal layering first and shadow second. A surface should usually
 communicate hierarchy through semantic background, border, spacing, and state.
 Use shadow when a layer genuinely floats above another layer or needs a hover
 or overlay affordance.
@@ -458,7 +458,7 @@ feature code.
 
 ### Don't:
 
-- **Don't** create one global product personality for VPK-rovo. The root is a
+- **Don't** create one global product personality for VPK. The root is a
   toolkit baseline, not a product brand.
 - **Don't** introduce new `bg-[var(--ds-...)]`, `text-[var(--ds-...)]`, or
   arbitrary token utilities when a semantic class already exists.

@@ -217,9 +217,9 @@ test("buildPortlessRunArgs names a detached worktree by its unique path token", 
 			{
 				isMain: false,
 				branch: null,
-				path: "/Users/x/.codex/worktrees/972c/vpk-rovo",
+				path: "/Users/x/.codex/worktrees/972c/example-repo",
 			},
-			"vpk-rovo"
+			"example-repo"
 		),
 		["--name", "972c"]
 	);
@@ -231,25 +231,25 @@ test("buildPortlessRunArgs names a detached worktree by its unique path token", 
 				branch: "",
 				path: "/Users/x/.claude/worktrees/composer-padding-12px",
 			},
-			"vpk-rovo"
+			"example-repo"
 		),
 		["--name", "composer-padding-12px"]
 	);
 	// Defensive: a record without a path yields no args (no crash).
 	assert.deepEqual(
-		buildPortlessRunArgs({ isMain: false, branch: null }, "vpk-rovo"),
+		buildPortlessRunArgs({ isMain: false, branch: null }, "example-repo"),
 		[]
 	);
 });
 
 test("buildPortlessRunArgs gives two nested detached worktrees DISTINCT names (no collision)", () => {
 	const a = buildPortlessRunArgs(
-		{ isMain: false, branch: null, path: "/Users/x/.codex/worktrees/972c/vpk-rovo" },
-		"vpk-rovo"
+		{ isMain: false, branch: null, path: "/Users/x/.codex/worktrees/972c/example-repo" },
+		"example-repo"
 	);
 	const b = buildPortlessRunArgs(
-		{ isMain: false, branch: null, path: "/Users/x/.codex/worktrees/90ba/vpk-rovo" },
-		"vpk-rovo"
+		{ isMain: false, branch: null, path: "/Users/x/.codex/worktrees/90ba/example-repo" },
+		"example-repo"
 	);
 	assert.deepEqual(a, ["--name", "972c"]);
 	assert.deepEqual(b, ["--name", "90ba"]);
@@ -278,12 +278,12 @@ test("getPortlessRunArgs resolves [] on main/branch and --name when detached", (
 			{ cwd: fixture.repoPath, stdio: "ignore" }
 		);
 
-		// Main checkout -> bare `portless run` -> vpk-rovo.localhost
+		// Main checkout -> bare `portless run` -> <package-name>.localhost
 		assert.deepEqual(
 			runWorktreePortsExpression(fixture.repoPath, "mod.getPortlessRunArgs()"),
 			[]
 		);
-		// Branched worktree -> bare `portless run` -> <branch>.vpk-rovo.localhost
+		// Branched worktree -> bare `portless run` -> <branch>.<package-name>.localhost
 		assert.deepEqual(
 			runWorktreePortsExpression(
 				fixture.worktreeAPath,

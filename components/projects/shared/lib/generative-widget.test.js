@@ -207,7 +207,7 @@ test("createBodyOnlySpec reuses the same transformed spec for identical widget i
 			description: {
 				type: "Text",
 				props: {
-					content: "Persistent capabilities available across sessions in VPK-Rovo",
+					content: "Persistent capabilities available across sessions in VPK",
 				},
 			},
 			cta: {
@@ -228,7 +228,7 @@ test("createBodyOnlySpec reuses the same transformed spec for identical widget i
 			spec,
 		},
 		title: "Hermes Features",
-		description: "Persistent capabilities available across sessions in VPK-Rovo",
+		description: "Persistent capabilities available across sessions in VPK",
 		source: null,
 	};
 

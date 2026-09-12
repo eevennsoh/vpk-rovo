@@ -1,12 +1,12 @@
 # {{TARGET_NAME}}
 
-Standalone Next.js 16 project extracted from VPK-Rovo's `/{{ROUTE_NAME}}` route
+Standalone Next.js 16 project extracted from VPK's `/{{ROUTE_NAME}}` route
 using the `/vpk-build` skill. Deploys to Atlassian Micros.
 
 ## Provenance
 
-Extracted on `{{GENERATED_DATE}}` from VPK-Rovo SHA `{{SOURCE_SHA}}`. To sync
-with upstream changes, re-run `/vpk-build /{{ROUTE_NAME}}` in VPK-Rovo.
+Extracted on `{{GENERATED_DATE}}` from VPK SHA `{{SOURCE_SHA}}`. To sync
+with upstream changes, re-run `/vpk-build /{{ROUTE_NAME}}` in VPK.
 
 ## Dev
 
@@ -54,4 +54,4 @@ pnpm run deploy:micros
 Because this is a pure static export, API routes are not available. For
 frontend-only features, add them normally. For features needing a backend,
 either extend `backend/server.js` with new routes, or deploy the parent
-VPK-Rovo instead.
+VPK instead.

@@ -712,7 +712,7 @@ test("maps an agent progress checklist, outputs, and image proof into its Jira c
 		title: "Add guest checkout to the storefront",
 		source: "Pull request",
 		logoName: "github",
-		href: "https://github.com/eevensoh/vpk-rovo/pull/1847",
+		href: "https://github.com/acme/storefront/pull/1847",
 		pullRequest: {
 			number: 1847,
 			status: "Open",
