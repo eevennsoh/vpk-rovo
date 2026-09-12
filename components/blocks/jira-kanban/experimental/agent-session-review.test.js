@@ -5,24 +5,28 @@ const { test } = require("node:test");
 const { runInNewContext } = require("node:vm");
 const ts = require("typescript");
 
-// Exercise the page's actual hook callbacks without importing its UI tree.
-const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
-const start = page.indexOf("function useAgentSessionReview(");
-assert.notEqual(start, -1);
-const hook = ts.transpileModule(page.slice(start, page.indexOf("export default function", start)), {
-	compilerOptions: { target: ts.ScriptTarget.ES2022 },
+// Exercise the actual hook callbacks without importing the board UI tree.
+const source = readFileSync(join(__dirname, "hooks", "use-agent-session-review.ts"), "utf8");
+const hook = ts.transpileModule(source, {
+	compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
 }).outputText;
 
 function renderReview(enabled) {
 	const updates = [];
 	const reviewed = [];
 	let stateIndex = 0;
-	const reviewHook = runInNewContext(`${hook}; useAgentSessionReview`, {
-		useState(initialValue) {
-			const index = stateIndex++;
-			return [initialValue, (value) => updates.push({ index, value })];
+	const reviewHook = runInNewContext(`${hook}; exports.useAgentSessionReview`, {
+		exports: {},
+		require(id) {
+			assert.equal(id, "react");
+			return {
+				useState(initialValue) {
+					const index = stateIndex++;
+					return [initialValue, (value) => updates.push({ index, value })];
+				},
+				useCallback: (callback) => callback,
+			};
 		},
-		useCallback: (callback) => callback,
 	});
 	return {
 		model: reviewHook(true, enabled, (ids) => reviewed.push(ids)),

@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useAgentSessionReview } from "@/components/blocks/jira-kanban/experimental/hooks/use-agent-session-review";
 import { RetainedView } from "@/components/projects/shared/components/mount-on-first-use";
 import {
 	useCallback,
@@ -155,36 +156,6 @@ const EMPTY_ANSWERS: readonly PulseAnswer[] = [];
 interface DraggedCardState {
 	card: JiraKanbanCardData;
 	sourceColumnTitle: string;
-}
-
-function useAgentSessionReview(
-	defaultCollapsed: boolean,
-	suggestSessionBoardLinkOnHover: boolean,
-	onAgentSessionsReviewed: ExperimentalJiraKanbanPageProps["onAgentSessionsReviewed"],
-) {
-	const [agentSessionColumnCollapsed, setAgentSessionColumnCollapsed] = useState(defaultCollapsed);
-	const [untrackedHoveredSession, setUntrackedHoveredSession] = useState<AgentSessionItem | null>(null);
-	const handleUntrackedItemHover = useCallback((item: AgentSessionItem | null) => {
-		if (suggestSessionBoardLinkOnHover) {
-			setUntrackedHoveredSession(item);
-		}
-		if (item !== null) {
-			onAgentSessionsReviewed?.([item.id]);
-		}
-	}, [onAgentSessionsReviewed, suggestSessionBoardLinkOnHover]);
-	const handleAgentSessionColumnCollapsedChange = useCallback((nextCollapsed: boolean) => {
-		setAgentSessionColumnCollapsed(nextCollapsed);
-		if (!nextCollapsed) {
-			onAgentSessionsReviewed?.();
-		}
-	}, [onAgentSessionsReviewed]);
-
-	return {
-		agentSessionColumnCollapsed,
-		handleAgentSessionColumnCollapsedChange,
-		handleUntrackedItemHover,
-		untrackedHoveredSession: suggestSessionBoardLinkOnHover ? untrackedHoveredSession : null,
-	};
 }
 
 export default function ExperimentalJiraKanbanPage({
