@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { AnimatePresence } from "motion/react";
 
-import { RovoChatProvider, useRovoChat } from "@/app/contexts";
+import { RovoChatProvider, useRovoChatControls } from "@/app/contexts";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
 
@@ -19,7 +19,7 @@ function AgentListDemo({
 	flyout,
 	variant,
 }: Readonly<{ flyout: AgentListFlyout; variant: AgentListVariant }>) {
-	const { chatSurface, openChat } = useRovoChat();
+	const { chatSurface, openChat } = useRovoChatControls();
 	const [items, setItems] = useState<readonly AgentListItem[]>(AGENT_LIST_ITEMS);
 
 	// View/Resume drops the user into the Rovo floating chat for that session,

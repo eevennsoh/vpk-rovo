@@ -1,5 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { useAgentSessionReview } from "@/components/blocks/jira-kanban/experimental/hooks/use-agent-session-review";
+import { RetainedView } from "@/components/projects/shared/components/mount-on-first-use";
 import {
 	useCallback,
 	useImperativeHandle,
@@ -10,7 +13,7 @@ import {
 	type CSSProperties,
 } from "react";
 
-import { useOptionalRovoChat } from "@/app/contexts";
+import { useOptionalRovoChatControls } from "@/app/contexts/context-rovo-chat-controls";
 import {
 	resolveAgentSessionWorkItemKey,
 	type AgentSessionItem,
@@ -94,7 +97,6 @@ import {
 	EXPERIMENTAL_BOARD_LAST_VIEWED_AT,
 	markTimelineViewed,
 } from "./lib/timeline-activity";
-import { ExperimentalPulse } from "./pulse/experimental-pulse";
 import {
 	PulseModeToggle,
 	PulseRosterFacepile,
@@ -133,6 +135,8 @@ export type {
 	ExperimentalJiraKanbanPageProps,
 } from "./experimental-page-types";
 
+const ExperimentalPulse = dynamic(() => import("./pulse/experimental-pulse").then((module) => module.ExperimentalPulse));
+
 const DEFAULT_CREATED_COLUMN_AGENT_ID = "readiness-checker";
 const CREATE_WELL_BOUNCE_OFF_PROFILE: Partial<FlightProfile> = { impact: null };
 const PULSE_MEMBER_IDS = new Set(PULSE_TIMELINE.members.map((member) => member.id));
@@ -152,33 +156,6 @@ const EMPTY_ANSWERS: readonly PulseAnswer[] = [];
 interface DraggedCardState {
 	card: JiraKanbanCardData;
 	sourceColumnTitle: string;
-}
-
-function useAgentSessionReview(
-	defaultCollapsed: boolean,
-	onAgentSessionsReviewed: ExperimentalJiraKanbanPageProps["onAgentSessionsReviewed"],
-) {
-	const [agentSessionColumnCollapsed, setAgentSessionColumnCollapsed] = useState(defaultCollapsed);
-	const [untrackedHoveredSession, setUntrackedHoveredSession] = useState<AgentSessionItem | null>(null);
-	const handleUntrackedItemHover = useCallback((item: AgentSessionItem | null) => {
-		setUntrackedHoveredSession(item);
-		if (item !== null) {
-			onAgentSessionsReviewed?.([item.id]);
-		}
-	}, [onAgentSessionsReviewed]);
-	const handleAgentSessionColumnCollapsedChange = useCallback((nextCollapsed: boolean) => {
-		setAgentSessionColumnCollapsed(nextCollapsed);
-		if (!nextCollapsed) {
-			onAgentSessionsReviewed?.();
-		}
-	}, [onAgentSessionsReviewed]);
-
-	return {
-		agentSessionColumnCollapsed,
-		handleAgentSessionColumnCollapsedChange,
-		handleUntrackedItemHover,
-		untrackedHoveredSession,
-	};
 }
 
 export default function ExperimentalJiraKanbanPage({
@@ -226,6 +203,7 @@ function ExperimentalJiraKanbanPageContent({
 	isLooseWorkResumable = isPulseLooseWorkOnViewerMachine,
 	mode: controlledMode,
 	newAgentSessionIds,
+	onAgentSessionColumnInteractionChange,
 	onAgentSessionsReviewed,
 	onBoardAgentSessionCreate,
 	onBoardColumnsChange,
@@ -245,6 +223,7 @@ function ExperimentalJiraKanbanPageContent({
 	onResumeLooseWork,
 	onViewChange,
 	renderListContent,
+	retainWorkItemViews = false,
 	renderAgentActivityIndicator,
 	onTimelineLastViewedAtChange,
 	ref,
@@ -291,7 +270,7 @@ function ExperimentalJiraKanbanPageContent({
 	// `handleOpenTimeline`, so the toggle's plain open clears it back to the top
 	// and a deep link cannot survive into the next visit.
 	const [pulseFocusSnapshotId, setPulseFocusSnapshotId] = useState<string | null>(null);
-	const rovoChat = useOptionalRovoChat();
+	const rovoChat = useOptionalRovoChatControls();
 	// Commitments live above the mode switch: Pulse unmounts when it is toggled
 	// off, and a requested action or a captured note is something the reader
 	// decided, not view state that may quietly reset with the subtree.
@@ -310,7 +289,11 @@ function ExperimentalJiraKanbanPageContent({
 		handleAgentSessionColumnCollapsedChange,
 		handleUntrackedItemHover,
 		untrackedHoveredSession,
-	} = useAgentSessionReview(defaultAgentSessionColumnCollapsed, onAgentSessionsReviewed);
+	} = useAgentSessionReview(
+		defaultAgentSessionColumnCollapsed,
+		suggestSessionBoardLinkOnHover,
+		onAgentSessionsReviewed,
+	);
 	const untrackedHoveredSessionId = untrackedHoveredSession?.id ?? null;
 	const [agentSessionPanelWidthPx, setAgentSessionPanelWidthPx] = useState(AGENT_SESSION_PANEL_WIDTH_PX);
 	const agentSessionPanelRef = useRef<HTMLDivElement | null>(null);
@@ -591,6 +574,7 @@ function ExperimentalJiraKanbanPageContent({
 		multiSelect: agentSessionMultiSelect,
 		newItemIds: newAgentSessionIds,
 		onCollapsedChange: handleAgentSessionColumnCollapsedChange,
+		onInteractionChange: onAgentSessionColumnInteractionChange,
 		onItemHover: handleUntrackedItemHover,
 		...agentSessionHandlers,
 		onCreateWorkItemFromDraft: boardMenuWorkItem.onCreateWorkItemFromDraft,
@@ -1001,14 +985,17 @@ function ExperimentalJiraKanbanPageContent({
 								untrackedDropArmed={boardSessionDrag.transaction?.target?.kind === "untracked"}
 							/>
 						) : null}
-						{isListContent ? (
-							renderListContent?.(filteredBoardColumns, {
-								agentSessionDropIntent: boardSessionDrag.listDropIntent,
-								onTrailingContentUnderlapChange: setListContentUnderlapsPanel,
-								scrollEndInset: boardScrollEndInset,
-								trailingOverlayRef: agentSessionPanelRef,
-							})
-						) : (
+						<RetainedView active={isListContent} retain={retainWorkItemViews}>
+							{retainWorkItemViews || isListContent ? (
+								renderListContent?.(filteredBoardColumns, {
+									agentSessionDropIntent: boardSessionDrag.listDropIntent,
+									onTrailingContentUnderlapChange: setListContentUnderlapsPanel,
+									scrollEndInset: boardScrollEndInset,
+									trailingOverlayRef: agentSessionPanelRef,
+								})
+							) : null}
+						</RetainedView>
+						<RetainedView active={!isListContent} retain={retainWorkItemViews}>
 							<ExperimentalJiraKanban
 								activeCardCode={activeCardCode}
 								agentActivityLayout={agentActivityLayout}
@@ -1077,7 +1064,7 @@ function ExperimentalJiraKanbanPageContent({
 									selectedAgentIds,
 								}}
 							/>
-						)}
+						</RetainedView>
 					</SessionColumnPlacementProvider>
 				</div>
 			)) : null}

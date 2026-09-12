@@ -110,6 +110,7 @@ import {
 import {
 	type RovoChatTransitionToken,
 } from "@/app/contexts/rovo-chat-transition-coordinator";
+import { RovoChatControlsProvider } from "@/app/contexts/context-rovo-chat-controls";
 import { useRovoChatTransitionCoordinator } from "@/app/contexts/use-rovo-chat-transition-coordinator";
 import {
 	isRateLimitError,
@@ -2356,9 +2357,11 @@ export function RovoChatProvider({
 	);
 
 	return (
-		<RovoChatContext value={contextValue}>
-			{children}
-		</RovoChatContext>
+		<RovoChatControlsProvider value={contextValue}>
+			<RovoChatContext value={contextValue}>
+				{children}
+			</RovoChatContext>
+		</RovoChatControlsProvider>
 	);
 }
 
@@ -2380,40 +2383,4 @@ export function useOptionalRovoChat() {
 	return use(RovoChatContext) ?? null;
 }
 
-export function useRovoSelectedAgent() {
-	const {
-		selectedAgentId,
-		selectedAgent,
-		selectableAgents,
-		isCustomAgentSelected,
-		selectAgent,
-		registerCreatedAgentFromResult,
-		sessionAgentEntries,
-		getSessionAgentEntry,
-		updateSessionAgentDraft,
-		commitSessionAgentPublishReady,
-		publishSessionAgent,
-		removeSessionAgent,
-		resetAgentToRovo,
-		deleteAllThreads,
-		hydrateThreadSnapshot,
-	} = useRovoChat();
-
-	return {
-		selectedAgentId,
-		selectedAgent,
-		selectableAgents,
-		isCustomAgentSelected,
-		selectAgent,
-		registerCreatedAgentFromResult,
-		sessionAgentEntries,
-		getSessionAgentEntry,
-		updateSessionAgentDraft,
-		commitSessionAgentPublishReady,
-		publishSessionAgent,
-		removeSessionAgent,
-		resetAgentToRovo,
-		deleteAllThreads,
-		hydrateThreadSnapshot,
-	};
-}
+export { useRovoSelectedAgent } from "@/app/contexts/use-rovo-selected-agent";

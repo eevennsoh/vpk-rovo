@@ -7,7 +7,7 @@ import FloatingRovoButton, {
 	type FloatingRovoButtonPositioning,
 } from "@/components/projects/shared/components/floating-rovo-button";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 import RovoButtonDemoCaption from "./components/rovo-button-demo-caption";
 import {
 	CHAT_BUTTON_PLACEMENT,
@@ -31,7 +31,7 @@ export default function RovoButtonProjectPage({
 	embedded = false,
 	embeddedHeight = "viewport",
 }: Readonly<RovoButtonProjectPageProps>) {
-	const { chatSurface } = useRovoChat();
+	const { chatSurface } = useRovoChatControls();
 	const liveChat = useRovoButtonDemoLiveChat();
 	const insights = useRovoButtonDemoInsights();
 	const { suggestion, show: showSuggestion, hide: hideSuggestion } = useRovoButtonDemoSuggestion();

@@ -3,7 +3,7 @@
 import { LayoutGroup } from "motion/react";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 import type { SkillsDirectorySkill } from "@/app/data/directory";
 import { getAgentsWorkItemForCard } from "@/components/projects/jira/data/rfp-work-items";
 import { WorkItemModalProvider } from "@/app/contexts/context-work-item-modal";
@@ -335,7 +335,7 @@ function ExperimentalV3JiraWorkItemContent({
 	const autoOpenedForStageRef = useRef<string | null>(null);
 	const { setSuppressActivityPanelReveal } = useMetadataRail();
 	const { removeAll: removeFailingChecks } = useFailingChecksComposer();
-	const { chatSurface } = useRovoChat();
+	const { chatSurface } = useRovoChatControls();
 	const { activityEvents } = useJiraWorkItemMeta();
 	const { elapsedMs } = useJiraWorkItemState();
 	const agentChatOpen = chatSurface === "floating";

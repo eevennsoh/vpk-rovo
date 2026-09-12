@@ -487,7 +487,7 @@ test("Pulse is a toggle on the board's own control row, not a separate tab", () 
 	);
 	assert.ok(!existsSync(join(PULSE_DIR, "..", "experimental-view-tabs.tsx")), "the tab component should be retired, not left beside its replacement");
 
-	assert.match(EXPERIMENTAL_PAGE_SOURCE, /import \{ ExperimentalPulse \} from "\.\/pulse\/experimental-pulse";/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /const ExperimentalPulse = dynamic\(\(\) => import\("\.\/pulse\/experimental-pulse"\)\.then\(\(module\) => module\.ExperimentalPulse\)\);/u);
 	// The mode may be driven from outside — the route mounts a floating insights
 	// nudge that opens Insights — so the local state is the fallback half of a
 	// controlled pair rather than the only owner.

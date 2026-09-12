@@ -51,6 +51,7 @@ import {
 import { useAgentSessionDeck } from "./deck/use-agent-session-deck";
 import { useAgentSessionColumnFilter } from "./use-agent-session-column-filter";
 import { useAgentSessionColumnHidden } from "./use-agent-session-column-hidden";
+import { useAgentSessionColumnInteraction } from "./use-agent-session-column-interaction";
 import { useUntrackedSelection } from "./use-untracked-selection";
 import { focusAgentSessionRow } from "./untracked-selection-keyboard";
 
@@ -337,6 +338,7 @@ export function AgentSessionColumn({
 	notchShape = "circle",
 	onCollapsedChange,
 	onGutterIntroComplete,
+	onInteractionChange,
 	onArchiveSession: onArchiveSessionProp,
 	onPinnedChange,
 	onSelectedItemIdChange,
@@ -359,6 +361,12 @@ export function AgentSessionColumn({
 	const isCollapsedControlled = collapsedProp !== undefined;
 	const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(defaultCollapsed);
 	const collapsed = collapsedProp ?? uncontrolledCollapsed;
+	const {
+		handleColumnBlurCapture,
+		handleColumnFocusCapture,
+		handleColumnPointerEnter,
+		handleColumnPointerLeave,
+	} = useAgentSessionColumnInteraction(onInteractionChange);
 	// Collapse remounts `AgentSession`, so the column keeps the selected id the
 	// same way it keeps arrival-beat history. `multiSelect={false}` also opts
 	// out of that singleton chrome — article click still views, but the row
@@ -846,7 +854,11 @@ export function AgentSessionColumn({
 			data-agent-session-column={title}
 			data-collapsed={collapsed || undefined}
 			data-column-frame={layout === "panel" ? undefined : layout}
+			onBlurCapture={handleColumnBlurCapture}
+			onFocusCapture={handleColumnFocusCapture}
 			onKeyDown={multiSelect ? untrackedSelection.onKeyDown : undefined}
+			onPointerEnter={handleColumnPointerEnter}
+			onPointerLeave={handleColumnPointerLeave}
 			onTransitionEnd={handleTransitionEnd}
 			tabIndex={-1}
 			style={{

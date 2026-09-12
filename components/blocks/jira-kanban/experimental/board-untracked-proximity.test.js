@@ -17,6 +17,7 @@ const PAGE_SOURCE = [
 	readFileSync(join(EXPERIMENTAL_DIR, "page.tsx"), "utf8"),
 	readFileSync(join(EXPERIMENTAL_DIR, "experimental-page-types.ts"), "utf8"),
 	readFileSync(join(EXPERIMENTAL_DIR, "hooks", "use-page-content-model.ts"), "utf8"),
+	readFileSync(join(EXPERIMENTAL_DIR, "hooks", "use-agent-session-review.ts"), "utf8"),
 ].join("\n");
 const BOARD_SOURCE = [
 	readFileSync(join(EXPERIMENTAL_DIR, "experimental-jira-kanban.tsx"), "utf8"),
@@ -134,14 +135,14 @@ test("proximity AgentSession forwards the Pulse flyout attach handlers", () => {
 	assert.doesNotMatch(BOARD_SOURCE, /onCreateWorkItem=\{agentSessionColumn\?\.onCreateWorkItem\}/u);
 });
 
-test("one board transaction coordinates every session source and suppresses previews during either drag", () => {
+test("one board transaction coordinates every session source and suppresses competing previews", () => {
 	assert.match(BOARD_SOURCE, /useBoardAgentSessionDrag/u);
 	assert.match(DRAG_HOOK_SOURCE, /createBoardAgentSessionDragTransaction/u);
 	assert.match(DRAG_HOOK_SOURCE, /resolveBoardAgentSessionDropAction/u);
 	assert.match(BOARD_SOURCE, /JiraSessionFlyoutSuspensionProvider/u);
 	assert.match(BOARD_SOURCE, /const sessionFlyoutsSuspended = boardSessionDrag\.transaction !== null \|\| draggedCardCode !== null;/u);
 	assert.match(BOARD_SOURCE, /sessionFlyoutsSuspended=\{sessionFlyoutsSuspended\}/u);
-	assert.match(IN_FLOW_SOURCE, /suspended=\{sessionFlyoutsSuspended \|\| reposition\.dragging \|\| !isEmbedded\}/u);
+	assert.match(IN_FLOW_SOURCE, /suspended=\{sessionFlyoutsSuspended \|\| reposition\.dragging \|\| isMenuOpen \|\| !isEmbedded\}/u);
 	assert.doesNotMatch(IN_FLOW_SOURCE, /isHovered && !isPersistentExpanded/u);
 	assert.match(BOARD_SOURCE, /sessionDrag: boardSessionDrag\.enablement\.transferable[\s\S]*\? boardSessionDrag\.untrackedBinding[\s\S]*: agentSessionColumn\.sessionDrag/u);
 	assert.match(PAGE_SOURCE, /boardAgentSessionDrag=\{boardSessionDrag\}/u);
@@ -432,7 +433,7 @@ test("column presentation pins Untracked beside the list as well as the board", 
 	assert.match(PAGE_SOURCE, /columnFrame=\{columnChromeStyles\.headerFrame\}/u);
 	assert.match(
 		PAGE_SOURCE,
-		/<InFlowAgentSessionColumn[\s\S]*\{isListContent \? \(/u,
+		/<InFlowAgentSessionColumn[\s\S]*<RetainedView active=\{isListContent\} retain=\{retainWorkItemViews\}>[\s\S]*<RetainedView active=\{!isListContent\}/u,
 		"one Untracked column instance must wrap both Board and List so hide/archive state survives the switch",
 	);
 	assert.doesNotMatch(

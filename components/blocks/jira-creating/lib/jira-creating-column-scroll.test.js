@@ -36,6 +36,7 @@ const CREATE_DEMO_STATE_SOURCE = readFileSync(
 function reveal(partial) {
 	return getCreatedCardRevealScrollTop({
 		containerClientHeight: 400,
+		containerPaddingBottom: 0,
 		containerScrollHeight: 1000,
 		containerScrollTop: 0,
 		targetHeight: 160,
@@ -52,6 +53,16 @@ test("appended creates align the column to the last card's bottom, not its top",
 		reveal({ targetHeight: 240, targetOffsetTop: 760 }),
 		600,
 	);
+});
+
+test("appended creates include trailing padding so the bottom scroll mask clears", () => {
+	for (const containerScrollTop of [0, 600]) {
+		assert.equal(reveal({
+			containerPaddingBottom: 8,
+			containerScrollHeight: 1008,
+			containerScrollTop,
+		}), 608);
+	}
 });
 
 test("a card taller than the column still pins to its bottom so the chin is visible", () => {

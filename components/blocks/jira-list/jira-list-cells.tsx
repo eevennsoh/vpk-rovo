@@ -1,6 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
+import type { JiraListColumnDefinition } from "@/components/blocks/jira-list/jira-list-column-model";
+import type { JiraListRowData } from "@/components/blocks/jira-list/jira-list-types";
 import BugIcon from "@atlaskit/icon/core/bug";
 import EpicIcon from "@atlaskit/icon/core/epic";
 import PriorityMajorIcon from "@atlaskit/icon/core/priority-major";
@@ -355,3 +357,11 @@ export function JiraListContributorsCell({ contributors }: Readonly<{ contributo
 		</AvatarGroup>
 	);
 }
+
+/** Hover/drag chrome can change without re-rendering unchanged cell content. */
+export const JiraListCellContent = memo(function JiraListCellContent({
+	column,
+	row,
+}: Readonly<{ column: JiraListColumnDefinition; row: JiraListRowData }>) {
+	return column.renderCell(row);
+});

@@ -22,6 +22,7 @@ const EXPERIMENTAL_PAGE_SOURCE = [
 	readProjectFile("components/blocks/jira-kanban/experimental/page.tsx"),
 	readProjectFile("components/blocks/jira-kanban/experimental/experimental-page-types.ts"),
 	readProjectFile("components/blocks/jira-kanban/experimental/hooks/use-page-content-model.ts"),
+	readProjectFile("components/blocks/jira-kanban/experimental/hooks/use-agent-session-review.ts"),
 ].join("\n");
 const EXPERIMENTAL_BOARD_SOURCE = readProjectFile(
 	"components/blocks/jira-kanban/experimental/experimental-jira-kanban.tsx",
@@ -125,7 +126,7 @@ test("the Panel design variant floats untracked work over the board and the list
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /<InFlowAgentSessionColumn/u);
 	assert.match(
 		EXPERIMENTAL_PAGE_SOURCE,
-		/<InFlowAgentSessionColumn[\s\S]*\{isListContent \? \(/u,
+		/<InFlowAgentSessionColumn[\s\S]*<RetainedView active=\{isListContent\} retain=\{retainWorkItemViews\}>/u,
 	);
 
 	// The rail is persistent: it is its own entry point, so there is deliberately
@@ -146,7 +147,7 @@ test("the Panel design variant floats untracked work over the board and the list
 	const contentRegionIndex = EXPERIMENTAL_PAGE_SOURCE.indexOf(
 		'className="relative flex min-h-0 min-w-0 flex-1 flex-col',
 	);
-	const listBranchIndex = EXPERIMENTAL_PAGE_SOURCE.indexOf("{isListContent ? (");
+	const listBranchIndex = EXPERIMENTAL_PAGE_SOURCE.indexOf("<RetainedView active={isListContent}");
 	const panelIndex = EXPERIMENTAL_PAGE_SOURCE.indexOf("<AgentSessionPanel");
 	assert.ok(contentRegionIndex > 0, "expected a relative content region to anchor the floating panel");
 	assert.ok(contentRegionIndex < listBranchIndex, "the board and list branches must live inside that region");

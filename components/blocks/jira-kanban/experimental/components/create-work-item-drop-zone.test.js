@@ -112,6 +112,22 @@ test("board insertion rule and marker reveal without animation", () => {
 	assert.doesNotMatch(lineSource, /animate-in|transition-opacity|duration-fast/u);
 });
 
+test("card arrival suppresses the inline create seam until its entrance completes", () => {
+	assert.match(CARD_LIST, /const suppressCardInsertion = createdCardArrival !== undefined;/u);
+	assert.match(
+		CARD_LIST,
+		/const paintInsertion = !suppressCardInsertion && \(insertionArmed \|\| hoverInsertion !== null\);/u,
+	);
+	assert.match(
+		CARD_LIST,
+		/if \(suppressCardInsertion\) \{\s*setHoverInsertion\(\(current\) => \(current === null \? current : null\)\);\s*return;\s*\}/u,
+	);
+	assert.match(
+		CARD_LIST,
+		/<BoardCardHoverInsertionContext value=\{suppressCardInsertion \? null : hoverInsertion\}>/u,
+	);
+});
+
 test("create button rests icon-subtlest and solidifies on hover", () => {
 	assert.match(
 		FOOTER,
