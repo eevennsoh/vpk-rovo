@@ -7,11 +7,13 @@ import type { HoverCardProps } from "@/components/ui/hover-card";
 export function useConeFamily(
 	handle: { close: () => void },
 	onOpenChange: HoverCardProps["onOpenChange"],
+	onOpenChangeComplete: HoverCardProps["onOpenChangeComplete"],
 	getActiveTrigger: () => Element | null,
 ) {
 	const previews = useRef(new Set<string>());
 	const popupRef = useRef<HTMLDivElement | null>(null);
 	const triggerRef = useRef<Element | null>(null);
+	const pendingFocusTrigger = useRef<HTMLElement | null>(null);
 	const onPreviewOpenChange = useCallback((id: string, open: boolean) => {
 		if (open) {
 			previews.current.add(id);
@@ -31,11 +33,27 @@ export function useConeFamily(
 			details.cancel();
 			return;
 		}
+		const activeElement = document.activeElement;
+		const activeTrigger = getActiveTrigger() ?? triggerRef.current;
+		const shouldRestoreFocus = !open && details.reason === "escape-key"
+			&& activeElement instanceof HTMLElement
+			&& popupRef.current?.contains(activeElement)
+			&& activeTrigger instanceof HTMLElement;
 		onOpenChange?.(open, details);
 		if (!details.isCanceled) {
+			pendingFocusTrigger.current = shouldRestoreFocus ? activeTrigger : null;
 			triggerRef.current = open ? details.trigger ?? null : null;
 			previews.current.clear();
 		}
 	};
-	return { popupRef, onOpenChange: handleOpenChange, onPreviewOpenChange };
+	const handleOpenChangeComplete = useCallback((open: boolean) => {
+		onOpenChangeComplete?.(open);
+		if (open) return;
+		const trigger = pendingFocusTrigger.current;
+		pendingFocusTrigger.current = null;
+		window.requestAnimationFrame(() => {
+			if (document.activeElement === document.body && trigger?.isConnected) trigger.focus();
+		});
+	}, [onOpenChangeComplete]);
+	return { popupRef, onOpenChange: handleOpenChange, onOpenChangeComplete: handleOpenChangeComplete, onPreviewOpenChange };
 }

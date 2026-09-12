@@ -60,6 +60,7 @@ export function AssignedAgentsSessionMenu({
 							onToggleVisibility={onToggleVisibility}
 							onView={() => onSelectAgent(row)}
 							padding="compact"
+							showLifecycleLabel={false}
 						/>
 					))}
 				</ul>

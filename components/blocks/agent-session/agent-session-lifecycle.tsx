@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { Spinner } from "@/components/ui/spinner";
 import { Shimmer } from "@/components/ui-custom/shimmer";
+import { cn } from "@/lib/utils";
 
 import type { AgentSessionItem } from "./agent-session-types";
 
@@ -91,18 +92,26 @@ function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }
 	}
 }
 
-function LifecycleState({ state }: Readonly<{ state: AgentSessionItem["state"] }>) {
+function LifecycleState({
+	showLabel,
+	state,
+}: Readonly<{
+	showLabel: boolean;
+	state: AgentSessionItem["state"];
+}>) {
 	const label = LIFECYCLE_LABELS[state];
 
 	return (
 		<div className="flex shrink-0 items-center gap-1 text-xs text-text-subtle">
-			{state === "running" ? (
-				<Shimmer as="span" className="text-xs text-text-subtle" duration={1.4} spread={2}>
-					{label}
-				</Shimmer>
-			) : (
-				<span>{label}</span>
-			)}
+			{showLabel
+				? state === "running"
+					? (
+						<Shimmer as="span" className="text-xs text-text-subtle" duration={1.4} spread={2}>
+							{label}
+						</Shimmer>
+					)
+					: <span>{label}</span>
+				: null}
 			<IndicatorGlyph state={state} />
 		</div>
 	);
@@ -120,7 +129,13 @@ function LifecycleState({ state }: Readonly<{ state: AgentSessionItem["state"] }
  * (blue border, selected background, selected icon) instead of falling through
  * to the row.
  */
-export function AgentSessionLifecycle({ state }: Readonly<{ state: AgentSessionItem["state"] }>) {
+export function AgentSessionLifecycle({
+	showLabel = true,
+	state,
+}: Readonly<{
+	showLabel?: boolean;
+	state: AgentSessionItem["state"];
+}>) {
 	const shouldReduceMotion = useReducedMotion();
 	const [pressed, setPressed] = useState(false);
 	const label = LIFECYCLE_LABELS[state];
@@ -129,7 +144,10 @@ export function AgentSessionLifecycle({ state }: Readonly<{ state: AgentSessionI
 		<Button
 			aria-label={label}
 			aria-pressed={pressed}
-			className="h-6 w-auto min-w-6 gap-1 py-0 pl-1 pr-0 text-xs shadow-none focus-visible:ring-0 aria-pressed:[&_svg]:text-icon-selected"
+			className={cn(
+				"h-6 w-auto min-w-6 gap-1 py-0 pr-0 text-xs shadow-none focus-visible:ring-0 aria-pressed:[&_svg]:text-icon-selected",
+				showLabel ? "pl-1" : "pl-0",
+			)}
 			onClick={(event) => {
 				event.stopPropagation();
 				setPressed((current) => !current);
@@ -151,7 +169,7 @@ export function AgentSessionLifecycle({ state }: Readonly<{ state: AgentSessionI
 					style={shouldReduceMotion ? undefined : { willChange: "opacity, transform" }}
 					transition={shouldReduceMotion ? { duration: 0 } : INDICATOR_ENTER}
 				>
-					<LifecycleState state={state} />
+					<LifecycleState showLabel={showLabel} state={state} />
 				</motion.div>
 			</AnimatePresence>
 		</Button>

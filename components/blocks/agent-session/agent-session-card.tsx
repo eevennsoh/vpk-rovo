@@ -81,6 +81,7 @@ export function AgentSessionCard({
 	padding = "default",
 	sessionDrag,
 	showMoreMenu = true,
+	showLifecycleLabel = true,
 	triageRow,
 	draggingIds,
 	visibilityLabel = "Archive",
@@ -141,6 +142,8 @@ export function AgentSessionCard({
 	onMoreMenuOpenChange?: (open: boolean) => void;
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
 	showMoreMenu?: boolean;
+	/** Keep false only for compact consumers that borrow long-density title geometry. */
+	showLifecycleLabel?: boolean;
 	triageRow?: AgentSessionTriageRow | null;
 	draggingIds?: ReadonlySet<string>;
 	/** Accessible name for the menu's dismiss row. Archive in the active list, Unarchive in the archived view. */
@@ -297,7 +300,7 @@ export function AgentSessionCard({
 		? null
 		: role === "expired"
 			? <AgentSessionExpiredHint />
-			: <AgentSessionLifecycle state={item.state} />;
+			: <AgentSessionLifecycle showLabel={showLifecycleLabel} state={item.state} />;
 	const hoverActions: AgentListRowHoverActions = {
 		// The reveal must outlive the pointer: a portalled popup and a post-click
 		// confirmation both take the cursor off the row.
