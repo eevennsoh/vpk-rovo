@@ -59,6 +59,7 @@ test("maps every assigned-agent status to the session and activity states users 
 				id: "release-notes-drafter",
 				label: expected.label,
 				name: "Release notes drafter",
+				...(expected.statusKind === "needs-input" ? { role: "owner" } : {}),
 				state: expected.activity,
 			},
 		);
@@ -95,10 +96,13 @@ test("preserves assigned-session identity and narrator metadata through both pre
 	assert.deepEqual(toAssignmentActivity(agent), {
 		agentBrandName: "github-copilot",
 		avatarSrc: "/avatars/release-notes-drafter.svg",
+		host: "local",
 		id: "release-notes-drafter",
+		invokedBy: { avatarSrc: "/avatars/mia.svg", name: "Mia Tan" },
 		label: "Working",
 		labels: ["Inspecting release notes"],
 		name: "Release notes drafter",
+		role: "viewer",
 		state: "working",
 	});
 });
