@@ -565,7 +565,8 @@ test("the menu offers host-appropriate actions, disabled without the capability"
 	assert.match(SESSION_MORE_MENU_SOURCE, /import TerminalIcon from "@atlaskit\/icon-lab\/core\/terminal";/u);
 	assert.match(SESSION_MORE_MENU_SOURCE, /<EditIcon label="" size="small" \/>[\s\S]*Rename/u);
 	assert.match(SESSION_MORE_MENU_SOURCE, /<DeleteIcon label="" size="small" \/>[\s\S]*variant="destructive"[\s\S]*Delete/u);
-	assert.match(SESSION_MORE_MENU_SOURCE, /<DropdownMenuSeparator \/>\s*<DropdownMenuItem[\s\S]*\{dismissLabel\}/u);
+	// Order below the separator: work-item picker, then Dismiss. The picker's own contract lives in agent-session-link-work-item.test.js.
+	assert.match(SESSION_MORE_MENU_SOURCE, /<DropdownMenuSeparator \/>\s*\{canPickWorkItem \?[\s\S]*<DropdownMenuItem[\s\S]*\{dismissLabel\}/u);
 	// Every remaining row disables itself when its capability is missing.
 	for (const capability of ["onRename", "onDelete", "onContinueInAgent", "onCopyPrompt", "onDismiss"]) {
 		assert.match(SESSION_MORE_MENU_SOURCE, new RegExp(`disabled=\\{actions\\.${capability} === undefined\\}`, "u"));
