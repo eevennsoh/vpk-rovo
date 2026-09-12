@@ -17,8 +17,8 @@ const PAY_STORY_EPOCH_MS = Date.UTC(2026, 7, 17, 8, 12, 0);
 const PAY_REPOSITORY = "payments-platform/payments";
 
 const PAY_BUILD_AVATARS = {
-	jordan: "/avatar-user/issac-varghese/color/asow-dev-lime.png",
-	maya: "/avatar-user/chloe-lee/color/asow-dev-lime.png",
+	jordan: "/avatar-user/issac-varghese/color/asow-service-yellow.png",
+	maya: "/avatar-user/chloe-lee/color/asow-strategy-orange.png",
 	priya: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
 } as const;
 
