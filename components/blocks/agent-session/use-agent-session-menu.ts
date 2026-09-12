@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { AgentSessionMoreMenuActions } from "./agent-session-more-menu";
-import type { AgentSessionItem } from "./agent-session-types";
+import type {
+	AgentSessionItem,
+	AgentSessionWorkItemDraft,
+} from "./agent-session-types";
 
 /** How long the Terminal row keeps its copied check after the clipboard write. */
 export const AGENT_SESSION_COPIED_RESET_MS = 2000;
@@ -46,8 +49,10 @@ export function useAgentSessionMenu({
 	item,
 	onContinueInAgent,
 	onCopyResume,
+	onCreateWorkItemFromDraft,
 	onDeleteSession,
 	onItemHover,
+	onLinkWorkItem,
 	onMoreMenuOpenChange,
 	onRenameSession,
 	onToggleVisibility,
@@ -58,8 +63,10 @@ export function useAgentSessionMenu({
 	item: AgentSessionItem;
 	onContinueInAgent?: (item: AgentSessionItem) => void;
 	onCopyResume?: (item: AgentSessionItem) => void;
+	onCreateWorkItemFromDraft?: (item: AgentSessionItem, draft: AgentSessionWorkItemDraft) => void;
 	onDeleteSession?: (item: AgentSessionItem) => void;
 	onItemHover?: (item: AgentSessionItem | null) => void;
+	onLinkWorkItem?: (item: AgentSessionItem, workItemKey?: string) => void;
 	onMoreMenuOpenChange?: (open: boolean) => void;
 	onRenameSession?: (item: AgentSessionItem) => void;
 	onToggleVisibility?: (item: AgentSessionItem) => void;
@@ -95,6 +102,9 @@ export function useAgentSessionMenu({
 		// Copying writes to the clipboard before any callback runs, so a row the
 		// host cannot resume must not offer an enabled control.
 		onCopyPrompt: canResume && !isCloud ? handleCopyPrompt : undefined,
+		onCreateWorkItem: onCreateWorkItemFromDraft === undefined
+			? undefined
+			: (draft: AgentSessionWorkItemDraft) => onCreateWorkItemFromDraft(item, draft),
 		onDelete: onDeleteSession === undefined || !isCloud
 			? undefined
 			: () => onDeleteSession(item),
@@ -104,6 +114,9 @@ export function useAgentSessionMenu({
 				onItemHover?.(null);
 				onToggleVisibility(item);
 			},
+		onLinkWorkItem: onLinkWorkItem === undefined
+			? undefined
+			: (workItemKey: string) => onLinkWorkItem(item, workItemKey),
 		onRename: onRenameSession === undefined || !isCloud
 			? undefined
 			: () => onRenameSession(item),

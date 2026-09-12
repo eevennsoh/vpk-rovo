@@ -492,6 +492,8 @@ export interface CreateBoardWorkItemFromSessionInput {
 	activity: JiraIssueAgentActivity;
 	columns: readonly JiraKanbanColumnData[];
 	columnTitle: string;
+	/** Type the viewer picked in the session menu. Defaults to a task. */
+	issueType?: JiraKanbanCardData["issueType"];
 	/**
 	 * Slot the card lands in within its column. Omitted by the create well,
 	 * which appends; supplied by a drop in the gap between two cards.
@@ -549,7 +551,7 @@ export function createBoardWorkItemFromSession(
 	const card = toKanbanCardFromDraft({
 		assignee: CURRENT_USER_ASSIGNEE,
 		issueKey,
-		issueType: "task",
+		issueType: input.issueType ?? "task",
 		summary: input.session.title,
 	});
 	const columnsWithCard = insertWorkItemCard(
