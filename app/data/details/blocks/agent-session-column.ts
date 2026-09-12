@@ -9,7 +9,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 	usage: `import { AgentSessionColumn } from "@/components/blocks/agent-session-column";
 
 <AgentSessionColumn
-  title="Unattached sessions"
+  title="Unlink sessions"
   headerSurface="panel"
   hasScrollingEffect
   multiSelect={false}
@@ -41,7 +41,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 		{
 			name: "title",
 			type: "string",
-			default: '"Unattached sessions"',
+			default: '"Unlink sessions"',
 			description:
 				"Header label. Also seeds the column's accessible name and its `data-agent-session-column` attribute.",
 		},
@@ -69,7 +69,7 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 		{
 			name: "emptyLabel",
 			type: "string",
-			default: '"No unattached sessions"',
+			default: '"No sessions to unlink"',
 			description: "Copy shown in place of the list when there are no sessions.",
 		},
 		{
@@ -174,13 +174,25 @@ export const AGENT_SESSION_COLUMN_DETAIL: ComponentDetail = {
 			name: "onLinkWorkItem",
 			type: "(item: AgentSessionItem, workItemKey?: string) => void",
 			description:
-				"Links a session to a suggested work item from the chin. Receives the row's key when several are offered. The header overflow's Link all suggestions action calls this once per uncaptured session in the current view.",
+				"Links a session to a suggested work item from the chin. Receives the row's key when several are offered. The header overflow's Link all suggestions action calls this once per uncaptured session in the current view, and the card's more menu calls it with the work item picked in its Link work item submenu.",
 		},
 		{
 			name: "onCreateWorkItem",
 			type: "(item: AgentSessionItem) => void",
 			description:
 				"Creates a work item from a session. When omitted, the action is exposed as unavailable.",
+		},
+		{
+			name: "onCreateWorkItemFromDraft",
+			type: "(item: AgentSessionItem, draft: AgentSessionWorkItemDraft) => void",
+			description:
+				"Creates a work item the viewer named in the card menu's Create new tab, carrying the typed summary and chosen issue type. Omit to disable that tab.",
+		},
+		{
+			name: "workItemOptions",
+			type: "readonly AgentSessionWorkItemOption[]",
+			description:
+				"Work items the card menu's Link work item submenu offers on its Link to existing tab, as { key, summary, issueType }. Supplied by the host so the list is the board in view rather than a fixture.",
 		},
 		{
 			name: "isResumable",

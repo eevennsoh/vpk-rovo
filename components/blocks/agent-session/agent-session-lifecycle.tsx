@@ -10,6 +10,8 @@ import StatusWarningIcon from "@atlaskit/icon/core/status-warning";
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { Spinner } from "@/components/ui/spinner";
+import { Shimmer } from "@/components/ui-custom/shimmer";
+import { cn } from "@/lib/utils";
 
 import type { AgentSessionItem } from "./agent-session-types";
 
@@ -23,22 +25,12 @@ import type { AgentSessionItem } from "./agent-session-types";
 const INDICATOR_ENTER = { duration: 0.15, ease: [0.4, 1, 0.6, 1] } as const;
 const INDICATOR_EXIT = { duration: 0.1, ease: [0.6, 0, 0.8, 0.6] } as const;
 
-function lifecycleLabel(state: AgentSessionItem["state"]): string {
-	switch (state) {
-		case "running":
-			return "Working";
-		case "needs-input":
-			return "Needs input";
-		case "attention":
-			return "Needs attention";
-		case "complete":
-			return "Complete";
-		default: {
-			const exhaustiveState: never = state;
-			return exhaustiveState;
-		}
-	}
-}
+const LIFECYCLE_LABELS = {
+	running: "Working",
+	"needs-input": "Needs input",
+	attention: "Needs attention",
+	complete: "Finished",
+} as const satisfies Record<AgentSessionItem["state"], string>;
 
 function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }>) {
 	switch (state) {
@@ -57,6 +49,7 @@ function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }
 		case "needs-input":
 			return (
 				<IconTile
+					aria-hidden="true"
 					className="text-icon-information"
 					icon={<QuestionCircleFilledIcon color="currentColor" label="" size="small" />}
 					iconSize="medium"
@@ -69,6 +62,7 @@ function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }
 		case "attention":
 			return (
 				<IconTile
+					aria-hidden="true"
 					className="text-icon-warning"
 					icon={<StatusWarningIcon color="currentColor" label="" size="small" />}
 					iconSize="medium"
@@ -81,12 +75,13 @@ function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }
 		case "complete":
 			return (
 				<IconTile
+					aria-hidden="true"
 					className="text-icon-success"
 					icon={<StatusSuccessIcon color="currentColor" label="" size="small" />}
 					iconSize="medium"
 					label=""
 					size="small"
-					title="Complete"
+					title="Finished"
 					variant="transparent"
 				/>
 			);
@@ -95,6 +90,31 @@ function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }
 			return exhaustiveState;
 		}
 	}
+}
+
+function LifecycleState({
+	showLabel,
+	state,
+}: Readonly<{
+	showLabel: boolean;
+	state: AgentSessionItem["state"];
+}>) {
+	const label = LIFECYCLE_LABELS[state];
+
+	return (
+		<div className="flex shrink-0 items-center gap-1 text-xs text-text-subtle">
+			{showLabel
+				? state === "running"
+					? (
+						<Shimmer as="span" className="text-xs text-text-subtle" duration={1.4} spread={2}>
+							{label}
+						</Shimmer>
+					)
+					: <span>{label}</span>
+				: null}
+			<IndicatorGlyph state={state} />
+		</div>
+	);
 }
 
 /**
@@ -109,16 +129,25 @@ function IndicatorGlyph({ state }: Readonly<{ state: AgentSessionItem["state"] }
  * (blue border, selected background, selected icon) instead of falling through
  * to the row.
  */
-export function AgentSessionLifecycle({ state }: Readonly<{ state: AgentSessionItem["state"] }>) {
+export function AgentSessionLifecycle({
+	showLabel = true,
+	state,
+}: Readonly<{
+	showLabel?: boolean;
+	state: AgentSessionItem["state"];
+}>) {
 	const shouldReduceMotion = useReducedMotion();
 	const [pressed, setPressed] = useState(false);
-	const label = lifecycleLabel(state);
+	const label = LIFECYCLE_LABELS[state];
 
 	return (
 		<Button
 			aria-label={label}
 			aria-pressed={pressed}
-			className="size-6 shadow-none focus-visible:ring-0 aria-pressed:[&_svg]:text-icon-selected"
+			className={cn(
+				"h-6 w-auto min-w-6 gap-1 py-0 pr-0 text-xs shadow-none focus-visible:ring-0 aria-pressed:[&_svg]:text-icon-selected",
+				showLabel ? "pl-1" : "pl-0",
+			)}
 			onClick={(event) => {
 				event.stopPropagation();
 				setPressed((current) => !current);
@@ -140,7 +169,7 @@ export function AgentSessionLifecycle({ state }: Readonly<{ state: AgentSessionI
 					style={shouldReduceMotion ? undefined : { willChange: "opacity, transform" }}
 					transition={shouldReduceMotion ? { duration: 0 } : INDICATOR_ENTER}
 				>
-					<IndicatorGlyph state={state} />
+					<LifecycleState showLabel={showLabel} state={state} />
 				</motion.div>
 			</AnimatePresence>
 		</Button>

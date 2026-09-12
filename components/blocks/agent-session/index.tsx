@@ -98,6 +98,7 @@ export function AgentSession({
 	onCopyResume,
 	onArchiveSession,
 	onCreateWorkItem,
+	onCreateWorkItemFromDraft,
 	onArrivalComplete,
 	onDeleteSession,
 	onLinkWorkItem,
@@ -115,6 +116,7 @@ export function AgentSession({
 	style,
 	variant = "large",
 	visibilityLabel,
+	workItemOptions,
 }: Readonly<AgentSessionProps>) {
 	const isAttached = variant === "medium-attached";
 	const isLongDensity = variant === "large" && density === "long";
@@ -238,6 +240,7 @@ export function AgentSession({
 								flyoutSession={flyoutSession}
 								getResumeCommand={getResumeCommand}
 								isArriving={beatItemIds?.has(item.id) ?? false}
+								isFlyoutActive={item.id === scrollPreview.activeItemId}
 								isHighlighted={item.id === highlightedItemId}
 								isNew={newItemIds?.has(item.id) ?? false}
 								isResumable={isResumable}
@@ -246,11 +249,13 @@ export function AgentSession({
 								key={item.id}
 								onContinueInAgent={onContinueInAgent}
 								onCopyResume={onCopyResume}
+								onCreateWorkItemFromDraft={onCreateWorkItemFromDraft}
 								onDeleteSession={onDeleteSession}
 								onArrivalComplete={onArrivalComplete === undefined
 									? undefined
 									: () => onArrivalComplete(item.id)}
 								onItemHover={onItemHover}
+								onLinkWorkItem={onLinkWorkItem}
 								onRenameSession={onRenameSession}
 								onToggleVisibility={onToggleVisibility}
 								onView={itemOnView}
@@ -258,6 +263,7 @@ export function AgentSession({
 								triageRow={rowTriage?.get(item.id)}
 								draggingIds={draggingIds}
 								visibilityLabel={visibilityLabel}
+								workItemOptions={workItemOptions}
 							/>
 						);
 					}
@@ -379,6 +385,8 @@ export type {
 	AgentSessionSelectionGesture,
 	AgentSessionTriageRow,
 	AgentSessionVariant,
+	AgentSessionWorkItemDraft,
+	AgentSessionWorkItemOption,
 } from "./agent-session-types";
 export { getAgentSessionRole } from "./agent-session-types";
 export type { UntrackedWorkTriage } from "./untracked-work-triage";

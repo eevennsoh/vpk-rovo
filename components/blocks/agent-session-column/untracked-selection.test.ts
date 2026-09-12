@@ -405,10 +405,10 @@ test("the browsing header keeps the host title and count", () => {
 			approveTargetById: new Map(),
 			count: 4,
 			selection: { kind: "empty" },
-			title: "Unattached sessions",
+			title: "Unlink sessions",
 			visibleCount: 4,
 		}),
-		{ kind: "browsing", title: "Unattached sessions", count: 4 },
+		{ kind: "browsing", title: "Unlink sessions", count: 4 },
 	);
 });
 
@@ -426,7 +426,7 @@ test("the selecting header counts only rows Approve can attach", () => {
 		approveTargetById,
 		count: 8,
 		selection: { kind: "active", items: [linkable, unknown, captured] },
-		title: "Unattached sessions",
+		title: "Unlink sessions",
 		visibleCount: 8,
 	});
 
@@ -471,7 +471,7 @@ test("header Create copy uses selectedCount, not eligibleCount", () => {
 		]),
 		count: 2,
 		selection: { kind: "active", items: [linkable, captured] },
-		title: "Unattached sessions",
+		title: "Unlink sessions",
 		visibleCount: 2,
 	});
 
@@ -492,14 +492,14 @@ test("the selecting header is all-selected only when every visible row is marked
 		approveTargetById: new Map(),
 		count: 2,
 		selection: { kind: "active", items: [first] },
-		title: "Unattached sessions",
+		title: "Unlink sessions",
 		visibleCount: 2,
 	});
 	const complete = buildUntrackedHeaderModel({
 		approveTargetById: new Map(),
 		count: 2,
 		selection: { kind: "active", items: [first, second] },
-		title: "Unattached sessions",
+		title: "Unlink sessions",
 		visibleCount: 2,
 	});
 
@@ -521,7 +521,7 @@ test("header copy table pins exact available and unavailable strings", () => {
 		]),
 		count: 1,
 		selection: { kind: "active", items: [captured] },
-		title: "Unattached sessions",
+		title: "Unlink sessions",
 		visibleCount: 1,
 	});
 

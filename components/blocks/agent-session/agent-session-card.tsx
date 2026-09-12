@@ -46,6 +46,8 @@ import {
 	type AgentSessionSelectionGesture,
 	getAgentSessionRole,
 	type AgentSessionTriageRow,
+	type AgentSessionWorkItemDraft,
+	type AgentSessionWorkItemOption,
 } from "./agent-session-types";
 import { useAgentSessionMenu } from "./use-agent-session-menu";
 
@@ -57,6 +59,7 @@ export function AgentSessionCard({
 	flyoutSession,
 	getResumeCommand,
 	isArriving = false,
+	isFlyoutActive = false,
 	isHighlighted = false,
 	isNew = false,
 	isResumable,
@@ -67,8 +70,10 @@ export function AgentSessionCard({
 	onArrivalComplete,
 	onContinueInAgent,
 	onCopyResume,
+	onCreateWorkItemFromDraft,
 	onDeleteSession,
 	onItemHover,
+	onLinkWorkItem,
 	onMoreMenuOpenChange,
 	onRenameSession,
 	onToggleVisibility,
@@ -76,9 +81,11 @@ export function AgentSessionCard({
 	padding = "default",
 	sessionDrag,
 	showMoreMenu = true,
+	showLifecycleLabel = true,
 	triageRow,
 	draggingIds,
 	visibilityLabel = "Archive",
+	workItemOptions,
 }: Readonly<{
 	arrivalDelaySeconds?: number;
 	captured?: boolean;
@@ -90,6 +97,8 @@ export function AgentSessionCard({
 	getResumeCommand?: (item: AgentSessionItem) => string | undefined;
 	/** Play the one-shot arrival beat. A remounted card must not re-arm it. */
 	isArriving?: boolean;
+	/** Keep the row's hover treatment while its portalled flyout chain is active. */
+	isFlyoutActive?: boolean;
 	/** Light this row for a pointer hovering its matching board session. */
 	isHighlighted?: boolean;
 	/** Carry the persistent unreviewed mark. Outlives the beat. */
@@ -102,9 +111,13 @@ export function AgentSessionCard({
 	/** Reopen a local session in its own agent. Omit to disable the menu row. */
 	onContinueInAgent?: (item: AgentSessionItem) => void;
 	onCopyResume?: (item: AgentSessionItem) => void;
+	/** Create a work item named in the menu's Create new tab. Omit to disable that tab. */
+	onCreateWorkItemFromDraft?: (item: AgentSessionItem, draft: AgentSessionWorkItemDraft) => void;
 	/** Delete a cloud session record. Omit to disable the menu row. */
 	onDeleteSession?: (item: AgentSessionItem) => void;
 	onItemHover?: (item: AgentSessionItem | null) => void;
+	/** Link the session to a work item picked in the menu. Omit to disable that tab. */
+	onLinkWorkItem?: (item: AgentSessionItem, workItemKey?: string) => void;
 	/** Rename a cloud session. Omit to disable the menu row. */
 	onRenameSession?: (item: AgentSessionItem) => void;
 	onToggleVisibility?: (item: AgentSessionItem) => void;
@@ -129,10 +142,14 @@ export function AgentSessionCard({
 	onMoreMenuOpenChange?: (open: boolean) => void;
 	sessionDrag?: JiraIssueAgentSessionDragBinding;
 	showMoreMenu?: boolean;
+	/** Keep false only for compact consumers that borrow long-density title geometry. */
+	showLifecycleLabel?: boolean;
 	triageRow?: AgentSessionTriageRow | null;
 	draggingIds?: ReadonlySet<string>;
 	/** Accessible name for the menu's dismiss row. Archive in the active list, Unarchive in the archived view. */
 	visibilityLabel?: string;
+	/** Work items the menu's Link work item submenu offers. */
+	workItemOptions?: readonly AgentSessionWorkItemOption[];
 }>) {
 	const shouldReduceMotion = useReducedMotion();
 	const onItemHoverRef = useRef(onItemHover);
@@ -227,8 +244,10 @@ export function AgentSessionCard({
 		item,
 		onContinueInAgent,
 		onCopyResume,
+		onCreateWorkItemFromDraft,
 		onDeleteSession,
 		onItemHover,
+		onLinkWorkItem,
 		onMoreMenuOpenChange,
 		onRenameSession,
 		onToggleVisibility,
@@ -266,6 +285,7 @@ export function AgentSessionCard({
 						open={menu.isOpen}
 						portalled={moreMenuPortalled}
 						positionerClassName={moreMenuPositionerClassName}
+						workItemOptions={workItemOptions}
 					/>
 				);
 			default: {
@@ -280,11 +300,11 @@ export function AgentSessionCard({
 		? null
 		: role === "expired"
 			? <AgentSessionExpiredHint />
-			: <AgentSessionLifecycle state={item.state} />;
+			: <AgentSessionLifecycle showLabel={showLifecycleLabel} state={item.state} />;
 	const hoverActions: AgentListRowHoverActions = {
 		// The reveal must outlive the pointer: a portalled popup and a post-click
 		// confirmation both take the cursor off the row.
-		pinned: showMoreMenu && role === "owner" && (menu.isOpen || menu.copied),
+		pinned: isFlyoutActive || (showMoreMenu && role === "owner" && (menu.isOpen || menu.copied)),
 		primary: approve
 			? {
 				disabled: approve.target.kind === "unavailable",
@@ -361,13 +381,14 @@ export function AgentSessionCard({
 						"transition-[background-color,border-radius] duration-xxshort ease-out-practical",
 						"motion-reduce:transition-none",
 						showSelectedFill && "bg-bg-selected",
-						!showSelectedFill && isHighlighted && "bg-surface-hovered",
-						!showSelectedFill && !isHighlighted && "bg-transparent hover:bg-surface-hovered",
+						!showSelectedFill && (isHighlighted || isFlyoutActive) && "bg-surface-hovered",
+						!showSelectedFill && !isHighlighted && !isFlyoutActive && "bg-transparent hover:bg-surface-hovered",
 						activateCard === undefined
 							? null
 							: "outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
 							)}
 							data-captured={captured || undefined}
+							data-hovered={isFlyoutActive || undefined}
 							data-highlighted={isHighlighted || undefined}
 							data-marked={isMarked || undefined}
 							data-new={isNew || undefined}
@@ -448,6 +469,7 @@ export function AgentSessionCard({
 					return (
 						<JiraSessionFlyoutTrigger
 							closeDelay={160}
+							data-session-id={item.id}
 							handle={flyoutHandle}
 							render={<div className="w-full" />}
 							session={flyoutSession}

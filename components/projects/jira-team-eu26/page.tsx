@@ -1,8 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import { RovoChatProvider } from "@/app/contexts/context-rovo-chat";
+import { DEFAULT_SKILLS, ROVO_DIRECTORY_AGENT_PROFILES } from "@/app/data/directory";
+import { AgentsDirectoryDialog } from "@/components/blocks/agent-directory";
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type {
 	JiraIssueAgentActivity,
@@ -24,6 +27,7 @@ import {
 	type JiraListAssignedAgent,
 	type JiraListInsertion,
 } from "@/components/blocks/jira-list";
+import { SkillsDirectoryDialog } from "@/components/blocks/skills-directory";
 import { JgpRovoOverlay } from "@/components/projects/jira-golden-journeys-v1/components/jira-golden-journeys-v1-rovo-overlay";
 import { JGP_CHAT_AGENT_PROFILES } from "@/components/projects/jira-golden-journeys-v1/data/agent-chat-data";
 import { useJgpAgentChatDemo } from "@/components/projects/jira-golden-journeys-v1/hooks/use-jira-golden-journeys-v1-agent-chat-demo";
@@ -55,6 +59,7 @@ import { useJiraTeamEu26List } from "./hooks/use-jira-team-eu26-list";
 const JIRA_LIST_PANEL_END_GAP_PX = 24;
 const JIRA_TEAM_EU26_TABS = getJiraTabs(false);
 const JIRA_TEAM_EU26_DEFAULT_TAB_LABEL = getJiraWorkItemsTabLabel(JIRA_TEAM_EU26_TABS);
+const isJiraTeamEu26LooseWorkResumable = () => true;
 
 function resolveJiraTeamEu26ContinueChatAgent(
 	agentId: PulseCodingAgentId,
@@ -84,7 +89,10 @@ export default function JiraTeamEu26Page(): React.ReactElement {
 }
 
 function JiraTeamEu26App(): React.ReactElement {
+	const router = useRouter();
 	const { chatContextBar, externalThinkingMessageId, openAgentChat } = useJgpAgentChatDemo();
+	const [agentsDirectoryOpen, setAgentsDirectoryOpen] = useState(false);
+	const [skillsDirectoryOpen, setSkillsDirectoryOpen] = useState(false);
 	const [boardColumns, setBoardColumns] = useState(createJiraTeamEu26PayBoardColumns);
 	const needsInputCount = boardColumns.reduce(
 		(total, column) => total + column.cards.reduce(
@@ -104,6 +112,12 @@ function JiraTeamEu26App(): React.ReactElement {
 			openAgentChat,
 			setBoardColumns,
 		});
+	const cardGenerativeActionFooterActions = {
+		onBrowseAgents: () => setAgentsDirectoryOpen(true),
+		onBrowseSkills: () => setSkillsDirectoryOpen(true),
+		onCreateAgent: () => router.push("/studio"),
+		onCreateSkill: () => router.push("/skills"),
+	};
 	const [detachedAgentSessionsByCard, setDetachedAgentSessionsByCard] = useState<
 		Readonly<Record<string, readonly AgentSessionItem[]>>
 	>({});
@@ -132,10 +146,10 @@ function JiraTeamEu26App(): React.ReactElement {
 		}
 	}, [tabs]);
 	const [resumeAnnouncement, setResumeAnnouncement] = useState("");
-	// Untracked work offers Resume on the rows running on the viewer's own
-	// device; that gate is the board's default, so this route only supplies the
-	// behavior. The card owns the clipboard copy and its own "Copied" label, so
-	// the announcement here is the only thing a screen reader hears.
+	// Team EU presents every unlinked session as locally resumable, even when the
+	// fixture names a teammate's machine. The card owns the clipboard copy and
+	// its own "Copied" label, so the announcement here is the only thing a screen
+	// reader hears.
 	const handleResumeLooseWork = useCallback((item: PulseLooseWork) => {
 		if (!isPulseAgentSession(item)) return;
 		setResumeAnnouncement(
@@ -288,12 +302,14 @@ function JiraTeamEu26App(): React.ReactElement {
 		session: AgentSessionItem,
 		columnTitle: string,
 		insertAtIndex?: number,
+		issueType?: JiraKanbanCardData["issueType"],
 	) => {
 		const activity = consumeDetachedAgentSession(session);
 		return createBoardFromAgentSession({
 			activity,
 			columnTitle,
 			insertAtIndex,
+			issueType,
 			session,
 		});
 	}, [consumeDetachedAgentSession, createBoardFromAgentSession]);
@@ -337,6 +353,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						additionalAgentSessions={syncedAgentSessions}
 						agentActivityLayout="merged"
 						agentSessionMultiSelect={false}
+						cardGenerativeActionFooterActions={cardGenerativeActionFooterActions}
 						cardGenerativeActionPresentation="more-actions"
 						iconScale="comfortable"
 						createWellBounce="off"
@@ -354,6 +371,7 @@ function JiraTeamEu26App(): React.ReactElement {
 						detachedAgentSessionsByCard={detachedAgentSessionsByCard}
 						headerAssignees={JIRA_TEAM_EU26_PAY_HEADER_ASSIGNEES}
 						insightsEnabled={false}
+						isLooseWorkResumable={isJiraTeamEu26LooseWorkResumable}
 						newAgentSessionIds={newAgentSessionIds}
 						onAgentSessionsReviewed={reviewAgentSessions}
 						onBoardAgentSessionCreate={handleBoardAgentSessionCreate}
@@ -432,6 +450,19 @@ function JiraTeamEu26App(): React.ReactElement {
 			<span aria-live="polite" className="sr-only" role="status">
 				{resumeAnnouncement}
 			</span>
+			<AgentsDirectoryDialog
+				agents={ROVO_DIRECTORY_AGENT_PROFILES}
+				onCreateAgent={() => router.push("/studio")}
+				onOpenChange={setAgentsDirectoryOpen}
+				onSelectAgent={() => setAgentsDirectoryOpen(false)}
+				open={agentsDirectoryOpen}
+			/>
+			<SkillsDirectoryDialog
+				onCreateSkill={() => router.push("/skills")}
+				onOpenChange={setSkillsDirectoryOpen}
+				open={skillsDirectoryOpen}
+				skills={DEFAULT_SKILLS}
+			/>
 			<JgpRovoOverlay
 				chatContextBar={chatContextBar}
 				composerPrefillRequest={composerPrefillRequest}

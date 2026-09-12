@@ -27,11 +27,11 @@ const ARRIVAL_MOTION_SOURCE = [
 test("board session creation is route-owned and reveals the created cards once", () => {
 	assert.match(
 		EXPERIMENTAL_PAGE_SOURCE,
-		/onBoardAgentSessionCreate\?: \(\s*session: AgentSessionItem,\s*columnTitle: string,[\s\S]*?insertAtIndex\?: number,\s*\) => string \| undefined;/u,
+		/onBoardAgentSessionCreate\?: \(\s*session: AgentSessionItem,\s*columnTitle: string,[\s\S]*?insertAtIndex\?: number,[\s\S]*?issueType\?: JiraKanbanCardData\["issueType"\],\s*\) => string \| undefined;/u,
 	);
 	assert.match(
 		PAGE_SOURCE,
-		/const handleBoardAgentSessionCreate = useCallback\([\s\S]*consumeDetachedAgentSession\(session\)[\s\S]*createBoardFromAgentSession\(\{\s*activity,\s*columnTitle,\s*insertAtIndex,\s*session,\s*\}\)/u,
+		/const handleBoardAgentSessionCreate = useCallback\([\s\S]*consumeDetachedAgentSession\(session\)[\s\S]*createBoardFromAgentSession\(\{\s*activity,\s*columnTitle,\s*insertAtIndex,\s*issueType,\s*session,\s*\}\)/u,
 	);
 	assert.match(PAGE_SOURCE, /onBoardAgentSessionCreate=\{handleBoardAgentSessionCreate\}/u);
 	assert.match(

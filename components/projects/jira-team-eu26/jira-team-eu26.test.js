@@ -114,6 +114,14 @@ test("the route imports the Pulse session guard used by its resume callback", ()
 	assert.match(PAGE_SOURCE, /if \(!isPulseAgentSession\(item\)\) return;/u);
 });
 
+test("Team EU keeps Terminal enabled for every local unlinked session", () => {
+	assert.match(
+		PAGE_SOURCE,
+		/<ExperimentalJiraKanbanPage[\s\S]*isLooseWorkResumable=\{isJiraTeamEu26LooseWorkResumable\}/u,
+		"the route must override Pulse's viewer-machine gate for its local-session story",
+	);
+});
+
 test("Team EU board cards use experimental v2 raised defaults", () => {
 	// One board-level default, not per-card forks. Raised chrome already
 	// comes from columnChrome="default"; comfortable + stroke is v2.
@@ -121,6 +129,16 @@ test("Team EU board cards use experimental v2 raised defaults", () => {
 	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*subtaskChrome="stroke"/u);
 	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*columnChrome="default"/u);
 	assert.match(PAGE_SOURCE, /<ExperimentalJiraKanbanPage[\s\S]*cardGenerativeActionPresentation="more-actions"/u);
+	assert.match(PAGE_SOURCE, /cardGenerativeActionFooterActions=\{cardGenerativeActionFooterActions\}/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /cardGenerativeActionFooterActions=\{cardGenerativeActionFooterActions\}/u);
+	assert.match(EXPERIMENTAL_BOARD_SOURCE, /generativeActionFooterActions=\{cardGenerativeActionFooterActions\}/u);
+	assert.match(EXPERIMENTAL_CARD_SOURCE, /\.\.\.generativeActionFooterActions/u);
+	assert.match(PAGE_SOURCE, /onBrowseAgents: \(\) => setAgentsDirectoryOpen\(true\)/u);
+	assert.match(PAGE_SOURCE, /onBrowseSkills: \(\) => setSkillsDirectoryOpen\(true\)/u);
+	assert.match(PAGE_SOURCE, /onCreateAgent: \(\) => router\.push\("\/studio"\)/u);
+	assert.match(PAGE_SOURCE, /onCreateSkill: \(\) => router\.push\("\/skills"\)/u);
+	assert.match(PAGE_SOURCE, /<AgentsDirectoryDialog[\s\S]*open=\{agentsDirectoryOpen\}/u);
+	assert.match(PAGE_SOURCE, /<SkillsDirectoryDialog[\s\S]*open=\{skillsDirectoryOpen\}/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /iconScale\?: JiraIssueIconScale;/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /subtaskChrome\?: JiraIssueChrome;/u);
 	assert.match(

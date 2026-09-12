@@ -69,7 +69,7 @@ test("running drops the redundant label; awaiting swaps the title to the Needs i
 	// The shimmering title alone communicates a running session.
 	assert.doesNotMatch(CARD_SOURCE, /Working on it/);
 	assert.match(CARD_SOURCE, /"needs-input":\s*\{[^}]*showDots:\s*true/);
-	assert.doesNotMatch(CARD_SOURCE, /titleOverride|const titleText/);
+	assert.doesNotMatch(CARD_SOURCE, /titleOverride/u);
 	// Awaiting sessions name the blocked state instead of the task title, matching
 	// the Jira queue card's JiraSessionLabel.
 	assert.match(CARD_SOURCE, /const AWAITING_INPUT_TITLE = "Needs input";/u);
@@ -214,8 +214,8 @@ test("rows carry an optional summary below metadata, leading metadata, and a sta
 	assert.match(TYPES_SOURCE, /summary\?: string;/u);
 	assert.match(TYPES_SOURCE, /metadataPrefix\?: string;/u);
 	assert.match(TYPES_SOURCE, /timeLabel\?: string;/u);
-	// The summary wraps below the metadata row; a session row's single-line
-	// title keeps truncating unless that body copy is present.
+	// The summary wraps below the metadata row and keeps the title in natural
+	// wrapping mode instead of inheriting the one-line hover treatment.
 	assert.match(CARD_SOURCE, /const hasSummary = Boolean\(item\.summary\);/u);
 	assert.match(CARD_SOURCE, /hasSummary \? "text-pretty" : "truncate"/u);
 	assert.match(
@@ -474,7 +474,7 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 	assert.doesNotMatch(CARD_SOURCE, /absolute inset-y-0 right-0/u);
 	assert.match(
 		CARD_SOURCE,
-		/className="flex min-w-0 flex-1 flex-col items-start justify-center/u,
+		/className=\{cn\(\s*"flex min-w-0 flex-1 flex-col items-start justify-center/u,
 	);
 	// The body is a button only when the consumer gave it somewhere to go; a
 	// read-only list must not add one focusable no-op to the tab order per row.
@@ -494,7 +494,10 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		/const showHoverActions = \(!isSelected \|\| showHoverActionsWhenSelected\) &&\s*\(hoverActions\?\.primary !== undefined\s*\|\| hoverActions\?\.secondary !== undefined\s*\|\| hoverActions\?\.menu !== undefined\);/u,
 	);
 	assert.match(CARD_SOURCE, /\{showHoverActions && !overlayHoverActions \? \(\s*<AgentListCardActions/u);
-	assert.match(CARD_SOURCE, /\{overlayHoverActions \? \(\s*<AgentListCardActions/u);
+	assert.match(
+		CARD_SOURCE,
+		/\{overlayHoverActions && !lifecycleNode \? \(\s*<AgentListCardActions/u,
+	);
 	assert.match(CARD_ACTIONS_SOURCE, /<AgentListRowActionButton action=\{primary\}/u);
 	assert.match(ROW_ACTION_SOURCE, /event\.stopPropagation\(\);\s*\n\s*action\.onClick\(\)/u);
 	assert.match(
@@ -505,7 +508,19 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 		CARD_SOURCE,
 		/"flex w-full min-w-0 items-center gap-1 text-xs text-text-subtlest"/u,
 	);
-	assert.match(CARD_SOURCE, /<span className=\{cn\(titleClassName, "text-text"\)\}>/u);
+	// Menu-only actions are absolute: the title owns all resting width and keeps
+	// its overflow ellipsis, then gets the action gutter only during reveal.
+	assert.match(
+		CARD_SOURCE,
+		/className=\{cn\(titleClassName, "text-text"\)\}\s*data-agent-list-title=""/u,
+	);
+	assert.match(CARD_SOURCE, /hasSummary \? "text-pretty" : "truncate"/u);
+	assert.match(
+		CARD_SOURCE,
+		/overlayHoverActions && !lifecycleNode[\s\S]*"group-hover\/agent-row:pr-9 group-has-\[:focus-visible\]\/agent-row:pr-9"/u,
+	);
+	assert.match(CARD_ACTIONS_SOURCE, /"pointer-events-none absolute inset-y-0 right-0/u);
+	assert.doesNotMatch(CARD_SOURCE, /data-agent-list-title-(?:layout|hover)/u);
 	assert.match(CARD_SOURCE, /className="min-w-0 truncate">\{item\.agent\.name\}<\/span>/u);
 	assert.match(
 		CARD_ACTIONS_SOURCE,

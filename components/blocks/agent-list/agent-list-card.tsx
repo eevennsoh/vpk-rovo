@@ -623,17 +623,7 @@ export function AgentListRow({
 	const stateMeta = STATE_META[item.state];
 	const prMeta = item.prStatus ? PR_STATUS_META[item.prStatus] : null;
 	const PrIcon = prMeta?.Icon ?? null;
-	// A session row is one line tall by contract, so its title truncates. A row
-	// with body copy is already a paragraph — truncating its title there hides the
-	// one line that says what happened.
 	const hasSummary = Boolean(item.summary);
-	const titleClassName = cn(
-		"min-w-0 font-medium",
-		hasSummary ? "text-pretty" : "truncate",
-		isCompact ? "text-xs" : "text-sm",
-	);
-
-	const viewItem = onView === undefined ? undefined : () => onView(item);
 	// A selected Agent List row is already the destination, so it keeps its
 	// lifecycle indicator. Session cards opt back in because Archive / Resume
 	// still apply after the article is highlighted.
@@ -641,6 +631,13 @@ export function AgentListRow({
 		(hoverActions?.primary !== undefined
 			|| hoverActions?.secondary !== undefined
 			|| hoverActions?.menu !== undefined);
+	const titleClassName = cn(
+		"min-w-0 font-medium",
+		hasSummary ? "text-pretty" : "truncate",
+		isCompact ? "text-xs" : "text-sm",
+	);
+
+	const viewItem = onView === undefined ? undefined : () => onView(item);
 	// A menu-only reveal (session "..." / viewer hint) must occupy the same
 	// 24px trailing slot as the lifecycle glyph. Expanding a sibling `0fr`
 	// column would move the trigger when hover, focus, or open swaps them.
@@ -679,7 +676,7 @@ export function AgentListRow({
 			<div className="flex min-w-0 flex-1 flex-col">
 				<div
 					className={cn(
-						"flex min-w-0",
+						"relative flex min-w-0",
 						hasSummary ? "items-start" : "items-center",
 					)}
 				>
@@ -689,7 +686,16 @@ export function AgentListRow({
 					 * would otherwise put one focusable no-op in the tab order per row.
 					 */}
 					<RowBody
-						className="flex min-w-0 flex-1 flex-col items-start justify-center rounded-xs text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+						className={cn(
+							"flex min-w-0 flex-1 flex-col items-start justify-center rounded-xs text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+							overlayHoverActions && !lifecycleNode
+								? [
+									"group-hover/agent-row:pr-9 group-has-[:focus-visible]/agent-row:pr-9",
+									"group-has-[[aria-expanded=true]]/agent-row:pr-9",
+									hoverActions?.pinned ? "pr-9" : null,
+								]
+								: null,
+						)}
 						isSelected={isSelected}
 						onView={viewItem}
 					>
@@ -709,7 +715,10 @@ export function AgentListRow({
 									{getSessionTitle(item)}
 								</Shimmer>
 							) : (
-								<span className={cn(titleClassName, "text-text")}>
+								<span
+									className={cn(titleClassName, "text-text")}
+									data-agent-list-title=""
+								>
 									{stateAwareTitle ? getSessionTitle(item) : item.title}
 								</span>
 							)}
@@ -747,14 +756,14 @@ export function AgentListRow({
 							</span>
 						) : metadata}
 					</RowBody>
-					{lifecycleNode || overlayHoverActions ? (
+					{lifecycleNode ? (
 						// A `div`, not a `span`: every non-running indicator is an
 						// `IconTile`, whose root is a block element. Phrasing content
 						// cannot contain it, and the invalid nesting surfaces as a
 						// hydration recovery on server-rendered session lists.
 						<div
 							className={cn(
-								"relative ml-3 flex size-6 shrink-0 items-center justify-center overflow-visible",
+								"relative ml-3 flex min-h-6 min-w-6 shrink-0 items-center justify-end overflow-visible",
 								!overlayHoverActions && "pointer-events-none",
 								!overlayHoverActions && showHoverActions &&
 									"group-hover/agent-row:hidden group-has-[:focus-visible]/agent-row:hidden",
@@ -781,6 +790,13 @@ export function AgentListRow({
 								/>
 							) : null}
 						</div>
+					) : null}
+					{overlayHoverActions && !lifecycleNode ? (
+						<AgentListCardActions
+							menu={hoverActions?.menu}
+							overlay
+							pinned={hoverActions?.pinned}
+						/>
 					) : null}
 					{showHoverActions && !overlayHoverActions ? (
 						<AgentListCardActions

@@ -2,6 +2,11 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+	resolveAgentBrandTintColor,
+	resolveAgentBrandTintVariable,
+} = require("./agent-brand-tint.ts");
+
+const {
 	SESSION_FUSION_ROW_RADIUS_PX,
 	SESSION_FUSION_SHELL_RADIUS_PX,
 	SESSION_FUSION_SURFACE_RADIUS_PX,
@@ -98,6 +103,24 @@ test("the flash names the rows that were added and wears the lead agent's mark",
 	});
 	assert.deepEqual(cohort.flash.activityIds, ["codex-1", "claude-1"]);
 	assert.equal(cohort.flash.tint, "#3941ff");
+});
+
+test("near-black agent tints follow the active theme", () => {
+	assert.equal(resolveAgentBrandTintVariable("cursor"), "--color-icon");
+	assert.equal(resolveAgentBrandTintVariable("github"), "--color-icon");
+	assert.equal(resolveAgentBrandTintVariable("github-copilot"), "--color-icon");
+	assert.equal(resolveAgentBrandTintVariable("github copilot"), "--color-icon");
+	assert.equal(resolveAgentBrandTintVariable("claude"), undefined);
+	assert.equal(resolveAgentBrandTintColor("cursor"), "var(--color-icon)");
+	assert.equal(resolveAgentBrandTintColor("claude"), "#d97757");
+
+	const cursorFlash = toBoardAgentSessionLinkFlash({
+		members: [{ id: "cursor-1", name: "Cursor", tintSeed: "cursor" }],
+		proximity: proximityOf(),
+		targetCardCode: "PAY-121",
+		token: 9,
+	});
+	assert.equal(cursorFlash.flash.tint, "var(--color-icon)");
 });
 
 test("an unmapped brand still flashes, on a neutral accent", () => {
