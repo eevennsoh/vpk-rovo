@@ -25,7 +25,7 @@ export function AgentListCardActions({
 		return (
 			<div
 				className={cn(
-					"pointer-events-none absolute inset-y-0 right-0 flex size-6 items-center justify-center opacity-0",
+					"pointer-events-none absolute inset-y-0 right-0 flex w-6 items-center justify-center opacity-0",
 					"group-hover/agent-row:pointer-events-auto group-hover/agent-row:opacity-100",
 					"has-[:focus-visible]:pointer-events-auto has-[:focus-visible]:opacity-100",
 					"group-has-[[aria-expanded=true]]/agent-row:pointer-events-auto group-has-[[aria-expanded=true]]/agent-row:opacity-100",

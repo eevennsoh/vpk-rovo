@@ -604,7 +604,7 @@ test("copying the prompt confirms with a green check the reveal cannot swallow",
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /if \(overlay\) \{/u);
 	assert.match(
 		LIST_CARD_ACTIONS_SOURCE,
-		/"pointer-events-none absolute inset-y-0 right-0 flex size-6 items-center justify-center opacity-0"/u,
+		/"pointer-events-none absolute inset-y-0 right-0 flex w-6 items-center justify-center opacity-0"/u,
 	);
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /group-has-\[\[aria-expanded=true\]\]\/agent-row:pointer-events-auto/u);
 	assert.match(LIST_CARD_ACTIONS_SOURCE, /data-agent-list-card-actions=""/u);

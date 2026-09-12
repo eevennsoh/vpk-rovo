@@ -23,6 +23,9 @@ test("long session titles stay one line while revealing actions", async ({ page 
 	const article = row.locator("article");
 	const title = row.locator("[data-agent-list-title]");
 	const actions = row.locator("[data-agent-list-card-actions]");
+	const actionButton = row.getByRole("button", {
+		name: /^More actions for How to hold the pager/u,
+	});
 	const restingRowBox = await row.boundingBox();
 	const restingTitleBox = await title.boundingBox();
 	expect(restingRowBox).not.toBeNull();
@@ -44,9 +47,18 @@ test("long session titles stay one line while revealing actions", async ({ page 
 	await expect(title).toHaveCSS("text-overflow", "ellipsis");
 	await expect(actions).toHaveCSS("opacity", "1");
 	expect((await title.boundingBox())?.width).toBeLessThan(restingTitleBox.width);
-	await expect(
-		row.getByRole("button", { name: /^More actions for How to hold the pager/u }),
-	).toBeVisible();
+	await expect(actionButton).toBeVisible();
+	const hoveredArticleBox = await article.boundingBox();
+	const actionButtonBox = await actionButton.boundingBox();
+	expect(hoveredArticleBox).not.toBeNull();
+	expect(actionButtonBox).not.toBeNull();
+	if (!hoveredArticleBox || !actionButtonBox) return;
+	expect(
+		Math.abs(
+			hoveredArticleBox.y + hoveredArticleBox.height / 2
+				- (actionButtonBox.y + actionButtonBox.height / 2),
+		),
+	).toBeLessThanOrEqual(1);
 	expect(await article.evaluate((element) => element.matches(":hover"))).toBe(true);
 	expect((await row.boundingBox())?.height).toBe(restingRowBox.height);
 	await page.waitForTimeout(200);

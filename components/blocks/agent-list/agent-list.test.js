@@ -237,7 +237,7 @@ test("rows carry an optional summary below metadata, leading metadata, and a sta
 	assert.match(CARD_SOURCE, /hasSummary \? "items-start" : "items-center"/u);
 	assert.match(
 		CARD_SOURCE,
-		/<div className="flex min-w-0 flex-1 flex-col">[\s\S]*<AgentListCardActions[\s\S]*?<\/div>[\s\S]*?\{item\.summary \?/u,
+		/<div\s*className=\{cn\(\s*"flex min-w-0 flex-1 flex-col"[\s\S]*<AgentListCardActions[\s\S]*\{item\.summary \?/u,
 	);
 	assert.match(
 		CARD_SOURCE,
@@ -474,7 +474,7 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 	assert.doesNotMatch(CARD_SOURCE, /absolute inset-y-0 right-0/u);
 	assert.match(
 		CARD_SOURCE,
-		/className=\{cn\(\s*"flex min-w-0 flex-1 flex-col items-start justify-center/u,
+		/className="flex min-w-0 flex-1 flex-col items-start justify-center/u,
 	);
 	// The body is a button only when the consumer gave it somewhere to go; a
 	// read-only list must not add one focusable no-op to the tab order per row.
@@ -496,7 +496,7 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 	assert.match(CARD_SOURCE, /\{showHoverActions && !overlayHoverActions \? \(\s*<AgentListCardActions/u);
 	assert.match(
 		CARD_SOURCE,
-		/\{overlayHoverActions && !lifecycleNode \? \(\s*<AgentListCardActions/u,
+		/\{overlayHoverActions && !lifecycleNode \? \(\s*<div className="pointer-events-none absolute inset-y-0 right-3/u,
 	);
 	assert.match(CARD_ACTIONS_SOURCE, /<AgentListRowActionButton action=\{primary\}/u);
 	assert.match(ROW_ACTION_SOURCE, /event\.stopPropagation\(\);\s*\n\s*action\.onClick\(\)/u);
@@ -517,9 +517,16 @@ test("in-flow View controls immediately replace lifecycle indicators without col
 	assert.match(CARD_SOURCE, /hasSummary \? "text-pretty" : "truncate"/u);
 	assert.match(
 		CARD_SOURCE,
-		/overlayHoverActions && !lifecycleNode[\s\S]*"group-hover\/agent-row:pr-9 group-has-\[:focus-visible\]\/agent-row:pr-9"/u,
+		/"flex min-w-0 flex-1 flex-col",[\s\S]*overlayHoverActions && !lifecycleNode[\s\S]*"group-hover\/agent-row:pr-9 group-has-\[:focus-visible\]\/agent-row:pr-9"/u,
 	);
-	assert.match(CARD_ACTIONS_SOURCE, /"pointer-events-none absolute inset-y-0 right-0/u);
+	assert.match(
+		CARD_SOURCE,
+		/overlayHoverActions && !lifecycleNode \? \([\s\S]*"pointer-events-none absolute inset-y-0 right-3 flex w-6 items-center justify-center"[\s\S]*<AgentListCardActions/u,
+	);
+	assert.match(
+		CARD_ACTIONS_SOURCE,
+		/"pointer-events-none absolute inset-y-0 right-0 flex w-6 items-center justify-center opacity-0/u,
+	);
 	assert.doesNotMatch(CARD_SOURCE, /data-agent-list-title-(?:layout|hover)/u);
 	assert.match(CARD_SOURCE, /className="min-w-0 truncate">\{item\.agent\.name\}<\/span>/u);
 	assert.match(

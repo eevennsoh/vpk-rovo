@@ -673,10 +673,21 @@ export function AgentListRow({
 					{renderIdentity === undefined ? identity : renderIdentity(identity)}
 				</div>
 			)}
-			<div className="flex min-w-0 flex-1 flex-col">
+			<div
+				className={cn(
+					"flex min-w-0 flex-1 flex-col",
+					overlayHoverActions && !lifecycleNode
+						? [
+							"group-hover/agent-row:pr-9 group-has-[:focus-visible]/agent-row:pr-9",
+							"group-has-[[aria-expanded=true]]/agent-row:pr-9",
+							hoverActions?.pinned ? "pr-9" : null,
+						]
+						: null,
+				)}
+			>
 				<div
 					className={cn(
-						"relative flex min-w-0",
+						"flex min-w-0",
 						hasSummary ? "items-start" : "items-center",
 					)}
 				>
@@ -686,16 +697,7 @@ export function AgentListRow({
 					 * would otherwise put one focusable no-op in the tab order per row.
 					 */}
 					<RowBody
-						className={cn(
-							"flex min-w-0 flex-1 flex-col items-start justify-center rounded-xs text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-							overlayHoverActions && !lifecycleNode
-								? [
-									"group-hover/agent-row:pr-9 group-has-[:focus-visible]/agent-row:pr-9",
-									"group-has-[[aria-expanded=true]]/agent-row:pr-9",
-									hoverActions?.pinned ? "pr-9" : null,
-								]
-								: null,
-						)}
+						className="flex min-w-0 flex-1 flex-col items-start justify-center rounded-xs text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 						isSelected={isSelected}
 						onView={viewItem}
 					>
@@ -792,11 +794,13 @@ export function AgentListRow({
 						</div>
 					) : null}
 					{overlayHoverActions && !lifecycleNode ? (
-						<AgentListCardActions
-							menu={hoverActions?.menu}
-							overlay
-							pinned={hoverActions?.pinned}
-						/>
+						<div className="pointer-events-none absolute inset-y-0 right-3 flex w-6 items-center justify-center">
+							<AgentListCardActions
+								menu={hoverActions?.menu}
+								overlay
+								pinned={hoverActions?.pinned}
+							/>
+						</div>
 					) : null}
 					{showHoverActions && !overlayHoverActions ? (
 						<AgentListCardActions
