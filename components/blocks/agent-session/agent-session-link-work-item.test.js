@@ -93,30 +93,52 @@ test("Create new submits the typed name and the chosen type together", () => {
 	assert.match(SUBMENU_SOURCE, /if \(trimmedSummary\.length === 0\) \{\s*return;/u);
 	assert.match(SUBMENU_SOURCE, /const canSubmit = summary\.trim\(\)\.length > 0;/u);
 	assert.match(SUBMENU_SOURCE, /disabled=\{!canSubmit\}/u);
+	assert.match(
+		SUBMENU_SOURCE,
+		/function CreateWorkItemField[\s\S]*<form[\s\S]*<InputGroup>[\s\S]*<InputGroupAddon>[\s\S]*<IssueTypePicker[\s\S]*<InputGroupInput[\s\S]*name="summary"[\s\S]*<InputGroupAddon align="inline-end">[\s\S]*<InputGroupButton/u,
+	);
 });
 
 test("the return chip is a real submit button, reachable by pointer and by Enter", () => {
 	assert.match(SUBMENU_SOURCE, /import ReturnIcon from "@atlaskit\/icon-lab\/core\/return";/u);
 	assert.match(SUBMENU_SOURCE, /aria-label="Create work item"/u);
-	assert.match(SUBMENU_SOURCE, /onClick=\{onSubmit\}/u);
-	assert.match(SUBMENU_SOURCE, /if \(event\.key !== "Enter" \|\| !canSubmit\) \{/u);
+	assert.match(SUBMENU_SOURCE, /<form[\s\S]*onSubmit=\{\(event\) => \{\s*event\.preventDefault\(\);\s*if \(canSubmit\) \{\s*onSubmit\(\);/u);
+	assert.match(SUBMENU_SOURCE, /<InputGroupButton[\s\S]*type="submit"/u);
 });
 
 test("the issue-type picker stays inside the menu without leaving the a11y tree", () => {
-	// A popup portalled to the body sits outside the parent menu's subtree, which
-	// Base UI reads as an outside press and uses to close the whole menu. The
-	// shared `portalled={false}` container would contain it but carries
-	// aria-hidden, dropping the radios from the accessibility tree while leaving
-	// them focusable — so the picker owns a plain container of its own.
-	assert.match(SUBMENU_SOURCE, /<span className="contents" ref=\{portalContainerRef\} \/>/u);
-	assert.match(SUBMENU_SOURCE, /portalContainer=\{portalContainerRef\}/u);
-	// Scoped to a JSX prop line: the rationale above the picker names the rejected
-	// `portalled={false}` option in prose, and that mention is not a usage.
-	assert.doesNotMatch(SUBMENU_SOURCE, /\n\t+portalled=\{false\}/u);
+	// Model the picker as another submenu so Base UI keeps it inside the parent
+	// menu tree while its shared portal remains in the viewport coordinate space.
+	assert.match(SUBMENU_SOURCE, /<DropdownMenuSub onOpenChange=\{setOpen\} open=\{open\}>/u);
+	assert.doesNotMatch(SUBMENU_SOURCE, /portalContainer/u);
+	assert.doesNotMatch(SUBMENU_SOURCE, /useRef/u);
 	assert.match(SUBMENU_SOURCE, /aria-label=\{`Work item type: \$\{issueTypeLabel\(value\)\}`\}/u);
-	// The un-portalled popup needs a non-clipping ancestor; scroll belongs to the list.
+	// The results list remains the panel's only scroll owner.
 	assert.doesNotMatch(SUBMENU_SOURCE, /className="max-h-none w-\[22rem\] overflow-hidden p-0"/u);
 	assert.match(SUBMENU_SOURCE, /max-h-\[16rem\] flex-col gap-0\.5 overflow-y-auto/u);
+});
+
+test("the issue-type picker matches Jira List geometry without shifting the name field", () => {
+	assert.match(
+		SUBMENU_SOURCE,
+		/<Button\s+aria-label=\{`Work item type: \$\{issueTypeLabel\(value\)\}`\}\s+className="shrink-0 gap-1 px-2"\s+size="compact"\s+type="button"\s+variant="ghost"/u,
+	);
+	assert.match(
+		SUBMENU_SOURCE,
+		/<DropdownMenuSubTrigger[\s\S]*className="h-6 w-auto gap-1 rounded-md px-2"[\s\S]*showChevron=\{false\}/u,
+	);
+	assert.match(SUBMENU_SOURCE, /<DropdownMenuSubTrigger[\s\S]*nativeButton[\s\S]*render=\{/u);
+	assert.match(
+		SUBMENU_SOURCE,
+		/<DropdownMenuSubContent\s+align="start"\s+className="min-w-40"\s+side="bottom"\s+sideOffset=\{4\}/u,
+	);
+});
+
+test("selecting the active issue type still closes the picker and restores the title field", () => {
+	assert.match(
+		SUBMENU_SOURCE,
+		/<DropdownMenuRadioItem[\s\S]*onClick=\{\(\) => setOpen\(false\)\}[\s\S]*value=\{issueType\}/u,
+	);
 });
 
 test("closing the panel clears the query, the draft name and the type", () => {
