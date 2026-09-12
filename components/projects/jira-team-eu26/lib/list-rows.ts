@@ -290,23 +290,57 @@ export function applyAssignedAgentIdsToColumns(
 		: nextColumns;
 }
 
-export function createListRows(
-	columns: readonly JiraKanbanColumnData[],
+function createListRow(
+	card: JiraKanbanCardData,
+	columnTitle: string,
 	catalog: readonly JiraKanbanAgentData[],
-): JiraListRowData[] {
-	return columns.flatMap((column) => column.cards.map((card) => ({
+): JiraListRowData {
+	return {
 		issueKey: card.code,
 		summary: card.title,
 		issueType: card.issueType ?? "task",
 		priority: card.priority,
-		status: column.title,
-		statusVariant: STATUS_VARIANTS[column.title],
+		status: columnTitle,
+		statusVariant: STATUS_VARIANTS[columnTitle],
 		assignee: card.assignee,
 		agentSessions: assignedAgentsFromCard(card, catalog),
 		labels: card.tags,
 		dueDate: card.dueDate,
 		contributors: card.assignee ? [card.assignee] : [],
-	})));
+	};
+}
+
+export function createListRows(
+	columns: readonly JiraKanbanColumnData[],
+	catalog: readonly JiraKanbanAgentData[],
+): JiraListRowData[] {
+	return columns.flatMap((column) => column.cards.map((card) => (
+		createListRow(card, column.title, catalog)
+	)));
+}
+
+type ListRowIndex = ReadonlyMap<JiraKanbanCardData, JiraListRowData>;
+
+/** Build once per board snapshot; selection never writes into this index. */
+export function createListRowIndex(
+	columns: readonly JiraKanbanColumnData[],
+	catalog: readonly JiraKanbanAgentData[],
+): ListRowIndex {
+	return new Map(columns.flatMap((column) => column.cards.map((card) => (
+		[card, createListRow(card, column.title, catalog)] as const
+	))));
+}
+
+/** Filters can replace cards to hide sessions, so reuse requires card and status identity. */
+export function selectListRows(
+	columns: readonly JiraKanbanColumnData[],
+	catalog: readonly JiraKanbanAgentData[],
+	index: ListRowIndex,
+): JiraListRowData[] {
+	return columns.flatMap((column) => column.cards.map((card) => {
+		const row = index.get(card);
+		return row?.status === column.title ? row : createListRow(card, column.title, catalog);
+	}));
 }
 
 export function applyListOrder(

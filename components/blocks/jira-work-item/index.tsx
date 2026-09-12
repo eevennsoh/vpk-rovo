@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { AnimatePresence } from "motion/react";
 import dynamic from "next/dynamic";
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 import { Button } from "@/components/ui/button";
 import JiraWorkItemModal from "@/components/projects/jira/components/jira-work-item-modal";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
@@ -92,7 +92,7 @@ function JiraWorkItemDefaultView({
 	onIssueClose?: () => void;
 }>) {
 	const [isIssueOpen, setIsIssueOpen] = useState(initialIssueOpen);
-	const { chatSurface } = useRovoChat();
+	const { chatSurface } = useRovoChatControls();
 
 	function handleIssueClose() {
 		setIsIssueOpen(false);

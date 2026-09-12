@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 import { useJiraWorkItem } from "@/components/blocks/jira-work-item/experimental/context-jira-work-item";
 import type { AgentSession } from "@/components/blocks/jira-work-item/data/session-state";
 import { SESSION_SCRIPTS } from "@/components/blocks/jira-work-item/data/session-scripts";
@@ -48,7 +48,7 @@ export interface FloatingSessionSurfaceProps {
 
 export function FloatingSessionSurface({ portalToViewport = false }: FloatingSessionSurfaceProps = {}) {
 	const { actions, meta } = useJiraWorkItem();
-	const { chatSurface } = useRovoChat();
+	const { chatSurface } = useRovoChatControls();
 	const { chatContextBar, externalThinkingMessageId, openAgentChat } = useAsxAgentChatDemo();
 	const openedSessionIdRef = useRef<string | null>(null);
 	const previousChatSurfaceRef = useRef(chatSurface);

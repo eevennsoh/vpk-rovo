@@ -432,7 +432,7 @@ test("column presentation pins Untracked beside the list as well as the board", 
 	assert.match(PAGE_SOURCE, /columnFrame=\{columnChromeStyles\.headerFrame\}/u);
 	assert.match(
 		PAGE_SOURCE,
-		/<InFlowAgentSessionColumn[\s\S]*\{isListContent \? \(/u,
+		/<InFlowAgentSessionColumn[\s\S]*<RetainedView active=\{isListContent\} retain=\{retainWorkItemViews\}>[\s\S]*<RetainedView active=\{!isListContent\}/u,
 		"one Untracked column instance must wrap both Board and List so hide/archive state survives the switch",
 	);
 	assert.doesNotMatch(

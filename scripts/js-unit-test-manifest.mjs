@@ -261,6 +261,7 @@ export const TEST_FILE_CLASSIFICATIONS = {
 		".agents/skills/vpk-verify/scripts/verify-feature-map.test.js",
 	],
 	"source-contract": [
+		"components/blocks/jira-kanban/experimental/agent-session-review.test.js",
 		"components/arts/rovo-p5/index.test.js",
 		"components/blocks/agent-evaluation/agent-evaluation.test.js",
 		"components/blocks/agent-assignment/agent-assignment-field-status.test.js",

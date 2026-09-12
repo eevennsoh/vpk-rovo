@@ -176,7 +176,7 @@ test("the route locks untracked work to the in-flow column", () => {
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /<InFlowAgentSessionColumn/u);
 	assert.match(
 		EXPERIMENTAL_PAGE_SOURCE,
-		/<InFlowAgentSessionColumn[\s\S]*\{isListContent \? \(/u,
+		/<InFlowAgentSessionColumn[\s\S]*<RetainedView active=\{isListContent\} retain=\{retainWorkItemViews\}>/u,
 	);
 
 	// The rail is persistent: it is its own entry point, so there is deliberately
@@ -197,7 +197,7 @@ test("the route locks untracked work to the in-flow column", () => {
 	const contentRegionIndex = EXPERIMENTAL_PAGE_SOURCE.indexOf(
 		'className="relative flex min-h-0 min-w-0 flex-1 flex-col',
 	);
-	const listBranchIndex = EXPERIMENTAL_PAGE_SOURCE.indexOf("{isListContent ? (");
+	const listBranchIndex = EXPERIMENTAL_PAGE_SOURCE.indexOf("<RetainedView active={isListContent}");
 	const panelIndex = EXPERIMENTAL_PAGE_SOURCE.indexOf("<AgentSessionPanel");
 	assert.ok(contentRegionIndex > 0, "expected a relative content region to anchor the floating panel");
 	assert.ok(contentRegionIndex < listBranchIndex, "the board and list branches must live inside that region");

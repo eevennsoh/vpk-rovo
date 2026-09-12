@@ -12,7 +12,7 @@ test("long session titles keep their hover hit area while revealing actions", as
 	const row = page.getByTestId("agent-session-row-lw-rehearsal-pager-session");
 	if (!await row.isVisible()) {
 		await page
-			.getByRole("button", { name: "Unattached sessions column options" })
+			.getByRole("button", { name: "Unlink sessions column options" })
 			.evaluate((element) => (element as HTMLButtonElement).click());
 		await page
 			.getByRole("menuitem", { name: "Expand" })

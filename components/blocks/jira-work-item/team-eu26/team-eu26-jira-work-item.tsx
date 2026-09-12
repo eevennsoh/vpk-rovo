@@ -3,7 +3,7 @@
 import { LayoutGroup } from "motion/react";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 import { WorkItemModalProvider } from "@/app/contexts/context-work-item-modal";
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
 import type { JiraActivityEventEntry } from "@/components/blocks/jira-activity";
@@ -333,7 +333,7 @@ function TeamEu26JiraWorkItemContent({
 	const autoOpenedForStageRef = useRef<string | null>(null);
 	const { setSuppressActivityPanelReveal } = useMetadataRail();
 	const { removeAll: removeFailingChecks } = useFailingChecksComposer();
-	const { chatSurface } = useRovoChat();
+	const { chatSurface } = useRovoChatControls();
 	const { activityEvents, initialPreset } = useJiraWorkItemMeta();
 	const { elapsedMs } = useJiraWorkItemState();
 	const agentChatOpen = chatSurface === "floating";

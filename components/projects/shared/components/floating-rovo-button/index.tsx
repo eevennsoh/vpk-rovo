@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, useReducedMotion } from "motion/react";
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts/context-rovo-chat-controls";
 import { FloatingRovoButtonNudge } from "./nudge";
 import { FloatingRovoButtonSurface } from "./surface";
 import type { FloatingRovoButtonInsightsStage, FloatingRovoButtonProps } from "./types";
@@ -34,7 +34,7 @@ export default function FloatingRovoButton({
 	insights,
 	persistentBar,
 }: Readonly<FloatingRovoButtonProps>) {
-	const { isOpen, openChat } = useRovoChat();
+	const { isOpen, openChat } = useRovoChatControls();
 	const shouldReduceMotion = Boolean(useReducedMotion());
 	const [internalOnboardingOpen, setInternalOnboardingOpen] = useState(onboarding?.defaultOpen ?? false);
 	// `onboarding` and `insights` morph the same surface, so a consumer that

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 import type { AgentSessionItem } from "@/components/blocks/agent-session";
 import type { JiraIssueAgentActivity } from "@/components/blocks/jira-issue";
@@ -25,6 +25,8 @@ import {
 	appendBoardCreatedListOrder,
 	createBoardWorkItemFromSession,
 	createListRows,
+	createListRowIndex,
+	selectListRows,
 	createListWorkItemFromSession,
 	getNextPayIssueKey,
 	insertListOrderKey,
@@ -33,6 +35,8 @@ import {
 	moveListOrder,
 	toKanbanCardFromDraft,
 } from "../lib/list-rows";
+
+const ignoreIssueClick = () => undefined;
 
 const JIRA_TEAM_EU26_AGENT_CATALOG = mergeJiraKanbanAgentCatalog(
 	JIRA_TEAM_EU26_PAY_BOARD_AGENTS,
@@ -67,6 +71,7 @@ export interface UseJiraTeamEu26ListResult {
 	createFromAgentSession: (input: CreateFromAgentSessionInput) => string;
 	getProps: (columns: readonly JiraKanbanColumnData[]) => JiraListProps;
 	onAssignedAgentIdsChange: (issueKey: string, agentIds: readonly string[]) => void;
+	onVisibleRowsChange: (rows: readonly JiraListRowData[]) => void;
 }
 
 export function useJiraTeamEu26List({
@@ -82,7 +87,15 @@ export function useJiraTeamEu26List({
 	const [selectedIssueKeys, setSelectedIssueKeys] = useState<Set<string>>(() => new Set());
 	const [copiedIssueKey, setCopiedIssueKey] = useState<string | null>(null);
 	const [draftWorkItem, setDraftWorkItem] = useState<ListDraftWorkItem | null>(null);
+	const rowIndex = useMemo(
+		() => createListRowIndex(boardColumns, JIRA_TEAM_EU26_AGENT_CATALOG),
+		[boardColumns],
+	);
+	const nextIssueKey = useMemo(() => getNextPayIssueKey(boardColumns), [boardColumns]);
 	const visibleKeysRef = useRef<readonly string[]>([]);
+	const onVisibleRowsChange = useCallback((rows: readonly JiraListRowData[]) => {
+		visibleKeysRef.current = rows.map((row) => row.issueKey);
+	}, []);
 	const boardColumnsRef = useRef(boardColumns);
 	const listOrderRef = useRef(listOrder);
 
@@ -274,15 +287,45 @@ export function useJiraTeamEu26List({
 		return result.issueKey;
 	}, [setBoardColumns]);
 
+	const handleDraftWorkItemAssigneeChange = useCallback((
+		assignee: JiraListPerson | undefined,
+	) => {
+		setDraftWorkItem((currentDraft) => (
+			currentDraft ? { ...currentDraft, assignee } : currentDraft
+		));
+	}, []);
+
+	const handleDraftWorkItemDueDateChange = useCallback((
+		dueDate: string | undefined,
+	) => {
+		setDraftWorkItem((currentDraft) => (
+			currentDraft ? { ...currentDraft, dueDate } : currentDraft
+		));
+	}, []);
+
+	const handleDraftWorkItemIssueTypeChange = useCallback((
+		issueType: JiraListIssueType,
+	) => {
+		setDraftWorkItem((currentDraft) => (
+			currentDraft ? { ...currentDraft, issueType } : currentDraft
+		));
+	}, []);
+
+	const handleDraftWorkItemSummaryChange = useCallback((
+		summary: string,
+	) => {
+		setDraftWorkItem((currentDraft) => (
+			currentDraft ? { ...currentDraft, summary } : currentDraft
+		));
+	}, []);
+
+	const handleDraftWorkItemCancel = useCallback(() => setDraftWorkItem(null), []);
+
 	const getProps = useCallback((columns: readonly JiraKanbanColumnData[]): JiraListProps => {
 		const rows = applyListOrder(
-			createListRows(columns, JIRA_TEAM_EU26_AGENT_CATALOG),
+			selectListRows(columns, JIRA_TEAM_EU26_AGENT_CATALOG, rowIndex),
 			listOrder,
 		);
-		// Event handlers need the keys last shown (assignee filter may hide rows).
-		// Written here, not in an updater, so move/select/create see that view.
-		visibleKeysRef.current = rows.map((row) => row.issueKey);
-		const nextIssueKey = getNextPayIssueKey(boardColumns);
 
 		return {
 			agentCatalog: JIRA_TEAM_EU26_AGENT_CATALOG,
@@ -303,30 +346,14 @@ export function useJiraTeamEu26List({
 			onAssignedAgentSelect,
 			onCopyLink: handleCopyLink,
 			onCreate: handleCreateWorkItem,
-			onDraftWorkItemAssigneeChange: (assignee) => {
-				setDraftWorkItem((currentDraft) => (
-					currentDraft ? { ...currentDraft, assignee } : currentDraft
-				));
-			},
-			onDraftWorkItemCancel: () => setDraftWorkItem(null),
-			onDraftWorkItemDueDateChange: (dueDate) => {
-				setDraftWorkItem((currentDraft) => (
-					currentDraft ? { ...currentDraft, dueDate } : currentDraft
-				));
-			},
-			onDraftWorkItemIssueTypeChange: (issueType) => {
-				setDraftWorkItem((currentDraft) => (
-					currentDraft ? { ...currentDraft, issueType } : currentDraft
-				));
-			},
+			onDraftWorkItemAssigneeChange: handleDraftWorkItemAssigneeChange,
+			onDraftWorkItemCancel: handleDraftWorkItemCancel,
+			onDraftWorkItemDueDateChange: handleDraftWorkItemDueDateChange,
+			onDraftWorkItemIssueTypeChange: handleDraftWorkItemIssueTypeChange,
 			onDraftWorkItemSubmit: handleDraftWorkItemSubmit,
-			onDraftWorkItemSummaryChange: (summary) => {
-				setDraftWorkItem((currentDraft) => (
-					currentDraft ? { ...currentDraft, summary } : currentDraft
-				));
-			},
-			onIssueClick: () => undefined,
-			onIssueKeyClick: () => undefined,
+			onDraftWorkItemSummaryChange: handleDraftWorkItemSummaryChange,
+			onIssueClick: ignoreIssueClick,
+			onIssueKeyClick: ignoreIssueClick,
 			onMoveRow: handleMoveRow,
 			onRefresh: handleRefresh,
 			onSelectAllRows: handleSelectAllRows,
@@ -339,12 +366,16 @@ export function useJiraTeamEu26List({
 			visibleCount: rows.length,
 		};
 	}, [
-		boardColumns,
 		copiedIssueKey,
 		draftWorkItem,
 		handleAssignedAgentIdsChange,
 		handleCopyLink,
 		handleCreateWorkItem,
+		handleDraftWorkItemAssigneeChange,
+		handleDraftWorkItemCancel,
+		handleDraftWorkItemDueDateChange,
+		handleDraftWorkItemIssueTypeChange,
+		handleDraftWorkItemSummaryChange,
 		handleDraftWorkItemSubmit,
 		handleMoveRow,
 		handleRefresh,
@@ -352,9 +383,11 @@ export function useJiraTeamEu26List({
 		handleSelectRow,
 		handleStatusChange,
 		listOrder,
+		nextIssueKey,
+		rowIndex,
 		onAssignedAgentSelect,
 		selectedIssueKeys,
 	]);
 
-	return { createBoardFromAgentSession, createFromAgentSession, getProps, onAssignedAgentIdsChange: handleAssignedAgentIdsChange };
+	return { createBoardFromAgentSession, createFromAgentSession, getProps, onVisibleRowsChange, onAssignedAgentIdsChange: handleAssignedAgentIdsChange };
 }

@@ -39,7 +39,7 @@ test("Ask Rovo button exposes sidebar chat open state as pressed state", () => {
 });
 
 test("top navigation derives Ask Rovo pressed state from the sidebar chat surface", () => {
-	assert.match(USE_TOP_NAVIGATION_SOURCE, /toggleChat,.*chatSurface.*\} = useRovoChat\(\);/);
+	assert.match(USE_TOP_NAVIGATION_SOURCE, /toggleChat,.*chatSurface.*\} = useRovoChatControls\(\);/);
 	assert.match(USE_TOP_NAVIGATION_SOURCE, /const isSidebarChatOpen = chatSurface === "sidebar";/);
 	assert.match(USE_TOP_NAVIGATION_SOURCE, /isSidebarChatOpen,/);
 	assert.match(TOP_NAVIGATION_SOURCE, /isChatOpen=\{nav\.isSidebarChatOpen\}/);

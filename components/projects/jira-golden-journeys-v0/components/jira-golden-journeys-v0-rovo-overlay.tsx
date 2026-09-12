@@ -4,7 +4,7 @@ import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 import type { SendPromptOptions } from "@/app/contexts";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
 import type {
@@ -52,7 +52,7 @@ export function AsxRovoOverlay({
 	placement = "floating",
 	launcher = "auto",
 }: Readonly<AsxRovoOverlayProps>): React.ReactNode {
-	const { chatSurface } = useRovoChat();
+	const { chatSurface } = useRovoChatControls();
 	const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
 	const showClosedLauncher = launcher === "auto" && chatSurface === null;
 
