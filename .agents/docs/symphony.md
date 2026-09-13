@@ -1,6 +1,6 @@
 # Symphony
 
-VPK-rovo runs the upstream OpenAI Symphony Elixir reference implementation
+VPK runs the upstream OpenAI Symphony Elixir reference implementation
 through `pnpm run symphony`. The local repo owns only the launcher, workflow
 template, and repo-specific Codex skill resources. The Elixir runtime itself is pulled
 from `openai/symphony` at startup.
@@ -55,10 +55,10 @@ Optional overrides:
 
 ```bash
 LINEAR_ASSIGNEE=me
-SYMPHONY_SOURCE_REPO_URL=git@github.com:eevennsoh/VPK-rovo.git
-SYMPHONY_GITHUB_REPO=eevennsoh/VPK-rovo
+SYMPHONY_SOURCE_REPO_URL=git@github.com:<owner>/<repository>.git
+SYMPHONY_GITHUB_REPO=<owner>/<repository>
 SYMPHONY_WORKSPACE_ROOT=/tmp/symphony-workspaces
-SYMPHONY_ENV_LOCAL_SOURCE=/absolute/path/to/VPK-rovo/.env.local
+SYMPHONY_ENV_LOCAL_SOURCE=/absolute/path/to/repository/.env.local
 SYMPHONY_UPSTREAM_REPO=https://github.com/openai/symphony.git
 SYMPHONY_UPSTREAM_REF=main
 SYMPHONY_UPSTREAM_DIR=.tmp/symphony/openai-symphony
@@ -258,7 +258,7 @@ The workflow keeps the upstream defaults visible where local choices matter:
   silent turns from burning indefinitely.
 
 Upstream also supports SSH workers with `worker.ssh_hosts` and
-`worker.max_concurrent_agents_per_host`. VPK-rovo leaves those unset for local
+`worker.max_concurrent_agents_per_host`. VPK leaves those unset for local
 runs.
 
 ## Lifecycle Hooks

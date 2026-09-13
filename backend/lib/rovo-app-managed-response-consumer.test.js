@@ -276,3 +276,49 @@ test("consumeRovoAppManagedResponse rejects non-event-stream responses", async (
 		/Rovo expected an event stream response/u,
 	);
 });
+
+test("consumeRovoAppManagedResponse prefers the current port header over the legacy header", async () => {
+	const { consumeRovoAppManagedResponse, stageTrace } = createHarness();
+	const run = {
+		id: "run-1",
+		rovoPort: 1111,
+	};
+
+	await consumeRovoAppManagedResponse({
+		initialMessages: [],
+		response: createStreamResponse({
+			headers: {
+				"x-vpk-port": "4321",
+				"x-vpk-rovo-port": "9876",
+			},
+		}),
+		run,
+		stageTrace,
+		threadId: "thread-1",
+	});
+
+	assert.equal(run.rovoPort, 4321);
+});
+
+test("consumeRovoAppManagedResponse falls back when the current port header is invalid", async () => {
+	const { consumeRovoAppManagedResponse, stageTrace } = createHarness();
+	const run = {
+		id: "run-1",
+		rovoPort: 1111,
+	};
+
+	await consumeRovoAppManagedResponse({
+		initialMessages: [],
+		response: createStreamResponse({
+			headers: {
+				"x-vpk-port": "invalid",
+				"x-vpk-rovo-port": "9876",
+			},
+		}),
+		run,
+		stageTrace,
+		threadId: "thread-1",
+	});
+
+	assert.equal(run.rovoPort, 9876);
+});

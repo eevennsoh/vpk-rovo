@@ -67,15 +67,27 @@ ALMD_TERM_GRACE_SECS=5   # allow graceful exit before a guarded SIGKILL fallback
 KILL_RUNAWAY_ALMD=1      # 1 = reset sustained-hot almd; 0 = report only
 IDLE_STACK_MIN_AGE_SECS=1800  # leftover stacks younger than 30m are still warming
 KILL_IDLE_STACKS=1       # 1 = stop idle unattached leftover stacks; 0 = report only
-MAIN_WORKTREE="$HOME/Labs/vpk-rovo"
 
-NEXT_DIRS=(
-	"$HOME/Labs/vpk-rovo/.next"
-	"$HOME"/.codex/worktrees/*/vpk-rovo/.next
-	"$HOME"/Labs/vpk-rovo/.claude/worktrees/*/.next
-	"$HOME"/.cursor/worktrees/vpk-rovo/*/.next
-	"$HOME"/.superset/worktrees/*/*/.next
-)
+resolve_repo_root() {
+	local root
+	if [[ -n "${VPK_REPO_ROOT:-}" ]]; then
+		print -r -- "$VPK_REPO_ROOT"
+		return 0
+	fi
+	root=$(git rev-parse --show-toplevel 2>/dev/null) || return 1
+	print -r -- "$root"
+}
+
+MAIN_WORKTREE=$(resolve_repo_root) || {
+	print -u2 -- "vpk-system-clean: run from the repository or set VPK_REPO_ROOT"
+	exit 1
+}
+
+NEXT_DIRS=( "$MAIN_WORKTREE/.next" )
+for worktree_root in ${(f)"$(git -C "$MAIN_WORKTREE" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p')"}; do
+	NEXT_DIRS+=( "$worktree_root/.next" )
+done
+NEXT_DIRS+=( "$HOME"/.superset/worktrees/*/*/.next )
 
 ts() { date "+%Y-%m-%d %H:%M:%S"; }
 log() { print -r -- "[$(ts)] $*" >> "$LOG"; }

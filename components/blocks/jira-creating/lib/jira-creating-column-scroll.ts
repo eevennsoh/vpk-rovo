@@ -4,11 +4,13 @@
  *
  * Aligning to the group's top (or to `scrollHeight` while the slot is still
  * height 0) leaves the growing card under the fold. Follow the last arriving
- * card's bottom as the slot expands. Gap drops must not call this.
+ * card's bottom plus the scrollport padding as the slot expands, so the
+ * bottom scroll mask clears. Gap drops must not call this.
  */
 
 export interface CreatedCardRevealMetrics {
 	readonly containerClientHeight: number;
+	readonly containerPaddingBottom: number;
 	readonly containerScrollHeight: number;
 	readonly containerScrollTop: number;
 	readonly targetHeight: number;
@@ -22,7 +24,7 @@ export function getCreatedCardRevealScrollTop(
 	metrics: CreatedCardRevealMetrics,
 ): number {
 	const maxScroll = Math.max(0, metrics.containerScrollHeight - metrics.containerClientHeight);
-	const targetBottom = metrics.targetOffsetTop + metrics.targetHeight;
+	const targetBottom = metrics.targetOffsetTop + metrics.targetHeight + metrics.containerPaddingBottom;
 	const visibleBottom = metrics.containerScrollTop + metrics.containerClientHeight;
 	const fullyVisible = targetBottom <= visibleBottom + REVEAL_EPSILON_PX
 		&& metrics.targetOffsetTop >= metrics.containerScrollTop - REVEAL_EPSILON_PX;
@@ -51,6 +53,7 @@ export function readCreatedCardRevealMetrics(
 
 	return {
 		containerClientHeight: container.clientHeight,
+		containerPaddingBottom: Number.parseFloat(getComputedStyle(container).paddingBottom) || 0,
 		containerScrollHeight: container.scrollHeight,
 		containerScrollTop: container.scrollTop,
 		targetHeight: targetRect.height,

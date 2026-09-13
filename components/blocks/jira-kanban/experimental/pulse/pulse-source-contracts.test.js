@@ -444,7 +444,7 @@ test("Pulse rail hangs everything off one left edge and one right edge", () => {
 	assert.doesNotMatch(SOURCES.rail, /Slack: \{ kind: "third-party", name: "slack" \}/u);
 	assert.doesNotMatch(SOURCES.rail, /Loom: \{ kind: "atlassian", name: "loom" \}/u);
 	assert.match(SOURCES.data, /export \{ PULSE_SPACE_REPOSITORY, PULSE_VIEWER_MACHINE_NAME \} from "\.\/pulse-loose-work"/u);
-	assert.match(SOURCES.looseWork, /export const PULSE_SPACE_REPOSITORY = "eevensoh\/vpk-rovo"/u);
+	assert.match(SOURCES.looseWork, /export const PULSE_SPACE_REPOSITORY = "acme\/storefront"/u);
 	// Resume is gated on the viewer's own device, so the fixture names it once
 	// and the machine name on a row is the only thing that grants the action.
 	assert.match(SOURCES.looseWork, /export const PULSE_VIEWER_MACHINE_NAME = "Venn’s MacBook"/u);
@@ -487,7 +487,7 @@ test("Pulse is a toggle on the board's own control row, not a separate tab", () 
 	);
 	assert.ok(!existsSync(join(PULSE_DIR, "..", "experimental-view-tabs.tsx")), "the tab component should be retired, not left beside its replacement");
 
-	assert.match(EXPERIMENTAL_PAGE_SOURCE, /import \{ ExperimentalPulse \} from "\.\/pulse\/experimental-pulse";/u);
+	assert.match(EXPERIMENTAL_PAGE_SOURCE, /const ExperimentalPulse = dynamic\(\(\) => import\("\.\/pulse\/experimental-pulse"\)\.then\(\(module\) => module\.ExperimentalPulse\)\);/u);
 	// The mode may be driven from outside — the route mounts a floating insights
 	// nudge that opens Insights — so the local state is the fallback half of a
 	// controlled pair rather than the only owner.

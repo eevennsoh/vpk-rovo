@@ -21,6 +21,7 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel), A
 
 | When you need...                       | Read                                                        |
 | -------------------------------------- | ----------------------------------------------------------- |
+| UI performance decisions and shared mechanisms | `.agents/docs/playbooks/improve-ui-performance.md`          |
 | Component architecture rules           | `.agents/skills/vpk-tidy/SKILL.md`                          |
 | React patterns reference (1000+ lines) | `.agents/skills/vpk-tidy/references/patterns.md`            |
 | Shared visual contract                 | `DESIGN.md`                                                 |
@@ -219,6 +220,7 @@ New behavior gets a clear owner instead of expanding an already-busy file. Befor
 - Treat 1000-line files as a decomposition alarm. Do not push a file past that size, or add another concern to an already-oversized owner, unless the structure is clearly intentional and still easy to scan.
 - When introducing a shared abstraction, migrate the old local copies and delete the duplicate behavior in the same change. Do not let old and new card, directory, toolbar, reducer, parser, or converter implementations coexist.
 - Split orchestration from business logic. Long reset/generation/chat flows should move state transitions into reducers or dedicated helpers, keep independent async work parallel when practical, and avoid half-applied UI/backend state.
+- For responsiveness work or changes to component mounting/subscriptions, follow `.agents/docs/playbooks/improve-ui-performance.md`: measure the interaction, reuse shared mechanisms, and verify state lifetime before changing defaults.
 - Prefer stable, deterministic contract tests around extracted helpers or data boundaries. Add exact-file tests to the repo unit gate when they protect real behavior; avoid relying on broad source-grep tests for durable architecture contracts.
 
 > Before endpoint or chat changes, read `.agents/rules/api-surfaces.md` and `.agents/rules/chat-architecture.md`.

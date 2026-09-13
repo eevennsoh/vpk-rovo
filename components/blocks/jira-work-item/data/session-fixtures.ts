@@ -269,7 +269,7 @@ export const FILLED_STATIC_EVENTS: StaticTimelineEvent[] = [
 			additions: 148,
 			deletions: 37,
 			authorName: "Maya Chen",
-			repository: "eevensoh/vpk-rovo",
+			repository: "acme/storefront",
 			branch: "rovo/rfp-103-response-validation",
 			targetBranch: "main",
 			createdAtMs: SESSION_EPOCH_MS - 1_200_000,

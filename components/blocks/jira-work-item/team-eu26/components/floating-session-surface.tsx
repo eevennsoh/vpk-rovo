@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 import { useJiraWorkItem } from "@/components/blocks/jira-work-item/team-eu26/context-jira-work-item";
 import type { AgentSession } from "@/components/blocks/jira-work-item/data/session-state";
 import { SESSION_SCRIPTS } from "@/components/blocks/jira-work-item/data/session-scripts";
@@ -75,7 +75,7 @@ export function FloatingSessionSurface({
 	onSessionReply?: SessionReplyInterceptor;
 }>) {
 	const { actions, meta } = useJiraWorkItem();
-	const { chatSurface } = useRovoChat();
+	const { chatSurface } = useRovoChatControls();
 	const { chatContextBar, externalThinkingMessageId, openAgentChat } = useAsxAgentChatDemo();
 	const openedSessionStateRef = useRef<string | null>(null);
 	const previousChatSurfaceRef = useRef(chatSurface);

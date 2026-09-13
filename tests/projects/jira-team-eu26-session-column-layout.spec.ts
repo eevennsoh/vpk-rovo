@@ -322,6 +322,32 @@ test("the collapsed options menu offers Pin and Expand", async ({ page }) => {
 	await expect(page.getByRole("menuitem", { name: "Expand" })).toHaveCount(0);
 });
 
+test("the hover-open collapsed menu keeps timeline notches inert across its safezone", async ({ page }) => {
+	await openCollapsedBoard(page);
+	if (await page.locator("[data-agent-session-column-hit-area]").count() > 0) {
+		await revealCollapsedAgentSessionColumn(page);
+	}
+	const column = page.locator("[data-agent-session-column]");
+	const options = page.getByRole("button", { name: "Unlink sessions column options" });
+	const first = column.locator("[data-agent-session-notch]").first();
+	const menu = page.getByRole("menu", { name: "Unlink sessions column options" });
+
+	await options.hover();
+	await expect(menu).toBeVisible();
+	const optionsBox = (await options.boundingBox())!;
+	const firstBox = (await first.boundingBox())!;
+	const menuBox = (await menu.boundingBox())!;
+	const crossingY = firstBox.y + firstBox.height / 2;
+
+	await page.mouse.move(menuBox.x + 8, crossingY);
+	await page.mouse.move(firstBox.x + firstBox.width - 8, crossingY);
+	await page.waitForTimeout(400);
+	await expect(page.locator('[data-slot="hover-card-content"]')).toBeHidden();
+	await page.mouse.move(optionsBox.x + optionsBox.width / 2, optionsBox.y + optionsBox.height / 2);
+
+	await expect(menu).toBeVisible();
+});
+
 test("scrolling the session column preserves the active flyout until pointer movement", async ({ page }) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openBoard(page);
@@ -380,4 +406,48 @@ test("a scrolled session preview keeps its portalled actions usable", async ({ p
 	await expect(archive).toBeVisible();
 	await archive.click();
 	await expect(column.locator('[data-slot="hover-card-trigger"]').filter({ hasText: title! })).toHaveCount(0);
+});
+
+test("the work-item type menu is anchored on its first open", async ({ page }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await page.goto(JIRA_TEAM_EU26_URL, { waitUntil: "domcontentloaded" });
+	await expect(page.getByRole("heading", { name: "Jira Design" })).toBeVisible({
+		timeout: 15_000,
+	});
+	const columnOptions = page.getByRole("button", { name: "Unlink sessions column options" });
+	if (await columnOptions.isVisible()) {
+		await columnOptions.click();
+		await page.getByRole("menuitem", { name: "Expand" }).click();
+	}
+	const row = page.getByTestId("agent-session-row-lw-scope-thread");
+	await expect(row).toBeVisible();
+	await row.hover();
+	await row.getByRole("button", { name: /^More actions for/u }).click();
+	await page.getByRole("menuitem", { name: "Link work item Open submenu" }).click();
+	await page.getByRole("tab", { name: "Create new" }).click();
+
+	const trigger = page.locator('[aria-label="Work item type: Task"]');
+	const triggerBox = await trigger.boundingBox();
+	if (!triggerBox) throw new Error("Expected the work-item type trigger");
+	expect(triggerBox.width).toBeLessThanOrEqual(48);
+	await trigger.click();
+
+	const task = page.getByRole("menuitemradio", { name: /^task Task$/u });
+	await expect(task).toBeVisible();
+	const popup = task.locator('xpath=ancestor::*[@data-slot="dropdown-menu-sub-content"][1]');
+	await popup.evaluate(async (element) => {
+		await Promise.all(element.getAnimations().map((animation) => animation.finished));
+	});
+	const popupBox = await popup.boundingBox();
+	if (!popupBox) throw new Error("Expected the work-item type menu");
+	expect(popupBox.x).toBeCloseTo(triggerBox.x, 0);
+	const verticalGap = popupBox.y >= triggerBox.y + triggerBox.height
+		? popupBox.y - (triggerBox.y + triggerBox.height)
+		: triggerBox.y - (popupBox.y + popupBox.height);
+	expect(verticalGap).toBeGreaterThanOrEqual(0);
+	expect(verticalGap).toBeLessThanOrEqual(8);
+
+	await page.keyboard.press("Escape");
+	await expect(task).toHaveCount(0);
+	await expect(page.getByRole("tab", { name: "Create new" })).toBeVisible();
 });

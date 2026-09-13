@@ -1,12 +1,12 @@
 ---
 name: vpk-git-ship
-description: "Ship VPK-rovo changes through a pull request, required checks, review remediation, merge, and persistent-main sync. Use when the user says \"vpk-git-ship\", \"ship this\", \"merge it\", \"land this work end-to-end\", or \"merge these PRs back to main\"; use vpk-git-clean for cleanup."
+description: "Ship VPK changes through a pull request, required checks, review remediation, merge, and persistent-main sync. Use when the user says \"vpk-git-ship\", \"ship this\", \"merge it\", \"land this work end-to-end\", or \"merge these PRs back to main\"; use vpk-git-clean for cleanup."
 validation_command: pnpm run lint && pnpm run typecheck
 ---
 
 # VPK Git Ship
 
-Use this skill for interactive VPK-rovo shipping that preserves unrelated work,
+Use this skill for interactive VPK shipping that preserves unrelated work,
 publishes a PR, clears its merge gates, and syncs the persistent `main` checkout.
 It ends at merged plus synced; local worktree and branch cleanup belongs to
 `vpk-git-clean`.

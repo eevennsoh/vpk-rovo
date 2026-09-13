@@ -20,6 +20,11 @@ LABEL="com.${USER_ID}.vpk-system-clean"
 DST_PLIST="$HOME/Library/LaunchAgents/${LABEL}.plist"
 SUDOERS="/etc/sudoers.d/vpk-system-clean"
 SCHED_CONF="$HOME/.config/vpk-system-clean/schedule.env"
+REPO_ROOT="$(git -C "$SKILL_DIR" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | head -1)"
+if [[ -z "$REPO_ROOT" ]]; then
+	print -u2 -- "✗ could not resolve the primary checkout from $SKILL_DIR"
+	exit 1
+fi
 
 mkdir -p "$HOME/.local/bin" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
 
@@ -69,6 +74,13 @@ cat > "$DST_PLIST" <<PLIST
 		<string>/bin/zsh</string>
 		<string>${DST_SH}</string>
 	</array>
+	<key>WorkingDirectory</key>
+	<string>${REPO_ROOT}</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>VPK_REPO_ROOT</key>
+		<string>${REPO_ROOT}</string>
+	</dict>
 ${SCHED_XML}
 	<key>RunAtLoad</key>
 	<false/>

@@ -200,7 +200,7 @@ test("dev-tmux plain start tolerates the first discovered other stack root", () 
 				FAKE_LISTEN_PORT: "49127",
 				FAKE_PGREP_PIDS: "12345",
 				FAKE_CWD_PID: "12345",
-				FAKE_CWD_ROOT: "/tmp/other-vpk-rovo",
+				FAKE_CWD_ROOT: "/tmp/other-project",
 				FAKE_TMUX_LOG: fake.tmuxLogPath,
 				NODE_CLEANUP_LOG: fake.cleanupLogPath,
 			})

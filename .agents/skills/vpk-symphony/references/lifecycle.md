@@ -1,6 +1,6 @@
 # Symphony Lifecycle
 
-Use this reference when executing or updating the VPK-rovo Symphony workflow.
+Use this reference when executing or updating the VPK Symphony workflow.
 
 ## Ad-Hoc Request Bootstrap
 

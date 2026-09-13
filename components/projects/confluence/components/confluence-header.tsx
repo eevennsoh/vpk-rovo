@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { token } from "@/lib/tokens";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/app/contexts/context-sidebar";
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 import { useClickOutside } from "@/components/hooks/use-click-outside";
 import ShareDropdownMenu from "./share-dropdown-menu";
 import { PRESENCE_USERS } from "../data/presence-users";
@@ -23,7 +23,7 @@ export default function ConfluenceHeader({
 	embedded = false,
 }: Readonly<ConfluenceHeaderProps>) {
 	const { isVisible, isHovered } = useSidebar();
-	const { chatSurface } = useRovoChat();
+	const { chatSurface } = useRovoChatControls();
 	const isSidebarChatOpen = chatSurface === "sidebar";
 	const isSidebarOpen = isVisible || isHovered;
 	const sidebarWidth = isVisible ? "230px" : "0px";

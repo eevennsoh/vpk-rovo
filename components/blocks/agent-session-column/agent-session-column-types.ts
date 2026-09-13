@@ -93,6 +93,12 @@ export interface AgentSessionColumnProps extends Omit<
 	/** Called after the column collapses or expands, controlled or not. */
 	onCollapsedChange?: (collapsed: boolean) => void;
 	/**
+	 * Reports pointer hover or focus anywhere inside the column. Hosts with
+	 * ambient updates can pause them while a viewer is working in either the
+	 * collapsed rail or expanded list.
+	 */
+	onInteractionChange?: (interacting: boolean) => void;
+	/**
 	 * Enables additive/range selection, selection keyboard shortcuts, bulk header
 	 * actions, and multi-session drag cohorts. Defaults to `true`. Set to `false`
 	 * when every drag must carry only the session it started from. `false` also

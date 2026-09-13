@@ -36,11 +36,12 @@ function loadSyncModule() {
 	return syncModulePromise;
 }
 
-test("the Jira v5 demo syncs one or two new sessions per batch", async () => {
+test("the Jira v5 demo syncs one, two, or three new sessions per batch", async () => {
 	const sync = await loadSyncModule();
 
 	assert.equal(sync.takeJiraTeamEu26SyncBatch(0, () => 0).sessions.length, 1);
-	assert.equal(sync.takeJiraTeamEu26SyncBatch(0, () => 0.999).sessions.length, 2);
+	assert.equal(sync.takeJiraTeamEu26SyncBatch(0, () => 0.5).sessions.length, 2);
+	assert.equal(sync.takeJiraTeamEu26SyncBatch(0, () => 0.999).sessions.length, 3);
 
 	const finalBatch = sync.takeJiraTeamEu26SyncBatch(
 		sync.JIRA_TEAM_EU26_SYNC_SESSIONS.length - 1,
@@ -63,13 +64,19 @@ test("every queued Jira v5 session has a unique stable identity", async () => {
 	const sessions = sync.JIRA_TEAM_EU26_SYNC_SESSIONS;
 	const codingAgentIds = new Set(["claude", "codex", "copilot", "cursor"]);
 
-	assert.ok(sessions.length >= 8);
+	assert.equal(sessions.length, 24);
 	assert.equal(new Set(sessions.map((session) => session.id)).size, sessions.length);
 	assert.ok(sessions.every((session) => session.kind === "agent-session"));
 	assert.ok(sessions.every((session) => codingAgentIds.has(session.agentId)));
 	assert.ok(sessions.every((session) => !/Rovo/u.test(session.title)));
 	assert.ok(sessions.every((session) => session.timeLabel === "Just now"));
 	assert.ok(sessions.every((session) => session.issueStatus.length > 0));
+	assert.ok(sessions.every((session) => session.shortTitle.length > 0));
+	assert.ok(sessions.every((session) => session.sourceTitle.length > 0));
+	assert.ok(sessions.every((session) => session.title.length > 0));
+	assert.ok(sessions.every((session) => session.detail.length > 0));
+	assert.ok(sessions.every((session) => session.machineName.length > 0));
+	assert.ok(sessions.every((session) => session.memberIds.length > 0));
 	assert.equal(
 		sessions.find((session) => session.sourceTitle === "PAY-132")?.issueStatus,
 		"In review",
@@ -127,19 +134,19 @@ test("reviewing synced sessions clears all or only the named arrival marks", asy
 	);
 });
 
-test("the route periodically syncs one or two new agent sessions into Untracked work", () => {
+test("the route periodically syncs one to three new agent sessions into Untracked work", () => {
 	assert.match(
 		PAGE_SOURCE,
 		/import \{ useJiraTeamEu26AgentSessionSync \} from "\.\/hooks\/use-jira-team-eu26-agent-session-sync";/u,
 	);
 	assert.match(
 		PAGE_SOURCE,
-		/const \{\s*reviewAgentSessions,\s*newAgentSessionIds,\s*syncedAgentSessions,\s*\} = useJiraTeamEu26AgentSessionSync\(\{ active: showBoardContent \}\);/u,
+		/const \{\s*reviewAgentSessions,\s*newAgentSessionIds,\s*syncedAgentSessions,\s*\} = useJiraTeamEu26AgentSessionSync\(\{\s*active: showBoardContent,\s*paused: agentSessionColumnInteracting,\s*\}\);/u,
 	);
 	assert.match(
 		PAGE_SOURCE,
-		/<ExperimentalJiraKanbanPage[\s\S]*additionalAgentSessions=\{syncedAgentSessions\}[\s\S]*newAgentSessionIds=\{newAgentSessionIds\}[\s\S]*onAgentSessionsReviewed=\{reviewAgentSessions\}/u,
+		/<ExperimentalJiraKanbanPage[\s\S]*additionalAgentSessions=\{syncedAgentSessions\}[\s\S]*newAgentSessionIds=\{newAgentSessionIds\}[\s\S]*onAgentSessionColumnInteractionChange=\{setAgentSessionColumnInteracting\}[\s\S]*onAgentSessionsReviewed=\{reviewAgentSessions\}/u,
 	);
-	assert.match(HOOK_SOURCE, /if \(!active[\s\S]*return undefined;/u);
+	assert.match(HOOK_SOURCE, /if \(!active \|\| paused[\s\S]*return undefined;/u);
 	assert.match(HOOK_SOURCE, /removeReviewedJiraTeamEu26AgentSessionIds/u);
 });

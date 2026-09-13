@@ -863,7 +863,7 @@ test("the linked event uses the Jira Queue pull-request row", () => {
 		additions: 148,
 		deletions: 37,
 		authorName: "Venn",
-		repository: "eevensoh/vpk-rovo",
+		repository: "acme/storefront",
 		branch: "fix/comment-highlight",
 		targetBranch: "main",
 		createdAtMs: Date.UTC(2026, 4, 12, 13, 40),

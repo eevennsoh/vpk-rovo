@@ -25,7 +25,8 @@ function createInitialSyncState(): JiraTeamEu26AgentSessionSyncState {
 
 export function useJiraTeamEu26AgentSessionSync({
 	active,
-}: Readonly<{ active: boolean }>): Readonly<{
+	paused = false,
+}: Readonly<{ active: boolean; paused?: boolean }>): Readonly<{
 	newAgentSessionIds: ReadonlySet<string>;
 	reviewAgentSessions: (sessionIds?: readonly string[]) => void;
 	syncedAgentSessions: readonly PulseAgentSession[];
@@ -44,7 +45,7 @@ export function useJiraTeamEu26AgentSessionSync({
 	}, []);
 
 	useEffect(() => {
-		if (!active || syncState.nextIndex >= JIRA_TEAM_EU26_SYNC_SESSIONS.length) {
+		if (!active || paused || syncState.nextIndex >= JIRA_TEAM_EU26_SYNC_SESSIONS.length) {
 			return undefined;
 		}
 
@@ -94,7 +95,7 @@ export function useJiraTeamEu26AgentSessionSync({
 			clearPendingSync();
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};
-	}, [active, syncState]);
+	}, [active, paused, syncState]);
 
 	return {
 		newAgentSessionIds: syncState.newAgentSessionIds,

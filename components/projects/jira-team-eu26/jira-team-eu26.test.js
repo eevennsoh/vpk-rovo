@@ -8,6 +8,7 @@ function readProjectFile(relativePath) {
 }
 
 const PAGE_SOURCE = readProjectFile("components/projects/jira-team-eu26/page.tsx");
+const LIST_VIEW_SOURCE = readProjectFile("components/projects/jira-team-eu26/components/jira-team-eu26-list.tsx");
 const LIST_HOOK_SOURCE = readProjectFile(
 	"components/projects/jira-team-eu26/hooks/use-jira-team-eu26-list.ts",
 );
@@ -203,7 +204,7 @@ test("chin-row layout uses Team EU's merged grouping", () => {
 	);
 	assert.match(
 		LIST_HOOK_SOURCE,
-		/return \{ createBoardFromAgentSession, createFromAgentSession, getProps, onAssignedAgentIdsChange: handleAssignedAgentIdsChange \};/u,
+		/return \{ createBoardFromAgentSession, createFromAgentSession, getProps, onVisibleRowsChange, onAssignedAgentIdsChange: handleAssignedAgentIdsChange \};/u,
 	);
 	assert.match(
 		EXPERIMENTAL_CARD_SOURCE,
@@ -652,24 +653,13 @@ test("the Work items header switches between Board and List views with their ico
 	assert.match(PAGE_SOURCE, /activeView=\{activeView\}/u);
 	assert.match(PAGE_SOURCE, /const tabOwnsView = activeTab\?\.view !== undefined;/u);
 	assert.match(PAGE_SOURCE, /onViewChange=\{tabOwnsView \? undefined : setWorkItemView\}/u);
-	assert.match(
-		PAGE_SOURCE,
-		/renderListContent=\{\(\s*columns,\s*\{\s*agentSessionDropIntent,\s*onTrailingContentUnderlapChange,\s*scrollEndInset,\s*trailingOverlayRef,\s*\},\s*\) =>/u,
-	);
+	assert.match(PAGE_SOURCE, /renderListContent=\{\(columns, layout\) =>/u);
 	assert.match(PAGE_SOURCE, /useJiraTeamEu26List/u);
-	assert.match(PAGE_SOURCE, /<JiraList\s+\{\.\.\.listProps\}/u);
-	assert.match(PAGE_SOURCE, /agentSessionDropIntent=\{agentSessionDropIntent\}/u);
-	assert.match(
-		PAGE_SOURCE,
-		/onTrailingContentUnderlapChange=\{onTrailingContentUnderlapChange\}/u,
-	);
-	assert.match(PAGE_SOURCE, /const JIRA_LIST_PANEL_END_GAP_PX = 24;/u);
-	assert.match(
-		PAGE_SOURCE,
-		/const listScrollEndInset = scrollEndInset > 0\s*\?\s*scrollEndInset \+ JIRA_LIST_PANEL_END_GAP_PX\s*:\s*0;/u,
-	);
-	assert.match(PAGE_SOURCE, /scrollEndInset=\{listScrollEndInset\}/u);
-	assert.match(PAGE_SOURCE, /trailingOverlayRef=\{trailingOverlayRef\}/u);
+	assert.match(PAGE_SOURCE, /<JiraTeamEu26List[\s\S]*columns=\{columns\}[\s\S]*getProps=\{getListProps\}[\s\S]*onVisibleRowsChange=\{onVisibleRowsChange\}[\s\S]*\{\.\.\.layout\}/u);
+	assert.match(LIST_VIEW_SOURCE, /useLayoutEffect\(\(\) => \{\s*onVisibleRowsChange\(listProps.rows\);/u);
+	assert.match(LIST_VIEW_SOURCE, /<JiraList\s+\{\.\.\.listProps\}\s+\{\.\.\.layout\}/u);
+	assert.match(LIST_VIEW_SOURCE, /const PANEL_END_GAP_PX = 24;/u);
+	assert.match(LIST_VIEW_SOURCE, /scrollEndInset=\{scrollEndInset > 0 \? scrollEndInset \+ PANEL_END_GAP_PX : 0\}/u);
 	assert.match(PAGE_SOURCE, /onListAgentSessionCreate=\{handleListAgentSessionCreate\}/u);
 	assert.match(PAGE_SOURCE, /createFromAgentSession/u);
 	assert.match(PAGE_SOURCE, /consumeDetachedAgentSession/u);
@@ -685,11 +675,11 @@ test("the Work items header switches between Board and List views with their ico
 		/setDraftWorkItem|draftWorkItem/u,
 	);
 	assert.match(
-		PAGE_SOURCE,
+		LIST_VIEW_SOURCE,
 		/"min-h-0 flex-1 overflow-hidden pb-4 ps-6 md:pb-5"[\s\S]*scrollEndInset > 0 \? "pe-0" : "pe-4 md:pe-5"[\s\S]*<JiraList\s+\{\.\.\.listProps\}/u,
 	);
 	assert.doesNotMatch(
-		PAGE_SOURCE,
+		LIST_VIEW_SOURCE,
 		/overflow-auto p-4 md:p-5"[\s\S]*<JiraList\s+\{\.\.\.listProps\}/u,
 	);
 	// Drag handles only portal when onMoveRow is set. A display-only JiraList
@@ -707,14 +697,14 @@ test("the Work items header switches between Board and List views with their ico
 	assert.match(LIST_HOOK_SOURCE, /dueDate: draftWorkItem.dueDate/u);
 	assert.match(LIST_HOOK_SOURCE, /currentOrder.length === 0 \? allKeys : currentOrder/u);
 	assert.match(LIST_HOOK_SOURCE, /agentCatalog: JIRA_TEAM_EU26_AGENT_CATALOG/u);
-	assert.match(LIST_HOOK_SOURCE, /createListRows\(columns, JIRA_TEAM_EU26_AGENT_CATALOG\)/u);
+	assert.match(LIST_HOOK_SOURCE, /selectListRows\(columns, JIRA_TEAM_EU26_AGENT_CATALOG, rowIndex\)/u);
 	assert.match(LIST_HOOK_SOURCE, /statusOptions: JIRA_TEAM_EU26_LIST_STATUS_OPTIONS/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /activeView\?: ExperimentalJiraKanbanView;/u);
 	assert.match(
 		EXPERIMENTAL_PAGE_SOURCE,
 		/renderListContent\?: \(\s*columns: readonly JiraKanbanColumnData\[\],\s*context: ExperimentalJiraKanbanListRenderContext,\s*\) => ReactNode;/u,
 	);
-	assert.match(PAGE_SOURCE, /pb-4 ps-6 md:pb-5/u);
+	assert.match(LIST_VIEW_SOURCE, /pb-4 ps-6 md:pb-5/u);
 	assert.doesNotMatch(EXPERIMENTAL_PAGE_SOURCE, /inFlowAgentSessionColumn/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /agentSessionDropIntent: boardSessionDrag\.listDropIntent/u);
 	assert.match(EXPERIMENTAL_PAGE_SOURCE, /onCreate: onBoardAgentSessionCreate \? handleBoardAgentSessionCreate : undefined/u);

@@ -4,10 +4,10 @@
 		{
 			"id": 1,
 			"prompt": "vpk-tunnel — share my usual VPK prototype with a customer for a short research session.",
-			"expected_output": "Selects https://vpk-rovo.localhost, resolves and health-checks it, asks which route people should open if none was given, and treats the skill invocation as authorization to share without asking for synthetic-data confirmation.",
+			"expected_output": "Selects https://example-project.localhost, resolves and health-checks it, asks which route people should open if none was given, and treats the skill invocation as authorization to share without asking for synthetic-data confirmation.",
 			"files": [],
 			"expectations": [
-				"The default target hostname is https://vpk-rovo.localhost regardless of the branch checked out in the persistent worktree.",
+				"The default target hostname is https://example-project.localhost regardless of the branch checked out in the persistent worktree.",
 				"The catalog root is not treated as the shareable surface unless the user explicitly asked for it.",
 				"The response does not ask for synthetic or fake-data confirmation because invoking the skill authorizes sharing.",
 				"The response explains the link lifetime and targeted stop command."
@@ -15,7 +15,7 @@
 		},
 		{
 			"id": 2,
-			"prompt": "Use vpk-tunnel to share https://align-jira-activity-cards.vpk-rovo.localhost/jira?view=board#activity instead of the main prototype.",
+			"prompt": "Use vpk-tunnel to share https://align-jira-activity-cards.example-project.localhost/jira?view=board#activity instead of the main prototype.",
 			"expected_output": "Resolves the custom Portless hostname to its live frontend and preserves /jira?view=board#activity in the eventual public link.",
 			"files": [],
 			"expectations": [
@@ -38,7 +38,7 @@
 		{
 			"id": 4,
 			"prompt": "vpk-tunnel so people can look at jira-golden-journeys-v4. The public homepage looks empty.",
-			"expected_output": "Shares https://vpk-rovo.localhost/jira-golden-journeys-v4, not the catalog root, and treats a blank public page as a blocked-origin failure rather than a successful start.",
+			"expected_output": "Shares https://example-project.localhost/jira-golden-journeys-v4, not the catalog root, and treats a blank public page as a blocked-origin failure rather than a successful start.",
 			"files": [],
 			"expectations": [
 				"The public link path is /jira-golden-journeys-v4 rather than /.",

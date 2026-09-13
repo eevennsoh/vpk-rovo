@@ -791,6 +791,10 @@ test("dropping an Untracked session on Create new work item appends and reveals 
 		{ steps: 12 },
 	);
 	await expect(createDropZone).toHaveAttribute("data-armed", "true");
+	await page.screenshot({ path: "output/agent-browser/dropzone-expanded.png" });
+	// Expanding the overlay must not resize or scroll the cards underneath it.
+	expect(await cardList.evaluate((element) => element.clientHeight)).toBe(initialOverflow.clientHeight);
+	expect(await cardList.evaluate((element) => element.scrollTop)).toBe(0);
 	await page.evaluate(() => {
 		const observeBlueCreateFlash = () => {
 			const flashed = Array.from(document.querySelectorAll<HTMLElement>(
@@ -816,6 +820,7 @@ test("dropping an Untracked session on Create new work item appends and reveals 
 	await page.mouse.up();
 
 	await expect(issueCards).toHaveCount(initialCardCount + 1);
+	expect(await cardList.evaluate((element) => element.clientHeight)).toBe(initialOverflow.clientHeight);
 	const createdCard = issueCards.last();
 	const createdIssueKey = await createdCard.getAttribute("data-issue-key");
 	expect(createdIssueKey).toMatch(/^PAY-\d+$/u);
@@ -848,6 +853,11 @@ test("dropping an Untracked session on Create new work item appends and reveals 
 				&& cardRect.bottom <= scrollportRect.bottom + 1;
 		}),
 	).toBe(true);
+	await expect(createDropZone).toHaveCount(0);
+	expect(await cardList.evaluate((element) => element.clientHeight)).toBe(initialOverflow.clientHeight);
+	await expect.poll(() => cardList.evaluate((element) => element.style.maskImage))
+		.not.toContain("transparent 100%");
+	await page.screenshot({ path: "output/agent-browser/dropzone-created.png" });
 });
 
 test("releasing an unattached session drag outside a Jira target makes no change", async ({ page }) => {

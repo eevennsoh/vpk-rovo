@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts/context-rovo-chat-controls";
 import {
 	buildJgpAgentChatContextBar,
 	buildJgpAgentChatPlayback,
@@ -17,7 +17,7 @@ export interface UseJgpAgentChatDemoResult {
 }
 
 export function useJgpAgentChatDemo(): UseJgpAgentChatDemoResult {
-	const { openChat, replaceMessages, selectAgent } = useRovoChat();
+	const { openChat, replaceMessages, selectAgent } = useRovoChatControls();
 	const [chatContextBar, setChatContextBar] = useState<ChatContextBarDescriptor | null>(null);
 	const [externalThinkingMessageId, setExternalThinkingMessageId] = useState<string | null>(null);
 	const playbackTokenRef = useRef(0);

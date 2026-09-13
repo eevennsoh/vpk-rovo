@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "https://vpk-rovo.localhost";
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 test.use({ viewport: { width: 1440, height: 1000 }, ignoreHTTPSErrors: true });
 test.setTimeout(60_000);
 

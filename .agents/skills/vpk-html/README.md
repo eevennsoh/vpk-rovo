@@ -5,7 +5,7 @@
 > Render structured material into offline, single-file HTML documents with the
 > vpk-html Algebrica editorial identity. **[See the index →](index.html)**
 
-vpk-html is a static-document skill used inside the VPK-Rovo monorepo. It is
+vpk-html is a static-document skill used inside the VPK monorepo. It is
 built on [kami's](https://github.com/tw93/Kami) template-edit architecture: the
 LLM copies an HTML template, fills `{{placeholders}}` with real content, and
 ships a single self-contained HTML file. Visual identity, fonts, and layout
@@ -229,7 +229,7 @@ omitted them.
 
 ## License
 
-Inherits the VPK-Rovo monorepo license. The 8 base HTML templates and the
+Inherits the VPK monorepo license. The 8 base HTML templates and the
 original 14 diagram primitives in `assets/templates/` and `assets/diagrams/`
 are ported from [tw93/kami](https://github.com/tw93/Kami) (MIT) and re-skinned
 with vpk-html's visual identity; the layout structure and SVG geometry are

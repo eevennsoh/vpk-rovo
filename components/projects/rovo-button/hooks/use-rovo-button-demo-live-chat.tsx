@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AudioWaveformIcon from "@atlaskit/icon-lab/core/audio-waveform";
 import type { FloatingRovoButtonPersistentBar } from "@/components/projects/shared/components/floating-rovo-button";
-import { useRovoChat } from "@/app/contexts";
+import { useRovoChatControls } from "@/app/contexts";
 
 export interface RovoButtonDemoLiveChat {
 	persistentBar: FloatingRovoButtonPersistentBar;
@@ -14,7 +14,7 @@ export interface RovoButtonDemoLiveChat {
 
 /** Demo-only quick-action bar that hands the floating chat straight to voice. */
 export function useRovoButtonDemoLiveChat(): RovoButtonDemoLiveChat {
-	const { chatSurface, openChat } = useRovoChat();
+	const { chatSurface, openChat } = useRovoChatControls();
 	const [requestKey, setRequestKey] = useState(0);
 
 	const open = useCallback(() => {
