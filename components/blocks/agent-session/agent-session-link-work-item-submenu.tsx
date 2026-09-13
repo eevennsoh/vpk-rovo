@@ -88,6 +88,7 @@ function IssueTypePicker({
 			</DropdownMenuSubTrigger>
 			<DropdownMenuSubContent
 				align="start"
+				alignOffset={0}
 				className="min-w-40"
 				side="bottom"
 				sideOffset={4}

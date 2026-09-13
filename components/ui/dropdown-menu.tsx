@@ -337,6 +337,7 @@ interface DropdownMenuSubTriggerProps
   extends MenuPrimitive.SubmenuTrigger.Props {
   inset?: boolean;
   allowTextWrap?: boolean;
+  /** Whether to render the shared trailing right chevron. */
   showChevron?: boolean;
 }
 
