@@ -8,6 +8,8 @@ import { hydratePreset } from "@/components/blocks/jira-work-item/data/session-s
 import { SESSION_EPOCH_MS } from "@/components/blocks/jira-work-item/data/session-fixtures";
 import type { ArtifactListItem } from "@/components/ui-custom/artifact-list";
 
+import { PAY_STORY_PEOPLE } from "./presentation-people";
+
 export const JIRA_TEAM_EU26_PAY_101_SESSION_ID = "pay-101-inventory-claude-session";
 export const JIRA_TEAM_EU26_PAY_101_UNCAPTURED_SESSION_ID = "lw-scope-thread";
 export const JIRA_TEAM_EU26_PAY_101_PULL_REQUEST_NUMBER = 1839;
@@ -15,18 +17,6 @@ export const JIRA_TEAM_EU26_PAY_101_COMMIT_SHA = "8c2f4e1";
 
 const PAY_STORY_EPOCH_MS = Date.UTC(2026, 7, 17, 8, 12, 0);
 const PAY_REPOSITORY = "payments-platform/payments";
-
-const PAY_BUILD_AVATARS = {
-	jordan: "/avatar-user/issac-varghese/color/asow-service-yellow-64.png",
-	maya: "/avatar-user/chloe-lee/color/asow-strategy-orange-64.png",
-	priya: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
-} as const;
-
-const PAY_BUILD_ASSIGNEES = {
-	jordan: { name: "Jordan Okafor", avatarSrc: PAY_BUILD_AVATARS.jordan },
-	maya: { name: "Maya Ferreira", avatarSrc: PAY_BUILD_AVATARS.maya },
-	priya: { name: "Priya Raman", avatarSrc: PAY_BUILD_AVATARS.priya },
-} as const;
 
 export const PAY_101_INVENTORY_PR_ARTIFACT: ArtifactListItem = {
 	id: "pay-101-inventory-pr-1839",
@@ -77,12 +67,12 @@ export const JIRA_TEAM_EU26_PAY_101_WORK_ITEM: WorkItemData = {
 	priority: "High",
 	createdAtMs: PAY_STORY_EPOCH_MS - 7_200_000,
 	assignee: {
-		name: PAY_BUILD_ASSIGNEES.jordan.name,
-		avatarUrl: PAY_BUILD_ASSIGNEES.jordan.avatarSrc,
+		name: PAY_STORY_PEOPLE.jordan.name,
+		avatarUrl: PAY_STORY_PEOPLE.jordan.avatarSrc,
 	},
 	reporter: {
-		name: PAY_BUILD_ASSIGNEES.priya.name,
-		avatarUrl: PAY_BUILD_ASSIGNEES.priya.avatarSrc,
+		name: PAY_STORY_PEOPLE.priya.name,
+		avatarUrl: PAY_STORY_PEOPLE.priya.avatarSrc,
 	},
 	parent: {
 		code: "PAY-100",
@@ -109,16 +99,16 @@ const PAY_GITHUB_ACTOR: StaticTimelineEvent["actor"] = {
 
 const PAY_MAYA_ACTOR: StaticTimelineEvent["actor"] = {
 	id: "pay-maya-ferreira",
-	name: PAY_BUILD_ASSIGNEES.maya.name,
+	name: PAY_STORY_PEOPLE.maya.name,
 	kind: "person",
-	avatarSrc: PAY_BUILD_ASSIGNEES.maya.avatarSrc,
+	avatarSrc: PAY_STORY_PEOPLE.maya.avatarSrc,
 };
 
 const PAY_PRIYA_ACTOR: StaticTimelineEvent["actor"] = {
 	id: "pay-priya-raman",
-	name: PAY_BUILD_ASSIGNEES.priya.name,
+	name: PAY_STORY_PEOPLE.priya.name,
 	kind: "person",
-	avatarSrc: PAY_BUILD_ASSIGNEES.priya.avatarSrc,
+	avatarSrc: PAY_STORY_PEOPLE.priya.avatarSrc,
 };
 
 function cloneArtifact(artifact: ArtifactListItem): ArtifactListItem {
@@ -162,7 +152,7 @@ function createPay101ClaudeSession(): AgentSession {
 				id: "pay-101-claude-prompt",
 				role: "human",
 				authorName: "Maya Ferreira",
-				authorAvatarSrc: PAY_BUILD_AVATARS.maya,
+				authorAvatarSrc: PAY_STORY_PEOPLE.maya.avatarSrc,
 				content: "Trace every v1 adapter call site, name an owner and migration lane, and publish the verified inventory to PAY-101.",
 				createdAtMs: startedAtMs,
 			},
@@ -324,8 +314,8 @@ function createPay101ContextResources(): JiraWorkItemState["contextResources"] {
 				key: "PAY-102",
 				summary: "Prove LegacyGatewayAdapter can be deleted outright",
 				priority: "high",
-				assignee: PAY_BUILD_ASSIGNEES.maya.name,
-				assigneeAvatarUrl: PAY_BUILD_ASSIGNEES.maya.avatarSrc,
+				assignee: PAY_STORY_PEOPLE.maya.name,
+				assigneeAvatarUrl: PAY_STORY_PEOPLE.maya.avatarSrc,
 				status: "inprogress",
 			},
 			{
@@ -333,8 +323,8 @@ function createPay101ContextResources(): JiraWorkItemState["contextResources"] {
 				key: "PAY-104",
 				summary: "Port createPaymentIntent onto the v2 client",
 				priority: "high",
-				assignee: PAY_BUILD_ASSIGNEES.jordan.name,
-				assigneeAvatarUrl: PAY_BUILD_ASSIGNEES.jordan.avatarSrc,
+				assignee: PAY_STORY_PEOPLE.jordan.name,
+				assigneeAvatarUrl: PAY_STORY_PEOPLE.jordan.avatarSrc,
 				status: "todo",
 			},
 		],
@@ -345,8 +335,8 @@ function createPay101ContextResources(): JiraWorkItemState["contextResources"] {
 				summary: "Add per-account targeting and an armed kill switch",
 				type: "Task",
 				relationship: "blocks",
-				assignee: PAY_BUILD_ASSIGNEES.priya.name,
-				assigneeAvatarUrl: PAY_BUILD_ASSIGNEES.priya.avatarSrc,
+				assignee: PAY_STORY_PEOPLE.priya.name,
+				assigneeAvatarUrl: PAY_STORY_PEOPLE.priya.avatarSrc,
 				priority: "high",
 				status: "inprogress",
 			},
@@ -379,8 +369,8 @@ export function createJiraTeamEu26Pay101BuildState(): JiraWorkItemState {
 		comments: [
 			{
 				id: "pay-101-captured-session-comment",
-				authorName: PAY_BUILD_ASSIGNEES.maya.name,
-				authorAvatarSrc: PAY_BUILD_ASSIGNEES.maya.avatarSrc,
+				authorName: PAY_STORY_PEOPLE.maya.name,
+				authorAvatarSrc: PAY_STORY_PEOPLE.maya.avatarSrc,
 				content: "The inventory coding-agent run is captured on PAY-101: PR #1839 is merged, and commit 8c2f4e1 is the source for the 61 call sites and owner assignments shown in Insights. The keep-or-delete rationale remains uncaptured in the separate local Claude session.",
 				createdAtMs: PAY_STORY_EPOCH_MS - 960_000,
 				progressChecklist: session.progressChecklist,

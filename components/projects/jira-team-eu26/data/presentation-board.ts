@@ -20,42 +20,16 @@ import {
 	PAY_101_INVENTORY_COMMIT_ARTIFACT,
 	PAY_101_INVENTORY_PR_ARTIFACT,
 } from "./presentation-build";
+import { PAY_STORY_PEOPLE } from "./presentation-people";
 import { getJiraTeamEu26PullRequestPreview } from "./presentation-pull-requests";
 
 export { JIRA_TEAM_EU26_PAY_CURRENT_USER };
 
 const PAY_AVATARS = {
-	diego: "/avatar-user/dev-rana/color/asow-product-purple.png",
-	jordan: "/avatar-user/issac-varghese/color/asow-service-yellow-64.png",
-	maya: "/avatar-user/chloe-lee/color/asow-strategy-orange-64.png",
-	priya: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
 	releaseAgent: "/avatar-agent/strategy-agents/strategic-insight.svg",
 	reviewAgent: "/avatar-agent/teamwork-agents/decision-director.svg",
 	testAgent: "/avatar-agent/service-agents/rca-agent.svg",
 } as const;
-
-const PAY_ASSIGNEES = {
-	diego: {
-		id: "diego-santos",
-		name: "Diego Santos",
-		avatarSrc: PAY_AVATARS.diego,
-	},
-	jordan: {
-		id: "jordan-okafor",
-		name: "Jordan Okafor",
-		avatarSrc: PAY_AVATARS.jordan,
-	},
-	maya: {
-		id: "maya-ferreira",
-		name: "Maya Ferreira",
-		avatarSrc: PAY_AVATARS.maya,
-	},
-	priya: {
-		id: "priya-raman",
-		name: "Priya Raman",
-		avatarSrc: PAY_AVATARS.priya,
-	},
-} as const satisfies Record<string, JiraKanbanAssigneeData>;
 
 /** Codex pauses PAY-112 until a human picks the sandbox retention call. */
 export const JIRA_TEAM_EU26_PAY_112_RETENTION_QUESTION = {
@@ -383,26 +357,26 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 		count: 4,
 		cards: [
 			createCard({
-				assignee: PAY_ASSIGNEES.diego,
+				assignee: PAY_STORY_PEOPLE.diego,
 				code: "PAY-118",
 				tags: [{ text: "wallet", color: "purple" }],
 				title: "Carry card-artwork metadata into the next wallet epic",
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.priya,
+				assignee: PAY_STORY_PEOPLE.priya,
 				code: "PAY-124",
 				priority: "major",
 				tags: [{ text: "rollout", color: "blue" }],
 				title: "Confirm the English-only account allow-list",
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.maya,
+				assignee: PAY_STORY_PEOPLE.maya,
 				code: "PAY-125",
 				tags: [{ text: "observability", color: "green" }],
 				title: "Add production dashboards for the one-percent slice",
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.jordan,
+				assignee: PAY_STORY_PEOPLE.jordan,
 				code: "PAY-127",
 				priority: "minor",
 				tags: [{ text: "cleanup", color: "gray" }],
@@ -415,7 +389,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 		count: 4,
 		cards: [
 			createCard({
-				assignee: PAY_ASSIGNEES.jordan,
+				assignee: PAY_STORY_PEOPLE.jordan,
 				code: "PAY-105",
 				priority: "major",
 				pullRequestNumber: 1851,
@@ -437,7 +411,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				})],
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.maya,
+				assignee: PAY_STORY_PEOPLE.maya,
 				code: "PAY-107",
 				priority: "major",
 				pullRequestNumber: 1856,
@@ -452,8 +426,8 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 					cycleIntervalMs: 3100,
 					host: "cloud",
 					invokedBy: {
-						avatarSrc: PAY_ASSIGNEES.maya.avatarSrc,
-						name: PAY_ASSIGNEES.maya.name,
+						avatarSrc: PAY_STORY_PEOPLE.maya.avatarSrc,
+						name: PAY_STORY_PEOPLE.maya.name,
 					},
 					label: "Implementing webhook retry semantics",
 					labels: ["Implementing webhook retry semantics", "Moving backoff into the v2 client", "Running payments API retry tests"],
@@ -463,7 +437,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				})],
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.jordan,
+				assignee: PAY_STORY_PEOPLE.jordan,
 				code: "PAY-123",
 				priority: "major",
 				tags: [{ text: "fixtures", color: "purple" }],
@@ -477,8 +451,8 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 						cycleIntervalMs: 1900,
 						host: "cloud",
 						invokedBy: {
-							avatarSrc: PAY_ASSIGNEES.jordan.avatarSrc,
-							name: PAY_ASSIGNEES.jordan.name,
+							avatarSrc: PAY_STORY_PEOPLE.jordan.avatarSrc,
+							name: PAY_STORY_PEOPLE.jordan.name,
 						},
 						label: "Recording decline-code fixtures",
 						labels: ["Recording decline-code fixtures", "Comparing missing decline cases", "Running fixture coverage"],
@@ -502,7 +476,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				],
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.diego,
+				assignee: PAY_STORY_PEOPLE.diego,
 				code: "PAY-130",
 				priority: "major",
 				tags: [{ text: "localisation", color: "purple" }],
@@ -515,7 +489,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 		count: 8,
 		cards: [
 			createCard({
-				assignee: PAY_ASSIGNEES.jordan,
+				assignee: PAY_STORY_PEOPLE.jordan,
 				code: "PAY-112",
 				priority: "major",
 				pullRequestNumber: 1858,
@@ -528,8 +502,8 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 					agentBrandName: "openai-codex",
 					host: "cloud",
 					invokedBy: {
-						avatarSrc: PAY_ASSIGNEES.jordan.avatarSrc,
-						name: PAY_ASSIGNEES.jordan.name,
+						avatarSrc: PAY_STORY_PEOPLE.jordan.avatarSrc,
+						name: PAY_STORY_PEOPLE.jordan.name,
 					},
 					label: "Needs the retention window",
 					message: JIRA_TEAM_EU26_PAY_112_RETENTION_MESSAGE,
@@ -540,13 +514,13 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				})],
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.priya,
+				assignee: PAY_STORY_PEOPLE.priya,
 				code: "PAY-115",
 				tags: [{ text: "release note", color: "blue" }],
 				title: "Rewrite the customer ship note after the wallet cut",
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.maya,
+				assignee: PAY_STORY_PEOPLE.maya,
 				code: "PAY-119",
 				pullRequestNumber: 1880,
 				pullRequestStatus: "open",
@@ -554,14 +528,14 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				title: "Publish and link the rollback rehearsal runbook",
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.diego,
+				assignee: PAY_STORY_PEOPLE.diego,
 				code: "PAY-132",
 				priority: "minor",
 				tags: [{ text: "copy", color: "purple" }],
 				title: "Approve the final issuer-unavailable recovery message",
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.jordan,
+				assignee: PAY_STORY_PEOPLE.jordan,
 				code: "PAY-104",
 				priority: "major",
 				pullRequestNumber: 1851,
@@ -570,7 +544,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				title: "Port createPaymentIntent onto the v2 client",
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.maya,
+				assignee: PAY_STORY_PEOPLE.maya,
 				code: "PAY-109",
 				pullRequestNumber: 1863,
 				pullRequestStatus: "open",
@@ -578,7 +552,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				title: "Regenerate webhook payloads from the v2 OpenAPI spec",
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.priya,
+				assignee: PAY_STORY_PEOPLE.priya,
 				code: "PAY-121",
 				priority: "major",
 				pullRequestNumber: 1866,
@@ -600,7 +574,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				})],
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.maya,
+				assignee: PAY_STORY_PEOPLE.maya,
 				code: "PAY-128",
 				priority: "major",
 				pullRequestNumber: 1881,
@@ -615,7 +589,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 		count: 4,
 		cards: [
 			createCard({
-				assignee: PAY_ASSIGNEES.jordan,
+				assignee: PAY_STORY_PEOPLE.jordan,
 				code: "PAY-101",
 				priority: "major",
 				pullRequestNumber: JIRA_TEAM_EU26_PAY_101_PULL_REQUEST_NUMBER,
@@ -636,7 +610,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				})],
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.maya,
+				assignee: PAY_STORY_PEOPLE.maya,
 				code: "PAY-102",
 				priority: "major",
 				pullRequestNumber: 1847,
@@ -645,7 +619,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				title: "Prove LegacyGatewayAdapter can be deleted outright",
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.jordan,
+				assignee: PAY_STORY_PEOPLE.jordan,
 				code: "PAY-113",
 				pullRequestNumber: 1863,
 				pullRequestStatus: "merged",
@@ -653,7 +627,7 @@ const PAY_BOARD_COLUMNS: readonly JiraKanbanColumnData[] = [
 				title: "Land the 3-D Secure contract suite with 214 assertions",
 			}),
 			createCard({
-				assignee: PAY_ASSIGNEES.maya,
+				assignee: PAY_STORY_PEOPLE.maya,
 				code: "PAY-126",
 				pullRequestNumber: 1874,
 				pullRequestStatus: "merged",
