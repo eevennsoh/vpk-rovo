@@ -321,6 +321,13 @@ test("cursor gravity draws its own pointer rather than a platform raster", () =>
 	assert.match(CURSOR_SOURCE, /new Path2D\(ARROW_PATH\)/u);
 });
 
+test("cursor gravity clears the bend canvas without resetting it every frame", () => {
+	assert.match(CURSOR_SOURCE, /if \(bent\.width !== w\) bent\.width = w;/u);
+	assert.match(CURSOR_SOURCE, /if \(bent\.height !== h\) bent\.height = h;/u);
+	assert.match(CURSOR_SOURCE, /ctx\.clearRect\(0, 0, w, h\);/u);
+	assert.doesNotMatch(CURSOR_SOURCE, /\tbent\.width = w;\n\tbent\.height = h;/u);
+});
+
 // ---------------------------------------------------------------------
 // Demo + docs surface
 // ---------------------------------------------------------------------
