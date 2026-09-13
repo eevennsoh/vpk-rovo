@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import ReturnIcon from "@atlaskit/icon-lab/core/return";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
@@ -9,8 +9,6 @@ import { IssueTypeGlyph } from "@/components/blocks/jira-list/jira-list-cells";
 import type { JiraListIssueType } from "@/components/blocks/jira-list/jira-list-types";
 import { Button } from "@/components/ui/button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
@@ -18,10 +16,14 @@ import {
 	DropdownMenuSub,
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
-	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+} from "@/components/ui/input-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchIcon } from "@/components/ui/vpk-icons";
 
@@ -49,13 +51,9 @@ function issueTypeLabel(issueType: JiraListIssueType): string {
 /**
  * Issue-type picker that sits inside the name field as a glyph + chevron.
  *
- * Mounted into a container of its own inside the submenu rather than to the
- * document. A popup portalled to the body sits outside the parent menu's DOM
- * subtree, which Base UI reads as an outside press — picking a type would close
- * the whole menu. The shared `portalled={false}` path would also keep it inside,
- * but that container carries `aria-hidden`, which drops the radio options out of
- * the accessibility tree while leaving them focusable. Owning the container
- * keeps the choice both contained and announced.
+ * This is another Base UI submenu, not an independent root menu. That keeps the
+ * parent action menu open while the shared portal positions the type choices in
+ * viewport coordinates instead of inheriting the transformed field panel.
  */
 function IssueTypePicker({
 	onChange,
@@ -65,48 +63,55 @@ function IssueTypePicker({
 	value: JiraListIssueType;
 }>) {
 	const [open, setOpen] = useState(false);
-	const portalContainerRef = useRef<HTMLSpanElement | null>(null);
 
 	return (
-		<DropdownMenu onOpenChange={setOpen} open={open}>
-			<DropdownMenuTrigger
+		<DropdownMenuSub onOpenChange={setOpen} open={open}>
+			<DropdownMenuSubTrigger
+				className="h-6 w-auto gap-1 rounded-md px-2"
+				nativeButton
 				render={(
-					<button
+					<Button
 						aria-label={`Work item type: ${issueTypeLabel(value)}`}
-						className="flex h-7 shrink-0 items-center gap-0.5 rounded-md px-1.5 transition-colors duration-fast ease-out-practical hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+						className="shrink-0 gap-1 px-2"
+						size="compact"
 						type="button"
+						variant="ghost"
 					/>
 				)}
+				showChevron={false}
 			>
 				<IssueTypeGlyph issueType={value} />
 				<Icon
 					className="text-icon-subtle"
-					render={<ChevronDownIcon color="currentColor" label="" size="small" />}
+					render={<ChevronDownIcon label="" size="small" />}
 				/>
-			</DropdownMenuTrigger>
-			<span className="contents" ref={portalContainerRef} />
-			<DropdownMenuContent
+			</DropdownMenuSubTrigger>
+			<DropdownMenuSubContent
 				align="start"
+				alignOffset={0}
 				className="min-w-40"
-				portalContainer={portalContainerRef}
+				side="bottom"
+				sideOffset={4}
 			>
 				<DropdownMenuRadioGroup
 					aria-label="Work item type"
-					onValueChange={(next) => {
-						onChange(next as JiraListIssueType);
-						setOpen(false);
-					}}
+					onValueChange={(next) => onChange(next as JiraListIssueType)}
 					value={value}
 				>
 					{ISSUE_TYPE_OPTIONS.map((issueType) => (
-						<DropdownMenuRadioItem indicatorPlacement="end" key={issueType} value={issueType}>
+						<DropdownMenuRadioItem
+							indicatorPlacement="end"
+							key={issueType}
+							onClick={() => setOpen(false)}
+							value={issueType}
+						>
 							<IssueTypeGlyph issueType={issueType} />
 							{issueTypeLabel(issueType)}
 						</DropdownMenuRadioItem>
 					))}
 				</DropdownMenuRadioGroup>
-			</DropdownMenuContent>
-		</DropdownMenu>
+			</DropdownMenuSubContent>
+		</DropdownMenuSub>
 	);
 }
 
@@ -132,35 +137,39 @@ function CreateWorkItemField({
 	const canSubmit = summary.trim().length > 0;
 
 	return (
-		<div className="flex items-center gap-1 rounded-md border border-input bg-bg-input py-1 pe-1 ps-1.5 focus-within:border-ring">
-			<IssueTypePicker onChange={onIssueTypeChange} value={issueType} />
-			<input
-				aria-label="Name this work item"
-				className="h-7 min-w-0 flex-1 bg-transparent px-1 text-sm text-text outline-none placeholder:text-text-subtlest"
-				onChange={(event) => onSummaryChange(event.target.value)}
-				onKeyDown={(event) => {
-					if (event.key !== "Enter" || !canSubmit) {
-						return;
-					}
-					event.preventDefault();
+		<form
+			onSubmit={(event) => {
+				event.preventDefault();
+				if (canSubmit) {
 					onSubmit();
-				}}
-				placeholder="Name this work item"
-				type="text"
-				value={summary}
-			/>
-			<Button
-				aria-label="Create work item"
-				className="shrink-0"
-				disabled={!canSubmit}
-				onClick={onSubmit}
-				size="icon"
-				type="button"
-				variant="secondary"
-			>
-				<ReturnIcon label="" size="small" />
-			</Button>
-		</div>
+				}
+			}}
+		>
+			<InputGroup>
+				<InputGroupAddon>
+					<IssueTypePicker onChange={onIssueTypeChange} value={issueType} />
+				</InputGroupAddon>
+				<InputGroupInput
+					aria-label="Name this work item"
+					name="summary"
+					onChange={(event) => onSummaryChange(event.target.value)}
+					placeholder="Name this work item"
+					type="text"
+					value={summary}
+				/>
+				<InputGroupAddon align="inline-end">
+					<InputGroupButton
+						aria-label="Create work item"
+						disabled={!canSubmit}
+						size="icon-xs"
+						type="submit"
+						variant="secondary"
+					>
+						<ReturnIcon label="" size="small" />
+					</InputGroupButton>
+				</InputGroupAddon>
+			</InputGroup>
+		</form>
 	);
 }
 
@@ -233,10 +242,8 @@ export function AgentSessionLinkWorkItemSubmenu({
 		>
 			<DropdownMenuSubTrigger>{AGENT_SESSION_LINK_WORK_ITEM_LABEL}</DropdownMenuSubTrigger>
 			{/*
-			 * No `overflow-hidden` here, unlike the agent/skill submenus this pattern
-			 * comes from: the type picker opens un-portalled inside this popup and a
-			 * clipping ancestor would cut it off. The results list owns its own scroll
-			 * instead, which is where the overflow belongs.
+			 * Keep the panel content-sized across tabs. The existing-items list owns
+			 * its bounded scroll while Create new keeps the InputGroup focus ring clear.
 			 */}
 			<DropdownMenuSubContent
 				className="max-h-none w-[22rem] p-0"

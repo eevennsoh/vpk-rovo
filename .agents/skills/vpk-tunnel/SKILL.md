@@ -22,15 +22,15 @@ it is not production or long-term hosting.
 
 ```text
 vpk-tunnel
-vpk-tunnel https://feature.vpk-rovo.localhost/path
+vpk-tunnel https://feature.<project>.localhost/path
 vpk-tunnel status [Portless URL]
 vpk-tunnel stop [Portless URL]
 ```
 
-With no URL, target `https://vpk-rovo.localhost`. This is the persistent main
-worktree's stable Portless hostname, regardless of which Git branch that
-checkout currently has checked out. A supplied Portless URL selects another
-live frontend. Preserve its path, query, and fragment in the public link.
+With no URL, derive the persistent main worktree's stable Portless hostname
+from this repository's package metadata. Run `pnpm ports once` to see the exact
+URL. A supplied Portless URL selects another live frontend. Preserve its path,
+query, and fragment in the public link.
 
 ## Share the route people should open
 

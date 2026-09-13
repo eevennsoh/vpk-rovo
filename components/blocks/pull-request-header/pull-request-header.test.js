@@ -413,7 +413,7 @@ test("Pull Request Header demo shows controlled and scroll-driven modes", () => 
 	assert.match(DATA_SOURCE, /defaultAutoMerge: true/u);
 	assert.match(
 		DATA_SOURCE,
-		/url: "https:\/\/github\.com\/eevensoh\/vpk-rovo\/pull\/1847"/u,
+		/url: "https:\/\/github\.com\/acme\/storefront\/pull\/1847"/u,
 	);
 	assert.match(DATA_SOURCE, /scmProviderName: "GitHub"/u);
 	assert.doesNotMatch(DATA_SOURCE, /authorName/u);

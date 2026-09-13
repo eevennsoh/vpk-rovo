@@ -533,7 +533,7 @@ function buildPlan({ route, repoRoot, trace: t }) {
 		warnings.push(
 			`Route imports backend code (${backendRoutes.length} specifier(s)). ` +
 			`v1 of /vpk-build only supports pure frontend routes. ` +
-			`Keep deploying this route via VPK-Rovo's /vpk-deploy instead.`
+			`Keep deploying this route via VPK's /vpk-deploy instead.`
 		);
 	}
 
@@ -544,7 +544,7 @@ function buildPlan({ route, repoRoot, trace: t }) {
 		warnings.push(
 			`Route makes ${apiCalls.length} runtime fetch call(s) to /api/*: ${apiCalls.join(", ")}. ` +
 			`The extracted project does not include these backend routes. ` +
-			`Either add stub handlers to the extracted backend/server.js, proxy to VPK-Rovo, or extract a route that doesn't hit /api/*.`,
+			`Either add stub handlers to the extracted backend/server.js, proxy to VPK, or extract a route that doesn't hit /api/*.`,
 		);
 	}
 

@@ -76,7 +76,7 @@ async function fetchJson(url) {
 	const response = await fetch(url, {
 		headers: {
 			"Accept": "application/vnd.github+json",
-			"User-Agent": "VPK-Rovo Hermes skills importer",
+			"User-Agent": "VPK Hermes skills importer",
 		},
 	});
 
@@ -90,7 +90,7 @@ async function fetchJson(url) {
 async function fetchText(url) {
 	const response = await fetch(url, {
 		headers: {
-			"User-Agent": "VPK-Rovo Hermes skills importer",
+			"User-Agent": "VPK Hermes skills importer",
 		},
 	});
 
@@ -104,7 +104,7 @@ async function fetchText(url) {
 async function fetchBuffer(url) {
 	const response = await fetch(url, {
 		headers: {
-			"User-Agent": "VPK-Rovo Hermes skills importer",
+			"User-Agent": "VPK Hermes skills importer",
 		},
 	});
 

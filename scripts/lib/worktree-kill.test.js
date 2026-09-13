@@ -15,28 +15,28 @@ const {
 // display name from getWorktreeDisplayName() and is the session key — it can
 // diverge from the raw `identifier`.
 const MAIN = {
-	path: "/Users/dev/Labs/vpk-rovo",
+	path: "/Users/dev/Labs/example-repo",
 	isMain: true,
 	branch: "main",
 	identifier: "main",
 	worktreeName: "main",
 };
 const CLAUDE_WT = {
-	path: "/Users/dev/Labs/vpk-rovo/.claude/worktrees/html-selector-ai-agent-21bee3",
+	path: "/Users/dev/Labs/example-repo/.claude/worktrees/html-selector-ai-agent-21bee3",
 	isMain: false,
 	branch: "claude/html-selector-ai-agent-21bee3",
 	identifier: "claude/html-selector-ai-agent-21bee3",
 	worktreeName: "claude/html-selector-ai-agent-21bee3",
 };
-// Detached worktree whose dir basename ("vpk-rovo") collides with the repo name,
+// Detached worktree whose dir basename ("example-repo") collides with the repo name,
 // so getWorktreeDisplayName walks up to the parent hash dir ("0ebd"). Here the
-// session key (worktreeName) differs from identifier ("vpk-rovo") — the exact
+// session key (worktreeName) differs from identifier ("example-repo") — the exact
 // case that produced a wrong session name before this was fixed.
 const DETACHED_WT = {
-	path: "/Users/dev/.codex/worktrees/0ebd/vpk-rovo",
+	path: "/Users/dev/.codex/worktrees/0ebd/example-repo",
 	isMain: false,
 	branch: null,
-	identifier: "vpk-rovo",
+	identifier: "example-repo",
 	worktreeName: "0ebd",
 };
 const WORKTREES = [MAIN, CLAUDE_WT, DETACHED_WT];
@@ -51,9 +51,9 @@ test("session name mirrors dev-tmux-plain.sh derivation", () => {
 });
 
 test("detached worktree session uses display name, not identifier", () => {
-	// Regression guard: must be vpk-dev-0ebd (parent hash), never vpk-dev-vpk-rovo.
+	// Regression guard: must use the parent hash, never the shared repo basename.
 	assert.equal(sessionNameForWorktree(DETACHED_WT), "vpk-dev-0ebd");
-	assert.notEqual(sessionNameForWorktree(DETACHED_WT), "vpk-dev-vpk-rovo");
+	assert.notEqual(sessionNameForWorktree(DETACHED_WT), "vpk-dev-example-repo");
 });
 
 test("matches by identifier, branch, and 'main'", () => {
@@ -82,9 +82,9 @@ test("exact match wins over substring", () => {
 	assert.equal(matchWorktree("main", WORKTREES).worktree, MAIN);
 });
 
-test("shared 'vpk-rovo' handle is reported ambiguous, not guessed", () => {
-	// MAIN's dir basename and DETACHED's identifier are both "vpk-rovo".
-	const result = matchWorktree("vpk-rovo", WORKTREES);
+test("shared repository handle is reported ambiguous, not guessed", () => {
+	// MAIN's dir basename and DETACHED's identifier are both "example-repo".
+	const result = matchWorktree("example-repo", WORKTREES);
 	assert.equal(result.ok, false);
 	assert.equal(result.reason, "ambiguous");
 	assert.deepEqual(new Set(result.candidates), new Set([MAIN, DETACHED_WT]));
@@ -106,13 +106,13 @@ test("handles include the strings a user is likely to type", () => {
 	const handles = handlesForWorktree(DETACHED_WT);
 	assert.ok(handles.has("0ebd")); // display name / session token
 	assert.ok(handles.has("vpk-dev-0ebd")); // full session name
-	assert.ok(handles.has("vpk-rovo")); // basename + identifier
+	assert.ok(handles.has("example-repo")); // basename + identifier
 	assert.ok([...handles].some((h) => h.includes("0ebd"))); // path carries the hash
 });
 
 test("findCurrentWorktree resolves the enclosing worktree from a cwd", () => {
 	// A dir inside main (but not inside the nested claude worktree) -> MAIN.
-	assert.equal(findCurrentWorktree("/Users/dev/Labs/vpk-rovo/components", WORKTREES), MAIN);
+	assert.equal(findCurrentWorktree("/Users/dev/Labs/example-repo/components", WORKTREES), MAIN);
 	// The worktree path itself.
 	assert.equal(findCurrentWorktree(MAIN.path, WORKTREES), MAIN);
 });
@@ -127,11 +127,11 @@ test("findCurrentWorktree picks the deepest match for nested worktrees", () => {
 test("findCurrentWorktree returns null when cwd is outside every worktree", () => {
 	assert.equal(findCurrentWorktree("/tmp/somewhere-else", WORKTREES), null);
 	// A sibling path that merely shares a string prefix is NOT inside.
-	assert.equal(findCurrentWorktree("/Users/dev/Labs/vpk-rovo-other", WORKTREES), null);
+	assert.equal(findCurrentWorktree("/Users/dev/Labs/example-repo-other", WORKTREES), null);
 });
 
 test("findCurrentWorktree handles empty/invalid input gracefully", () => {
 	assert.equal(findCurrentWorktree("", WORKTREES), null);
 	assert.equal(findCurrentWorktree(undefined, WORKTREES), null);
-	assert.equal(findCurrentWorktree("/Users/dev/Labs/vpk-rovo", null), null);
+	assert.equal(findCurrentWorktree("/Users/dev/Labs/example-repo", null), null);
 });

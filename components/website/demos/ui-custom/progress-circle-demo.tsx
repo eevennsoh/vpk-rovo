@@ -108,7 +108,7 @@ export function ProgressCircleDemoControlled() {
 export function ProgressCircleDemoFilled() {
 	return (
 		<div className="flex items-center gap-6">
-			<ProgressCircle variant="filled" size="lg" />
+			<ProgressCircle variant="filled" value={0} size="lg" />
 			<ProgressCircle variant="filled" value={25} size="lg" />
 			<ProgressCircle variant="filled" value={50} size="lg" />
 			<ProgressCircle variant="filled" value={75} size="lg" />

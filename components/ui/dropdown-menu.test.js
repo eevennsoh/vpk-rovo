@@ -51,6 +51,12 @@ test("dropdown menu rows use an 8px item radius", () => {
 	assert.doesNotMatch(source, /\brounded-sm\b/u);
 });
 
+test("submenu triggers can omit the default chevron for custom trigger controls", () => {
+	assert.match(source, /showChevron\?: boolean;/u);
+	assert.match(source, /showChevron = true,/u);
+	assert.match(source, /\{showChevron \? \([\s\S]*ChevronRightIcon[\s\S]*\) : null\}/u);
+});
+
 test("dropdown menu shortcut strings render as VPK keycaps", () => {
 	assert.match(source, /import \{ Kbd, KbdGroup \} from "@\/components\/ui\/kbd";/u);
 	assert.match(source, /function DropdownMenuShortcutKeys\(\{ shortcut \}: Readonly<\{ shortcut: string \}>\)/u);

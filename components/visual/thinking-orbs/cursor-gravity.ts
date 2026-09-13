@@ -257,10 +257,14 @@ function renderBent(ux: number, uy: number, amount: number): void {
 	if (!sprite || !bent) return;
 	const w = sprite.width;
 	const h = sprite.height;
-	bent.width = w;
-	bent.height = h;
+	// Resizing a canvas resets its bitmap and context state, so only do it when
+	// the cached pointer sprite's dimensions actually change.
+	if (bent.width !== w) bent.width = w;
+	if (bent.height !== h) bent.height = h;
 	const ctx = bent.getContext("2d");
 	if (!ctx) return;
+	// Preserve the previous per-frame clearing without reinitializing the canvas.
+	ctx.clearRect(0, 0, w, h);
 	const step = h / BEND_STRIPS;
 	for (let i = 0; i < BEND_STRIPS; i++) {
 		const y = i * step;

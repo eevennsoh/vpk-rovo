@@ -478,7 +478,7 @@ export function InFlowAgentSessionColumn({
 
 	return (
 		<JiraSessionFlyoutSuspensionProvider
-			suspended={sessionFlyoutsSuspended || reposition.dragging || !isEmbedded}
+			suspended={sessionFlyoutsSuspended || reposition.dragging || isMenuOpen || !isEmbedded}
 		>
 			<div
 				ref={hostRef}

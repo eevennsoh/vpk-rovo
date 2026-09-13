@@ -25,7 +25,7 @@ The top of `scripts/vpk-system-clean.sh` defines:
 - `IDLE_STACK_MIN_AGE_SECS` (1800): leftover `vpk-dev-*` stacks younger than
   30 minutes are treated as still warming and are not stopped.
 - `KILL_IDLE_STACKS` (1): set to 0 to report idle leftover stacks without
-  stopping them. The primary checkout (`vpk-dev-main` / `~/Labs/vpk-rovo`),
+  stopping them. The primary checkout (`vpk-dev-main`, resolved from Git),
   attached sessions, and worktrees that still have a process named exactly
   `claude`, `caffeinate`, `lazygit`, `cursor-agent`, or `codex` whose cwd is
   that directory are always kept. Worktree folder names are ignored.
@@ -67,7 +67,9 @@ live schedule with `show` and then `scripts/status.sh`.
 
 `scripts/install.sh` is idempotent. It copies the canonical sweep, generates and
 validates the plist for the current user, honors the saved schedule, reloads the
-LaunchAgent, and checks the `fseventsd` sudoers rule.
+LaunchAgent, and checks the `fseventsd` sudoers rule. The generated LaunchAgent
+stores the repository root as its working directory and `VPK_REPO_ROOT`, so the
+installed script does not depend on the checkout directory name.
 
 ```bash
 zsh scripts/install.sh
@@ -119,10 +121,10 @@ the sudoers guard.
 It never targets `artifacts/**`, active build caches, attached tmux sessions,
 the primary checkout, worktrees with a matching tool-process cwd, the
 Portless proxy, other worktrees' routes, `atlassian-otel-collector`, Jamf,
-osquery, Apple `ecosystem*` services, or merely similar process names. Paths
-assume `~/Labs/vpk-rovo`, `~/.codex/worktrees/*`, `~/.cursor/worktrees/vpk-rovo/*`,
-`~/.superset/worktrees/*/*`, and `.claude/worktrees/*`; adjust `NEXT_DIRS`
-deliberately if the layout changes.
+osquery, Apple `ecosystem*` services, or merely similar process names. The sweep
+resolves the primary checkout from `VPK_REPO_ROOT` or the current Git checkout,
+then enumerates registered worktrees through `git worktree list`. Superset
+worktrees remain an additional discovered cache family.
 
 ## Uninstall
 

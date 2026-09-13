@@ -13,7 +13,7 @@ deployment handoff is compatible with `vpk-deploy`.
 ## When to use
 
 Use this skill when a route needs its own URL, repository-sized deliverable, or
-independent deployment. Keep work in VPK-Rovo while composing across routes or
+independent deployment. Keep work in VPK while composing across routes or
 depending on shared runtime infrastructure that has no explicit export plan.
 This workflow extracts one route at a time and does not invent replacement
 backend behavior.

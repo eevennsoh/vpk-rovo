@@ -23,8 +23,8 @@ const {
 
 const ALLOWED_NEXT_CONFIG = `
 	allowedDevOrigins: [
-		"vpk-rovo.localhost",
-		"*.vpk-rovo.localhost",
+		"example-project.localhost",
+		"*.example-project.localhost",
 		"*.public.atlastunnel.com",
 		"*.atlastunnel.com",
 	],
@@ -40,18 +40,18 @@ test("normalizes the stable main Portless URL by default", () => {
 
 test("resolves an exact custom Portless route and preserves its full local URL", async () => {
 	const target = await resolvePortlessTarget({
-		targetUrl: "https://feature.vpk-rovo.localhost/jira?view=board#activity",
-		routes: [{ hostname: "feature.vpk-rovo.localhost", port: 4321, pid: 99 }],
+		targetUrl: "https://feature.example-project.localhost/jira?view=board#activity",
+		routes: [{ hostname: "feature.example-project.localhost", port: 4321, pid: 99 }],
 		ownerAlive: () => true,
 		probePort: async (port) => port === 4321,
 		worktrees: [],
 	});
 
-	assert.equal(target.hostname, "feature.vpk-rovo.localhost");
+	assert.equal(target.hostname, "feature.example-project.localhost");
 	assert.equal(target.port, 4321);
 	assert.equal(
 		target.localUrl,
-		"https://feature.vpk-rovo.localhost/jira?view=board#activity",
+		"https://feature.example-project.localhost/jira?view=board#activity",
 	);
 	assert.equal(target.isCatalogRoot, false);
 	assert.equal(target.pathname, "/jira");
@@ -90,8 +90,8 @@ test("rejects unknown and dead Portless routes", async () => {
 
 test("constructs hostname-scoped session names", () => {
 	assert.equal(
-		sessionNameForHostname("Feature.VPK-Rovo.localhost"),
-		"vpk-tunnel-feature-vpk-rovo-localhost",
+		sessionNameForHostname("Feature.Example-Project.localhost"),
+		"vpk-tunnel-feature-example-project-localhost",
 	);
 	const longName = sessionNameForHostname(`${"a".repeat(100)}.localhost`);
 	assert.ok(longName.length <= 80);
@@ -111,7 +111,7 @@ test("preserves the local path, query, and fragment in the public URL", () => {
 test("extracts an external URL but ignores Portless URLs", () => {
 	assert.equal(
 		extractPublicBaseUrl(
-			"Local https://vpk-rovo.localhost is available at https://research.atlastunnel.com",
+			"Local https://example-project.localhost is available at https://research.atlastunnel.com",
 		),
 		"https://research.atlastunnel.com",
 	);
@@ -119,11 +119,11 @@ test("extracts an external URL but ignores Portless URLs", () => {
 });
 
 test("flags catalog-root shares separately from project routes", () => {
-	assert.deepEqual(describeShareTarget("https://vpk-rovo.localhost"), {
+	assert.deepEqual(describeShareTarget("https://example-project.localhost"), {
 		isCatalogRoot: true,
 		pathname: "/",
 	});
-	assert.deepEqual(describeShareTarget("https://vpk-rovo.localhost/jira-golden-journeys-v4"), {
+	assert.deepEqual(describeShareTarget("https://example-project.localhost/jira-golden-journeys-v4"), {
 		isCatalogRoot: false,
 		pathname: "/jira-golden-journeys-v4",
 	});
@@ -133,14 +133,14 @@ test("extracts allowedDevOrigins and reports missing Atlas Tunnel hosts", () => 
 	assert.deepEqual(
 		extractAllowedDevOrigins(ALLOWED_NEXT_CONFIG),
 		[
-			"vpk-rovo.localhost",
-			"*.vpk-rovo.localhost",
+			"example-project.localhost",
+			"*.example-project.localhost",
 			"*.public.atlastunnel.com",
 			"*.atlastunnel.com",
 		],
 	);
 	assert.deepEqual(
-		missingTunnelDevOrigins(["vpk-rovo.localhost", "*.vpk-rovo.localhost"]),
+		missingTunnelDevOrigins(["example-project.localhost", "*.example-project.localhost"]),
 		[...REQUIRED_TUNNEL_DEV_ORIGINS],
 	);
 	assert.deepEqual(missingTunnelDevOrigins([...REQUIRED_TUNNEL_DEV_ORIGINS]), []);
@@ -151,7 +151,7 @@ test("extracts allowedDevOrigins and reports missing Atlas Tunnel hosts", () => 
 	assert.throws(
 		() => assertTunnelDevOrigins({
 			configPath: "/tmp/worktree/next.config.ts",
-			readFile: () => `allowedDevOrigins: ["vpk-rovo.localhost"]`,
+			readFile: () => `allowedDevOrigins: ["example-project.localhost"]`,
 		}),
 		/allowedDevOrigins is missing \*\.public\.atlastunnel\.com, \*\.atlastunnel\.com/u,
 	);
@@ -347,7 +347,7 @@ test("refuses to start when Next.js allowedDevOrigins omits Atlas Tunnel hosts",
 	let calls = 0;
 	await assert.rejects(
 		startTunnel({
-			readFile: () => `allowedDevOrigins: ["vpk-rovo.localhost"]`,
+			readFile: () => `allowedDevOrigins: ["example-project.localhost"]`,
 			resolveTarget: async () => ({
 				hostname: "feature.localhost",
 				localUrl: "https://feature.localhost/demo",

@@ -1,8 +1,8 @@
 # EU26 performance implementation — 12 September 2026
 
-Implemented in `/Users/esoh/.codex/worktrees/4dff/vpk-rovo` on `codex/eu26-performance`.
-Preview: https://eu26-performance.vpk-rovo.localhost/jira-team-eu26.
-The persistent main checkout and original `https://vpk-rovo.localhost` were not updated or shipped.
+Implemented in a linked worktree on `codex/eu26-performance`.
+Previewed on that worktree's Portless URL at `/jira-team-eu26`.
+The persistent main checkout and its Portless route were not updated or shipped.
 
 ## Measured result
 

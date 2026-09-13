@@ -93,7 +93,7 @@ export function collectFaviconIssues(html) {
 	if (hasVpkFaviconLinks(html)) {
 		return [];
 	}
-	return ["missing vpk-rovo favicon link set"];
+	return ["missing vpk favicon link set"];
 }
 
 export function ensureFaviconLinks(html) {

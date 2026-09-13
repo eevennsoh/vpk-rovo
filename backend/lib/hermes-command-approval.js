@@ -2,7 +2,7 @@
  * Dangerous command approval for tool inputs.
  *
  * Detects destructive command patterns (rm -rf, sudo, DROP TABLE, etc.)
- * in tool call arguments before execution. Used by the VPK-Rovo backend
+ * in tool call arguments before execution. Used by this repository's backend
  * to flag or pause dangerous operations from Rovo Serve tool calls.
  */
 

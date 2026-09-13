@@ -6,7 +6,7 @@ import type { TagColor } from "@/components/ui/tag";
 
 import { getPullRequestIdentity } from "./jira-activity-adapter";
 
-const GUIDED_REVIEW_PULL_REQUEST_IDENTITY = "eevensoh/vpk-rovo#1847";
+const GUIDED_REVIEW_PULL_REQUEST_IDENTITY = "acme/storefront#1847";
 
 export interface PullRequestGuideChapter {
 	id: string;
@@ -479,7 +479,7 @@ const CODEX: PullRequestActivityActor = {
 	kind: "app",
 };
 
-const GUIDED_REVIEW_REPO_COMMIT_URL = "https://github.com/eevensoh/vpk-rovo/commit";
+const GUIDED_REVIEW_REPO_COMMIT_URL = "https://github.com/acme/storefront/commit";
 
 /** Demo commits use people portraits only — agent tiles stay out of this rail. */
 const GUIDED_REVIEW_COMMITS: readonly PullRequestCommit[] = [
