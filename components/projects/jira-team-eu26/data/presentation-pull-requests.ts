@@ -1,23 +1,9 @@
 import type { JiraIssuePullRequestPreview } from "@/components/blocks/jira-issue/types";
 
 import { PAY_101_INVENTORY_PR_ARTIFACT } from "./presentation-build";
+import { PAY_STORY_PEOPLE } from "./presentation-people";
 
 const PAY_REPOSITORY = "payments-platform/payments";
-
-const PAY_AUTHORS = {
-	jordan: {
-		name: "Jordan Okafor",
-		avatarUrl: "/avatar-user/issac-varghese/color/asow-service-yellow-64.png",
-	},
-	maya: {
-		name: "Maya Ferreira",
-		avatarUrl: "/avatar-user/chloe-lee/color/asow-strategy-orange-64.png",
-	},
-	priya: {
-		name: "Priya Raman",
-		avatarUrl: "/avatar-user/ting-chen/color/asow-teamwork-blue.png",
-	},
-} as const;
 
 function createPreview({
 	additions,
@@ -29,7 +15,7 @@ function createPreview({
 	title,
 }: Readonly<{
 	additions: number;
-	author: (typeof PAY_AUTHORS)[keyof typeof PAY_AUTHORS];
+	author: (typeof PAY_STORY_PEOPLE)[keyof typeof PAY_STORY_PEOPLE];
 	branch: string;
 	deletions: number;
 	filesChanged: number;
@@ -38,7 +24,7 @@ function createPreview({
 }>): JiraIssuePullRequestPreview {
 	return {
 		additions,
-		author: { ...author },
+		author: { name: author.name, avatarUrl: author.avatarSrc },
 		branch,
 		deletions,
 		filesChanged,
@@ -53,7 +39,7 @@ function createPreview({
 export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	"PAY-101": createPreview({
 		additions: 312,
-		author: PAY_AUTHORS.maya,
+		author: PAY_STORY_PEOPLE.maya,
 		branch: "pay-101-call-site-inventory",
 		deletions: 8,
 		filesChanged: 14,
@@ -62,7 +48,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-102": createPreview({
 		additions: 186,
-		author: PAY_AUTHORS.maya,
+		author: PAY_STORY_PEOPLE.maya,
 		branch: "pay-102-legacy-adapter-spike",
 		deletions: 41,
 		filesChanged: 9,
@@ -71,7 +57,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-104": createPreview({
 		additions: 248,
-		author: PAY_AUTHORS.jordan,
+		author: PAY_STORY_PEOPLE.jordan,
 		branch: "pay-104-create-payment-intent",
 		deletions: 33,
 		filesChanged: 11,
@@ -80,7 +66,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-105": createPreview({
 		additions: 274,
-		author: PAY_AUTHORS.jordan,
+		author: PAY_STORY_PEOPLE.jordan,
 		branch: "pay-105-confirm-3ds-challenge",
 		deletions: 52,
 		filesChanged: 13,
@@ -89,7 +75,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-107": createPreview({
 		additions: 163,
-		author: PAY_AUTHORS.maya,
+		author: PAY_STORY_PEOPLE.maya,
 		branch: "pay-107-retry-backoff-extract",
 		deletions: 88,
 		filesChanged: 7,
@@ -98,7 +84,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-109": createPreview({
 		additions: 419,
-		author: PAY_AUTHORS.maya,
+		author: PAY_STORY_PEOPLE.maya,
 		branch: "pay-109-webhook-openapi-codegen",
 		deletions: 27,
 		filesChanged: 18,
@@ -107,7 +93,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-112": createPreview({
 		additions: 97,
-		author: PAY_AUTHORS.jordan,
+		author: PAY_STORY_PEOPLE.jordan,
 		branch: "pay-112-sandbox-key-retention",
 		deletions: 12,
 		filesChanged: 4,
@@ -116,7 +102,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-113": createPreview({
 		additions: 531,
-		author: PAY_AUTHORS.jordan,
+		author: PAY_STORY_PEOPLE.jordan,
 		branch: "pay-113-3ds-contract-suite",
 		deletions: 19,
 		filesChanged: 22,
@@ -125,7 +111,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-119": createPreview({
 		additions: 64,
-		author: PAY_AUTHORS.maya,
+		author: PAY_STORY_PEOPLE.maya,
 		branch: "pay-119-rollback-rehearsal-runbook",
 		deletions: 3,
 		filesChanged: 3,
@@ -134,7 +120,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-121": createPreview({
 		additions: 142,
-		author: PAY_AUTHORS.priya,
+		author: PAY_STORY_PEOPLE.priya,
 		branch: "pay-121-account-targeting-kill-switch",
 		deletions: 16,
 		filesChanged: 6,
@@ -143,7 +129,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-126": createPreview({
 		additions: 28,
-		author: PAY_AUTHORS.maya,
+		author: PAY_STORY_PEOPLE.maya,
 		branch: "pay-126-delete-legacy-adapter",
 		deletions: 410,
 		filesChanged: 17,
@@ -152,7 +138,7 @@ export const JIRA_TEAM_EU26_PULL_REQUEST_PREVIEWS = {
 	}),
 	"PAY-128": createPreview({
 		additions: 81,
-		author: PAY_AUTHORS.maya,
+		author: PAY_STORY_PEOPLE.maya,
 		branch: "pay-128-sdk-version-settlement",
 		deletions: 9,
 		filesChanged: 5,
