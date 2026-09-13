@@ -24,7 +24,7 @@ hooks:
     set -e
     issue_identifier="$(basename "$PWD")"
     branch_name="symphony/${issue_identifier}"
-    repo_url="${SYMPHONY_SOURCE_REPO_URL:-git@github.com:eevennsoh/VPK-rovo.git}"
+    repo_url="${SYMPHONY_SOURCE_REPO_URL:?the launcher must export SYMPHONY_SOURCE_REPO_URL}"
     git clone --depth 1 "$repo_url" .
     if git ls-remote --exit-code --heads origin "$branch_name" >/dev/null 2>&1; then
       git fetch origin "$branch_name:$branch_name"
@@ -45,7 +45,7 @@ hooks:
       branch_name="symphony/${issue_identifier}"
     fi
     if [ -n "${SYMPHONY_ELIXIR_DIR:-}" ] && [ -d "$SYMPHONY_ELIXIR_DIR" ]; then
-      repo_name="${SYMPHONY_GITHUB_REPO:-eevennsoh/VPK-rovo}"
+      repo_name="${SYMPHONY_GITHUB_REPO:?the launcher must export SYMPHONY_GITHUB_REPO}"
       cd "$SYMPHONY_ELIXIR_DIR"
       mise exec -- mix workspace.before_remove --repo "$repo_name" --branch "$branch_name"
     fi
@@ -101,7 +101,7 @@ Work only in the provided repository copy. Do not touch any other path.
 
 ## Repository contract
 
-- This workspace is VPK-rovo, a Next.js 16 plus Express repo managed with `pnpm`.
+- This workspace is VPK, a Next.js 16 plus Express repo managed with `pnpm`.
 - Read `AGENTS.md` before repo changes and follow the contextual rules for touched files.
 - Use tabs in TS/JS files, `@/` imports when configured, React 19 patterns, and semantic token classes.
 - There is no single `pnpm test`; run targeted `node --test` or Playwright specs for touched code.

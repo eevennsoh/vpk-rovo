@@ -200,7 +200,7 @@ function createPullRequestEvent({
 	id,
 	mergeState,
 	number = 1847,
-	repository = "eevensoh/vpk-rovo",
+	repository = "acme/storefront",
 	reviewDecision,
 	status = "Open",
 	title = "Implement guest checkout without account creation",

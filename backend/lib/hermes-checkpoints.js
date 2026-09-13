@@ -5,7 +5,7 @@
  * Checkpoints are stored in a `.checkpoints/` subdirectory with metadata
  * persisted in a JSON index file.
  *
- * Used by the VPK-Rovo backend to provide workspace rollback via
+ * Used by this repository's backend to provide workspace rollback via
  * /api/checkpoints endpoints.
  */
 

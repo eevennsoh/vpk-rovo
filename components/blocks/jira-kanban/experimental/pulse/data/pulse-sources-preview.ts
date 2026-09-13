@@ -54,7 +54,7 @@ const PULSE_SOURCE_PREVIEW_COPY = {
 	},
 	github: {
 		title: "Delete LegacyGatewayAdapter (proof branch)",
-		href: "https://github.com/eevensoh/vpk-rovo/pull/1847",
+		href: "https://github.com/acme/storefront/pull/1847",
 		updatedAt: new Date(2026, 7, 17),
 		owner: "Maya Ferreira",
 		snippet:

@@ -364,7 +364,7 @@ function ProgressCircle({
 						key="filled"
 						viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
 						fill="none"
-						className="size-full"
+						className={cn("size-full", isIndeterminate && "animate-spin")}
 						exit={statusExit}
 						transition={statusExitTransition}
 					>

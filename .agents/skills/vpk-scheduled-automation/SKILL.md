@@ -1,7 +1,7 @@
 ---
 name: vpk-scheduled-automation
 description: >-
-  Shared execution policy for VPK-rovo scheduled jobs that investigate one
+  Shared execution policy for VPK scheduled jobs that investigate one
   maintenance candidate, make a review-ready change, and open or update a pull
   request. Use when a Codex automation invokes vpk-scheduled-automation for bug,
   test, deprecation, interface, simplification, engineering-map, AGENTS.md,

@@ -558,7 +558,7 @@ test("checkpoint routes keep runtime admin protection", async () => {
 });
 
 test("session search, votes, documents, files, and generated media preserve response shapes", async () => {
-	const projectRoot = mkdtempSync(path.join(os.tmpdir(), "vpk-rovo-app-media-"));
+	const projectRoot = mkdtempSync(path.join(os.tmpdir(), "rovo-app-media-"));
 	try {
 		mkdirSync(path.join(projectRoot, "media/videos/demo"), { recursive: true });
 		writeFileSync(path.join(projectRoot, "media/videos/demo/sample.mp4"), "video");

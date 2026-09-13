@@ -26,14 +26,15 @@ accepted when another API already returned one.
 The installed cmux CLI owns the supported Codex and Claude team launchers:
 
 ```bash
+repo_root="$(git rev-parse --show-toplevel)"
 cmux new-workspace \
   --name "CODEX" \
-  --cwd /Users/esoh/Labs/vpk-rovo \
+  --cwd "$repo_root" \
   --command "cmux codex-teams"
 
 cmux new-workspace \
   --name "CLAUDE" \
-  --cwd /Users/esoh/Labs/vpk-rovo \
+  --cwd "$repo_root" \
   --command "cmux claude-teams"
 ```
 
@@ -105,7 +106,8 @@ proof.
 ## Rules
 
 - Discover refs dynamically with `identify`, `list-workspaces`, or `tree`.
-- Use `/Users/esoh/Labs/vpk-rovo`; Documents-era checkout paths are historical.
+- Resolve the current repository root with `git rev-parse --show-toplevel`;
+  Documents-era checkout paths are historical.
 - Use only installed launchers shown by `cmux --help`.
 - Inspect the target surface before `send`; use `send-key ... Enter` to submit.
 - Bound `wait-for`; do not block indefinitely.

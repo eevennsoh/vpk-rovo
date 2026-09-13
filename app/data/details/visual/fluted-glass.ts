@@ -1,7 +1,7 @@
 import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const FLUTED_GLASS_DETAIL: ComponentDetail = {
-		description: "VPK-rovo fluted glass refraction with bars, waves, zigzag, or seigaiha shapes, chromatic dispersion, blur, frost, and uploaded image support.",
+		description: "VPK fluted glass refraction with bars, waves, zigzag, or seigaiha shapes, chromatic dispersion, blur, frost, and uploaded image support.",
 		importStatement: `import FlutedGlass from "@/components/website/demos/visual/shaders/fluted-glass";`,
 		usage: `<FlutedGlass
 	lensMode={0}

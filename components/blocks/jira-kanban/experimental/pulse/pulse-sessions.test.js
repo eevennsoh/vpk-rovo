@@ -112,7 +112,7 @@ test("every local session becomes one agent-list row with fixture identity", asy
 		assert.ok(item.sessionDetails.pullRequestTitle, `${item.id} needs a PR title`);
 		assert.equal(
 			item.sessionDetails.pullRequestUrl,
-			`https://github.com/eevensoh/vpk-rovo/pull/${item.sessionDetails.pullRequestNumber}`,
+			`https://github.com/acme/storefront/pull/${item.sessionDetails.pullRequestNumber}`,
 			`${item.id} should link to its PR`,
 		);
 	}

@@ -444,7 +444,7 @@ test("Pulse rail hangs everything off one left edge and one right edge", () => {
 	assert.doesNotMatch(SOURCES.rail, /Slack: \{ kind: "third-party", name: "slack" \}/u);
 	assert.doesNotMatch(SOURCES.rail, /Loom: \{ kind: "atlassian", name: "loom" \}/u);
 	assert.match(SOURCES.data, /export \{ PULSE_SPACE_REPOSITORY, PULSE_VIEWER_MACHINE_NAME \} from "\.\/pulse-loose-work"/u);
-	assert.match(SOURCES.looseWork, /export const PULSE_SPACE_REPOSITORY = "eevensoh\/vpk-rovo"/u);
+	assert.match(SOURCES.looseWork, /export const PULSE_SPACE_REPOSITORY = "acme\/storefront"/u);
 	// Resume is gated on the viewer's own device, so the fixture names it once
 	// and the machine name on a row is the only thing that grants the action.
 	assert.match(SOURCES.looseWork, /export const PULSE_VIEWER_MACHINE_NAME = "Venn’s MacBook"/u);

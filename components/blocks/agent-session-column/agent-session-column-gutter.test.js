@@ -122,7 +122,8 @@ test("the collapsed options menu uses Atlaskit show-more-horizontal, not a custo
 	assert.match(IN_FLOW_MENU_SOURCE, /import PinIcon from "@atlaskit\/icon\/core\/pin"/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /import PinFilledIcon from "@atlaskit\/icon\/core\/pin-filled"/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /import GrowHorizontalIcon from "@atlaskit\/icon\/core\/grow-horizontal"/u);
-	assert.match(IN_FLOW_MENU_SOURCE, /const showDragHandle = dragging \|\| open \|\| hovered/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /const resolvedOpen = dragging \? false : open/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /const showDragHandle = dragging \|\| resolvedOpen \|\| hovered/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /onPointerEnter=\{handleTriggerPointerEnter\}/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /const TriggerGlyph = showDragHandle \? DragHandleVerticalIcon : ShowMoreHorizontalIcon/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /openOnHover/u);
@@ -159,6 +160,9 @@ test("the collapsed options menu uses Atlaskit show-more-horizontal, not a custo
 	assert.doesNotMatch(IN_FLOW_MENU_SOURCE, /min-w-48/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /aria-label=\{`\$\{title\} column options`\}/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /data-agent-session-column-options=""/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /useConeHoverIntent\(/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /onOpenChange=\{coneIntent\.onOpenChange\}/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /ref=\{coneIntent\.popupRef\}/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /inFlowCollapsedMenuPinLabel\(pinned\)/u);
 	assert.match(IN_FLOW_MENU_SOURCE, />\s*Expand\s*</u);
 	assert.match(IN_FLOW_MENU_SOURCE, /onSelect=\{onExpand\}/u);
@@ -200,7 +204,7 @@ test("collapsed drag paints the outlined overlay chip and keeps the same button 
 	);
 	assert.match(IN_FLOW_MENU_SOURCE, /InFlowAgentSessionColumnCollapsedMenu/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /variant=\{dragging \? "outline" : "ghost"\}/u);
-	assert.match(IN_FLOW_MENU_SOURCE, /open=\{dragging \? false : open\}/u);
+	assert.match(IN_FLOW_MENU_SOURCE, /open=\{resolvedOpen\}/u);
 	assert.match(IN_FLOW_MENU_SOURCE, /text-icon-subtle \[&_svg\]:size-3 \[&_svg\]:text-icon-subtle/u);
 });
 
@@ -311,11 +315,11 @@ test("the gutter hides the count", () => {
 	assert.match(INDEX_SOURCE, /isGutterCollapsed \? "bg-transparent" : null/u);
 });
 
-test("flyouts stay suspended in the gutter and open once the compact rail is embedded", () => {
+test("flyouts stay suspended in the gutter and under the collapsed options safezone", () => {
 	assert.doesNotMatch(IN_FLOW_COLUMN_SOURCE, /isEmbeddingTransition/u);
 	assert.match(
 		IN_FLOW_COLUMN_SOURCE,
-		/JiraSessionFlyoutSuspensionProvider[\s\S]{0,120}?suspended=\{sessionFlyoutsSuspended \|\| reposition\.dragging \|\| !isEmbedded\}/u,
+		/JiraSessionFlyoutSuspensionProvider[\s\S]{0,120}?suspended=\{sessionFlyoutsSuspended \|\| reposition\.dragging \|\| isMenuOpen \|\| !isEmbedded\}/u,
 	);
 	assert.doesNotMatch(
 		IN_FLOW_COLUMN_SOURCE,

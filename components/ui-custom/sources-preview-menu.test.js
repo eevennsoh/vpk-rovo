@@ -91,11 +91,11 @@ test("preview-menu product mapping follows href host and path", async () => {
 		getSourcesPreviewProduct("https://hello.atlassian.net/wiki/spaces/PAY/pages/5483563901"),
 		"confluence",
 	);
-	assert.equal(getSourcesPreviewProduct("https://github.com/eevensoh/vpk-rovo/pull/1847"), "github");
+	assert.equal(getSourcesPreviewProduct("https://github.com/acme/storefront/pull/1847"), "github");
 	assert.equal(getSourcesPreviewProduct("https://atlassian.slack.com/archives/C0PAYMENTS"), "slack");
 	assert.equal(
 		getSourcesPreviewIconTileVariant("https://hello.atlassian.net/wiki/spaces/UST/pages/1"),
 		"blue",
 	);
-	assert.equal(getSourcesPreviewIconTileVariant("https://github.com/eevensoh/vpk-rovo/pull/1847"), "gray");
+	assert.equal(getSourcesPreviewIconTileVariant("https://github.com/acme/storefront/pull/1847"), "gray");
 });

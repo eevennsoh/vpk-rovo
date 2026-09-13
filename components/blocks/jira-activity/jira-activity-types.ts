@@ -105,7 +105,7 @@ export interface JiraActivityEventEntry extends JiraActivityEntryBase {
 		status: "Open" | "Merged";
 		additions: number;
 		deletions: number;
-		/** Optional owner/name path shown on phase-section PR cards (e.g. `eevensoh/vpk-rovo`). */
+		/** Optional owner/name path shown on phase-section PR cards (e.g. `acme/storefront`). */
 		repository?: string;
 		/** Optional source / head branch shown on Pull Request block cards. */
 		branch?: string;

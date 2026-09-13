@@ -61,7 +61,7 @@ function session(id, overrides = {}) {
 		messages: [{ id: `${id}-message`, role: "assistant", parts: [{ type: "text", text: id }] }],
 		priorityRank: 2,
 		branch: `codex/${id}`,
-		repository: "vpk-rovo",
+		repository: "storefront",
 		spaceId: "enterprise-rfp-qualification",
 		status: "running",
 		title: id,

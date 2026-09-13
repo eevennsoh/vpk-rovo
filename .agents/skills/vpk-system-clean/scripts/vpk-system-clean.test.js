@@ -14,6 +14,7 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const SCRIPT_PATH = join(__dirname, "vpk-system-clean.sh");
+const INSTALL_SCRIPT_PATH = join(__dirname, "install.sh");
 const ZSH_PATH = ["/bin/zsh", "/usr/bin/zsh"].find(existsSync);
 const ZSH_TEST_OPTIONS = {
 	skip: ZSH_PATH ? false : "requires zsh for the macOS maintenance script",
@@ -41,8 +42,9 @@ function runSweep({
 	const tmuxLog = join(root, "tmux.log");
 	const sessionsFile = join(root, "tmux-sessions");
 	const cleanupLog = join(home, "Library/Logs/vpk-system-clean.log");
+	const repositoryRoot = join(home, "Labs/project");
 	mkdirSync(join(home, "Library/Logs"), { recursive: true });
-	mkdirSync(join(home, "Labs/vpk-rovo"), { recursive: true });
+	mkdirSync(repositoryRoot, { recursive: true });
 	mkdirSync(fakeBin, { recursive: true });
 	mkdirSync(zDotDir, { recursive: true });
 	writeFileSync(join(zDotDir, ".zshenv"), "disable kill\n");
@@ -170,6 +172,7 @@ printf '%s\\n' "$*" >> "$FAKE_KILL_LOG"
 			FAKE_KILL_LOG: killLog,
 			HOME: home,
 			PATH: `${fakeBin}:/usr/bin:/bin:/usr/sbin:/sbin`,
+			VPK_REPO_ROOT: repositoryRoot,
 			ZDOTDIR: zDotDir,
 		},
 	});
@@ -238,7 +241,7 @@ test("keeps the primary checkout even when old and unattached", ZSH_TEST_OPTIONS
 			{
 				socket: "vpk-dev",
 				name: "vpk-dev-main",
-				path: join(home, "Labs/vpk-rovo"),
+				path: join(home, "Labs/project"),
 				attached: "0",
 				createdAgoSecs: 7200,
 			},
@@ -248,6 +251,15 @@ test("keeps the primary checkout even when old and unattached", ZSH_TEST_OPTIONS
 	assert.equal(result.status, 0, result.stderr);
 	assert.equal(stopLog, "");
 	assert.match(cleanupLog, /kept tmux session vpk-dev-main on vpk-dev socket \(primary checkout\)/);
+});
+
+test("installer gives launchd an explicit repository context", () => {
+	const installSource = readFileSync(INSTALL_SCRIPT_PATH, "utf8");
+
+	assert.match(installSource, /git -C "\$SKILL_DIR" worktree list --porcelain/u);
+	assert.match(installSource, /sed -n 's\/\^worktree \/\/p' \| head -1/u);
+	assert.match(installSource, /<key>WorkingDirectory<\/key>[\s\S]*<string>\$\{REPO_ROOT\}<\/string>/u);
+	assert.match(installSource, /<key>VPK_REPO_ROOT<\/key>[\s\S]*<string>\$\{REPO_ROOT\}<\/string>/u);
 });
 
 test("keeps a leftover stack still inside the grace window", ZSH_TEST_OPTIONS, () => {

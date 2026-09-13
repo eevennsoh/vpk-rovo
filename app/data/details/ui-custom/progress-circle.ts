@@ -116,7 +116,7 @@ export const PROGRESS_CIRCLE_DETAIL: ComponentDetail = {
 		},
 		{
 			title: "Filled",
-			description: "Filled pie-wedge style from indeterminate through 100%.",
+			description: "Filled pie-wedge progression from 0% through 100% (complete).",
 			demoSlug: "progress-circle-demo-filled",
 		},
 		{

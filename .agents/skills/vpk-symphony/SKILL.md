@@ -1,6 +1,6 @@
 ---
 name: vpk-symphony
-description: Repo-local VPK-rovo Symphony workflow for turning task-like ad-hoc requests into Linear tickets via direct Linear GraphQL, Linear issue execution, Codex Workpad updates, git sync/commit/push/land flow, stuck-run debugging, and Playwright CLI browser evidence. Use whenever the user invokes vpk-symphony for a task-like request, works on VPK-rovo Symphony issues, updates WORKFLOW.md or .agents/docs/symphony.md, diagnoses Symphony runs, syncs or lands Symphony PRs, or captures Symphony UI evidence.
+description: Repo-local VPK Symphony workflow for turning task-like ad-hoc requests into Linear tickets via direct Linear GraphQL, Linear issue execution, Codex Workpad updates, git sync/commit/push/land flow, stuck-run debugging, and Playwright CLI browser evidence. Use whenever the user invokes vpk-symphony for a task-like request, works on VPK Symphony issues, updates WORKFLOW.md or .agents/docs/symphony.md, diagnoses Symphony runs, syncs or lands Symphony PRs, or captures Symphony UI evidence.
 validation_command: pnpm run symphony
 ---
 
@@ -8,7 +8,7 @@ validation_command: pnpm run symphony
 
 ## Overview
 
-Use this skill for the repo-local Symphony harness in VPK-rovo. It keeps the
+Use this skill for the repo-local Symphony harness in VPK. It keeps the
 Linear workpad, git lifecycle, browser evidence, PR handoff, and stuck-run
 debugging rules in one discoverable place.
 
